@@ -29,7 +29,7 @@ bincode = "1.3"
 tracing = "0.1"
 
 # Client:
-ewebsock = { version = "0.1", optional = true }
+ewebsock = { version = "0.2", optional = true }
 
 # Server:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
