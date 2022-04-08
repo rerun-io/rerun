@@ -158,27 +158,7 @@ impl TimePanel {
     fn time_axis_ui(&mut self, ui: &mut egui::Ui, y_range: RangeInclusive<f32>) {
         for (x_range, segment) in &self.time_segments_ui.ranges {
             let rect = Rect::from_x_y_ranges(x_range.clone(), y_range.clone());
-            let bg_stroke = ui.visuals().widgets.noninteractive.bg_stroke;
-            let fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-            ui.painter()
-                .rect_filled(rect, 3.0, bg_stroke.color.linear_multiply(0.5));
-
-            let mut color = fg_stroke.color.linear_multiply(0.75);
-            if ui.visuals().dark_mode {
-                color = color.additive();
-            }
-
-            // Note: `segment.values` only contain unique times, so we don't scatter.
-            // We could make times with more values larger… but we don't.
-            for &value in &segment.values {
-                if let Some(t) = segment.lerp_t(value) {
-                    let x = lerp(x_range.clone(), t);
-                    let y = lerp(y_range.clone(), 0.5);
-                    let r = 2.0;
-                    let pos = pos2(x, y);
-                    ui.painter().circle_filled(pos, r, color);
-                }
-            }
+            paint_time_segment(ui, &rect, segment);
         }
 
         if false {
@@ -246,7 +226,7 @@ impl TimePanel {
             // node with more children
             let collapsing_response = egui::CollapsingHeader::new(text)
                 .id_source(&path)
-                .default_open(path.len() < 2)
+                .default_open(path.is_empty())
                 .show(ui, |ui| {
                     self.show_children(log_db, context, path, tree, ui);
                 });
@@ -260,10 +240,11 @@ impl TimePanel {
             // paint hline guide:
             let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
             stroke.color = stroke.color.linear_multiply(0.5);
+            let y = response.rect.bottom() + ui.spacing().item_spacing.y * 0.5;
             ui.painter().line_segment(
                 [
-                    pos2(response.rect.left() + indent, response.rect.bottom()),
-                    pos2(ui.max_rect().right(), response.rect.bottom()),
+                    pos2(response.rect.left() + indent, y),
+                    pos2(ui.max_rect().right(), y),
                 ],
                 stroke,
             );
@@ -483,6 +464,67 @@ impl TimeSegmentsUi {
         Some(last_time)
     }
 }
+
+fn paint_time_segment(ui: &mut egui::Ui, rect: &Rect, segment: &TimeSegment) {
+    let bg_stroke = ui.visuals().widgets.noninteractive.bg_stroke;
+    let fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
+    ui.painter()
+        .rect_filled(*rect, 3.0, bg_stroke.color.linear_multiply(0.5));
+
+    let (min, max) = (segment.min(), segment.max());
+    if let (TimeValue::Time(min), TimeValue::Time(max)) = (min, max) {
+        if min != max {
+            // TODO: handle different time spans better
+            if max - min < log_types::Duration::from_secs(20.0) {
+                let mut ns = min.nanos_since_epoch();
+                let small_step_size_ns = 100_000_000;
+                ns = ((ns - 1) / small_step_size_ns + 1) * small_step_size_ns;
+                while ns <= max.nanos_since_epoch() {
+                    let x = lerp(
+                        rect.x_range(),
+                        segment
+                            .lerp_t(Time::from_ns_since_epoch(ns).into())
+                            .unwrap(),
+                    );
+
+                    let bottom = if ns % (10 * small_step_size_ns) == 0 {
+                        // full second
+                        rect.bottom()
+                    } else {
+                        // tenth
+                        lerp(rect.y_range(), 0.25)
+                    };
+
+                    ui.painter()
+                        .line_segment([pos2(x, rect.top()), pos2(x, bottom)], fg_stroke);
+
+                    ns += small_step_size_ns;
+                }
+            }
+        }
+    }
+
+    if false {
+        let mut color = fg_stroke.color.linear_multiply(0.75);
+        if ui.visuals().dark_mode {
+            color = color.additive();
+        }
+
+        // Note: `segment.values` only contain unique times, so we don't scatter.
+        // We could make times with more values larger… but we don't.
+        for &value in &segment.values {
+            if let Some(t) = segment.lerp_t(value) {
+                let x = lerp(rect.x_range(), t);
+                let y = lerp(rect.y_range(), 0.5);
+                let r = 2.0;
+                let pos = pos2(x, y);
+                ui.painter().circle_filled(pos, r, color);
+            }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 fn summary_of_tree(ui: &mut egui::Ui, path: &mut Vec<ObjectPathComponent>, tree: &ObjectTree) {
     egui::Grid::new("summary_of_children")
