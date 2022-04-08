@@ -59,25 +59,28 @@ struct AppState {
 
 impl AppState {
     fn show(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame, log_db: &LogDb) {
-        let Self {
-            context,
-            view_index,
-            log_table_view,
-            space_view,
-            context_panel,
-            time_panel,
-        } = self;
-
         egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     ui.menu_button("Advanced", |ui| {
                         if ui
-                            .button("Reset egui memory")
-                            .on_hover_text("Forget scroll, positions, sizes etc")
+                            .button("Reset viewer state")
+                            .on_hover_text(
+                                "Reset the viewer to how it looked the first time you ran it",
+                            )
                             .clicked()
                         {
+                            *self = Default::default();
+
+                            // Keep dark/light mode setting:
+                            let is_dark_mode = ui.ctx().style().visuals.dark_mode;
                             *ui.ctx().memory() = Default::default();
+                            ui.ctx().set_visuals(if is_dark_mode {
+                                egui::Visuals::dark()
+                            } else {
+                                egui::Visuals::light()
+                            });
+
                             ui.close_menu();
                         }
                     });
@@ -93,13 +96,23 @@ impl AppState {
 
                 ui.separator();
 
-                ui.selectable_value(view_index, 0, "Spaces");
-                ui.selectable_value(view_index, 1, "Table");
+                ui.selectable_value(&mut self.view_index, 0, "Spaces");
+                ui.selectable_value(&mut self.view_index, 1, "Table");
             });
         });
 
+        let Self {
+            context,
+            view_index,
+            log_table_view,
+            space_view,
+            context_panel,
+            time_panel,
+        } = self;
+
         egui::TopBottomPanel::bottom("time_panel")
             .resizable(true)
+            .default_height(210.0)
             .show(egui_ctx, |ui| {
                 time_panel.ui(log_db, context, ui);
             });
