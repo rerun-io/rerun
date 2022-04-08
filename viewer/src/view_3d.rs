@@ -1,5 +1,6 @@
 use eframe::egui;
 use egui::{Color32, Rect};
+use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 use std::rc::Rc;
 
@@ -252,13 +253,18 @@ fn picking(
 
 fn default_camera() -> OrbitCamera {
     // TODO: calculate an initial/default camera based on the scene contents
-    let view_dir = -Vec3::Z;
+    let radius = 25.0;
+    let camera_pos = vec3(1.0, 1.0, 0.5).normalize() * radius;
+    let center = Vec3::ZERO;
+    let up = Vec3::Z;
 
     OrbitCamera {
-        center: Vec3::ZERO,
-        radius: 20.0,
-        world_from_view_rot: Quat::from_rotation_arc(-Vec3::Z, view_dir),
-        fov_y: 55.0_f32.to_radians(), // TODO: base on viewport size?
+        center,
+        radius,
+        world_from_view_rot: Quat::from_affine3(
+            &Affine3A::look_at_rh(camera_pos, center, up).inverse(),
+        ),
+        fov_y: 50.0_f32.to_radians(), // TODO: base on viewport size?
     }
 }
 
