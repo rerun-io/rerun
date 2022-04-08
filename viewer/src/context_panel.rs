@@ -1,5 +1,5 @@
 use eframe::egui;
-use log_types::{LogMsg, ObjectPath};
+use log_types::{Data, LogMsg, ObjectPath};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
@@ -50,11 +50,11 @@ impl ContextPanel {
         ui: &mut egui::Ui,
         msg: &LogMsg,
     ) {
-        crate::space_view::show_log_msg(context, ui, msg, Preview::Medium);
-
-        let messages = context.time_control.latest_of_each_object_vec(log_db);
+        show_detailed_log_msg(context, ui, msg);
 
         ui.separator();
+
+        let messages = context.time_control.latest_of_each_object_vec(log_db);
 
         let mut parent_path = msg.object_path.0.clone();
         parent_path.pop();
@@ -82,5 +82,47 @@ impl ContextPanel {
         } else {
             crate::log_table_view::message_table(log_db, context, ui, &sibling_messages);
         }
+    }
+}
+
+pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &LogMsg) {
+    let LogMsg {
+        id,
+        time_point,
+        object_path,
+        space,
+        data,
+    } = msg;
+
+    let is_image = matches!(msg.data, Data::Image(_));
+
+    egui::Grid::new("fields")
+        .striped(true)
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.monospace("object_path:");
+            ui.label(format!("{object_path}"));
+            ui.end_row();
+
+            ui.monospace("time_point:");
+            crate::space_view::ui_time_point(ui, time_point);
+            ui.end_row();
+
+            ui.monospace("space:");
+            if let Some(space) = space {
+                context.space_button(ui, space);
+            }
+            ui.end_row();
+
+            if !is_image {
+                ui.monospace("data:");
+                crate::space_view::ui_data(context, ui, id, data, Preview::Medium);
+                ui.end_row();
+            }
+        });
+
+    if let Data::Image(image) = &msg.data {
+        let egui_image = context.image_cache.get(id, image);
+        egui_image.show(ui);
     }
 }

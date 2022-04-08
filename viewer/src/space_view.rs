@@ -190,7 +190,7 @@ pub(crate) fn show_log_msg(
         });
 }
 
-fn ui_time_point(ui: &mut egui::Ui, time_point: &TimePoint) {
+pub(crate) fn ui_time_point(ui: &mut egui::Ui, time_point: &TimePoint) {
     ui.vertical(|ui| {
         egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
             for (name, value) in &time_point.0 {
