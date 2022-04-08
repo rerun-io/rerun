@@ -25,6 +25,7 @@ async fn main() {
     let native_options = eframe::NativeOptions {
         depth_buffer: 24,
         multisampling: 8,
+        initial_window_size: Some([1600.0, 1200.0].into()),
         ..Default::default()
     };
 
