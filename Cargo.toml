@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = ["comms", "log_types", "viewer", "web_server"]
+
+
+[profile.dev]
+opt-level = 1 # Speed up debug builds
+
+
+[patch.crates-io]
+# we use bleeding edge versions of some crates:
+eframe = { git = "https://github.com/emilk/egui", rev = "c3b6d1bab93c4771bf2715e197ac80fddfc2a77f" }      # 2022-04-04
+egui_extras = { git = "https://github.com/emilk/egui", rev = "c3b6d1bab93c4771bf2715e197ac80fddfc2a77f" } # 2022-04-04
+egui_glow = { git = "https://github.com/emilk/egui", rev = "c3b6d1bab93c4771bf2715e197ac80fddfc2a77f" }   # 2022-04-04
+# eframe = { path = "../../egui/eframe" }
+# egui = { path = "../../egui/egui" }
+# egui_extras = { path = "../../egui/egui_extras" }
+# egui_glow = { path = "../../egui/egui_glow" }
+
+ewebsock = { git = "https://github.com/rerun-io/ewebsock", rev = "d7b08aead15b9bf89622c534f7b660ec4a427737" } # 2022-03-26
+# ewebsock = { path = "../ewebsock/ewebsock" }
+
+three-d = { git = "https://github.com/asny/three-d", rev = "cb5c203cd951f07cee1b9a88b2bd4b18856be2ac" } # 2022-04-07

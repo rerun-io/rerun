@@ -1,0 +1,19 @@
+[package]
+name = "log_types"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.60"
+publish = false
+
+
+[features]
+default = ["serde"]
+
+
+[dependencies]
+chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
+nohash-hasher = "0.2"
+uuid = { version = "0.8", features = ["serde", "v4", "wasm-bindgen"] }
+
+# Optional:
+serde = { version = "1", features = ["derive", "rc"], optional = true }

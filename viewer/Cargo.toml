@@ -1,0 +1,48 @@
+[package]
+name = "viewer"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.60"
+publish = false
+
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+
+[dependencies]
+clap = { version = "3.1.6", features = ["derive"] }
+comms = { path = "../comms", features = ["client"] }
+log_types = { path = "../log_types" }
+
+anyhow = "1.0"
+cgmath = { version = "0.18", features = ["mint"] }
+eframe = { version = "0.17", features = ["dark-light", "persistence"] }
+egui_extras = "0.17"
+egui_glow = "0.17"
+glam = { version = "0.20", features = ["mint"] }
+glow = "0.11"
+itertools = "0.10"
+macaw = { version = "0.17", features = ["with_serde"] }
+mint = "0.5"
+nohash-hasher = "0.2"
+rand = { version = "0.8", features = ["small_rng"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+three-d = { version = "0.11", default-features = false, features = [
+    "gltf-io",
+    "obj-io",
+] }
+tracing = "0.1"
+vec1 = "1.8"
+
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tracing-subscriber = "0.3"
+tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
+# TODO: consider using mimalloc
+
+# web:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.6"
+tracing-wasm = "0.2"
