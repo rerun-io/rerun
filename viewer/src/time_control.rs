@@ -26,7 +26,7 @@ impl Default for TimeControl {
         Self {
             time_source: Default::default(),
             values: Default::default(),
-            playing: false,
+            playing: true,
             repeat: true,
             speed: 1.0,
         }
