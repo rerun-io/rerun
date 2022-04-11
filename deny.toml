@@ -15,7 +15,6 @@ ignore = [
     "RUSTSEC-2020-0071", # https://rustsec.org/advisories/RUSTSEC-2020-0071 - Potential segfault in the time crate.
     "RUSTSEC-2020-0159", # https://rustsec.org/advisories/RUSTSEC-2020-0159 - Potential segfault in `localtime_r` invocations.
     "RUSTSEC-2021-0019", # https://rustsec.org/advisories/RUSTSEC-2021-0019 - Multiple soundness issues. From xcb <- x11-clipboard <- copypasta <- egui-winit
-    "RUSTSEC-2021-0122", # https://rustsec.org/advisories/RUSTSEC-2021-0122 - flatbuffers: Generated code can read and write out of bounds in safe code. We avoid those functions that are affected.
 ]
 
 [bans]
@@ -26,11 +25,10 @@ deny = [
     { name = "openssl-sys" }, # prefer rustls
 ]
 
-skip = [
-    { name = "miniz_oxide" },  # duplicate - will be fixed by https://github.com/asny/three-d/pull/229
-]
+skip = []
 skip-tree = [
     { name = "eframe" }, # eframe uses winit, which pulls in a lot of old duplicated crates
+    { name = "image" },  # TODO: fix gltf/three-d snafu
 ]
 
 
@@ -41,17 +39,17 @@ allow-osi-fsf-free = "neither"
 confidence-threshold = 0.92 # We want really high confidence when inferring licenses from text
 copyleft = "deny"
 allow = [
-    "Apache-2.0 WITH LLVM-exception", # https://spdx.org/licenses/LLVM-exception.html
-    "Apache-2.0",                     # https://tldrlegal.com/license/apache-license-2.0-(apache-2.0)
-    "BSD-2-Clause",                   # https://tldrlegal.com/license/bsd-2-clause-license-(freebsd)
-    "BSD-3-Clause",                   # https://tldrlegal.com/license/bsd-3-clause-license-(revised)
-    "BSL-1.0",                        # https://tldrlegal.com/license/boost-software-license-1.0-explained
-    "CC0-1.0",                        # https://creativecommons.org/publicdomain/zero/1.0/
-    "ISC",                            # https://tldrlegal.com/license/-isc-license
-    "MIT",                            # https://tldrlegal.com/license/mit-license
-    "MPL-2.0",                        # https://www.mozilla.org/en-US/MPL/2.0/FAQ/ - see Q11
-    "OpenSSL",                        # https://www.openssl.org/source/license.html
-    "Zlib",                           # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
+    # "Apache-2.0 WITH LLVM-exception", # https://spdx.org/licenses/LLVM-exception.html
+    "Apache-2.0",   # https://tldrlegal.com/license/apache-license-2.0-(apache-2.0)
+    "BSD-2-Clause", # https://tldrlegal.com/license/bsd-2-clause-license-(freebsd)
+    "BSD-3-Clause", # https://tldrlegal.com/license/bsd-3-clause-license-(revised)
+    "BSL-1.0",      # https://tldrlegal.com/license/boost-software-license-1.0-explained
+    "CC0-1.0",      # https://creativecommons.org/publicdomain/zero/1.0/
+    "ISC",          # https://tldrlegal.com/license/-isc-license
+    "MIT",          # https://tldrlegal.com/license/mit-license
+    # "MPL-2.0",                        # https://www.mozilla.org/en-US/MPL/2.0/FAQ/ - see Q11
+    # "OpenSSL",                        # https://www.openssl.org/source/license.html
+    "Zlib", # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
 ]
 
 [[licenses.clarify]]
