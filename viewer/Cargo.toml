@@ -38,6 +38,9 @@ vec1 = "1.8"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+arboard = { version = "2.1", default-features = false, features = [
+    "image-data",
+] }
 tracing-subscriber = "0.3"
 tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
 # TODO: consider using mimalloc

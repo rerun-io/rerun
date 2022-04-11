@@ -1,6 +1,8 @@
 //! rerun viewer.
 
 mod app;
+#[cfg(not(target_arch = "wasm32"))]
+mod clipboard;
 pub(crate) mod context_panel;
 pub(crate) mod log_db;
 pub(crate) mod log_table_view;
@@ -18,6 +20,9 @@ mod viewer_context;
 pub(crate) use log_db::LogDb;
 pub(crate) use time_control::TimeControl;
 pub(crate) use viewer_context::{Selection, ViewerContext};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use clipboard::Clipboard;
 
 pub use app::App;
 pub use remote_viewer_app::RemoteViewerApp;

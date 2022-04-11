@@ -9,9 +9,9 @@ opt-level = 1 # Speed up debug builds
 
 [patch.crates-io]
 # we use bleeding edge versions of some crates:
-eframe = { git = "https://github.com/emilk/egui", rev = "c3b6d1bab93c4771bf2715e197ac80fddfc2a77f" }      # 2022-04-04
-egui_extras = { git = "https://github.com/emilk/egui", rev = "c3b6d1bab93c4771bf2715e197ac80fddfc2a77f" } # 2022-04-04
-egui_glow = { git = "https://github.com/emilk/egui", rev = "c3b6d1bab93c4771bf2715e197ac80fddfc2a77f" }   # 2022-04-04
+eframe = { git = "https://github.com/emilk/egui", rev = "efc0b992e0c8f9f7286b2dc1783d2af6d710a095" }      # 2022-04-04
+egui_extras = { git = "https://github.com/emilk/egui", rev = "efc0b992e0c8f9f7286b2dc1783d2af6d710a095" } # 2022-04-04
+egui_glow = { git = "https://github.com/emilk/egui", rev = "efc0b992e0c8f9f7286b2dc1783d2af6d710a095" }   # 2022-04-04
 # eframe = { path = "../../egui/eframe" }
 # egui = { path = "../../egui/egui" }
 # egui_extras = { path = "../../egui/egui_extras" }

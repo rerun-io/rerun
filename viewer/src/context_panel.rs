@@ -124,5 +124,20 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
     if let Data::Image(image) = &msg.data {
         let egui_image = context.image_cache.get(id, image);
         egui_image.show(ui);
+
+        // TODO: support copying images on web
+        #[cfg(not(target_arch = "wasm32"))]
+        if ui.button("Click to copy image").clicked() {
+            crate::Clipboard::with(|clipboard| {
+                let bytes: Vec<u8> = match image.format {
+                    log_types::ImageFormat::Luminance8 => {
+                        image.data.iter().flat_map(|&b| [b, b, b, 255]).collect()
+                    }
+                };
+                let [w, h] = image.size;
+
+                clipboard.set_image([w as _, h as _], &bytes);
+            });
+        }
     }
 }
