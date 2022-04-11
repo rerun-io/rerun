@@ -491,7 +491,8 @@ fn line_segments_to_three_d(
         ..Default::default()
     };
     let mut line = CpuMesh::cylinder(10);
-    line.transform(&Mat4::from_nonuniform_scale(1.0, *radius, *radius));
+    line.transform(&Mat4::from_nonuniform_scale(1.0, *radius, *radius))
+        .unwrap();
     let lines =
         InstancedModel::new_with_material(three_d, &line_instances, &line, line_material).unwrap();
 

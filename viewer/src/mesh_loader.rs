@@ -34,7 +34,9 @@ impl CpuMesh {
         let [c0, c1, c2, c3] = mesh_data.transform;
         let root_transform = three_d::Mat4::from_cols(c0.into(), c1.into(), c2.into(), c3.into());
         for mesh in &mut meshes {
-            mesh.transform(&root_transform);
+            mesh.transform(&root_transform)
+                .map_err(to_anyhow)
+                .context("Bad object transform")?;
             if mesh.tangents.is_none() {
                 mesh.compute_tangents().ok();
             }

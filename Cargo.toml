@@ -16,5 +16,3 @@ egui_glow = { git = "https://github.com/emilk/egui", rev = "c3b6d1bab93c4771bf27
 # egui = { path = "../../egui/egui" }
 # egui_extras = { path = "../../egui/egui_extras" }
 # egui_glow = { path = "../../egui/egui_glow" }
-
-three-d = { git = "https://github.com/asny/three-d", rev = "cb5c203cd951f07cee1b9a88b2bd4b18856be2ac" } # 2022-04-07
