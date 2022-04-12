@@ -220,7 +220,7 @@ pub(crate) fn ui_data(
         )),
         Data::Image(image) => {
             let egui_image = context.image_cache.get(id, image);
-            ui.horizontal(|ui| {
+            ui.horizontal_centered(|ui| {
                 let max_width = match preview {
                     Preview::Small => 32.0,
                     Preview::Medium => 128.0,

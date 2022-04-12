@@ -14,7 +14,6 @@ yanked = "deny"
 ignore = [
     "RUSTSEC-2020-0071", # https://rustsec.org/advisories/RUSTSEC-2020-0071 - Potential segfault in the time crate.
     "RUSTSEC-2020-0159", # https://rustsec.org/advisories/RUSTSEC-2020-0159 - Potential segfault in `localtime_r` invocations.
-    "RUSTSEC-2021-0019", # https://rustsec.org/advisories/RUSTSEC-2021-0019 - Multiple soundness issues. From xcb <- x11-clipboard <- copypasta <- egui-winit
 ]
 
 [bans]
