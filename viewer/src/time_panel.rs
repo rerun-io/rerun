@@ -76,16 +76,6 @@ impl TimePanel {
 
         let time_control = &mut context.time_control;
 
-        // show current time as a line:
-        if let Some(time) = time_control.time() {
-            if let Some(x) = self.time_segments_ui.x_from_time(time) {
-                ui.painter().line_segment(
-                    [pos2(x, time_area.top()), pos2(x, time_area.bottom())],
-                    ui.visuals().widgets.inactive.fg_stroke,
-                );
-            }
-        }
-
         self.click_to_select_time(time_control, ui, &time_area);
 
         if let Some(time) = time_control.time() {
@@ -106,19 +96,77 @@ impl TimePanel {
         time_area: &Rect,
     ) {
         let pointer = ui.input().pointer.hover_pos();
-        if let Some(pointer) = pointer {
-            if time_area.contains(pointer) {
-                let x = pointer.x;
 
-                ui.painter().line_segment(
-                    [pos2(x, time_area.top()), pos2(x, ui.max_rect().bottom())],
+        let time_drag_id = ui.id().with("time_drag_id");
+
+        let mut is_hovering = false;
+        let mut is_dragging = ui.memory().is_being_dragged(time_drag_id);
+
+        // show current time as a line:
+        if let Some(time) = time_control.time() {
+            if let Some(x) = self.time_segments_ui.x_from_time(time) {
+                if let Some(pointer) = pointer {
+                    let line_rect = Rect::from_x_y_ranges(x..=x, time_area.y_range());
+
+                    is_hovering = line_rect.distance_to_pos(pointer)
+                        <= ui.style().interaction.resize_grab_radius_side;
+
+                    if ui.input().pointer.any_pressed()
+                        && ui.input().pointer.any_down()
+                        && is_hovering
+                    {
+                        ui.memory().set_dragged_id(time_drag_id);
+                        is_dragging = true; // avoid frame delay
+                    }
+                }
+
+                if is_hovering || is_dragging {
+                    ui.output().cursor_icon = CursorIcon::ResizeHorizontal;
+                }
+
+                let stroke = if is_dragging {
+                    ui.style().visuals.widgets.active.bg_stroke
+                } else if is_hovering {
+                    ui.style().visuals.widgets.hovered.bg_stroke
+                } else {
+                    ui.visuals().widgets.inactive.fg_stroke
+                };
+                let stroke = egui::Stroke {
+                    width: 1.5 * stroke.width,
+                    ..stroke
+                };
+
+                let w = 10.0;
+                let triangle = vec![
+                    pos2(x - 0.5 * w, time_area.top()), // left top
+                    pos2(x + 0.5 * w, time_area.top()), // right top
+                    pos2(x, time_area.top() + w),       // bottom
+                ];
+                ui.painter().add(egui::Shape::convex_polygon(
+                    triangle,
+                    stroke.color,
+                    egui::Stroke::none(),
+                ));
+                ui.painter()
+                    .vline(x, (time_area.top() + w)..=time_area.bottom(), stroke);
+            }
+        }
+
+        // Show preview: "click here to view time here"
+        let pointer = ui.input().pointer.hover_pos();
+        if let Some(pointer) = pointer {
+            if !is_hovering && !is_dragging && time_area.contains(pointer) {
+                ui.painter().vline(
+                    pointer.x,
+                    time_area.top()..=ui.max_rect().bottom(),
                     ui.visuals().widgets.noninteractive.bg_stroke,
                 );
+            }
 
-                if ui.input().pointer.any_down() {
-                    if let Some(time) = self.time_segments_ui.time_from_x(x) {
-                        time_control.set_time(time);
-                    }
+            if is_dragging || (ui.input().pointer.any_down() && time_area.contains(pointer)) {
+                if let Some(time) = self.time_segments_ui.time_from_x(pointer.x) {
+                    time_control.set_time(time);
+                    ui.memory().set_dragged_id(time_drag_id);
                 }
             }
         }
@@ -169,8 +217,7 @@ impl TimePanel {
                 let x = lerp(*a.0.end()..=*b.0.start(), 0.5);
                 let y_top = *y_range.start();
                 let y_bottom = *y_range.end();
-                ui.painter()
-                    .line_segment([pos2(x, y_top), pos2(x, y_bottom)], stroke);
+                ui.painter().vline(x, y_top..=y_bottom, stroke);
             }
         }
     }
@@ -241,13 +288,8 @@ impl TimePanel {
             let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
             stroke.color = stroke.color.linear_multiply(0.5);
             let y = response.rect.bottom() + ui.spacing().item_spacing.y * 0.5;
-            ui.painter().line_segment(
-                [
-                    pos2(response.rect.left() + indent, y),
-                    pos2(ui.max_rect().right(), y),
-                ],
-                stroke,
-            );
+            ui.painter()
+                .hline(response.rect.left()..=ui.max_rect().right(), y, stroke);
         }
 
         self.next_col_right = self.next_col_right.max(response.rect.right());
@@ -495,8 +537,7 @@ fn paint_time_segment(ui: &mut egui::Ui, rect: &Rect, segment: &TimeSegment) {
                         lerp(rect.y_range(), 0.25)
                     };
 
-                    ui.painter()
-                        .line_segment([pos2(x, rect.top()), pos2(x, bottom)], fg_stroke);
+                    ui.painter().vline(x, rect.top()..=bottom, fg_stroke);
 
                     ns += small_step_size_ns;
                 }
