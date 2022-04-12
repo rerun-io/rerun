@@ -33,7 +33,9 @@ impl ContextPanel {
             Selection::Space(space) => {
                 let space = space.clone();
                 ui.label(format!("Selected space: {}", space));
-                egui::ScrollArea::both().show(ui, |ui| {
+                ui.small("Showing latest versions of each object.")
+                    .on_hover_text("Latest by the current time, that is");
+                egui::ScrollArea::horizontal().show(ui, |ui| {
                     let mut messages = context.time_control.latest_of_each_object_vec(log_db);
                     messages.retain(|msg| msg.space.as_ref() == Some(&space));
                     crate::log_table_view::message_table(log_db, context, ui, &messages);

@@ -64,9 +64,9 @@ impl AppState {
                 ui.menu_button("File", |ui| {
                     ui.menu_button("Advanced", |ui| {
                         if ui
-                            .button("Reset viewer state")
+                            .button("Reset viewer")
                             .on_hover_text(
-                                "Reset the viewer to how it looked the first time you ran it",
+                                "Reset the viewer to how it looked the first time you ran it.",
                             )
                             .clicked()
                         {

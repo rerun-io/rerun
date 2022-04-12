@@ -3,65 +3,51 @@ use egui::{NumExt as _, Rect, Vec2};
 
 use log_types::*;
 
-use crate::{viewer_context::ViewerContext, LogDb, Preview};
+use crate::{
+    viewer_context::{Selection, ViewerContext},
+    LogDb, Preview,
+};
 
 // ----------------------------------------------------------------------------
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct SpaceView {
-    selected_space: ObjectPath,
     state_3d: crate::view_3d::State3D,
-    all: bool,
-}
-
-impl Default for SpaceView {
-    fn default() -> Self {
-        Self {
-            selected_space: Default::default(),
-            state_3d: Default::default(),
-            all: true,
-        }
-    }
 }
 
 impl SpaceView {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
-        ui.label("Showing latest versions of each object.");
+        ui.small("Showing latest versions of each object.")
+            .on_hover_text("Latest by the current time, that is");
 
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Show space:");
-            ui.radio_value(&mut self.all, true, "all");
-            ui.radio_value(&mut self.all, false, "single");
-            if !self.all {
-                ui.separator();
-                ui.label("Space:");
-                let mut any_selected = false;
-                for space in log_db.spaces.keys() {
-                    ui.selectable_value(&mut self.selected_space, space.clone(), space.to_string());
-                    any_selected |= &self.selected_space == space;
+        if let Selection::Space(selected_space) = &context.selection {
+            let selected_space = selected_space.clone();
+            ui.horizontal(|ui| {
+                if ui.button("Show all spaces").clicked() {
+                    context.selection = Selection::None;
                 }
-                if !any_selected {
-                    self.selected_space = log_db.spaces.keys().next().cloned().unwrap_or_default();
-                }
-            }
-        });
-
-        if self.all {
-            let regions = gridify(ui.available_rect_before_wrap(), log_db.spaces.len());
-            for (rect, space) in itertools::izip!(&regions, log_db.spaces.keys()) {
-                let mut ui = ui.child_ui_with_id_source(*rect, *ui.layout(), space);
-                egui::Frame::group(ui.style())
-                    .outer_margin(Vec2::splat(4.0))
-                    .show(&mut ui, |ui| {
-                        ui.vertical_centered(|ui| {
-                            self.show_space(log_db, context, &space.clone(), ui);
-                            ui.allocate_space(ui.available_size());
-                        });
-                    });
-            }
+                context.space_button(ui, &selected_space);
+            });
+            self.show_space(log_db, context, &selected_space, ui);
         } else {
-            self.show_space(log_db, context, &self.selected_space.clone(), ui);
+            self.show_all(log_db, context, ui);
+        }
+    }
+
+    fn show_all(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+        let regions = gridify(ui.available_rect_before_wrap(), log_db.spaces.len());
+        for (rect, space) in itertools::izip!(&regions, log_db.spaces.keys()) {
+            let mut ui = ui.child_ui_with_id_source(*rect, *ui.layout(), space);
+            egui::Frame::group(ui.style())
+                .outer_margin(Vec2::splat(4.0))
+                .show(&mut ui, |ui| {
+                    ui.vertical_centered(|ui| {
+                        context.space_button(ui, space);
+                        self.show_space(log_db, context, &space.clone(), ui);
+                        ui.allocate_space(ui.available_size());
+                    });
+                });
         }
     }
 }
@@ -117,8 +103,6 @@ impl SpaceView {
         space: &ObjectPath,
         ui: &mut egui::Ui,
     ) {
-        context.space_button(ui, space);
-
         let space_summary = if let Some(space_summary) = log_db.spaces.get(space) {
             space_summary
         } else {
