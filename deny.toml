@@ -24,10 +24,14 @@ deny = [
     { name = "openssl-sys" }, # prefer rustls
 ]
 
-skip = []
+skip = [
+    { name = "ahash" },     # old version via dark-light
+    { name = "base64" },    # old version via gltf
+    { name = "hashbrown" }, # old version via dark-light
+]
 skip-tree = [
-    { name = "eframe" }, # eframe uses winit, which pulls in a lot of old duplicated crates
-    { name = "image" },  # TODO: fix gltf/three-d snafu
+    { name = "winit" }, # winit pulls in a lot of old, duplicated crates. at least it is not wasm
+    { name = "image" }, # Fix coming in https://github.com/asny/three-d/pull/232
 ]
 
 
