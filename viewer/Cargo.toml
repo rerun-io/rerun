@@ -22,11 +22,13 @@ egui_extras = { version = "0.17", features = ["tracing"] }
 egui_glow = "0.17"
 glam = { version = "0.20", features = ["mint"] }
 glow = "0.11"
+image = { version = "0.23", default-features = false, features = ["png"] }
 itertools = "0.10"
 macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
 nohash-hasher = "0.2"
 rand = { version = "0.8", features = ["small_rng"] }
+rfd = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 three-d = { version = "0.11", default-features = false, features = [

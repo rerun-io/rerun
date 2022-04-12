@@ -25,9 +25,10 @@ deny = [
 ]
 
 skip = [
-    { name = "ahash" },     # old version via dark-light
-    { name = "base64" },    # old version via gltf
-    { name = "hashbrown" }, # old version via dark-light
+    { name = "ahash" },               # old version via dark-light
+    { name = "base64" },              # old version via gltf
+    { name = "hashbrown" },           # old version via dark-light
+    { name = "windows_x86_64_msvc" }, # Fix coming in https://github.com/PolyMeilex/rfd/pull/64
 ]
 skip-tree = [
     { name = "winit" }, # winit pulls in a lot of old, duplicated crates. at least it is not wasm
@@ -50,7 +51,7 @@ allow = [
     "CC0-1.0",      # https://creativecommons.org/publicdomain/zero/1.0/
     "ISC",          # https://tldrlegal.com/license/-isc-license
     "MIT",          # https://tldrlegal.com/license/mit-license
-    # "MPL-2.0",                        # https://www.mozilla.org/en-US/MPL/2.0/FAQ/ - see Q11
+    "MPL-2.0",      # https://www.mozilla.org/en-US/MPL/2.0/FAQ/ - see Q11. Used by webpki-roots on Linux.
     # "OpenSSL",                        # https://www.openssl.org/source/license.html
     "Zlib", # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
 ]

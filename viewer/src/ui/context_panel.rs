@@ -127,19 +127,58 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
         let egui_image = context.image_cache.get(id, image);
         egui_image.show(ui);
 
-        // TODO: support copying images on web
+        // TODO: support copying and saving images on web
         #[cfg(not(target_arch = "wasm32"))]
-        if ui.button("Click to copy image").clicked() {
-            crate::Clipboard::with(|clipboard| {
-                let bytes: Vec<u8> = match image.format {
-                    log_types::ImageFormat::Luminance8 => {
-                        image.data.iter().flat_map(|&b| [b, b, b, 255]).collect()
-                    }
-                };
-                let [w, h] = image.size;
+        ui.horizontal(|ui| image_options(ui, image));
+    }
+}
 
-                clipboard.set_image([w as _, h as _], &bytes);
-            });
+fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
+    // TODO: support copying images on web
+    #[cfg(not(target_arch = "wasm32"))]
+    if ui.button("Click to copy image").clicked() {
+        crate::Clipboard::with(|clipboard| {
+            let [w, h] = image.size;
+            clipboard.set_image([w as _, h as _], &to_rgba_unultiplied(image));
+        });
+    }
+
+    // TODO: support saving images on web
+    #[cfg(not(target_arch = "wasm32"))]
+    if ui.button("Save image…").clicked() {
+        if let Some(path) = rfd::FileDialog::new()
+            .set_file_name("image.png")
+            .save_file()
+        {
+            if let Some(image) = to_image_image(image) {
+                match image.save(&path) {
+                    // TODO: show a popup instead of logging result
+                    Ok(()) => {
+                        tracing::info!("Image saved to {:?}", path);
+                    }
+                    Err(err) => {
+                        tracing::error!("Failed saving image to {:?}: {}", path, err);
+                    }
+                }
+            } else {
+                tracing::warn!("Failed to create image. Very weird");
+            }
         }
+    }
+}
+
+fn to_rgba_unultiplied(image: &log_types::Image) -> Vec<u8> {
+    match image.format {
+        log_types::ImageFormat::Luminance8 => {
+            image.data.iter().flat_map(|&b| [b, b, b, 255]).collect()
+        }
+    }
+}
+
+fn to_image_image(image: &log_types::Image) -> Option<image::DynamicImage> {
+    let [w, h] = image.size;
+    match image.format {
+        log_types::ImageFormat::Luminance8 => image::GrayImage::from_raw(w, h, image.data.clone())
+            .map(image::DynamicImage::ImageLuma8),
     }
 }
