@@ -1,6 +1,9 @@
-use eframe::egui;
-use egui::{NumExt as _, Rect, Vec2};
+use std::ops::RangeInclusive;
 
+use eframe::egui;
+use egui::{Rect, Vec2};
+
+use itertools::Itertools;
 use log_types::*;
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
@@ -33,7 +36,17 @@ impl SpaceView {
     }
 
     fn show_all(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
-        let regions = gridify(ui.available_rect_before_wrap(), log_db.spaces.len());
+        let spaces = log_db
+            .spaces
+            .iter()
+            .map(|(path, summary)| SpaceInfo {
+                space_path: path.clone(),
+                size: summary.size_2d(),
+            })
+            .collect_vec();
+
+        let regions = layout_spaces(ui.available_rect_before_wrap(), &spaces);
+
         for (rect, space) in itertools::izip!(&regions, log_db.spaces.keys()) {
             let mut ui = ui.child_ui_with_id_source(*rect, *ui.layout(), space);
             egui::Frame::group(ui.style())
@@ -49,47 +62,123 @@ impl SpaceView {
     }
 }
 
-fn gridify(available_rect: Rect, num_cells: usize) -> Vec<Rect> {
-    if num_cells == 0 {
+#[derive(Clone)]
+struct SpaceInfo {
+    /// Path to the space
+    space_path: ObjectPath,
+
+    /// Only set for 2D spaces
+    size: Option<Vec2>,
+}
+
+fn layout_spaces(available_rect: Rect, spaces: &[SpaceInfo]) -> Vec<Rect> {
+    if spaces.is_empty() {
         return vec![];
+    } else if spaces.len() == 1 {
+        return vec![available_rect];
     }
 
-    // let desired_aspect_ratio = 4.0/3.0; // TODO
+    let desired_aspect_ratio = desired_aspect_ratio(spaces).unwrap_or(16.0 / 9.0);
 
-    // TODO: a smart algorithm for choosing the number of rows
-    let num_rows = 2;
+    let groups = group_by_path_prefix(spaces);
+    assert!(groups.len() > 1);
 
-    let mut rects = Vec::with_capacity(num_cells);
+    // TODO: if there are a lot of groups (>3) we likely want to put them in a grid instead of doing a linear split (like we do below)
 
-    let mut cells_left = num_cells;
+    if available_rect.width() > desired_aspect_ratio * available_rect.height() {
+        // left-to-right
+        let x_ranges = weighted_split(available_rect.x_range(), &groups);
+        x_ranges
+            .iter()
+            .cloned()
+            .zip(&groups)
+            .flat_map(|(x_range, group)| {
+                let sub_rect = Rect::from_x_y_ranges(x_range, available_rect.y_range());
+                layout_spaces(sub_rect, group)
+            })
+            .collect()
+    } else {
+        // top-to-bottom
+        let y_ranges = weighted_split(available_rect.y_range(), &groups);
+        y_ranges
+            .iter()
+            .cloned()
+            .zip(&groups)
+            .flat_map(|(y_range, group)| {
+                let sub_rect = Rect::from_x_y_ranges(available_rect.x_range(), y_range);
+                layout_spaces(sub_rect, group)
+            })
+            .collect()
+    }
+}
 
-    for row in 0..num_rows {
-        let top = egui::lerp(available_rect.y_range(), row as f32 / num_rows as f32);
-        let bottom = egui::lerp(available_rect.y_range(), (row + 1) as f32 / num_rows as f32);
-
-        let cols_in_row = if row < num_rows - 1 {
-            ((num_cells as f32 / num_rows as f32).ceil() as usize).at_most(cells_left)
-        } else {
-            cells_left
-        };
-
-        for col in 0..cols_in_row {
-            let left = egui::lerp(available_rect.x_range(), col as f32 / cols_in_row as f32);
-            let right = egui::lerp(
-                available_rect.x_range(),
-                (col + 1) as f32 / cols_in_row as f32,
-            );
-            rects.push(egui::Rect {
-                min: egui::pos2(left, top),
-                max: egui::pos2(right, bottom),
-            });
+fn desired_aspect_ratio(spaces: &[SpaceInfo]) -> Option<f32> {
+    let mut sum = 0.0;
+    let mut num = 0.0;
+    for space in spaces {
+        if let Some(size) = space.size {
+            let aspect = size.x / size.y;
+            if aspect.is_finite() {
+                sum += aspect;
+                num += 1.0;
+            }
         }
-
-        cells_left -= cols_in_row;
     }
-    assert_eq!(cells_left, 0);
-    assert_eq!(rects.len(), num_cells);
-    rects
+
+    if num == 0.0 {
+        None
+    } else {
+        Some(sum / num)
+    }
+}
+
+fn group_by_path_prefix(spaces: &[SpaceInfo]) -> Vec<Vec<SpaceInfo>> {
+    if spaces.len() < 2 {
+        return vec![spaces.to_vec()];
+    }
+
+    for i in 0.. {
+        let mut groups: std::collections::BTreeMap<Option<&ObjectPathComponent>, Vec<&SpaceInfo>> =
+            Default::default();
+        for space in spaces {
+            groups
+                .entry(space.space_path.0.get(i))
+                .or_default()
+                .push(space);
+        }
+        if groups.len() == 1 && groups.contains_key(&None) {
+            break;
+        }
+        if groups.len() > 1 {
+            return groups
+                .values()
+                .map(|spaces| spaces.iter().cloned().cloned().collect())
+                .collect();
+        }
+    }
+    spaces.iter().map(|space| vec![space.clone()]).collect()
+}
+
+fn weighted_split(
+    range: RangeInclusive<f32>,
+    groups: &[Vec<SpaceInfo>],
+) -> Vec<RangeInclusive<f32>> {
+    let weights: Vec<f64> = groups
+        .iter()
+        .map(|group| (group.len() as f64).sqrt())
+        .collect();
+    let total_weight: f64 = weights.iter().sum();
+
+    let mut w_accum: f64 = 0.0;
+    weights
+        .iter()
+        .map(|&w| {
+            let l = egui::lerp(range.clone(), (w_accum / total_weight) as f32);
+            w_accum += w;
+            let r = egui::lerp(range.clone(), (w_accum / total_weight) as f32);
+            l..=r
+        })
+        .collect()
 }
 
 impl SpaceView {

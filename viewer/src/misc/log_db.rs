@@ -138,6 +138,17 @@ impl Default for SpaceSummary {
     }
 }
 
+impl SpaceSummary {
+    /// Only set for 2D spaces
+    pub fn size_2d(&self) -> Option<egui::Vec2> {
+        if self.bbox2d.is_positive() {
+            Some(self.bbox2d.size())
+        } else {
+            None
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Tree of object paths.
