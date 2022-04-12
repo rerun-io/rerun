@@ -159,7 +159,7 @@ pub(crate) fn show_log_msg(
             ui.end_row();
 
             ui.monospace("time_point:");
-            ui_time_point(ui, time_point);
+            ui_time_point(context, ui, time_point);
             ui.end_row();
 
             ui.monospace("space:");
@@ -174,12 +174,16 @@ pub(crate) fn show_log_msg(
         });
 }
 
-pub(crate) fn ui_time_point(ui: &mut egui::Ui, time_point: &TimePoint) {
+pub(crate) fn ui_time_point(
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
+    time_point: &TimePoint,
+) {
     ui.vertical(|ui| {
         egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
-            for (name, value) in &time_point.0 {
-                ui.label(format!("{name}:"));
-                ui.label(value.to_string());
+            for (time_source, value) in &time_point.0 {
+                ui.label(format!("{time_source}:"));
+                context.time_button(ui, time_source, *value);
                 ui.end_row();
             }
         });

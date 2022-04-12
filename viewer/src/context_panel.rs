@@ -107,7 +107,7 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
             ui.end_row();
 
             ui.monospace("time_point:");
-            crate::space_view::ui_time_point(ui, time_point);
+            crate::space_view::ui_time_point(context, ui, time_point);
             ui.end_row();
 
             ui.monospace("space:");

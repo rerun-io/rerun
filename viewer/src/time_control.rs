@@ -172,8 +172,17 @@ impl TimeControl {
         self.values.get(&self.time_source).copied()
     }
 
+    pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
+        self.time_source = time_source;
+        self.values.insert(self.time_source.clone(), time);
+    }
+
     pub fn set_time(&mut self, time: TimeValue) {
         self.values.insert(self.time_source.clone(), time);
+    }
+
+    pub fn pause(&mut self) {
+        self.playing = false;
     }
 
     /// Grouped by [`ObjectPath`], find the latest [`LogMsg`] that matches

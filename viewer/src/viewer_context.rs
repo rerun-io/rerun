@@ -1,5 +1,5 @@
 use eframe::egui;
-use log_types::{Data, LogId, ObjectPath};
+use log_types::{Data, LogId, ObjectPath, TimeValue};
 
 use crate::log_db::LogDb;
 
@@ -29,6 +29,24 @@ impl ViewerContext {
         let response = ui.selectable_label(self.selection.is_space(space), space.to_string());
         if response.clicked() {
             self.selection = Selection::Space(space.clone());
+        }
+        response
+    }
+
+    pub fn time_button(
+        &mut self,
+        ui: &mut eframe::egui::Ui,
+        time_source: &str,
+        value: TimeValue,
+    ) -> egui::Response {
+        let is_selected =
+            self.time_control.source() == time_source && self.time_control.time() == Some(value);
+
+        let response = ui.selectable_label(is_selected, value.to_string());
+        if response.clicked() {
+            self.time_control
+                .set_source_and_time(time_source.to_string(), value);
+            self.time_control.pause();
         }
         response
     }
