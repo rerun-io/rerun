@@ -3,10 +3,7 @@ use egui::{NumExt as _, Rect, Vec2};
 
 use log_types::*;
 
-use crate::{
-    viewer_context::{Selection, ViewerContext},
-    LogDb, Preview,
-};
+use crate::{LogDb, Preview, Selection, ViewerContext};
 
 // ----------------------------------------------------------------------------
 

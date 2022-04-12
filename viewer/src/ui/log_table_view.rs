@@ -2,7 +2,7 @@ use eframe::egui;
 
 use log_types::*;
 
-use crate::{viewer_context::ViewerContext, LogDb, Preview};
+use crate::{LogDb, Preview, ViewerContext};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]

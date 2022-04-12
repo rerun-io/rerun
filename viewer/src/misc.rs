@@ -1,36 +1,25 @@
-use std::collections::{BTreeMap, BTreeSet};
+#[cfg(not(target_arch = "wasm32"))]
+mod clipboard;
+mod image_cache;
+pub(crate) mod log_db;
+pub(crate) mod mesh_loader;
+pub(crate) mod time_axis;
+mod time_control;
+mod viewer_context;
 
-use eframe::egui;
-use egui_extras::RetainedImage;
-use log_types::*;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use clipboard::Clipboard;
 
-#[derive(Default)]
-pub struct ImageCache {
-    images: nohash_hasher::IntMap<LogId, RetainedImage>,
-}
+use image_cache::ImageCache;
+pub(crate) use log_db::LogDb;
+pub(crate) use time_control::TimeControl;
 
-impl ImageCache {
-    pub fn get(&mut self, log_id: &LogId, image: &Image) -> &RetainedImage {
-        self.images
-            .entry(*log_id)
-            .or_insert_with(|| to_egui_image(image))
-    }
-}
-
-fn to_egui_image(image: &Image) -> RetainedImage {
-    let pixels = image
-        .data
-        .iter()
-        .map(|&l| egui::Color32::from_rgb(l, l, l))
-        .collect();
-    let color_image = egui::ColorImage {
-        size: [image.size[0] as _, image.size[1] as _],
-        pixels,
-    };
-    RetainedImage::from_color_image("image", color_image)
-}
+pub(crate) use viewer_context::{Selection, ViewerContext};
 
 // ----------------------------------------------------------------------------
+
+use log_types::{TimePoint, TimeValue};
+use std::collections::{BTreeMap, BTreeSet};
 
 /// An aggregate of `TimePoint`:s.
 #[derive(Default, serde::Deserialize, serde::Serialize)]

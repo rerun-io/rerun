@@ -74,6 +74,12 @@ struct Scene {
     meshes: Vec<(LogId, ObjectPath, Mesh3D)>,
 }
 
+fn show_settings_ui(ui: &mut egui::Ui, state_3d: &mut State3D) {
+    if ui.button("Reset camera").clicked() {
+        state_3d.camera = Some(default_camera());
+    }
+}
+
 pub(crate) fn combined_view_3d(
     log_db: &LogDb,
     context: &mut ViewerContext,
@@ -87,11 +93,14 @@ pub(crate) fn combined_view_3d(
         return;
     }
 
-    if ui.button("Reset camera").clicked() {
-        state_3d.camera = Some(default_camera());
-    }
+    // TODO: show settings on top of 3D view.
+    // Requires some egui work to handle interaction of overlapping widgets.
+    show_settings_ui(ui, state_3d);
 
-    let frame = egui::Frame::dark_canvas(ui.style());
+    let frame = egui::Frame {
+        inner_margin: 2.0.into(),
+        ..egui::Frame::dark_canvas(ui.style())
+    };
     let (outer_rect, response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
