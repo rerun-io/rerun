@@ -13,6 +13,7 @@ impl Clipboard {
         }
     }
 
+    #[cfg(feature = "puffin")] // only used sometimes
     pub fn set_text(&mut self, text: String) {
         if let Some(clipboard) = &mut self.arboard {
             if let Err(err) = clipboard.set_text(text) {
