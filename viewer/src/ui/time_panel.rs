@@ -330,6 +330,14 @@ impl TimePanel {
 
             let mut scatter = BallScatterer::default();
 
+            let hovered_color = ui.visuals().widgets.hovered.text_color();
+            let inactive_color = ui
+                .visuals()
+                .widgets
+                .inactive
+                .text_color()
+                .linear_multiply(0.75);
+
             for (time, log_id) in source {
                 if let Some(time) = time.0.get(context.time_control.source()).copied() {
                     if let Some(x) = self.time_segments_ui.x_from_time(time) {
@@ -340,13 +348,9 @@ impl TimePanel {
                             .map_or(false, |pointer_pos| pos.distance(pointer_pos) < 1.5 * r);
 
                         let mut color = if is_hovered {
-                            ui.visuals().widgets.hovered.text_color()
+                            hovered_color
                         } else {
-                            ui.visuals()
-                                .widgets
-                                .inactive
-                                .text_color()
-                                .linear_multiply(0.75)
+                            inactive_color
                         };
                         if ui.visuals().dark_mode {
                             color = color.additive();
