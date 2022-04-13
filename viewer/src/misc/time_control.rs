@@ -200,26 +200,7 @@ impl TimeControl {
         };
         let source = self.source();
 
-        let mut latest: BTreeMap<&ObjectPath, (TimeValue, &LogMsg)> = BTreeMap::new();
-        for (time_value, msg) in log_db
-            .messages
-            .values()
-            .filter_map(|msg| {
-                let time_value = *msg.time_point.0.get(source)?;
-                Some((time_value, msg))
-            })
-            .filter(|(time_value, _msg)| time_value <= &current_time)
-        {
-            if let Some(existing) = latest.get_mut(&msg.object_path) {
-                if existing.0 < time_value {
-                    *existing = (time_value, msg);
-                }
-            } else {
-                latest.insert(&msg.object_path, (time_value, msg));
-            }
-        }
-
-        latest.values().map(|(_, msg)| *msg).collect()
+        log_db.latest_of_each_object(source, current_time)
     }
 }
 

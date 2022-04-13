@@ -65,6 +65,24 @@ impl LogDb {
         self.messages.get(id)
     }
 
+    /// Grouped by [`ObjectPath`], find the latest [`LogMsg`] that matches
+    /// the given time source and is not after the given time.
+    pub fn latest_of_each_object(
+        &self,
+        time_source: &str,
+        no_later_than: TimeValue,
+    ) -> Vec<&LogMsg> {
+        crate::profile_function!();
+        self.object_history
+            .values()
+            .filter_map(|history| {
+                history
+                    .latest(time_source, no_later_than)
+                    .and_then(|id| self.get_msg(&id))
+            })
+            .collect()
+    }
+
     pub fn latest(
         &self,
         time_source: &str,
