@@ -3,6 +3,7 @@ mod clipboard;
 mod image_cache;
 pub(crate) mod log_db;
 pub(crate) mod mesh_loader;
+pub(crate) mod profiler;
 pub(crate) mod time_axis;
 mod time_control;
 mod viewer_context;

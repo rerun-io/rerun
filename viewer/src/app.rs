@@ -57,7 +57,8 @@ struct AppState {
     time_panel: crate::time_panel::TimePanel,
 
     #[cfg(feature = "puffin")]
-    show_profiler: bool,
+    #[serde(skip)]
+    profiler: crate::misc::profiler::Profiler,
 }
 
 impl AppState {
@@ -90,7 +91,15 @@ impl AppState {
                         }
 
                         #[cfg(feature = "puffin")]
-                        ui.checkbox(&mut self.show_profiler, "Profiler");
+                        if ui
+                            .button("Profile viewer")
+                            .on_hover_text(
+                                "Starts a profiler, showing what makes the viewer run slow",
+                            )
+                            .clicked()
+                        {
+                            self.profiler.start();
+                        }
                     });
 
                     if ui.button("Quit").clicked() {
@@ -117,14 +126,8 @@ impl AppState {
             context_panel,
             time_panel,
             #[cfg(feature = "puffin")]
-            show_profiler,
+                profiler: _,
         } = self;
-
-        #[cfg(feature = "puffin")]
-        {
-            puffin::set_scopes_on(*show_profiler);
-            *show_profiler = *show_profiler && puffin_egui::profiler_window(egui_ctx);
-        }
 
         egui::TopBottomPanel::bottom("time_panel")
             .resizable(true)
