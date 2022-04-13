@@ -12,6 +12,8 @@ cargo clippy --workspace --all-targets --all-features --  -D warnings -W clippy:
 cargo test --workspace --all-targets --all-features
 cargo test --workspace --doc --all-features
 
+cargo check --no-default-features
+
 cargo doc --lib --no-deps --all-features
 cargo doc --document-private-items --no-deps --all-features
 

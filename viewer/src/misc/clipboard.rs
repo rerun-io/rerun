@@ -13,6 +13,17 @@ impl Clipboard {
         }
     }
 
+    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))] // only used sometimes
+    pub fn set_text(&mut self, text: String) {
+        if let Some(clipboard) = &mut self.arboard {
+            if let Err(err) = clipboard.set_text(text) {
+                tracing::error!("Failed to copy image to clipboard: {}", err);
+            } else {
+                tracing::info!("Image copied to clipboard");
+            }
+        }
+    }
+
     pub fn set_image(&mut self, size: [usize; 2], rgba_unmultiplied: &[u8]) {
         let [width, height] = size;
         assert_eq!(width * height * 4, rgba_unmultiplied.len());

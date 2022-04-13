@@ -18,6 +18,8 @@ pub(crate) struct SpaceView {
 
 impl SpaceView {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+        crate::profile_function!();
+
         ui.small("Showing latest versions of each object.")
             .on_hover_text("Latest by the current time, that is");
 
@@ -201,7 +203,7 @@ impl SpaceView {
         //     space_summary.messages.len()
         // ));
 
-        let latest = context.time_control.latest_of_each_object_vec(log_db);
+        let latest = context.time_control.latest_of_each_object(log_db);
         if latest.is_empty() {
             return;
         }

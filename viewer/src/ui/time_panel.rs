@@ -36,6 +36,8 @@ impl Default for TimePanel {
 
 impl TimePanel {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+        crate::profile_function!();
+
         self.next_col_right = ui.min_rect().left(); // this will expand during the call
 
         // Where the time will be shown.
@@ -71,6 +73,7 @@ impl TimePanel {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
+                crate::profile_scope!("tree_ui");
                 self.tree_ui(log_db, context, ui);
             });
 
@@ -179,6 +182,7 @@ impl TimePanel {
         ui: &mut egui::Ui,
         time_x_range: RangeInclusive<f32>,
     ) {
+        crate::profile_function!();
         let time_source_axes = TimeSourceAxes::new(&log_db.time_points);
         if let Some(segments) = time_source_axes.sources.get(context.time_control.source()) {
             self.time_segments_ui = TimeSegmentsUi::new(time_x_range, &segments.segments);
@@ -313,6 +317,7 @@ impl TimePanel {
 
         // show the data in the time area:
         {
+            crate::profile_scope!("balls");
             let pointer_pos = ui.input().pointer.hover_pos();
 
             let source = if also_show_child_points {
@@ -325,6 +330,14 @@ impl TimePanel {
 
             let mut scatter = BallScatterer::default();
 
+            let hovered_color = ui.visuals().widgets.hovered.text_color();
+            let inactive_color = ui
+                .visuals()
+                .widgets
+                .inactive
+                .text_color()
+                .linear_multiply(0.75);
+
             for (time, log_id) in source {
                 if let Some(time) = time.0.get(context.time_control.source()).copied() {
                     if let Some(x) = self.time_segments_ui.x_from_time(time) {
@@ -335,13 +348,9 @@ impl TimePanel {
                             .map_or(false, |pointer_pos| pos.distance(pointer_pos) < 1.5 * r);
 
                         let mut color = if is_hovered {
-                            ui.visuals().widgets.hovered.text_color()
+                            hovered_color
                         } else {
-                            ui.visuals()
-                                .widgets
-                                .inactive
-                                .text_color()
-                                .linear_multiply(0.75)
+                            inactive_color
                         };
                         if ui.visuals().dark_mode {
                             color = color.additive();

@@ -11,6 +11,8 @@ pub(crate) struct LogTableView {}
 impl LogTableView {
     #[allow(clippy::unused_self)]
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+        crate::profile_function!();
+
         ui.label(format!("{} log lines", log_db.messages.len()));
         ui.separator();
 
@@ -31,6 +33,8 @@ pub(crate) fn message_table(
     ui: &mut egui::Ui,
     messages: &[&LogMsg],
 ) {
+    crate::profile_function!();
+
     use egui_extras::Size;
 
     egui_extras::TableBuilder::new(ui)
@@ -93,6 +97,8 @@ fn table_row(
     msg: &LogMsg,
     row_height: f32,
 ) {
+    crate::profile_function!();
+
     let LogMsg {
         id,
         time_point,

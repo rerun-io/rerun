@@ -36,7 +36,7 @@ impl ContextPanel {
                 ui.small("Showing latest versions of each object.")
                     .on_hover_text("Latest by the current time, that is");
                 egui::ScrollArea::horizontal().show(ui, |ui| {
-                    let mut messages = context.time_control.latest_of_each_object_vec(log_db);
+                    let mut messages = context.time_control.latest_of_each_object(log_db);
                     messages.retain(|msg| msg.space.as_ref() == Some(&space));
                     crate::log_table_view::message_table(log_db, context, ui, &messages);
                 });
@@ -56,7 +56,7 @@ impl ContextPanel {
 
         ui.separator();
 
-        let messages = context.time_control.latest_of_each_object_vec(log_db);
+        let messages = context.time_control.latest_of_each_object(log_db);
 
         let mut parent_path = msg.object_path.0.clone();
         parent_path.pop();
@@ -133,6 +133,7 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
     // TODO: support copying images on web
     #[cfg(not(target_arch = "wasm32"))]
@@ -167,6 +168,7 @@ fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn to_rgba_unultiplied(image: &log_types::Image) -> Vec<u8> {
     match image.format {
         log_types::ImageFormat::Luminance8 => {
@@ -175,6 +177,7 @@ fn to_rgba_unultiplied(image: &log_types::Image) -> Vec<u8> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn to_image_image(image: &log_types::Image) -> Option<image::DynamicImage> {
     let [w, h] = image.size;
     match image.format {

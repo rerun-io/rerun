@@ -55,10 +55,16 @@ struct AppState {
     space_view: crate::space_view::SpaceView,
     context_panel: crate::context_panel::ContextPanel,
     time_panel: crate::time_panel::TimePanel,
+
+    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+    #[serde(skip)]
+    profiler: crate::misc::profiler::Profiler,
 }
 
 impl AppState {
     fn show(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame, log_db: &LogDb) {
+        crate::profile_function!();
+
         egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -82,6 +88,17 @@ impl AppState {
                             });
 
                             ui.close_menu();
+                        }
+
+                        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+                        if ui
+                            .button("Profile viewer")
+                            .on_hover_text(
+                                "Starts a profiler, showing what makes the viewer run slow",
+                            )
+                            .clicked()
+                        {
+                            self.profiler.start();
                         }
                     });
 
@@ -108,6 +125,8 @@ impl AppState {
             space_view,
             context_panel,
             time_panel,
+            #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+                profiler: _,
         } = self;
 
         egui::TopBottomPanel::bottom("time_panel")

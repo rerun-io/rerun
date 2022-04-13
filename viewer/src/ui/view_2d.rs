@@ -18,6 +18,7 @@ pub(crate) fn combined_view_2d(
     if space_summary.bbox2d.is_negative() {
         return;
     }
+    crate::profile_function!();
 
     // Show images first (behind everything else), then bboxes, then points:
     messages.sort_by_key(|msg| match &msg.data {
