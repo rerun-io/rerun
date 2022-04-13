@@ -26,3 +26,25 @@ pub use native::run_native_viewer;
 mod web;
 #[cfg(target_arch = "wasm32")]
 pub use web::start;
+
+// ---------------------------------------------------------------------------
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_function {
+    ($($arg: tt)*) => {
+        #[cfg(feature = "puffin")]
+        puffin::profile_function!($($arg)*);
+    };
+}
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_scope {
+    ($($arg: tt)*) => {
+        #[cfg(feature = "puffin")]
+        puffin::profile_scope!($($arg)*);
+    };
+}

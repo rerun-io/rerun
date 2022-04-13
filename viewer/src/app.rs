@@ -55,10 +55,15 @@ struct AppState {
     space_view: crate::space_view::SpaceView,
     context_panel: crate::context_panel::ContextPanel,
     time_panel: crate::time_panel::TimePanel,
+
+    #[cfg(feature = "puffin")]
+    show_profiler: bool,
 }
 
 impl AppState {
     fn show(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame, log_db: &LogDb) {
+        crate::profile_function!();
+
         egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -83,6 +88,9 @@ impl AppState {
 
                             ui.close_menu();
                         }
+
+                        #[cfg(feature = "puffin")]
+                        ui.checkbox(&mut self.show_profiler, "Profiler");
                     });
 
                     if ui.button("Quit").clicked() {
@@ -108,7 +116,15 @@ impl AppState {
             space_view,
             context_panel,
             time_panel,
+            #[cfg(feature = "puffin")]
+            show_profiler,
         } = self;
+
+        #[cfg(feature = "puffin")]
+        {
+            puffin::set_scopes_on(*show_profiler);
+            *show_profiler = *show_profiler && puffin_egui::profiler_window(egui_ctx);
+        }
 
         egui::TopBottomPanel::bottom("time_panel")
             .resizable(true)

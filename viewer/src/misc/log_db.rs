@@ -15,6 +15,7 @@ pub(crate) struct LogDb {
 
 impl LogDb {
     pub fn add(&mut self, msg: LogMsg) {
+        crate::profile_function!();
         santiy_check(&msg);
 
         self.time_points.insert(&msg.time_point);

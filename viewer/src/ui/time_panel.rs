@@ -36,6 +36,8 @@ impl Default for TimePanel {
 
 impl TimePanel {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+        crate::profile_function!();
+
         self.next_col_right = ui.min_rect().left(); // this will expand during the call
 
         // Where the time will be shown.
@@ -71,6 +73,7 @@ impl TimePanel {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
+                crate::profile_scope!("tree_ui");
                 self.tree_ui(log_db, context, ui);
             });
 
@@ -179,6 +182,7 @@ impl TimePanel {
         ui: &mut egui::Ui,
         time_x_range: RangeInclusive<f32>,
     ) {
+        crate::profile_function!();
         let time_source_axes = TimeSourceAxes::new(&log_db.time_points);
         if let Some(segments) = time_source_axes.sources.get(context.time_control.source()) {
             self.time_segments_ui = TimeSegmentsUi::new(time_x_range, &segments.segments);
@@ -313,6 +317,7 @@ impl TimePanel {
 
         // show the data in the time area:
         {
+            crate::profile_scope!("balls");
             let pointer_pos = ui.input().pointer.hover_pos();
 
             let source = if also_show_child_points {

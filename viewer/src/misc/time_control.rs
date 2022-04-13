@@ -190,7 +190,9 @@ impl TimeControl {
     pub fn latest_of_each_object<'db>(
         &self,
         log_db: &'db crate::log_db::LogDb,
-    ) -> BTreeMap<ObjectPath, (TimeValue, &'db LogMsg)> {
+    ) -> Vec<&'db LogMsg> {
+        crate::profile_function!();
+
         let current_time = if let Some(current_time) = self.time() {
             current_time
         } else {
@@ -198,7 +200,7 @@ impl TimeControl {
         };
         let source = self.source();
 
-        let mut latest: BTreeMap<ObjectPath, (TimeValue, &LogMsg)> = BTreeMap::new();
+        let mut latest: BTreeMap<&ObjectPath, (TimeValue, &LogMsg)> = BTreeMap::new();
         for (time_value, msg) in log_db
             .messages
             .values()
@@ -213,23 +215,11 @@ impl TimeControl {
                     *existing = (time_value, msg);
                 }
             } else {
-                latest.insert(msg.object_path.clone(), (time_value, msg));
+                latest.insert(&msg.object_path, (time_value, msg));
             }
         }
 
-        latest
-    }
-
-    /// Find the latest [`LogMsg`] of each unique [`ObjectPath`] that matches
-    /// the current time source and is not after the current time.
-    pub fn latest_of_each_object_vec<'db>(
-        &self,
-        log_db: &'db crate::log_db::LogDb,
-    ) -> Vec<&'db LogMsg> {
-        self.latest_of_each_object(log_db)
-            .values()
-            .map(|(_, msg)| *msg)
-            .collect()
+        latest.values().map(|(_, msg)| *msg).collect()
     }
 }
 

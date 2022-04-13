@@ -92,6 +92,7 @@ pub(crate) fn combined_view_3d(
     if space_summary.messages_3d.is_empty() {
         return;
     }
+    crate::profile_function!();
 
     // TODO: show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
@@ -335,6 +336,7 @@ impl MeshCache {
         object_path: &ObjectPath,
         mesh_data: &Mesh3D,
     ) -> Option<Rc<GpuMesh>> {
+        crate::profile_function!();
         self.0
             .entry(*log_id)
             .or_insert_with(|| {
@@ -357,6 +359,7 @@ fn paint_with_three_d(
     info: &egui::PaintCallbackInfo,
     scene: &Scene,
 ) -> three_d::ThreeDResult<()> {
+    crate::profile_function!();
     use three_d::*;
     let three_d = &rendering.three_d;
 
@@ -427,6 +430,7 @@ fn paint_with_three_d(
         }
     }
 
+    crate::profile_scope!("render_pass");
     render_pass(&camera, &objects, lights)?;
 
     Ok(())
@@ -437,6 +441,7 @@ fn point_to_three_d(
     sphere_mesh: &three_d::CpuMesh,
     point: &Point,
 ) -> three_d::Model<three_d::PhysicalMaterial> {
+    crate::profile_function!();
     use three_d::*;
 
     let [x, y, z] = point.pos;
@@ -469,6 +474,7 @@ fn line_segments_to_three_d(
     three_d: &three_d::Context,
     line_segments: &LineSegments,
 ) -> three_d::InstancedModel<three_d::ColorMaterial> {
+    crate::profile_function!();
     use three_d::*;
 
     let LineSegments {
