@@ -34,7 +34,7 @@ pub use web::start;
 #[macro_export]
 macro_rules! profile_function {
     ($($arg: tt)*) => {
-        #[cfg(feature = "puffin")]
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         puffin::profile_function!($($arg)*);
     };
 }
@@ -44,7 +44,7 @@ macro_rules! profile_function {
 #[macro_export]
 macro_rules! profile_scope {
     ($($arg: tt)*) => {
-        #[cfg(feature = "puffin")]
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         puffin::profile_scope!($($arg)*);
     };
 }

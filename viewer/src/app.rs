@@ -56,7 +56,7 @@ struct AppState {
     context_panel: crate::context_panel::ContextPanel,
     time_panel: crate::time_panel::TimePanel,
 
-    #[cfg(feature = "puffin")]
+    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
     #[serde(skip)]
     profiler: crate::misc::profiler::Profiler,
 }
@@ -90,7 +90,7 @@ impl AppState {
                             ui.close_menu();
                         }
 
-                        #[cfg(feature = "puffin")]
+                        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                         if ui
                             .button("Profile viewer")
                             .on_hover_text(
@@ -125,7 +125,7 @@ impl AppState {
             space_view,
             context_panel,
             time_panel,
-            #[cfg(feature = "puffin")]
+            #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
         } = self;
 

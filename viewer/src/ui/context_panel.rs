@@ -133,6 +133,7 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
     // TODO: support copying images on web
     #[cfg(not(target_arch = "wasm32"))]
@@ -167,6 +168,7 @@ fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn to_rgba_unultiplied(image: &log_types::Image) -> Vec<u8> {
     match image.format {
         log_types::ImageFormat::Luminance8 => {
@@ -175,6 +177,7 @@ fn to_rgba_unultiplied(image: &log_types::Image) -> Vec<u8> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn to_image_image(image: &log_types::Image) -> Option<image::DynamicImage> {
     let [w, h] = image.size;
     match image.format {

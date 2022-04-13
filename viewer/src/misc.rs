@@ -3,7 +3,7 @@ mod clipboard;
 mod image_cache;
 pub(crate) mod log_db;
 pub(crate) mod mesh_loader;
-#[cfg(feature = "puffin")]
+#[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub(crate) mod profiler;
 pub(crate) mod time_axis;
 mod time_control;
