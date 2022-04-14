@@ -7,7 +7,7 @@ publish = false
 
 
 [features]
-default = ["save", "load"]
+default = []
 
 # Enable saving data to a file
 save = ["anyhow", "rmp-serde", "serde", "zstd"]

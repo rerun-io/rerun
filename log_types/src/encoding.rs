@@ -1,7 +1,8 @@
 //! Saving/loading [`LogMsg`]:es to/from a file.
 use crate::LogMsg;
 
-// #[cfg(all(feature = "saving", not(target_arch = "wasm32")))]
+#[cfg(feature = "save")]
+#[cfg(not(target_arch = "wasm32"))]
 pub fn encode<'a>(
     messages: impl Iterator<Item = &'a LogMsg>,
     mut write: impl std::io::Write,
@@ -31,13 +32,18 @@ pub fn encode<'a>(
     Ok(())
 }
 
-// #[cfg(feature = "loading")]
+// ----------------------------------------------------------------------------
+// native
+
+#[cfg(feature = "load")]
+#[cfg(not(target_arch = "wasm32"))]
 pub struct Decoder<'r, R: std::io::BufRead> {
     zdecoder: zstd::stream::Decoder<'r, R>,
     buffer: Vec<u8>,
 }
 
-// #[cfg(feature = "loading")]
+#[cfg(feature = "load")]
+#[cfg(not(target_arch = "wasm32"))]
 impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
     pub fn new(mut read: R) -> anyhow::Result<Self> {
         use anyhow::Context as _;
@@ -56,6 +62,8 @@ impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
     }
 }
 
+#[cfg(feature = "load")]
+#[cfg(not(target_arch = "wasm32"))]
 impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
     type Item = anyhow::Result<LogMsg>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -77,7 +85,63 @@ impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
     }
 }
 
-// #[cfg(all(feature = "loading", feature = "saving"))]
+// ----------------------------------------------------------------------------
+// wasm:
+
+#[cfg(feature = "load")]
+#[cfg(target_arch = "wasm32")]
+pub struct Decoder<'r> {
+    zdecoder: ruzstd::StreamingDecoder<'r>,
+    buffer: Vec<u8>,
+}
+
+#[cfg(feature = "load")]
+#[cfg(target_arch = "wasm32")]
+impl<'r> Decoder<'r> {
+    pub fn new(read: &'r mut dyn std::io::Read) -> anyhow::Result<Self> {
+        use anyhow::Context as _;
+
+        let mut header = [0_u8; 4];
+        read.read_exact(&mut header).context("missing header")?;
+        anyhow::ensure!(&header == b"RRF0", "Not a rerun file");
+        read.read_exact(&mut header).context("missing header")?;
+        anyhow::ensure!(header == [0, 0, 0, 0], "Incompatible rerun file format");
+
+        let zdecoder =
+            ruzstd::StreamingDecoder::new(read).map_err(|err| anyhow::anyhow!("ruzstd: {err}"))?;
+        Ok(Self {
+            zdecoder,
+            buffer: vec![],
+        })
+    }
+}
+
+#[cfg(feature = "load")]
+#[cfg(target_arch = "wasm32")]
+impl<'r> Iterator for Decoder<'r> {
+    type Item = anyhow::Result<LogMsg>;
+    fn next(&mut self) -> Option<Self::Item> {
+        use std::io::Read as _;
+
+        let mut len = [0_u8; 8];
+        self.zdecoder.read_exact(&mut len).ok()?;
+        let len = u64::from_le_bytes(len) as usize;
+
+        self.buffer.resize(len, 0);
+        if let Err(err) = self.zdecoder.read_exact(&mut self.buffer) {
+            return Some(Err(anyhow::anyhow!("ruzstd: {err}")));
+        }
+
+        match rmp_serde::from_read(&mut self.buffer.as_slice()) {
+            Ok(msg) => Some(Ok(msg)),
+            Err(err) => Some(Err(anyhow::anyhow!("MessagePack: {err}"))),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+#[cfg(all(feature = "load", feature = "save"))]
 #[test]
 fn test_encode_decode() {
     use crate::*;

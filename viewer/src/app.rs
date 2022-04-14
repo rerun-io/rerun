@@ -42,45 +42,47 @@ impl eframe::App for App {
         }
         self.state.show(egui_ctx, frame, &mut self.log_db);
 
-        // TODO: support dropping `.rrd` files on web
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            preview_files_being_dropped(egui_ctx);
+        self.handle_dropping_files(egui_ctx);
+    }
+}
 
-            // Collect dropped files:
-            if egui_ctx.input().raw.dropped_files.len() > 2 {
-                rfd::MessageDialog::new()
-                    .set_level(rfd::MessageLevel::Error)
-                    .set_description("Can only load one file at a time")
-                    .show();
+impl App {
+    fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
+        preview_files_being_dropped(egui_ctx);
+
+        // Collect dropped files:
+        if egui_ctx.input().raw.dropped_files.len() > 2 {
+            rfd::MessageDialog::new()
+                .set_level(rfd::MessageLevel::Error)
+                .set_description("Can only load one file at a time")
+                .show();
+        }
+        if let Some(file) = egui_ctx.input().raw.dropped_files.first() {
+            if let Some(bytes) = &file.bytes {
+                let mut bytes: &[u8] = &(*bytes)[..];
+                load_file_contents(&file.name, &mut bytes, &mut self.log_db);
+                return;
             }
-            if let Some(file) = egui_ctx.input().raw.dropped_files.first() {
-                if let Some(path) = &file.path {
-                    load_file_path(path, &mut self.log_db);
-                } else if let Some(bytes) = &file.bytes {
-                    let mut bytes: &[u8] = &(*bytes)[..];
-                    load_file_contents(&file.name, &mut bytes, &mut self.log_db);
-                }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(path) = &file.path {
+                load_file_path(path, &mut self.log_db);
             }
         }
     }
 }
 
-// TODO: support dropping `.rrd` files on web
-#[cfg(not(target_arch = "wasm32"))]
 fn preview_files_being_dropped(ctx: &egui::Context) {
     use egui::*;
 
     // Preview hovering files:
     if !ctx.input().raw.hovered_files.is_empty() {
-        let mut text = "Dropping files:\n".to_owned();
+        let mut text = "Drop to load:\n".to_owned();
         for file in &ctx.input().raw.hovered_files {
             if let Some(path) = &file.path {
                 text += &format!("\n{}", path.display());
             } else if !file.mime.is_empty() {
                 text += &format!("\n{}", file.mime);
-            } else {
-                text += "\n???";
             }
         }
 
@@ -171,12 +173,12 @@ impl AppState {
             .move_time(egui_ctx, &log_db.time_points);
     }
 
-    fn file_menu(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame, log_db: &mut LogDb) {
+    fn file_menu(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame, _log_db: &mut LogDb) {
         // TODO: support saving data on web
         #[cfg(not(target_arch = "wasm32"))]
         if ui.button("Save…").on_hover_text("Save all data").clicked() {
             if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
-                save_to_file(log_db, &path);
+                save_to_file(_log_db, &path);
             }
         }
 
@@ -186,7 +188,7 @@ impl AppState {
                 .add_filter("rerun data file", &["rrd"])
                 .pick_file()
             {
-                load_file_path(&path, log_db);
+                load_file_path(&path, _log_db);
             }
         }
 
@@ -226,9 +228,10 @@ impl AppState {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
     fn save_to_file_impl(log_db: &LogDb, path: &std::path::PathBuf) -> anyhow::Result<()> {
-        puffin::profile_function!();
+        crate::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::create(path).context("Failed to create file")?;
         log_types::encoding::encode(log_db.messages(), file)
@@ -250,9 +253,14 @@ fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
     }
 }
 
-fn load_rrd(read: impl std::io::Read) -> anyhow::Result<LogDb> {
-    puffin::profile_function!();
+fn load_rrd(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
+    crate::profile_function!();
+
+    #[cfg(target_arch = "wasm32")]
+    let decoder = log_types::encoding::Decoder::new(&mut read)?;
+    #[cfg(not(target_arch = "wasm32"))]
     let decoder = log_types::encoding::Decoder::new(read)?;
+
     let mut log_db = LogDb::default();
     for msg in decoder {
         log_db.add(msg?);
@@ -260,9 +268,10 @@ fn load_rrd(read: impl std::io::Read) -> anyhow::Result<LogDb> {
     Ok(log_db)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn load_file_path(path: &std::path::PathBuf, log_db: &mut LogDb) {
     fn load_file_path_impl(path: &std::path::PathBuf) -> anyhow::Result<LogDb> {
-        puffin::profile_function!();
+        crate::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::open(path).context("Failed to open file")?;
         load_rrd(file)

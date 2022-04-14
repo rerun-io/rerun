@@ -4,6 +4,7 @@
 
 use std::{collections::BTreeMap, fmt::Write as _, ops::RangeInclusive};
 
+#[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
 macro_rules! impl_into_enum {

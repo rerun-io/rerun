@@ -18,7 +18,7 @@ puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin"]
 [dependencies]
 clap = { version = "3.1.6", features = ["derive"] }
 comms = { path = "../comms", features = ["client"] }
-log_types = { path = "../log_types" }
+log_types = { path = "../log_types", features = ["save", "load"] }
 
 # We use bleeding edge egui, from 2022-04-13
 eframe      = { git = "https://github.com/emilk/egui", rev = "170b21b63e461dfeaa7597815b67f1dcd756ac80", features = ["dark-light", "persistence"] }
