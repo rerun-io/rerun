@@ -5,12 +5,13 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 #[derive(Default)]
 pub(crate) struct LogDb {
-    pub messages: nohash_hasher::IntMap<LogId, LogMsg>,
+    /// Messages in the order they arrived
+    chronological_messages: Vec<LogId>,
+    messages: nohash_hasher::IntMap<LogId, LogMsg>,
     pub time_points: TimePoints,
     pub spaces: BTreeMap<ObjectPath, SpaceSummary>,
     pub object_tree: ObjectTree,
-
-    pub object_history: HashMap<ObjectPath, ObjectHistory>,
+    object_history: HashMap<ObjectPath, ObjectHistory>,
 }
 
 impl LogDb {
@@ -18,6 +19,7 @@ impl LogDb {
         crate::profile_function!();
         santiy_check(&msg);
 
+        self.chronological_messages.push(msg.id);
         self.time_points.insert(&msg.time_point);
 
         if let Some(space) = &msg.space {
@@ -59,6 +61,17 @@ impl LogDb {
             .add(&msg.time_point, msg.id);
         self.object_tree.add_log_msg(&msg);
         self.messages.insert(msg.id, msg);
+    }
+
+    pub fn len(&self) -> usize {
+        self.messages.len()
+    }
+
+    /// In the order they arrived
+    pub fn messages(&self) -> impl Iterator<Item = &LogMsg> {
+        self.chronological_messages
+            .iter()
+            .filter_map(|id| self.messages.get(id))
     }
 
     pub fn get_msg(&self, id: &LogId) -> Option<&LogMsg> {

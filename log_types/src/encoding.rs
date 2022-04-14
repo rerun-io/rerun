@@ -32,14 +32,14 @@ pub fn encode<'a>(
 }
 
 // #[cfg(feature = "loading")]
-struct Decoder<'r, R: std::io::BufRead> {
+pub struct Decoder<'r, R: std::io::BufRead> {
     zdecoder: zstd::stream::Decoder<'r, R>,
     buffer: Vec<u8>,
 }
 
 // #[cfg(feature = "loading")]
 impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
-    fn new(mut read: R) -> anyhow::Result<Self> {
+    pub fn new(mut read: R) -> anyhow::Result<Self> {
         use anyhow::Context as _;
 
         let mut header = [0_u8; 4];
