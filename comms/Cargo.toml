@@ -11,6 +11,7 @@ client = ["ewebsock"]
 server = [
     "futures-channel",
     "futures-util",
+    "parking_lot",
     "tokio-tungstenite",
     "tokio",
     "tungstenite",
@@ -38,7 +39,7 @@ futures-util = { version = "0.3", optional = true, default-features = false, fea
     "sink",
     "std",
 ] }
-parking_lot = "0.12"
+parking_lot = { version = "0.12", optional = true }
 tokio-tungstenite = { version = "0.17.1", optional = true }
 tokio = { version = "1.0.0", optional = true, default-features = false, features = [
     "io-std",
