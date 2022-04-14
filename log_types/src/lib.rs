@@ -4,6 +4,8 @@
 
 use std::{collections::BTreeMap, fmt::Write as _, ops::RangeInclusive};
 
+pub mod encoding;
+
 macro_rules! impl_into_enum {
     ($from_ty: ty, $enum_name: ident, $to_enum_variant: ident) => {
         impl From<$from_ty> for $enum_name {
@@ -139,7 +141,7 @@ impl LogId {
 }
 
 #[must_use]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct LogMsg {
     /// A unique id per [`LogMsg`].
@@ -390,7 +392,7 @@ impl std::ops::Div<&'static str> for &ObjectPath {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Data {
     // 1D:
@@ -458,7 +460,7 @@ impl_into_enum!(Mesh3D, Data, Mesh3D);
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct BBox2D {
     /// Upper left corner.
@@ -469,7 +471,7 @@ pub struct BBox2D {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum MeshFormat {
     Gltf,
@@ -477,7 +479,7 @@ pub enum MeshFormat {
     Obj,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Mesh3D {
     pub format: MeshFormat,
@@ -488,13 +490,13 @@ pub struct Mesh3D {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ImageFormat {
     Luminance8,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Image {
     // TODO: pub pos: [f32; 2],

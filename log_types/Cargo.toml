@@ -7,7 +7,13 @@ publish = false
 
 
 [features]
-default = ["serde"]
+default = ["save", "load"]
+
+# Enable saving data to a file
+save = ["anyhow", "rmp-serde", "serde", "zstd"]
+
+# Enable loading data from a file
+load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
 
 
 [dependencies]
@@ -16,4 +22,14 @@ nohash-hasher = "0.2"
 uuid = { version = "0.8", features = ["serde", "v4", "wasm-bindgen"] }
 
 # Optional:
+anyhow = { version = "1", optional = true }
+rmp-serde = { version = "1", optional = true }
 serde = { version = "1", features = ["derive", "rc"], optional = true }
+
+# Native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+zstd = { version = "0.10.0", optional = true } # native only
+
+# Web:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ruzstd = { version = "0.2.4", optional = true } # works on wasm
