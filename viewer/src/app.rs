@@ -253,11 +253,13 @@ fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
     }
 }
 
+#[allow(unused_mut)]
 fn load_rrd(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
     crate::profile_function!();
 
     #[cfg(target_arch = "wasm32")]
     let decoder = log_types::encoding::Decoder::new(&mut read)?;
+
     #[cfg(not(target_arch = "wasm32"))]
     let decoder = log_types::encoding::Decoder::new(read)?;
 
