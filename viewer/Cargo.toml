@@ -38,7 +38,8 @@ rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-three-d = { version = "0.11", default-features = false, features = [
+# We use bleeding edge three-d from 2022-04-12
+three-d = { git = "https://github.com/asny/three-d", rev = "4cd766c1d5672ce02d444dc475684e24cc42e68b", default-features = false, features = [
     "gltf-io",
     "obj-io",
 ] }

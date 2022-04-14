@@ -28,11 +28,11 @@ skip = [
     { name = "ahash" },               # old version via dark-light
     { name = "base64" },              # old version via gltf
     { name = "hashbrown" },           # old version via dark-light
+    { name = "miniz_oxide" },         # Old version from old png crate, because we are stuck on old version of image crate
     { name = "windows_x86_64_msvc" }, # Fix coming in https://github.com/PolyMeilex/rfd/pull/64
 ]
 skip-tree = [
     { name = "winit" }, # winit pulls in a lot of old, duplicated crates. at least it is not wasm
-    { name = "image" }, # Fix coming in https://github.com/asny/three-d/pull/232
 ]
 
 
