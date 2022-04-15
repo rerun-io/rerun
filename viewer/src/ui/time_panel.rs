@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use crate::time_axis::TimeSourceAxes;
 use crate::TimeControl;
 use crate::ViewerContext;
-use crate::{log_db::ObjectTree, time_axis::TimeSegment, LogDb};
+use crate::{log_db::ObjectTree, time_axis::TimeRange, LogDb};
 use eframe::egui;
 use egui::*;
 use log_types::*;
@@ -21,7 +21,7 @@ pub(crate) struct TimePanel {
 
     /// The time axis view, regenerated each frame.
     #[serde(skip)]
-    time_segments_ui: TimeSegmentsUi,
+    time_ranges_ui: TimeRangesUi,
 }
 
 impl Default for TimePanel {
@@ -29,7 +29,7 @@ impl Default for TimePanel {
         Self {
             prev_col_width: 400.0,
             next_col_right: 0.0,
-            time_segments_ui: Default::default(),
+            time_ranges_ui: Default::default(),
         }
     }
 }
@@ -83,7 +83,7 @@ impl TimePanel {
 
         if let Some(time) = time_control.time() {
             // so time doesn't get stuck between non-continuos regions
-            let time = self.time_segments_ui.snap_time(time);
+            let time = self.time_ranges_ui.snap_time(time);
             time_control.set_time(time);
         }
 
@@ -107,7 +107,7 @@ impl TimePanel {
 
         // show current time as a line:
         if let Some(time) = time_control.time() {
-            if let Some(x) = self.time_segments_ui.x_from_time(time) {
+            if let Some(x) = self.time_ranges_ui.x_from_time(time) {
                 if let Some(pointer) = pointer {
                     let line_rect = Rect::from_x_y_ranges(x..=x, time_area.y_range());
 
@@ -167,7 +167,7 @@ impl TimePanel {
             }
 
             if is_dragging || (ui.input().pointer.any_down() && time_area.contains(pointer)) {
-                if let Some(time) = self.time_segments_ui.time_from_x(pointer.x) {
+                if let Some(time) = self.time_ranges_ui.time_from_x(pointer.x) {
                     time_control.set_time(time);
                     ui.memory().set_dragged_id(time_drag_id);
                 }
@@ -184,10 +184,11 @@ impl TimePanel {
     ) {
         crate::profile_function!();
         let time_source_axes = TimeSourceAxes::new(&log_db.time_points);
-        if let Some(segments) = time_source_axes.sources.get(context.time_control.source()) {
-            self.time_segments_ui = TimeSegmentsUi::new(time_x_range, &segments.segments);
+        if let Some(time_source_axis) = time_source_axes.sources.get(context.time_control.source())
+        {
+            self.time_ranges_ui = TimeRangesUi::new(time_x_range, &time_source_axis.ranges);
         } else {
-            self.time_segments_ui = Default::default();
+            self.time_ranges_ui = Default::default();
         }
 
         let y_range = self.time_source_ui(log_db, context, ui).rect.y_range();
@@ -208,15 +209,15 @@ impl TimePanel {
     }
 
     fn time_axis_ui(&mut self, ui: &mut egui::Ui, y_range: RangeInclusive<f32>) {
-        for (x_range, segment) in &self.time_segments_ui.ranges {
+        for (x_range, range) in &self.time_ranges_ui.ranges {
             let rect = Rect::from_x_y_ranges(x_range.clone(), y_range.clone());
-            paint_time_segment(ui, &rect, segment);
+            paint_time_range(ui, &rect, range);
         }
 
         if false {
-            // visually separate the different segments:
+            // visually separate the different ranges:
             use itertools::Itertools as _;
-            for (a, b) in self.time_segments_ui.ranges.iter().tuple_windows() {
+            for (a, b) in self.time_ranges_ui.ranges.iter().tuple_windows() {
                 let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
                 let x = lerp(*a.0.end()..=*b.0.start(), 0.5);
                 let y_top = *y_range.start();
@@ -340,7 +341,7 @@ impl TimePanel {
 
             for (time, log_id) in source {
                 if let Some(time) = time.0.get(context.time_control.source()).copied() {
-                    if let Some(x) = self.time_segments_ui.x_from_time(time) {
+                    if let Some(x) = self.time_ranges_ui.x_from_time(time) {
                         let r = 2.0;
                         let pos = scatter.add(x, r, (top_y, bottom_y));
 
@@ -421,56 +422,57 @@ impl TimePanel {
 
 // ----------------------------------------------------------------------------
 
+/// Recreated each frame.
 #[derive(Default)]
-struct TimeSegmentsUi {
-    /// x ranges matched to time segments
-    ranges: Vec<(RangeInclusive<f32>, TimeSegment)>,
+struct TimeRangesUi {
+    /// x ranges matched to time ranges
+    ranges: Vec<(RangeInclusive<f32>, TimeRange)>,
 }
 
-impl TimeSegmentsUi {
-    fn new(x_range: RangeInclusive<f32>, time_segments: &[TimeSegment]) -> Self {
-        if time_segments.is_empty() {
+impl TimeRangesUi {
+    fn new(x_range: RangeInclusive<f32>, time_ranges: &[TimeRange]) -> Self {
+        if time_ranges.is_empty() {
             Self { ranges: vec![] }
-        } else if time_segments.len() == 1 {
+        } else if time_ranges.len() == 1 {
             Self {
-                ranges: vec![(x_range, time_segments[0].clone())],
+                ranges: vec![(x_range, time_ranges[0].clone())],
             }
         } else {
-            fn span(time_segment: &TimeSegment) -> f64 {
-                time_segment.span().unwrap_or_default()
+            fn span(time_range: &TimeRange) -> f64 {
+                time_range.span().unwrap_or_default()
             }
 
-            // figure out how much space to allocate to each time segment.
+            // figure out how much space to allocate to each time range.
             // this approach does not support zooming.
             // it is also quite ad-hoc and can be improved.
             let width = *x_range.end() - *x_range.start();
-            let min_segment_length = (width / (time_segments.len() * 2) as f32).at_most(16.0);
-            let remaining = width - min_segment_length * time_segments.len() as f32;
-            let margin = (remaining / (time_segments.len() - 1) as f32).at_most(8.0);
-            let remaining = remaining - margin * (time_segments.len() - 1) as f32;
+            let min_range_length = (width / (time_ranges.len() * 2) as f32).at_most(16.0);
+            let remaining = width - min_range_length * time_ranges.len() as f32;
+            let margin = (remaining / (time_ranges.len() - 1) as f32).at_most(8.0);
+            let remaining = remaining - margin * (time_ranges.len() - 1) as f32;
 
-            let span_sum: f64 = time_segments.iter().map(span).sum();
+            let span_sum: f64 = time_ranges.iter().map(span).sum();
             let points_per_span = remaining / span_sum as f32;
 
             let mut left = *x_range.start();
             let mut ranges = vec![];
 
-            for segment in time_segments {
-                let segment_width = min_segment_length + span(segment) as f32 * points_per_span;
-                let right = left + segment_width;
-                ranges.push(((left..=right), segment.clone()));
+            for range in time_ranges {
+                let range_width = min_range_length + span(range) as f32 * points_per_span;
+                let right = left + range_width;
+                ranges.push(((left..=right), range.clone()));
                 left = right + margin;
             }
             Self { ranges }
         }
     }
 
-    /// Make sure the time is not between segments.
+    /// Make sure the time is not between ranges.
     fn snap_time(&self, value: TimeValue) -> TimeValue {
-        for (_, segment) in &self.ranges {
-            if value < segment.min {
-                return segment.min;
-            } else if value <= segment.max {
+        for (_, range) in &self.ranges {
+            if value < range.min {
+                return range.min;
+            } else if value <= range.max {
                 return value;
             }
         }
@@ -478,20 +480,20 @@ impl TimeSegmentsUi {
     }
 
     fn x_from_time(&self, value: TimeValue) -> Option<f32> {
-        let (first_x_range, first_segment) = self.ranges.first()?;
+        let (first_x_range, first_range) = self.ranges.first()?;
         let mut last_x = *first_x_range.start();
-        let mut last_time = first_segment.min;
+        let mut last_time = first_range.min;
 
-        for (x_range, segment) in &self.ranges {
-            if value < segment.min {
-                let t = value.lerp_t(last_time..=segment.min)?;
+        for (x_range, range) in &self.ranges {
+            if value < range.min {
+                let t = value.lerp_t(last_time..=range.min)?;
                 return Some(lerp(x_range.clone(), t));
-            } else if value <= segment.max {
-                let t = segment.lerp_t(value)?;
+            } else if value <= range.max {
+                let t = range.lerp_t(value)?;
                 return Some(lerp(x_range.clone(), t));
             } else {
                 last_x = *x_range.end();
-                last_time = segment.max;
+                last_time = range.max;
             }
         }
 
@@ -499,20 +501,20 @@ impl TimeSegmentsUi {
     }
 
     fn time_from_x(&self, x: f32) -> Option<TimeValue> {
-        let (first_x_range, first_segment) = self.ranges.first()?;
+        let (first_x_range, first_range) = self.ranges.first()?;
         let mut last_x = *first_x_range.start();
-        let mut last_time = first_segment.min;
+        let mut last_time = first_range.min;
 
-        for (x_range, segment) in &self.ranges {
+        for (x_range, range) in &self.ranges {
             if x < *x_range.start() {
                 let t = remap(x, last_x..=*x_range.start(), 0.0..=1.0);
-                return TimeValue::lerp(last_time..=segment.min, t);
+                return TimeValue::lerp(last_time..=range.min, t);
             } else if x <= *x_range.end() {
                 let t = remap(x, x_range.clone(), 0.0..=1.0);
-                return TimeValue::lerp(segment.min..=segment.max, t);
+                return TimeValue::lerp(range.min..=range.max, t);
             } else {
                 last_x = *x_range.end();
-                last_time = segment.max;
+                last_time = range.max;
             }
         }
 
@@ -520,13 +522,13 @@ impl TimeSegmentsUi {
     }
 }
 
-fn paint_time_segment(ui: &mut egui::Ui, rect: &Rect, segment: &TimeSegment) {
+fn paint_time_range(ui: &mut egui::Ui, rect: &Rect, range: &TimeRange) {
     let bg_stroke = ui.visuals().widgets.noninteractive.bg_stroke;
     let fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
     ui.painter()
         .rect_filled(*rect, 3.0, bg_stroke.color.linear_multiply(0.5));
 
-    let (min, max) = (segment.min, segment.max);
+    let (min, max) = (range.min, range.max);
     if let (TimeValue::Time(min), TimeValue::Time(max)) = (min, max) {
         if min != max {
             // TODO: handle different time spans better
@@ -537,9 +539,7 @@ fn paint_time_segment(ui: &mut egui::Ui, rect: &Rect, segment: &TimeSegment) {
                 while ns <= max.nanos_since_epoch() {
                     let x = lerp(
                         rect.x_range(),
-                        segment
-                            .lerp_t(Time::from_ns_since_epoch(ns).into())
-                            .unwrap(),
+                        range.lerp_t(Time::from_ns_since_epoch(ns).into()).unwrap(),
                     );
 
                     let bottom = if ns % (10 * small_step_size_ns) == 0 {
