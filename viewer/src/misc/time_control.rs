@@ -6,6 +6,19 @@ use log_types::*;
 
 use crate::misc::TimePoints;
 
+/// State per time source.
+#[derive(serde::Deserialize, serde::Serialize)]
+struct TimeState {
+    /// The current time
+    time: TimeValue,
+}
+
+impl TimeState {
+    fn new(time: TimeValue) -> Self {
+        Self { time }
+    }
+}
+
 /// Controls the global view and progress of the time.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -13,8 +26,8 @@ pub(crate) struct TimeControl {
     /// Name of the time source (e.g. "log_time").
     time_source: String,
 
-    /// The current/selected time for each time source.
-    values: BTreeMap<String, TimeValue>,
+    /// For each time source.
+    states: BTreeMap<String, TimeState>,
 
     playing: bool,
     repeat: bool,
@@ -25,7 +38,7 @@ impl Default for TimeControl {
     fn default() -> Self {
         Self {
             time_source: Default::default(),
-            values: Default::default(),
+            states: Default::default(),
             playing: true,
             repeat: true,
             speed: 1.0,
@@ -104,12 +117,12 @@ impl TimeControl {
             if let Some(axis) = time_points.0.get(&self.time_source) {
                 let (axis_min, axis_max) = (min(axis), max(axis));
 
-                let value = self
-                    .values
+                let state = self
+                    .states
                     .entry(self.time_source.clone())
-                    .or_insert(axis_min);
+                    .or_insert_with(|| TimeState::new(axis_min));
 
-                match value {
+                match &mut state.time {
                     TimeValue::Sequence(seq) => {
                         *seq += 1; // TODO: apply speed here somehow?
                     }
@@ -119,11 +132,11 @@ impl TimeControl {
                     }
                 }
 
-                if *value > axis_max {
+                if state.time > axis_max {
                     if self.repeat {
-                        *value = axis_min;
+                        state.time = axis_min;
                     } else {
-                        *value = axis_max;
+                        state.time = axis_max;
                         self.playing = false;
                     }
                 }
@@ -139,11 +152,14 @@ impl TimeControl {
         }
 
         // Start from beginning if we are at the end:
-        if let Some(time) = self.values.get_mut(&self.time_source) {
-            if let Some(axis) = time_points.0.get(&self.time_source) {
-                if *time >= max(axis) {
-                    *time = min(axis);
+        if let Some(axis) = time_points.0.get(&self.time_source) {
+            if let Some(state) = self.states.get_mut(&self.time_source) {
+                if state.time >= max(axis) {
+                    state.time = min(axis);
                 }
+            } else {
+                self.states
+                    .insert(self.time_source.clone(), TimeState::new(min(axis)));
             }
         }
         self.playing = true;
@@ -169,16 +185,19 @@ impl TimeControl {
 
     /// The current time
     pub fn time(&self) -> Option<TimeValue> {
-        self.values.get(&self.time_source).copied()
+        self.states.get(&self.time_source).map(|state| state.time)
     }
 
     pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
         self.time_source = time_source;
-        self.values.insert(self.time_source.clone(), time);
+        self.set_time(time);
     }
 
     pub fn set_time(&mut self, time: TimeValue) {
-        self.values.insert(self.time_source.clone(), time);
+        self.states
+            .entry(self.time_source.clone())
+            .or_insert_with(|| TimeState::new(time))
+            .time = time;
     }
 
     pub fn pause(&mut self) {
