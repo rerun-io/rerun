@@ -314,6 +314,7 @@ pub(crate) fn ui_data(
             .response
         }
         Data::Pos3([x, y, z]) => ui.label(format!("Pos3({x}, {y}, {z})")),
+        Data::Path3D(_) => ui.label("3D path"),
         Data::LineSegments3D(segments) => ui.label(format!("{} 3D line segments", segments.len())),
         Data::Mesh3D(_) => ui.label("3D mesh"),
         Data::Vecf32(data) => ui.label(format!("Vecf32({data:?})")),

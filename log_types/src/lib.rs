@@ -415,6 +415,7 @@ pub enum Data {
     // 3D:
     /// Special sibling attributes: "color", "radius"
     Pos3([f32; 3]),
+    Path3D(Vec<[f32; 3]>),
     /// Special sibling attributes: "color", "radius"
     LineSegments3D(Vec<[[f32; 3]; 2]>),
     Mesh3D(Mesh3D),
@@ -431,6 +432,7 @@ impl Data {
             | Self::F32(_)
             | Self::Color(_)
             | Self::Pos3(_)
+            | Self::Path3D(_)
             | Self::LineSegments3D(_)
             | Self::Mesh3D(_)
             | Self::Vecf32(_) => false,
@@ -447,7 +449,7 @@ impl Data {
             | Self::BBox2D(_)
             | Self::Image(_)
             | Self::Vecf32(_) => false,
-            Self::Pos3(_) | Self::LineSegments3D(_) | Self::Mesh3D(_) => true,
+            Self::Pos3(_) | Self::Path3D(_) | Self::LineSegments3D(_) | Self::Mesh3D(_) => true,
         }
     }
 }

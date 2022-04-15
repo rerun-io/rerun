@@ -1,6 +1,7 @@
 use eframe::egui;
 use egui::{Color32, Rect};
 use glam::Affine3A;
+use itertools::Itertools;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 use std::rc::Rc;
 
@@ -164,7 +165,11 @@ pub(crate) fn combined_view_3d(
     for msg in messages {
         if msg.space.as_ref() == Some(space) {
             let is_hovered = Some(msg.id) == hovered_id;
-            let radius = if is_hovered { 0.2 } else { 0.1 }; // TODO: base on distance
+
+            // TODO: base radius on distance
+            let radius_multiplier = if is_hovered { 1.5 } else { 1.0 };
+            let small_radius = 0.02 * radius_multiplier;
+            let large_radius = 0.05 * radius_multiplier;
 
             // TODO: selection color
             let color = if is_hovered {
@@ -176,12 +181,22 @@ pub(crate) fn combined_view_3d(
             match &msg.data {
                 Data::Pos3(pos) => scene.points.push(Point {
                     pos: *pos,
-                    radius,
+                    radius: large_radius,
                     color,
                 }),
+                Data::Path3D(points) => {
+                    // TODO: paths should be its own primitive
+                    for (a, b) in points.iter().tuple_windows() {
+                        scene.line_segments.push(LineSegments {
+                            segments: vec![[*a, *b]],
+                            radius: small_radius,
+                            color,
+                        });
+                    }
+                }
                 Data::LineSegments3D(segments) => scene.line_segments.push(LineSegments {
                     segments: segments.clone(),
-                    radius,
+                    radius: small_radius,
                     color,
                 }),
                 Data::Mesh3D(mesh) => {
@@ -248,7 +263,7 @@ fn picking(
                             .circle_filled(screen_pos, 3.0, egui::Color32::RED);
                     }
                 }
-                Data::LineSegments3D(_) | Data::Mesh3D(_) => {
+                Data::Path3D(_) | Data::LineSegments3D(_) | Data::Mesh3D(_) => {
                     // TODO: more picking
                 }
                 _ => {

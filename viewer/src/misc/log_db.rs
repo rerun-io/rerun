@@ -44,7 +44,7 @@ impl LogDb {
                         .extend_with(egui::pos2(image.size[0] as _, image.size[1] as _));
                 }
 
-                Data::Pos3(_) | Data::LineSegments3D(_) | Data::Mesh3D(_) => {
+                Data::Pos3(_) | Data::Path3D(_) | Data::LineSegments3D(_) | Data::Mesh3D(_) => {
                     summary.messages_3d.insert(msg.id);
                 }
 
@@ -274,6 +274,7 @@ pub(crate) struct DataColumns {
 
     // 3D:
     pub pos3: BTreeMap<(TimePoint, LogId), [f32; 3]>,
+    pub paths_3d: BTreeSet<(TimePoint, LogId)>,
     pub line_segments_3d: BTreeMap<(TimePoint, LogId), Vec<[[f32; 3]; 2]>>,
     pub meshes: BTreeSet<(TimePoint, LogId)>,
 
@@ -307,6 +308,9 @@ impl DataColumns {
             Data::Pos3(data) => {
                 self.pos3.insert(when, data.clone());
             }
+            Data::Path3D(_) => {
+                self.paths_3d.insert(when);
+            }
             Data::LineSegments3D(data) => {
                 self.line_segments_3d.insert(when, data.clone());
             }
@@ -328,6 +332,7 @@ impl DataColumns {
             bbox2d,
             image,
             pos3,
+            paths_3d,
             line_segments_3d,
             meshes,
             vecf32,
@@ -356,6 +361,9 @@ impl DataColumns {
 
         if !pos3.is_empty() {
             summaries.push(plurality(pos3.len(), "3D position", "s"));
+        }
+        if !paths_3d.is_empty() {
+            summaries.push(plurality(paths_3d.len(), "3D path", "s"));
         }
         if !line_segments_3d.is_empty() {
             summaries.push(plurality(
