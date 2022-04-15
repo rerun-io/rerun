@@ -18,13 +18,6 @@ pub(crate) struct TimeSourceAxis {
     pub segments: vec1::Vec1<TimeSegment>,
 }
 
-/// A linear segment of a time axis.
-#[derive(Clone, Debug)]
-pub(crate) struct TimeSegment {
-    /// Never empty.
-    pub values: BTreeSet<TimeValue>,
-}
-
 impl TimeSourceAxes {
     pub fn new(time_axes: &TimePoints) -> Self {
         let sources = time_axes
@@ -75,27 +68,37 @@ fn is_close(a: TimeValue, b: TimeValue) -> bool {
     }
 }
 
+/// A linear segment of a time axis.
+#[derive(Clone, Debug)]
+pub(crate) struct TimeSegment {
+    pub min: TimeValue,
+    pub max: TimeValue,
+}
+
 impl TimeSegment {
     pub fn new(value: TimeValue) -> Self {
         Self {
-            values: [value].into(),
+            min: value,
+            max: value,
         }
     }
 
     pub fn add(&mut self, value: TimeValue) {
-        self.values.insert(value);
-    }
-
-    pub fn min(&self) -> TimeValue {
-        *self.values.iter().next().unwrap()
-    }
-
-    pub fn max(&self) -> TimeValue {
-        *self.values.iter().rev().next().unwrap()
+        self.min = self.min.min(value);
+        self.max = self.max.max(value);
     }
 
     /// Where in the range is this value?
     pub fn lerp_t(&self, value: TimeValue) -> Option<f32> {
-        value.lerp_t(self.min()..=self.max())
+        value.lerp_t(self.min..=self.max)
+    }
+
+    /// The amount of time or sequences covered by this segment
+    pub fn span(&self) -> Option<f64> {
+        match (self.min, self.max) {
+            (TimeValue::Time(min), TimeValue::Time(max)) => Some((max - min).as_secs_f64()),
+            (TimeValue::Sequence(min), TimeValue::Sequence(max)) => Some((max - min) as f64),
+            _ => None,
+        }
     }
 }

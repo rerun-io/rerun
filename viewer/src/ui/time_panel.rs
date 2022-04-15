@@ -436,23 +436,27 @@ impl TimeSegmentsUi {
                 ranges: vec![(x_range, time_segments[0].clone())],
             }
         } else {
+            fn span(time_segment: &TimeSegment) -> f64 {
+                time_segment.span().unwrap_or_default()
+            }
+
             // figure out how much space to allocate to each time segment.
             // this approach does not support zooming.
             // it is also quite ad-hoc and can be improved.
             let width = *x_range.end() - *x_range.start();
-            let min_segment_length = (width / (time_segments.len() * 2) as f32).min(16.0);
+            let min_segment_length = (width / (time_segments.len() * 2) as f32).at_most(16.0);
             let remaining = width - min_segment_length * time_segments.len() as f32;
-            let margin = (remaining / (time_segments.len() - 1) as f32).min(8.0);
+            let margin = (remaining / (time_segments.len() - 1) as f32).at_most(8.0);
             let remaining = remaining - margin * (time_segments.len() - 1) as f32;
-            let num_time_points: usize = time_segments.iter().map(|ts| ts.values.len()).sum();
-            let points_per_time = remaining / num_time_points as f32;
+
+            let span_sum: f64 = time_segments.iter().map(span).sum();
+            let points_per_span = remaining / span_sum as f32;
 
             let mut left = *x_range.start();
             let mut ranges = vec![];
 
             for segment in time_segments {
-                let segment_width =
-                    min_segment_length + segment.values.len() as f32 * points_per_time;
+                let segment_width = min_segment_length + span(segment) as f32 * points_per_span;
                 let right = left + segment_width;
                 ranges.push(((left..=right), segment.clone()));
                 left = right + margin;
@@ -464,9 +468,9 @@ impl TimeSegmentsUi {
     /// Make sure the time is not between segments.
     fn snap_time(&self, value: TimeValue) -> TimeValue {
         for (_, segment) in &self.ranges {
-            if value < segment.min() {
-                return segment.min();
-            } else if value <= segment.max() {
+            if value < segment.min {
+                return segment.min;
+            } else if value <= segment.max {
                 return value;
             }
         }
@@ -476,18 +480,18 @@ impl TimeSegmentsUi {
     fn x_from_time(&self, value: TimeValue) -> Option<f32> {
         let (first_x_range, first_segment) = self.ranges.first()?;
         let mut last_x = *first_x_range.start();
-        let mut last_time = first_segment.min();
+        let mut last_time = first_segment.min;
 
         for (x_range, segment) in &self.ranges {
-            if value < segment.min() {
-                let t = value.lerp_t(last_time..=segment.min())?;
+            if value < segment.min {
+                let t = value.lerp_t(last_time..=segment.min)?;
                 return Some(lerp(x_range.clone(), t));
-            } else if value <= segment.max() {
+            } else if value <= segment.max {
                 let t = segment.lerp_t(value)?;
                 return Some(lerp(x_range.clone(), t));
             } else {
                 last_x = *x_range.end();
-                last_time = segment.max();
+                last_time = segment.max;
             }
         }
 
@@ -497,18 +501,18 @@ impl TimeSegmentsUi {
     fn time_from_x(&self, x: f32) -> Option<TimeValue> {
         let (first_x_range, first_segment) = self.ranges.first()?;
         let mut last_x = *first_x_range.start();
-        let mut last_time = first_segment.min();
+        let mut last_time = first_segment.min;
 
         for (x_range, segment) in &self.ranges {
             if x < *x_range.start() {
                 let t = remap(x, last_x..=*x_range.start(), 0.0..=1.0);
-                return TimeValue::lerp(last_time..=segment.min(), t);
+                return TimeValue::lerp(last_time..=segment.min, t);
             } else if x <= *x_range.end() {
                 let t = remap(x, x_range.clone(), 0.0..=1.0);
-                return TimeValue::lerp(segment.min()..=segment.max(), t);
+                return TimeValue::lerp(segment.min..=segment.max, t);
             } else {
                 last_x = *x_range.end();
-                last_time = segment.max();
+                last_time = segment.max;
             }
         }
 
@@ -522,7 +526,7 @@ fn paint_time_segment(ui: &mut egui::Ui, rect: &Rect, segment: &TimeSegment) {
     ui.painter()
         .rect_filled(*rect, 3.0, bg_stroke.color.linear_multiply(0.5));
 
-    let (min, max) = (segment.min(), segment.max());
+    let (min, max) = (segment.min, segment.max);
     if let (TimeValue::Time(min), TimeValue::Time(max)) = (min, max) {
         if min != max {
             // TODO: handle different time spans better
@@ -550,25 +554,6 @@ fn paint_time_segment(ui: &mut egui::Ui, rect: &Rect, segment: &TimeSegment) {
 
                     ns += small_step_size_ns;
                 }
-            }
-        }
-    }
-
-    if false {
-        let mut color = fg_stroke.color.linear_multiply(0.75);
-        if ui.visuals().dark_mode {
-            color = color.additive();
-        }
-
-        // Note: `segment.values` only contain unique times, so we don't scatter.
-        // We could make times with more values larger… but we don't.
-        for &value in &segment.values {
-            if let Some(t) = segment.lerp_t(value) {
-                let x = lerp(rect.x_range(), t);
-                let y = lerp(rect.y_range(), 0.5);
-                let r = 2.0;
-                let pos = pos2(x, y);
-                ui.painter().circle_filled(pos, r, color);
             }
         }
     }

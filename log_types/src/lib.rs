@@ -116,6 +116,10 @@ impl Duration {
     pub fn as_secs_f32(&self) -> f32 {
         self.0 as f32 * 1e-9
     }
+
+    pub fn as_secs_f64(&self) -> f64 {
+        self.0 as f64 * 1e-9
+    }
 }
 
 // ----------------------------------------------------------------------------
