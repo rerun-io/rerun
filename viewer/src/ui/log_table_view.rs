@@ -13,10 +13,10 @@ impl LogTableView {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        ui.label(format!("{} log lines", log_db.messages.len()));
+        ui.label(format!("{} log lines", log_db.len()));
         ui.separator();
 
-        let mut messages: Vec<&LogMsg> = log_db.messages.values().collect();
+        let mut messages: Vec<&LogMsg> = log_db.messages().collect();
         messages.sort_by_key(|key| (&key.time_point, key.id));
 
         egui::ScrollArea::horizontal()
