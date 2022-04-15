@@ -378,11 +378,24 @@ fn paint_with_three_d(
     use three_d::*;
     let three_d = &rendering.three_d;
 
+    let viewport = info.viewport_in_pixels();
     let viewport = Viewport {
-        x: info.viewport_left_px().round() as _,
-        y: info.viewport_from_bottom_px().round() as _,
-        width: info.viewport_width_px().round() as _,
-        height: info.viewport_height_px().round() as _,
+        x: viewport.left_px.round() as _,
+        y: viewport.from_bottom_px.round() as _,
+        width: viewport.width_px.round() as _,
+        height: viewport.height_px.round() as _,
+    };
+
+    // Respect the egui clip region (e.g. if we are inside an `egui::ScrollArea`).
+    let clip_rect = info.clip_rect_in_pixels();
+    let render_states = RenderStates {
+        clip: Clip::Enabled {
+            x: clip_rect.left_px.round() as _,
+            y: clip_rect.from_bottom_px.round() as _,
+            width: clip_rect.width_px.round() as _,
+            height: clip_rect.height_px.round() as _,
+        },
+        ..Default::default()
     };
 
     let position = camera.world_from_view.translation();
@@ -417,14 +430,15 @@ fn paint_with_three_d(
     let sphere_mesh = CpuMesh::sphere(32);
     let points: Vec<_> = points
         .iter()
-        .map(|point| point_to_three_d(three_d, &sphere_mesh, point))
+        .map(|point| point_to_three_d(three_d, render_states, &sphere_mesh, point))
         .collect();
 
     let line_segments: Vec<_> = line_segments
         .iter()
-        .map(|line_segments| line_segments_to_three_d(three_d, line_segments))
+        .map(|line_segments| line_segments_to_three_d(three_d, render_states, line_segments))
         .collect();
 
+    // TODO: set render_states for the meshes, or wait for https://github.com/asny/three-d/issues/233 to be merged
     let meshes: Vec<Rc<GpuMesh>> = meshes
         .iter()
         .filter_map(|(log_id, obj_path, mesh)| {
@@ -453,6 +467,7 @@ fn paint_with_three_d(
 
 fn point_to_three_d(
     three_d: &three_d::Context,
+    render_states: three_d::RenderStates,
     sphere_mesh: &three_d::CpuMesh,
     point: &Point,
 ) -> three_d::Model<three_d::PhysicalMaterial> {
@@ -472,6 +487,7 @@ fn point_to_three_d(
             NormalDistributionFunction::TrowbridgeReitzGGX,
             GeometryFunction::SmithSchlickGGX,
         ),
+        render_states,
         ..Default::default()
     };
 
@@ -487,6 +503,7 @@ fn point_to_three_d(
 
 fn line_segments_to_three_d(
     three_d: &three_d::Context,
+    render_states: three_d::RenderStates,
     line_segments: &LineSegments,
 ) -> three_d::InstancedModel<three_d::ColorMaterial> {
     crate::profile_function!();
@@ -518,6 +535,7 @@ fn line_segments_to_three_d(
     // Used to paint lines
     let line_material = ColorMaterial {
         color: color_to_three_d(*color),
+        render_states,
         ..Default::default()
     };
     let mut line = CpuMesh::cylinder(10);
