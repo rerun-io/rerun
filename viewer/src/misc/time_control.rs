@@ -6,12 +6,18 @@ use log_types::*;
 
 use crate::misc::TimePoints;
 
-use super::time_axis::TimeRange;
-
+/// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct TimeView {
-    // TODO: replace with `start_time: TimeStamp` and `time_spanned: f64`
-    pub range: TimeRange,
+    /// Where start of the the range.
+    pub min: TimeValue,
+
+    /// How much time the full view covers.
+    ///
+    /// The unit is either nanoseconds or sequence numbers.
+    ///
+    /// If there is gaps in the data, the actual amount of viewed time might be less.
+    pub time_spanned: f64,
 }
 
 /// State per time source.
@@ -215,7 +221,7 @@ impl TimeControl {
     pub fn set_time_view(&mut self, view: TimeView) {
         self.states
             .entry(self.time_source.clone())
-            .or_insert_with(|| TimeState::new(view.range.min))
+            .or_insert_with(|| TimeState::new(view.min))
             .view = Some(view);
     }
 

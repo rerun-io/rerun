@@ -51,20 +51,24 @@ impl TimeSourceAxis {
         Self { ranges }
     }
 
-    pub fn range(&self) -> TimeRange {
-        TimeRange {
-            min: self.min(),
-            max: self.max(),
-        }
+    pub fn sum_time_span(&self) -> f64 {
+        self.ranges.iter().map(|t| t.span().unwrap_or(0.0)).sum()
     }
+
+    // pub fn range(&self) -> TimeRange {
+    //     TimeRange {
+    //         min: self.min(),
+    //         max: self.max(),
+    //     }
+    // }
 
     pub fn min(&self) -> TimeValue {
         self.ranges.first().min
     }
 
-    pub fn max(&self) -> TimeValue {
-        self.ranges.last().max
-    }
+    // pub fn max(&self) -> TimeValue {
+    //     self.ranges.last().max
+    // }
 }
 
 fn is_close(a: TimeValue, b: TimeValue) -> bool {
