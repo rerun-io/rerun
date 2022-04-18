@@ -6,6 +6,7 @@ use crate::ViewerContext;
 use crate::{log_db::ObjectTree, time_axis::TimeRange, LogDb};
 use eframe::egui;
 use egui::*;
+use itertools::Itertools;
 use log_types::*;
 
 /// A panel that shows objects to the left, time on the top.
@@ -186,7 +187,11 @@ impl TimePanel {
         let time_source_axes = TimeSourceAxes::new(&log_db.time_points);
         if let Some(time_source_axis) = time_source_axes.sources.get(context.time_control.source())
         {
-            self.time_ranges_ui = TimeRangesUi::new(time_x_range, &time_source_axis.ranges);
+            let time_range = context.time_control.time_view();
+            let time_range = time_range.unwrap_or_else(|| time_source_axis.range());
+
+            self.time_ranges_ui =
+                TimeRangesUi::new(time_x_range, time_range, &time_source_axis.ranges);
         } else {
             self.time_ranges_ui = Default::default();
         }
@@ -430,41 +435,69 @@ struct TimeRangesUi {
 }
 
 impl TimeRangesUi {
-    fn new(x_range: RangeInclusive<f32>, time_ranges: &[TimeRange]) -> Self {
-        if time_ranges.is_empty() {
-            Self { ranges: vec![] }
-        } else if time_ranges.len() == 1 {
-            Self {
-                ranges: vec![(x_range, time_ranges[0].clone())],
-            }
-        } else {
-            fn span(time_range: &TimeRange) -> f64 {
-                time_range.span().unwrap_or_default()
-            }
-
-            // figure out how much space to allocate to each time range.
-            // this approach does not support zooming.
-            // it is also quite ad-hoc and can be improved.
-            let width = *x_range.end() - *x_range.start();
-            let min_range_length = (width / (time_ranges.len() * 2) as f32).at_most(16.0);
-            let remaining = width - min_range_length * time_ranges.len() as f32;
-            let margin = (remaining / (time_ranges.len() - 1) as f32).at_most(8.0);
-            let remaining = remaining - margin * (time_ranges.len() - 1) as f32;
-
-            let span_sum: f64 = time_ranges.iter().map(span).sum();
-            let points_per_span = remaining / span_sum as f32;
-
-            let mut left = *x_range.start();
-            let mut ranges = vec![];
-
-            for range in time_ranges {
-                let range_width = min_range_length + span(range) as f32 * points_per_span;
-                let right = left + range_width;
-                ranges.push(((left..=right), range.clone()));
-                left = right + margin;
-            }
-            Self { ranges }
+    fn new(x_range: RangeInclusive<f32>, view_range: TimeRange, segments: &[TimeRange]) -> Self {
+        if segments.is_empty() {
+            return Self { ranges: vec![] };
+        } else if segments.len() == 1 {
+            return Self {
+                ranges: vec![(x_range, view_range)],
+            };
         }
+
+        fn span(time_range: &TimeRange) -> f64 {
+            time_range.span().unwrap_or_default()
+        }
+
+        // Figure out how much time is in view (ignoring time lost in gaps):
+        let mut total_time = 0.0;
+        for range in segments {
+            // How much of the segment is visible?
+            let min_t = view_range.min.lerp_t(range.into());
+            let min_t = min_t.unwrap_or(0.0).clamp(0.0, 1.0);
+
+            let max_t = view_range.max.lerp_t(range.into());
+            let max_t = max_t.unwrap_or(0.0).clamp(0.0, 1.0);
+
+            total_time += span(range) * (max_t - min_t) as f64;
+        }
+
+        // Figure out how many segment gaps there are in `view_range`.
+        let mut num_gaps = 0.0;
+        for (a, b) in segments.iter().tuple_windows() {
+            let gap = TimeRange::new(a.max, b.min);
+
+            // How much of the gap is visible?
+            let min_t = view_range.min.lerp_t(gap.into());
+            let min_t = min_t.unwrap_or(0.0).clamp(0.0, 1.0);
+
+            let max_t = view_range.max.lerp_t(gap.into());
+            let max_t = max_t.unwrap_or(0.0).clamp(0.0, 1.0);
+
+            num_gaps += max_t - min_t;
+        }
+
+        let width = *x_range.end() - *x_range.start();
+        let gap_width = (width / (3.0 * num_gaps).at_least(0.01)).at_most(16.0); // looks good
+        let points_per_time = (width - num_gaps * gap_width) / total_time.at_least(1.0) as f32;
+
+        let mut left = 0.0; // we will translate things left/right later
+        let mut ranges = vec![];
+
+        for range in segments {
+            let range_width = span(range) as f32 * points_per_time;
+            let right = left + range_width;
+            ranges.push(((left..=right), *range));
+            left = right + gap_width;
+        }
+        let mut slf = Self { ranges };
+
+        // Now move things left/right to align `x_range` and `view_range`:
+        let x_translate = *x_range.start() - slf.x_from_time(view_range.min).unwrap_or_default();
+        for (range, _) in &mut slf.ranges {
+            *range = (*range.start() + x_translate)..=(*range.end() + x_translate);
+        }
+
+        slf
     }
 
     /// Make sure the time is not between ranges.
@@ -525,8 +558,11 @@ impl TimeRangesUi {
 fn paint_time_range(ui: &mut egui::Ui, rect: &Rect, range: &TimeRange) {
     let bg_stroke = ui.visuals().widgets.noninteractive.bg_stroke;
     let fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-    ui.painter()
-        .rect_filled(*rect, 3.0, bg_stroke.color.linear_multiply(0.5));
+    ui.painter().rect_filled(
+        rect.expand2(vec2(4.0, 0.0)), // give zero-width time segments some width
+        3.0,
+        bg_stroke.color.linear_multiply(0.5),
+    );
 
     let (min, max) = (range.min, range.max);
     if let (TimeValue::Time(min), TimeValue::Time(max)) = (min, max) {

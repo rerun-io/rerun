@@ -113,6 +113,10 @@ impl Duration {
         Self((secs * 1e9).round() as _)
     }
 
+    pub fn as_nanos(&self) -> i64 {
+        self.0
+    }
+
     pub fn as_secs_f32(&self) -> f32 {
         self.0 as f32 * 1e-9
     }

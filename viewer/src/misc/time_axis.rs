@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::RangeInclusive,
+};
 
 use log_types::TimeValue;
 
@@ -48,13 +51,20 @@ impl TimeSourceAxis {
         Self { ranges }
     }
 
-    // pub fn min(&self) -> TimeValue {
-    //     self.ranges.first().min()
-    // }
+    pub fn range(&self) -> TimeRange {
+        TimeRange {
+            min: self.min(),
+            max: self.max(),
+        }
+    }
 
-    // pub fn max(&self) -> TimeValue {
-    //     self.ranges.last().max()
-    // }
+    pub fn min(&self) -> TimeValue {
+        self.ranges.first().min
+    }
+
+    pub fn max(&self) -> TimeValue {
+        self.ranges.last().max
+    }
 }
 
 fn is_close(a: TimeValue, b: TimeValue) -> bool {
@@ -68,13 +78,17 @@ fn is_close(a: TimeValue, b: TimeValue) -> bool {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct TimeRange {
     pub min: TimeValue,
     pub max: TimeValue,
 }
 
 impl TimeRange {
+    pub fn new(min: TimeValue, max: TimeValue) -> Self {
+        Self { min, max }
+    }
+
     pub fn point(value: TimeValue) -> Self {
         Self {
             min: value,
@@ -95,9 +109,21 @@ impl TimeRange {
     /// The amount of time or sequences covered by this range.
     pub fn span(&self) -> Option<f64> {
         match (self.min, self.max) {
-            (TimeValue::Time(min), TimeValue::Time(max)) => Some((max - min).as_secs_f64()),
+            (TimeValue::Time(min), TimeValue::Time(max)) => Some((max - min).as_nanos() as f64),
             (TimeValue::Sequence(min), TimeValue::Sequence(max)) => Some((max - min) as f64),
             _ => None,
         }
+    }
+}
+
+impl From<TimeRange> for RangeInclusive<TimeValue> {
+    fn from(range: TimeRange) -> RangeInclusive<TimeValue> {
+        range.min..=range.max
+    }
+}
+
+impl From<&TimeRange> for RangeInclusive<TimeValue> {
+    fn from(range: &TimeRange) -> RangeInclusive<TimeValue> {
+        range.min..=range.max
     }
 }

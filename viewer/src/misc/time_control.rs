@@ -6,16 +6,26 @@ use log_types::*;
 
 use crate::misc::TimePoints;
 
+use super::time_axis::TimeRange;
+
 /// State per time source.
 #[derive(serde::Deserialize, serde::Serialize)]
 struct TimeState {
     /// The current time
     time: TimeValue,
+
+    /// The time range we are currently zoomed in on.
+    ///
+    /// `None` means "everything", and is the default value.
+    /// In this case, the view will expand while new data is added.
+    /// Only when the user actually zooms or pans will this be set.
+    #[serde(default)]
+    view: Option<TimeRange>,
 }
 
 impl TimeState {
     fn new(time: TimeValue) -> Self {
-        Self { time }
+        Self { time, view: None }
     }
 }
 
@@ -186,6 +196,13 @@ impl TimeControl {
     /// The current time
     pub fn time(&self) -> Option<TimeValue> {
         self.states.get(&self.time_source).map(|state| state.time)
+    }
+
+    /// The range of time we are currently zoomed in on.
+    pub fn time_view(&self) -> Option<TimeRange> {
+        self.states
+            .get(&self.time_source)
+            .and_then(|state| state.view)
     }
 
     pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
