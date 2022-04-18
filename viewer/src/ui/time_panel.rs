@@ -1,9 +1,10 @@
 use std::ops::RangeInclusive;
 
-use crate::time_axis::TimeSourceAxes;
-use crate::TimeControl;
-use crate::ViewerContext;
-use crate::{log_db::ObjectTree, time_axis::TimeRange, LogDb};
+use crate::{
+    log_db::ObjectTree,
+    time_axis::{TimeRange, TimeSourceAxes},
+    LogDb, TimeControl, TimeView, ViewerContext,
+};
 use eframe::egui;
 use egui::*;
 use itertools::Itertools;
@@ -257,11 +258,13 @@ impl TimePanel {
         let time_source_axes = TimeSourceAxes::new(&log_db.time_points);
         if let Some(time_source_axis) = time_source_axes.sources.get(context.time_control.source())
         {
-            let time_range = context.time_control.time_view();
-            let time_range = time_range.unwrap_or_else(|| time_source_axis.range());
+            let time_view = context.time_control.time_view();
+            let time_view = time_view.unwrap_or_else(|| TimeView {
+                range: time_source_axis.range(),
+            });
 
             self.time_ranges_ui =
-                TimeRangesUi::new(time_x_range, time_range, &time_source_axis.ranges);
+                TimeRangesUi::new(time_x_range, time_view, &time_source_axis.ranges);
         } else {
             self.time_ranges_ui = Default::default();
         }
@@ -302,7 +305,7 @@ impl TimePanel {
                 let x = lerp(*a.0.end()..=*b.0.start(), 0.5);
                 let y_top = *y_range.start();
                 let y_bottom = *y_range.end();
-                ui.painter().vline(x, y_top..=y_bottom, stroke);
+                time_area_painter.vline(x, y_top..=y_bottom, stroke);
             }
         }
     }
@@ -548,7 +551,9 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
-    fn new(x_range: RangeInclusive<f32>, view_range: TimeRange, segments: &[TimeRange]) -> Self {
+    fn new(x_range: RangeInclusive<f32>, time_view: TimeView, segments: &[TimeRange]) -> Self {
+        let view_range = time_view.range;
+
         fn span(time_range: &TimeRange) -> f64 {
             time_range.span().unwrap_or_default()
         }
@@ -714,15 +719,17 @@ impl TimeRangesUi {
     }
 
     /// Pan the view, returning the new view.
-    fn pan(&self, delta_x: f32) -> Option<TimeRange> {
-        Some(TimeRange {
-            min: self.time_from_x(*self.x_range.start() + delta_x)?,
-            max: self.time_from_x(*self.x_range.end() + delta_x)?,
+    fn pan(&self, delta_x: f32) -> Option<TimeView> {
+        Some(TimeView {
+            range: TimeRange {
+                min: self.time_from_x(*self.x_range.start() + delta_x)?,
+                max: self.time_from_x(*self.x_range.end() + delta_x)?,
+            },
         })
     }
 
     /// Zoom the view around the given x, returning the new view.
-    fn zoom_at(&self, x: f32, zoom_factor: f32) -> Option<TimeRange> {
+    fn zoom_at(&self, x: f32, zoom_factor: f32) -> Option<TimeView> {
         let mut min_x = *self.x_range.start();
         let mut max_x = *self.x_range.end();
         let t = remap(x, min_x..=max_x, 0.0..=1.0);
@@ -735,9 +742,11 @@ impl TimeRangesUi {
         min_x -= t * width_delta;
         max_x += (1.0 - t) * width_delta;
 
-        Some(TimeRange {
-            min: self.time_from_x(min_x)?,
-            max: self.time_from_x(max_x)?,
+        Some(TimeView {
+            range: TimeRange {
+                min: self.time_from_x(min_x)?,
+                max: self.time_from_x(max_x)?,
+            },
         })
     }
 }

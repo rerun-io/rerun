@@ -8,8 +8,14 @@ use crate::misc::TimePoints;
 
 use super::time_axis::TimeRange;
 
+#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+pub(crate) struct TimeView {
+    // TODO: replace with `start_time: TimeStamp` and `time_spanned: f64`
+    pub range: TimeRange,
+}
+
 /// State per time source.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 struct TimeState {
     /// The current time
     time: TimeValue,
@@ -20,7 +26,7 @@ struct TimeState {
     /// In this case, the view will expand while new data is added.
     /// Only when the user actually zooms or pans will this be set.
     #[serde(default)]
-    view: Option<TimeRange>,
+    view: Option<TimeView>,
 }
 
 impl TimeState {
@@ -199,17 +205,17 @@ impl TimeControl {
     }
 
     /// The range of time we are currently zoomed in on.
-    pub fn time_view(&self) -> Option<TimeRange> {
+    pub fn time_view(&self) -> Option<TimeView> {
         self.states
             .get(&self.time_source)
             .and_then(|state| state.view)
     }
 
     /// The range of time we are currently zoomed in on.
-    pub fn set_time_view(&mut self, view: TimeRange) {
+    pub fn set_time_view(&mut self, view: TimeView) {
         self.states
             .entry(self.time_source.clone())
-            .or_insert_with(|| TimeState::new(view.min))
+            .or_insert_with(|| TimeState::new(view.range.min))
             .view = Some(view);
     }
 
