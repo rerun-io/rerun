@@ -214,49 +214,6 @@ pub enum TimeValue {
 }
 
 impl TimeValue {
-    /// Where in the range is this value? Returns 0-1 if within the range.
-    /// Returns <0 if before, >1 if after, and `None` if the unit is wrong.
-    pub fn lerp_t(&self, range: RangeInclusive<TimeValue>) -> Option<f32> {
-        fn lerp_t_i64(min: i64, value: i64, max: i64) -> f32 {
-            if min == max {
-                0.5
-            } else {
-                value.saturating_sub(min) as f32 / max.saturating_sub(min) as f32
-            }
-        }
-
-        match (range.start(), *self, range.end()) {
-            (TimeValue::Time(min), TimeValue::Time(value), TimeValue::Time(max)) => {
-                Some(lerp_t_i64(
-                    min.nanos_since_epoch(),
-                    value.nanos_since_epoch(),
-                    max.nanos_since_epoch(),
-                ))
-            }
-            (TimeValue::Sequence(min), TimeValue::Sequence(value), TimeValue::Sequence(max)) => {
-                Some(lerp_t_i64(*min as _, value as _, *max as _))
-            }
-            _ => None,
-        }
-    }
-
-    pub fn lerp(range: RangeInclusive<TimeValue>, t: f32) -> Option<TimeValue> {
-        fn lerp_i64(range: RangeInclusive<i64>, t: f32) -> i64 {
-            let (min, max) = (*range.start(), *range.end());
-            min + ((max - min) as f64 * (t as f64)).round() as i64
-        }
-
-        match (*range.start(), *range.end()) {
-            (TimeValue::Time(min), TimeValue::Time(max)) => {
-                Some(TimeValue::Time(Time::lerp(min..=max, t)))
-            }
-            (TimeValue::Sequence(min), TimeValue::Sequence(max)) => {
-                Some(TimeValue::Sequence(lerp_i64(min as _..=max as _, t) as _))
-            }
-            _ => None,
-        }
-    }
-
     /// Offset by arbitrary value.
     /// Nanos for time.
     pub fn add_offset_f32(self, offset: f32) -> Self {

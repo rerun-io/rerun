@@ -117,14 +117,26 @@ impl TimePanel {
         );
 
         let mut delta_x = 0.0;
+        let mut zoom_factor = 1.0;
 
         if response.hovered() {
             delta_x += ui.input().scroll_delta.x;
+            zoom_factor *= ui.input().zoom_delta_2d().x;
         }
 
         if delta_x != 0.0 {
             if let Some(new_view_range) = self.time_ranges_ui.pan(-delta_x) {
                 time_control.set_time_view(new_view_range);
+            }
+        }
+
+        if zoom_factor != 1.0 {
+            if let Some(pointer_pos) = ui.input().pointer.hover_pos() {
+                if let Some(new_view_range) =
+                    self.time_ranges_ui.zoom_at(pointer_pos.x, zoom_factor)
+                {
+                    time_control.set_time_view(new_view_range);
+                }
             }
         }
 
@@ -520,14 +532,21 @@ impl TimeRangesUi {
         //     };
         // }
 
+        //        <------- view_range ----->
+        //        <-------- x_range ------->
+        //        |                        |
+        //    [segment] [long segment]
+        //             ^ gap
+        //        |<-- used_width -->|
+
         // Figure out how much time is in view (ignoring time lost in gaps):
         let mut total_time = 0.0;
         for range in segments {
             // How much of the segment is visible?
-            let min_t = view_range.min.lerp_t(range.into());
+            let min_t = range.lerp_t(view_range.min);
             let min_t = min_t.unwrap_or(0.0).clamp(0.0, 1.0);
 
-            let max_t = view_range.max.lerp_t(range.into());
+            let max_t = range.lerp_t(view_range.max);
             let max_t = max_t.unwrap_or(0.0).clamp(0.0, 1.0);
 
             total_time += span(range) * (max_t - min_t) as f64;
@@ -539,10 +558,10 @@ impl TimeRangesUi {
             let gap = TimeRange::new(a.max, b.min);
 
             // How much of the gap is visible?
-            let min_t = view_range.min.lerp_t(gap.into());
+            let min_t = gap.lerp_t(view_range.min);
             let min_t = min_t.unwrap_or(0.0).clamp(0.0, 1.0);
 
-            let max_t = view_range.max.lerp_t(gap.into());
+            let max_t = gap.lerp_t(view_range.max);
             let max_t = max_t.unwrap_or(0.0).clamp(0.0, 1.0);
 
             num_gaps += max_t - min_t;
@@ -550,10 +569,10 @@ impl TimeRangesUi {
 
         // to compute `points_per_time` we need to know how much of the view contains segments.
         let used_width = width * {
-            let min = segments.first().unwrap().min.lerp_t(view_range.into());
+            let min = view_range.lerp_t(segments.first().unwrap().min);
             let min = min.unwrap_or_default().clamp(0.0, 1.0);
 
-            let max = segments.last().unwrap().max.lerp_t(view_range.into());
+            let max = view_range.lerp_t(segments.last().unwrap().max);
             let max = max.unwrap_or_default().clamp(0.0, 1.0);
 
             max - min
@@ -614,7 +633,7 @@ impl TimeRangesUi {
 
         for (x_range, range) in &self.ranges {
             if needle_time < range.min {
-                let t = needle_time.lerp_t(last_time..=range.min)?;
+                let t = TimeRange::new(last_time, range.min).lerp_t(needle_time)?;
                 return Some(lerp(last_x..=*x_range.start(), t));
             } else if needle_time <= range.max {
                 let t = range.lerp_t(needle_time)?;
@@ -642,10 +661,10 @@ impl TimeRangesUi {
         for (x_range, range) in &self.ranges {
             if needle_x < *x_range.start() {
                 let t = remap(needle_x, last_x..=*x_range.start(), 0.0..=1.0);
-                return TimeValue::lerp(last_time..=range.min, t);
+                return TimeRange::new(last_time, range.min).lerp(t);
             } else if needle_x <= *x_range.end() {
                 let t = remap(needle_x, x_range.clone(), 0.0..=1.0);
-                return TimeValue::lerp(range.min..=range.max, t);
+                return range.lerp(t);
             } else {
                 last_x = *x_range.end();
                 last_time = range.max;
@@ -661,6 +680,26 @@ impl TimeRangesUi {
         Some(TimeRange {
             min: self.time_from_x(*self.x_range.start() + delta_x)?,
             max: self.time_from_x(*self.x_range.end() + delta_x)?,
+        })
+    }
+
+    /// Zoom the view around the given x, returning the new view.
+    fn zoom_at(&self, x: f32, zoom_factor: f32) -> Option<TimeRange> {
+        let mut min_x = *self.x_range.start();
+        let mut max_x = *self.x_range.end();
+        let t = remap(x, min_x..=max_x, 0.0..=1.0);
+
+        let width = max_x - min_x;
+
+        let new_width = width / zoom_factor;
+        let width_delta = new_width - width;
+
+        min_x -= t * width_delta;
+        max_x += (1.0 - t) * width_delta;
+
+        Some(TimeRange {
+            min: self.time_from_x(min_x)?,
+            max: self.time_from_x(max_x)?,
         })
     }
 }
