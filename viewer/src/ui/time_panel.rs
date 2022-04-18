@@ -55,8 +55,8 @@ impl TimePanel {
             ui.with_layout(egui::Layout::right_to_left(), |ui| {
                 ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
                     .on_hover_text(
-                        "Drag with right mouse button to pan.\n\
-            Zoom: Ctrl/cmd + scroll, or drag with middle mouse button.\n\
+                        "Drag with secondary mouse button to pan.\n\
+            Zoom: Ctrl/cmd + scroll, or drag up/down with middle mouse button.\n\
             Double-click to reset view.\n\
             Press spacebar to pause/resume.",
                     );
@@ -124,6 +124,13 @@ impl TimePanel {
             zoom_factor *= ui.input().zoom_delta_2d().x;
         }
 
+        if response.dragged_by(PointerButton::Secondary) {
+            delta_x += response.drag_delta().x;
+        }
+        if response.dragged_by(PointerButton::Middle) {
+            zoom_factor *= (response.drag_delta().y * 0.01).exp();
+        }
+
         if delta_x != 0.0 {
             if let Some(new_view_range) = self.time_ranges_ui.pan(-delta_x) {
                 time_control.set_time_view(new_view_range);
@@ -168,7 +175,7 @@ impl TimePanel {
                         <= ui.style().interaction.resize_grab_radius_side;
 
                     if ui.input().pointer.any_pressed()
-                        && ui.input().pointer.any_down()
+                        && ui.input().pointer.primary_down()
                         && is_hovering
                     {
                         ui.memory().set_dragged_id(time_drag_id);
@@ -219,7 +226,7 @@ impl TimePanel {
                 );
             }
 
-            if is_dragging || (ui.input().pointer.any_down() && time_area.contains(pointer)) {
+            if is_dragging || (ui.input().pointer.primary_down() && time_area.contains(pointer)) {
                 if let Some(time) = self.time_ranges_ui.time_from_x(pointer.x) {
                     time_control.set_time(time);
                     ui.memory().set_dragged_id(time_drag_id);
@@ -484,9 +491,6 @@ struct TimeRangesUi {
     /// The total x-range we are viewing
     x_range: RangeInclusive<f32>,
 
-    /// The time we are viewing.
-    view_range: TimeRange,
-
     /// x ranges matched to time ranges
     ranges: Vec<(RangeInclusive<f32>, TimeRange)>,
 
@@ -499,7 +503,6 @@ impl Default for TimeRangesUi {
     fn default() -> Self {
         Self {
             x_range: 0.0..=1.0,
-            view_range: TimeRange::point(TimeValue::Sequence(0)),
             ranges: vec![],
             points_per_time: 1.0,
         }
@@ -517,7 +520,6 @@ impl TimeRangesUi {
         if segments.is_empty() {
             return Self {
                 x_range,
-                view_range,
                 ranges: vec![],
                 points_per_time: 1.0,
             };
@@ -526,7 +528,6 @@ impl TimeRangesUi {
         //     // Common-case optimization
         //     return Self {
         //         x_range: x_range.clone(),
-        //         view_range,
         //         ranges: vec![(x_range, view_range)],
         //         points_per_time: width / span(&view_range) as f32,
         //     };
@@ -592,7 +593,6 @@ impl TimeRangesUi {
         }
         let mut slf = Self {
             x_range: x_range.clone(),
-            view_range,
             ranges,
             points_per_time,
         };
