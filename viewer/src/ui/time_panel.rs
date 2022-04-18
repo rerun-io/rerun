@@ -52,11 +52,21 @@ impl TimePanel {
         ui.horizontal(|ui| {
             let time_control = &mut context.time_control;
             time_control.play_pause(&log_db.time_points, ui);
-            if let Some(time) = time_control.time() {
-                ui.vertical_centered(|ui| {
-                    ui.monospace(time.to_string());
-                });
-            }
+            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
+                    .on_hover_text(
+                        "Drag to pan.\n\
+            Zoom: Ctrl/cmd + scroll, or drag with secondary mouse button.\n\
+            Double-click to reset view.\n\
+            Press spacebar to pause/resume.",
+                    );
+
+                if let Some(time) = time_control.time() {
+                    ui.vertical_centered(|ui| {
+                        ui.monospace(time.to_string());
+                    });
+                }
+            });
         });
 
         let time_area = Rect::from_x_y_ranges(
@@ -191,7 +201,7 @@ impl TimePanel {
             let time_range = time_range.unwrap_or_else(|| time_source_axis.range());
 
             self.time_ranges_ui =
-                TimeRangesUi::new(time_x_range, time_range, &time_source_axis.ranges);
+                TimeRangesUi::new(time_x_range, &time_range, &time_source_axis.ranges);
         } else {
             self.time_ranges_ui = Default::default();
         }
@@ -432,20 +442,30 @@ impl TimePanel {
 struct TimeRangesUi {
     /// x ranges matched to time ranges
     ranges: Vec<(RangeInclusive<f32>, TimeRange)>,
+
+    /// x distance per time unit
+    points_per_time: f32,
 }
 
 impl TimeRangesUi {
-    fn new(x_range: RangeInclusive<f32>, view_range: TimeRange, segments: &[TimeRange]) -> Self {
-        if segments.is_empty() {
-            return Self { ranges: vec![] };
-        } else if segments.len() == 1 {
-            return Self {
-                ranges: vec![(x_range, view_range)],
-            };
-        }
-
+    fn new(x_range: RangeInclusive<f32>, view_range: &TimeRange, segments: &[TimeRange]) -> Self {
         fn span(time_range: &TimeRange) -> f64 {
             time_range.span().unwrap_or_default()
+        }
+
+        let width = *x_range.end() - *x_range.start();
+
+        if segments.is_empty() {
+            return Self {
+                ranges: vec![],
+                points_per_time: 1.0,
+            };
+        } else if segments.len() == 1 {
+            // Common-case optimization
+            return Self {
+                ranges: vec![(x_range, *view_range)],
+                points_per_time: width / span(view_range) as f32,
+            };
         }
 
         // Figure out how much time is in view (ignoring time lost in gaps):
@@ -476,7 +496,6 @@ impl TimeRangesUi {
             num_gaps += max_t - min_t;
         }
 
-        let width = *x_range.end() - *x_range.start();
         let gap_width = (width / (3.0 * num_gaps).at_least(0.01)).at_most(16.0); // looks good
         let points_per_time = (width - num_gaps * gap_width) / total_time.at_least(1.0) as f32;
 
@@ -489,7 +508,10 @@ impl TimeRangesUi {
             ranges.push(((left..=right), *range));
             left = right + gap_width;
         }
-        let mut slf = Self { ranges };
+        let mut slf = Self {
+            ranges,
+            points_per_time,
+        };
 
         // Now move things left/right to align `x_range` and `view_range`:
         let x_translate = *x_range.start() - slf.x_from_time(view_range.min).unwrap_or_default();
@@ -512,17 +534,25 @@ impl TimeRangesUi {
         value
     }
 
-    fn x_from_time(&self, value: TimeValue) -> Option<f32> {
+    fn x_from_time(&self, needle_time: TimeValue) -> Option<f32> {
         let (first_x_range, first_range) = self.ranges.first()?;
         let mut last_x = *first_x_range.start();
         let mut last_time = first_range.min;
 
+        if needle_time < last_time {
+            // extrapolate:
+            return Some(
+                last_x
+                    - self.points_per_time * TimeRange::new(needle_time, last_time).span()? as f32,
+            );
+        }
+
         for (x_range, range) in &self.ranges {
-            if value < range.min {
-                let t = value.lerp_t(last_time..=range.min)?;
+            if needle_time < range.min {
+                let t = needle_time.lerp_t(last_time..=range.min)?;
                 return Some(lerp(x_range.clone(), t));
-            } else if value <= range.max {
-                let t = range.lerp_t(value)?;
+            } else if needle_time <= range.max {
+                let t = range.lerp_t(needle_time)?;
                 return Some(lerp(x_range.clone(), t));
             } else {
                 last_x = *x_range.end();
@@ -530,20 +560,26 @@ impl TimeRangesUi {
             }
         }
 
-        Some(last_x)
+        // extrapolate:
+        Some(last_x + self.points_per_time * TimeRange::new(last_time, needle_time).span()? as f32)
     }
 
-    fn time_from_x(&self, x: f32) -> Option<TimeValue> {
+    fn time_from_x(&self, needle_x: f32) -> Option<TimeValue> {
         let (first_x_range, first_range) = self.ranges.first()?;
         let mut last_x = *first_x_range.start();
         let mut last_time = first_range.min;
 
+        if needle_x < last_x {
+            // extrapolate:
+            return Some(last_time.add_offset_f32((needle_x - last_x) / self.points_per_time));
+        }
+
         for (x_range, range) in &self.ranges {
-            if x < *x_range.start() {
-                let t = remap(x, last_x..=*x_range.start(), 0.0..=1.0);
+            if needle_x < *x_range.start() {
+                let t = remap(needle_x, last_x..=*x_range.start(), 0.0..=1.0);
                 return TimeValue::lerp(last_time..=range.min, t);
-            } else if x <= *x_range.end() {
-                let t = remap(x, x_range.clone(), 0.0..=1.0);
+            } else if needle_x <= *x_range.end() {
+                let t = remap(needle_x, x_range.clone(), 0.0..=1.0);
                 return TimeValue::lerp(range.min..=range.max, t);
             } else {
                 last_x = *x_range.end();
@@ -551,7 +587,8 @@ impl TimeRangesUi {
             }
         }
 
-        Some(last_time)
+        // extrapolate:
+        Some(last_time.add_offset_f32((needle_x - last_x) / self.points_per_time))
     }
 }
 

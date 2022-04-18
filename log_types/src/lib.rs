@@ -86,6 +86,13 @@ impl std::ops::Sub for Time {
     }
 }
 
+impl std::ops::Add<Duration> for Time {
+    type Output = Time;
+    fn add(self, duration: Duration) -> Self::Output {
+        Time(self.0.saturating_add(duration.0))
+    }
+}
+
 impl std::ops::AddAssign<Duration> for Time {
     fn add_assign(&mut self, duration: Duration) {
         self.0 = self.0.saturating_add(duration.0);
@@ -109,8 +116,12 @@ impl TryFrom<std::time::SystemTime> for Time {
 pub struct Duration(i64);
 
 impl Duration {
+    pub fn from_nanos(nanos: i64) -> Self {
+        Self(nanos)
+    }
+
     pub fn from_secs(secs: f32) -> Self {
-        Self((secs * 1e9).round() as _)
+        Self::from_nanos((secs * 1e9).round() as _)
     }
 
     pub fn as_nanos(&self) -> i64 {
@@ -243,6 +254,19 @@ impl TimeValue {
                 Some(TimeValue::Sequence(lerp_i64(min as _..=max as _, t) as _))
             }
             _ => None,
+        }
+    }
+
+    /// Offset by arbitrary value.
+    /// Nanos for time.
+    pub fn add_offset_f32(self, offset: f32) -> Self {
+        if offset < 0.0 {
+            self.add_offset_f32(-offset);
+        }
+
+        match self {
+            Self::Time(time) => Self::Time(time + Duration::from_nanos(offset as _)),
+            Self::Sequence(seq) => Self::Sequence(seq.saturating_add(offset as _)),
         }
     }
 }
