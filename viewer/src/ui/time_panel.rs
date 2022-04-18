@@ -73,9 +73,19 @@ impl TimePanel {
             time_x_range.clone(),
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         );
+        let time_area_painter = ui.painter().sub_region(time_area);
+
+        ui.painter()
+            .rect_filled(time_area, 1.0, ui.visuals().extreme_bg_color);
 
         ui.horizontal(|ui| {
-            self.time_row_ui(log_db, context, ui, time_x_range.clone());
+            self.time_row_ui(
+                log_db,
+                context,
+                &time_area_painter,
+                ui,
+                time_x_range.clone(),
+            );
         });
 
         ui.separator();
@@ -85,12 +95,12 @@ impl TimePanel {
             .auto_shrink([false; 2])
             .show(ui, |ui| {
                 crate::profile_scope!("tree_ui");
-                self.tree_ui(log_db, context, ui);
+                self.tree_ui(log_db, context, &time_area_painter, ui);
             });
 
         let time_control = &mut context.time_control;
 
-        self.click_to_select_time(time_control, ui, &time_area);
+        self.click_to_select_time(time_control, ui, &time_area_painter, &time_area);
         self.interact_with_time_area(time_control, ui, &time_area);
 
         if let Some(time) = time_control.time() {
@@ -156,6 +166,7 @@ impl TimePanel {
         &mut self,
         time_control: &mut TimeControl,
         ui: &mut egui::Ui,
+        time_area_painter: &egui::Painter,
         time_area: &Rect,
     ) {
         let pointer = ui.input().pointer.hover_pos();
@@ -205,13 +216,12 @@ impl TimePanel {
                     pos2(x + 0.5 * w, time_area.top()), // right top
                     pos2(x, time_area.top() + w),       // bottom
                 ];
-                ui.painter().add(egui::Shape::convex_polygon(
+                time_area_painter.add(egui::Shape::convex_polygon(
                     triangle,
                     stroke.color,
                     egui::Stroke::none(),
                 ));
-                ui.painter()
-                    .vline(x, (time_area.top() + w)..=time_area.bottom(), stroke);
+                time_area_painter.vline(x, (time_area.top() + w)..=time_area.bottom(), stroke);
             }
         }
 
@@ -219,7 +229,7 @@ impl TimePanel {
         let pointer = ui.input().pointer.hover_pos();
         if let Some(pointer) = pointer {
             if !is_hovering && !is_dragging && time_area.contains(pointer) {
-                ui.painter().vline(
+                time_area_painter.vline(
                     pointer.x,
                     time_area.top()..=ui.max_rect().bottom(),
                     ui.visuals().widgets.noninteractive.bg_stroke,
@@ -239,6 +249,7 @@ impl TimePanel {
         &mut self,
         log_db: &LogDb,
         context: &mut ViewerContext,
+        time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
         time_x_range: RangeInclusive<f32>,
     ) {
@@ -256,7 +267,7 @@ impl TimePanel {
         }
 
         let y_range = self.time_source_ui(log_db, context, ui).rect.y_range();
-        self.time_axis_ui(ui, y_range);
+        self.time_axis_ui(ui, time_area_painter, y_range);
     }
 
     fn time_source_ui(
@@ -272,10 +283,15 @@ impl TimePanel {
         response
     }
 
-    fn time_axis_ui(&mut self, ui: &mut egui::Ui, y_range: RangeInclusive<f32>) {
+    fn time_axis_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        time_area_painter: &egui::Painter,
+        y_range: RangeInclusive<f32>,
+    ) {
         for (x_range, range) in &self.time_ranges_ui.ranges {
             let rect = Rect::from_x_y_ranges(x_range.clone(), y_range.clone());
-            paint_time_range(ui, &rect, range);
+            paint_time_range(ui, time_area_painter, &rect, range);
         }
 
         if false {
@@ -291,15 +307,29 @@ impl TimePanel {
         }
     }
 
-    fn tree_ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+    fn tree_ui(
+        &mut self,
+        log_db: &LogDb,
+        context: &mut ViewerContext,
+        time_area_painter: &egui::Painter,
+        ui: &mut egui::Ui,
+    ) {
         let mut path = vec![];
-        self.show_tree(log_db, context, &mut path, &log_db.object_tree, ui);
+        self.show_tree(
+            log_db,
+            context,
+            time_area_painter,
+            &mut path,
+            &log_db.object_tree,
+            ui,
+        );
     }
 
     fn show_tree(
         &mut self,
         log_db: &LogDb,
         context: &mut ViewerContext,
+        time_area_painter: &egui::Painter,
         path: &mut Vec<ObjectPathComponent>,
         tree: &ObjectTree,
         ui: &mut egui::Ui,
@@ -344,7 +374,7 @@ impl TimePanel {
                 .id_source(&path)
                 .default_open(path.is_empty())
                 .show(ui, |ui| {
-                    self.show_children(log_db, context, path, tree, ui);
+                    self.show_children(log_db, context, time_area_painter, path, tree, ui);
                 });
 
             let is_closed = collapsing_response.body_returned.is_none();
@@ -421,7 +451,7 @@ impl TimePanel {
                             color = color.additive();
                         }
 
-                        ui.painter().circle_filled(pos, 2.0, color);
+                        time_area_painter.circle_filled(pos, 2.0, color);
 
                         if is_hovered {
                             hovered_messages.push(*log_id);
@@ -460,24 +490,32 @@ impl TimePanel {
         &mut self,
         log_db: &LogDb,
         context: &mut ViewerContext,
+        time_area_painter: &egui::Painter,
         path: &mut Vec<ObjectPathComponent>,
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
         for (name, node) in &tree.children {
             path.push(ObjectPathComponent::String(name.clone()));
-            self.show_tree(log_db, context, path, &node.string_children, ui);
+            self.show_tree(
+                log_db,
+                context,
+                time_area_painter,
+                path,
+                &node.string_children,
+                ui,
+            );
             path.pop();
 
             for (id, tree) in &node.persist_id_children {
                 path.push(ObjectPathComponent::PersistId(name.clone(), id.clone()));
-                self.show_tree(log_db, context, path, tree, ui);
+                self.show_tree(log_db, context, time_area_painter, path, tree, ui);
                 path.pop();
             }
 
             for (id, tree) in &node.temp_id_children {
                 path.push(ObjectPathComponent::PersistId(name.clone(), id.clone()));
-                self.show_tree(log_db, context, path, tree, ui);
+                self.show_tree(log_db, context, time_area_painter, path, tree, ui);
                 path.pop();
             }
         }
@@ -704,10 +742,16 @@ impl TimeRangesUi {
     }
 }
 
-fn paint_time_range(ui: &mut egui::Ui, rect: &Rect, range: &TimeRange) {
+fn paint_time_range(
+    ui: &mut egui::Ui,
+    time_area_painter: &egui::Painter,
+    rect: &Rect,
+    range: &TimeRange,
+) {
     let bg_stroke = ui.visuals().widgets.noninteractive.bg_stroke;
     let fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-    ui.painter().rect_filled(
+
+    time_area_painter.rect_filled(
         rect.expand2(vec2(4.0, 0.0)), // give zero-width time segments some width
         3.0,
         bg_stroke.color.linear_multiply(0.5),
@@ -735,7 +779,7 @@ fn paint_time_range(ui: &mut egui::Ui, rect: &Rect, range: &TimeRange) {
                         lerp(rect.y_range(), 0.25)
                     };
 
-                    ui.painter().vline(x, rect.top()..=bottom, fg_stroke);
+                    time_area_painter.vline(x, rect.top()..=bottom, fg_stroke);
 
                     ns += small_step_size_ns;
                 }
