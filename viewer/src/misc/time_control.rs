@@ -205,6 +205,21 @@ impl TimeControl {
             .and_then(|state| state.view)
     }
 
+    /// The range of time we are currently zoomed in on.
+    pub fn set_time_view(&mut self, view: TimeRange) {
+        self.states
+            .entry(self.time_source.clone())
+            .or_insert_with(|| TimeState::new(view.min))
+            .view = Some(view);
+    }
+
+    /// The range of time we are currently zoomed in on.
+    pub fn reset_time_view(&mut self) {
+        if let Some(state) = self.states.get_mut(&self.time_source) {
+            state.view = None;
+        }
+    }
+
     pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
         self.time_source = time_source;
         self.set_time(time);

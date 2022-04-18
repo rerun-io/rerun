@@ -260,12 +260,9 @@ impl TimeValue {
     /// Offset by arbitrary value.
     /// Nanos for time.
     pub fn add_offset_f32(self, offset: f32) -> Self {
-        if offset < 0.0 {
-            self.add_offset_f32(-offset);
-        }
-
         match self {
             Self::Time(time) => Self::Time(time + Duration::from_nanos(offset as _)),
+            Self::Sequence(seq) if offset <= 0.0 => Self::Sequence(seq.saturating_sub(offset as _)),
             Self::Sequence(seq) => Self::Sequence(seq.saturating_add(offset as _)),
         }
     }
