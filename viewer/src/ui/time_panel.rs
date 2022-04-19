@@ -293,7 +293,13 @@ impl TimePanel {
     ) {
         for (x_range, range) in &self.time_ranges_ui.ranges {
             let rect = Rect::from_x_y_ranges(x_range.clone(), y_range.clone());
-            paint_time_range(ui, time_area_painter, &rect, range);
+            paint_time_range(
+                ui,
+                time_area_painter,
+                &rect,
+                range,
+                self.time_ranges_ui.gap_width,
+            );
         }
 
         if false {
@@ -526,23 +532,40 @@ impl TimePanel {
 
 // ----------------------------------------------------------------------------
 
-/// Sze of the gass between time segments
-const GAP_WIDTH: f32 = 16.0;
+/// Sze of the gap between time segments
+fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
+    let max_gap = 16.0;
+    let num_gaps = segments.len().saturating_sub(1);
+    if num_gaps == 0 {
+        // gap width doesn't matter
+        max_gap
+    } else {
+        let width = *x_range.end() - *x_range.start();
+        (width / (4.0 * num_gaps as f32)).at_most(max_gap)
+    }
+}
 
 fn view_everythinbg(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceAxis) -> TimeView {
-    let num_gaps = time_source_axis.ranges.len() - 1;
+    let gap_width = gap_width(x_range, &time_source_axis.ranges);
+    let num_gaps = time_source_axis.ranges.len().saturating_sub(1);
     let width = *x_range.end() - *x_range.start();
-    let width_sans_gaps = width - num_gaps as f32 * GAP_WIDTH;
+    let width_sans_gaps = width - num_gaps as f32 * gap_width;
 
     let factor = if width_sans_gaps > 0.0 {
         width / width_sans_gaps
     } else {
-        1.0
+        1.0 // too narrow to fit everything anyways
     };
-    TimeView {
-        min: time_source_axis.min(),
-        time_spanned: time_source_axis.sum_time_span() * factor as f64,
-    }
+
+    let min = time_source_axis.min();
+    let time_spanned = time_source_axis.sum_time_span() * factor as f64;
+
+    // Leave some room on the margins:
+    let time_margin = time_spanned * 8.0 / width.at_least(64.0) as f64;
+    let min = min.add_offset_f64(-time_margin);
+    let time_spanned = time_spanned + 2.0 * time_margin;
+
+    TimeView { min, time_spanned }
 }
 
 /// Recreated each frame.
@@ -556,6 +579,8 @@ struct TimeRangesUi {
 
     /// x distance per time unit
     points_per_time: f32,
+
+    gap_width: f32,
 }
 
 impl Default for TimeRangesUi {
@@ -569,6 +594,7 @@ impl Default for TimeRangesUi {
             },
             ranges: vec![],
             points_per_time: 1.0,
+            gap_width: 1.0,
         }
     }
 }
@@ -580,6 +606,7 @@ impl TimeRangesUi {
         }
 
         let width = *x_range.end() - *x_range.start();
+        let gap_width = gap_width(&x_range, segments);
 
         if segments.is_empty() {
             return Self {
@@ -587,6 +614,7 @@ impl TimeRangesUi {
                 time_view,
                 ranges: vec![],
                 points_per_time: 1.0,
+                gap_width,
             };
         }
         // else if segments.len() == 1 {
@@ -594,7 +622,7 @@ impl TimeRangesUi {
         //     return Self {
         //         x_range: x_range.clone(),time_view,
         //         ranges: vec![(x_range, view_range)],
-        //         points_per_time: width / span(&view_range) as f32,
+        //         points_per_time: width / span(&view_range) as f32,gap_width
         //     };
         // }
 
@@ -613,13 +641,14 @@ impl TimeRangesUi {
             let range_width = span(range) as f32 * points_per_time;
             let right = left + range_width;
             ranges.push(((left..=right), *range));
-            left = right + GAP_WIDTH;
+            left = right + gap_width;
         }
         let mut slf = Self {
             x_range: x_range.clone(),
             time_view,
             ranges,
             points_per_time,
+            gap_width,
         };
 
         // Now move things left/right to align `x_range` and `view_range`:
@@ -733,12 +762,13 @@ fn paint_time_range(
     time_area_painter: &egui::Painter,
     rect: &Rect,
     range: &TimeRange,
+    gap_width: f32,
 ) {
     let bg_stroke = ui.visuals().widgets.noninteractive.bg_stroke;
     let fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
 
     time_area_painter.rect_filled(
-        rect.expand2(vec2(4.0, 0.0)), // give zero-width time segments some width
+        rect.expand2(vec2(gap_width / 4.0, 0.0)), // give zero-width time segments some width
         3.0,
         bg_stroke.color.linear_multiply(0.5),
     );

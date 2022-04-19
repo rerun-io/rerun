@@ -216,7 +216,15 @@ pub enum TimeValue {
 impl TimeValue {
     /// Offset by arbitrary value.
     /// Nanos for time.
+    #[must_use]
     pub fn add_offset_f32(self, offset: f32) -> Self {
+        self.add_offset_f64(offset as f64)
+    }
+
+    /// Offset by arbitrary value.
+    /// Nanos for time.
+    #[must_use]
+    pub fn add_offset_f64(self, offset: f64) -> Self {
         match self {
             Self::Time(time) => Self::Time(time + Duration::from_nanos(offset as _)),
             Self::Sequence(seq) if offset <= 0.0 => Self::Sequence(seq.saturating_sub(offset as _)),
