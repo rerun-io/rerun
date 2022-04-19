@@ -14,7 +14,7 @@ pub(crate) use clipboard::Clipboard;
 
 use image_cache::ImageCache;
 pub(crate) use log_db::LogDb;
-pub(crate) use time_control::TimeControl;
+pub(crate) use time_control::{TimeControl, TimeView};
 
 pub(crate) use viewer_context::{Selection, ViewerContext};
 
