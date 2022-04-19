@@ -260,7 +260,7 @@ impl TimePanel {
         {
             let time_view = context.time_control.time_view();
             let time_view =
-                time_view.unwrap_or_else(|| view_everythinbg(&time_x_range, time_source_axis));
+                time_view.unwrap_or_else(|| view_everything(&time_x_range, time_source_axis));
 
             self.time_ranges_ui =
                 TimeRangesUi::new(time_x_range, time_view, &time_source_axis.ranges);
@@ -532,7 +532,7 @@ impl TimePanel {
 
 // ----------------------------------------------------------------------------
 
-/// Sze of the gap between time segments
+/// Sze of the gap between time segments.
 fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
     let max_gap = 16.0;
     let num_gaps = segments.len().saturating_sub(1);
@@ -545,7 +545,8 @@ fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
     }
 }
 
-fn view_everythinbg(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceAxis) -> TimeView {
+/// Find a nice view of everything.
+fn view_everything(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceAxis) -> TimeView {
     let gap_width = gap_width(x_range, &time_source_axis.ranges);
     let num_gaps = time_source_axis.ranges.len().saturating_sub(1);
     let width = *x_range.end() - *x_range.start();
@@ -605,44 +606,33 @@ impl TimeRangesUi {
             time_range.span().unwrap_or_default()
         }
 
-        let width = *x_range.end() - *x_range.start();
-        let gap_width = gap_width(&x_range, segments);
-
-        if segments.is_empty() {
-            return Self {
-                x_range,
-                time_view,
-                ranges: vec![],
-                points_per_time: 1.0,
-                gap_width,
-            };
-        }
-        // else if segments.len() == 1 {
-        //     // Common-case optimization
-        //     return Self {
-        //         x_range: x_range.clone(),time_view,
-        //         ranges: vec![(x_range, view_range)],
-        //         points_per_time: width / span(&view_range) as f32,gap_width
-        //     };
-        // }
-
-        //        <------- time_view ----->
+        //        <------- time_view ------>
         //        <-------- x_range ------->
         //        |                        |
         //    [segment] [long segment]
         //             ^ gap
 
+        let gap_width = gap_width(&x_range, segments);
+        let width = *x_range.end() - *x_range.start();
         let points_per_time = width / time_view.time_spanned as f32;
+        let points_per_time = if points_per_time > 0.0 && points_per_time.is_finite() {
+            points_per_time
+        } else {
+            1.0
+        };
 
         let mut left = 0.0; // we will translate things left/right later
-        let mut ranges = vec![];
+        let ranges = segments
+            .iter()
+            .map(|range| {
+                let range_width = span(range) as f32 * points_per_time;
+                let right = left + range_width;
+                let x_range = left..=right;
+                left = right + gap_width;
+                (x_range, *range)
+            })
+            .collect();
 
-        for range in segments {
-            let range_width = span(range) as f32 * points_per_time;
-            let right = left + range_width;
-            ranges.push(((left..=right), *range));
-            left = right + gap_width;
-        }
         let mut slf = Self {
             x_range: x_range.clone(),
             time_view,
@@ -651,10 +641,12 @@ impl TimeRangesUi {
             gap_width,
         };
 
-        // Now move things left/right to align `x_range` and `view_range`:
-        let x_translate = *x_range.start() - slf.x_from_time(time_view.min).unwrap_or_default();
-        for (range, _) in &mut slf.ranges {
-            *range = (*range.start() + x_translate)..=(*range.end() + x_translate);
+        if let Some(time_start_x) = slf.x_from_time(time_view.min) {
+            // Now move things left/right to align `x_range` and `view_range`:
+            let x_translate = *x_range.start() - time_start_x;
+            for (range, _) in &mut slf.ranges {
+                *range = (*range.start() + x_translate)..=(*range.end() + x_translate);
+            }
         }
 
         slf
