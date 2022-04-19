@@ -6,6 +6,8 @@ use log_types::*;
 
 use crate::misc::TimePoints;
 
+use super::time_axis::TimeRange;
+
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct TimeView {
@@ -20,11 +22,31 @@ pub(crate) struct TimeView {
     pub time_spanned: f64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub(crate) enum TimeSelectionType {
+    // No time selection.
+    None,
+    // The selection is for looping the play marker.
+    Loop,
+    // The selection is for viewing a bunch of data at once, replacing the play marker.
+    Filter,
+}
+
+impl Default for TimeSelectionType {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 /// State per time source.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 struct TimeState {
-    /// The current time
+    /// The current time (play marker).
     time: TimeValue,
+
+    /// Selected time range, if any.
+    #[serde(default)]
+    selection: Option<TimeRange>,
 
     /// The time range we are currently zoomed in on.
     ///
@@ -37,7 +59,11 @@ struct TimeState {
 
 impl TimeState {
     fn new(time: TimeValue) -> Self {
-        Self { time, view: None }
+        Self {
+            time,
+            selection: Default::default(),
+            view: None,
+        }
     }
 }
 
@@ -54,6 +80,9 @@ pub(crate) struct TimeControl {
     playing: bool,
     looped: bool,
     speed: f32,
+
+    #[serde(default)]
+    pub selection_type: TimeSelectionType,
 }
 
 impl Default for TimeControl {
@@ -64,12 +93,13 @@ impl Default for TimeControl {
             playing: true,
             looped: true,
             speed: 1.0,
+            selection_type: TimeSelectionType::default(),
         }
     }
 }
 
 impl TimeControl {
-    pub fn time_source_selector(
+    pub fn time_source_selector_ui(
         &mut self,
         time_source_axes: &TimePoints,
         ui: &mut egui::Ui,
@@ -89,6 +119,51 @@ impl TimeControl {
                 }
             })
             .response
+    }
+
+    pub fn selection_ui(&mut self, ui: &mut egui::Ui) {
+        use egui::SelectableLabel;
+
+        ui.label("Selection:");
+
+        let has_selection = self
+            .states
+            .get(&self.time_source)
+            .map_or(false, |state| state.selection.is_some());
+
+        if ui
+            .add(SelectableLabel::new(
+                self.selection_type == TimeSelectionType::None || !has_selection,
+                "None",
+            ))
+            .on_hover_text("No selection")
+            .clicked()
+        {
+            self.selection_type = TimeSelectionType::None;
+        }
+
+        if ui
+            .add_enabled(
+                has_selection,
+                SelectableLabel::new(self.selection_type == TimeSelectionType::Loop, "🔁"),
+            )
+            .on_hover_text("Loop in selection")
+            .clicked()
+        {
+            self.selection_type = TimeSelectionType::Loop;
+            self.looped = true;
+        }
+
+        if ui
+            .add_enabled(
+                has_selection,
+                SelectableLabel::new(self.selection_type == TimeSelectionType::Filter, "⬌"),
+            )
+            .on_hover_text("Filter")
+            .clicked()
+        {
+            self.selection_type = TimeSelectionType::Filter;
+        }
     }
 
     pub fn play_pause_ui(&mut self, time_points: &TimePoints, ui: &mut egui::Ui) {
@@ -213,6 +288,18 @@ impl TimeControl {
         self.states.get(&self.time_source).map(|state| state.time)
     }
 
+    pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
+        self.time_source = time_source;
+        self.set_time(time);
+    }
+
+    pub fn set_time(&mut self, time: TimeValue) {
+        self.states
+            .entry(self.time_source.clone())
+            .or_insert_with(|| TimeState::new(time))
+            .time = time;
+    }
+
     /// The range of time we are currently zoomed in on.
     pub fn time_view(&self) -> Option<TimeView> {
         self.states
@@ -235,16 +322,15 @@ impl TimeControl {
         }
     }
 
-    pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
-        self.time_source = time_source;
-        self.set_time(time);
+    pub fn time_selection(&self) -> Option<TimeRange> {
+        self.states.get(&self.time_source)?.selection
     }
 
-    pub fn set_time(&mut self, time: TimeValue) {
+    pub fn set_time_selection(&mut self, selection: TimeRange) {
         self.states
             .entry(self.time_source.clone())
-            .or_insert_with(|| TimeState::new(time))
-            .time = time;
+            .or_insert_with(|| TimeState::new(selection.min))
+            .selection = Some(selection);
     }
 
     pub fn pause(&mut self) {
