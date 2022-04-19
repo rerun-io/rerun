@@ -78,12 +78,13 @@ impl TimePanel {
 
         self.paint_time_ranges_and_ticks(ui, &time_area_painter, time_line_rect.y_range());
 
-        let scroll_delta = self.interact_with_time_area(
+        let scroll_delta = self.interact_with_time_area(&mut context.time_control, ui, &time_area);
+        self.time_marker_ui(
             &mut context.time_control,
             ui,
             &time_area_painter,
-            &time_area,
             &time_line_rect,
+            time_area.bottom(),
         );
 
         // Don't draw on top of the time ticks
@@ -142,18 +143,9 @@ impl TimePanel {
         &mut self,
         time_control: &mut TimeControl,
         ui: &mut egui::Ui,
-        time_area_painter: &egui::Painter,
         full_rect: &Rect,
-        time_line_rect: &Rect,
     ) -> Vec2 {
-        // time_area: full area.
-        // time_line_rect: top part with the second ticks and time marker
-
         let pointer_pos = ui.input().pointer.hover_pos();
-        let is_pointer_in_time_area =
-            pointer_pos.map_or(false, |pointer_pos| full_rect.contains(pointer_pos));
-        let is_pointer_in_time_line_rect =
-            pointer_pos.map_or(false, |pointer_pos| time_line_rect.contains(pointer_pos));
 
         let response = ui.interact(
             *full_rect,
@@ -200,6 +192,24 @@ impl TimePanel {
             time_control.reset_time_view();
         }
 
+        parent_scroll_delta
+    }
+
+    fn time_marker_ui(
+        &mut self,
+        time_control: &mut TimeControl,
+        ui: &mut egui::Ui,
+        time_area_painter: &egui::Painter,
+        time_line_rect: &Rect,
+        bottom_y: f32,
+    ) {
+        // full_rect: full area.
+        // time_line_rect: top part with the second ticks and time marker
+
+        let pointer_pos = ui.input().pointer.hover_pos();
+        let is_pointer_in_time_line_rect =
+            pointer_pos.map_or(false, |pointer_pos| time_line_rect.contains(pointer_pos));
+
         // ------------------------------------------------
 
         let time_drag_id = ui.id().with("time_drag_id");
@@ -209,15 +219,13 @@ impl TimePanel {
 
         if is_pointer_in_time_line_rect {
             ui.output().cursor_icon = CursorIcon::ResizeHorizontal;
-        } else if is_pointer_in_time_area {
-            // ui.output().cursor_icon = CursorIcon::AllScroll; // looks ugly
         }
 
         // show current time as a line:
         if let Some(time) = time_control.time() {
             if let Some(x) = self.time_ranges_ui.x_from_time(time) {
                 if let Some(pointer_pos) = pointer_pos {
-                    let line_rect = Rect::from_x_y_ranges(x..=x, full_rect.y_range());
+                    let line_rect = Rect::from_x_y_ranges(x..=x, time_line_rect.top()..=bottom_y);
 
                     is_hovering = line_rect.distance_to_pos(pointer_pos)
                         <= ui.style().interaction.resize_grab_radius_side;
@@ -249,16 +257,16 @@ impl TimePanel {
 
                 let w = 10.0;
                 let triangle = vec![
-                    pos2(x - 0.5 * w, full_rect.top()), // left top
-                    pos2(x + 0.5 * w, full_rect.top()), // right top
-                    pos2(x, full_rect.top() + w),       // bottom
+                    pos2(x - 0.5 * w, time_line_rect.top()), // left top
+                    pos2(x + 0.5 * w, time_line_rect.top()), // right top
+                    pos2(x, time_line_rect.top() + w),       // bottom
                 ];
                 time_area_painter.add(egui::Shape::convex_polygon(
                     triangle,
                     stroke.color,
                     egui::Stroke::none(),
                 ));
-                time_area_painter.vline(x, (full_rect.top() + w)..=full_rect.bottom(), stroke);
+                time_area_painter.vline(x, (time_line_rect.top() + w)..=bottom_y, stroke);
             }
         }
 
@@ -267,7 +275,7 @@ impl TimePanel {
             if !is_hovering && !is_dragging && is_pointer_in_time_line_rect {
                 time_area_painter.vline(
                     pointer_pos.x,
-                    full_rect.top()..=ui.max_rect().bottom(),
+                    time_line_rect.top()..=ui.max_rect().bottom(),
                     ui.visuals().widgets.noninteractive.bg_stroke,
                 );
             }
@@ -279,8 +287,6 @@ impl TimePanel {
                 }
             }
         }
-
-        parent_scroll_delta
     }
 
     fn paint_time_ranges_and_ticks(
