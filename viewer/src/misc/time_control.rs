@@ -52,7 +52,7 @@ pub(crate) struct TimeControl {
     states: BTreeMap<String, TimeState>,
 
     playing: bool,
-    repeat: bool,
+    looped: bool,
     speed: f32,
 }
 
@@ -62,7 +62,7 @@ impl Default for TimeControl {
             time_source: Default::default(),
             states: Default::default(),
             playing: true,
-            repeat: true,
+            looped: true,
             speed: 1.0,
         }
     }
@@ -120,8 +120,8 @@ impl TimeControl {
         {
             self.playing = false;
         }
-        if ui.selectable_label(self.repeat, "🔁").clicked() {
-            self.repeat = !self.repeat;
+        if ui.selectable_label(self.looped, "🔁").clicked() {
+            self.looped = !self.looped;
         }
 
         let drag_speed = self.speed * 0.05;
@@ -158,7 +158,7 @@ impl TimeControl {
                 }
 
                 if state.time > axis_max {
-                    if self.repeat {
+                    if self.looped {
                         state.time = axis_min;
                     } else {
                         state.time = axis_max;
