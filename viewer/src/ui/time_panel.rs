@@ -61,9 +61,12 @@ impl TimePanel {
         );
 
         let time_line_rect = {
-            let response = context
-                .time_control
-                .time_source_selector(&log_db.time_points, ui);
+            let response = ui
+                .horizontal(|ui| {
+                    context.time_control.play_pause_ui(&log_db.time_points, ui);
+                })
+                .response;
+
             self.next_col_right = self.next_col_right.max(response.rect.right());
             let y_range = response.rect.y_range();
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
@@ -536,8 +539,10 @@ impl TimePanel {
 
 fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
-        let time_control = &mut context.time_control;
-        time_control.play_pause(&log_db.time_points, ui);
+        context
+            .time_control
+            .time_source_selector(&log_db.time_points, ui);
+
         ui.with_layout(egui::Layout::right_to_left(), |ui| {
             ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
                 .on_hover_text(
@@ -547,7 +552,7 @@ fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
             Press spacebar to pause/resume.",
                 );
 
-            if let Some(time) = time_control.time() {
+            if let Some(time) = context.time_control.time() {
                 ui.vertical_centered(|ui| {
                     ui.monospace(time.to_string());
                 });

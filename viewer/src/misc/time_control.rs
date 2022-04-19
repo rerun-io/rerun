@@ -91,7 +91,7 @@ impl TimeControl {
             .response
     }
 
-    pub fn play_pause(&mut self, time_points: &TimePoints, ui: &mut egui::Ui) {
+    pub fn play_pause_ui(&mut self, time_points: &TimePoints, ui: &mut egui::Ui) {
         // Toggle with space
         let anything_has_focus = ui.ctx().memory().focus().is_some();
         if !anything_has_focus
