@@ -124,11 +124,14 @@ impl TimeControl {
             self.repeat = !self.repeat;
         }
 
+        let drag_speed = self.speed * 0.05;
         ui.add(
-            egui::Slider::new(&mut self.speed, 0.01..=100.0)
-                .text("playback speed")
-                .logarithmic(true),
-        );
+            egui::DragValue::new(&mut self.speed)
+                .clamp_range(0.01..=100.0)
+                .speed(drag_speed)
+                .suffix("x"),
+        )
+        .on_hover_text("Playback speed.");
     }
 
     /// Update the current time
