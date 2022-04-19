@@ -40,6 +40,9 @@ impl TimePanel {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
         crate::profile_function!();
 
+        // play control and current time
+        top_row_ui(log_db, context, ui);
+
         self.next_col_right = ui.min_rect().left(); // this will expand during the call
 
         // Where the time will be shown.
@@ -49,50 +52,31 @@ impl TimePanel {
             left..=right
         };
 
-        // play control and current time
-        ui.horizontal(|ui| {
-            let time_control = &mut context.time_control;
-            time_control.play_pause(&log_db.time_points, ui);
-            ui.with_layout(egui::Layout::right_to_left(), |ui| {
-                ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
-                    .on_hover_text(
-                        "Drag main area to pan.\n\
-            Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
-            Double-click to reset view.\n\
-            Press spacebar to pause/resume.",
-                    );
+        self.initialize_time_ranges_ui(log_db, context, time_x_range.clone());
 
-                if let Some(time) = time_control.time() {
-                    ui.vertical_centered(|ui| {
-                        ui.monospace(time.to_string());
-                    });
-                }
-            });
-        });
-
+        // includes the time selection and time ticks rows.
         let time_area = Rect::from_x_y_ranges(
             time_x_range.clone(),
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         );
+
+        let time_line_rect = {
+            let response = context
+                .time_control
+                .time_source_selector(&log_db.time_points, ui);
+            self.next_col_right = self.next_col_right.max(response.rect.right());
+            let y_range = response.rect.y_range();
+            Rect::from_x_y_ranges(time_x_range.clone(), y_range)
+        };
+
         let time_area_painter = ui.painter().with_clip_rect(time_area);
 
         ui.painter()
             .rect_filled(time_area, 1.0, ui.visuals().extreme_bg_color);
 
-        // The thin bar with second marks and a time marker
-        let time_line_rect = ui
-            .horizontal(|ui| {
-                self.time_row_ui(
-                    log_db,
-                    context,
-                    &time_area_painter,
-                    ui,
-                    time_x_range.clone(),
-                )
-            })
-            .inner;
-
         ui.separator();
+
+        self.paint_time_ranges_and_ticks(ui, &time_area_painter, time_line_rect.y_range());
 
         let scroll_delta = self.interact_with_time_area(
             &mut context.time_control,
@@ -104,7 +88,7 @@ impl TimePanel {
 
         // Don't draw on top of the time ticks
         let lower_time_area_painter = ui.painter().with_clip_rect(Rect::from_x_y_ranges(
-            time_x_range.clone(),
+            time_x_range,
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         ));
 
@@ -131,6 +115,26 @@ impl TimePanel {
         // remember where to show the time for next frame:
         let margin = 16.0;
         self.prev_col_width = self.next_col_right - ui.min_rect().left() + margin;
+    }
+
+    fn initialize_time_ranges_ui(
+        &mut self,
+        log_db: &LogDb,
+        context: &mut ViewerContext,
+        time_x_range: RangeInclusive<f32>,
+    ) {
+        let time_source_axes = TimeSourceAxes::new(&log_db.time_points);
+        if let Some(time_source_axis) = time_source_axes.sources.get(context.time_control.source())
+        {
+            let time_view = context.time_control.time_view();
+            let time_view =
+                time_view.unwrap_or_else(|| view_everything(&time_x_range, time_source_axis));
+
+            self.time_ranges_ui =
+                TimeRangesUi::new(time_x_range, time_view, &time_source_axis.ranges);
+        } else {
+            self.time_ranges_ui = Default::default();
+        }
     }
 
     /// Returns a scroll delta
@@ -279,47 +283,7 @@ impl TimePanel {
         parent_scroll_delta
     }
 
-    fn time_row_ui(
-        &mut self,
-        log_db: &LogDb,
-        context: &mut ViewerContext,
-        time_area_painter: &egui::Painter,
-        ui: &mut egui::Ui,
-        time_x_range: RangeInclusive<f32>,
-    ) -> egui::Rect {
-        crate::profile_function!();
-        let time_source_axes = TimeSourceAxes::new(&log_db.time_points);
-        if let Some(time_source_axis) = time_source_axes.sources.get(context.time_control.source())
-        {
-            let time_view = context.time_control.time_view();
-            let time_view =
-                time_view.unwrap_or_else(|| view_everything(&time_x_range, time_source_axis));
-
-            self.time_ranges_ui =
-                TimeRangesUi::new(time_x_range.clone(), time_view, &time_source_axis.ranges);
-        } else {
-            self.time_ranges_ui = Default::default();
-        }
-
-        let y_range = self.time_source_ui(log_db, context, ui).rect.y_range();
-        self.time_axis_ui(ui, time_area_painter, y_range.clone());
-        Rect::from_x_y_ranges(time_x_range, y_range)
-    }
-
-    fn time_source_ui(
-        &mut self,
-        log_db: &LogDb,
-        context: &mut ViewerContext,
-        ui: &mut egui::Ui,
-    ) -> egui::Response {
-        let response = context
-            .time_control
-            .time_source_selector(&log_db.time_points, ui);
-        self.next_col_right = self.next_col_right.max(response.rect.right());
-        response
-    }
-
-    fn time_axis_ui(
+    fn paint_time_ranges_and_ticks(
         &mut self,
         ui: &mut egui::Ui,
         time_area_painter: &egui::Painter,
@@ -562,6 +526,28 @@ impl TimePanel {
             }
         }
     }
+}
+
+fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+    ui.horizontal(|ui| {
+        let time_control = &mut context.time_control;
+        time_control.play_pause(&log_db.time_points, ui);
+        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+            ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
+                .on_hover_text(
+                    "Drag main area to pan.\n\
+            Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
+            Double-click to reset view.\n\
+            Press spacebar to pause/resume.",
+                );
+
+            if let Some(time) = time_control.time() {
+                ui.vertical_centered(|ui| {
+                    ui.monospace(time.to_string());
+                });
+            }
+        });
+    });
 }
 
 // ----------------------------------------------------------------------------
