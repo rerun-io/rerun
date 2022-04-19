@@ -56,8 +56,8 @@ impl TimePanel {
             ui.with_layout(egui::Layout::right_to_left(), |ui| {
                 ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
                     .on_hover_text(
-                        "Drag with secondary mouse button to pan.\n\
-            Zoom: Ctrl/cmd + scroll, or drag up/down with middle mouse button.\n\
+                        "Drag main area to pan.\n\
+            Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
             Double-click to reset view.\n\
             Press spacebar to pause/resume.",
                     );
@@ -74,40 +74,53 @@ impl TimePanel {
             time_x_range.clone(),
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         );
-        let time_area_painter = ui.painter().sub_region(time_area);
+        let time_area_painter = ui.painter().with_clip_rect(time_area);
 
         ui.painter()
             .rect_filled(time_area, 1.0, ui.visuals().extreme_bg_color);
 
-        ui.horizontal(|ui| {
-            self.time_row_ui(
-                log_db,
-                context,
-                &time_area_painter,
-                ui,
-                time_x_range.clone(),
-            );
-        });
+        // The thin bar with second marks and a time marker
+        let time_line_rect = ui
+            .horizontal(|ui| {
+                self.time_row_ui(
+                    log_db,
+                    context,
+                    &time_area_painter,
+                    ui,
+                    time_x_range.clone(),
+                )
+            })
+            .inner;
 
         ui.separator();
+
+        let scroll_delta = self.interact_with_time_area(
+            &mut context.time_control,
+            ui,
+            &time_area_painter,
+            &time_area,
+            &time_line_rect,
+        );
+
+        // Don't draw on top of the time ticks
+        let lower_time_area_painter = ui.painter().with_clip_rect(Rect::from_x_y_ranges(
+            time_x_range.clone(),
+            ui.min_rect().bottom()..=ui.max_rect().bottom(),
+        ));
 
         // all the object rows:
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
                 crate::profile_scope!("tree_ui");
-                self.tree_ui(log_db, context, &time_area_painter, ui);
+                ui.scroll_with_delta(scroll_delta);
+                self.tree_ui(log_db, context, &lower_time_area_painter, ui);
             });
 
-        let time_control = &mut context.time_control;
-
-        self.click_to_select_time(time_control, ui, &time_area_painter, &time_area);
-        self.interact_with_time_area(time_control, ui, &time_area);
-
-        if let Some(time) = time_control.time() {
+        if let Some(time) = context.time_control.time() {
             // so time doesn't get stuck between non-continuos regions
             let time = self.time_ranges_ui.snap_time(time);
-            time_control.set_time(time);
+            context.time_control.set_time(time);
         }
 
         // remember where to show the time for next frame:
@@ -115,14 +128,26 @@ impl TimePanel {
         self.prev_col_width = self.next_col_right - ui.min_rect().left() + margin;
     }
 
+    /// Returns a scroll delta
     fn interact_with_time_area(
         &mut self,
         time_control: &mut TimeControl,
         ui: &mut egui::Ui,
-        time_area: &Rect,
-    ) {
+        time_area_painter: &egui::Painter,
+        full_rect: &Rect,
+        time_line_rect: &Rect,
+    ) -> Vec2 {
+        // time_area: full area.
+        // time_line_rect: top part with the second ticks and time marker
+
+        let pointer_pos = ui.input().pointer.hover_pos();
+        let is_pointer_in_time_area =
+            pointer_pos.map_or(false, |pointer_pos| full_rect.contains(pointer_pos));
+        let is_pointer_in_time_line_rect =
+            pointer_pos.map_or(false, |pointer_pos| time_line_rect.contains(pointer_pos));
+
         let response = ui.interact(
-            *time_area,
+            *full_rect,
             ui.id().with("time_area_interact"),
             egui::Sense::click_and_drag(),
         );
@@ -130,15 +155,19 @@ impl TimePanel {
         let mut delta_x = 0.0;
         let mut zoom_factor = 1.0;
 
+        let mut parent_scroll_delta = Vec2::ZERO;
+
         if response.hovered() {
             delta_x += ui.input().scroll_delta.x;
             zoom_factor *= ui.input().zoom_delta_2d().x;
         }
 
-        if response.dragged_by(PointerButton::Secondary) {
+        if response.dragged_by(PointerButton::Primary) {
             delta_x += response.drag_delta().x;
+            parent_scroll_delta.y += response.drag_delta().y;
+            ui.output().cursor_icon = CursorIcon::AllScroll;
         }
-        if response.dragged_by(PointerButton::Middle) {
+        if response.dragged_by(PointerButton::Secondary) {
             zoom_factor *= (response.drag_delta().y * 0.01).exp();
         }
 
@@ -149,7 +178,7 @@ impl TimePanel {
         }
 
         if zoom_factor != 1.0 {
-            if let Some(pointer_pos) = ui.input().pointer.hover_pos() {
+            if let Some(pointer_pos) = pointer_pos {
                 if let Some(new_view_range) =
                     self.time_ranges_ui.zoom_at(pointer_pos.x, zoom_factor)
                 {
@@ -161,29 +190,27 @@ impl TimePanel {
         if response.double_clicked() {
             time_control.reset_time_view();
         }
-    }
 
-    fn click_to_select_time(
-        &mut self,
-        time_control: &mut TimeControl,
-        ui: &mut egui::Ui,
-        time_area_painter: &egui::Painter,
-        time_area: &Rect,
-    ) {
-        let pointer = ui.input().pointer.hover_pos();
+        // ------------------------------------------------
 
         let time_drag_id = ui.id().with("time_drag_id");
 
         let mut is_hovering = false;
         let mut is_dragging = ui.memory().is_being_dragged(time_drag_id);
 
+        if is_pointer_in_time_line_rect {
+            ui.output().cursor_icon = CursorIcon::ResizeHorizontal;
+        } else if is_pointer_in_time_area {
+            // ui.output().cursor_icon = CursorIcon::AllScroll; // looks ugly
+        }
+
         // show current time as a line:
         if let Some(time) = time_control.time() {
             if let Some(x) = self.time_ranges_ui.x_from_time(time) {
-                if let Some(pointer) = pointer {
-                    let line_rect = Rect::from_x_y_ranges(x..=x, time_area.y_range());
+                if let Some(pointer_pos) = pointer_pos {
+                    let line_rect = Rect::from_x_y_ranges(x..=x, full_rect.y_range());
 
-                    is_hovering = line_rect.distance_to_pos(pointer)
+                    is_hovering = line_rect.distance_to_pos(pointer_pos)
                         <= ui.style().interaction.resize_grab_radius_side;
 
                     if ui.input().pointer.any_pressed()
@@ -213,37 +240,38 @@ impl TimePanel {
 
                 let w = 10.0;
                 let triangle = vec![
-                    pos2(x - 0.5 * w, time_area.top()), // left top
-                    pos2(x + 0.5 * w, time_area.top()), // right top
-                    pos2(x, time_area.top() + w),       // bottom
+                    pos2(x - 0.5 * w, full_rect.top()), // left top
+                    pos2(x + 0.5 * w, full_rect.top()), // right top
+                    pos2(x, full_rect.top() + w),       // bottom
                 ];
                 time_area_painter.add(egui::Shape::convex_polygon(
                     triangle,
                     stroke.color,
                     egui::Stroke::none(),
                 ));
-                time_area_painter.vline(x, (time_area.top() + w)..=time_area.bottom(), stroke);
+                time_area_painter.vline(x, (full_rect.top() + w)..=full_rect.bottom(), stroke);
             }
         }
 
         // Show preview: "click here to view time here"
-        let pointer = ui.input().pointer.hover_pos();
-        if let Some(pointer) = pointer {
-            if !is_hovering && !is_dragging && time_area.contains(pointer) {
+        if let Some(pointer_pos) = pointer_pos {
+            if !is_hovering && !is_dragging && is_pointer_in_time_line_rect {
                 time_area_painter.vline(
-                    pointer.x,
-                    time_area.top()..=ui.max_rect().bottom(),
+                    pointer_pos.x,
+                    full_rect.top()..=ui.max_rect().bottom(),
                     ui.visuals().widgets.noninteractive.bg_stroke,
                 );
             }
 
-            if is_dragging || (ui.input().pointer.primary_down() && time_area.contains(pointer)) {
-                if let Some(time) = self.time_ranges_ui.time_from_x(pointer.x) {
+            if is_dragging || (ui.input().pointer.primary_down() && is_pointer_in_time_line_rect) {
+                if let Some(time) = self.time_ranges_ui.time_from_x(pointer_pos.x) {
                     time_control.set_time(time);
                     ui.memory().set_dragged_id(time_drag_id);
                 }
             }
         }
+
+        parent_scroll_delta
     }
 
     fn time_row_ui(
@@ -253,7 +281,7 @@ impl TimePanel {
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
         time_x_range: RangeInclusive<f32>,
-    ) {
+    ) -> egui::Rect {
         crate::profile_function!();
         let time_source_axes = TimeSourceAxes::new(&log_db.time_points);
         if let Some(time_source_axis) = time_source_axes.sources.get(context.time_control.source())
@@ -263,13 +291,14 @@ impl TimePanel {
                 time_view.unwrap_or_else(|| view_everything(&time_x_range, time_source_axis));
 
             self.time_ranges_ui =
-                TimeRangesUi::new(time_x_range, time_view, &time_source_axis.ranges);
+                TimeRangesUi::new(time_x_range.clone(), time_view, &time_source_axis.ranges);
         } else {
             self.time_ranges_ui = Default::default();
         }
 
         let y_range = self.time_source_ui(log_db, context, ui).rect.y_range();
-        self.time_axis_ui(ui, time_area_painter, y_range);
+        self.time_axis_ui(ui, time_area_painter, y_range.clone());
+        Rect::from_x_y_ranges(time_x_range, y_range)
     }
 
     fn time_source_ui(
