@@ -117,6 +117,11 @@ impl TimePanel {
                 self.tree_ui(log_db, context, &lower_time_area_painter, ui);
             });
 
+        // TODO: fix problem of the fade covering the hlines. Need Shape Z values!
+        if true {
+            fade_sides(ui, time_area);
+        }
+
         if let Some(time) = context.time_control.time() {
             // so time doesn't get stuck between non-continuos regions
             let time = self.time_ranges_ui.snap_time(time);
@@ -561,6 +566,9 @@ impl TimePanel {
 
 // ----------------------------------------------------------------------------
 
+/// How much space on side of the data in the defaut view.
+const SIDE_MARGIN: f32 = 8.0;
+
 /// Sze of the gap between time segments.
 fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
     let max_gap = 16.0;
@@ -591,7 +599,7 @@ fn view_everything(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceA
     let time_spanned = time_source_axis.sum_time_span() * factor as f64;
 
     // Leave some room on the margins:
-    let time_margin = time_spanned * 8.0 / width.at_least(64.0) as f64;
+    let time_margin = time_spanned * (SIDE_MARGIN / width.at_least(64.0)) as f64;
     let min = min.add_offset_f64(-time_margin);
     let time_spanned = time_spanned + 2.0 * time_margin;
 
@@ -928,4 +936,56 @@ impl BallScatterer {
         }
         d2
     }
+}
+
+// ----------------------------------------------------------------------------
+
+/// fade left/right sides of time-area, because it looks nice:
+fn fade_sides(ui: &mut egui::Ui, time_area: Rect) {
+    let fade_width = SIDE_MARGIN - 1.0;
+
+    let base_rect = time_area.expand(0.5); // expand slightly to cover feathering.
+
+    let window_fill = ui.visuals().window_fill();
+    let mut left_rect = base_rect;
+
+    left_rect.set_right(left_rect.left() + fade_width);
+    ui.painter()
+        .add(fade_mesh(left_rect, [window_fill, Color32::TRANSPARENT]));
+
+    let mut right_rect = base_rect;
+    right_rect.set_left(right_rect.right() - fade_width);
+    ui.painter()
+        .add(fade_mesh(right_rect, [Color32::TRANSPARENT, window_fill]));
+}
+
+fn fade_mesh(rect: Rect, [left_color, right_color]: [Color32; 2]) -> egui::Mesh {
+    use egui::epaint::Vertex;
+    let mut mesh = egui::Mesh::default();
+
+    mesh.add_triangle(0, 1, 2);
+    mesh.add_triangle(2, 1, 3);
+
+    mesh.vertices.push(Vertex {
+        pos: rect.left_top(),
+        uv: egui::epaint::WHITE_UV,
+        color: left_color,
+    });
+    mesh.vertices.push(Vertex {
+        pos: rect.right_top(),
+        uv: egui::epaint::WHITE_UV,
+        color: right_color,
+    });
+    mesh.vertices.push(Vertex {
+        pos: rect.left_bottom(),
+        uv: egui::epaint::WHITE_UV,
+        color: left_color,
+    });
+    mesh.vertices.push(Vertex {
+        pos: rect.right_bottom(),
+        uv: egui::epaint::WHITE_UV,
+        color: right_color,
+    });
+
+    mesh
 }
