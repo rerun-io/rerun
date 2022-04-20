@@ -407,14 +407,14 @@ impl TimeControl {
             return false;
         }
 
-        if self.looped && self.selection_type == TimeSelectionType::Loop {
-            if let Some(range) = self.time_selection() {
-                return range.contains(needle);
+        if let Some(state) = self.states.get(&self.time_source) {
+            if self.selection_type == TimeSelectionType::Filter {
+                if let Some(range) = state.selection {
+                    return range.contains(needle);
+                }
             }
-        }
 
-        if let Some(current_time) = self.time() {
-            current_time == needle
+            state.time == needle
         } else {
             false
         }
