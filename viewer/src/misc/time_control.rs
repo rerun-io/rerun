@@ -181,6 +181,7 @@ impl TimeControl {
                 .clicked()
             {
                 self.selection_type = TimeSelectionType::Filter;
+                self.pause();
             }
         });
     }
@@ -224,12 +225,12 @@ impl TimeControl {
                 .clicked()
             {
                 self.looped = !self.looped;
-
-                if !self.looped && self.selection_type == TimeSelectionType::Loop {
-                    self.selection_type = TimeSelectionType::None;
-                }
             }
         });
+
+        if !self.looped && self.selection_type == TimeSelectionType::Loop {
+            self.selection_type = TimeSelectionType::None;
+        }
 
         let drag_speed = self.speed * 0.05;
         ui.add(

@@ -573,11 +573,14 @@ fn time_selection_ui(
             // Check for interaction:
             if let Some(pointer_pos) = pointer_pos {
                 if rect.expand(interact_radius).contains(pointer_pos) {
+                    let center_dist = (pointer_pos.x - rect.center().x).abs(); // make sure we can always move even small rects
                     let left_dist = (pointer_pos.x - min_x).abs();
                     let right_dist = (pointer_pos.x - max_x).abs();
 
-                    let hovering_left = left_dist < right_dist && left_dist <= interact_radius;
-                    let hovering_right = !hovering_left && right_dist <= interact_radius;
+                    let hovering_left =
+                        left_dist < center_dist.min(right_dist).min(interact_radius);
+                    let hovering_right =
+                        !hovering_left && right_dist <= interact_radius.min(center_dist);
                     let hovering_move = !hovering_left
                         && !hovering_right
                         && (min_x <= pointer_pos.x && pointer_pos.x <= max_x);
