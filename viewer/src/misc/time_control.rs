@@ -38,6 +38,17 @@ impl Default for TimeSelectionType {
     }
 }
 
+impl TimeSelectionType {
+    pub fn color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        use egui::Color32;
+        match self {
+            TimeSelectionType::None => Color32::GRAY,
+            TimeSelectionType::Loop => Color32::from_rgb(50, 220, 140),
+            TimeSelectionType::Filter => visuals.selection.bg_fill, // it is a form of selection, so let's be consistent
+        }
+    }
+}
+
 /// State per time source.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 struct TimeState {
@@ -142,28 +153,36 @@ impl TimeControl {
             self.selection_type = TimeSelectionType::None;
         }
 
-        if ui
-            .add_enabled(
-                has_selection,
-                SelectableLabel::new(self.selection_type == TimeSelectionType::Loop, "🔁"),
-            )
-            .on_hover_text("Loop in selection")
-            .clicked()
-        {
-            self.selection_type = TimeSelectionType::Loop;
-            self.looped = true;
-        }
+        ui.scope(|ui| {
+            ui.visuals_mut().selection.bg_fill = TimeSelectionType::Loop.color(ui.visuals());
 
-        if ui
-            .add_enabled(
-                has_selection,
-                SelectableLabel::new(self.selection_type == TimeSelectionType::Filter, "⬌"),
-            )
-            .on_hover_text("Show everything in selection")
-            .clicked()
-        {
-            self.selection_type = TimeSelectionType::Filter;
-        }
+            if ui
+                .add_enabled(
+                    has_selection,
+                    SelectableLabel::new(self.selection_type == TimeSelectionType::Loop, "🔁"),
+                )
+                .on_hover_text("Loop in selection")
+                .clicked()
+            {
+                self.selection_type = TimeSelectionType::Loop;
+                self.looped = true;
+            }
+        });
+
+        ui.scope(|ui| {
+            ui.visuals_mut().selection.bg_fill = TimeSelectionType::Filter.color(ui.visuals());
+
+            if ui
+                .add_enabled(
+                    has_selection,
+                    SelectableLabel::new(self.selection_type == TimeSelectionType::Filter, "⬌"),
+                )
+                .on_hover_text("Show everything in selection")
+                .clicked()
+            {
+                self.selection_type = TimeSelectionType::Filter;
+            }
+        });
     }
 
     pub fn play_pause_ui(&mut self, time_points: &TimePoints, ui: &mut egui::Ui) {
@@ -195,17 +214,22 @@ impl TimeControl {
         {
             self.playing = false;
         }
-        if ui
-            .selectable_label(self.looped, "🔁")
-            .on_hover_text("Loop playback")
-            .clicked()
-        {
-            self.looped = !self.looped;
 
-            if !self.looped && self.selection_type == TimeSelectionType::Loop {
-                self.selection_type = TimeSelectionType::None;
+        ui.scope(|ui| {
+            ui.visuals_mut().selection.bg_fill = TimeSelectionType::Loop.color(ui.visuals());
+
+            if ui
+                .selectable_label(self.looped, "🔁")
+                .on_hover_text("Loop playback")
+                .clicked()
+            {
+                self.looped = !self.looped;
+
+                if !self.looped && self.selection_type == TimeSelectionType::Loop {
+                    self.selection_type = TimeSelectionType::None;
+                }
             }
-        }
+        });
 
         let drag_speed = self.speed * 0.05;
         ui.add(

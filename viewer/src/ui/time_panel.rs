@@ -11,8 +11,6 @@ use eframe::egui;
 use egui::*;
 use log_types::*;
 
-const TIME_SELECTION_COLOR: Color32 = Color32::from_rgb(250, 90, 30);
-
 /// A panel that shows objects to the left, time on the top.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -502,6 +500,8 @@ fn time_selection_ui(
         time_control.selection_type = TimeSelectionType::None;
     }
 
+    let selection_color = time_control.selection_type.color(ui.visuals());
+
     let mut did_interact = false;
 
     let is_active = time_control.selection_type != TimeSelectionType::None;
@@ -536,7 +536,7 @@ fn time_selection_ui(
             let full_y_range = rect.top()..=time_area_painter.clip_rect().bottom();
 
             if is_active {
-                let bg_color = TIME_SELECTION_COLOR.linear_multiply(if ui.visuals().dark_mode {
+                let bg_color = selection_color.linear_multiply(if ui.visuals().dark_mode {
                     0.05
                 } else {
                     0.3
@@ -549,9 +549,9 @@ fn time_selection_ui(
             }
 
             let main_color = if is_active {
-                TIME_SELECTION_COLOR
+                selection_color
             } else {
-                TIME_SELECTION_COLOR.linear_multiply(0.5)
+                selection_color.linear_multiply(0.5)
             };
             time_area_painter.rect_filled(rect, 1.0, main_color);
 
