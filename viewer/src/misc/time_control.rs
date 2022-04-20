@@ -136,7 +136,7 @@ impl TimeControl {
                 self.selection_type == TimeSelectionType::None || !has_selection,
                 "None",
             ))
-            .on_hover_text("No selection")
+            .on_hover_text("Disable selection")
             .clicked()
         {
             self.selection_type = TimeSelectionType::None;
@@ -159,7 +159,7 @@ impl TimeControl {
                 has_selection,
                 SelectableLabel::new(self.selection_type == TimeSelectionType::Filter, "⬌"),
             )
-            .on_hover_text("Filter")
+            .on_hover_text("Show everything in selection")
             .clicked()
         {
             self.selection_type = TimeSelectionType::Filter;
@@ -183,19 +183,23 @@ impl TimeControl {
 
         if ui
             .selectable_label(self.playing, "▶")
-            .on_hover_text("Toggle with SPACE")
+            .on_hover_text("Play. Toggle with SPACE")
             .clicked()
         {
             self.play(time_points);
         }
         if ui
             .selectable_label(!self.playing, "⏸")
-            .on_hover_text("Toggle with SPACE")
+            .on_hover_text("Pause. Toggle with SPACE")
             .clicked()
         {
             self.playing = false;
         }
-        if ui.selectable_label(self.looped, "🔁").clicked() {
+        if ui
+            .selectable_label(self.looped, "🔁")
+            .on_hover_text("Loop playback")
+            .clicked()
+        {
             self.looped = !self.looped;
         }
 
@@ -349,22 +353,25 @@ impl TimeControl {
         self.playing = false;
     }
 
-    /// Grouped by [`ObjectPath`], find the latest [`LogMsg`] that matches
-    /// the current time source and is not after the current time.
-    pub fn latest_of_each_object<'db>(
-        &self,
-        log_db: &'db crate::log_db::LogDb,
-    ) -> Vec<&'db LogMsg> {
+    /// Return the messages that should be visible at this time.
+    ///
+    /// This is either based on a time selection, or it is the latest message at the current time.
+    pub fn selected_messages<'db>(&self, log_db: &'db crate::log_db::LogDb) -> Vec<&'db LogMsg> {
         crate::profile_function!();
 
-        let current_time = if let Some(current_time) = self.time() {
-            current_time
+        let state = if let Some(state) = self.states.get(&self.time_source) {
+            state
         } else {
             return Default::default();
         };
-        let source = self.source();
 
-        log_db.latest_of_each_object(source, current_time)
+        if let Some(range) = state.selection {
+            if self.selection_type == TimeSelectionType::Filter {
+                return log_db.messages_in_range(self.source(), range);
+            }
+        }
+
+        log_db.latest_of_each_object(self.source(), state.time)
     }
 }
 

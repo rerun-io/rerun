@@ -9,6 +9,8 @@ pub(crate) struct ContextPanel {}
 
 impl ContextPanel {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+        crate::profile_function!();
+
         ui.heading("Selection");
         ui.separator();
 
@@ -36,7 +38,7 @@ impl ContextPanel {
                 ui.small("Showing latest versions of each object.")
                     .on_hover_text("Latest by the current time, that is");
                 egui::ScrollArea::horizontal().show(ui, |ui| {
-                    let mut messages = context.time_control.latest_of_each_object(log_db);
+                    let mut messages = context.time_control.selected_messages(log_db);
                     messages.retain(|msg| msg.space.as_ref() == Some(&space));
                     crate::log_table_view::message_table(log_db, context, ui, &messages);
                 });
@@ -56,7 +58,7 @@ impl ContextPanel {
 
         ui.separator();
 
-        let messages = context.time_control.latest_of_each_object(log_db);
+        let messages = context.time_control.selected_messages(log_db);
 
         let mut parent_path = msg.object_path.0.clone();
         parent_path.pop();

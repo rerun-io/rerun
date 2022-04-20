@@ -3,6 +3,8 @@ use eframe::egui;
 use log_types::*;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
+use super::time_axis::TimeRange;
+
 #[derive(Default)]
 pub(crate) struct LogDb {
     /// Messages in the order they arrived
@@ -96,6 +98,18 @@ impl LogDb {
             .collect()
     }
 
+    /// All messages in the range, plus the last one before the range.
+    ///
+    /// This last addition is so that we get "static" assets too. We should maybe have a nicer way to accomplish this.
+    pub fn messages_in_range(&self, time_source: &str, range: TimeRange) -> Vec<&LogMsg> {
+        crate::profile_function!();
+        let mut ids = vec![];
+        for history in self.object_history.values() {
+            history.collect_in_range(time_source, range, &mut ids);
+        }
+        ids.into_iter().filter_map(|id| self.get_msg(&id)).collect()
+    }
+
     pub fn latest(
         &self,
         time_source: &str,
@@ -143,6 +157,22 @@ impl ObjectHistory {
             .1
             .last()
             .copied()
+    }
+
+    /// All messages in the range, plus the last one before the range.
+    ///
+    /// This last addition is so that we get "static" assets too. We should maybe have a nicer way to accomplish this.
+    fn collect_in_range(&self, time_source: &str, range: TimeRange, out: &mut Vec<LogId>) {
+        if let Some(map) = self.0.get(time_source) {
+            for (time, ids) in map.range(..=range.max).rev() {
+                if time < &range.min {
+                    out.push(*ids.last().unwrap());
+                    break;
+                } else {
+                    out.extend(ids.iter().copied());
+                }
+            }
+        }
     }
 }
 

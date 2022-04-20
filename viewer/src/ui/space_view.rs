@@ -191,6 +191,8 @@ impl SpaceView {
         space: &ObjectPath,
         ui: &mut egui::Ui,
     ) {
+        crate::profile_function!(&space.to_string());
+
         let space_summary = if let Some(space_summary) = log_db.spaces.get(space) {
             space_summary
         } else {
@@ -203,8 +205,8 @@ impl SpaceView {
         //     space_summary.messages.len()
         // ));
 
-        let latest = context.time_control.latest_of_each_object(log_db);
-        if latest.is_empty() {
+        let messages = context.time_control.selected_messages(log_db);
+        if messages.is_empty() {
             return;
         }
 
@@ -215,10 +217,10 @@ impl SpaceView {
             &mut self.state_3d,
             space,
             space_summary,
-            &latest,
+            &messages,
         );
 
-        crate::view_2d::combined_view_2d(log_db, context, ui, space, space_summary, latest);
+        crate::view_2d::combined_view_2d(log_db, context, ui, space, space_summary, messages);
     }
 }
 
