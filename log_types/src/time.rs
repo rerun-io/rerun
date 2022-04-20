@@ -118,22 +118,8 @@ impl Duration {
     pub fn as_secs_f64(&self) -> f64 {
         self.0 as f64 * 1e-9
     }
-}
 
-impl std::ops::Neg for Duration {
-    type Output = Duration;
-    fn neg(self) -> Duration {
-        // Handle negation without overflow:
-        if self.0 == std::i64::MIN {
-            Duration(std::i64::MAX)
-        } else {
-            Duration(-self.0)
-        }
-    }
-}
-
-impl std::fmt::Display for Duration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub fn exact_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         const NANOS_PER_SEC: i64 = 1_000_000_000;
         const SEC_PER_MINUTE: i64 = 60;
         const SEC_PER_HOUR: i64 = 60 * SEC_PER_MINUTE;
@@ -180,7 +166,8 @@ impl std::fmt::Display for Duration {
             did_write = true;
         }
 
-        const MAX_MILLISECOND_ACCURACY: bool = true;
+        const MAX_MILLISECOND_ACCURACY: bool = false;
+        const MAX_MICROSECOND_ACCURACY: bool = true;
 
         if seconds_remaining > 0 || nanos > 0 || !did_write {
             if did_write {
@@ -191,7 +178,7 @@ impl std::fmt::Display for Duration {
                 write!(f, "{}s", seconds_remaining)?;
             } else if MAX_MILLISECOND_ACCURACY || nanos % 1_000_000 == 0 {
                 write!(f, "{}.{:03}s", seconds_remaining, nanos / 1_000_000)?;
-            } else if nanos % 1_000 == 0 {
+            } else if MAX_MICROSECOND_ACCURACY || nanos % 1_000 == 0 {
                 write!(f, "{}.{:06}s", seconds_remaining, nanos / 1_000)?;
             } else {
                 write!(f, "{}.{:09}s", seconds_remaining, nanos)?;
@@ -199,5 +186,23 @@ impl std::fmt::Display for Duration {
         }
 
         Ok(())
+    }
+}
+
+impl std::ops::Neg for Duration {
+    type Output = Duration;
+    fn neg(self) -> Duration {
+        // Handle negation without overflow:
+        if self.0 == std::i64::MIN {
+            Duration(std::i64::MAX)
+        } else {
+            Duration(-self.0)
+        }
+    }
+}
+
+impl std::fmt::Display for Duration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.exact_format(f)
     }
 }

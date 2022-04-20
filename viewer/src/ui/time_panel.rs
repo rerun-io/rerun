@@ -220,7 +220,7 @@ impl TimePanel {
         ui: &mut egui::Ui,
         time_area_painter: &egui::Painter,
         rect: &Rect,
-    ) {
+    ) -> Option<()> {
         if time_control.time_selection().is_none() {
             time_control.selection_type = TimeSelectionType::None;
         }
@@ -348,9 +348,20 @@ impl TimePanel {
         // Resize/move (interact)
         if let Some(pointer_pos) = pointer_pos {
             if let Some(mut selected_range) = time_control.time_selection() {
+                // Use "smart_aim" to find a natural length of the time interval
+                let aim_radius = ui.input().aim_radius();
+                use egui::emath::smart_aim::best_in_range_f64;
+
                 if ui.memory().is_being_dragged(left_edge_id) {
-                    if let Some(time) = self.time_ranges_ui.time_from_x(pointer_pos.x) {
-                        selected_range.min = time;
+                    if let (Some(time_low), Some(time_high)) = (
+                        self.time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
+                        self.time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
+                    ) {
+                        let low_span = TimeRange::new(time_low, selected_range.max).span()?;
+                        let high_span = TimeRange::new(time_high, selected_range.max).span()?;
+                        let best_span = best_in_range_f64(low_span, high_span);
+
+                        selected_range.min = selected_range.max.add_offset_f64(-best_span);
 
                         if selected_range.min > selected_range.max {
                             std::mem::swap(&mut selected_range.min, &mut selected_range.max);
@@ -363,8 +374,15 @@ impl TimePanel {
                 }
 
                 if ui.memory().is_being_dragged(right_edge_id) {
-                    if let Some(time) = self.time_ranges_ui.time_from_x(pointer_pos.x) {
-                        selected_range.max = time;
+                    if let (Some(time_low), Some(time_high)) = (
+                        self.time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
+                        self.time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
+                    ) {
+                        let low_span = TimeRange::new(selected_range.min, time_low).span()?;
+                        let high_span = TimeRange::new(selected_range.min, time_high).span()?;
+                        let best_span = best_in_range_f64(low_span, high_span);
+
+                        selected_range.max = selected_range.min.add_offset_f64(best_span);
 
                         if selected_range.min > selected_range.max {
                             std::mem::swap(&mut selected_range.min, &mut selected_range.max);
@@ -416,6 +434,8 @@ impl TimePanel {
         if did_interact && time_control.selection_type == TimeSelectionType::Filter {
             time_control.pause();
         }
+
+        Some(())
     }
 
     fn time_marker_ui(
