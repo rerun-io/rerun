@@ -229,6 +229,8 @@ impl TimePanel {
             time_control.selection_type = TimeSelectionType::None;
         }
 
+        let mut did_interact = false;
+
         let is_active = time_control.selection_type != TimeSelectionType::None;
 
         let pointer_pos = ui.input().pointer.hover_pos();
@@ -263,7 +265,7 @@ impl TimePanel {
 
                 if is_active {
                     let bg_color = TIME_SELECTION_COLOR
-                        .linear_multiply(if ui.visuals().dark_mode { 0.15 } else { 0.3 });
+                        .linear_multiply(if ui.visuals().dark_mode { 0.05 } else { 0.3 });
                     time_area_painter.rect_filled(
                         Rect::from_x_y_ranges(rect.x_range(), full_y_range),
                         1.0,
@@ -326,6 +328,7 @@ impl TimePanel {
             {
                 if let Some(time) = self.time_ranges_ui.time_from_x(pointer_pos.x) {
                     time_control.set_time_selection(TimeRange::point(time));
+                    did_interact = true;
                     ui.memory().set_dragged_id(right_edge_id);
                 }
             }
@@ -344,6 +347,7 @@ impl TimePanel {
                         }
 
                         time_control.set_time_selection(selected_range);
+                        did_interact = true;
                     }
                 }
 
@@ -357,6 +361,7 @@ impl TimePanel {
                         }
 
                         time_control.set_time_selection(selected_range);
+                        did_interact = true;
                     }
                 }
 
@@ -372,6 +377,7 @@ impl TimePanel {
                         let max_time = self.time_ranges_ui.time_from_x(max_x)?;
 
                         time_control.set_time_selection(TimeRange::new(min_time, max_time));
+                        did_interact = true;
                         Some(())
                     })();
                 }
@@ -386,6 +392,10 @@ impl TimePanel {
         }
         if ui.memory().is_being_dragged(move_id) {
             ui.output().cursor_icon = CursorIcon::Move;
+        }
+
+        if did_interact && time_control.selection_type == TimeSelectionType::None {
+            time_control.selection_type = TimeSelectionType::Loop;
         }
     }
 

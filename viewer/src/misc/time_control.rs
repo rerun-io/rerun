@@ -214,13 +214,15 @@ impl TimeControl {
         self.select_a_valid_time_source(time_points);
 
         if self.playing {
-            if let Some(axis) = time_points.0.get(&self.time_source) {
-                let (axis_min, axis_max) = (min(axis), max(axis));
-
+            if let Some(loop_range) = self.loop_range(time_points) {
                 let state = self
                     .states
                     .entry(self.time_source.clone())
-                    .or_insert_with(|| TimeState::new(axis_min));
+                    .or_insert_with(|| TimeState::new(loop_range.min));
+
+                if self.looped {
+                    state.time = state.time.max(loop_range.min);
+                }
 
                 match &mut state.time {
                     TimeValue::Sequence(seq) => {
@@ -232,11 +234,11 @@ impl TimeControl {
                     }
                 }
 
-                if state.time > axis_max {
+                if state.time > loop_range.max {
                     if self.looped {
-                        state.time = axis_min;
+                        state.time = loop_range.min;
                     } else {
-                        state.time = axis_max;
+                        state.time = loop_range.max;
                         self.playing = false;
                     }
                 }
@@ -244,6 +246,16 @@ impl TimeControl {
                 egui_ctx.request_repaint();
             }
         }
+    }
+
+    fn loop_range(&self, time_points: &TimePoints) -> Option<TimeRange> {
+        if self.looped && self.selection_type == TimeSelectionType::Loop {
+            if let Some(time_selection) = self.time_selection() {
+                return Some(time_selection);
+            }
+        }
+
+        time_points.0.get(&self.time_source).map(range)
     }
 
     fn play(&mut self, time_points: &TimePoints) {
@@ -362,4 +374,8 @@ fn min(values: &std::collections::BTreeSet<TimeValue>) -> TimeValue {
 
 fn max(values: &std::collections::BTreeSet<TimeValue>) -> TimeValue {
     *values.iter().rev().next().unwrap()
+}
+
+fn range(values: &std::collections::BTreeSet<TimeValue>) -> TimeRange {
+    TimeRange::new(min(values), max(values))
 }
