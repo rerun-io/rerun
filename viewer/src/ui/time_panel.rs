@@ -280,17 +280,19 @@ impl TimePanel {
                 };
                 time_area_painter.rect_filled(rect, 1.0, main_color);
 
-                let range_text = selected_range.format_size();
-                if !range_text.is_empty() {
-                    let font_id = egui::TextStyle::Body.resolve(ui.style());
-                    let text_color = ui.visuals().text_color();
-                    time_area_painter.text(
-                        rect.left_center(),
-                        Align2::LEFT_CENTER,
-                        range_text,
-                        font_id,
-                        text_color,
-                    );
+                if is_active {
+                    let range_text = selected_range.format_size();
+                    if !range_text.is_empty() {
+                        let font_id = egui::TextStyle::Body.resolve(ui.style());
+                        let text_color = ui.visuals().strong_text_color();
+                        time_area_painter.text(
+                            rect.left_center(),
+                            Align2::LEFT_CENTER,
+                            range_text,
+                            font_id,
+                            text_color,
+                        );
+                    }
                 }
 
                 // Check for interaction:
@@ -772,9 +774,13 @@ fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
             Press spacebar to pause/resume.",
                 );
 
-            if let Some(time) = context.time_control.time() {
+            if let Some(range) = context.time_control.time_range() {
                 ui.vertical_centered(|ui| {
-                    ui.monospace(time.to_string());
+                    if range.min == range.max {
+                        ui.monospace(range.min.to_string());
+                    } else {
+                        ui.monospace(format!("{} - {}", range.min, range.max));
+                    }
                 });
             }
         });

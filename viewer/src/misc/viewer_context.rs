@@ -1,5 +1,5 @@
 use eframe::egui;
-use log_types::{Data, LogId, ObjectPath, TimeValue};
+use log_types::{Data, LogId, LogMsg, ObjectPath, TimeValue};
 
 use crate::log_db::LogDb;
 
@@ -39,8 +39,7 @@ impl ViewerContext {
         time_source: &str,
         value: TimeValue,
     ) -> egui::Response {
-        let is_selected =
-            self.time_control.source() == time_source && self.time_control.time() == Some(value);
+        let is_selected = self.time_control.is_time_selected(time_source, value);
 
         let response = ui.selectable_label(is_selected, value.to_string());
         if response.clicked() {
@@ -52,10 +51,12 @@ impl ViewerContext {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn object_color(&self, log_db: &LogDb, path: &ObjectPath) -> egui::Color32 {
-        if let Some(time) = self.time_control.time() {
-            let color_path = path.sibling("color");
-            if let Some(color_msg) = log_db.latest(self.time_control.source(), time, &color_path) {
+    pub fn object_color(&self, log_db: &LogDb, msg: &LogMsg) -> egui::Color32 {
+        // Try to get the latest color at the time of the message:
+        let time_source = self.time_control.source();
+        if let Some(time) = msg.time_point.0.get(time_source) {
+            let color_path = msg.object_path.sibling("color");
+            if let Some(color_msg) = log_db.latest(time_source, *time, &color_path) {
                 if let Data::Color([r, g, b, a]) = &color_msg.data {
                     return egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
                 } else {
@@ -72,7 +73,7 @@ impl ViewerContext {
         use rand::{Rng, SeedableRng};
 
         // TODO: ignore `TempId` id:s!
-        let mut small_rng = SmallRng::seed_from_u64(egui::util::hash(path));
+        let mut small_rng = SmallRng::seed_from_u64(egui::util::hash(&msg.object_path));
 
         // TODO: OKLab
         let hsva = egui::color::Hsva {

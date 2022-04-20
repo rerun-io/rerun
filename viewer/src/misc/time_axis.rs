@@ -105,6 +105,11 @@ impl TimeRange {
         self.max = self.max.max(value);
     }
 
+    /// Inclusive
+    pub fn contains(&self, value: TimeValue) -> bool {
+        self.min <= value && value <= self.max
+    }
+
     /// Where in the range is this value? Returns 0-1 if within the range.
     /// Returns <0 if before, >1 if after, and `None` if the unit is wrong.
     pub fn lerp_t(&self, value: TimeValue) -> Option<f32> {

@@ -74,7 +74,7 @@ pub(crate) fn combined_view_2d(
         let fg_color = if is_hovered {
             Color32::WHITE
         } else {
-            context.object_color(log_db, &msg.object_path)
+            context.object_color(log_db, msg)
         };
         let stoke_width = if is_hovered { 2.5 } else { 1.5 };
 

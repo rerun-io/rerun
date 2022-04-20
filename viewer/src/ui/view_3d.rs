@@ -175,7 +175,7 @@ pub(crate) fn combined_view_3d(
             let color = if is_hovered {
                 Color32::WHITE
             } else {
-                context.object_color(log_db, &msg.object_path)
+                context.object_color(log_db, msg)
             };
 
             match &msg.data {

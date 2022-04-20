@@ -299,9 +299,44 @@ impl TimeControl {
         &self.time_source
     }
 
-    /// The current time
+    /// The current time. Note that this only makes sense if there is no time selection!
     pub fn time(&self) -> Option<TimeValue> {
+        if self.selection_type == TimeSelectionType::Filter {
+            return None; // no single time
+        }
+
         self.states.get(&self.time_source).map(|state| state.time)
+    }
+
+    /// The current viewed/selected time.
+    /// Returns a "point" range if we have no selection (normal play)
+    pub fn time_range(&self) -> Option<TimeRange> {
+        let state = self.states.get(&self.time_source)?;
+
+        if self.selection_type == TimeSelectionType::Filter {
+            state.selection
+        } else {
+            Some(TimeRange::point(state.time))
+        }
+    }
+
+    /// Is the current time in the selection range (if any), or at the current time mark?
+    pub fn is_time_selected(&self, time_source: &str, needle: TimeValue) -> bool {
+        if time_source != self.time_source {
+            return false;
+        }
+
+        if self.looped && self.selection_type == TimeSelectionType::Loop {
+            if let Some(range) = self.time_selection() {
+                return range.contains(needle);
+            }
+        }
+
+        if let Some(current_time) = self.time() {
+            current_time == needle
+        } else {
+            false
+        }
     }
 
     pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
@@ -310,6 +345,10 @@ impl TimeControl {
     }
 
     pub fn set_time(&mut self, time: TimeValue) {
+        if self.selection_type == TimeSelectionType::Filter {
+            self.selection_type = TimeSelectionType::None;
+        }
+
         self.states
             .entry(self.time_source.clone())
             .or_insert_with(|| TimeState::new(time))
