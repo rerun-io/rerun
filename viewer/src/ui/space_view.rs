@@ -227,14 +227,7 @@ impl SpaceView {
             messages,
         );
 
-        crate::view_2d::combined_view_2d(
-            log_db,
-            context,
-            ui,
-            space,
-            space_summary,
-            messages.to_vec(),
-        );
+        crate::view_2d::combined_view_2d(log_db, context, ui, space, space_summary, messages);
     }
 }
 
