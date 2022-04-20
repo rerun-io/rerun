@@ -326,7 +326,13 @@ fn with_three_d_context<R>(
 
 struct RenderingContext {
     three_d: three_d::Context,
+
     mesh_cache: MeshCache,
+
+    sphere_mesh: three_d::CpuMesh,
+
+    /// So we don't need to re-allocate them.
+    points_cache: Vec<three_d::Model<three_d::PhysicalMaterial>>,
 }
 
 impl RenderingContext {
@@ -335,8 +341,44 @@ impl RenderingContext {
 
         Ok(Self {
             three_d,
+            sphere_mesh: three_d::CpuMesh::sphere(24),
             mesh_cache: Default::default(),
+            points_cache: Default::default(),
         })
+    }
+
+    pub fn allocate_points(
+        &mut self,
+        render_states: three_d::RenderStates,
+        points: &[Point],
+    ) -> &[three_d::Model<three_d::PhysicalMaterial>] {
+        crate::profile_function!();
+        use three_d::*;
+
+        if self.points_cache.len() < points.len() {
+            self.points_cache.resize_with(points.len(), || {
+                let material = PhysicalMaterial {
+                    roughness: 1.0,
+                    metallic: 0.0,
+                    lighting_model: LightingModel::Cook(
+                        NormalDistributionFunction::TrowbridgeReitzGGX,
+                        GeometryFunction::SmithSchlickGGX,
+                    ),
+                    render_states,
+                    ..Default::default()
+                };
+                Model::new_with_material(&self.three_d, &self.sphere_mesh, material).unwrap()
+            });
+        }
+
+        for (point, model) in points.iter().zip(&mut self.points_cache) {
+            let [x, y, z] = point.pos;
+            let pos = vec3(x, y, z);
+            model.material.albedo = color_to_three_d(point.color);
+            model.set_transformation(Mat4::from_translation(pos) * Mat4::from_scale(point.radius));
+        }
+
+        &self.points_cache[..points.len()]
     }
 }
 
@@ -427,18 +469,12 @@ fn paint_with_three_d(
         meshes,
     } = scene;
 
-    let sphere_mesh = CpuMesh::sphere(32);
-    let points: Vec<_> = points
-        .iter()
-        .map(|point| point_to_three_d(three_d, render_states, &sphere_mesh, point))
-        .collect();
-
     let line_segments: Vec<_> = line_segments
         .iter()
         .map(|line_segments| line_segments_to_three_d(three_d, render_states, line_segments))
         .collect();
 
-    // TODO: set render_states for the meshes, or wait for https://github.com/asny/three-d/issues/233 to be merged
+    // TODO: set render_states for the meshes, or wait for https://github.com/asny/three-d/issues/233 to be solved
     let meshes: Vec<Rc<GpuMesh>> = meshes
         .iter()
         .filter_map(|(log_id, obj_path, mesh)| {
@@ -447,9 +483,6 @@ fn paint_with_three_d(
         .collect();
 
     let mut objects: Vec<&dyn Object> = vec![];
-    for obj in &points {
-        objects.push(obj);
-    }
     for obj in &line_segments {
         objects.push(obj);
     }
@@ -458,47 +491,14 @@ fn paint_with_three_d(
             objects.push(obj);
         }
     }
+    for obj in rendering.allocate_points(render_states, points) {
+        objects.push(obj);
+    }
 
     crate::profile_scope!("render_pass");
     render_pass(&camera, &objects, lights)?;
 
     Ok(())
-}
-
-fn point_to_three_d(
-    three_d: &three_d::Context,
-    render_states: three_d::RenderStates,
-    sphere_mesh: &three_d::CpuMesh,
-    point: &Point,
-) -> three_d::Model<three_d::PhysicalMaterial> {
-    crate::profile_function!();
-    use three_d::*;
-
-    let [x, y, z] = point.pos;
-    let pos = vec3(x, y, z);
-
-    let color = color_to_three_d(point.color);
-
-    let material = PhysicalMaterial {
-        albedo: color,
-        roughness: 1.0,
-        metallic: 0.0,
-        lighting_model: LightingModel::Cook(
-            NormalDistributionFunction::TrowbridgeReitzGGX,
-            GeometryFunction::SmithSchlickGGX,
-        ),
-        render_states,
-        ..Default::default()
-    };
-
-    // let material = ColorMaterial {
-    //     color,
-    //     ..Default::default()
-    // };
-
-    let mut model = Model::new_with_material(three_d, sphere_mesh, material).unwrap();
-    model.set_transformation(Mat4::from_translation(pos) * Mat4::from_scale(point.radius));
-    model
 }
 
 fn line_segments_to_three_d(
