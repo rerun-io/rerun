@@ -274,12 +274,11 @@ impl TimePanel {
                 .text_color()
                 .linear_multiply(0.75);
 
-            let selected_time_range =
-                if context.time_control.selection_type == TimeSelectionType::None {
-                    None
-                } else {
-                    context.time_control.time_selection()
-                };
+            let selected_time_range = if !context.time_control.selection_active {
+                None
+            } else {
+                context.time_control.time_selection()
+            };
 
             for (time, log_id) in source {
                 if let Some(time) = time.0.get(context.time_control.source()).copied() {
@@ -575,7 +574,7 @@ fn time_selection_ui(
     }
 
     if time_control.time_selection().is_none() {
-        time_control.selection_type = TimeSelectionType::None;
+        time_control.selection_active = false;
     }
 
     // TODO: click to toggle on/off
@@ -585,7 +584,7 @@ fn time_selection_ui(
 
     let mut did_interact = false;
 
-    let is_active = time_control.selection_type != TimeSelectionType::None;
+    let is_active = time_control.selection_active;
 
     let pointer_pos = ui.input().pointer.hover_pos();
     let is_pointer_in_rect = pointer_pos.map_or(false, |pointer_pos| rect.contains(pointer_pos));
@@ -597,6 +596,8 @@ fn time_selection_ui(
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
     let mut is_hovering_existing = false;
+
+    let transparent = if ui.visuals().dark_mode { 0.06 } else { 0.3 };
 
     // Paint existing selection and detect drag starting and hovering:
     if let Some(selected_range) = time_control.time_selection() {
@@ -617,11 +618,7 @@ fn time_selection_ui(
             let full_y_range = rect.top()..=time_area_painter.clip_rect().bottom();
 
             if is_active {
-                let bg_color = selection_color.linear_multiply(if ui.visuals().dark_mode {
-                    0.05
-                } else {
-                    0.3
-                });
+                let bg_color = selection_color.linear_multiply(transparent);
                 time_area_painter.rect_filled(
                     Rect::from_x_y_ranges(rect.x_range(), full_y_range),
                     1.0,
@@ -629,7 +626,12 @@ fn time_selection_ui(
                 );
             }
 
-            time_area_painter.rect_filled(rect, 1.0, selection_color);
+            let main_color = if is_active {
+                selection_color
+            } else {
+                selection_color.linear_multiply(transparent)
+            };
+            time_area_painter.rect_filled(rect, 1.0, main_color);
 
             if is_active {
                 let range_text = selected_range.format_size();
@@ -792,10 +794,10 @@ fn time_selection_ui(
         ui.output().cursor_icon = CursorIcon::Move;
     }
 
-    if did_interact && time_control.selection_type == TimeSelectionType::None {
-        time_control.selection_type = TimeSelectionType::Loop;
+    if did_interact {
+        time_control.selection_active = true;
     }
-    if did_interact && time_control.selection_type == TimeSelectionType::Filter {
+    if did_interact && time_control.active_selection_type() == Some(TimeSelectionType::Filter) {
         time_control.pause();
     }
 

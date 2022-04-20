@@ -24,8 +24,6 @@ pub(crate) struct TimeView {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub(crate) enum TimeSelectionType {
-    // No time selection.
-    None,
     // The selection is for looping the play marker.
     Loop,
     // The selection is for viewing a bunch of data at once, replacing the play marker.
@@ -34,7 +32,7 @@ pub(crate) enum TimeSelectionType {
 
 impl Default for TimeSelectionType {
     fn default() -> Self {
-        Self::None
+        Self::Loop
     }
 }
 
@@ -42,7 +40,6 @@ impl TimeSelectionType {
     pub fn color(&self, visuals: &egui::Visuals) -> egui::Color32 {
         use egui::Color32;
         match self {
-            TimeSelectionType::None => visuals.widgets.inactive.bg_fill,
             TimeSelectionType::Loop => Color32::from_rgb(50, 220, 140),
             TimeSelectionType::Filter => visuals.selection.bg_fill, // it is a form of selection, so let's be consistent
         }
@@ -93,7 +90,9 @@ pub(crate) struct TimeControl {
     speed: f32,
 
     #[serde(default)]
-    pub selection_type: TimeSelectionType, // TODO: separate on/off from this so we remember the preferred type
+    pub selection_active: bool,
+    #[serde(default)]
+    pub selection_type: TimeSelectionType,
 }
 
 impl Default for TimeControl {
@@ -104,12 +103,35 @@ impl Default for TimeControl {
             playing: true,
             looped: true,
             speed: 1.0,
+            selection_active: false,
             selection_type: TimeSelectionType::default(),
         }
     }
 }
 
 impl TimeControl {
+    /// None when not active
+    pub fn active_selection_type(&self) -> Option<TimeSelectionType> {
+        self.selection_active.then(|| self.selection_type)
+    }
+
+    /// None when not active
+    pub fn set_active_selection_type(&mut self, typ: Option<TimeSelectionType>) {
+        match typ {
+            None => {
+                self.selection_active = false;
+            }
+            Some(typ) => {
+                self.selection_active = true;
+                self.selection_type = typ;
+            }
+        }
+    }
+
+    pub fn is_time_filter_active(&self) -> bool {
+        self.selection_active && self.selection_type == TimeSelectionType::Filter
+    }
+
     pub fn time_source_selector_ui(
         &mut self,
         time_source_axes: &TimePoints,
@@ -142,15 +164,16 @@ impl TimeControl {
             .get(&self.time_source)
             .map_or(false, |state| state.selection.is_some());
 
+        if !has_selection {
+            self.selection_active = false;
+        }
+
         if ui
-            .add(SelectableLabel::new(
-                self.selection_type == TimeSelectionType::None || !has_selection,
-                "None",
-            ))
+            .add(SelectableLabel::new(!self.selection_active, "None"))
             .on_hover_text("Disable selection")
             .clicked()
         {
-            self.selection_type = TimeSelectionType::None;
+            self.selection_active = false;
         }
 
         ui.scope(|ui| {
@@ -159,12 +182,15 @@ impl TimeControl {
             if ui
                 .add_enabled(
                     has_selection,
-                    SelectableLabel::new(self.selection_type == TimeSelectionType::Loop, "🔁"),
+                    SelectableLabel::new(
+                        self.selection_active && self.selection_type == TimeSelectionType::Loop,
+                        "🔁",
+                    ),
                 )
                 .on_hover_text("Loop in selection")
                 .clicked()
             {
-                self.selection_type = TimeSelectionType::Loop;
+                self.set_active_selection_type(Some(TimeSelectionType::Loop));
                 self.looped = true;
             }
         });
@@ -175,12 +201,15 @@ impl TimeControl {
             if ui
                 .add_enabled(
                     has_selection,
-                    SelectableLabel::new(self.selection_type == TimeSelectionType::Filter, "⬌"),
+                    SelectableLabel::new(
+                        self.selection_active && self.selection_type == TimeSelectionType::Filter,
+                        "⬌",
+                    ),
                 )
                 .on_hover_text("Show everything in selection")
                 .clicked()
             {
-                self.selection_type = TimeSelectionType::Filter;
+                self.set_active_selection_type(Some(TimeSelectionType::Filter));
                 self.pause();
             }
         });
@@ -229,7 +258,7 @@ impl TimeControl {
         });
 
         if !self.looped && self.selection_type == TimeSelectionType::Loop {
-            self.selection_type = TimeSelectionType::None;
+            self.selection_active = false;
         }
 
         let drag_speed = self.speed * 0.05;
@@ -256,6 +285,8 @@ impl TimeControl {
             return;
         };
 
+        let active_selection_type = self.active_selection_type();
+
         let state = self
             .states
             .entry(self.time_source.clone())
@@ -265,9 +296,9 @@ impl TimeControl {
 
         let dt = egui_ctx.input().unstable_dt.at_most(0.05);
 
-        if self.selection_type == TimeSelectionType::Filter {
+        if active_selection_type == Some(TimeSelectionType::Filter) {
             if let Some(time_selection) = state.selection {
-                // Move selection
+                // Move filter selection
 
                 let span = if let Some(span) = time_selection.span() {
                     span
@@ -311,7 +342,7 @@ impl TimeControl {
 
         // Normal time marker:
 
-        let loop_range = if self.looped && self.selection_type == TimeSelectionType::Loop {
+        let loop_range = if self.looped && active_selection_type == Some(TimeSelectionType::Loop) {
             state.selection.unwrap_or(full_range)
         } else {
             full_range
@@ -383,7 +414,7 @@ impl TimeControl {
 
     /// The current time. Note that this only makes sense if there is no time selection!
     pub fn time(&self) -> Option<TimeValue> {
-        if self.selection_type == TimeSelectionType::Filter {
+        if self.is_time_filter_active() {
             return None; // no single time
         }
 
@@ -395,7 +426,7 @@ impl TimeControl {
     pub fn time_range(&self) -> Option<TimeRange> {
         let state = self.states.get(&self.time_source)?;
 
-        if self.selection_type == TimeSelectionType::Filter {
+        if self.is_time_filter_active() {
             state.selection
         } else {
             Some(TimeRange::point(state.time))
@@ -409,7 +440,7 @@ impl TimeControl {
         }
 
         if let Some(state) = self.states.get(&self.time_source) {
-            if self.selection_type == TimeSelectionType::Filter {
+            if self.is_time_filter_active() {
                 if let Some(range) = state.selection {
                     return range.contains(needle);
                 }
@@ -427,8 +458,8 @@ impl TimeControl {
     }
 
     pub fn set_time(&mut self, time: TimeValue) {
-        if self.selection_type == TimeSelectionType::Filter {
-            self.selection_type = TimeSelectionType::None;
+        if self.is_time_filter_active() {
+            self.selection_active = false;
         }
 
         self.states
@@ -486,8 +517,8 @@ impl TimeControl {
             return Default::default();
         };
 
-        if let Some(range) = state.selection {
-            if self.selection_type == TimeSelectionType::Filter {
+        if self.is_time_filter_active() {
+            if let Some(range) = state.selection {
                 return log_db.messages_in_range(self.source(), range);
             }
         }
