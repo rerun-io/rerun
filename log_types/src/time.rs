@@ -166,7 +166,7 @@ impl Duration {
             did_write = true;
         }
 
-        const MAX_MILLISECOND_ACCURACY: bool = false;
+        const MAX_MILLISECOND_ACCURACY: bool = true;
         const MAX_MICROSECOND_ACCURACY: bool = true;
 
         if seconds_remaining > 0 || nanos > 0 || !did_write {

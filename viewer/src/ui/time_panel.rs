@@ -132,7 +132,7 @@ impl TimePanel {
                 self.tree_ui(log_db, context, &lower_time_area_painter, ui);
             });
 
-        // TODO: fix problem of the fade covering the hlines. Need Shape Z values!
+        // TODO: fix problem of the fade covering the hlines. Need Shape Z values! https://github.com/emilk/egui/issues/1516
         if true {
             fade_sides(ui, time_area);
         }
@@ -684,10 +684,16 @@ fn time_selection_ui(
                     let min_time = time_ranges_ui.time_from_x(min_x)?;
                     let max_time = time_ranges_ui.time_from_x(max_x)?;
 
-                    // TODO: maintain length of range? At least if very close?
-                    // let max_time = min_time.add_offset_f64(selected_range.span()?);
+                    let mut new_range = TimeRange::new(min_time, max_time);
 
-                    let new_range = TimeRange::new(min_time, max_time);
+                    if egui::emath::almost_equal(
+                        selected_range.span()? as _,
+                        new_range.span()? as _,
+                        1e-5,
+                    ) {
+                        // Avoid numerical inaccuracies: maintain length of range if very close
+                        new_range.max = new_range.min.add_offset_f64(selected_range.span()?);
+                    }
 
                     time_control.set_time_selection(new_range);
                     did_interact = true;
