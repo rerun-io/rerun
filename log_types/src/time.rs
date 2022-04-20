@@ -44,7 +44,7 @@ impl Time {
         } else {
             let secs = nanos_since_epoch as f64 * 1e-9;
             // assume relative time
-            format!("+{:.03}s", secs)
+            format!("{:+.03}s", secs)
         }
     }
 

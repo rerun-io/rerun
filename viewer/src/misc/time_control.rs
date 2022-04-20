@@ -42,7 +42,7 @@ impl TimeSelectionType {
     pub fn color(&self, visuals: &egui::Visuals) -> egui::Color32 {
         use egui::Color32;
         match self {
-            TimeSelectionType::None => Color32::GRAY,
+            TimeSelectionType::None => visuals.widgets.inactive.bg_fill,
             TimeSelectionType::Loop => Color32::from_rgb(50, 220, 140),
             TimeSelectionType::Filter => visuals.selection.bg_fill, // it is a form of selection, so let's be consistent
         }
@@ -93,7 +93,7 @@ pub(crate) struct TimeControl {
     speed: f32,
 
     #[serde(default)]
-    pub selection_type: TimeSelectionType,
+    pub selection_type: TimeSelectionType, // TODO: separate on/off from this so we remember the preferred type
 }
 
 impl Default for TimeControl {
@@ -390,7 +390,7 @@ impl TimeControl {
         self.states.get(&self.time_source).map(|state| state.time)
     }
 
-    /// The current viewed/selected time.
+    /// The current filtered time.
     /// Returns a "point" range if we have no selection (normal play)
     pub fn time_range(&self) -> Option<TimeRange> {
         let state = self.states.get(&self.time_source)?;
