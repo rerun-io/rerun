@@ -280,6 +280,19 @@ impl TimePanel {
                 };
                 time_area_painter.rect_filled(rect, 1.0, main_color);
 
+                let range_text = selected_range.format_size();
+                if !range_text.is_empty() {
+                    let font_id = egui::TextStyle::Body.resolve(ui.style());
+                    let text_color = ui.visuals().text_color();
+                    time_area_painter.text(
+                        rect.left_center(),
+                        Align2::LEFT_CENTER,
+                        range_text,
+                        font_id,
+                        text_color,
+                    );
+                }
+
                 // Check for interaction:
                 if let Some(pointer_pos) = pointer_pos {
                     if rect.expand(interact_radius).contains(pointer_pos) {
