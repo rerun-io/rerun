@@ -691,7 +691,7 @@ fn time_selection_ui(
                         new_range.span()? as _,
                         1e-5,
                     ) {
-                        // Avoid numerical inaccuracies: maintain length of range if very close
+                        // Avoid numerical inaccuracies: maintain length if very close
                         new_range.max = new_range.min.add_offset_f64(selected_range.span()?);
                     }
 

@@ -20,6 +20,11 @@ impl SpaceView {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
         crate::profile_function!();
 
+        let messages = context.time_control.selected_messages(log_db);
+        if messages.is_empty() {
+            return;
+        }
+
         ui.small("Showing latest versions of each object.")
             .on_hover_text("Latest by the current time, that is");
 
@@ -31,13 +36,19 @@ impl SpaceView {
                 }
                 context.space_button(ui, &selected_space);
             });
-            self.show_space(log_db, context, &selected_space, ui);
+            self.show_space(log_db, &messages, context, &selected_space, ui);
         } else {
-            self.show_all(log_db, context, ui);
+            self.show_all(log_db, &messages, context, ui);
         }
     }
 
-    fn show_all(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+    fn show_all(
+        &mut self,
+        log_db: &LogDb,
+        messages: &[&LogMsg],
+        context: &mut ViewerContext,
+        ui: &mut egui::Ui,
+    ) {
         let spaces = log_db
             .spaces
             .iter()
@@ -56,7 +67,7 @@ impl SpaceView {
                 .show(&mut ui, |ui| {
                     ui.vertical_centered(|ui| {
                         context.space_button(ui, space);
-                        self.show_space(log_db, context, &space.clone(), ui);
+                        self.show_space(log_db, messages, context, &space.clone(), ui);
                         ui.allocate_space(ui.available_size());
                     });
                 });
@@ -187,6 +198,7 @@ impl SpaceView {
     fn show_space(
         &mut self,
         log_db: &LogDb,
+        messages: &[&LogMsg],
         context: &mut ViewerContext,
         space: &ObjectPath,
         ui: &mut egui::Ui,
@@ -205,11 +217,6 @@ impl SpaceView {
         //     space_summary.messages.len()
         // ));
 
-        let messages = context.time_control.selected_messages(log_db);
-        if messages.is_empty() {
-            return;
-        }
-
         crate::view_3d::combined_view_3d(
             log_db,
             context,
@@ -217,10 +224,17 @@ impl SpaceView {
             &mut self.state_3d,
             space,
             space_summary,
-            &messages,
+            messages,
         );
 
-        crate::view_2d::combined_view_2d(log_db, context, ui, space, space_summary, messages);
+        crate::view_2d::combined_view_2d(
+            log_db,
+            context,
+            ui,
+            space,
+            space_summary,
+            messages.to_vec(),
+        );
     }
 }
 
