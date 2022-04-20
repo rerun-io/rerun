@@ -201,6 +201,10 @@ impl TimeControl {
             .clicked()
         {
             self.looped = !self.looped;
+
+            if !self.looped && self.selection_type == TimeSelectionType::Loop {
+                self.selection_type = TimeSelectionType::None;
+            }
         }
 
         let drag_speed = self.speed * 0.05;
@@ -217,49 +221,98 @@ impl TimeControl {
     pub fn move_time(&mut self, egui_ctx: &egui::Context, time_points: &TimePoints) {
         self.select_a_valid_time_source(time_points);
 
-        if self.playing {
-            if let Some(loop_range) = self.loop_range(time_points) {
-                let state = self
-                    .states
-                    .entry(self.time_source.clone())
-                    .or_insert_with(|| TimeState::new(loop_range.min));
+        if !self.playing {
+            return;
+        }
+
+        let full_range = if let Some(full_range) = time_points.0.get(&self.time_source).map(range) {
+            full_range
+        } else {
+            return;
+        };
+
+        let state = self
+            .states
+            .entry(self.time_source.clone())
+            .or_insert_with(|| TimeState::new(full_range.min));
+
+        egui_ctx.request_repaint();
+
+        let dt = egui_ctx.input().unstable_dt.at_most(0.05);
+
+        if self.selection_type == TimeSelectionType::Filter {
+            if let Some(time_selection) = state.selection {
+                // Move selection
+
+                let span = if let Some(span) = time_selection.span() {
+                    span
+                } else {
+                    state.selection = None;
+                    return;
+                };
+
+                let mut new_min = time_selection.min;
 
                 if self.looped {
-                    state.time = state.time.max(loop_range.min);
+                    // max must be in the range:
+                    new_min = new_min.max(full_range.min.add_offset_f64(-span));
                 }
 
-                match &mut state.time {
+                match &mut new_min {
                     TimeValue::Sequence(seq) => {
                         *seq += 1; // TODO: apply speed here somehow?
                     }
                     TimeValue::Time(time) => {
-                        let dt = egui_ctx.input().unstable_dt.at_most(0.05);
                         *time += Duration::from_secs(dt * self.speed);
                     }
                 }
 
-                if state.time > loop_range.max {
+                if new_min > full_range.max {
                     if self.looped {
-                        state.time = loop_range.min;
+                        // Put max just at start of loop:
+                        new_min = full_range.min.add_offset_f64(-span);
                     } else {
-                        state.time = loop_range.max;
+                        new_min = full_range.max;
                         self.playing = false;
                     }
                 }
 
-                egui_ctx.request_repaint();
-            }
-        }
-    }
+                let new_max = new_min.add_offset_f64(span);
+                state.selection = Some(TimeRange::new(new_min, new_max));
 
-    fn loop_range(&self, time_points: &TimePoints) -> Option<TimeRange> {
-        if self.looped && self.selection_type == TimeSelectionType::Loop {
-            if let Some(time_selection) = self.time_selection() {
-                return Some(time_selection);
+                return;
             }
         }
 
-        time_points.0.get(&self.time_source).map(range)
+        // Normal time marker:
+
+        let loop_range = if self.looped && self.selection_type == TimeSelectionType::Loop {
+            state.selection.unwrap_or(full_range)
+        } else {
+            full_range
+        };
+
+        if self.looped {
+            state.time = state.time.max(loop_range.min);
+        }
+
+        match &mut state.time {
+            TimeValue::Sequence(seq) => {
+                *seq += 1; // TODO: apply speed here somehow?
+            }
+            TimeValue::Time(time) => {
+                *time += Duration::from_secs(dt * self.speed);
+            }
+        }
+
+        if state.time > loop_range.max {
+            if self.looped {
+                state.time = loop_range.min;
+            } else {
+                state.time = loop_range.max;
+                self.playing = false;
+            }
+        }
     }
 
     fn play(&mut self, time_points: &TimePoints) {
@@ -279,6 +332,10 @@ impl TimeControl {
             }
         }
         self.playing = true;
+    }
+
+    pub fn is_playing(&self) -> bool {
+        self.playing
     }
 
     fn select_a_valid_time_source(&mut self, time_points: &TimePoints) {

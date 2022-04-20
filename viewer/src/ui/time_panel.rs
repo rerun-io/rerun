@@ -130,11 +130,7 @@ impl TimePanel {
             fade_sides(ui, time_area);
         }
 
-        if let Some(time) = context.time_control.time() {
-            // so time doesn't get stuck between non-continuos regions
-            let time = self.time_ranges_ui.snap_time(time);
-            context.time_control.set_time(time);
-        }
+        self.time_ranges_ui.snap_time_control(context);
 
         // remember where to show the time for next frame:
         let margin = 16.0;
@@ -391,7 +387,12 @@ impl TimePanel {
                         let min_time = self.time_ranges_ui.time_from_x(min_x)?;
                         let max_time = self.time_ranges_ui.time_from_x(max_x)?;
 
-                        time_control.set_time_selection(TimeRange::new(min_time, max_time));
+                        // TODO: maintain length of range? At least if very close?
+                        // let max_time = min_time.add_offset_f64(selected_range.span()?);
+
+                        let new_range = TimeRange::new(min_time, max_time);
+
+                        time_control.set_time_selection(new_range);
                         did_interact = true;
                         Some(())
                     })();
@@ -411,6 +412,9 @@ impl TimePanel {
 
         if did_interact && time_control.selection_type == TimeSelectionType::None {
             time_control.selection_type = TimeSelectionType::Loop;
+        }
+        if did_interact && time_control.selection_type == TimeSelectionType::Filter {
+            time_control.pause();
         }
     }
 
@@ -922,6 +926,41 @@ impl TimeRangesUi {
             }
         }
         value
+    }
+
+    // Make sure time doesn't get stuck between non-continuos regions:
+    fn snap_time_control(&self, context: &mut ViewerContext) {
+        if !context.time_control.is_playing() {
+            return;
+        }
+
+        // Make sure time doesn't get stuck between non-continuos regions:
+        if let Some(time) = context.time_control.time() {
+            let time = self.snap_time(time);
+            context.time_control.set_time(time);
+        } else if let Some(selection) = context.time_control.time_selection() {
+            let snapped_min = self.snap_time(selection.min);
+            let snapped_max = self.snap_time(selection.max);
+
+            let min_was_good = selection.min == snapped_min;
+            let max_was_good = selection.max == snapped_max;
+
+            if min_was_good || max_was_good {
+                return;
+            }
+
+            if let Some(span) = selection.span() {
+                // Keeping max works better when looping
+                context.time_control.set_time_selection(TimeRange::new(
+                    snapped_max.add_offset_f64(-span),
+                    snapped_max,
+                ));
+                // context.time_control.set_time_selection(TimeRange::new(
+                //     snapped_min,
+                //     snapped_min.add_offset_f64(span),
+                // ));
+            }
+        }
     }
 
     fn x_from_time(&self, needle_time: TimeValue) -> Option<f32> {
