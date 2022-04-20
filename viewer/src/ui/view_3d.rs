@@ -175,7 +175,7 @@ pub(crate) fn combined_view_3d(
             let color = if is_hovered {
                 Color32::WHITE
             } else {
-                context.object_color(log_db, &msg.object_path)
+                context.object_color(log_db, msg)
             };
 
             match &msg.data {
@@ -326,7 +326,15 @@ fn with_three_d_context<R>(
 
 struct RenderingContext {
     three_d: three_d::Context,
+
     mesh_cache: MeshCache,
+
+    sphere_mesh: three_d::CpuMesh,
+    line_mesh: three_d::CpuMesh,
+
+    /// So we don't need to re-allocate them.
+    points_cache: Vec<three_d::Model<three_d::PhysicalMaterial>>,
+    lines_cache: Vec<three_d::InstancedModel<three_d::ColorMaterial>>,
 }
 
 impl RenderingContext {
@@ -335,9 +343,102 @@ impl RenderingContext {
 
         Ok(Self {
             three_d,
+            sphere_mesh: three_d::CpuMesh::sphere(24),
+            line_mesh: three_d::CpuMesh::cylinder(10),
             mesh_cache: Default::default(),
+            points_cache: Default::default(),
+            lines_cache: Default::default(),
         })
     }
+}
+
+fn allocate_points<'a>(
+    three_d: &'a three_d::Context,
+    sphere_mesh: &'a three_d::CpuMesh,
+    points_cache: &'a mut Vec<three_d::Model<three_d::PhysicalMaterial>>,
+    render_states: three_d::RenderStates,
+    points: &'a [Point],
+) -> &'a [three_d::Model<three_d::PhysicalMaterial>] {
+    crate::profile_function!();
+    use three_d::*;
+
+    if points_cache.len() < points.len() {
+        points_cache.resize_with(points.len(), || {
+            let material = PhysicalMaterial {
+                roughness: 1.0,
+                metallic: 0.0,
+                lighting_model: LightingModel::Cook(
+                    NormalDistributionFunction::TrowbridgeReitzGGX,
+                    GeometryFunction::SmithSchlickGGX,
+                ),
+                ..Default::default()
+            };
+            Model::new_with_material(three_d, sphere_mesh, material).unwrap()
+        });
+    }
+
+    for (point, model) in points.iter().zip(points_cache.iter_mut()) {
+        let [x, y, z] = point.pos;
+        let pos = vec3(x, y, z);
+        model.material.render_states = render_states;
+        model.material.albedo = color_to_three_d(point.color);
+        model.set_transformation(Mat4::from_translation(pos) * Mat4::from_scale(point.radius));
+    }
+
+    &points_cache[..points.len()]
+}
+
+fn allocate_line_segments<'a>(
+    three_d: &'a three_d::Context,
+    line_mesh: &'a three_d::CpuMesh,
+    lines_cache: &'a mut Vec<three_d::InstancedModel<three_d::ColorMaterial>>,
+    render_states: three_d::RenderStates,
+    line_segments: &'a [LineSegments],
+) -> &'a [three_d::InstancedModel<three_d::ColorMaterial>] {
+    crate::profile_function!();
+    use three_d::*;
+
+    if lines_cache.len() < line_segments.len() {
+        lines_cache.resize_with(line_segments.len(), || {
+            let material = ColorMaterial::default();
+            InstancedModel::new_with_material(three_d, &[], line_mesh, material).unwrap()
+        });
+    }
+
+    for (line_segments, model) in line_segments.iter().zip(lines_cache.iter_mut()) {
+        let LineSegments {
+            segments,
+            radius,
+            color,
+        } = line_segments;
+
+        let line_instances: Vec<Instance> = segments
+            .iter()
+            .map(|&[p0, p1]| {
+                let p0 = vec3(p0[0], p0[1], p0[2]);
+                let p1 = vec3(p1[0], p1[1], p1[2]);
+                let scale = Mat4::from_nonuniform_scale((p0 - p1).magnitude(), 1.0, 1.0);
+                let rotation =
+                    rotation_matrix_from_dir_to_dir(vec3(1.0, 0.0, 0.0), (p1 - p0).normalize());
+                let translation = Mat4::from_translation(p0);
+                let geometry_transform = translation
+                    * rotation
+                    * scale
+                    * Mat4::from_nonuniform_scale(1.0, *radius, *radius);
+                Instance {
+                    geometry_transform,
+                    ..Default::default()
+                }
+            })
+            .collect();
+
+        model.material.render_states = render_states;
+        model.material.color = color_to_three_d(*color);
+
+        model.set_instances(&line_instances).unwrap();
+    }
+
+    &lines_cache[..line_segments.len()]
 }
 
 #[derive(Default)]
@@ -427,18 +528,7 @@ fn paint_with_three_d(
         meshes,
     } = scene;
 
-    let sphere_mesh = CpuMesh::sphere(32);
-    let points: Vec<_> = points
-        .iter()
-        .map(|point| point_to_three_d(three_d, render_states, &sphere_mesh, point))
-        .collect();
-
-    let line_segments: Vec<_> = line_segments
-        .iter()
-        .map(|line_segments| line_segments_to_three_d(three_d, render_states, line_segments))
-        .collect();
-
-    // TODO: set render_states for the meshes, or wait for https://github.com/asny/three-d/issues/233 to be merged
+    // TODO: set render_states for the meshes, or wait for https://github.com/asny/three-d/issues/233 to be solved
     let meshes: Vec<Rc<GpuMesh>> = meshes
         .iter()
         .filter_map(|(log_id, obj_path, mesh)| {
@@ -447,104 +537,34 @@ fn paint_with_three_d(
         .collect();
 
     let mut objects: Vec<&dyn Object> = vec![];
-    for obj in &points {
-        objects.push(obj);
-    }
-    for obj in &line_segments {
-        objects.push(obj);
-    }
     for mesh in &meshes {
         for obj in &mesh.models {
             objects.push(obj);
         }
+    }
+    for obj in allocate_points(
+        &rendering.three_d,
+        &rendering.sphere_mesh,
+        &mut rendering.points_cache,
+        render_states,
+        points,
+    ) {
+        objects.push(obj);
+    }
+    for obj in allocate_line_segments(
+        &rendering.three_d,
+        &rendering.line_mesh,
+        &mut rendering.lines_cache,
+        render_states,
+        line_segments,
+    ) {
+        objects.push(obj);
     }
 
     crate::profile_scope!("render_pass");
     render_pass(&camera, &objects, lights)?;
 
     Ok(())
-}
-
-fn point_to_three_d(
-    three_d: &three_d::Context,
-    render_states: three_d::RenderStates,
-    sphere_mesh: &three_d::CpuMesh,
-    point: &Point,
-) -> three_d::Model<three_d::PhysicalMaterial> {
-    crate::profile_function!();
-    use three_d::*;
-
-    let [x, y, z] = point.pos;
-    let pos = vec3(x, y, z);
-
-    let color = color_to_three_d(point.color);
-
-    let material = PhysicalMaterial {
-        albedo: color,
-        roughness: 1.0,
-        metallic: 0.0,
-        lighting_model: LightingModel::Cook(
-            NormalDistributionFunction::TrowbridgeReitzGGX,
-            GeometryFunction::SmithSchlickGGX,
-        ),
-        render_states,
-        ..Default::default()
-    };
-
-    // let material = ColorMaterial {
-    //     color,
-    //     ..Default::default()
-    // };
-
-    let mut model = Model::new_with_material(three_d, sphere_mesh, material).unwrap();
-    model.set_transformation(Mat4::from_translation(pos) * Mat4::from_scale(point.radius));
-    model
-}
-
-fn line_segments_to_three_d(
-    three_d: &three_d::Context,
-    render_states: three_d::RenderStates,
-    line_segments: &LineSegments,
-) -> three_d::InstancedModel<three_d::ColorMaterial> {
-    crate::profile_function!();
-    use three_d::*;
-
-    let LineSegments {
-        segments,
-        radius,
-        color,
-    } = line_segments;
-
-    let line_instances: Vec<Instance> = segments
-        .iter()
-        .map(|&[p0, p1]| {
-            let p0 = vec3(p0[0], p0[1], p0[2]);
-            let p1 = vec3(p1[0], p1[1], p1[2]);
-            let scale = Mat4::from_nonuniform_scale((p0 - p1).magnitude(), 1.0, 1.0);
-            let rotation =
-                rotation_matrix_from_dir_to_dir(vec3(1.0, 0.0, 0.0), (p1 - p0).normalize());
-            let translation = Mat4::from_translation(p0);
-            let geometry_transform = translation * rotation * scale;
-            Instance {
-                geometry_transform,
-                ..Default::default()
-            }
-        })
-        .collect();
-
-    // Used to paint lines
-    let line_material = ColorMaterial {
-        color: color_to_three_d(*color),
-        render_states,
-        ..Default::default()
-    };
-    let mut line = CpuMesh::cylinder(10);
-    line.transform(&Mat4::from_nonuniform_scale(1.0, *radius, *radius))
-        .unwrap();
-    let lines =
-        InstancedModel::new_with_material(three_d, &line_instances, &line, line_material).unwrap();
-
-    lines
 }
 
 fn color_to_three_d(color: egui::Color32) -> three_d::Color {

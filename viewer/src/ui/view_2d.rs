@@ -2,6 +2,7 @@ use eframe::egui;
 use egui::*;
 use emath::RectTransform;
 
+use itertools::Itertools;
 use log_types::*;
 
 use crate::{log_db::SpaceSummary, space_view::ui_data, LogDb, Preview, Selection, ViewerContext};
@@ -13,12 +14,18 @@ pub(crate) fn combined_view_2d(
     ui: &mut egui::Ui,
     space: &ObjectPath,
     space_summary: &SpaceSummary,
-    mut messages: Vec<&LogMsg>,
+    messages: &[&LogMsg],
 ) {
     if space_summary.bbox2d.is_negative() {
         return;
     }
     crate::profile_function!();
+
+    let mut messages = messages
+        .iter()
+        .copied()
+        .filter(|msg| msg.space.as_ref() == Some(space) && msg.data.is_2d())
+        .collect_vec();
 
     // Show images first (behind everything else), then bboxes, then points:
     messages.sort_by_key(|msg| match &msg.data {
@@ -63,18 +70,21 @@ pub(crate) fn combined_view_2d(
 
     // ------------------------------------------------------------------------
 
-    for msg in &messages {
-        if msg.space.as_ref() != Some(space) {
-            continue;
-        }
+    let total_num_images = messages
+        .iter()
+        .filter(|msg| matches!(&msg.data, Data::Image(_)))
+        .count();
 
+    let mut images_painted = 0;
+
+    for msg in &messages {
         let is_hovered = Some(msg.id) == hovered;
 
         // TODO: different color when selected
         let fg_color = if is_hovered {
             Color32::WHITE
         } else {
-            context.object_color(log_db, &msg.object_path)
+            context.object_color(log_db, msg)
         };
         let stoke_width = if is_hovered { 2.5 } else { 1.5 };
 
@@ -103,12 +113,17 @@ pub(crate) fn combined_view_2d(
                     vec2(image.size[0] as _, image.size[1] as _),
                 ));
                 let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-                painter.add(egui::Shape::image(
-                    texture_id,
-                    screen_rect,
-                    uv,
-                    Color32::WHITE,
-                ));
+
+                let opacity = if images_painted == 0 {
+                    1.0
+                } else {
+                    // make top images transparent
+                    1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+                };
+                let color = Color32::WHITE.linear_multiply(opacity);
+                painter.add(egui::Shape::image(texture_id, screen_rect, uv, color));
+
+                images_painted += 1;
 
                 if is_hovered {
                     painter.rect_stroke(screen_rect, 0.0, Stroke::new(stoke_width, fg_color));

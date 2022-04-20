@@ -149,7 +149,7 @@ fn test_encode_decode() {
     // Some fake log data
     let time_point = time_point([(
         "log_time",
-        TimeValue::Time(Time::from_ns_since_epoch(1649934625_012_345_678)),
+        TimeValue::Time(Time::from_ns_since_epoch(1_649_934_625_012_345_678)),
     )]);
     let messages = vec![
         log_msg(

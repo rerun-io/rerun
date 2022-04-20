@@ -6,7 +6,7 @@ pub(crate) mod mesh_loader;
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub(crate) mod profiler;
 pub(crate) mod time_axis;
-mod time_control;
+pub(crate) mod time_control;
 mod viewer_context;
 
 #[cfg(not(target_arch = "wasm32"))]

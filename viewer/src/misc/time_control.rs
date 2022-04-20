@@ -6,6 +6,8 @@ use log_types::*;
 
 use crate::misc::TimePoints;
 
+use super::time_axis::TimeRange;
+
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct TimeView {
@@ -20,11 +22,39 @@ pub(crate) struct TimeView {
     pub time_spanned: f64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub(crate) enum TimeSelectionType {
+    // The selection is for looping the play marker.
+    Loop,
+    // The selection is for viewing a bunch of data at once, replacing the play marker.
+    Filter,
+}
+
+impl Default for TimeSelectionType {
+    fn default() -> Self {
+        Self::Loop
+    }
+}
+
+impl TimeSelectionType {
+    pub fn color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        use egui::Color32;
+        match self {
+            TimeSelectionType::Loop => Color32::from_rgb(50, 220, 140),
+            TimeSelectionType::Filter => visuals.selection.bg_fill, // it is a form of selection, so let's be consistent
+        }
+    }
+}
+
 /// State per time source.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 struct TimeState {
-    /// The current time
+    /// The current time (play marker).
     time: TimeValue,
+
+    /// Selected time range, if any.
+    #[serde(default)]
+    selection: Option<TimeRange>,
 
     /// The time range we are currently zoomed in on.
     ///
@@ -37,7 +67,11 @@ struct TimeState {
 
 impl TimeState {
     fn new(time: TimeValue) -> Self {
-        Self { time, view: None }
+        Self {
+            time,
+            selection: Default::default(),
+            view: None,
+        }
     }
 }
 
@@ -52,8 +86,13 @@ pub(crate) struct TimeControl {
     states: BTreeMap<String, TimeState>,
 
     playing: bool,
-    repeat: bool,
+    looped: bool,
     speed: f32,
+
+    #[serde(default)]
+    pub selection_active: bool,
+    #[serde(default)]
+    pub selection_type: TimeSelectionType,
 }
 
 impl Default for TimeControl {
@@ -62,14 +101,38 @@ impl Default for TimeControl {
             time_source: Default::default(),
             states: Default::default(),
             playing: true,
-            repeat: true,
+            looped: true,
             speed: 1.0,
+            selection_active: false,
+            selection_type: TimeSelectionType::default(),
         }
     }
 }
 
 impl TimeControl {
-    pub fn time_source_selector(
+    /// None when not active
+    pub fn active_selection_type(&self) -> Option<TimeSelectionType> {
+        self.selection_active.then(|| self.selection_type)
+    }
+
+    /// None when not active
+    pub fn set_active_selection_type(&mut self, typ: Option<TimeSelectionType>) {
+        match typ {
+            None => {
+                self.selection_active = false;
+            }
+            Some(typ) => {
+                self.selection_active = true;
+                self.selection_type = typ;
+            }
+        }
+    }
+
+    pub fn is_time_filter_active(&self) -> bool {
+        self.selection_active && self.selection_type == TimeSelectionType::Filter
+    }
+
+    pub fn time_source_selector_ui(
         &mut self,
         time_source_axes: &TimePoints,
         ui: &mut egui::Ui,
@@ -91,7 +154,68 @@ impl TimeControl {
             .response
     }
 
-    pub fn play_pause(&mut self, time_points: &TimePoints, ui: &mut egui::Ui) {
+    pub fn selection_ui(&mut self, ui: &mut egui::Ui) {
+        use egui::SelectableLabel;
+
+        ui.label("Selection:");
+
+        let has_selection = self
+            .states
+            .get(&self.time_source)
+            .map_or(false, |state| state.selection.is_some());
+
+        if !has_selection {
+            self.selection_active = false;
+        }
+
+        if ui
+            .add(SelectableLabel::new(!self.selection_active, "None"))
+            .on_hover_text("Disable selection")
+            .clicked()
+        {
+            self.selection_active = false;
+        }
+
+        ui.scope(|ui| {
+            ui.visuals_mut().selection.bg_fill = TimeSelectionType::Loop.color(ui.visuals());
+
+            if ui
+                .add_enabled(
+                    has_selection,
+                    SelectableLabel::new(
+                        self.selection_active && self.selection_type == TimeSelectionType::Loop,
+                        "🔁",
+                    ),
+                )
+                .on_hover_text("Loop in selection")
+                .clicked()
+            {
+                self.set_active_selection_type(Some(TimeSelectionType::Loop));
+                self.looped = true;
+            }
+        });
+
+        ui.scope(|ui| {
+            ui.visuals_mut().selection.bg_fill = TimeSelectionType::Filter.color(ui.visuals());
+
+            if ui
+                .add_enabled(
+                    has_selection,
+                    SelectableLabel::new(
+                        self.selection_active && self.selection_type == TimeSelectionType::Filter,
+                        "⬌",
+                    ),
+                )
+                .on_hover_text("Show everything in selection")
+                .clicked()
+            {
+                self.set_active_selection_type(Some(TimeSelectionType::Filter));
+                self.pause();
+            }
+        });
+    }
+
+    pub fn play_pause_ui(&mut self, time_points: &TimePoints, ui: &mut egui::Ui) {
         // Toggle with space
         let anything_has_focus = ui.ctx().memory().focus().is_some();
         if !anything_has_focus
@@ -108,62 +232,141 @@ impl TimeControl {
 
         if ui
             .selectable_label(self.playing, "▶")
-            .on_hover_text("Toggle with SPACE")
+            .on_hover_text("Play. Toggle with SPACE")
             .clicked()
         {
             self.play(time_points);
         }
         if ui
             .selectable_label(!self.playing, "⏸")
-            .on_hover_text("Toggle with SPACE")
+            .on_hover_text("Pause. Toggle with SPACE")
             .clicked()
         {
             self.playing = false;
         }
-        if ui.selectable_label(self.repeat, "🔁").clicked() {
-            self.repeat = !self.repeat;
+
+        ui.scope(|ui| {
+            ui.visuals_mut().selection.bg_fill = TimeSelectionType::Loop.color(ui.visuals());
+
+            if ui
+                .selectable_label(self.looped, "🔁")
+                .on_hover_text("Loop playback")
+                .clicked()
+            {
+                self.looped = !self.looped;
+            }
+        });
+
+        if !self.looped && self.selection_type == TimeSelectionType::Loop {
+            self.selection_active = false;
         }
 
+        let drag_speed = self.speed * 0.05;
         ui.add(
-            egui::Slider::new(&mut self.speed, 0.01..=100.0)
-                .text("playback speed")
-                .logarithmic(true),
-        );
+            egui::DragValue::new(&mut self.speed)
+                .clamp_range(0.01..=100.0)
+                .speed(drag_speed)
+                .suffix("x"),
+        )
+        .on_hover_text("Playback speed.");
     }
 
     /// Update the current time
     pub fn move_time(&mut self, egui_ctx: &egui::Context, time_points: &TimePoints) {
         self.select_a_valid_time_source(time_points);
 
-        if self.playing {
-            if let Some(axis) = time_points.0.get(&self.time_source) {
-                let (axis_min, axis_max) = (min(axis), max(axis));
+        if !self.playing {
+            return;
+        }
 
-                let state = self
-                    .states
-                    .entry(self.time_source.clone())
-                    .or_insert_with(|| TimeState::new(axis_min));
+        let full_range = if let Some(full_range) = time_points.0.get(&self.time_source).map(range) {
+            full_range
+        } else {
+            return;
+        };
 
-                match &mut state.time {
+        let active_selection_type = self.active_selection_type();
+
+        let state = self
+            .states
+            .entry(self.time_source.clone())
+            .or_insert_with(|| TimeState::new(full_range.min));
+
+        egui_ctx.request_repaint();
+
+        let dt = egui_ctx.input().unstable_dt.at_most(0.05);
+
+        if active_selection_type == Some(TimeSelectionType::Filter) {
+            if let Some(time_selection) = state.selection {
+                // Move filter selection
+
+                let span = if let Some(span) = time_selection.span() {
+                    span
+                } else {
+                    state.selection = None;
+                    return;
+                };
+
+                let mut new_min = time_selection.min;
+
+                if self.looped {
+                    // max must be in the range:
+                    new_min = new_min.max(full_range.min.add_offset_f64(-span));
+                }
+
+                match &mut new_min {
                     TimeValue::Sequence(seq) => {
                         *seq += 1; // TODO: apply speed here somehow?
                     }
                     TimeValue::Time(time) => {
-                        let dt = egui_ctx.input().unstable_dt.at_most(0.05);
                         *time += Duration::from_secs(dt * self.speed);
                     }
                 }
 
-                if state.time > axis_max {
-                    if self.repeat {
-                        state.time = axis_min;
+                if new_min > full_range.max {
+                    if self.looped {
+                        // Put max just at start of loop:
+                        new_min = full_range.min.add_offset_f64(-span);
                     } else {
-                        state.time = axis_max;
+                        new_min = full_range.max;
                         self.playing = false;
                     }
                 }
 
-                egui_ctx.request_repaint();
+                let new_max = new_min.add_offset_f64(span);
+                state.selection = Some(TimeRange::new(new_min, new_max));
+
+                return;
+            }
+        }
+
+        // Normal time marker:
+
+        let loop_range = if self.looped && active_selection_type == Some(TimeSelectionType::Loop) {
+            state.selection.unwrap_or(full_range)
+        } else {
+            full_range
+        };
+
+        if self.looped {
+            state.time = state.time.max(loop_range.min);
+        }
+
+        match &mut state.time {
+            TimeValue::Sequence(seq) => {
+                *seq += 1; // TODO: apply speed here somehow?
+            }
+            TimeValue::Time(time) => {
+                *time += Duration::from_secs(dt * self.speed);
+            }
+        }
+
+        if state.time > loop_range.max {
+            if self.looped {
+                state.time = loop_range.min;
+            } else {
+                state.time = loop_range.max;
+                self.playing = false;
             }
         }
     }
@@ -187,6 +390,10 @@ impl TimeControl {
         self.playing = true;
     }
 
+    pub fn is_playing(&self) -> bool {
+        self.playing
+    }
+
     fn select_a_valid_time_source(&mut self, time_points: &TimePoints) {
         for source in time_points.0.keys() {
             if &self.time_source == source {
@@ -205,9 +412,60 @@ impl TimeControl {
         &self.time_source
     }
 
-    /// The current time
+    /// The current time. Note that this only makes sense if there is no time selection!
     pub fn time(&self) -> Option<TimeValue> {
+        if self.is_time_filter_active() {
+            return None; // no single time
+        }
+
         self.states.get(&self.time_source).map(|state| state.time)
+    }
+
+    /// The current filtered time.
+    /// Returns a "point" range if we have no selection (normal play)
+    pub fn time_range(&self) -> Option<TimeRange> {
+        let state = self.states.get(&self.time_source)?;
+
+        if self.is_time_filter_active() {
+            state.selection
+        } else {
+            Some(TimeRange::point(state.time))
+        }
+    }
+
+    /// Is the current time in the selection range (if any), or at the current time mark?
+    pub fn is_time_selected(&self, time_source: &str, needle: TimeValue) -> bool {
+        if time_source != self.time_source {
+            return false;
+        }
+
+        if let Some(state) = self.states.get(&self.time_source) {
+            if self.is_time_filter_active() {
+                if let Some(range) = state.selection {
+                    return range.contains(needle);
+                }
+            }
+
+            state.time == needle
+        } else {
+            false
+        }
+    }
+
+    pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
+        self.time_source = time_source;
+        self.set_time(time);
+    }
+
+    pub fn set_time(&mut self, time: TimeValue) {
+        if self.is_time_filter_active() {
+            self.selection_active = false;
+        }
+
+        self.states
+            .entry(self.time_source.clone())
+            .or_insert_with(|| TimeState::new(time))
+            .time = time;
     }
 
     /// The range of time we are currently zoomed in on.
@@ -232,38 +490,40 @@ impl TimeControl {
         }
     }
 
-    pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
-        self.time_source = time_source;
-        self.set_time(time);
+    pub fn time_selection(&self) -> Option<TimeRange> {
+        self.states.get(&self.time_source)?.selection
     }
 
-    pub fn set_time(&mut self, time: TimeValue) {
+    pub fn set_time_selection(&mut self, selection: TimeRange) {
         self.states
             .entry(self.time_source.clone())
-            .or_insert_with(|| TimeState::new(time))
-            .time = time;
+            .or_insert_with(|| TimeState::new(selection.min))
+            .selection = Some(selection);
     }
 
     pub fn pause(&mut self) {
         self.playing = false;
     }
 
-    /// Grouped by [`ObjectPath`], find the latest [`LogMsg`] that matches
-    /// the current time source and is not after the current time.
-    pub fn latest_of_each_object<'db>(
-        &self,
-        log_db: &'db crate::log_db::LogDb,
-    ) -> Vec<&'db LogMsg> {
+    /// Return the messages that should be visible at this time.
+    ///
+    /// This is either based on a time selection, or it is the latest message at the current time.
+    pub fn selected_messages<'db>(&self, log_db: &'db crate::log_db::LogDb) -> Vec<&'db LogMsg> {
         crate::profile_function!();
 
-        let current_time = if let Some(current_time) = self.time() {
-            current_time
+        let state = if let Some(state) = self.states.get(&self.time_source) {
+            state
         } else {
             return Default::default();
         };
-        let source = self.source();
 
-        log_db.latest_of_each_object(source, current_time)
+        if self.is_time_filter_active() {
+            if let Some(range) = state.selection {
+                return log_db.messages_in_range(self.source(), range);
+            }
+        }
+
+        log_db.latest_of_each_object(self.source(), state.time)
     }
 }
 
@@ -273,4 +533,8 @@ fn min(values: &std::collections::BTreeSet<TimeValue>) -> TimeValue {
 
 fn max(values: &std::collections::BTreeSet<TimeValue>) -> TimeValue {
     *values.iter().rev().next().unwrap()
+}
+
+fn range(values: &std::collections::BTreeSet<TimeValue>) -> TimeRange {
+    TimeRange::new(min(values), max(values))
 }
