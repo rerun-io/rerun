@@ -97,8 +97,6 @@ fn table_row(
     msg: &LogMsg,
     row_height: f32,
 ) {
-    crate::profile_function!();
-
     let LogMsg {
         id,
         time_point,

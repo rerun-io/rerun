@@ -185,14 +185,17 @@ pub(crate) fn combined_view_3d(
                     color,
                 }),
                 Data::Path3D(points) => {
-                    // TODO: paths should be its own primitive
-                    for (a, b) in points.iter().tuple_windows() {
-                        scene.line_segments.push(LineSegments {
-                            segments: vec![[*a, *b]],
-                            radius: small_radius,
-                            color,
-                        });
-                    }
+                    let segments = points
+                        .iter()
+                        .tuple_windows()
+                        .map(|(a, b)| [*a, *b])
+                        .collect();
+
+                    scene.line_segments.push(LineSegments {
+                        segments,
+                        radius: small_radius,
+                        color,
+                    });
                 }
                 Data::LineSegments3D(segments) => scene.line_segments.push(LineSegments {
                     segments: segments.clone(),
