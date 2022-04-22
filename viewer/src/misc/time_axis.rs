@@ -112,8 +112,8 @@ impl TimeRange {
 
     /// Where in the range is this value? Returns 0-1 if within the range.
     /// Returns <0 if before, >1 if after, and `None` if the unit is wrong.
-    pub fn lerp_t(&self, value: TimeValue) -> Option<f32> {
-        fn lerp_t_i64(min: i64, value: i64, max: i64) -> f32 {
+    pub fn inverse_lerp(&self, value: TimeValue) -> Option<f32> {
+        fn inverse_lerp_i64(min: i64, value: i64, max: i64) -> f32 {
             if min == max {
                 0.5
             } else {
@@ -123,14 +123,14 @@ impl TimeRange {
 
         match (self.min, value, self.max) {
             (TimeValue::Time(min), TimeValue::Time(value), TimeValue::Time(max)) => {
-                Some(lerp_t_i64(
+                Some(inverse_lerp_i64(
                     min.nanos_since_epoch(),
                     value.nanos_since_epoch(),
                     max.nanos_since_epoch(),
                 ))
             }
             (TimeValue::Sequence(min), TimeValue::Sequence(value), TimeValue::Sequence(max)) => {
-                Some(lerp_t_i64(min as _, value as _, max as _))
+                Some(inverse_lerp_i64(min, value, max))
             }
             _ => None,
         }

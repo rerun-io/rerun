@@ -1113,10 +1113,10 @@ impl TimeRangesUi {
 
         for segment in &self.segments {
             if needle_time < segment.time.min {
-                let t = TimeRange::new(last_time, segment.time.min).lerp_t(needle_time)?;
+                let t = TimeRange::new(last_time, segment.time.min).inverse_lerp(needle_time)?;
                 return Some(lerp(last_x..=*segment.x.start(), t));
             } else if needle_time <= segment.time.max {
-                let t = segment.time.lerp_t(needle_time)?;
+                let t = segment.time.inverse_lerp(needle_time)?;
                 return Some(lerp(segment.x.clone(), t));
             } else {
                 last_x = *segment.x.end();
@@ -1202,7 +1202,9 @@ fn paint_time_ticks(
                 while ns <= max.nanos_since_epoch() {
                     let x = lerp(
                         rect.x_range(),
-                        range.lerp_t(Time::from_ns_since_epoch(ns).into()).unwrap(),
+                        range
+                            .inverse_lerp(Time::from_ns_since_epoch(ns).into())
+                            .unwrap(),
                     );
 
                     let top = if ns % (10 * small_step_size_ns) == 0 {
