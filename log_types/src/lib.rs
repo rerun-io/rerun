@@ -94,7 +94,7 @@ pub struct TimePoint(pub BTreeMap<String, TimeValue>);
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeValue {
     Time(Time),
-    Sequence(u64),
+    Sequence(i64),
 }
 
 impl TimeValue {
@@ -111,7 +111,6 @@ impl TimeValue {
     pub fn add_offset_f64(self, offset: f64) -> Self {
         match self {
             Self::Time(time) => Self::Time(time + Duration::from_nanos(offset as _)),
-            Self::Sequence(seq) if offset <= 0.0 => Self::Sequence(seq.saturating_sub(offset as _)),
             Self::Sequence(seq) => Self::Sequence(seq.saturating_add(offset as _)),
         }
     }
@@ -127,7 +126,7 @@ impl std::fmt::Display for TimeValue {
 }
 
 impl_into_enum!(Time, TimeValue, Time);
-impl_into_enum!(u64, TimeValue, Sequence);
+impl_into_enum!(i64, TimeValue, Sequence);
 
 pub fn time_point(fields: impl IntoIterator<Item = (&'static str, TimeValue)>) -> TimePoint {
     TimePoint(
