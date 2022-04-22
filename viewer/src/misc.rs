@@ -1,6 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod clipboard;
-mod image_cache;
+pub(crate) mod image_cache;
 pub(crate) mod log_db;
 pub(crate) mod mesh_loader;
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]

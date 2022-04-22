@@ -374,13 +374,25 @@ pub struct Mesh3D {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ImageFormat {
     Luminance8,
+    Rgba8,
+    Jpeg,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Image {
     // TODO: pub pos: [f32; 2],
+    /// Must always be set and correct, even for [`ImageFormat::Jpeg`].
     pub size: [u32; 2],
     pub format: ImageFormat,
     pub data: Vec<u8>,
+}
+
+impl std::fmt::Debug for Image {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Image")
+            .field("size", &self.size)
+            .field("format", &self.format)
+            .finish_non_exhaustive()
+    }
 }
