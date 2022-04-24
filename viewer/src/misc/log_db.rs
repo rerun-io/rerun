@@ -46,7 +46,57 @@ impl LogDb {
                         .extend_with(egui::pos2(image.size[0] as _, image.size[1] as _));
                 }
 
-                Data::Pos3(_) | Data::Path3D(_) | Data::LineSegments3D(_) | Data::Mesh3D(_) => {
+                Data::Pos3(pos) => {
+                    summary.messages_3d.insert(msg.id);
+                    summary.bbox3d.extend((*pos).into());
+                }
+                Data::Box3(box3) => {
+                    summary.messages_3d.insert(msg.id);
+                    let Box3 {
+                        rotation,
+                        translation,
+                        half_size,
+                    } = box3;
+                    let rotation = glam::Quat::from_array(*rotation);
+                    let translation = glam::Vec3::from(*translation);
+                    let half_size = glam::Vec3::from(*half_size);
+                    let transform = glam::Mat4::from_scale_rotation_translation(
+                        half_size,
+                        rotation,
+                        translation,
+                    );
+                    use glam::vec3;
+                    let corners = [
+                        transform
+                            .transform_point3(vec3(-0.5, -0.5, -0.5))
+                            .to_array(),
+                        transform.transform_point3(vec3(-0.5, -0.5, 0.5)).to_array(),
+                        transform.transform_point3(vec3(-0.5, 0.5, -0.5)).to_array(),
+                        transform.transform_point3(vec3(-0.5, 0.5, 0.5)).to_array(),
+                        transform.transform_point3(vec3(0.5, -0.5, -0.5)).to_array(),
+                        transform.transform_point3(vec3(0.5, -0.5, 0.5)).to_array(),
+                        transform.transform_point3(vec3(0.5, 0.5, -0.5)).to_array(),
+                        transform.transform_point3(vec3(0.5, 0.5, 0.5)).to_array(),
+                    ];
+                    for p in corners {
+                        summary.bbox3d.extend(p.into());
+                    }
+                }
+                Data::Path3D(points) => {
+                    for &p in points {
+                        summary.bbox3d.extend(p.into());
+                    }
+                    summary.messages_3d.insert(msg.id);
+                }
+                Data::LineSegments3D(segments) => {
+                    for &[a, b] in segments {
+                        summary.bbox3d.extend(a.into());
+                        summary.bbox3d.extend(b.into());
+                    }
+                    summary.messages_3d.insert(msg.id);
+                }
+                Data::Mesh3D(_) => {
+                    // TODO: how to we get the bbox of the mesh here?
                     summary.messages_3d.insert(msg.id);
                 }
 
@@ -181,12 +231,18 @@ impl ObjectHistory {
 pub(crate) struct SpaceSummary {
     /// All messages in this space
     pub messages: BTreeSet<LogId>,
+
     /// messages with 2D data
     pub messages_2d: BTreeSet<LogId>,
+
     /// messages with 3D data
     pub messages_3d: BTreeSet<LogId>,
+
     /// bounding box of 2D data
     pub bbox2d: egui::Rect,
+
+    /// bounding box of 3D data
+    pub bbox3d: macaw::BoundingBox,
 }
 
 impl Default for SpaceSummary {
@@ -196,6 +252,7 @@ impl Default for SpaceSummary {
             messages_2d: Default::default(),
             messages_3d: Default::default(),
             bbox2d: egui::Rect::NOTHING,
+            bbox3d: macaw::BoundingBox::nothing(),
         }
     }
 }
@@ -304,6 +361,7 @@ pub(crate) struct DataColumns {
 
     // 3D:
     pub pos3: BTreeMap<(TimePoint, LogId), [f32; 3]>,
+    pub box3: BTreeSet<(TimePoint, LogId)>,
     pub paths_3d: BTreeSet<(TimePoint, LogId)>,
     pub line_segments_3d: BTreeMap<(TimePoint, LogId), Vec<[[f32; 3]; 2]>>,
     pub meshes: BTreeSet<(TimePoint, LogId)>,
@@ -338,6 +396,9 @@ impl DataColumns {
             Data::Pos3(data) => {
                 self.pos3.insert(when, data.clone());
             }
+            Data::Box3(_) => {
+                self.box3.insert(when);
+            }
             Data::Path3D(_) => {
                 self.paths_3d.insert(when);
             }
@@ -362,6 +423,7 @@ impl DataColumns {
             bbox2d,
             image,
             pos3,
+            box3,
             paths_3d,
             line_segments_3d,
             meshes,
@@ -391,6 +453,9 @@ impl DataColumns {
 
         if !pos3.is_empty() {
             summaries.push(plurality(pos3.len(), "3D position", "s"));
+        }
+        if !box3.is_empty() {
+            summaries.push(plurality(box3.len(), "3D box", "es"));
         }
         if !paths_3d.is_empty() {
             summaries.push(plurality(paths_3d.len(), "3D path", "s"));

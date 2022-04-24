@@ -24,6 +24,10 @@ impl Time {
         Self(us_since_epoch * 1_000)
     }
 
+    pub fn from_seconds_since_epoch(secs: f64) -> Self {
+        Self::from_ns_since_epoch((secs * 1e9).round() as _)
+    }
+
     /// Human-readable formatting
     pub fn format(&self) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();

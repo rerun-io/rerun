@@ -54,6 +54,10 @@ impl Camera {
             * Mat4::perspective_infinite_rh(self.fov_y, aspect_ratio, self.near())
             * self.world_from_view.inverse()
     }
+
+    fn pos(&self) -> glam::Vec3 {
+        self.world_from_view.translation()
+    }
 }
 
 struct Point {
@@ -75,9 +79,9 @@ struct Scene {
     meshes: Vec<(LogId, ObjectPath, Mesh3D)>,
 }
 
-fn show_settings_ui(ui: &mut egui::Ui, state_3d: &mut State3D) {
+fn show_settings_ui(ui: &mut egui::Ui, state_3d: &mut State3D, space_summary: &SpaceSummary) {
     if ui.button("Reset camera").clicked() {
-        state_3d.camera = Some(default_camera());
+        state_3d.camera = Some(default_camera(space_summary));
     }
 }
 
@@ -97,7 +101,7 @@ pub(crate) fn combined_view_3d(
 
     // TODO: show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(ui, state_3d);
+    show_settings_ui(ui, state_3d, space_summary);
 
     let frame = egui::Frame {
         inner_margin: 2.0.into(),
@@ -108,7 +112,9 @@ pub(crate) fn combined_view_3d(
 
     // ---------------------------------
 
-    let camera = state_3d.camera.get_or_insert_with(default_camera);
+    let camera = state_3d
+        .camera
+        .get_or_insert_with(|| default_camera(space_summary));
 
     if response.dragged() {
         let drag_delta = response.drag_delta();
@@ -169,7 +175,8 @@ pub(crate) fn combined_view_3d(
             // TODO: base radius on distance
             let radius_multiplier = if is_hovered { 1.5 } else { 1.0 };
             let small_radius = 0.02 * radius_multiplier;
-            let large_radius = 0.05 * radius_multiplier;
+            let point_radius_from_distance = 0.002 * radius_multiplier;
+            let line_radius_from_distance = 0.001 * radius_multiplier;
 
             // TODO: selection color
             let color = if is_hovered {
@@ -179,12 +186,69 @@ pub(crate) fn combined_view_3d(
             };
 
             match &msg.data {
-                Data::Pos3(pos) => scene.points.push(Point {
-                    pos: *pos,
-                    radius: large_radius,
-                    color,
-                }),
+                Data::Pos3(pos) => {
+                    // scale with distance
+                    let dist_to_camera = camera.pos().distance(Vec3::from(*pos));
+                    scene.points.push(Point {
+                        pos: *pos,
+                        radius: dist_to_camera * point_radius_from_distance,
+                        color,
+                    });
+                }
+                Data::Box3(box3) => {
+                    let Box3 {
+                        rotation,
+                        translation,
+                        half_size,
+                    } = box3;
+                    let rotation = glam::Quat::from_array(*rotation);
+                    let translation = glam::Vec3::from(*translation);
+                    let half_size = glam::Vec3::from(*half_size);
+                    let transform = glam::Mat4::from_scale_rotation_translation(
+                        half_size,
+                        rotation,
+                        translation,
+                    );
+                    let corners = [
+                        transform
+                            .transform_point3(vec3(-0.5, -0.5, -0.5))
+                            .to_array(),
+                        transform.transform_point3(vec3(-0.5, -0.5, 0.5)).to_array(),
+                        transform.transform_point3(vec3(-0.5, 0.5, -0.5)).to_array(),
+                        transform.transform_point3(vec3(-0.5, 0.5, 0.5)).to_array(),
+                        transform.transform_point3(vec3(0.5, -0.5, -0.5)).to_array(),
+                        transform.transform_point3(vec3(0.5, -0.5, 0.5)).to_array(),
+                        transform.transform_point3(vec3(0.5, 0.5, -0.5)).to_array(),
+                        transform.transform_point3(vec3(0.5, 0.5, 0.5)).to_array(),
+                    ];
+                    let segments = vec![
+                        // bottom:
+                        [corners[0b000], corners[0b001]],
+                        [corners[0b000], corners[0b010]],
+                        [corners[0b011], corners[0b001]],
+                        [corners[0b011], corners[0b010]],
+                        // top:
+                        [corners[0b100], corners[0b101]],
+                        [corners[0b100], corners[0b110]],
+                        [corners[0b111], corners[0b101]],
+                        [corners[0b111], corners[0b110]],
+                        // sides:
+                        [corners[0b000], corners[0b100]],
+                        [corners[0b001], corners[0b101]],
+                        [corners[0b010], corners[0b110]],
+                        [corners[0b011], corners[0b111]],
+                    ];
+                    let dist_to_camera = camera.pos().distance(translation);
+                    scene.line_segments.push(LineSegments {
+                        segments,
+                        radius: dist_to_camera * line_radius_from_distance,
+                        color,
+                    });
+                }
                 Data::Path3D(points) => {
+                    let bbox =
+                        macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
+                    let dist_to_camera = camera.pos().distance(bbox.center());
                     let segments = points
                         .iter()
                         .tuple_windows()
@@ -193,7 +257,7 @@ pub(crate) fn combined_view_3d(
 
                     scene.line_segments.push(LineSegments {
                         segments,
-                        radius: small_radius,
+                        radius: dist_to_camera * line_radius_from_distance,
                         color,
                     });
                 }
@@ -266,7 +330,7 @@ fn picking(
                             .circle_filled(screen_pos, 3.0, egui::Color32::RED);
                     }
                 }
-                Data::Path3D(_) | Data::LineSegments3D(_) | Data::Mesh3D(_) => {
+                Data::Box3(_) | Data::Path3D(_) | Data::LineSegments3D(_) | Data::Mesh3D(_) => {
                     // TODO: more picking
                 }
                 _ => {
@@ -279,11 +343,22 @@ fn picking(
     closest_id
 }
 
-fn default_camera() -> OrbitCamera {
-    // TODO: calculate an initial/default camera based on the scene contents
-    let radius = 25.0;
-    let camera_pos = vec3(1.0, 1.0, 0.5).normalize() * radius;
-    let center = Vec3::ZERO;
+fn default_camera(space_summary: &SpaceSummary) -> OrbitCamera {
+    let bbox = space_summary.bbox3d;
+
+    let mut center = bbox.center();
+    if !center.is_finite() {
+        center = Vec3::ZERO;
+    }
+
+    let mut radius = 3.0 * bbox.half_size().length();
+    if !radius.is_finite() || radius == 0.0 {
+        radius = 1.0;
+    }
+
+    let cam_dir = vec3(1.0, 1.0, 0.5).normalize();
+    let camera_pos = center + radius * cam_dir;
+
     let up = Vec3::Z;
 
     OrbitCamera {
