@@ -30,6 +30,7 @@ egui_glow   = { git = "https://github.com/emilk/egui", rev = "f789159a4a5675ffa1
 # egui_extras = { path = "../../../egui/egui_extras", features = ["tracing"] }
 # egui_glow   = { path = "../../../egui/egui_glow" }
 
+ahash = "0.7"
 anyhow = "1.0"
 cgmath = { version = "0.18", features = ["mint"] }
 glam = { version = "0.20", features = ["mint"] }

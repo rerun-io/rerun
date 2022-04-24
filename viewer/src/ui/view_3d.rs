@@ -336,7 +336,7 @@ struct RenderingContext {
     line_mesh: three_d::CpuMesh,
 
     /// So we don't need to re-allocate them.
-    points_cache: Vec<three_d::Model<three_d::PhysicalMaterial>>,
+    points_cache: Vec<three_d::InstancedModel<three_d::PhysicalMaterial>>,
     lines_cache: Vec<three_d::InstancedModel<three_d::ColorMaterial>>,
 }
 
@@ -358,15 +358,29 @@ impl RenderingContext {
 fn allocate_points<'a>(
     three_d: &'a three_d::Context,
     sphere_mesh: &'a three_d::CpuMesh,
-    points_cache: &'a mut Vec<three_d::Model<three_d::PhysicalMaterial>>,
+    points_cache: &'a mut Vec<three_d::InstancedModel<three_d::PhysicalMaterial>>,
     render_states: three_d::RenderStates,
     points: &'a [Point],
-) -> &'a [three_d::Model<three_d::PhysicalMaterial>] {
+) -> &'a [three_d::InstancedModel<three_d::PhysicalMaterial>] {
     crate::profile_function!();
     use three_d::*;
 
-    if points_cache.len() < points.len() {
-        points_cache.resize_with(points.len(), || {
+    let mut per_color_instances: ahash::AHashMap<Color32, Vec<Instance>> = Default::default();
+    for point in points {
+        let p = point.pos;
+        let geometry_transform =
+            Mat4::from_translation(vec3(p[0], p[1], p[2])) * Mat4::from_scale(point.radius);
+        per_color_instances
+            .entry(point.color)
+            .or_default()
+            .push(Instance {
+                geometry_transform,
+                ..Default::default()
+            });
+    }
+
+    if points_cache.len() < per_color_instances.len() {
+        points_cache.resize_with(per_color_instances.len(), || {
             let material = PhysicalMaterial {
                 roughness: 1.0,
                 metallic: 0.0,
@@ -376,19 +390,17 @@ fn allocate_points<'a>(
                 ),
                 ..Default::default()
             };
-            Model::new_with_material(three_d, sphere_mesh, material).unwrap()
+            InstancedModel::new_with_material(three_d, &[], sphere_mesh, material).unwrap()
         });
     }
 
-    for (point, model) in points.iter().zip(points_cache.iter_mut()) {
-        let [x, y, z] = point.pos;
-        let pos = vec3(x, y, z);
-        model.material.render_states = render_states;
-        model.material.albedo = color_to_three_d(point.color);
-        model.set_transformation(Mat4::from_translation(pos) * Mat4::from_scale(point.radius));
+    for ((color, instances), points) in per_color_instances.iter().zip(points_cache.iter_mut()) {
+        points.material.albedo = color_to_three_d(*color);
+        points.material.render_states = render_states;
+        points.set_instances(instances).unwrap();
     }
 
-    &points_cache[..points.len()]
+    &points_cache[..per_color_instances.len()]
 }
 
 fn allocate_line_segments<'a>(
