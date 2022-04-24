@@ -79,6 +79,114 @@ struct Scene {
     meshes: Vec<(LogId, ObjectPath, Mesh3D)>,
 }
 
+impl Scene {
+    pub fn add_msg(&mut self, camera: &Camera, is_hovered: bool, color: Color32, msg: &LogMsg) {
+        let radius_multiplier = if is_hovered { 1.5 } else { 1.0 };
+        let small_radius = 0.02 * radius_multiplier;
+        let point_radius_from_distance = 0.002 * radius_multiplier;
+        let line_radius_from_distance = 0.001 * radius_multiplier;
+
+        match &msg.data {
+            Data::Pos3(pos) => {
+                // scale with distance
+                let dist_to_camera = camera.pos().distance(Vec3::from(*pos));
+                self.points.push(Point {
+                    pos: *pos,
+                    radius: dist_to_camera * point_radius_from_distance,
+                    color,
+                });
+            }
+            Data::Box3(box3) => {
+                self.add_box(camera, color, line_radius_from_distance, box3);
+            }
+            Data::Path3D(points) => {
+                let bbox = macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
+                let dist_to_camera = camera.pos().distance(bbox.center());
+                let segments = points
+                    .iter()
+                    .tuple_windows()
+                    .map(|(a, b)| [*a, *b])
+                    .collect();
+
+                self.line_segments.push(LineSegments {
+                    segments,
+                    radius: dist_to_camera * line_radius_from_distance,
+                    color,
+                });
+            }
+            Data::LineSegments3D(segments) => self.line_segments.push(LineSegments {
+                segments: segments.clone(),
+                radius: small_radius, // TODO: scale based on camera distance
+                color,
+            }),
+            Data::Mesh3D(mesh) => {
+                self.meshes
+                    .push((msg.id, msg.object_path.clone(), mesh.clone()));
+            }
+            _ => {
+                debug_assert!(!msg.data.is_3d());
+            }
+        }
+    }
+
+    pub fn add_box(
+        &mut self,
+        camera: &Camera,
+        color: Color32,
+        line_radius_from_distance: f32,
+        box3: &Box3,
+    ) {
+        let Box3 {
+            rotation,
+            translation,
+            half_size,
+        } = box3;
+        let rotation = glam::Quat::from_array(*rotation);
+        let translation = glam::Vec3::from(*translation);
+        let half_size = glam::Vec3::from(*half_size);
+        let transform =
+            glam::Mat4::from_scale_rotation_translation(half_size, rotation, translation);
+
+        let corners = [
+            transform
+                .transform_point3(vec3(-0.5, -0.5, -0.5))
+                .to_array(),
+            transform.transform_point3(vec3(-0.5, -0.5, 0.5)).to_array(),
+            transform.transform_point3(vec3(-0.5, 0.5, -0.5)).to_array(),
+            transform.transform_point3(vec3(-0.5, 0.5, 0.5)).to_array(),
+            transform.transform_point3(vec3(0.5, -0.5, -0.5)).to_array(),
+            transform.transform_point3(vec3(0.5, -0.5, 0.5)).to_array(),
+            transform.transform_point3(vec3(0.5, 0.5, -0.5)).to_array(),
+            transform.transform_point3(vec3(0.5, 0.5, 0.5)).to_array(),
+        ];
+
+        let segments = vec![
+            // bottom:
+            [corners[0b000], corners[0b001]],
+            [corners[0b000], corners[0b010]],
+            [corners[0b011], corners[0b001]],
+            [corners[0b011], corners[0b010]],
+            // top:
+            [corners[0b100], corners[0b101]],
+            [corners[0b100], corners[0b110]],
+            [corners[0b111], corners[0b101]],
+            [corners[0b111], corners[0b110]],
+            // sides:
+            [corners[0b000], corners[0b100]],
+            [corners[0b001], corners[0b101]],
+            [corners[0b010], corners[0b110]],
+            [corners[0b011], corners[0b111]],
+        ];
+
+        let dist_to_camera = camera.pos().distance(translation);
+        self.line_segments.push(LineSegments {
+            segments,
+            radius: dist_to_camera * line_radius_from_distance,
+            color,
+        });
+    }
+}
+
 fn show_settings_ui(ui: &mut egui::Ui, state_3d: &mut State3D, space_summary: &SpaceSummary) {
     if ui.button("Reset camera").clicked() {
         state_3d.camera = Some(default_camera(space_summary));
@@ -172,12 +280,6 @@ pub(crate) fn combined_view_3d(
         if msg.space.as_ref() == Some(space) {
             let is_hovered = Some(msg.id) == hovered_id;
 
-            // TODO: base radius on distance
-            let radius_multiplier = if is_hovered { 1.5 } else { 1.0 };
-            let small_radius = 0.02 * radius_multiplier;
-            let point_radius_from_distance = 0.002 * radius_multiplier;
-            let line_radius_from_distance = 0.001 * radius_multiplier;
-
             // TODO: selection color
             let color = if is_hovered {
                 Color32::WHITE
@@ -185,96 +287,7 @@ pub(crate) fn combined_view_3d(
                 context.object_color(log_db, msg)
             };
 
-            match &msg.data {
-                Data::Pos3(pos) => {
-                    // scale with distance
-                    let dist_to_camera = camera.pos().distance(Vec3::from(*pos));
-                    scene.points.push(Point {
-                        pos: *pos,
-                        radius: dist_to_camera * point_radius_from_distance,
-                        color,
-                    });
-                }
-                Data::Box3(box3) => {
-                    let Box3 {
-                        rotation,
-                        translation,
-                        half_size,
-                    } = box3;
-                    let rotation = glam::Quat::from_array(*rotation);
-                    let translation = glam::Vec3::from(*translation);
-                    let half_size = glam::Vec3::from(*half_size);
-                    let transform = glam::Mat4::from_scale_rotation_translation(
-                        half_size,
-                        rotation,
-                        translation,
-                    );
-                    let corners = [
-                        transform
-                            .transform_point3(vec3(-0.5, -0.5, -0.5))
-                            .to_array(),
-                        transform.transform_point3(vec3(-0.5, -0.5, 0.5)).to_array(),
-                        transform.transform_point3(vec3(-0.5, 0.5, -0.5)).to_array(),
-                        transform.transform_point3(vec3(-0.5, 0.5, 0.5)).to_array(),
-                        transform.transform_point3(vec3(0.5, -0.5, -0.5)).to_array(),
-                        transform.transform_point3(vec3(0.5, -0.5, 0.5)).to_array(),
-                        transform.transform_point3(vec3(0.5, 0.5, -0.5)).to_array(),
-                        transform.transform_point3(vec3(0.5, 0.5, 0.5)).to_array(),
-                    ];
-                    let segments = vec![
-                        // bottom:
-                        [corners[0b000], corners[0b001]],
-                        [corners[0b000], corners[0b010]],
-                        [corners[0b011], corners[0b001]],
-                        [corners[0b011], corners[0b010]],
-                        // top:
-                        [corners[0b100], corners[0b101]],
-                        [corners[0b100], corners[0b110]],
-                        [corners[0b111], corners[0b101]],
-                        [corners[0b111], corners[0b110]],
-                        // sides:
-                        [corners[0b000], corners[0b100]],
-                        [corners[0b001], corners[0b101]],
-                        [corners[0b010], corners[0b110]],
-                        [corners[0b011], corners[0b111]],
-                    ];
-                    let dist_to_camera = camera.pos().distance(translation);
-                    scene.line_segments.push(LineSegments {
-                        segments,
-                        radius: dist_to_camera * line_radius_from_distance,
-                        color,
-                    });
-                }
-                Data::Path3D(points) => {
-                    let bbox =
-                        macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
-                    let dist_to_camera = camera.pos().distance(bbox.center());
-                    let segments = points
-                        .iter()
-                        .tuple_windows()
-                        .map(|(a, b)| [*a, *b])
-                        .collect();
-
-                    scene.line_segments.push(LineSegments {
-                        segments,
-                        radius: dist_to_camera * line_radius_from_distance,
-                        color,
-                    });
-                }
-                Data::LineSegments3D(segments) => scene.line_segments.push(LineSegments {
-                    segments: segments.clone(),
-                    radius: small_radius,
-                    color,
-                }),
-                Data::Mesh3D(mesh) => {
-                    scene
-                        .meshes
-                        .push((msg.id, msg.object_path.clone(), mesh.clone()));
-                }
-                _ => {
-                    debug_assert!(!msg.data.is_3d());
-                }
-            }
+            scene.add_msg(&camera, is_hovered, color, msg);
         }
     }
 
