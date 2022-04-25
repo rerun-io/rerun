@@ -365,143 +365,41 @@ impl ObjectTree {
 /// Column transform of [`Data`].
 #[derive(Default)]
 pub(crate) struct DataColumns {
-    // 1D:
-    pub i32: BTreeMap<(TimePoint, LogId), i32>,
-    pub f32: BTreeMap<(TimePoint, LogId), f32>,
-    pub color: BTreeMap<(TimePoint, LogId), [u8; 4]>,
-
-    // 2D:
-    pub pos2: BTreeMap<(TimePoint, LogId), [f32; 2]>,
-    pub line_segments_2d: BTreeSet<(TimePoint, LogId)>,
-    pub bbox2d: BTreeMap<(TimePoint, LogId), BBox2D>,
-    pub image: BTreeMap<(TimePoint, LogId), Image>,
-
-    // 3D:
-    pub pos3: BTreeMap<(TimePoint, LogId), [f32; 3]>,
-    pub box3: BTreeSet<(TimePoint, LogId)>,
-    pub paths_3d: BTreeSet<(TimePoint, LogId)>,
-    pub line_segments_3d: BTreeMap<(TimePoint, LogId), Vec<[[f32; 3]; 2]>>,
-    pub meshes: BTreeSet<(TimePoint, LogId)>,
-
-    // N-D:
-    pub vecf32: BTreeMap<(TimePoint, LogId), Vec<f32>>,
+    pub per_type: HashMap<DataType, BTreeSet<LogId>>,
 }
 
 impl DataColumns {
     pub fn add(&mut self, msg: &LogMsg) {
-        #![allow(clippy::clone_on_copy)] // for symmetry
-        let when = (msg.time_point.clone(), msg.id);
-        match &msg.data {
-            Data::I32(data) => {
-                self.i32.insert(when, data.clone());
-            }
-            Data::F32(data) => {
-                self.f32.insert(when, data.clone());
-            }
-            Data::Color(color) => {
-                self.color.insert(when, color.clone());
-            }
-            Data::Pos2(data) => {
-                self.pos2.insert(when, data.clone());
-            }
-            Data::BBox2D(data) => {
-                self.bbox2d.insert(when, data.clone());
-            }
-            Data::LineSegments2D(_) => {
-                self.line_segments_2d.insert(when);
-            }
-            Data::Image(data) => {
-                self.image.insert(when, data.clone());
-            }
-            Data::Pos3(data) => {
-                self.pos3.insert(when, data.clone());
-            }
-            Data::Box3(_) => {
-                self.box3.insert(when);
-            }
-            Data::Path3D(_) => {
-                self.paths_3d.insert(when);
-            }
-            Data::LineSegments3D(data) => {
-                self.line_segments_3d.insert(when, data.clone());
-            }
-            Data::Mesh3D(_) => {
-                self.meshes.insert(when);
-            }
-            Data::Vecf32(data) => {
-                self.vecf32.insert(when, data.clone());
-            }
-        }
+        self.per_type
+            .entry(msg.data.typ())
+            .or_default()
+            .insert(msg.id);
     }
 
     pub fn summary(&self) -> String {
-        let Self {
-            i32,
-            f32,
-            color,
-            pos2,
-            line_segments_2d,
-            bbox2d,
-            image,
-            pos3,
-            box3,
-            paths_3d,
-            line_segments_3d,
-            meshes,
-            vecf32,
-        } = self;
-
         let mut summaries = vec![];
 
-        if !i32.is_empty() {
-            summaries.push(plurality(i32.len(), "integer", "s"));
-        }
-        if !f32.is_empty() {
-            summaries.push(plurality(f32.len(), "float", "s"));
-        }
-        if !color.is_empty() {
-            summaries.push(plurality(color.len(), "color", "s"));
-        }
+        for (typ, set) in &self.per_type {
+            let (stem, plur) = match typ {
+                DataType::I32 => ("integer", "s"),
+                DataType::F32 => ("float", "s"),
+                DataType::Color => ("color", "s"),
 
-        if !pos2.is_empty() {
-            summaries.push(plurality(pos2.len(), "2D position", "s"));
-        }
-        if !line_segments_2d.is_empty() {
-            summaries.push(plurality(
-                line_segments_2d.len(),
-                "2D line segment list",
-                "s",
-            ));
-        }
-        if !bbox2d.is_empty() {
-            summaries.push(plurality(bbox2d.len(), "2D bounding box", "es"));
-        }
-        if !image.is_empty() {
-            summaries.push(plurality(image.len(), "image", "s"));
-        }
+                DataType::Pos2 => ("2D position", "s"),
+                DataType::BBox2D => ("2D bounding box", "es"),
+                DataType::LineSegments2D => ("2D line segment list", "s"),
+                DataType::Image => ("image", "s"),
 
-        if !pos3.is_empty() {
-            summaries.push(plurality(pos3.len(), "3D position", "s"));
-        }
-        if !box3.is_empty() {
-            summaries.push(plurality(box3.len(), "3D box", "es"));
-        }
-        if !paths_3d.is_empty() {
-            summaries.push(plurality(paths_3d.len(), "3D path", "s"));
-        }
-        if !line_segments_3d.is_empty() {
-            summaries.push(plurality(
-                line_segments_3d.len(),
-                "3D line segment list",
-                "s",
-            ));
-        }
-        if !meshes.is_empty() {
-            summaries.push(plurality(meshes.len(), "mesh", "es"));
-        }
+                DataType::Pos3 => ("3D position", "s"),
+                DataType::Box3 => ("3D box", "es"),
+                DataType::Path3D => ("3D path", "s"),
+                DataType::LineSegments3D => ("3D line segment list", "s"),
+                DataType::Mesh3D => ("mesh", "es"),
 
-        if !vecf32.is_empty() {
-            summaries.push(plurality(vecf32.len(), "float vector", "s"));
+                DataType::Vecf32 => ("float vector", "s"),
+            };
+
+            summaries.push(plurality(set.len(), stem, plur));
         }
 
         summaries.join(", ")

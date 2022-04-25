@@ -35,39 +35,30 @@ pub enum Data {
 }
 
 impl Data {
-    pub fn is_2d(&self) -> bool {
+    pub fn typ(&self) -> DataType {
         match self {
-            Self::I32(_)
-            | Self::F32(_)
-            | Self::Color(_)
-            | Self::Pos3(_)
-            | Self::Box3(_)
-            | Self::Path3D(_)
-            | Self::LineSegments3D(_)
-            | Self::Mesh3D(_)
-            | Self::Vecf32(_) => false,
-
-            Self::Pos2(_) | Self::LineSegments2D(_) | Self::BBox2D(_) | Self::Image(_) => true,
+            Self::I32(_) => DataType::I32,
+            Self::F32(_) => DataType::F32,
+            Self::Color(_) => DataType::Color,
+            Self::Pos2(_) => DataType::Pos2,
+            Self::BBox2D(_) => DataType::BBox2D,
+            Self::LineSegments2D(_) => DataType::LineSegments2D,
+            Self::Image(_) => DataType::Image,
+            Self::Pos3(_) => DataType::Pos3,
+            Self::Box3(_) => DataType::Box3,
+            Self::Path3D(_) => DataType::Path3D,
+            Self::LineSegments3D(_) => DataType::LineSegments3D,
+            Self::Mesh3D(_) => DataType::Mesh3D,
+            Self::Vecf32(_) => DataType::Vecf32,
         }
     }
 
-    pub fn is_3d(&self) -> bool {
-        match self {
-            Self::I32(_)
-            | Self::F32(_)
-            | Self::Color(_)
-            | Self::Pos2(_)
-            | Self::LineSegments2D(_)
-            | Self::BBox2D(_)
-            | Self::Image(_)
-            | Self::Vecf32(_) => false,
+    pub fn is_2d(&self) -> bool {
+        self.typ().is_2d()
+    }
 
-            Self::Pos3(_)
-            | Self::Box3(_)
-            | Self::Path3D(_)
-            | Self::LineSegments3D(_)
-            | Self::Mesh3D(_) => true,
-        }
+    pub fn is_3d(&self) -> bool {
+        self.typ().is_3d()
     }
 }
 
@@ -77,6 +68,59 @@ impl_into_enum!(BBox2D, Data, BBox2D);
 impl_into_enum!(Vec<f32>, Data, Vecf32);
 impl_into_enum!(Image, Data, Image);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
+
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum DataType {
+    // 1D:
+    I32,
+    F32,
+
+    Color,
+
+    // ----------------------------
+    // 2D:
+    Pos2,
+    BBox2D,
+    LineSegments2D,
+    Image,
+
+    // ----------------------------
+    // 3D:
+    Pos3,
+    Box3,
+    Path3D,
+    LineSegments3D,
+    Mesh3D,
+
+    // ----------------------------
+    // N-D:
+    Vecf32,
+}
+
+impl DataType {
+    pub fn dimensionality(&self) -> Option<u32> {
+        match self {
+            Self::I32 | Self::F32 => Some(1),
+
+            Self::Pos2 | Self::BBox2D | Self::LineSegments2D | Self::Image => Some(2),
+
+            Self::Pos3 | Self::Box3 | Self::Path3D | Self::LineSegments3D | Self::Mesh3D => Some(3),
+
+            Self::Color | Self::Vecf32 => None,
+        }
+    }
+
+    pub fn is_2d(&self) -> bool {
+        self.dimensionality() == Some(2)
+    }
+
+    pub fn is_3d(&self) -> bool {
+        self.dimensionality() == Some(3)
+    }
+}
 
 // ----------------------------------------------------------------------------
 
