@@ -217,17 +217,32 @@ impl SpaceView {
         //     space_summary.messages.len()
         // ));
 
-        crate::view_3d::combined_view_3d(
-            log_db,
-            context,
-            ui,
-            &mut self.state_3d,
-            space,
-            space_summary,
-            messages,
-        );
+        if !space_summary.messages_3d.is_empty() {
+            crate::view_3d::combined_view_3d(
+                log_db,
+                context,
+                ui,
+                &mut self.state_3d,
+                space,
+                space_summary,
+                messages,
+            );
+        }
 
-        crate::view_2d::combined_view_2d(log_db, context, ui, space, space_summary, messages);
+        if !space_summary.messages_2d.is_empty() {
+            egui::Frame::canvas(ui.style())
+                .inner_margin(2.0)
+                .show(ui, |ui| {
+                    crate::view_2d::combined_view_2d(
+                        log_db,
+                        context,
+                        ui,
+                        space,
+                        space_summary,
+                        messages,
+                    );
+                });
+        }
     }
 }
 
@@ -298,6 +313,7 @@ pub(crate) fn ui_data(
         Data::I32(value) => ui.label(value.to_string()),
         Data::F32(value) => ui.label(value.to_string()),
         Data::Color([r, g, b, a]) => ui.label(format!("#{:02x}{:02x}{:02x}{:02x}", r, g, b, a)),
+
         Data::Pos2([x, y]) => ui.label(format!("Pos2({x:.1}, {y:.1})")),
         Data::LineSegments2D(linesegments) => {
             ui.label(format!("{} 2D line segment(s)", linesegments.len()))
@@ -325,11 +341,14 @@ pub(crate) fn ui_data(
             })
             .response
         }
+
         Data::Pos3([x, y, z]) => ui.label(format!("Pos3({x}, {y}, {z})")),
         Data::Box3(_) => ui.label("3D box"),
         Data::Path3D(_) => ui.label("3D path"),
         Data::LineSegments3D(segments) => ui.label(format!("{} 3D line segments", segments.len())),
         Data::Mesh3D(_) => ui.label("3D mesh"),
+        Data::Camera(_) => ui.label("Camera"),
+
         Data::Vecf32(data) => ui.label(format!("Vecf32({data:?})")),
     }
 }

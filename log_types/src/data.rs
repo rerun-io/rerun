@@ -28,6 +28,7 @@ pub enum Data {
     /// Special sibling attributes: "color", "radius"
     LineSegments3D(Vec<[[f32; 3]; 2]>),
     Mesh3D(Mesh3D),
+    Camera(Camera),
 
     // ----------------------------
     // N-D:
@@ -41,15 +42,19 @@ impl Data {
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
             Self::Color(_) => DataType::Color,
+
             Self::Pos2(_) => DataType::Pos2,
             Self::BBox2D(_) => DataType::BBox2D,
             Self::LineSegments2D(_) => DataType::LineSegments2D,
             Self::Image(_) => DataType::Image,
+
             Self::Pos3(_) => DataType::Pos3,
             Self::Box3(_) => DataType::Box3,
             Self::Path3D(_) => DataType::Path3D,
             Self::LineSegments3D(_) => DataType::LineSegments3D,
             Self::Mesh3D(_) => DataType::Mesh3D,
+            Self::Camera(_) => DataType::Camera,
+
             Self::Vecf32(_) => DataType::Vecf32,
         }
     }
@@ -97,6 +102,7 @@ pub enum DataType {
     Path3D,
     LineSegments3D,
     Mesh3D,
+    Camera,
 
     // ----------------------------
     // N-D:
@@ -111,7 +117,12 @@ impl DataType {
 
             Self::Pos2 | Self::BBox2D | Self::LineSegments2D | Self::Image => Some(2),
 
-            Self::Pos3 | Self::Box3 | Self::Path3D | Self::LineSegments3D | Self::Mesh3D => Some(3),
+            Self::Pos3
+            | Self::Box3
+            | Self::Path3D
+            | Self::LineSegments3D
+            | Self::Mesh3D
+            | Self::Camera => Some(3),
 
             Self::Color | Self::Vecf32 => None,
         }
@@ -155,6 +166,17 @@ pub type Quaternion = [f32; 4];
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct Camera {
+    /// How is the camera rotated, compared to the parent space?
+    pub rotation: Quaternion,
+    /// Where is the camera?
+    pub position: [f32; 3],
+}
+
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Mesh3D {
     Encoded(EncodedMesh3D),
     Raw(RawMesh3D),
@@ -177,7 +199,7 @@ pub struct EncodedMesh3D {
     pub transform: [[f32; 4]; 4],
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum MeshFormat {
     Gltf,

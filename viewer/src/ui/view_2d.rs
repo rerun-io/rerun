@@ -16,9 +16,6 @@ pub(crate) fn combined_view_2d(
     space_summary: &SpaceSummary,
     messages: &[&LogMsg],
 ) {
-    if space_summary.bbox2d.is_negative() {
-        return;
-    }
     crate::profile_function!();
 
     let mut messages = messages

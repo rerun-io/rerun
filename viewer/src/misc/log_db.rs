@@ -115,6 +115,10 @@ impl LogDb {
                         }
                     }
                 }
+                Data::Camera(camera) => {
+                    summary.messages_3d.insert(msg.id);
+                    summary.bbox3d.extend(camera.position.into());
+                }
 
                 _ => {
                     debug_assert!(!msg.data.is_2d(), "Missed handling 2D data: {:?}", msg.data);
@@ -395,6 +399,7 @@ impl DataColumns {
                 DataType::Path3D => ("3D path", "s"),
                 DataType::LineSegments3D => ("3D line segment list", "s"),
                 DataType::Mesh3D => ("mesh", "es"),
+                DataType::Camera => ("camera", "s"),
 
                 DataType::Vecf32 => ("float vector", "s"),
             };

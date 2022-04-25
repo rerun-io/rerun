@@ -1,11 +1,12 @@
 use eframe::egui;
+use egui::util::hash;
 use egui::{Color32, Rect};
 use glam::Affine3A;
 use itertools::Itertools;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
-use std::rc::Rc;
 
 use log_types::*;
+use three_d::RenderStates;
 
 use crate::mesh_loader::GpuMesh;
 use crate::ViewerContext;
@@ -72,24 +73,40 @@ struct LineSegments {
     color: Color32,
 }
 
+enum MeshSourceData {
+    Mesh3D(Mesh3D),
+    /// e.g. the camera mesh
+    StaticGlb(&'static [u8]),
+}
+
+struct MeshSource {
+    mesh_id: u64,
+    object_path: ObjectPath,
+    world_from_mesh: glam::Mat4,
+    mesh_data: MeshSourceData,
+}
+
 #[derive(Default)]
 struct Scene {
     points: Vec<Point>,
     line_segments: Vec<LineSegments>,
-    meshes: Vec<(LogId, ObjectPath, Mesh3D)>,
+    meshes: Vec<MeshSource>,
 }
 
 impl Scene {
     pub fn add_msg(&mut self, camera: &Camera, is_hovered: bool, color: Color32, msg: &LogMsg) {
         let radius_multiplier = if is_hovered { 1.5 } else { 1.0 };
+        // TODO: base sizes on viewport size and maybe fov_y
         let small_radius = 0.02 * radius_multiplier;
         let point_radius_from_distance = 0.002 * radius_multiplier;
         let line_radius_from_distance = 0.001 * radius_multiplier;
 
+        let eye_pos = camera.pos();
+
         match &msg.data {
             Data::Pos3(pos) => {
                 // scale with distance
-                let dist_to_camera = camera.pos().distance(Vec3::from(*pos));
+                let dist_to_camera = eye_pos.distance(Vec3::from(*pos));
                 self.points.push(Point {
                     pos: *pos,
                     radius: dist_to_camera * point_radius_from_distance,
@@ -101,7 +118,7 @@ impl Scene {
             }
             Data::Path3D(points) => {
                 let bbox = macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
-                let dist_to_camera = camera.pos().distance(bbox.center());
+                let dist_to_camera = eye_pos.distance(bbox.center());
                 let segments = points
                     .iter()
                     .tuple_windows()
@@ -120,8 +137,29 @@ impl Scene {
                 color,
             }),
             Data::Mesh3D(mesh) => {
-                self.meshes
-                    .push((msg.id, msg.object_path.clone(), mesh.clone()));
+                self.meshes.push(MeshSource {
+                    mesh_id: hash(msg.id),
+                    object_path: msg.object_path.clone(),
+                    world_from_mesh: glam::Mat4::IDENTITY,
+                    mesh_data: MeshSourceData::Mesh3D(mesh.clone()),
+                });
+            }
+            Data::Camera(camera) => {
+                let rotation = Quat::from_slice(&camera.rotation);
+                let translation = Vec3::from_slice(&camera.position);
+
+                // let dist_to_camera = eye_pos.distance(translation);
+                // let scale = Vec3::splat(0.1 * dist_to_camera);
+                let scale = Vec3::splat(0.05); // camera mesh is 1m long
+
+                let world_from_mesh =
+                    Mat4::from_scale_rotation_translation(scale, rotation, translation);
+                self.meshes.push(MeshSource {
+                    mesh_id: hash("camera"),
+                    object_path: msg.object_path.clone(),
+                    world_from_mesh,
+                    mesh_data: MeshSourceData::StaticGlb(include_bytes!("../../data/camera.glb")),
+                });
             }
             _ => {
                 debug_assert!(!msg.data.is_3d());
@@ -202,19 +240,13 @@ pub(crate) fn combined_view_3d(
     space_summary: &SpaceSummary,
     messages: &[&LogMsg],
 ) {
-    if space_summary.messages_3d.is_empty() {
-        return;
-    }
     crate::profile_function!();
 
     // TODO: show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
     show_settings_ui(ui, state_3d, space_summary);
 
-    let frame = egui::Frame {
-        inner_margin: 2.0.into(),
-        ..egui::Frame::dark_canvas(ui.style())
-    };
+    let frame = egui::Frame::canvas(ui.style()).inner_margin(2.0);
     let (outer_rect, response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
@@ -343,7 +375,11 @@ fn picking(
                             .circle_filled(screen_pos, 3.0, egui::Color32::RED);
                     }
                 }
-                Data::Box3(_) | Data::Path3D(_) | Data::LineSegments3D(_) | Data::Mesh3D(_) => {
+                Data::Box3(_)
+                | Data::Path3D(_)
+                | Data::LineSegments3D(_)
+                | Data::Mesh3D(_)
+                | Data::Camera(_) => {
                     // TODO: more picking
                 }
                 _ => {
@@ -545,31 +581,56 @@ fn allocate_line_segments<'a>(
 }
 
 #[derive(Default)]
-struct MeshCache(nohash_hasher::IntMap<LogId, Option<Rc<GpuMesh>>>);
+struct MeshCache(nohash_hasher::IntMap<u64, Option<GpuMesh>>);
 
 impl MeshCache {
     fn load(
         &mut self,
         three_d: &three_d::Context,
-        log_id: &LogId,
+        mesh_id: u64,
         object_path: &ObjectPath,
-        mesh_data: &Mesh3D,
-    ) -> Option<Rc<GpuMesh>> {
+        mesh_data: &MeshSourceData,
+    ) {
         crate::profile_function!();
-        self.0
-            .entry(*log_id)
-            .or_insert_with(|| {
-                let name = object_path.to_string();
-                tracing::debug!("Loading mesh {}…", name);
-                match crate::mesh_loader::load(three_d, name.clone(), mesh_data) {
-                    Ok(gpu_mesh) => Some(Rc::new(gpu_mesh)),
-                    Err(err) => {
-                        tracing::warn!("{}: Failed to load mesh: {}", name, err);
-                        None
-                    }
+        self.0.entry(mesh_id).or_insert_with(|| {
+            let name = object_path.to_string();
+            tracing::debug!("Loading mesh {}…", name);
+            let result = match mesh_data {
+                MeshSourceData::Mesh3D(mesh3d) => {
+                    crate::mesh_loader::load(three_d, name.clone(), mesh3d)
                 }
-            })
-            .clone()
+                MeshSourceData::StaticGlb(glb_bytes) => {
+                    crate::mesh_loader::load_raw(three_d, name.clone(), MeshFormat::Glb, glb_bytes)
+                }
+            };
+
+            match result {
+                Ok(gpu_mesh) => Some(gpu_mesh),
+                Err(err) => {
+                    tracing::warn!("{}: Failed to load mesh: {}", name, err);
+                    None
+                }
+            }
+        });
+    }
+
+    fn set_instances(
+        &mut self,
+        mesh_id: u64,
+        render_states: RenderStates,
+        instances: &[three_d::Instance],
+    ) -> three_d::ThreeDResult<()> {
+        if let Some(Some(gpu_mesh)) = self.0.get_mut(&mesh_id) {
+            for model in &mut gpu_mesh.models {
+                model.material.render_states = render_states;
+                model.set_instances(instances)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn get(&self, mesh_id: u64) -> Option<&GpuMesh> {
+        self.0.get(&mesh_id)?.as_ref()
     }
 }
 
@@ -632,20 +693,37 @@ fn paint_with_three_d(
         meshes,
     } = scene;
 
-    // TODO: set render_states for the meshes, or wait for https://github.com/asny/three-d/issues/233 to be solved
-    let meshes: Vec<Rc<GpuMesh>> = meshes
-        .iter()
-        .filter_map(|(log_id, obj_path, mesh)| {
-            rendering.mesh_cache.load(three_d, log_id, obj_path, mesh)
-        })
-        .collect();
+    let mut mesh_instances: std::collections::HashMap<u64, Vec<Instance>> = Default::default();
+
+    for mesh in meshes {
+        mesh_instances
+            .entry(mesh.mesh_id)
+            .or_default()
+            .push(Instance {
+                geometry_transform: mint::ColumnMatrix4::from(mesh.world_from_mesh).into(),
+                ..Default::default()
+            });
+
+        rendering
+            .mesh_cache
+            .load(three_d, mesh.mesh_id, &mesh.object_path, &mesh.mesh_data);
+    }
+
+    for (mesh_id, instances) in &mesh_instances {
+        rendering
+            .mesh_cache
+            .set_instances(*mesh_id, render_states, instances)?;
+    }
 
     let mut objects: Vec<&dyn Object> = vec![];
-    for mesh in &meshes {
-        for obj in &mesh.models {
-            objects.push(obj);
+    for &mesh_id in mesh_instances.keys() {
+        if let Some(gpu_mesh) = rendering.mesh_cache.get(mesh_id) {
+            for obj in &gpu_mesh.models {
+                objects.push(obj);
+            }
         }
     }
+
     for obj in allocate_points(
         &rendering.three_d,
         &rendering.sphere_mesh,
