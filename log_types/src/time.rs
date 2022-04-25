@@ -16,14 +16,17 @@ impl Time {
         self.0
     }
 
+    #[inline]
     pub fn from_ns_since_epoch(ns_since_epoch: i64) -> Self {
         Self(ns_since_epoch)
     }
 
+    #[inline]
     pub fn from_us_since_epoch(us_since_epoch: i64) -> Self {
         Self(us_since_epoch * 1_000)
     }
 
+    #[inline]
     pub fn from_seconds_since_epoch(secs: f64) -> Self {
         Self::from_ns_since_epoch((secs * 1e9).round() as _)
     }
@@ -52,6 +55,7 @@ impl Time {
         }
     }
 
+    #[inline]
     pub fn lerp(range: RangeInclusive<Time>, t: f32) -> Time {
         let (min, max) = (range.start().0, range.end().0);
         Self(min + ((max - min) as f64 * (t as f64)).round() as i64)
@@ -66,6 +70,8 @@ impl std::fmt::Debug for Time {
 
 impl std::ops::Sub for Time {
     type Output = Duration;
+
+    #[inline]
     fn sub(self, rhs: Time) -> Duration {
         Duration(self.0.saturating_sub(rhs.0))
     }
@@ -73,12 +79,15 @@ impl std::ops::Sub for Time {
 
 impl std::ops::Add<Duration> for Time {
     type Output = Time;
+
+    #[inline]
     fn add(self, duration: Duration) -> Self::Output {
         Time(self.0.saturating_add(duration.0))
     }
 }
 
 impl std::ops::AddAssign<Duration> for Time {
+    #[inline]
     fn add_assign(&mut self, duration: Duration) {
         self.0 = self.0.saturating_add(duration.0);
     }
@@ -103,22 +112,27 @@ pub struct Duration(i64);
 impl Duration {
     pub const MAX: Duration = Duration(std::i64::MAX);
 
+    #[inline]
     pub fn from_nanos(nanos: i64) -> Self {
         Self(nanos)
     }
 
+    #[inline]
     pub fn from_secs(secs: f32) -> Self {
         Self::from_nanos((secs * 1e9).round() as _)
     }
 
+    #[inline]
     pub fn as_nanos(&self) -> i64 {
         self.0
     }
 
+    #[inline]
     pub fn as_secs_f32(&self) -> f32 {
         self.0 as f32 * 1e-9
     }
 
+    #[inline]
     pub fn as_secs_f64(&self) -> f64 {
         self.0 as f64 * 1e-9
     }
@@ -195,6 +209,8 @@ impl Duration {
 
 impl std::ops::Neg for Duration {
     type Output = Duration;
+
+    #[inline]
     fn neg(self) -> Duration {
         // Handle negation without overflow:
         if self.0 == std::i64::MIN {

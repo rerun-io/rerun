@@ -17,6 +17,7 @@ use std::{collections::BTreeMap, fmt::Write as _};
 macro_rules! impl_into_enum {
     ($from_ty: ty, $enum_name: ident, $to_enum_variant: ident) => {
         impl From<$from_ty> for $enum_name {
+            #[inline]
             fn from(value: $from_ty) -> Self {
                 Self::$to_enum_variant(value)
             }
@@ -36,12 +37,14 @@ impl nohash_hasher::IsEnabled for LogId {}
 // required for nohash_hasher
 #[allow(clippy::derive_hash_xor_eq)]
 impl std::hash::Hash for LogId {
+    #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.0.as_u128() as u64);
     }
 }
 
 impl LogId {
+    #[inline]
     fn random() -> Self {
         Self(uuid::Uuid::new_v4())
     }
@@ -68,12 +71,14 @@ pub struct LogMsg {
 }
 
 impl LogMsg {
+    #[inline]
     pub fn space(mut self, space: &ObjectPath) -> Self {
         self.space = Some(space.clone());
         self
     }
 }
 
+#[inline]
 pub fn log_msg(time_point: &TimePoint, object_path: ObjectPath, data: impl Into<Data>) -> LogMsg {
     LogMsg {
         time_point: time_point.clone(),
@@ -104,6 +109,7 @@ impl TimeValue {
     /// Offset by arbitrary value.
     /// Nanos for time.
     #[must_use]
+    #[inline]
     pub fn add_offset_f32(self, offset: f32) -> Self {
         self.add_offset_f64(offset as f64)
     }
@@ -131,6 +137,7 @@ impl std::fmt::Display for TimeValue {
 impl_into_enum!(Time, TimeValue, Time);
 impl_into_enum!(i64, TimeValue, Sequence);
 
+#[inline]
 pub fn time_point(fields: impl IntoIterator<Item = (&'static str, TimeValue)>) -> TimePoint {
     TimePoint(
         fields
@@ -170,6 +177,7 @@ impl std::fmt::Display for ObjectPath {
 }
 
 impl From<ObjectPathComponent> for ObjectPath {
+    #[inline]
     fn from(component: ObjectPathComponent) -> Self {
         Self(vec![component])
     }
@@ -199,15 +207,18 @@ impl std::fmt::Display for ObjectPathComponent {
 }
 
 impl From<&str> for ObjectPathComponent {
+    #[inline]
     fn from(comp: &str) -> Self {
         Self::String(comp.to_owned())
     }
 }
 
+#[inline]
 pub fn persist_id(name: impl Into<String>, id: impl Into<Identifier>) -> ObjectPathComponent {
     ObjectPathComponent::PersistId(name.into(), id.into())
 }
 
+#[inline]
 pub fn temp_id(name: impl Into<String>, id: impl Into<Identifier>) -> ObjectPathComponent {
     ObjectPathComponent::TempId(name.into(), id.into())
 }
@@ -236,6 +247,8 @@ impl_into_enum!(u64, Identifier, U64);
 
 impl std::ops::Div for ObjectPathComponent {
     type Output = ObjectPath;
+
+    #[inline]
     fn div(self, rhs: ObjectPathComponent) -> Self::Output {
         ObjectPath(vec![self, rhs])
     }
@@ -243,6 +256,8 @@ impl std::ops::Div for ObjectPathComponent {
 
 impl std::ops::Div<ObjectPathComponent> for ObjectPath {
     type Output = ObjectPath;
+
+    #[inline]
     fn div(mut self, rhs: ObjectPathComponent) -> Self::Output {
         self.0.push(rhs);
         self
@@ -251,6 +266,8 @@ impl std::ops::Div<ObjectPathComponent> for ObjectPath {
 
 impl std::ops::Div<ObjectPathComponent> for &ObjectPath {
     type Output = ObjectPath;
+
+    #[inline]
     fn div(self, rhs: ObjectPathComponent) -> Self::Output {
         self.clone() / rhs
     }
@@ -258,6 +275,8 @@ impl std::ops::Div<ObjectPathComponent> for &ObjectPath {
 
 impl std::ops::Div<&'static str> for ObjectPath {
     type Output = ObjectPath;
+
+    #[inline]
     fn div(mut self, rhs: &'static str) -> Self::Output {
         self.0.push(ObjectPathComponent::String(rhs.into()));
         self
@@ -266,6 +285,8 @@ impl std::ops::Div<&'static str> for ObjectPath {
 
 impl std::ops::Div<&'static str> for &ObjectPath {
     type Output = ObjectPath;
+
+    #[inline]
     fn div(self, rhs: &'static str) -> Self::Output {
         self.clone() / rhs
     }

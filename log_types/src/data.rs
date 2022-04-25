@@ -35,6 +35,7 @@ pub enum Data {
 }
 
 impl Data {
+    #[inline]
     pub fn typ(&self) -> DataType {
         match self {
             Self::I32(_) => DataType::I32,
@@ -53,10 +54,12 @@ impl Data {
         }
     }
 
+    #[inline]
     pub fn is_2d(&self) -> bool {
         self.typ().is_2d()
     }
 
+    #[inline]
     pub fn is_3d(&self) -> bool {
         self.typ().is_3d()
     }
@@ -101,6 +104,7 @@ pub enum DataType {
 }
 
 impl DataType {
+    #[inline]
     pub fn dimensionality(&self) -> Option<u32> {
         match self {
             Self::I32 | Self::F32 => Some(1),
@@ -113,10 +117,12 @@ impl DataType {
         }
     }
 
+    #[inline]
     pub fn is_2d(&self) -> bool {
         self.dimensionality() == Some(2)
     }
 
+    #[inline]
     pub fn is_3d(&self) -> bool {
         self.dimensionality() == Some(3)
     }
