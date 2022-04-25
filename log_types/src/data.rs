@@ -105,19 +105,34 @@ pub type Quaternion = [f32; 4];
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum MeshFormat {
-    Gltf,
-    Glb,
-    Obj,
+pub enum Mesh3D {
+    Encoded(EncodedMesh3D),
+    Raw(RawMesh3D),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Mesh3D {
+pub struct RawMesh3D {
+    pub positions: Vec<[f32; 3]>,
+    pub indices: Vec<[u32; 3]>,
+}
+
+/// Compressed/encoded mesh format
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct EncodedMesh3D {
     pub format: MeshFormat,
     pub bytes: std::sync::Arc<[u8]>,
     /// four columns of a transformation matrix
     pub transform: [[f32; 4]; 4],
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum MeshFormat {
+    Gltf,
+    Glb,
+    Obj,
 }
 
 // ----------------------------------------------------------------------------

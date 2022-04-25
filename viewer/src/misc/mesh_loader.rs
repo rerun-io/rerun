@@ -1,10 +1,13 @@
 use anyhow::{anyhow, Context as _};
-use log_types::{Mesh3D, MeshFormat};
+use log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
 use three_d::*;
 
-pub fn load(three_d: &three_d::Context, mesh_data: &Mesh3D) -> anyhow::Result<GpuMesh> {
+pub fn load(three_d: &three_d::Context, name: String, mesh: &Mesh3D) -> anyhow::Result<GpuMesh> {
     // TODO: load CpuMesh in background thread.
-    CpuMesh::load(mesh_data)?.to_gpu(three_d)
+    match mesh {
+        Mesh3D::Encoded(encoded_mesh) => CpuMesh::load_encoded_mesh(encoded_mesh)?.to_gpu(three_d),
+        Mesh3D::Raw(raw_mesh) => CpuMesh::load_raw_mesh(name, raw_mesh)?.to_gpu(three_d),
+    }
 }
 
 struct CpuMesh {
@@ -19,19 +22,21 @@ pub struct GpuMesh {
 }
 
 impl CpuMesh {
-    fn load(mesh_data: &Mesh3D) -> anyhow::Result<Self> {
+    fn load_encoded_mesh(encoded_mesh: &EncodedMesh3D) -> anyhow::Result<Self> {
+        crate::profile_function!();
+
         let path = "mesh";
         let mut loaded = three_d::io::Loaded::new();
-        loaded.insert_bytes(path, mesh_data.bytes.to_vec());
+        loaded.insert_bytes(path, encoded_mesh.bytes.to_vec());
 
-        let (mut meshes, materials) = match mesh_data.format {
+        let (mut meshes, materials) = match encoded_mesh.format {
             MeshFormat::Glb | MeshFormat::Gltf => loaded.gltf(path),
             MeshFormat::Obj => loaded.obj(path),
         }
         .map_err(to_anyhow)
         .context("loading gltf")?;
 
-        let [c0, c1, c2, c3] = mesh_data.transform;
+        let [c0, c1, c2, c3] = encoded_mesh.transform;
         let root_transform = three_d::Mat4::from_cols(c0.into(), c1.into(), c2.into(), c3.into());
         for mesh in &mut meshes {
             mesh.transform(&root_transform)
@@ -45,7 +50,40 @@ impl CpuMesh {
         Ok(Self { meshes, materials })
     }
 
+    fn load_raw_mesh(name: String, raw_mesh: &RawMesh3D) -> anyhow::Result<Self> {
+        let RawMesh3D { positions, indices } = raw_mesh;
+        let positions = positions
+            .iter()
+            .map(|&[x, y, z]| three_d::vec3(x, y, z))
+            .collect();
+
+        let material_name = "material_name".to_string(); // whatever
+
+        let mut mesh = three_d::CpuMesh {
+            name,
+            positions: three_d::Positions::F32(positions),
+            indices: Some(three_d::Indices::U32(
+                indices.iter().flat_map(|triangle| *triangle).collect(),
+            )),
+            material_name: Some(material_name.clone()),
+            ..Default::default()
+        };
+        mesh.compute_normals();
+
+        let material = three_d::CpuMaterial {
+            name: material_name,
+            ..Default::default()
+        };
+
+        Ok(Self {
+            meshes: vec![mesh],
+            materials: vec![material],
+        })
+    }
+
     fn to_gpu(&self, three_d: &three_d::Context) -> anyhow::Result<GpuMesh> {
+        crate::profile_function!();
+
         let mut materials = Vec::new();
         for m in self.materials.iter() {
             materials.push(PhysicalMaterial::new(three_d, m).map_err(to_anyhow)?);

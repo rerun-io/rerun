@@ -559,11 +559,12 @@ impl MeshCache {
         self.0
             .entry(*log_id)
             .or_insert_with(|| {
-                tracing::debug!("Loading mesh {}…", object_path);
-                match crate::mesh_loader::load(three_d, mesh_data) {
+                let name = object_path.to_string();
+                tracing::debug!("Loading mesh {}…", name);
+                match crate::mesh_loader::load(three_d, name.clone(), mesh_data) {
                     Ok(gpu_mesh) => Some(Rc::new(gpu_mesh)),
                     Err(err) => {
-                        tracing::warn!("{}: Failed to load mesh: {}", object_path, err);
+                        tracing::warn!("{}: Failed to load mesh: {}", name, err);
                         None
                     }
                 }

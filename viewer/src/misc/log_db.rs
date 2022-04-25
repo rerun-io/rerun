@@ -90,21 +90,30 @@ impl LogDb {
                     }
                 }
                 Data::Path3D(points) => {
+                    summary.messages_3d.insert(msg.id);
                     for &p in points {
                         summary.bbox3d.extend(p.into());
                     }
-                    summary.messages_3d.insert(msg.id);
                 }
                 Data::LineSegments3D(segments) => {
+                    summary.messages_3d.insert(msg.id);
                     for &[a, b] in segments {
                         summary.bbox3d.extend(a.into());
                         summary.bbox3d.extend(b.into());
                     }
-                    summary.messages_3d.insert(msg.id);
                 }
-                Data::Mesh3D(_) => {
-                    // TODO: how to we get the bbox of the mesh here?
+                Data::Mesh3D(mesh) => {
                     summary.messages_3d.insert(msg.id);
+                    match mesh {
+                        Mesh3D::Encoded(_) => {
+                            // TODO: how to we get the bbox of an encoded mesh here?
+                        }
+                        Mesh3D::Raw(mesh) => {
+                            for &pos in &mesh.positions {
+                                summary.bbox3d.extend(pos.into());
+                            }
+                        }
+                    }
                 }
 
                 _ => {
