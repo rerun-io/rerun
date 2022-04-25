@@ -16,6 +16,7 @@ pub enum Data {
     Pos2([f32; 2]),
     /// Special sibling attributes: "color"
     BBox2D(BBox2D),
+    LineSegments2D(Vec<[[f32; 2]; 2]>),
     Image(Image),
 
     // ----------------------------
@@ -46,7 +47,7 @@ impl Data {
             | Self::Mesh3D(_)
             | Self::Vecf32(_) => false,
 
-            Self::Pos2(_) | Self::BBox2D(_) | Self::Image(_) => true,
+            Self::Pos2(_) | Self::LineSegments2D(_) | Self::BBox2D(_) | Self::Image(_) => true,
         }
     }
 
@@ -56,6 +57,7 @@ impl Data {
             | Self::F32(_)
             | Self::Color(_)
             | Self::Pos2(_)
+            | Self::LineSegments2D(_)
             | Self::BBox2D(_)
             | Self::Image(_)
             | Self::Vecf32(_) => false,

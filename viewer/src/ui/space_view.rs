@@ -299,6 +299,9 @@ pub(crate) fn ui_data(
         Data::F32(value) => ui.label(value.to_string()),
         Data::Color([r, g, b, a]) => ui.label(format!("#{:02x}{:02x}{:02x}{:02x}", r, g, b, a)),
         Data::Pos2([x, y]) => ui.label(format!("Pos2({x:.1}, {y:.1})")),
+        Data::LineSegments2D(linesegments) => {
+            ui.label(format!("{} 2D line segment(s)", linesegments.len()))
+        }
         Data::BBox2D(bbox) => ui.label(format!(
             "BBox2D(min: [{:.1} {:.1}], max: [{:.1} {:.1}])",
             bbox.min[0], bbox.min[1], bbox.max[0], bbox.max[1]

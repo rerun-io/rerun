@@ -27,11 +27,12 @@ pub(crate) fn combined_view_2d(
         .filter(|msg| msg.space.as_ref() == Some(space) && msg.data.is_2d())
         .collect_vec();
 
-    // Show images first (behind everything else), then bboxes, then points:
+    // Show images first (behind everything else), then bboxes and lines, last points:
     messages.sort_by_key(|msg| match &msg.data {
         Data::Image(_) => 0,
         Data::BBox2D(_) => 1,
-        _ => 2,
+        Data::LineSegments2D(_) => 2,
+        _ => 3,
     });
 
     let desired_size = {
@@ -80,6 +81,7 @@ pub(crate) fn combined_view_2d(
     for msg in &messages {
         let is_hovered = Some(msg.id) == hovered;
 
+        let bg_color = Color32::from_black_alpha(128);
         // TODO: different color when selected
         let fg_color = if is_hovered {
             Color32::WHITE
@@ -87,24 +89,34 @@ pub(crate) fn combined_view_2d(
             context.object_color(log_db, msg)
         };
         let stoke_width = if is_hovered { 2.5 } else { 1.5 };
+        let bg_stroke = Stroke::new(stoke_width + 1.0, bg_color);
+        let fg_stroke = Stroke::new(stoke_width, fg_color);
 
         match &msg.data {
             Data::Pos2(pos) => {
                 let screen_pos = to_screen.transform_pos(pos.into());
                 let r = 1.0 + stoke_width;
-                painter.circle_filled(screen_pos, r + 1.0, Color32::from_black_alpha(128));
+                painter.circle_filled(screen_pos, r + 1.0, bg_color);
                 painter.circle_filled(screen_pos, r, fg_color);
+            }
+            Data::LineSegments2D(line_segments) => {
+                for [a, b] in line_segments {
+                    let a = to_screen.transform_pos(a.into());
+                    let b = to_screen.transform_pos(b.into());
+                    painter.line_segment([a, b], bg_stroke);
+                }
+                for [a, b] in line_segments {
+                    let a = to_screen.transform_pos(a.into());
+                    let b = to_screen.transform_pos(b.into());
+                    painter.line_segment([a, b], fg_stroke);
+                }
             }
             Data::BBox2D(bbox) => {
                 let screen_rect =
                     to_screen.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
                 let rounding = 2.0;
-                painter.rect_stroke(
-                    screen_rect,
-                    rounding,
-                    Stroke::new(stoke_width + 1.0, Color32::from_black_alpha(128)),
-                );
-                painter.rect_stroke(screen_rect, rounding, Stroke::new(stoke_width, fg_color));
+                painter.rect_stroke(screen_rect, rounding, bg_stroke);
+                painter.rect_stroke(screen_rect, rounding, fg_stroke);
             }
             Data::Image(image) => {
                 let texture_id = context.image_cache.get(&msg.id, image).texture_id(ui.ctx());
@@ -126,7 +138,7 @@ pub(crate) fn combined_view_2d(
                 images_painted += 1;
 
                 if is_hovered {
-                    painter.rect_stroke(screen_rect, 0.0, Stroke::new(stoke_width, fg_color));
+                    painter.rect_stroke(screen_rect, 0.0, fg_stroke);
                 }
             }
             _ => {}
@@ -178,6 +190,17 @@ fn hovered(
                     to_screen.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
                 screen_rect.signed_distance_to_pos(pointer_pos).abs()
             }
+            Data::LineSegments2D(line_segments) => {
+                let mut min_dist_sq = f32::INFINITY;
+                for [a, b] in line_segments {
+                    let a = to_screen.transform_pos(a.into());
+                    let b = to_screen.transform_pos(b.into());
+                    let line_segment_distance_sq =
+                        line_segment_distance_sq_to_point([a, b], pointer_pos);
+                    min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
+                }
+                min_dist_sq.sqrt()
+            }
             Data::Image(image) => {
                 let screen_rect = to_screen.transform_rect(Rect::from_min_size(
                     Pos2::ZERO,
@@ -196,4 +219,15 @@ fn hovered(
     }
 
     closest_id
+}
+
+fn line_segment_distance_sq_to_point([a, b]: [Pos2; 2], p: Pos2) -> f32 {
+    let l2 = a.distance_sq(b);
+    if l2 == 0.0 {
+        a.distance_sq(p)
+    } else {
+        let t = ((p - a).dot(b - a) / l2).clamp(0.0, 1.0);
+        let projection = a + t * (b - a);
+        p.distance_sq(projection)
+    }
 }

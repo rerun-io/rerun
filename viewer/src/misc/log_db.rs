@@ -38,6 +38,13 @@ impl LogDb {
                     summary.bbox2d.extend_with(bbox.min.into());
                     summary.bbox2d.extend_with(bbox.max.into());
                 }
+                Data::LineSegments2D(line_segments) => {
+                    summary.messages_2d.insert(msg.id);
+                    for [a, b] in line_segments {
+                        summary.bbox2d.extend_with(a.into());
+                        summary.bbox2d.extend_with(b.into());
+                    }
+                }
                 Data::Image(image) => {
                     summary.messages_2d.insert(msg.id);
                     summary.bbox2d.extend_with(egui::Pos2::ZERO);
@@ -356,6 +363,7 @@ pub(crate) struct DataColumns {
 
     // 2D:
     pub pos2: BTreeMap<(TimePoint, LogId), [f32; 2]>,
+    pub line_segments_2d: BTreeSet<(TimePoint, LogId)>,
     pub bbox2d: BTreeMap<(TimePoint, LogId), BBox2D>,
     pub image: BTreeMap<(TimePoint, LogId), Image>,
 
@@ -390,6 +398,9 @@ impl DataColumns {
             Data::BBox2D(data) => {
                 self.bbox2d.insert(when, data.clone());
             }
+            Data::LineSegments2D(_) => {
+                self.line_segments_2d.insert(when);
+            }
             Data::Image(data) => {
                 self.image.insert(when, data.clone());
             }
@@ -420,6 +431,7 @@ impl DataColumns {
             f32,
             color,
             pos2,
+            line_segments_2d,
             bbox2d,
             image,
             pos3,
@@ -441,8 +453,16 @@ impl DataColumns {
         if !color.is_empty() {
             summaries.push(plurality(color.len(), "color", "s"));
         }
+
         if !pos2.is_empty() {
             summaries.push(plurality(pos2.len(), "2D position", "s"));
+        }
+        if !line_segments_2d.is_empty() {
+            summaries.push(plurality(
+                line_segments_2d.len(),
+                "2D line segment list",
+                "s",
+            ));
         }
         if !bbox2d.is_empty() {
             summaries.push(plurality(bbox2d.len(), "2D bounding box", "es"));
