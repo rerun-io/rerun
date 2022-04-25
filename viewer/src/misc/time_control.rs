@@ -52,6 +52,11 @@ struct TimeState {
     /// The current time (play marker).
     time: TimeValue,
 
+    /// Frames Per Second, when playing sequences (they are often video recordings).
+    fps: f32,
+    /// How close we are to flipping over to the next sequence number (0-1).
+    sequence_t: f32,
+
     /// Selected time range, if any.
     #[serde(default)]
     selection: Option<TimeRange>,
@@ -69,6 +74,8 @@ impl TimeState {
     fn new(time: TimeValue) -> Self {
         Self {
             time,
+            fps: 30.0, // TODO: estimate based on data
+            sequence_t: 0.0,
             selection: Default::default(),
             view: None,
         }
@@ -132,11 +139,7 @@ impl TimeControl {
         self.selection_active && self.selection_type == TimeSelectionType::Filter
     }
 
-    pub fn time_source_selector_ui(
-        &mut self,
-        time_source_axes: &TimePoints,
-        ui: &mut egui::Ui,
-    ) -> egui::Response {
+    pub fn time_source_selector_ui(&mut self, time_source_axes: &TimePoints, ui: &mut egui::Ui) {
         self.select_a_valid_time_source(time_source_axes);
 
         egui::ComboBox::from_id_source("time_source")
@@ -150,8 +153,21 @@ impl TimeControl {
                         self.time_source = source.clone();
                     }
                 }
-            })
-            .response
+            });
+
+        if let Some(axis) = time_source_axes.0.get(&self.time_source) {
+            if matches!(min(axis), TimeValue::Sequence(_)) {
+                if let Some(state) = self.states.get_mut(&self.time_source) {
+                    ui.add(
+                        egui::DragValue::new(&mut state.fps)
+                            .prefix("FPS: ")
+                            .speed(1)
+                            .clamp_range(0.0..=f32::INFINITY),
+                    )
+                    .on_hover_text("Frames Per Second");
+                }
+            }
+        }
     }
 
     pub fn selection_ui(&mut self, ui: &mut egui::Ui) {
@@ -294,7 +310,7 @@ impl TimeControl {
 
         egui_ctx.request_repaint();
 
-        let dt = egui_ctx.input().unstable_dt.at_most(0.05);
+        let dt = egui_ctx.input().unstable_dt.at_most(0.05) * self.speed;
 
         if active_selection_type == Some(TimeSelectionType::Filter) {
             if let Some(time_selection) = state.selection {
@@ -316,10 +332,12 @@ impl TimeControl {
 
                 match &mut new_min {
                     TimeValue::Sequence(seq) => {
-                        *seq += 1; // TODO: apply speed here somehow?
+                        state.sequence_t += state.fps * dt;
+                        *seq += state.sequence_t.floor() as i64;
+                        state.sequence_t = state.sequence_t.fract();
                     }
                     TimeValue::Time(time) => {
-                        *time += Duration::from_secs(dt * self.speed);
+                        *time += Duration::from_secs(dt);
                     }
                 }
 
@@ -354,10 +372,12 @@ impl TimeControl {
 
         match &mut state.time {
             TimeValue::Sequence(seq) => {
-                *seq += 1; // TODO: apply speed here somehow?
+                state.sequence_t += state.fps * dt;
+                *seq += state.sequence_t.floor() as i64;
+                state.sequence_t = state.sequence_t.fract();
             }
             TimeValue::Time(time) => {
-                *time += Duration::from_secs(dt * self.speed);
+                *time += Duration::from_secs(dt);
             }
         }
 
