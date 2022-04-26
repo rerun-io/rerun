@@ -177,8 +177,20 @@ pub(crate) fn combined_view_3d(
     }
 
     let mut scene = Scene::default();
-    for msg in messages {
-        if msg.space.as_ref() == Some(space) {
+    {
+        crate::profile_scope!("Build scene");
+        for msg in messages {
+            if msg.space.as_ref() != Some(space) {
+                continue;
+            }
+            if !context
+                .projected_object_properties
+                .get(&msg.object_path)
+                .visible
+            {
+                continue;
+            }
+
             let is_hovered = Some(msg.id) == hovered_id;
 
             // TODO: selection color

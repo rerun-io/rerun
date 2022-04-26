@@ -21,6 +21,12 @@ pub(crate) fn combined_view_2d(
         .iter()
         .copied()
         .filter(|msg| msg.space.as_ref() == Some(space) && msg.data.is_2d())
+        .filter(|msg| {
+            context
+                .projected_object_properties
+                .get(&msg.object_path)
+                .visible
+        })
         .collect_vec();
 
     // Show images first (behind everything else), then bboxes and lines, last points:

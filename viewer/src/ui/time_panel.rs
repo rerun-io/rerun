@@ -11,12 +11,19 @@ use crate::{
 use egui::*;
 use log_types::*;
 
+/// A column where we should button to hide/show a propery.
+const PROPERY_COLUMN_WIDTH: f32 = 14.0;
+
 /// A panel that shows objects to the left, time on the top.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TimePanel {
     /// Width of the object name columns previous frame.
     prev_col_width: f32,
+
+    /// Set at the start of the frame
+    #[serde(skip)]
+    propery_column_x_range: RangeInclusive<f32>,
 
     /// The right side of the object name column; updated during its painting.
     #[serde(skip)]
@@ -31,6 +38,7 @@ impl Default for TimePanel {
     fn default() -> Self {
         Self {
             prev_col_width: 400.0,
+            propery_column_x_range: 0.0..=0.0,
             next_col_right: 0.0,
             time_ranges_ui: Default::default(),
         }
@@ -46,11 +54,17 @@ impl TimePanel {
 
         self.next_col_right = ui.min_rect().left(); // this will expand during the call
 
+        let prop_column_left =
+            ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x;
+        let prop_column_right = prop_column_left + PROPERY_COLUMN_WIDTH;
+        self.propery_column_x_range = prop_column_left..=prop_column_right;
+        let time_x_left = prop_column_right + ui.spacing().item_spacing.x;
+
         // Where the time will be shown.
         let time_x_range = {
-            let left = ui.min_rect().left() + self.prev_col_width;
-            let right = ui.max_rect().right() - ui.spacing().scroll_bar_width - 8.0;
-            left..=right
+            let right =
+                ui.max_rect().right() - ui.spacing().scroll_bar_width - ui.spacing().item_spacing.x;
+            time_x_left..=right
         };
 
         self.time_ranges_ui = initialize_time_ranges_ui(log_db, context, time_x_range.clone());
@@ -144,8 +158,7 @@ impl TimePanel {
         self.time_ranges_ui.snap_time_control(context);
 
         // remember where to show the time for next frame:
-        let margin = 16.0;
-        self.prev_col_width = self.next_col_right - ui.min_rect().left() + margin;
+        self.prev_col_width = self.next_col_right - ui.min_rect().left();
     }
 
     fn tree_ui(
@@ -182,6 +195,8 @@ impl TimePanel {
         if tree.children.is_empty() && tree.times.is_empty() {
             return;
         }
+
+        let object_path = ObjectPath(path.clone());
 
         // how to show the time component.
         let text = if let Some(last) = path.last() {
@@ -234,26 +249,48 @@ impl TimePanel {
 
         self.next_col_right = self.next_col_right.max(response.rect.right());
 
-        let full_width_rect = Rect::from_x_y_ranges(
-            response.rect.left()..=ui.max_rect().right(),
-            response.rect.y_range(),
-        );
-
-        if true {
+        let response = if true {
             response.on_hover_ui(|ui| {
-                ui.label(ObjectPath(path.clone()).to_string());
+                ui.label(object_path.to_string());
                 let summary = tree.data.summary();
                 if !summary.is_empty() {
                     ui.label(summary);
                 }
-            });
+            })
         } else {
             response.on_hover_ui(|ui| {
                 summary_of_tree(ui, path, tree);
-            });
+            })
+        };
+
+        // ----------------------------------------------
+        // Property column:
+
+        {
+            let are_all_ancestors_visible = object_path.is_root()
+                || context
+                    .projected_object_properties
+                    .get(&object_path.parent())
+                    .visible;
+
+            let mut props = context.individual_object_properties.get(&object_path);
+            let property_rect =
+                Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response.rect.y_range());
+            let mut ui = ui.child_ui(property_rect, egui::Layout::left_to_right());
+            ui.set_enabled(are_all_ancestors_visible);
+            ui.toggle_value(&mut props.visible, "👁")
+                .on_hover_text("Toggle visibility");
+            context.individual_object_properties.set(object_path, props);
         }
 
+        // ----------------------------------------------
+
         // show the data in the time area:
+
+        let full_width_rect = Rect::from_x_y_ranges(
+            response.rect.left()..=ui.max_rect().right(),
+            response.rect.y_range(),
+        );
 
         if ui.is_rect_visible(full_width_rect) {
             crate::profile_scope!("balls");
@@ -384,7 +421,7 @@ impl TimePanel {
             }
 
             for (id, tree) in &node.temp_id_children {
-                path.push(ObjectPathComponent::PersistId(name.clone(), id.clone()));
+                path.push(ObjectPathComponent::TempId(name.clone(), id.clone()));
                 self.show_tree(log_db, context, time_area_painter, path, tree, ui);
                 path.pop();
             }
@@ -1262,7 +1299,7 @@ fn summary_of_children(ui: &mut egui::Ui, path: &mut Vec<ObjectPathComponent>, t
         }
 
         for (id, tree) in &node.temp_id_children {
-            path.push(ObjectPathComponent::PersistId(name.clone(), id.clone()));
+            path.push(ObjectPathComponent::TempId(name.clone(), id.clone()));
             summary_of_children(ui, path, tree);
             path.pop();
         }

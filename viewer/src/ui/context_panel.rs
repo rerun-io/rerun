@@ -1,5 +1,3 @@
-use crate::misc::image_cache::to_rgba_unultiplied;
-
 use log_types::{Data, LogMsg, ObjectPath};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
@@ -139,6 +137,8 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
 
 #[cfg(not(target_arch = "wasm32"))]
 fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
+    use crate::misc::image_cache::to_rgba_unultiplied;
+
     // TODO: support copying images on web
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Click to copy image").clicked() {
@@ -151,7 +151,6 @@ fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
     }
 
     // TODO: support saving images on web
-
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Save image…").clicked() {
         match image.format {
@@ -202,6 +201,8 @@ fn write_binary(path: &std::path::PathBuf, data: &[u8]) -> anyhow::Result<()> {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn to_image_image(image: &log_types::Image) -> Option<image::DynamicImage> {
+    use crate::misc::image_cache::to_rgba_unultiplied;
+
     let [w, h] = image.size;
     match image.format {
         log_types::ImageFormat::Luminance8 => image::GrayImage::from_raw(w, h, image.data.clone())

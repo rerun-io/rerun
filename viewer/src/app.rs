@@ -120,6 +120,8 @@ impl AppState {
     fn show(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame, log_db: &mut LogDb) {
         crate::profile_function!();
 
+        self.context.on_frame_start(log_db);
+
         egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {

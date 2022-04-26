@@ -155,6 +155,17 @@ pub fn time_point(fields: impl IntoIterator<Item = (&'static str, TimeValue)>) -
 pub struct ObjectPath(pub Vec<ObjectPathComponent>);
 
 impl ObjectPath {
+    #[inline]
+    pub fn is_root(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn parent(&self) -> Self {
+        let mut path = self.0.clone();
+        path.pop();
+        Self(path)
+    }
+
     pub fn sibling(&self, last_comp: impl Into<ObjectPathComponent>) -> Self {
         let mut path = self.0.clone();
         path.pop(); // TODO: handle root?

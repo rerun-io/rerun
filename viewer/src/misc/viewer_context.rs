@@ -1,6 +1,6 @@
-use log_types::{Data, LogId, LogMsg, ObjectPath, TimeValue};
+use log_types::{Data, LogId, LogMsg, ObjectPath, ObjectPathComponent, TimeValue};
 
-use crate::log_db::LogDb;
+use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 
 /// Common things needed by many parts of the viewer.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -15,9 +15,57 @@ pub(crate) struct ViewerContext {
 
     /// Currently selected thing, shown in the context menu.
     pub selection: Selection,
+
+    /// Individual settings. Mutate this.
+    pub individual_object_properties: ObjectsProperties,
+
+    /// Properties, as inherited from parent.
+    /// Read from this.
+    ///
+    /// Recalculated at the start of each frame form [`Self::object_properties`].
+    #[serde(skip)]
+    pub projected_object_properties: ObjectsProperties,
 }
 
 impl ViewerContext {
+    /// Called at the start of each frame
+    pub fn on_frame_start(&mut self, log_db: &LogDb) {
+        crate::profile_function!();
+
+        fn project_tree(
+            context: &mut ViewerContext,
+            path: &mut Vec<ObjectPathComponent>,
+            prop: ObjectProps,
+            tree: &ObjectTree,
+        ) {
+            // TODO: we need to speed up and simplify this a lot.
+            let object_path = ObjectPath(path.clone());
+            let prop = prop.with_child(&context.individual_object_properties.get(&object_path));
+            context.projected_object_properties.set(object_path, prop);
+
+            for (name, node) in &tree.children {
+                path.push(ObjectPathComponent::String(name.clone()));
+                project_tree(context, path, prop, &node.string_children);
+                path.pop();
+
+                for (id, tree) in &node.persist_id_children {
+                    path.push(ObjectPathComponent::PersistId(name.clone(), id.clone()));
+                    project_tree(context, path, prop, tree);
+                    path.pop();
+                }
+
+                for (id, tree) in &node.temp_id_children {
+                    path.push(ObjectPathComponent::TempId(name.clone(), id.clone()));
+                    project_tree(context, path, prop, tree);
+                    path.pop();
+                }
+            }
+        }
+
+        let mut path = vec![];
+        project_tree(self, &mut path, ObjectProps::default(), &log_db.object_tree);
+    }
+
     /// Button to select the current space.
     pub fn space_button(&mut self, ui: &mut egui::Ui, space: &ObjectPath) -> egui::Response {
         // TODO: common hover-effect of all buttons for the same space!
@@ -101,6 +149,46 @@ impl Selection {
             hay == needle
         } else {
             false
+        }
+    }
+}
+
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+pub(crate) struct ObjectsProperties {
+    props: ahash::AHashMap<ObjectPath, ObjectProps>,
+}
+
+impl ObjectsProperties {
+    pub fn get(&self, object_path: &ObjectPath) -> ObjectProps {
+        self.props.get(object_path).copied().unwrap_or_default()
+    }
+
+    pub fn set(&mut self, object_path: ObjectPath, prop: ObjectProps) {
+        if prop == ObjectProps::default() {
+            self.props.remove(&object_path); // save space
+        } else {
+            self.props.insert(object_path, prop);
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub(crate) struct ObjectProps {
+    pub visible: bool,
+}
+
+impl Default for ObjectProps {
+    fn default() -> Self {
+        Self { visible: true }
+    }
+}
+
+impl ObjectProps {
+    /// Multiply/and these together.
+    fn with_child(&self, child: &ObjectProps) -> ObjectProps {
+        ObjectProps {
+            visible: self.visible && child.visible,
         }
     }
 }

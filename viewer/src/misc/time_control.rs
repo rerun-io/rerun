@@ -262,14 +262,8 @@ impl TimeControl {
 
         ui.scope(|ui| {
             ui.visuals_mut().selection.bg_fill = TimeSelectionType::Loop.color(ui.visuals());
-
-            if ui
-                .selectable_label(self.looped, "🔁")
-                .on_hover_text("Loop playback")
-                .clicked()
-            {
-                self.looped = !self.looped;
-            }
+            ui.toggle_value(&mut self.looped, "🔁")
+                .on_hover_text("Loop playback");
         });
 
         if !self.looped && self.selection_type == TimeSelectionType::Loop {

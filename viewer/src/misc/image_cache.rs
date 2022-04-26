@@ -23,7 +23,12 @@ fn to_egui_image(image: &Image) -> RetainedImage {
             let pixels = rgba
                 .chunks(4)
                 .map(|chunk| {
-                    Color32::from_rgba_unmultiplied(chunk[0], chunk[1], chunk[2], chunk[3])
+                    let [r, g, b, a] = [chunk[0], chunk[1], chunk[2], chunk[3]];
+                    if a == 255 {
+                        Color32::from_rgb(r, g, b) // common-case optimization; inlined
+                    } else {
+                        Color32::from_rgba_unmultiplied(r, g, b, a)
+                    }
                 })
                 .collect();
             let size = [size[0] as _, size[1] as _];
@@ -56,6 +61,7 @@ pub fn to_rgba_unultiplied(image: &log_types::Image) -> anyhow::Result<([u32; 2]
             Ok((image.size, rgba))
         }
         log_types::ImageFormat::Jpeg => {
+            crate::profile_scope!("Decode JPEG");
             use image::io::Reader as ImageReader;
             let mut reader = ImageReader::new(std::io::Cursor::new(&image.data));
             reader.set_format(image::ImageFormat::Jpeg);
