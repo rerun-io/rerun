@@ -233,9 +233,11 @@ impl TimePanel {
         }
 
         self.next_col_right = self.next_col_right.max(response.rect.right());
-        let (top_y, bottom_y) = (response.rect.top(), response.rect.bottom());
 
-        // let center_y = response.rect.center().y;
+        let full_width_rect = Rect::from_x_y_ranges(
+            response.rect.left()..=ui.max_rect().right(),
+            response.rect.y_range(),
+        );
 
         if true {
             response.on_hover_ui(|ui| {
@@ -252,8 +254,11 @@ impl TimePanel {
         }
 
         // show the data in the time area:
-        {
+
+        if ui.is_rect_visible(full_width_rect) {
             crate::profile_scope!("balls");
+            let (top_y, bottom_y) = (full_width_rect.top(), full_width_rect.bottom());
+
             let pointer_pos = ui.input().pointer.hover_pos();
 
             let source = if also_show_child_points {
