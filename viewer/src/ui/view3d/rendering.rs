@@ -2,6 +2,8 @@ use super::scene::*;
 use super::{camera::Camera, MeshCache};
 use egui::Color32;
 
+type LineMaterial = three_d::ColorMaterial;
+
 pub struct RenderingContext {
     three_d: three_d::Context,
 
@@ -12,7 +14,7 @@ pub struct RenderingContext {
 
     /// So we don't need to re-allocate them.
     points_cache: Vec<three_d::InstancedModel<three_d::PhysicalMaterial>>,
-    lines_cache: Vec<three_d::InstancedModel<three_d::ColorMaterial>>,
+    lines_cache: Vec<three_d::InstancedModel<LineMaterial>>,
 }
 
 impl RenderingContext {
@@ -27,6 +29,19 @@ impl RenderingContext {
             points_cache: Default::default(),
             lines_cache: Default::default(),
         })
+    }
+}
+
+fn default_material() -> three_d::PhysicalMaterial {
+    use three_d::*;
+    PhysicalMaterial {
+        roughness: 1.0,
+        metallic: 0.0,
+        lighting_model: LightingModel::Cook(
+            NormalDistributionFunction::TrowbridgeReitzGGX,
+            GeometryFunction::SmithSchlickGGX,
+        ),
+        ..Default::default()
     }
 }
 
@@ -56,16 +71,8 @@ fn allocate_points<'a>(
 
     if points_cache.len() < per_color_instances.len() {
         points_cache.resize_with(per_color_instances.len(), || {
-            let material = PhysicalMaterial {
-                roughness: 1.0,
-                metallic: 0.0,
-                lighting_model: LightingModel::Cook(
-                    NormalDistributionFunction::TrowbridgeReitzGGX,
-                    GeometryFunction::SmithSchlickGGX,
-                ),
-                ..Default::default()
-            };
-            InstancedModel::new_with_material(three_d, &[], sphere_mesh, material).unwrap()
+            InstancedModel::new_with_material(three_d, &[], sphere_mesh, default_material())
+                .unwrap()
         });
     }
 
@@ -81,16 +88,17 @@ fn allocate_points<'a>(
 fn allocate_line_segments<'a>(
     three_d: &'a three_d::Context,
     line_mesh: &'a three_d::CpuMesh,
-    lines_cache: &'a mut Vec<three_d::InstancedModel<three_d::ColorMaterial>>,
+    lines_cache: &'a mut Vec<three_d::InstancedModel<LineMaterial>>,
     render_states: three_d::RenderStates,
     line_segments: &'a [LineSegments],
-) -> &'a [three_d::InstancedModel<three_d::ColorMaterial>] {
+) -> &'a [three_d::InstancedModel<LineMaterial>] {
     crate::profile_function!();
     use three_d::*;
 
     if lines_cache.len() < line_segments.len() {
         lines_cache.resize_with(line_segments.len(), || {
-            let material = ColorMaterial::default();
+            // let material = default_material();
+            let material = Default::default();
             InstancedModel::new_with_material(three_d, &[], line_mesh, material).unwrap()
         });
     }

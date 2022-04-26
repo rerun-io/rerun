@@ -188,7 +188,14 @@ pub(crate) fn combined_view_3d(
                 context.object_color(log_db, msg)
             };
 
-            scene.add_msg(&camera, is_hovered, color, msg);
+            scene.add_msg(
+                space_summary,
+                inner_rect.size(),
+                &camera,
+                is_hovered,
+                color,
+                msg,
+            );
         }
     }
 
@@ -214,6 +221,8 @@ fn picking(
     messages: &[&LogMsg],
     camera: &Camera,
 ) -> Option<LogId> {
+    crate::profile_function!();
+
     let pointer_pos = ui.ctx().pointer_hover_pos()?;
 
     let screen_from_world = camera.screen_from_world(rect);
