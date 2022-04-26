@@ -7,7 +7,7 @@ use crate::{
     time_axis::{TimeRange, TimeSourceAxes},
     LogDb, TimeControl, TimeView, ViewerContext,
 };
-use eframe::egui;
+
 use egui::*;
 use log_types::*;
 

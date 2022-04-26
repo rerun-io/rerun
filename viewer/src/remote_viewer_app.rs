@@ -1,5 +1,4 @@
 use crate::App;
-use eframe::egui;
 
 /// Connects to a server over `WebSockets`.
 #[derive(Default)]

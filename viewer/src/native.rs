@@ -1,5 +1,3 @@
-use eframe::egui;
-
 use log_types::LogMsg;
 
 pub fn run_native_viewer(rx: std::sync::mpsc::Receiver<LogMsg>) {

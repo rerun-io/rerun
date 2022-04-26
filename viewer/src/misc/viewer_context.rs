@@ -1,4 +1,3 @@
-use eframe::egui;
 use log_types::{Data, LogId, LogMsg, ObjectPath, TimeValue};
 
 use crate::log_db::LogDb;
@@ -20,11 +19,7 @@ pub(crate) struct ViewerContext {
 
 impl ViewerContext {
     /// Button to select the current space.
-    pub fn space_button(
-        &mut self,
-        ui: &mut eframe::egui::Ui,
-        space: &ObjectPath,
-    ) -> egui::Response {
+    pub fn space_button(&mut self, ui: &mut egui::Ui, space: &ObjectPath) -> egui::Response {
         // TODO: common hover-effect of all buttons for the same space!
         let response = ui.selectable_label(self.selection.is_space(space), space.to_string());
         if response.clicked() {
@@ -35,7 +30,7 @@ impl ViewerContext {
 
     pub fn time_button(
         &mut self,
-        ui: &mut eframe::egui::Ui,
+        ui: &mut egui::Ui,
         time_source: &str,
         value: TimeValue,
     ) -> egui::Response {

@@ -1,5 +1,3 @@
-use eframe::egui;
-
 use log_types::*;
 
 use crate::LogDb;

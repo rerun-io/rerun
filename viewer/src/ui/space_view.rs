@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
 use ahash::AHashMap;
-use eframe::egui;
+
 use egui::{Rect, Vec2};
 
 use itertools::Itertools;
@@ -15,7 +15,7 @@ use crate::{LogDb, Preview, Selection, ViewerContext};
 #[serde(default)]
 pub(crate) struct SpaceView {
     // per space
-    state_3d: AHashMap<ObjectPath, crate::view_3d::State3D>,
+    state_3d: AHashMap<ObjectPath, crate::view3d::State3D>,
 }
 
 impl SpaceView {
@@ -221,7 +221,7 @@ impl SpaceView {
 
         if !space_summary.messages_3d.is_empty() {
             let state_3d = self.state_3d.entry(space.clone()).or_default();
-            crate::view_3d::combined_view_3d(
+            crate::view3d::combined_view_3d(
                 log_db,
                 context,
                 ui,
@@ -236,7 +236,7 @@ impl SpaceView {
             egui::Frame::canvas(ui.style())
                 .inner_margin(2.0)
                 .show(ui, |ui| {
-                    crate::view_2d::combined_view_2d(
+                    crate::view2d::combined_view_2d(
                         log_db,
                         context,
                         ui,

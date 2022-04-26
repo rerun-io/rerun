@@ -1,5 +1,5 @@
 use crate::misc::image_cache::to_rgba_unultiplied;
-use eframe::egui;
+
 use log_types::{Data, LogMsg, ObjectPath};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};

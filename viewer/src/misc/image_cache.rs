@@ -1,4 +1,3 @@
-use eframe::egui;
 use egui::Color32;
 use egui_extras::RetainedImage;
 

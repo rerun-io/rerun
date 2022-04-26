@@ -1,0 +1,261 @@
+use super::scene::*;
+use super::{camera::Camera, MeshCache};
+use egui::Color32;
+
+pub struct RenderingContext {
+    three_d: three_d::Context,
+
+    mesh_cache: MeshCache,
+
+    sphere_mesh: three_d::CpuMesh,
+    line_mesh: three_d::CpuMesh,
+
+    /// So we don't need to re-allocate them.
+    points_cache: Vec<three_d::InstancedModel<three_d::PhysicalMaterial>>,
+    lines_cache: Vec<three_d::InstancedModel<three_d::ColorMaterial>>,
+}
+
+impl RenderingContext {
+    pub fn new(gl: &std::rc::Rc<glow::Context>) -> three_d::ThreeDResult<Self> {
+        let three_d = three_d::Context::from_gl_context(gl.clone())?;
+
+        Ok(Self {
+            three_d,
+            sphere_mesh: three_d::CpuMesh::sphere(24),
+            line_mesh: three_d::CpuMesh::cylinder(10),
+            mesh_cache: Default::default(),
+            points_cache: Default::default(),
+            lines_cache: Default::default(),
+        })
+    }
+}
+
+fn allocate_points<'a>(
+    three_d: &'a three_d::Context,
+    sphere_mesh: &'a three_d::CpuMesh,
+    points_cache: &'a mut Vec<three_d::InstancedModel<three_d::PhysicalMaterial>>,
+    render_states: three_d::RenderStates,
+    points: &'a [Point],
+) -> &'a [three_d::InstancedModel<three_d::PhysicalMaterial>] {
+    crate::profile_function!();
+    use three_d::*;
+
+    let mut per_color_instances: ahash::AHashMap<Color32, Vec<Instance>> = Default::default();
+    for point in points {
+        let p = point.pos;
+        let geometry_transform =
+            Mat4::from_translation(vec3(p[0], p[1], p[2])) * Mat4::from_scale(point.radius);
+        per_color_instances
+            .entry(point.color)
+            .or_default()
+            .push(Instance {
+                geometry_transform,
+                ..Default::default()
+            });
+    }
+
+    if points_cache.len() < per_color_instances.len() {
+        points_cache.resize_with(per_color_instances.len(), || {
+            let material = PhysicalMaterial {
+                roughness: 1.0,
+                metallic: 0.0,
+                lighting_model: LightingModel::Cook(
+                    NormalDistributionFunction::TrowbridgeReitzGGX,
+                    GeometryFunction::SmithSchlickGGX,
+                ),
+                ..Default::default()
+            };
+            InstancedModel::new_with_material(three_d, &[], sphere_mesh, material).unwrap()
+        });
+    }
+
+    for ((color, instances), points) in per_color_instances.iter().zip(points_cache.iter_mut()) {
+        points.material.albedo = color_to_three_d(*color);
+        points.material.render_states = render_states;
+        points.set_instances(instances).unwrap();
+    }
+
+    &points_cache[..per_color_instances.len()]
+}
+
+fn allocate_line_segments<'a>(
+    three_d: &'a three_d::Context,
+    line_mesh: &'a three_d::CpuMesh,
+    lines_cache: &'a mut Vec<three_d::InstancedModel<three_d::ColorMaterial>>,
+    render_states: three_d::RenderStates,
+    line_segments: &'a [LineSegments],
+) -> &'a [three_d::InstancedModel<three_d::ColorMaterial>] {
+    crate::profile_function!();
+    use three_d::*;
+
+    if lines_cache.len() < line_segments.len() {
+        lines_cache.resize_with(line_segments.len(), || {
+            let material = ColorMaterial::default();
+            InstancedModel::new_with_material(three_d, &[], line_mesh, material).unwrap()
+        });
+    }
+
+    for (line_segments, model) in line_segments.iter().zip(lines_cache.iter_mut()) {
+        let LineSegments {
+            segments,
+            radius,
+            color,
+        } = line_segments;
+
+        let line_instances: Vec<Instance> = segments
+            .iter()
+            .map(|&[p0, p1]| {
+                let p0 = vec3(p0[0], p0[1], p0[2]);
+                let p1 = vec3(p1[0], p1[1], p1[2]);
+                let scale = Mat4::from_nonuniform_scale((p0 - p1).magnitude(), 1.0, 1.0);
+                let rotation =
+                    rotation_matrix_from_dir_to_dir(vec3(1.0, 0.0, 0.0), (p1 - p0).normalize());
+                let translation = Mat4::from_translation(p0);
+                let geometry_transform = translation
+                    * rotation
+                    * scale
+                    * Mat4::from_nonuniform_scale(1.0, *radius, *radius);
+                Instance {
+                    geometry_transform,
+                    ..Default::default()
+                }
+            })
+            .collect();
+
+        model.material.render_states = render_states;
+        model.material.color = color_to_three_d(*color);
+
+        model.set_instances(&line_instances).unwrap();
+    }
+
+    &lines_cache[..line_segments.len()]
+}
+
+pub fn paint_with_three_d(
+    rendering: &mut RenderingContext,
+    camera: &Camera,
+    info: &egui::PaintCallbackInfo,
+    scene: &Scene,
+) -> three_d::ThreeDResult<()> {
+    crate::profile_function!();
+    use three_d::*;
+    let three_d = &rendering.three_d;
+
+    let viewport = info.viewport_in_pixels();
+    let viewport = Viewport {
+        x: viewport.left_px.round() as _,
+        y: viewport.from_bottom_px.round() as _,
+        width: viewport.width_px.round() as _,
+        height: viewport.height_px.round() as _,
+    };
+
+    // Respect the egui clip region (e.g. if we are inside an `egui::ScrollArea`).
+    let clip_rect = info.clip_rect_in_pixels();
+    let render_states = RenderStates {
+        clip: Clip::Enabled {
+            x: clip_rect.left_px.round() as _,
+            y: clip_rect.from_bottom_px.round() as _,
+            width: clip_rect.width_px.round() as _,
+            height: clip_rect.height_px.round() as _,
+        },
+        ..Default::default()
+    };
+
+    let position = camera.world_from_view.translation();
+    let target = camera.world_from_view.transform_point3(-glam::Vec3::Z);
+    let up = camera.world_from_view.transform_vector3(glam::Vec3::Y);
+    let camera = Camera::new_perspective(
+        three_d,
+        viewport,
+        mint::Vector3::from(position).into(),
+        mint::Vector3::from(target).into(),
+        mint::Vector3::from(up).into(),
+        radians(camera.fov_y),
+        camera.near(),
+        1000.0, // TODO: infinity (https://github.com/rustgd/cgmath/pull/547)
+    )?;
+
+    // -------------------
+
+    let ambient = AmbientLight::new(three_d, 0.7, Color::WHITE)?;
+    let directional0 = DirectionalLight::new(three_d, 2.0, Color::WHITE, &vec3(-1.0, -1.0, -1.0))?;
+    let directional1 = DirectionalLight::new(three_d, 2.0, Color::WHITE, &vec3(1.0, 1.0, 1.0))?;
+    let lights: &[&dyn Light] = &[&ambient, &directional0, &directional1];
+
+    // -------------------
+
+    let Scene {
+        points,
+        line_segments,
+        meshes,
+    } = scene;
+
+    let mut mesh_instances: std::collections::HashMap<u64, Vec<Instance>> = Default::default();
+
+    for mesh in meshes {
+        mesh_instances
+            .entry(mesh.mesh_id)
+            .or_default()
+            .push(Instance {
+                geometry_transform: mint::ColumnMatrix4::from(mesh.world_from_mesh).into(),
+                ..Default::default()
+            });
+
+        rendering
+            .mesh_cache
+            .load(three_d, mesh.mesh_id, &mesh.name, &mesh.mesh_data);
+    }
+
+    for (mesh_id, instances) in &mesh_instances {
+        rendering
+            .mesh_cache
+            .set_instances(*mesh_id, render_states, instances)?;
+    }
+
+    let mut objects: Vec<&dyn Object> = vec![];
+    for &mesh_id in mesh_instances.keys() {
+        if let Some(gpu_mesh) = rendering.mesh_cache.get(mesh_id) {
+            for obj in &gpu_mesh.models {
+                objects.push(obj);
+            }
+        }
+    }
+
+    for obj in allocate_points(
+        &rendering.three_d,
+        &rendering.sphere_mesh,
+        &mut rendering.points_cache,
+        render_states,
+        points,
+    ) {
+        objects.push(obj);
+    }
+    for obj in allocate_line_segments(
+        &rendering.three_d,
+        &rendering.line_mesh,
+        &mut rendering.lines_cache,
+        render_states,
+        line_segments,
+    ) {
+        objects.push(obj);
+    }
+
+    crate::profile_scope!("render_pass");
+    render_pass(&camera, &objects, lights)?;
+
+    Ok(())
+}
+
+fn color_to_three_d(color: egui::Color32) -> three_d::Color {
+    assert_eq!(color.a(), 255);
+
+    // three_d::Color::new_opaque(color.r(), color.g(), color.b())
+
+    // TODO: figure out why three_d colors are messed up
+    let rgba: egui::Rgba = color.into();
+    three_d::Color::new_opaque(
+        (rgba.r() * 255.0).round() as _,
+        (rgba.g() * 255.0).round() as _,
+        (rgba.b() * 255.0).round() as _,
+    )
+}

@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use eframe::egui;
 use egui::NumExt;
 use log_types::*;
 
