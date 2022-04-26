@@ -299,12 +299,12 @@ pub(crate) struct ObjectTree {
     /// When do we have data?
     ///
     /// Data logged at this exact path.
-    pub times: BTreeSet<(TimePoint, LogId)>,
+    pub times: BTreeMap<TimePoint, BTreeSet<LogId>>,
 
     /// When do we or a child have data?
     ///
     /// Data logged at this exact path or any child path.
-    pub prefix_times: BTreeSet<(TimePoint, LogId)>,
+    pub prefix_times: BTreeMap<TimePoint, BTreeSet<LogId>>,
 
     /// Data logged at this exact path.
     pub data: DataColumns,
@@ -328,11 +328,17 @@ impl ObjectTree {
     }
 
     fn add_path(&mut self, path: &[ObjectPathComponent], msg: &LogMsg) {
-        self.prefix_times.insert((msg.time_point.clone(), msg.id));
+        self.prefix_times
+            .entry(msg.time_point.clone())
+            .or_default()
+            .insert(msg.id);
 
         match path {
             [] => {
-                self.times.insert((msg.time_point.clone(), msg.id));
+                self.times
+                    .entry(msg.time_point.clone())
+                    .or_default()
+                    .insert(msg.id);
                 self.data.add(msg);
             }
             [first, rest @ ..] => match first {

@@ -285,14 +285,15 @@ impl TimePanel {
                 context.time_control.time_selection()
             };
 
-            for (time, log_id) in source {
+            for (time, log_ids) in source {
                 if let Some(time) = time.0.get(context.time_control.source()).copied() {
                     if let Some(x) = self.time_ranges_ui.x_from_time(time) {
-                        let base_radius = 2.0;
+                        let radius_multiplier = (log_ids.len() as f32).cbrt().at_most(3.0);
+                        let base_radius = 2.0 * radius_multiplier;
                         let pos = scatter.add(x, base_radius, (top_y, bottom_y));
 
                         let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
-                            pos.distance(pointer_pos) < 1.5 * base_radius
+                            pos.distance(pointer_pos) < base_radius + 1.0
                         });
 
                         let is_selected =
@@ -315,11 +316,12 @@ impl TimePanel {
                         } else {
                             1.25
                         };
+                        let radius = radius * radius_multiplier;
 
                         time_area_painter.circle_filled(pos, radius, color);
 
                         if is_hovered && !ui.ctx().memory().is_anything_being_dragged() {
-                            hovered_messages.push(*log_id);
+                            hovered_messages.extend(log_ids.iter().copied());
                         }
                     }
                 }
@@ -330,8 +332,9 @@ impl TimePanel {
                     ui.ctx(),
                     Id::new("data_tooltip"),
                     |ui| {
-                        // TODO: show as a table
-                        for log_id in &hovered_messages {
+                        // TODO: show as a table?
+                        if hovered_messages.len() == 1 {
+                            let log_id = hovered_messages.iter().next().unwrap();
                             if let Some(msg) = log_db.get_msg(log_id) {
                                 ui.push_id(log_id, |ui| {
                                     ui.group(|ui| {
@@ -344,6 +347,8 @@ impl TimePanel {
                                     });
                                 });
                             }
+                        } else {
+                            ui.label(format!("{} log messages", hovered_messages.len()));
                         }
                     },
                 );
@@ -1291,34 +1296,39 @@ impl BallScatterer {
         let r2 = r * r * 3.0; // allow some overlap
 
         let center_y = 0.5 * (min_y + max_y);
-        let mut best_free_y = f32::INFINITY;
-        let mut best_colliding_y = center_y;
-        let mut best_colliding_d2 = 0.0;
 
-        let step_size = 2.0; // unit: points
+        let y = if max_y <= min_y {
+            center_y
+        } else {
+            let mut best_free_y = f32::INFINITY;
+            let mut best_colliding_y = center_y;
+            let mut best_colliding_d2 = 0.0;
 
-        for y_offset in 0..=((max_y - min_y) / step_size).round() as i32 {
-            let y = min_y + step_size * y_offset as f32;
-            let d2 = self.closest_dist_sq(&pos2(x, y));
-            let intersects = d2 < r2;
-            if intersects {
-                // pick least colliding
-                if d2 > best_colliding_d2 {
-                    best_colliding_y = y;
-                    best_colliding_d2 = d2;
-                }
-            } else {
-                // pick closest to center
-                if (y - center_y).abs() < (best_free_y - center_y).abs() {
-                    best_free_y = y;
+            let step_size = 2.0; // unit: points
+
+            for y_offset in 0..=((max_y - min_y) / step_size).round() as i32 {
+                let y = min_y + step_size * y_offset as f32;
+                let d2 = self.closest_dist_sq(&pos2(x, y));
+                let intersects = d2 < r2;
+                if intersects {
+                    // pick least colliding
+                    if d2 > best_colliding_d2 {
+                        best_colliding_y = y;
+                        best_colliding_d2 = d2;
+                    }
+                } else {
+                    // pick closest to center
+                    if (y - center_y).abs() < (best_free_y - center_y).abs() {
+                        best_free_y = y;
+                    }
                 }
             }
-        }
 
-        let y = if best_free_y.is_finite() {
-            best_free_y
-        } else {
-            best_colliding_y
+            if best_free_y.is_finite() {
+                best_free_y
+            } else {
+                best_colliding_y
+            }
         };
 
         let pos = pos2(x, y);
