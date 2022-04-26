@@ -51,7 +51,7 @@ impl OrbitCamera {
     }
 
     /// Direction we are looking at
-    pub fn dir(&self) -> Vec3 {
+    fn fwd(&self) -> Vec3 {
         self.world_from_view_rot * -Vec3::Z
     }
 
@@ -62,26 +62,26 @@ impl OrbitCamera {
         if self.up == Vec3::ZERO {
             None
         } else {
-            Some(self.dir().dot(self.up).clamp(-1.0, 1.0).asin())
+            Some(self.fwd().dot(self.up).clamp(-1.0, 1.0).asin())
         }
     }
 
-    fn set_dir(&mut self, dir: Vec3) {
+    fn set_dir(&mut self, fwd: Vec3) {
         if self.up == Vec3::ZERO {
-            self.world_from_view_rot = Quat::from_rotation_arc(-Vec3::Z, dir);
+            self.world_from_view_rot = Quat::from_rotation_arc(-Vec3::Z, fwd);
         } else {
             let pitch = self
                 .pitch()
                 .unwrap()
                 .clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
 
-            let dir = project_onto(dir, self.up).normalize(); // Remove pitch
-            let right = dir.cross(self.up).normalize();
-            let dir = Quat::from_axis_angle(right, pitch) * dir; // Tilt up/down
-            let dir = dir.normalize(); // Prevent drift
+            let fwd = project_onto(fwd, self.up).normalize(); // Remove pitch
+            let right = fwd.cross(self.up).normalize();
+            let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
+            let fwd = fwd.normalize(); // Prevent drift
 
             self.world_from_view_rot =
-                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, dir, self.up).inverse());
+                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
         }
     }
 
@@ -89,7 +89,7 @@ impl OrbitCamera {
         self.up = up.normalize_or_zero();
 
         if self.up != Vec3::ZERO {
-            self.set_dir(self.dir()); // this will clamp the rotation
+            self.set_dir(self.fwd()); // this will clamp the rotation
         }
     }
 
@@ -104,20 +104,32 @@ impl OrbitCamera {
             self.world_from_view_rot *= rot_delta;
         } else {
             // 2-dof rotation
-            let dir = Quat::from_axis_angle(self.up, -delta.x) * self.dir();
-            let dir = dir.normalize(); // Prevent drift
+            let fwd = Quat::from_axis_angle(self.up, -delta.x) * self.fwd();
+            let fwd = fwd.normalize(); // Prevent drift
 
             let pitch = self.pitch().unwrap() - delta.y;
             let pitch = pitch.clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
 
-            let dir = project_onto(dir, self.up).normalize(); // Remove pitch
-            let right = dir.cross(self.up).normalize();
-            let dir = Quat::from_axis_angle(right, pitch) * dir; // Tilt up/down
-            let dir = dir.normalize(); // Prevent drift
+            let fwd = project_onto(fwd, self.up).normalize(); // Remove pitch
+            let right = fwd.cross(self.up).normalize();
+            let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
+            let fwd = fwd.normalize(); // Prevent drift
 
             self.world_from_view_rot =
-                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, dir, self.up).inverse());
+                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
         }
+    }
+
+    /// Translate based on a certain number of pixel delta.
+    pub fn translate(&mut self, delta: egui::Vec2) {
+        let delta = delta * self.radius * 0.001; // TODO: take fov and screen size into account?
+
+        let up = self.world_from_view_rot * Vec3::Y;
+        let right = self.world_from_view_rot * -Vec3::X; // TODO: why do we need a negation here? O.o
+
+        let translate = delta.x * right + delta.y * up;
+
+        self.center += translate;
     }
 }
 

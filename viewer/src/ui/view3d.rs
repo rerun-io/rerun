@@ -25,17 +25,56 @@ pub(crate) struct State3D {
 fn show_settings_ui(
     ui: &mut egui::Ui,
     state_3d: &mut State3D,
+    space: &ObjectPath,
     space_summary: &SpaceSummary,
     space_specs: &SpaceSpecs,
 ) {
-    if ui.button("Reset camera").clicked() {
-        state_3d.camera = Some(default_camera(space_summary, space_specs));
-    }
+    ui.horizontal(|ui| {
+        {
+            let up = space_specs.up.normalize_or_zero();
+
+            let up_response = if up == Vec3::X {
+                ui.label("Up: +X")
+            } else if up == -Vec3::X {
+                ui.label("Up: -X")
+            } else if up == Vec3::Y {
+                ui.label("Up: +Y")
+            } else if up == -Vec3::Y {
+                ui.label("Up: -Y")
+            } else if up == Vec3::Z {
+                ui.label("Up: +Z")
+            } else if up == -Vec3::Z {
+                ui.label("Up: -Z")
+            } else if up != Vec3::ZERO {
+                ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
+            } else {
+                ui.label("Up: unspecified")
+            };
+            up_response.on_hover_ui(|ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.label("Set by logging to ");
+                    ui.code(format!("{space}/up"));
+                    ui.label(".");
+                });
+            });
+        }
+
+        if ui.button("Reset camera").clicked() {
+            state_3d.camera = Some(default_camera(space_summary, space_specs));
+        }
+
+        ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
+            .on_hover_text(
+                "Drag to rotate.\nDrag with secondary mouse button to pan.\nScroll to zoom.",
+            );
+    });
 }
 
 #[derive(Default)]
 struct SpaceSpecs {
-    up: Option<glam::Vec3>,
+    /// ZERO = unset
+    up: glam::Vec3,
 }
 
 impl SpaceSpecs {
@@ -47,7 +86,7 @@ impl SpaceSpecs {
         for msg in messages {
             if msg.object_path == up_path {
                 if let Data::Vec3(vec3) = msg.data {
-                    slf.up = Some(vec3.into());
+                    slf.up = Vec3::from(vec3).normalize_or_zero();
                 } else {
                     tracing::warn!("Expected {} to be a Vec3; got: {:?}", up_path, msg.data);
                 }
@@ -72,7 +111,7 @@ pub(crate) fn combined_view_3d(
 
     // TODO: show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(ui, state_3d, space_summary, &space_specs);
+    show_settings_ui(ui, state_3d, space, space_summary, &space_specs);
 
     let frame = egui::Frame::canvas(ui.style()).inner_margin(2.0);
     let (outer_rect, response) =
@@ -84,10 +123,12 @@ pub(crate) fn combined_view_3d(
         .camera
         .get_or_insert_with(|| default_camera(space_summary, &space_specs));
 
-    camera.set_up(space_specs.up.unwrap_or(Vec3::ZERO));
+    camera.set_up(space_specs.up);
 
-    if response.dragged() {
+    if response.dragged_by(egui::PointerButton::Primary) {
         camera.rotate(response.drag_delta());
+    } else if response.dragged_by(egui::PointerButton::Secondary) {
+        camera.translate(response.drag_delta());
     }
 
     // ---------------------------------
@@ -107,7 +148,9 @@ pub(crate) fn combined_view_3d(
     // }
 
     if response.hovered() {
-        camera.radius /= ui.input().zoom_delta();
+        // let factor = ui.input().zoom_delta();
+        let factor = (ui.input().scroll_delta.y / 200.0).exp();
+        camera.radius /= factor;
     }
 
     ui.painter().add(frame.paint(outer_rect));
@@ -235,16 +278,20 @@ fn default_camera(space_summary: &SpaceSummary, space_spects: &SpaceSpecs) -> Or
     let cam_dir = vec3(1.0, 1.0, 0.5).normalize();
     let camera_pos = center + radius * cam_dir;
 
-    let up = space_spects.up.unwrap_or(Vec3::Z);
+    let look_up = if space_spects.up == Vec3::ZERO {
+        Vec3::Z
+    } else {
+        space_spects.up
+    };
 
     OrbitCamera {
         center,
         radius,
         world_from_view_rot: Quat::from_affine3(
-            &Affine3A::look_at_rh(camera_pos, center, up).inverse(),
+            &Affine3A::look_at_rh(camera_pos, center, look_up).inverse(),
         ),
         fov_y: 50.0_f32.to_radians(), // TODO: base on viewport size?
-        up: space_spects.up.unwrap_or(Vec3::ZERO),
+        up: space_spects.up,
     }
 }
 
