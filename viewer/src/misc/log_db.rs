@@ -57,6 +57,10 @@ impl LogDb {
                     summary.messages_3d.insert(msg.id);
                     summary.bbox3d.extend((*pos).into());
                 }
+                Data::Vec3(_) => {
+                    // NOTE: vectors aren't positions
+                    summary.messages_3d.insert(msg.id);
+                }
                 Data::Box3(box3) => {
                     summary.messages_3d.insert(msg.id);
                     let Box3 {
@@ -401,6 +405,7 @@ impl DataColumns {
                 DataType::Image => ("image", "s"),
 
                 DataType::Pos3 => ("3D position", "s"),
+                DataType::Vec3 => ("3D vector", "s"),
                 DataType::Box3 => ("3D box", "es"),
                 DataType::Path3D => ("3D path", "s"),
                 DataType::LineSegments3D => ("3D line segment list", "s"),

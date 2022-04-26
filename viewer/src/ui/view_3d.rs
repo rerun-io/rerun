@@ -24,9 +24,13 @@ struct OrbitCamera {
     radius: f32,
     world_from_view_rot: Quat,
     fov_y: f32,
+    /// Zero = no up (3dof rotation)
+    up: Vec3,
 }
 
 impl OrbitCamera {
+    const MAX_PITCH: f32 = 0.999 * 0.25 * std::f32::consts::TAU;
+
     fn to_camera(self) -> Camera {
         let pos = self.center + self.world_from_view_rot * vec3(0.0, 0.0, self.radius);
         Camera {
@@ -34,6 +38,80 @@ impl OrbitCamera {
             fov_y: self.fov_y,
         }
     }
+
+    /// Direction we are looking at
+    pub fn dir(&self) -> Vec3 {
+        self.world_from_view_rot * -Vec3::Z
+    }
+
+    /// Only valid if we have an up vector.
+    ///
+    /// `[-tau/4, +tau/4]`
+    pub fn pitch(&self) -> Option<f32> {
+        if self.up == Vec3::ZERO {
+            None
+        } else {
+            Some(self.dir().dot(self.up).clamp(-1.0, 1.0).asin())
+        }
+    }
+
+    pub fn set_dir(&mut self, dir: Vec3) {
+        if self.up == Vec3::ZERO {
+            self.world_from_view_rot = Quat::from_rotation_arc(-Vec3::Z, dir);
+        } else {
+            let pitch = self
+                .pitch()
+                .unwrap()
+                .clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
+
+            let dir = project_onto(dir, self.up).normalize(); // Remove pitch
+            let right = dir.cross(self.up).normalize();
+            let dir = Quat::from_axis_angle(right, pitch) * dir; // Tilt up/down
+            let dir = dir.normalize(); // Prevent drift
+
+            self.world_from_view_rot =
+                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, dir, self.up).inverse());
+        }
+    }
+
+    pub fn set_up(&mut self, up: Vec3) {
+        self.up = up.normalize_or_zero();
+
+        if self.up != Vec3::ZERO {
+            self.set_dir(self.dir()); // this will clamp the rotation
+        }
+    }
+
+    pub fn rotate(&mut self, delta: egui::Vec2) {
+        let sensitivity = 0.004; // radians-per-point
+        let delta = sensitivity * delta;
+
+        if self.up == Vec3::ZERO {
+            // 3-dof rotation
+            let rot_delta = Quat::from_rotation_y(-delta.x) * Quat::from_rotation_x(-delta.y);
+            self.world_from_view_rot *= rot_delta;
+        } else {
+            // 2-dof rotation
+            let dir = Quat::from_axis_angle(self.up, -delta.x) * self.dir();
+            let dir = dir.normalize(); // Prevent drift
+
+            let pitch = self.pitch().unwrap() - delta.y;
+            let pitch = pitch.clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
+
+            let dir = project_onto(dir, self.up).normalize(); // Remove pitch
+            let right = dir.cross(self.up).normalize();
+            let dir = Quat::from_axis_angle(right, pitch) * dir; // Tilt up/down
+            let dir = dir.normalize(); // Prevent drift
+
+            self.world_from_view_rot =
+                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, dir, self.up).inverse());
+        }
+    }
+}
+
+/// e.g. up is [0,0,1], we return things like [x,y,0]
+fn project_onto(v: Vec3, up: Vec3) -> Vec3 {
+    v - up * v.dot(up)
 }
 
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
@@ -112,6 +190,9 @@ impl Scene {
                     radius: dist_to_camera * point_radius_from_distance,
                     color,
                 });
+            }
+            Data::Vec3(_) => {
+                // Can't visualize vectors (yet)
             }
             Data::Box3(box3) => {
                 self.add_box(camera, color, line_radius_from_distance, box3);
@@ -225,9 +306,38 @@ impl Scene {
     }
 }
 
-fn show_settings_ui(ui: &mut egui::Ui, state_3d: &mut State3D, space_summary: &SpaceSummary) {
+fn show_settings_ui(
+    ui: &mut egui::Ui,
+    state_3d: &mut State3D,
+    space_summary: &SpaceSummary,
+    space_specs: &SpaceSpecs,
+) {
     if ui.button("Reset camera").clicked() {
-        state_3d.camera = Some(default_camera(space_summary));
+        state_3d.camera = Some(default_camera(space_summary, space_specs));
+    }
+}
+
+#[derive(Default)]
+struct SpaceSpecs {
+    up: Option<glam::Vec3>,
+}
+
+impl SpaceSpecs {
+    fn from_messages(space: &ObjectPath, messages: &[&LogMsg]) -> Self {
+        let mut slf = Self::default();
+
+        let up_path = space / "up";
+
+        for msg in messages {
+            if msg.object_path == up_path {
+                if let Data::Vec3(vec3) = msg.data {
+                    slf.up = Some(vec3.into());
+                } else {
+                    tracing::warn!("Expected {} to be a Vec3; got: {:?}", up_path, msg.data);
+                }
+            }
+        }
+        slf
     }
 }
 
@@ -242,9 +352,11 @@ pub(crate) fn combined_view_3d(
 ) {
     crate::profile_function!();
 
+    let space_specs = SpaceSpecs::from_messages(space, messages);
+
     // TODO: show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(ui, state_3d, space_summary);
+    show_settings_ui(ui, state_3d, space_summary, &space_specs);
 
     let frame = egui::Frame::canvas(ui.style()).inner_margin(2.0);
     let (outer_rect, response) =
@@ -254,14 +366,12 @@ pub(crate) fn combined_view_3d(
 
     let camera = state_3d
         .camera
-        .get_or_insert_with(|| default_camera(space_summary));
+        .get_or_insert_with(|| default_camera(space_summary, &space_specs));
+
+    camera.set_up(space_specs.up.unwrap_or(Vec3::ZERO));
 
     if response.dragged() {
-        let drag_delta = response.drag_delta();
-        let sensitivity = 0.004; // radians-per-point
-        let rot_delta = Quat::from_rotation_y(-sensitivity * drag_delta.x)
-            * Quat::from_rotation_x(-sensitivity * drag_delta.y);
-        camera.world_from_view_rot *= rot_delta;
+        camera.rotate(response.drag_delta());
     }
 
     // ---------------------------------
@@ -375,7 +485,8 @@ fn picking(
                             .circle_filled(screen_pos, 3.0, egui::Color32::RED);
                     }
                 }
-                Data::Box3(_)
+                Data::Vec3(_)
+                | Data::Box3(_)
                 | Data::Path3D(_)
                 | Data::LineSegments3D(_)
                 | Data::Mesh3D(_)
@@ -392,7 +503,7 @@ fn picking(
     closest_id
 }
 
-fn default_camera(space_summary: &SpaceSummary) -> OrbitCamera {
+fn default_camera(space_summary: &SpaceSummary, space_spects: &SpaceSpecs) -> OrbitCamera {
     let bbox = space_summary.bbox3d;
 
     let mut center = bbox.center();
@@ -408,7 +519,7 @@ fn default_camera(space_summary: &SpaceSummary) -> OrbitCamera {
     let cam_dir = vec3(1.0, 1.0, 0.5).normalize();
     let camera_pos = center + radius * cam_dir;
 
-    let up = Vec3::Z;
+    let up = space_spects.up.unwrap_or(Vec3::Z);
 
     OrbitCamera {
         center,
@@ -417,6 +528,7 @@ fn default_camera(space_summary: &SpaceSummary) -> OrbitCamera {
             &Affine3A::look_at_rh(camera_pos, center, up).inverse(),
         ),
         fov_y: 50.0_f32.to_radians(), // TODO: base on viewport size?
+        up: space_spects.up.unwrap_or(Vec3::ZERO),
     }
 }
 

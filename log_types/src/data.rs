@@ -23,6 +23,8 @@ pub enum Data {
     // 3D:
     /// Special sibling attributes: "color", "radius"
     Pos3([f32; 3]),
+    /// Used for specifying the "up" axis of a 3D space
+    Vec3([f32; 3]),
     Box3(Box3),
     Path3D(Vec<[f32; 3]>),
     /// Special sibling attributes: "color", "radius"
@@ -49,6 +51,7 @@ impl Data {
             Self::Image(_) => DataType::Image,
 
             Self::Pos3(_) => DataType::Pos3,
+            Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
             Self::Path3D(_) => DataType::Path3D,
             Self::LineSegments3D(_) => DataType::LineSegments3D,
@@ -98,6 +101,7 @@ pub enum DataType {
     // ----------------------------
     // 3D:
     Pos3,
+    Vec3,
     Box3,
     Path3D,
     LineSegments3D,
@@ -118,6 +122,7 @@ impl DataType {
             Self::Pos2 | Self::BBox2D | Self::LineSegments2D | Self::Image => Some(2),
 
             Self::Pos3
+            | Self::Vec3
             | Self::Box3
             | Self::Path3D
             | Self::LineSegments3D

@@ -334,8 +334,8 @@ impl TimePanel {
                     |ui| {
                         // TODO: show as a table?
                         if hovered_messages.len() == 1 {
-                            let log_id = hovered_messages.iter().next().unwrap();
-                            if let Some(msg) = log_db.get_msg(log_id) {
+                            let log_id = hovered_messages[0];
+                            if let Some(msg) = log_db.get_msg(&log_id) {
                                 ui.push_id(log_id, |ui| {
                                     ui.group(|ui| {
                                         crate::space_view::show_log_msg(
