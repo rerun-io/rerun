@@ -1,7 +1,8 @@
+use egui::NumExt as _;
 use egui::{Color32, Rect};
 use glam::Affine3A;
 use log_types::{Data, LogId, LogMsg, ObjectPath};
-use macaw::{vec3, Quat, Vec3};
+use macaw::{vec3, IsoTransform, Quat, Vec3};
 
 use crate::ViewerContext;
 use crate::{log_db::SpaceSummary, LogDb};
@@ -16,10 +17,101 @@ use mesh_cache::*;
 use rendering::*;
 use scene::*;
 
+fn ease_out(t: f32) -> f32 {
+    1. - (1. - t) * (1. - t)
+}
+
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State3D {
-    camera: Option<OrbitCamera>,
+    orbit_camera: Option<OrbitCamera>,
+
+    #[serde(skip)]
+    cam_interpolation: Option<CameraInterpolation>,
+}
+
+impl State3D {
+    fn update_camera(
+        &mut self,
+        response: &egui::Response,
+        space_summary: &SpaceSummary,
+        space_specs: &SpaceSpecs,
+    ) -> Camera {
+        let orbit_camera = self
+            .orbit_camera
+            .get_or_insert_with(|| default_camera(space_summary, space_specs));
+
+        if let Some(cam_interpolation) = &mut self.cam_interpolation {
+            if cam_interpolation.elapsed_time < cam_interpolation.target_time {
+                cam_interpolation.elapsed_time += response.ctx.input().unstable_dt.at_most(0.05);
+                response.ctx.request_repaint();
+                let t = cam_interpolation.elapsed_time / cam_interpolation.target_time;
+                let t = t.clamp(0.0, 1.0);
+                let t = ease_out(t);
+                let camera = cam_interpolation.start.lerp(&cam_interpolation.target, t);
+                orbit_camera.copy_from_camera(&camera);
+            }
+        }
+
+        // interact with orbit camera:
+        {
+            if self.cam_interpolation.is_none() {
+                orbit_camera.set_up(space_specs.up);
+            }
+
+            if response.dragged_by(egui::PointerButton::Primary) {
+                orbit_camera.rotate(response.drag_delta());
+                self.cam_interpolation = None;
+            } else if response.dragged_by(egui::PointerButton::Secondary) {
+                orbit_camera.translate(response.drag_delta());
+                self.cam_interpolation = None;
+            }
+
+            if response.hovered() {
+                let factor = response.ctx.input().zoom_delta()
+                    * (response.ctx.input().scroll_delta.y / 200.0).exp();
+                if factor != 1.0 {
+                    orbit_camera.radius /= factor;
+                    self.cam_interpolation = None;
+                }
+            }
+
+            orbit_camera.to_camera()
+        }
+    }
+
+    fn interpolate_to_camera(&mut self, cam: &log_types::Camera) {
+        let current_camera = self.orbit_camera.unwrap().to_camera(); // TODO: avoid unwrap
+
+        let rotation = Quat::from_slice(&cam.rotation);
+        let translation = Vec3::from_slice(&cam.position);
+        let target = Camera {
+            world_from_view: IsoTransform::from_rotation_translation(rotation, translation),
+            fov_y: current_camera.fov_y,
+        };
+
+        // Take more time if the rotation is big:
+        let angle_difference = current_camera
+            .world_from_view
+            .rotation()
+            .angle_between(target.world_from_view.rotation());
+        let target_time =
+            egui::remap_clamp(angle_difference, 0.0..=std::f32::consts::PI, 0.2..=0.7);
+
+        self.cam_interpolation = Some(CameraInterpolation {
+            elapsed_time: 0.0,
+            target_time,
+            start: current_camera,
+            target,
+        });
+    }
+}
+
+struct CameraInterpolation {
+    elapsed_time: f32,
+    target_time: f32,
+    start: Camera,
+    target: Camera,
 }
 
 fn show_settings_ui(
@@ -61,7 +153,8 @@ fn show_settings_ui(
         }
 
         if ui.button("Reset camera").clicked() {
-            state_3d.camera = Some(default_camera(space_summary, space_specs));
+            state_3d.orbit_camera = Some(default_camera(space_summary, space_specs));
+            state_3d.cam_interpolation = None;
         }
 
         ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
@@ -116,55 +209,28 @@ pub(crate) fn combined_view_3d(
     let frame = egui::Frame::canvas(ui.style()).inner_margin(2.0);
     let (outer_rect, response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
-
-    // ---------------------------------
-
-    let camera = state_3d
-        .camera
-        .get_or_insert_with(|| default_camera(space_summary, &space_specs));
-
-    camera.set_up(space_specs.up);
-
-    if response.dragged_by(egui::PointerButton::Primary) {
-        camera.rotate(response.drag_delta());
-    } else if response.dragged_by(egui::PointerButton::Secondary) {
-        camera.translate(response.drag_delta());
-    }
-
-    // ---------------------------------
-
-    // TODO: focus
-    // if response.clicked() || response.dragged() {
-    //     ui.ctx().memory().request_focus(response.id);
-    // } else if response.clicked_elsewhere() {
-    //     ui.ctx().memory().surrender_focus(response.id);
-    // }
-    // if ui.ctx().memory().has_focus(response.id) {
-    //     frame.stroke = ui.visuals().selection.stroke; // TODO: something less subtle
-    //     frame.stroke.width *= 2.0; // hack to make it less subtle
-    // }
-    // if ui.ctx().memory().has_focus(response.id) {
-    //     // TODO: WASD movement
-    // }
-
-    if response.hovered() {
-        // let factor = ui.input().zoom_delta();
-        let factor = (ui.input().scroll_delta.y / 200.0).exp();
-        camera.radius /= factor;
-    }
-
     ui.painter().add(frame.paint(outer_rect));
-
     let inner_rect = outer_rect.shrink2(frame.inner_margin.sum() + frame.outer_margin.sum());
 
-    let camera = camera.to_camera();
+    let camera = state_3d.update_camera(&response, space_summary, &space_specs);
 
-    let hovered_id = picking(ui, &inner_rect, space, messages, &camera);
-    if let Some(hovered_id) = hovered_id {
-        if response.clicked() {
-            context.selection = crate::Selection::LogId(hovered_id);
+    // TODO: do picking on `Scene` instead, at the end of the frame. Then we have the correct sizes etc.
+    // remember hovered from last frame.
+    let mut hovered_id = picking(ui, &inner_rect, space, messages, &camera);
+    if ui.input().pointer.any_click() {
+        if let Some(clicked_id) = hovered_id {
+            if let Some(msg) = log_db.get_msg(&clicked_id) {
+                context.selection = crate::Selection::LogId(clicked_id);
+                if let Data::Camera(cam) = &msg.data {
+                    state_3d.interpolate_to_camera(cam);
+                }
+            }
         }
+    } else if ui.input().pointer.any_down() {
+        hovered_id = None;
+    }
 
+    if let Some(hovered_id) = hovered_id {
         if let Some(msg) = log_db.get_msg(&hovered_id) {
             egui::containers::popup::show_tooltip_at_pointer(
                 ui.ctx(),
@@ -248,7 +314,7 @@ fn picking(
                 Data::Pos3([x, y, z]) => {
                     let screen_pos = screen_from_world.project_point3(vec3(*x, *y, *z));
                     if screen_pos.z < 0.0 {
-                        continue;
+                        continue; // TODO: don't we expect negative Z!? RHS etc
                     }
                     let screen_pos = egui::pos2(screen_pos.x, screen_pos.y);
 
@@ -257,20 +323,26 @@ fn picking(
                         closest_dist_sq = dist_sq;
                         closest_id = Some(msg.id);
                     }
+                }
+                Data::Camera(cam) => {
+                    let screen_pos = screen_from_world.project_point3(cam.position.into());
+                    if screen_pos.z < 0.0 {
+                        continue; // TODO: don't we expect negative Z!? RHS etc
+                    }
+                    let screen_pos = egui::pos2(screen_pos.x, screen_pos.y);
 
-                    if false {
-                        // good for sanity checking the projection matrix
-                        ui.ctx()
-                            .debug_painter()
-                            .circle_filled(screen_pos, 3.0, egui::Color32::RED);
+                    let dist_sq = screen_pos.distance_sq(pointer_pos);
+                    if dist_sq < closest_dist_sq {
+                        closest_dist_sq = dist_sq;
+                        closest_id = Some(msg.id);
                     }
                 }
+
                 Data::Vec3(_)
                 | Data::Box3(_)
                 | Data::Path3D(_)
                 | Data::LineSegments3D(_)
-                | Data::Mesh3D(_)
-                | Data::Camera(_) => {
+                | Data::Mesh3D(_) => {
                     // TODO: more picking
                 }
                 _ => {
@@ -291,7 +363,7 @@ fn default_camera(space_summary: &SpaceSummary, space_spects: &SpaceSpecs) -> Or
         center = Vec3::ZERO;
     }
 
-    let mut radius = 3.0 * bbox.half_size().length();
+    let mut radius = 2.0 * bbox.half_size().length();
     if !radius.is_finite() || radius == 0.0 {
         radius = 1.0;
     }
@@ -311,7 +383,7 @@ fn default_camera(space_summary: &SpaceSummary, space_spects: &SpaceSpecs) -> Or
         world_from_view_rot: Quat::from_affine3(
             &Affine3A::look_at_rh(camera_pos, center, look_up).inverse(),
         ),
-        fov_y: 50.0_f32.to_radians(), // TODO: base on viewport size?
+        fov_y: 65.0_f32.to_radians(), // TODO: base on viewport size?
         up: space_spects.up,
     }
 }

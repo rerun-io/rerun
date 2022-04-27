@@ -96,6 +96,7 @@ impl ViewerContext {
     #[allow(clippy::unused_self)]
     pub fn object_color(&self, log_db: &LogDb, msg: &LogMsg) -> egui::Color32 {
         // Try to get the latest color at the time of the message:
+        // TODO: pre-compute this to avoid lookups?
         let time_source = self.time_control.source();
         if let Some(time) = msg.time_point.0.get(time_source) {
             let color_path = msg.object_path.sibling("color");

@@ -190,7 +190,7 @@ pub struct Camera {
     /// ```
     pub intrinsics: Option<[[f32; 3]; 3]>,
 
-    /// Pixel resolution (usually integers).
+    /// Pixel resolution (usually integers). Width and height.
     ///
     /// Example:
     /// ```

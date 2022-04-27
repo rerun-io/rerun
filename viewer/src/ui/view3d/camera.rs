@@ -1,4 +1,4 @@
-use egui::Rect;
+use egui::{NumExt, Rect};
 use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
@@ -25,6 +25,26 @@ impl Camera {
     pub fn pos(&self) -> glam::Vec3 {
         self.world_from_view.translation()
     }
+
+    pub fn forward(&self) -> glam::Vec3 {
+        self.world_from_view.rotation() * -Vec3::Z
+    }
+
+    pub fn lerp(&self, other: &Self, t: f32) -> Self {
+        let translation = self
+            .world_from_view
+            .translation()
+            .lerp(other.world_from_view.translation(), t);
+        let rotation = self
+            .world_from_view
+            .rotation()
+            .slerp(other.world_from_view.rotation(), t);
+        let fov_y = egui::lerp(self.fov_y..=other.fov_y, t);
+        Camera {
+            world_from_view: IsoTransform::from_rotation_translation(rotation, translation),
+            fov_y,
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -48,6 +68,16 @@ impl OrbitCamera {
             world_from_view: IsoTransform::from_rotation_translation(self.world_from_view_rot, pos),
             fov_y: self.fov_y,
         }
+    }
+
+    /// Create an [`OrbitCamera`] from a [`Camera`].
+    pub fn copy_from_camera(&mut self, camera: &Camera) {
+        // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
+        let distance = camera.forward().dot(self.center - camera.pos());
+        self.radius = distance.at_least(self.radius / 5.0);
+        self.center = camera.pos() + self.radius * camera.forward();
+        self.world_from_view_rot = camera.world_from_view.rotation();
+        self.fov_y = camera.fov_y;
     }
 
     /// Direction we are looking at

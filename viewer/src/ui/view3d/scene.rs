@@ -121,9 +121,12 @@ impl Scene {
                 let rotation = Quat::from_slice(&cam.rotation);
                 let translation = Vec3::from_slice(&cam.position);
 
-                // camera mesh is 1m long in file
+                // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
+                // The lens is at the origin.
+
                 let dist_to_camera = eye_pos.distance(translation);
-                let scale_based_on_scene_size = 0.05 * space_summary.bbox3d.size().length();
+                let scale_based_on_scene_size =
+                    radius_multiplier * 0.05 * space_summary.bbox3d.size().length();
                 let scale_based_on_distance = dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO: fade instead!
                 let scale = scale_based_on_scene_size.min(scale_based_on_distance);
                 let scale = Vec3::splat(scale);
