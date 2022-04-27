@@ -315,7 +315,16 @@ pub(crate) fn ui_data(
     match data {
         Data::I32(value) => ui.label(value.to_string()),
         Data::F32(value) => ui.label(value.to_string()),
-        Data::Color([r, g, b, a]) => ui.label(format!("#{:02x}{:02x}{:02x}{:02x}", r, g, b, a)),
+        Data::Color([r, g, b, a]) => {
+            let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
+            let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
+            ui.painter().rect_stroke(
+                response.rect,
+                1.0,
+                ui.visuals().widgets.noninteractive.fg_stroke,
+            );
+            response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a))
+        }
 
         Data::Pos2([x, y]) => ui.label(format!("Pos2({x:.1}, {y:.1})")),
         Data::LineSegments2D(linesegments) => {
