@@ -117,14 +117,14 @@ impl Scene {
                     mesh_data: MeshSourceData::Mesh3D(mesh.clone()),
                 });
             }
-            Data::Camera(camera) => {
-                let rotation = Quat::from_slice(&camera.rotation);
-                let translation = Vec3::from_slice(&camera.position);
+            Data::Camera(cam) => {
+                let rotation = Quat::from_slice(&cam.rotation);
+                let translation = Vec3::from_slice(&cam.position);
 
                 // camera mesh is 1m long in file
                 let dist_to_camera = eye_pos.distance(translation);
                 let scale_based_on_scene_size = 0.05 * space_summary.bbox3d.size().length();
-                let scale_based_on_distance = dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close
+                let scale_based_on_distance = dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO: fade instead!
                 let scale = scale_based_on_scene_size.min(scale_based_on_distance);
                 let scale = Vec3::splat(scale);
 
@@ -138,6 +138,54 @@ impl Scene {
                         "../../../data/camera.glb"
                     )),
                 });
+
+                if let (Some(intrinsis), Some([w, h])) = (cam.intrinsics, cam.resolution) {
+                    // Frustum lines:
+                    let world_from_cam = Mat4::from_rotation_translation(rotation, translation);
+                    let intrinsis = glam::Mat3::from_cols_array_2d(&intrinsis);
+
+                    // TODO: verify and clarify the coordinate systems! RHS, origin is what corner of image, etc.
+                    let world_from_pixel = world_from_cam
+                        * Mat4::from_diagonal([1.0, 1.0, -1.0, 1.0].into()) // negative Z, because we use RHS
+                        * Mat4::from_mat3(intrinsis.inverse());
+
+                    // At what distance do we end the frustum?
+                    let d = space_summary.bbox3d.size().length() * 0.25;
+
+                    let corners = [
+                        world_from_pixel
+                            .transform_point3(d * vec3(0.0, 0.0, 1.0))
+                            .into(),
+                        world_from_pixel
+                            .transform_point3(d * vec3(0.0, h, 1.0))
+                            .into(),
+                        world_from_pixel
+                            .transform_point3(d * vec3(w, h, 1.0))
+                            .into(),
+                        world_from_pixel
+                            .transform_point3(d * vec3(w, 0.0, 1.0))
+                            .into(),
+                    ];
+
+                    let center = translation.into();
+
+                    let segments = vec![
+                        [center, corners[0]],     // frustum corners
+                        [center, corners[1]],     // frustum corners
+                        [center, corners[2]],     // frustum corners
+                        [center, corners[3]],     // frustum corners
+                        [corners[0], corners[1]], // `d` distance plane sides
+                        [corners[1], corners[2]], // `d` distance plane sides
+                        [corners[2], corners[3]], // `d` distance plane sides
+                        [corners[3], corners[0]], // `d` distance plane sides
+                    ];
+
+                    self.line_segments.push(LineSegments {
+                        segments,
+                        radius: dist_to_camera * line_radius_from_distance,
+                        color: Color32::GRAY, // TODO
+                    });
+                }
             }
             _ => {
                 debug_assert!(!msg.data.is_3d());

@@ -169,13 +169,34 @@ pub type Quaternion = [f32; 4];
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Camera {
     /// How is the camera rotated, compared to the parent space?
+    ///
+    /// World from local.
     pub rotation: Quaternion,
+
     /// Where is the camera?
     pub position: [f32; 3],
+
+    /// Column-major intrinsics matrix for projecting to pixel coordinates.
+    ///
+    /// Example:
+    /// ```
+    /// [[1496.1, 0.0,    0.0], // col 0
+    ///  [0.0,    1496.1, 0.0], // col 1
+    ///  [980.5,  744.5,  1.0]] // col 2
+    /// ```
+    pub intrinsics: Option<[[f32; 3]; 3]>,
+
+    /// Pixel resolution (usually integers).
+    ///
+    /// Example:
+    /// ```
+    /// [1920.0, 1440.0]
+    /// ```
+    pub resolution: Option<[f32; 2]>,
 }
 
 // ----------------------------------------------------------------------------
