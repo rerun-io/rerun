@@ -1,4 +1,7 @@
 # rerun
+[![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-MIT)
+[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-APACHE)
+
 This repository contains the rerun log SDK and viewer.
 
 ## Setup
