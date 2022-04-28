@@ -9,6 +9,22 @@ pub struct Camera {
 }
 
 impl Camera {
+    pub fn from_camera_data(cam: &log_types::Camera) -> Camera {
+        let rotation = Quat::from_slice(&cam.rotation);
+        let translation = Vec3::from_slice(&cam.position);
+
+        let fov_y = if let (Some(intrinsis), Some([_w, h])) = (cam.intrinsics, cam.resolution) {
+            2.0 * (0.5 * h / intrinsis[1][1]).atan()
+        } else {
+            65.0_f32.to_radians()
+        };
+
+        Self {
+            world_from_view: IsoTransform::from_rotation_translation(rotation, translation),
+            fov_y,
+        }
+    }
+
     #[allow(clippy::unused_self)]
     pub fn near(&self) -> f32 {
         0.01 // TODO

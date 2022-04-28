@@ -10,7 +10,16 @@ impl ContextPanel {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        ui.heading("Selection");
+        ui.horizontal(|ui| {
+            ui.heading("Selection");
+
+            if !matches!(&context.selection, Selection::None)
+                && ui.small_button("Deselect").clicked()
+            {
+                context.selection = Selection::None;
+            }
+        });
+
         ui.separator();
 
         match &context.selection {
@@ -30,6 +39,10 @@ impl ContextPanel {
                 };
 
                 self.view_log_msg(log_db, context, ui, msg);
+            }
+            Selection::ObjectPath(object_path) => {
+                ui.label(format!("Selected object: {}", object_path));
+                // TODO: show more
             }
             Selection::Space(space) => {
                 let space = space.clone();
@@ -104,7 +117,7 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("object_path:");
-            ui.label(format!("{object_path}"));
+            context.object_path_button(ui, object_path);
             ui.end_row();
 
             ui.monospace("time_point:");

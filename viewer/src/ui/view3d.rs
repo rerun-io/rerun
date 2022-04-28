@@ -2,10 +2,10 @@ use egui::NumExt as _;
 use egui::{Color32, Rect};
 use glam::Affine3A;
 use log_types::{Data, LogId, LogMsg, ObjectPath};
-use macaw::{vec3, IsoTransform, Quat, Vec3};
+use macaw::{vec3, Quat, Vec3};
 
-use crate::ViewerContext;
 use crate::{log_db::SpaceSummary, LogDb};
+use crate::{misc::Selection, ViewerContext};
 
 mod camera;
 mod mesh_cache;
@@ -33,6 +33,8 @@ pub(crate) struct State3D {
 impl State3D {
     fn update_camera(
         &mut self,
+        context: &mut ViewerContext,
+        messages: &[&LogMsg],
         response: &egui::Response,
         space_summary: &SpaceSummary,
         space_specs: &SpaceSpecs,
@@ -40,6 +42,13 @@ impl State3D {
         let orbit_camera = self
             .orbit_camera
             .get_or_insert_with(|| default_camera(space_summary, space_specs));
+
+        let tracking_camera = tracking_camera(context, messages);
+
+        if let Some(tracking_camera) = tracking_camera {
+            orbit_camera.copy_from_camera(&tracking_camera);
+            self.cam_interpolation = None;
+        }
 
         if let Some(cam_interpolation) = &mut self.cam_interpolation {
             if cam_interpolation.elapsed_time < cam_interpolation.target_time {
@@ -59,12 +68,14 @@ impl State3D {
                 orbit_camera.set_up(space_specs.up);
             }
 
+            let mut did_interact = false;
+
             if response.dragged_by(egui::PointerButton::Primary) {
                 orbit_camera.rotate(response.drag_delta());
-                self.cam_interpolation = None;
+                did_interact = true;
             } else if response.dragged_by(egui::PointerButton::Secondary) {
                 orbit_camera.translate(response.drag_delta());
-                self.cam_interpolation = None;
+                did_interact = true;
             }
 
             if response.hovered() {
@@ -72,23 +83,25 @@ impl State3D {
                     * (response.ctx.input().scroll_delta.y / 200.0).exp();
                 if factor != 1.0 {
                     orbit_camera.radius /= factor;
-                    self.cam_interpolation = None;
+                    did_interact = true;
                 }
             }
 
-            orbit_camera.to_camera()
+            if did_interact {
+                self.cam_interpolation = None;
+                if tracking_camera.is_some() {
+                    context.selection = Selection::None;
+                }
+            }
         }
+
+        orbit_camera.to_camera()
     }
 
     fn interpolate_to_camera(&mut self, cam: &log_types::Camera) {
         let current_camera = self.orbit_camera.unwrap().to_camera(); // TODO: avoid unwrap
 
-        let rotation = Quat::from_slice(&cam.rotation);
-        let translation = Vec3::from_slice(&cam.position);
-        let target = Camera {
-            world_from_view: IsoTransform::from_rotation_translation(rotation, translation),
-            fov_y: current_camera.fov_y,
-        };
+        let target = Camera::from_camera_data(cam);
 
         // Take more time if the rotation is big:
         let angle_difference = current_camera
@@ -189,6 +202,29 @@ impl SpaceSpecs {
     }
 }
 
+/// If the path to a camera is selected, we follow that camera.
+fn tracking_camera(context: &ViewerContext, messages: &[&LogMsg]) -> Option<Camera> {
+    if let Selection::ObjectPath(object_path) = &context.selection {
+        let mut selected_camera = None;
+
+        for msg in messages {
+            if &msg.object_path == object_path {
+                if let Data::Camera(cam) = &msg.data {
+                    if selected_camera.is_some() {
+                        return None; // More than one camera
+                    } else {
+                        selected_camera = Some(cam);
+                    }
+                }
+            }
+        }
+
+        selected_camera.map(Camera::from_camera_data)
+    } else {
+        None
+    }
+}
+
 pub(crate) fn combined_view_3d(
     log_db: &LogDb,
     context: &mut ViewerContext,
@@ -212,7 +248,7 @@ pub(crate) fn combined_view_3d(
     ui.painter().add(frame.paint(outer_rect));
     let inner_rect = outer_rect.shrink2(frame.inner_margin.sum() + frame.outer_margin.sum());
 
-    let camera = state_3d.update_camera(&response, space_summary, &space_specs);
+    let camera = state_3d.update_camera(context, messages, &response, space_summary, &space_specs);
 
     // TODO: do picking on `Scene` instead, at the end of the frame. Then we have the correct sizes etc.
     // remember hovered from last frame.

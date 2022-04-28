@@ -66,6 +66,23 @@ impl ViewerContext {
         project_tree(self, &mut path, ObjectProps::default(), &log_db.object_tree);
     }
 
+    /// Show a object path and make it selectable.
+    pub fn object_path_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        object_path: &ObjectPath,
+    ) -> egui::Response {
+        // TODO: common hover-effect of all buttons for the same object_path!
+        let response = ui.selectable_label(
+            self.selection.is_object_path(object_path),
+            object_path.to_string(),
+        );
+        if response.clicked() {
+            self.selection = Selection::ObjectPath(object_path.clone());
+        }
+        response
+    }
+
     /// Button to select the current space.
     pub fn space_button(&mut self, ui: &mut egui::Ui, space: &ObjectPath) -> egui::Response {
         // TODO: common hover-effect of all buttons for the same space!
@@ -135,6 +152,7 @@ impl ViewerContext {
 pub(crate) enum Selection {
     None,
     LogId(LogId),
+    ObjectPath(ObjectPath),
     Space(ObjectPath),
 }
 
@@ -145,6 +163,14 @@ impl Default for Selection {
 }
 
 impl Selection {
+    pub fn is_object_path(&self, needle: &ObjectPath) -> bool {
+        if let Self::ObjectPath(hay) = self {
+            hay == needle
+        } else {
+            false
+        }
+    }
+
     pub fn is_space(&self, needle: &ObjectPath) -> bool {
         if let Self::Space(hay) = self {
             hay == needle

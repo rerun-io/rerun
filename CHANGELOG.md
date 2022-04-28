@@ -2,6 +2,7 @@
 
 A crude, incomplete, reverse time-line of user-facing things added, removed and changed.
 
+* 2022-04-28: Follow camera in 3D by selecting a camera message or object path.
 * 2022-04-26: Toggle visibility of object tree nodes on/off in time panel.
 * 2022-04-26: 3D camera panning.
 * 2022-04-26: Add `/3d_space_name/up` to specify the up axis.

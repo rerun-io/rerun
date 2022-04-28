@@ -221,7 +221,7 @@ impl TimePanel {
                 let response = ui.allocate_response(egui::vec2(indent, 0.0), egui::Sense::hover());
                 ui.painter()
                     .circle_filled(response.rect.center(), 2.0, ui.visuals().text_color());
-                ui.label(text);
+                context.object_path_button(ui, &object_path);
             })
             .response
         } else {

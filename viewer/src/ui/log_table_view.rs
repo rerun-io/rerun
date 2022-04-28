@@ -111,7 +111,7 @@ fn table_row(
         });
     }
     row.col(|ui| {
-        ui.label(format!("{object_path}"));
+        context.object_path_button(ui, object_path);
     });
     row.col(|ui| {
         if let Some(space) = space {
