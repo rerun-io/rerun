@@ -74,11 +74,18 @@ impl ViewerContext {
         ui: &mut egui::Ui,
         object_path: &ObjectPath,
     ) -> egui::Response {
+        self.object_path_button_to(ui, object_path.to_string(), object_path)
+    }
+
+    /// Show a object path and make it selectable.
+    pub fn object_path_button_to(
+        &mut self,
+        ui: &mut egui::Ui,
+        text: impl Into<egui::WidgetText>,
+        object_path: &ObjectPath,
+    ) -> egui::Response {
         // TODO: common hover-effect of all buttons for the same object_path!
-        let response = ui.selectable_label(
-            self.selection.is_object_path(object_path),
-            object_path.to_string(),
-        );
+        let response = ui.selectable_label(self.selection.is_object_path(object_path), text);
         if response.clicked() {
             self.selection = Selection::ObjectPath(object_path.clone());
         }

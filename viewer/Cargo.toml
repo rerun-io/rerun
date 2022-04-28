@@ -33,6 +33,7 @@ egui_glow   = { git = "https://github.com/emilk/egui", rev = "45e2e04a07823801b7
 
 ahash = "0.7"
 anyhow = "1.0"
+bytemuck = "1.7"
 cgmath = { version = "0.18", features = ["mint"] }
 glam = { version = "0.20", features = ["mint"] }
 glow = "0.11"

@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use log_types::{Data, LogMsg, ObjectPath};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
@@ -84,15 +85,28 @@ impl ContextPanel {
         ui.label(format!("{}:", ObjectPath(parent_path.clone())));
 
         if true {
-            ui.indent("siblings", |ui| {
-                egui::Grid::new("siblings").striped(true).show(ui, |ui| {
-                    for msg in sibling_messages {
-                        let child_path =
-                            ObjectPath(msg.object_path.0[parent_path.len()..].to_vec());
-                        ui.label(child_path.to_string());
-                        crate::space_view::ui_data(context, ui, &msg.id, &msg.data, Preview::Small);
-                        ui.end_row();
-                    }
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.indent("siblings", |ui| {
+                    // TODO: optimize this with a `Table`.
+                    egui::Grid::new("siblings").striped(true).show(ui, |ui| {
+                        for msg in sibling_messages {
+                            let relative_path =
+                                ObjectPath(msg.object_path.0[parent_path.len()..].to_vec());
+                            context.object_path_button_to(
+                                ui,
+                                relative_path.to_string(),
+                                &msg.object_path,
+                            );
+                            crate::space_view::ui_data(
+                                context,
+                                ui,
+                                &msg.id,
+                                &msg.data,
+                                Preview::Small,
+                            );
+                            ui.end_row();
+                        }
+                    });
                 });
             });
         } else {
@@ -138,41 +152,104 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
         });
 
     if let Data::Image(image) = &msg.data {
-        let egui_image = context.image_cache.get(id, image);
+        let (dynamic_image, egui_image) = context.image_cache.get_pair(id, image);
         let max_size = ui.available_size().min(egui_image.size_vec2());
         egui_image.show_max_size(ui, max_size);
 
         // TODO: support copying and saving images on web
         #[cfg(not(target_arch = "wasm32"))]
-        ui.horizontal(|ui| image_options(ui, image));
+        ui.horizontal(|ui| image_options(ui, image, dynamic_image));
+
+        // TODO: support histograms of non-RGB images too
+        if let image::DynamicImage::ImageRgb8(rgb_image) =
+            context.image_cache.get_dynamic_image(&msg.id, image)
+        {
+            ui.collapsing("Histogram", |ui| {
+                histogram_ui(ui, rgb_image);
+            });
+        }
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
-    use crate::misc::image_cache::to_rgba_unultiplied;
+fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Response {
+    let mut histograms = [[0_u64; 256]; 3];
+    for pixel in rgb_image.pixels() {
+        for c in 0..3 {
+            histograms[c][pixel[c] as usize] += 1;
+        }
+    }
 
+    use egui::plot::{Bar, BarChart, Legend, Plot};
+    use egui::Color32;
+
+    let names = ["Red", "Green", "Blue"];
+    let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
+
+    let charts = histograms
+        .into_iter()
+        .enumerate()
+        .map(|(component, histogram)| {
+            let fill = colors[component].linear_multiply(0.5);
+
+            BarChart::new(
+                histogram
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, count)| {
+                        Bar::new(i as _, count as _)
+                            .width(0.9)
+                            .fill(fill)
+                            .vertical()
+                            .stroke(egui::Stroke::none())
+                    })
+                    .collect(),
+            )
+            .color(colors[component])
+            .name(names[component])
+        })
+        .collect_vec();
+
+    Plot::new("Stacked Bar Chart Demo")
+        .legend(Legend::default())
+        .height(200.0)
+        .show_axes([false; 2])
+        .show(ui, |plot_ui| {
+            for chart in charts {
+                plot_ui.bar_chart(chart);
+            }
+        })
+        .response
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn image_options(
+    ui: &mut egui::Ui,
+    rr_image: &log_types::Image,
+    dynamic_image: &image::DynamicImage,
+) {
     // TODO: support copying images on web
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Click to copy image").clicked() {
-        crate::Clipboard::with(|clipboard| match to_rgba_unultiplied(image) {
-            Ok(([w, h], rgba)) => clipboard.set_image([w as _, h as _], &rgba),
-            Err(err) => {
-                tracing::error!("Failed to copy image: {}", err);
-            }
+        let rgba = dynamic_image.to_rgba8();
+        crate::Clipboard::with(|clipboard| {
+            clipboard.set_image(
+                [rgba.width() as _, rgba.height() as _],
+                bytemuck::cast_slice(rgba.as_raw()),
+            );
         });
     }
 
     // TODO: support saving images on web
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Save image…").clicked() {
-        match image.format {
-            log_types::ImageFormat::Jpeg => {
+        use log_types::ImageFormat;
+        match rr_image.format {
+            ImageFormat::Jpeg => {
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("image.jpg")
                     .save_file()
                 {
-                    match write_binary(&path, &image.data) {
+                    match write_binary(&path, &rr_image.data) {
                         Ok(()) => {
                             tracing::info!("Image saved to {:?}", path);
                         }
@@ -182,23 +259,19 @@ fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
                     }
                 }
             }
-            _ => {
+            ImageFormat::Luminance8 | ImageFormat::Rgba8 => {
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("image.png")
                     .save_file()
                 {
-                    if let Some(image) = to_image_image(image) {
-                        match image.save(&path) {
-                            // TODO: show a popup instead of logging result
-                            Ok(()) => {
-                                tracing::info!("Image saved to {:?}", path);
-                            }
-                            Err(err) => {
-                                tracing::error!("Failed saving image to {:?}: {}", path, err);
-                            }
+                    match dynamic_image.save(&path) {
+                        // TODO: show a popup instead of logging result
+                        Ok(()) => {
+                            tracing::info!("Image saved to {:?}", path);
                         }
-                    } else {
-                        tracing::warn!("Failed to create image. Very weird");
+                        Err(err) => {
+                            tracing::error!("Failed saving image to {:?}: {}", path, err);
+                        }
                     }
                 }
             }
@@ -210,23 +283,4 @@ fn image_options(ui: &mut egui::Ui, image: &log_types::Image) {
 fn write_binary(path: &std::path::PathBuf, data: &[u8]) -> anyhow::Result<()> {
     use std::io::Write as _;
     Ok(std::fs::File::create(path)?.write_all(data)?)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn to_image_image(image: &log_types::Image) -> Option<image::DynamicImage> {
-    use crate::misc::image_cache::to_rgba_unultiplied;
-
-    let [w, h] = image.size;
-    match image.format {
-        log_types::ImageFormat::Luminance8 => image::GrayImage::from_raw(w, h, image.data.clone())
-            .map(image::DynamicImage::ImageLuma8),
-        log_types::ImageFormat::Rgba8 => image::RgbaImage::from_raw(w, h, image.data.clone())
-            .map(image::DynamicImage::ImageRgba8),
-        log_types::ImageFormat::Jpeg => {
-            let ([w, h], rgba) = to_rgba_unultiplied(image).ok()?;
-            Some(image::DynamicImage::ImageRgba8(image::RgbaImage::from_raw(
-                w, h, rgba,
-            )?))
-        }
-    }
 }

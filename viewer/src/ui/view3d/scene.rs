@@ -39,6 +39,7 @@ pub struct Scene {
 }
 
 impl Scene {
+    #[allow(clippy::too_many_arguments)] // TODO: fewer arguments
     pub(crate) fn add_msg(
         &mut self,
         context: &ViewerContext,

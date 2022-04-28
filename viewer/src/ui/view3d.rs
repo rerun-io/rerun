@@ -169,6 +169,7 @@ fn show_settings_ui(
         if ui.button("Reset camera").clicked() {
             state_3d.orbit_camera = Some(default_camera(space_summary, space_specs));
             state_3d.cam_interpolation = None;
+            // TODO: reset tracking camera too
         }
 
         // TODO: only show if there is a camera om scene.
