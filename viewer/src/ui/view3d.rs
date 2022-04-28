@@ -128,6 +128,7 @@ struct CameraInterpolation {
 }
 
 fn show_settings_ui(
+    context: &mut ViewerContext,
     ui: &mut egui::Ui,
     state_3d: &mut State3D,
     space: &ObjectPath,
@@ -169,6 +170,10 @@ fn show_settings_ui(
             state_3d.orbit_camera = Some(default_camera(space_summary, space_specs));
             state_3d.cam_interpolation = None;
         }
+
+        // TODO: only show if there is a camera om scene.
+        ui.toggle_value(&mut context.options.show_camera_mesh_in_3d, "📷")
+            .on_hover_text("Show camera mesh");
 
         ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
             .on_hover_text(
@@ -240,7 +245,7 @@ pub(crate) fn combined_view_3d(
 
     // TODO: show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(ui, state_3d, space, space_summary, &space_specs);
+    show_settings_ui(context, ui, state_3d, space, space_summary, &space_specs);
 
     let frame = egui::Frame::canvas(ui.style()).inner_margin(2.0);
     let (outer_rect, response) =
@@ -303,6 +308,7 @@ pub(crate) fn combined_view_3d(
             };
 
             scene.add_msg(
+                context,
                 space_summary,
                 inner_rect.size(),
                 &camera,

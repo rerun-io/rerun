@@ -25,6 +25,8 @@ pub(crate) struct ViewerContext {
     /// Recalculated at the start of each frame form [`Self::object_properties`].
     #[serde(skip)]
     pub projected_object_properties: ObjectsProperties,
+
+    pub options: Options,
 }
 
 impl ViewerContext {
@@ -145,6 +147,19 @@ impl ViewerContext {
         };
 
         hsva.into()
+    }
+}
+
+#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+pub struct Options {
+    pub show_camera_mesh_in_3d: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            show_camera_mesh_in_3d: true,
+        }
     }
 }
 

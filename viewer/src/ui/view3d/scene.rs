@@ -1,5 +1,5 @@
 use super::camera::Camera;
-use crate::log_db::SpaceSummary;
+use crate::{log_db::SpaceSummary, misc::ViewerContext};
 use egui::util::hash;
 use egui::Color32;
 use glam::{vec3, Mat4, Quat, Vec3};
@@ -41,6 +41,7 @@ pub struct Scene {
 impl Scene {
     pub(crate) fn add_msg(
         &mut self,
+        context: &ViewerContext,
         space_summary: &SpaceSummary,
         viewport_size: egui::Vec2,
         camera: &Camera,
@@ -125,22 +126,26 @@ impl Scene {
                 // The lens is at the origin.
 
                 let dist_to_camera = eye_pos.distance(translation);
-                let scale_based_on_scene_size =
-                    radius_multiplier * 0.05 * space_summary.bbox3d.size().length();
-                let scale_based_on_distance = dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO: fade instead!
-                let scale = scale_based_on_scene_size.min(scale_based_on_distance);
-                let scale = Vec3::splat(scale);
 
-                let world_from_mesh =
-                    Mat4::from_scale_rotation_translation(scale, rotation, translation);
-                self.meshes.push(MeshSource {
-                    mesh_id: hash("camera"),
-                    name: msg.object_path.to_string(),
-                    world_from_mesh,
-                    mesh_data: MeshSourceData::StaticGlb(include_bytes!(
-                        "../../../data/camera.glb"
-                    )),
-                });
+                if context.options.show_camera_mesh_in_3d {
+                    let scale_based_on_scene_size =
+                        radius_multiplier * 0.05 * space_summary.bbox3d.size().length();
+                    let scale_based_on_distance =
+                        dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO: fade instead!
+                    let scale = scale_based_on_scene_size.min(scale_based_on_distance);
+                    let scale = Vec3::splat(scale);
+
+                    let world_from_mesh =
+                        Mat4::from_scale_rotation_translation(scale, rotation, translation);
+                    self.meshes.push(MeshSource {
+                        mesh_id: hash("camera"),
+                        name: msg.object_path.to_string(),
+                        world_from_mesh,
+                        mesh_data: MeshSourceData::StaticGlb(include_bytes!(
+                            "../../../data/camera.glb"
+                        )),
+                    });
+                }
 
                 if let (Some(intrinsis), Some([w, h])) = (cam.intrinsics, cam.resolution) {
                     // Frustum lines:
