@@ -1,3 +1,4 @@
+use egui_extras::RetainedImage;
 use log_types::*;
 
 use crate::LogDb;
@@ -6,6 +7,7 @@ use crate::LogDb;
 
 pub struct App {
     rx: std::sync::mpsc::Receiver<LogMsg>,
+
     /// Where the logs are stored.
     log_db: LogDb,
 
@@ -114,6 +116,10 @@ struct AppState {
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
     #[serde(skip)]
     profiler: crate::misc::profiler::Profiler,
+
+    // TODO: use an image cache
+    #[serde(skip)]
+    static_image_cache: StaticImageCache,
 }
 
 impl AppState {
@@ -136,6 +142,22 @@ impl AppState {
 
                 ui.selectable_value(&mut self.view_index, 0, "Spaces");
                 ui.selectable_value(&mut self.view_index, 1, "Table");
+
+                ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                    let logo = if ui.visuals().dark_mode {
+                        self.static_image_cache.get(
+                            "logo_dark_mode",
+                            include_bytes!("../data/logo_dark_mode.png"),
+                        )
+                    } else {
+                        self.static_image_cache.get(
+                            "logo_light_mode",
+                            include_bytes!("../data/logo_light_mode.png"),
+                        )
+                    };
+
+                    logo.show_max_size(ui, [500.0, 16.0].into());
+                });
             });
         });
 
@@ -148,6 +170,7 @@ impl AppState {
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
+            static_image_cache: _,
         } = self;
 
         egui::TopBottomPanel::bottom("time_panel")
@@ -310,4 +333,28 @@ fn load_file_contents(name: &str, read: impl std::io::Read, log_db: &mut LogDb) 
                 .show();
         }
     }
+}
+
+#[derive(Default)]
+struct StaticImageCache {
+    images: std::collections::HashMap<&'static str, RetainedImage>,
+}
+
+impl StaticImageCache {
+    pub fn get(&mut self, name: &'static str, image_bytes: &[u8]) -> &RetainedImage {
+        self.images.entry(name).or_insert_with(|| {
+            RetainedImage::from_color_image(name, load_image_bytes(image_bytes).unwrap())
+        })
+    }
+}
+
+pub fn load_image_bytes(image_bytes: &[u8]) -> Result<egui::ColorImage, String> {
+    let image = image::load_from_memory(image_bytes).map_err(|err| err.to_string())?;
+    let image = image.to_rgba8();
+    let size = [image.width() as _, image.height() as _];
+    let pixels = image.as_flat_samples();
+    Ok(egui::ColorImage::from_rgba_unmultiplied(
+        size,
+        pixels.as_slice(),
+    ))
 }
