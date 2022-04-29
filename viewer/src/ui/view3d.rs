@@ -39,11 +39,20 @@ impl State3D {
         space_summary: &SpaceSummary,
         space_specs: &SpaceSpecs,
     ) -> Camera {
+        let tracking_camera = tracking_camera(context, messages);
+
+        if response.double_clicked() {
+            // Reset camera
+            self.orbit_camera = None;
+            self.cam_interpolation = None;
+            if tracking_camera.is_some() {
+                context.selection = Selection::None;
+            }
+        }
+
         let orbit_camera = self
             .orbit_camera
             .get_or_insert_with(|| default_camera(space_summary, space_specs));
-
-        let tracking_camera = tracking_camera(context, messages);
 
         if let Some(tracking_camera) = tracking_camera {
             orbit_camera.copy_from_camera(&tracking_camera);
@@ -166,7 +175,11 @@ fn show_settings_ui(
             });
         }
 
-        if ui.button("Reset camera").clicked() {
+        if ui
+            .button("Reset camera")
+            .on_hover_text("You can also double-click the 3D view")
+            .clicked()
+        {
             state_3d.orbit_camera = Some(default_camera(space_summary, space_specs));
             state_3d.cam_interpolation = None;
             // TODO: reset tracking camera too
@@ -178,7 +191,10 @@ fn show_settings_ui(
 
         ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
             .on_hover_text(
-                "Drag to rotate.\nDrag with secondary mouse button to pan.\nScroll to zoom.",
+                "Drag to rotate.\n\
+                Drag with secondary mouse button to pan.\n\
+                Scroll to zoom.\n\
+                Double-click to reset.",
             );
     });
 }
