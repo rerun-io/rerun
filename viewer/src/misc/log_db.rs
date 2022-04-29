@@ -8,7 +8,7 @@ use super::time_axis::TimeRange;
 #[derive(Default)]
 pub(crate) struct LogDb {
     /// Messages in the order they arrived
-    chronological_messages: Vec<LogId>,
+    chronological_message_ids: Vec<LogId>,
     messages: nohash_hasher::IntMap<LogId, LogMsg>,
     pub time_points: TimePoints,
     pub spaces: BTreeMap<ObjectPath, SpaceSummary>,
@@ -21,7 +21,7 @@ impl LogDb {
         crate::profile_function!();
         santiy_check(&msg);
 
-        self.chronological_messages.push(msg.id);
+        self.chronological_message_ids.push(msg.id);
         self.time_points.insert(&msg.time_point);
 
         if let Some(space) = &msg.space {
@@ -144,8 +144,8 @@ impl LogDb {
     }
 
     /// In the order they arrived
-    pub fn messages(&self) -> impl Iterator<Item = &LogMsg> {
-        self.chronological_messages
+    pub fn chronological_messages(&self) -> impl Iterator<Item = &LogMsg> {
+        self.chronological_message_ids
             .iter()
             .filter_map(|id| self.messages.get(id))
     }

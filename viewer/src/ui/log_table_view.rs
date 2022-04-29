@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use log_types::*;
 
 use crate::{LogDb, Preview, ViewerContext};
@@ -14,8 +15,10 @@ impl LogTableView {
         ui.label(format!("{} log lines", log_db.len()));
         ui.separator();
 
-        let mut messages: Vec<&LogMsg> = log_db.messages().collect();
-        messages.sort_by_key(|key| (&key.time_point, key.id));
+        let messages = {
+            crate::profile_scope!("Collecting messages");
+            log_db.chronological_messages().collect_vec()
+        };
 
         egui::ScrollArea::horizontal()
             .auto_shrink([false; 2])
@@ -63,7 +66,8 @@ pub(crate) fn message_table(
             });
         })
         .body(|body| {
-            if true {
+            // for MANY messages, `heterogeneous_rows` is too slow. TODO: how many?
+            if messages.len() < 10_000_000 {
                 body.heterogeneous_rows(
                     messages.iter().copied().map(row_height),
                     |index, mut row| {
@@ -72,7 +76,7 @@ pub(crate) fn message_table(
                     },
                 );
             } else {
-                const ROW_HEIGHT: f32 = 48.0;
+                const ROW_HEIGHT: f32 = 18.0;
                 body.rows(ROW_HEIGHT, messages.len(), |index, mut row| {
                     table_row(log_db, context, &mut row, messages[index], ROW_HEIGHT);
                 });

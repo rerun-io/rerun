@@ -257,7 +257,7 @@ fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
         crate::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::create(path).context("Failed to create file")?;
-        log_types::encoding::encode(log_db.messages(), file)
+        log_types::encoding::encode(log_db.chronological_messages(), file)
     }
 
     match save_to_file_impl(log_db, path) {
