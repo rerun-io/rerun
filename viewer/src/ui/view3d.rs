@@ -264,17 +264,13 @@ pub(crate) fn combined_view_3d(
     // Requires some egui work to handle interaction of overlapping widgets.
     show_settings_ui(context, ui, state_3d, space, space_summary, &space_specs);
 
-    let frame = egui::Frame::canvas(ui.style()).inner_margin(2.0);
-    let (outer_rect, response) =
-        ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
-    ui.painter().add(frame.paint(outer_rect));
-    let inner_rect = outer_rect.shrink2(frame.inner_margin.sum() + frame.outer_margin.sum());
+    let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     let camera = state_3d.update_camera(context, messages, &response, space_summary, &space_specs);
 
     // TODO: do picking on `Scene` instead, at the end of the frame. Then we have the correct sizes etc.
     // remember hovered from last frame.
-    let mut hovered_id = picking(ui, &inner_rect, space, messages, &camera);
+    let mut hovered_id = picking(ui, &rect, space, messages, &camera);
     if ui.input().pointer.any_click() {
         if let Some(clicked_id) = hovered_id {
             if let Some(msg) = log_db.get_msg(&clicked_id) {
@@ -327,7 +323,7 @@ pub(crate) fn combined_view_3d(
             scene.add_msg(
                 context,
                 space_summary,
-                inner_rect.size(),
+                rect.size(),
                 &camera,
                 is_hovered,
                 color,
@@ -339,7 +335,7 @@ pub(crate) fn combined_view_3d(
     let dark_mode = ui.visuals().dark_mode;
 
     let callback = egui::PaintCallback {
-        rect: inner_rect,
+        rect,
         callback: std::sync::Arc::new(move |info, render_ctx| {
             if let Some(painter) = render_ctx.downcast_ref::<egui_glow::Painter>() {
                 with_three_d_context(painter.gl(), |rendering| {

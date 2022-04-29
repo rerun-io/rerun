@@ -198,12 +198,12 @@ impl TimePanel {
 
         let object_path = ObjectPath(path.clone());
 
-        // how to show the time component.
+        // The last part of the the path component
         let text = if let Some(last) = path.last() {
             if tree.children.is_empty() {
-                last.to_string()
+                last.to_string() // leaf
             } else {
-                format!("{}/", last)
+                format!("{}/", last) // show we have children with a /
             }
         } else {
             "/".to_string()
@@ -221,14 +221,14 @@ impl TimePanel {
                 let response = ui.allocate_response(egui::vec2(indent, 0.0), egui::Sense::hover());
                 ui.painter()
                     .circle_filled(response.rect.center(), 2.0, ui.visuals().text_color());
-                context.object_path_button(ui, &object_path);
+                context.object_path_button_to(ui, text, &object_path);
             })
             .response
         } else {
             // node with more children
             let collapsing_response = egui::CollapsingHeader::new(text)
                 .id_source(&path)
-                .default_open(path.is_empty())
+                .default_open(path.is_empty()) //  || (path.len() == 1 && tree.children.len() < 3)) TODO when object path has been simplified
                 .show(ui, |ui| {
                     self.show_children(log_db, context, time_area_painter, path, tree, ui);
                 });

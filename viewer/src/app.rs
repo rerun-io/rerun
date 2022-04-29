@@ -3,6 +3,8 @@ use log_types::*;
 
 use crate::LogDb;
 
+const WATERMARK: bool = false; // Nice for recording media material
+
 // ----------------------------------------------------------------------------
 
 pub struct App {
@@ -143,21 +145,12 @@ impl AppState {
                 ui.selectable_value(&mut self.view_index, 0, "Spaces");
                 ui.selectable_value(&mut self.view_index, 1, "Table");
 
-                ui.with_layout(egui::Layout::right_to_left(), |ui| {
-                    let logo = if ui.visuals().dark_mode {
-                        self.static_image_cache.get(
-                            "logo_dark_mode",
-                            include_bytes!("../data/logo_dark_mode.png"),
-                        )
-                    } else {
-                        self.static_image_cache.get(
-                            "logo_light_mode",
-                            include_bytes!("../data/logo_light_mode.png"),
-                        )
-                    };
-
-                    logo.show_max_size(ui, [500.0, 16.0].into());
-                });
+                if !WATERMARK {
+                    ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        let logo = self.static_image_cache.rerun_logo(ui.visuals());
+                        logo.show_max_size(ui, [500.0, 16.0].into());
+                    });
+                }
             });
         });
 
@@ -173,16 +166,16 @@ impl AppState {
             static_image_cache: _,
         } = self;
 
+        egui::SidePanel::right("context").show(egui_ctx, |ui| {
+            context_panel.ui(log_db, context, ui);
+        });
+
         egui::TopBottomPanel::bottom("time_panel")
             .resizable(true)
             .default_height(210.0)
             .show(egui_ctx, |ui| {
                 time_panel.ui(log_db, context, ui);
             });
-
-        egui::SidePanel::right("context").show(egui_ctx, |ui| {
-            context_panel.ui(log_db, context, ui);
-        });
 
         egui::CentralPanel::default().show(egui_ctx, |ui| match view_index {
             0 => space_view.ui(log_db, context, ui),
@@ -194,6 +187,26 @@ impl AppState {
         context
             .time_control
             .move_time(egui_ctx, &log_db.time_points);
+
+        if WATERMARK {
+            self.watermark(egui_ctx);
+        }
+    }
+
+    fn watermark(&mut self, egui_ctx: &egui::Context) {
+        use egui::*;
+        let logo = self
+            .static_image_cache
+            .rerun_logo(&egui_ctx.style().visuals);
+        let screen_rect = egui_ctx.input().screen_rect;
+        let size = logo.size_vec2();
+        let rect = Align2::RIGHT_BOTTOM
+            .align_size_within_rect(size, screen_rect)
+            .translate(-Vec2::splat(16.0));
+        let mut mesh = Mesh::with_texture(logo.texture_id(egui_ctx));
+        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+        mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
+        egui_ctx.debug_painter().add(Shape::mesh(mesh));
     }
 
     fn file_menu(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame, _log_db: &mut LogDb) {
@@ -345,6 +358,20 @@ impl StaticImageCache {
         self.images.entry(name).or_insert_with(|| {
             RetainedImage::from_color_image(name, load_image_bytes(image_bytes).unwrap())
         })
+    }
+
+    pub fn rerun_logo(&mut self, visuals: &egui::Visuals) -> &RetainedImage {
+        if visuals.dark_mode {
+            self.get(
+                "logo_dark_mode",
+                include_bytes!("../data/logo_dark_mode.png"),
+            )
+        } else {
+            self.get(
+                "logo_light_mode",
+                include_bytes!("../data/logo_light_mode.png"),
+            )
+        }
     }
 }
 

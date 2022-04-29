@@ -40,7 +40,7 @@ impl TimeSelectionType {
     pub fn color(&self, visuals: &egui::Visuals) -> egui::Color32 {
         use egui::Color32;
         match self {
-            TimeSelectionType::Loop => Color32::from_rgb(50, 220, 140),
+            TimeSelectionType::Loop => Color32::from_rgb(40, 200, 130),
             TimeSelectionType::Filter => visuals.selection.bg_fill, // it is a form of selection, so let's be consistent
         }
     }
@@ -196,38 +196,40 @@ impl TimeControl {
         ui.scope(|ui| {
             ui.visuals_mut().selection.bg_fill = TimeSelectionType::Loop.color(ui.visuals());
 
+            let is_looping =
+                self.selection_active && self.selection_type == TimeSelectionType::Loop;
+
             if ui
-                .add_enabled(
-                    has_selection,
-                    SelectableLabel::new(
-                        self.selection_active && self.selection_type == TimeSelectionType::Loop,
-                        "🔁",
-                    ),
-                )
+                .add_enabled(has_selection, SelectableLabel::new(is_looping, "🔁"))
                 .on_hover_text("Loop in selection")
                 .clicked()
             {
-                self.set_active_selection_type(Some(TimeSelectionType::Loop));
-                self.looped = true;
+                if is_looping {
+                    self.selection_active = false; // toggle off
+                } else {
+                    self.set_active_selection_type(Some(TimeSelectionType::Loop));
+                    self.looped = true;
+                }
             }
         });
 
         ui.scope(|ui| {
             ui.visuals_mut().selection.bg_fill = TimeSelectionType::Filter.color(ui.visuals());
 
+            let is_filtering =
+                self.selection_active && self.selection_type == TimeSelectionType::Filter;
+
             if ui
-                .add_enabled(
-                    has_selection,
-                    SelectableLabel::new(
-                        self.selection_active && self.selection_type == TimeSelectionType::Filter,
-                        "⬌",
-                    ),
-                )
+                .add_enabled(has_selection, SelectableLabel::new(is_filtering, "⬌"))
                 .on_hover_text("Show everything in selection")
                 .clicked()
             {
-                self.set_active_selection_type(Some(TimeSelectionType::Filter));
-                self.pause();
+                if is_filtering {
+                    self.selection_active = false; // toggle off
+                } else {
+                    self.set_active_selection_type(Some(TimeSelectionType::Filter));
+                    self.pause();
+                }
             }
         });
     }
@@ -272,10 +274,9 @@ impl TimeControl {
             self.selection_active = false;
         }
 
-        let drag_speed = self.speed * 0.05;
+        let drag_speed = (self.speed * 0.02).at_least(0.01);
         ui.add(
             egui::DragValue::new(&mut self.speed)
-                .clamp_range(0.01..=100.0)
                 .speed(drag_speed)
                 .suffix("x"),
         )

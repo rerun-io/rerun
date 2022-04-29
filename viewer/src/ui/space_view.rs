@@ -27,8 +27,8 @@ impl SpaceView {
             return;
         }
 
-        ui.small("Showing latest versions of each object.")
-            .on_hover_text("Latest by the current time, that is");
+        // ui.small("Showing latest versions of each object.")
+        //     .on_hover_text("Latest by the current time, that is");
 
         if let Selection::Space(selected_space) = &context.selection {
             let selected_space = selected_space.clone();
@@ -65,7 +65,7 @@ impl SpaceView {
         for (rect, space) in itertools::izip!(&regions, log_db.spaces.keys()) {
             let mut ui = ui.child_ui_with_id_source(*rect, *ui.layout(), space);
             egui::Frame::group(ui.style())
-                .outer_margin(Vec2::splat(4.0))
+                .inner_margin(Vec2::splat(4.0))
                 .show(&mut ui, |ui| {
                     ui.vertical_centered(|ui| {
                         context.space_button(ui, space);
@@ -233,18 +233,7 @@ impl SpaceView {
         }
 
         if !space_summary.messages_2d.is_empty() {
-            egui::Frame::canvas(ui.style())
-                .inner_margin(2.0)
-                .show(ui, |ui| {
-                    crate::view2d::combined_view_2d(
-                        log_db,
-                        context,
-                        ui,
-                        space,
-                        space_summary,
-                        messages,
-                    );
-                });
+            crate::view2d::combined_view_2d(log_db, context, ui, space, space_summary, messages);
         }
     }
 }

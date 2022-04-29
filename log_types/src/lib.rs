@@ -187,6 +187,13 @@ impl std::fmt::Display for ObjectPath {
     }
 }
 
+impl From<&str> for ObjectPath {
+    #[inline]
+    fn from(component: &str) -> Self {
+        Self(vec![component.into()])
+    }
+}
+
 impl From<ObjectPathComponent> for ObjectPath {
     #[inline]
     fn from(component: ObjectPathComponent) -> Self {

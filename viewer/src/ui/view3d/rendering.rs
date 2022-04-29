@@ -230,6 +230,7 @@ fn allocate_line_segments<'a>(
 
         model.material.render_states = render_states;
         model.material.color = color_to_three_d(*color);
+        model.material.is_transparent = model.material.color.a < 255;
 
         model.set_instances(&line_instances).unwrap();
     }
@@ -367,16 +368,14 @@ pub fn paint_with_three_d(
     Ok(())
 }
 
+/// TODO: don't use `Color32` here, it is unnecessary to premultiply alpha only to again unmultiply it here!
 fn color_to_three_d(color: egui::Color32) -> three_d::Color {
-    assert_eq!(color.a(), 255);
-
-    // three_d::Color::new_opaque(color.r(), color.g(), color.b())
-
-    // TODO: figure out why three_d colors are messed up
-    let rgba: egui::Rgba = color.into();
-    three_d::Color::new_opaque(
-        (rgba.r() * 255.0).round() as _,
-        (rgba.g() * 255.0).round() as _,
-        (rgba.b() * 255.0).round() as _,
+    // TODO: figure out why three_d colors are messed up. Are they in linear space and in bytes!?!?!
+    let [r, g, b, a] = egui::Rgba::from(color).to_rgba_unmultiplied();
+    three_d::Color::new(
+        (r * 255.0).round() as _,
+        (g * 255.0).round() as _,
+        (b * 255.0).round() as _,
+        (a * 255.0).round() as _,
     )
 }

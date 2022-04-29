@@ -49,6 +49,13 @@ pub(crate) fn combined_view_2d(
 
     let to_screen = egui::emath::RectTransform::from_to(space_summary.bbox2d, response.rect);
 
+    // Paint background in case there is no image covering it all
+    painter.rect_filled(
+        to_screen.transform_rect(space_summary.bbox2d),
+        3.0,
+        ui.visuals().extreme_bg_color,
+    );
+
     // ------------------------------------------------------------------------
 
     let hovered = ui

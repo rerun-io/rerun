@@ -222,7 +222,7 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
     use egui::plot::{Bar, BarChart, Legend, Plot};
     use egui::Color32;
 
-    let names = ["Red", "Green", "Blue"];
+    let names = ["R", "G", "B"];
     let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
 
     let charts = histograms
