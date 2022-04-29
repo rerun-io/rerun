@@ -106,35 +106,46 @@ impl ContextPanel {
 
         ui.label(format!("{}:", ObjectPath(parent_path.clone())));
 
-        crate::profile_scope!("View siblings");
-        if true {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.indent("siblings", |ui| {
-                    // TODO: optimize this with a `Table`.
-                    egui::Grid::new("siblings").striped(true).show(ui, |ui| {
-                        for msg in sibling_messages {
-                            let relative_path =
-                                ObjectPath(msg.object_path.0[parent_path.len()..].to_vec());
-                            context.object_path_button_to(
-                                ui,
-                                relative_path.to_string(),
-                                &msg.object_path,
-                            );
-                            crate::space_view::ui_data(
-                                context,
-                                ui,
-                                &msg.id,
-                                &msg.data,
-                                Preview::Small,
-                            );
-                            ui.end_row();
-                        }
+        use egui_extras::Size;
+        egui_extras::TableBuilder::new(ui)
+            .striped(true)
+            .cell_layout(egui::Layout::left_to_right().with_cross_align(egui::Align::Center))
+            .resizable(true)
+            .column(Size::initial(120.0).at_least(100.0)) // relative path
+            .column(Size::remainder().at_least(180.0)) // data
+            .header(20.0, |mut header| {
+                header.col(|ui| {
+                    ui.heading("Relative path");
+                });
+                header.col(|ui| {
+                    ui.heading("Data");
+                });
+            })
+            .body(|body| {
+                const ROW_HEIGHT: f32 = 24.0;
+                body.rows(ROW_HEIGHT, sibling_messages.len(), |index, mut row| {
+                    let msg = sibling_messages[index];
+
+                    row.col(|ui| {
+                        let relative_path =
+                            ObjectPath(msg.object_path.0[parent_path.len()..].to_vec());
+                        context.object_path_button_to(
+                            ui,
+                            relative_path.to_string(),
+                            &msg.object_path,
+                        );
+                    });
+                    row.col(|ui| {
+                        crate::space_view::ui_data(
+                            context,
+                            ui,
+                            &msg.id,
+                            &msg.data,
+                            Preview::Specific(ROW_HEIGHT),
+                        );
                     });
                 });
             });
-        } else {
-            crate::log_table_view::message_table(log_db, context, ui, &sibling_messages);
-        }
     }
 }
 
@@ -198,9 +209,13 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
     crate::profile_function!();
 
     let mut histograms = [[0_u64; 256]; 3];
-    for pixel in rgb_image.pixels() {
-        for c in 0..3 {
-            histograms[c][pixel[c] as usize] += 1;
+    {
+        // TODO: this is slow, so cache the results!
+        crate::profile_scope!("build");
+        for pixel in rgb_image.pixels() {
+            for c in 0..3 {
+                histograms[c][pixel[c] as usize] += 1;
+            }
         }
     }
 
@@ -234,7 +249,8 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
         })
         .collect_vec();
 
-    Plot::new("Stacked Bar Chart Demo")
+    crate::profile_scope!("show");
+    Plot::new("rgb_histogram")
         .legend(Legend::default())
         .height(200.0)
         .show_axes([false; 2])
