@@ -185,6 +185,14 @@ impl Default for Selection {
 }
 
 impl Selection {
+    // pub fn is_none(&self) -> bool {
+    //     matches!(self, Self::None)
+    // }
+
+    pub fn is_some(&self) -> bool {
+        !matches!(self, Self::None)
+    }
+
     pub fn is_object_path(&self, needle: &ObjectPath) -> bool {
         if let Self::ObjectPath(hay) = self {
             hay == needle

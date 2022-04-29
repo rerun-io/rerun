@@ -14,9 +14,7 @@ impl ContextPanel {
         ui.horizontal(|ui| {
             ui.heading("Selection");
 
-            if !matches!(&context.selection, Selection::None)
-                && ui.small_button("Deselect").clicked()
-            {
+            if context.selection.is_some() && ui.small_button("Deselect").clicked() {
                 context.selection = Selection::None;
             }
         });
@@ -39,11 +37,34 @@ impl ContextPanel {
                     return;
                 };
 
-                self.view_log_msg(log_db, context, ui, msg);
+                show_detailed_log_msg(context, ui, msg);
+                ui.separator();
+                self.view_log_msg_siblings(log_db, context, ui, msg);
             }
             Selection::ObjectPath(object_path) => {
                 ui.label(format!("Selected object: {}", object_path));
-                // TODO: show more
+
+                ui.separator();
+
+                let mut messages = context
+                    .time_control
+                    .selected_messages_for_object(log_db, object_path);
+                messages.sort_by_key(|msg| &msg.time_point);
+
+                if context.time_control.is_time_filter_active() {
+                    ui.label(format!("Viewing {} selected message(s):", messages.len()));
+                } else {
+                    ui.label("Viewing latest message:");
+                }
+
+                if messages.is_empty() {
+                    // nothing to see here
+                } else if messages.len() == 1 {
+                    // probably viewing the latest message of this object path
+                    show_detailed_log_msg(context, ui, messages[0]);
+                } else {
+                    crate::log_table_view::message_table(log_db, context, ui, &messages);
+                }
             }
             Selection::Space(space) => {
                 let space = space.clone();
@@ -53,6 +74,8 @@ impl ContextPanel {
                 egui::ScrollArea::horizontal().show(ui, |ui| {
                     let mut messages = context.time_control.selected_messages(log_db);
                     messages.retain(|msg| msg.space.as_ref() == Some(&space));
+
+                    messages.sort_by_key(|msg| &msg.time_point);
                     crate::log_table_view::message_table(log_db, context, ui, &messages);
                 });
             }
@@ -60,30 +83,30 @@ impl ContextPanel {
     }
 
     #[allow(clippy::unused_self)]
-    fn view_log_msg(
+    fn view_log_msg_siblings(
         &mut self,
         log_db: &LogDb,
         context: &mut ViewerContext,
         ui: &mut egui::Ui,
         msg: &LogMsg,
     ) {
-        show_detailed_log_msg(context, ui, msg);
-
-        ui.separator();
-
+        crate::profile_function!();
         let messages = context.time_control.selected_messages(log_db);
 
         let mut parent_path = msg.object_path.0.clone();
         parent_path.pop();
 
-        let sibling_messages: Vec<&LogMsg> = messages
+        let mut sibling_messages: Vec<&LogMsg> = messages
             .iter()
             .copied()
             .filter(|other_msg| other_msg.object_path.0.starts_with(&parent_path))
             .collect();
 
+        sibling_messages.sort_by_key(|msg| &msg.time_point);
+
         ui.label(format!("{}:", ObjectPath(parent_path.clone())));
 
+        crate::profile_scope!("View siblings");
         if true {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.indent("siblings", |ui| {
@@ -172,6 +195,8 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
 }
 
 fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Response {
+    crate::profile_function!();
+
     let mut histograms = [[0_u64; 256]; 3];
     for pixel in rgb_image.pixels() {
         for c in 0..3 {

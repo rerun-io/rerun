@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use egui::NumExt;
 use log_types::*;
 
+use crate::log_db::MessageFilter;
 use crate::misc::TimePoints;
 
 use super::time_axis::TimeRange;
@@ -66,7 +67,7 @@ struct TimeState {
     /// In this case, the view will expand while new data is added.
     /// Only when the user actually zooms or pans will this be set.
     #[serde(default)]
-    view: Option<TimeView>,
+    view: Option<TimeView>, // TODO: use f64 for TimeValue::Sequence too, or navigation in the time panel gets weird
 }
 
 impl TimeState {
@@ -134,6 +135,7 @@ impl TimeControl {
         }
     }
 
+    /// Is there a "filtering" selection, i.e. selecting a section of the time line
     pub fn is_time_filter_active(&self) -> bool {
         self.selection_active && self.selection_type == TimeSelectionType::Filter
     }
@@ -521,7 +523,35 @@ impl TimeControl {
     /// Return the messages that should be visible at this time.
     ///
     /// This is either based on a time selection, or it is the latest message at the current time.
+    ///
+    /// Returns them in arbitrary order.
     pub fn selected_messages<'db>(&self, log_db: &'db crate::log_db::LogDb) -> Vec<&'db LogMsg> {
+        self.selected_messages_filtered(log_db, &MessageFilter::All)
+    }
+
+    /// Return the messages that should be visible at this time.
+    ///
+    /// This is either based on a time selection, or it is the latest message at the current time.
+    ///
+    /// Returns them in arbitrary order.
+    pub fn selected_messages_for_object<'db>(
+        &self,
+        log_db: &'db crate::log_db::LogDb,
+        object_path: &ObjectPath,
+    ) -> Vec<&'db LogMsg> {
+        self.selected_messages_filtered(log_db, &MessageFilter::ObjectPath(object_path.clone()))
+    }
+
+    /// Return the messages that should be visible at this time.
+    ///
+    /// This is either based on a time selection, or it is the latest message at the current time.
+    ///
+    /// Returns them in arbitrary order.
+    pub fn selected_messages_filtered<'db>(
+        &self,
+        log_db: &'db crate::log_db::LogDb,
+        filter: &MessageFilter,
+    ) -> Vec<&'db LogMsg> {
         crate::profile_function!();
 
         let state = if let Some(state) = self.states.get(&self.time_source) {
@@ -532,11 +562,11 @@ impl TimeControl {
 
         if self.is_time_filter_active() {
             if let Some(range) = state.selection {
-                return log_db.messages_in_range(self.source(), range);
+                return log_db.messages_in_range(self.source(), range, filter);
             }
         }
 
-        log_db.latest_of_each_object(self.source(), state.time)
+        log_db.latest_of_each_object(self.source(), state.time, filter)
     }
 }
 

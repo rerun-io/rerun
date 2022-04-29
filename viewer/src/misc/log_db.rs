@@ -160,14 +160,19 @@ impl LogDb {
         &self,
         time_source: &str,
         no_later_than: TimeValue,
+        filter: &MessageFilter,
     ) -> Vec<&LogMsg> {
         crate::profile_function!();
         self.object_history
-            .values()
-            .filter_map(|history| {
-                history
-                    .latest(time_source, no_later_than)
-                    .and_then(|id| self.get_msg(&id))
+            .iter()
+            .filter_map(|(object_path, history)| {
+                if filter.allow(object_path) {
+                    history
+                        .latest(time_source, no_later_than)
+                        .and_then(|id| self.get_msg(&id))
+                } else {
+                    None
+                }
             })
             .collect()
     }
@@ -175,11 +180,18 @@ impl LogDb {
     /// All messages in the range, plus the last one before the range.
     ///
     /// This last addition is so that we get "static" assets too. We should maybe have a nicer way to accomplish this.
-    pub fn messages_in_range(&self, time_source: &str, range: TimeRange) -> Vec<&LogMsg> {
+    pub fn messages_in_range(
+        &self,
+        time_source: &str,
+        range: TimeRange,
+        filter: &MessageFilter,
+    ) -> Vec<&LogMsg> {
         crate::profile_function!();
         let mut ids = vec![];
-        for history in self.object_history.values() {
-            history.collect_in_range(time_source, range, &mut ids);
+        for (object_path, history) in &self.object_history {
+            if filter.allow(object_path) {
+                history.collect_in_range(time_source, range, &mut ids);
+            }
         }
         ids.into_iter().filter_map(|id| self.get_msg(&id)).collect()
     }
@@ -195,6 +207,21 @@ impl LogDb {
             .get(object_path)?
             .latest(time_source, no_later_than)?;
         self.get_msg(&id)
+    }
+}
+
+pub enum MessageFilter {
+    All,
+    /// Only return messages with this path
+    ObjectPath(ObjectPath),
+}
+
+impl MessageFilter {
+    pub fn allow(&self, candidate: &ObjectPath) -> bool {
+        match self {
+            MessageFilter::All => true,
+            MessageFilter::ObjectPath(needle) => needle == candidate,
+        }
     }
 }
 

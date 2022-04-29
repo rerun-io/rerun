@@ -23,11 +23,11 @@ log_types = { path = "../log_types", features = ["save", "load"] }
 
 # We use bleeding edge egui, from 2022-04-28
 eframe      = { git = "https://github.com/emilk/egui", rev = "45e2e04a07823801b7b768068498393a5a498537", features = ["dark-light", "persistence"] }
-egui        = { git = "https://github.com/emilk/egui", rev = "45e2e04a07823801b7b768068498393a5a498537", features = ["extra_debug_asserts"] }
+egui        = { git = "https://github.com/emilk/egui", rev = "45e2e04a07823801b7b768068498393a5a498537", features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { git = "https://github.com/emilk/egui", rev = "45e2e04a07823801b7b768068498393a5a498537", features = ["tracing"] }
 egui_glow   = { git = "https://github.com/emilk/egui", rev = "45e2e04a07823801b7b768068498393a5a498537" }
 # eframe      = { path = "../../../egui/eframe", features = ["dark-light", "persistence"] }
-# egui        = { path = "../../../egui/egui", features = ["extra_debug_asserts"] }
+# egui        = { path = "../../../egui/egui", features = ["extra_debug_asserts", "tracing"] }
 # egui_extras = { path = "../../../egui/egui_extras", features = ["tracing"] }
 # egui_glow   = { path = "../../../egui/egui_glow" }
 
