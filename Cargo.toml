@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["comms", "log_types", "viewer", "web_server"]
+members = [
+    "comms",
+    "log_types",
+    "objectron",
+    "viewer",
+    "web_server",
+]
 
 
 [profile.dev]
