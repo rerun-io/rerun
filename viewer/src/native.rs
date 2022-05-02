@@ -13,7 +13,7 @@ pub fn run_native_viewer(rx: std::sync::mpsc::Receiver<LogMsg>) {
         native_options,
         Box::new(move |cc| {
             let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            Box::new(crate::App::new(cc.storage, rx))
+            Box::new(crate::App::from_receiver(cc.storage, rx))
         }),
     );
 }

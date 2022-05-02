@@ -8,7 +8,7 @@ const WATERMARK: bool = false; // Nice for recording media material
 // ----------------------------------------------------------------------------
 
 pub struct App {
-    rx: std::sync::mpsc::Receiver<LogMsg>,
+    rx: Option<std::sync::mpsc::Receiver<LogMsg>>,
 
     /// Where the logs are stored.
     log_db: LogDb,
@@ -17,7 +17,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(
+    /// Create a viewer that receives new log messages over time
+    pub fn from_receiver(
         storage: Option<&dyn eframe::Storage>,
         rx: std::sync::mpsc::Receiver<LogMsg>,
     ) -> Self {
@@ -26,10 +27,29 @@ impl App {
             .unwrap_or_default();
 
         Self {
-            rx,
+            rx: Some(rx),
             log_db: Default::default(),
             state,
         }
+    }
+
+    pub(crate) fn from_log_db(storage: Option<&dyn eframe::Storage>, log_db: LogDb) -> Self {
+        let state = storage
+            .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
+            .unwrap_or_default();
+
+        Self {
+            rx: None,
+            log_db,
+            state,
+        }
+    }
+
+    /// load a `.rrd` data file.
+    pub fn from_rrd_path(storage: Option<&dyn eframe::Storage>, path: &std::path::Path) -> Self {
+        let mut log_db = Default::default();
+        load_file_path(path, &mut log_db);
+        Self::from_log_db(storage, log_db)
     }
 }
 
@@ -39,9 +59,12 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        while let Ok(log_msg) = self.rx.try_recv() {
-            self.log_db.add(log_msg);
+        if let Some(rx) = &mut self.rx {
+            while let Ok(log_msg) = rx.try_recv() {
+                self.log_db.add(log_msg);
+            }
         }
+
         self.state.show(egui_ctx, frame, &mut self.log_db);
 
         self.handle_dropping_files(egui_ctx);
@@ -307,8 +330,8 @@ fn load_rrd(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn load_file_path(path: &std::path::PathBuf, log_db: &mut LogDb) {
-    fn load_file_path_impl(path: &std::path::PathBuf) -> anyhow::Result<LogDb> {
+fn load_file_path(path: &std::path::Path, log_db: &mut LogDb) {
+    fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<LogDb> {
         crate::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::open(path).context("Failed to open file")?;

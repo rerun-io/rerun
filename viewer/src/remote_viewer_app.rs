@@ -36,7 +36,7 @@ impl RemoteViewerApp {
         )
         .unwrap(); // TODO: handle error
 
-        let app = crate::App::new(storage, rx);
+        let app = crate::App::from_receiver(storage, rx);
 
         self.app = Some((connection, app));
     }

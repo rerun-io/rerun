@@ -2,9 +2,8 @@
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Url to server
-    #[clap(long, default_value = "ws://127.0.0.1:9876")]
-    url: String,
+    /// Either a path to a `.rrd` file, or an url to a websocket server.
+    url_or_path: String,
 }
 
 #[tokio::main]
@@ -15,13 +14,6 @@ async fn main() {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let mut url = args.url;
-    // let url = comms::default_server_url();
-
-    if !url.contains("://") {
-        url = format!("{}://{url}", comms::PROTOCOL);
-    }
-
     let native_options = eframe::NativeOptions {
         depth_buffer: 24,
         multisampling: 8,
@@ -29,12 +21,29 @@ async fn main() {
         ..Default::default()
     };
 
-    eframe::run_native(
-        "rerun viewer",
-        native_options,
-        Box::new(move |cc| {
-            let app = viewer::RemoteViewerApp::new(cc.egui_ctx.clone(), cc.storage, url);
-            Box::new(app)
-        }),
-    );
+    let path = std::path::Path::new(&args.url_or_path).to_path_buf();
+    if path.exists() || args.url_or_path.ends_with(".rrd") {
+        eframe::run_native(
+            "rerun viewer",
+            native_options,
+            Box::new(move |cc| {
+                let app = viewer::App::from_rrd_path(cc.storage, &path);
+                Box::new(app)
+            }),
+        );
+    } else {
+        let mut url = args.url_or_path;
+        // let url = comms::default_server_url();
+        if !url.contains("://") {
+            url = format!("{}://{url}", comms::PROTOCOL);
+        }
+        eframe::run_native(
+            "rerun viewer",
+            native_options,
+            Box::new(move |cc| {
+                let app = viewer::RemoteViewerApp::new(cc.egui_ctx.clone(), cc.storage, url);
+                Box::new(app)
+            }),
+        );
+    }
 }
