@@ -489,7 +489,7 @@ fn paint_time_ranges_and_ticks(
         time_area_painter.rect_filled(rect, 1.0, bg_stroke.color.linear_multiply(0.5));
 
         let rect = Rect::from_x_y_ranges(segment.x.clone(), line_y_range.clone());
-        paint_time_ticks(ui, time_area_painter, &rect, &segment.time);
+        paint_time_range_ticks(ui, time_area_painter, &rect, &segment.time);
     }
 
     if false {
@@ -1230,43 +1230,174 @@ impl TimeRangesUi {
     }
 }
 
-fn paint_time_ticks(
+fn paint_time_range_ticks(
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
     rect: &Rect,
     range: &TimeRange,
 ) {
-    let fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-
     let (min, max) = (range.min, range.max);
     if let (TimeValue::Time(min), TimeValue::Time(max)) = (min, max) {
-        if min != max {
-            // TODO: handle different time spans better
-            if max - min < log_types::Duration::from_secs(20.0) {
-                let mut ns = min.nanos_since_epoch();
-                let small_step_size_ns = 100_000_000;
-                ns = ((ns - 1) / small_step_size_ns + 1) * small_step_size_ns;
-                while ns <= max.nanos_since_epoch() {
-                    let x = lerp(
-                        rect.x_range(),
-                        range
-                            .inverse_lerp(Time::from_ns_since_epoch(ns).into())
-                            .unwrap(),
-                    );
+        let font_id = egui::TextStyle::Body.resolve(ui.style());
+        let shapes = paint_ticks(
+            &ui.fonts(),
+            ui.visuals().dark_mode,
+            &font_id,
+            rect,
+            &ui.clip_rect(),
+            (min, max),
+        );
+        time_area_painter.extend(shapes);
+    }
+    // TODO: show tick lines for sequence numbers too!
+}
 
-                    let top = if ns % (10 * small_step_size_ns) == 0 {
-                        // full second
-                        rect.top()
-                    } else {
-                        // tenth
-                        lerp(rect.y_range(), 0.75)
-                    };
+fn paint_ticks(
+    fonts: &egui::epaint::Fonts,
+    dark_mode: bool,
+    font_id: &egui::FontId,
+    canvas: &Rect,
+    clip_rect: &Rect,
+    (min_time, max_time): (Time, Time),
+) -> Vec<egui::Shape> {
+    let color_from_alpha = |alpha: f32| {
+        if dark_mode {
+            Rgba::from_white_alpha(alpha)
+        } else {
+            Rgba::from_black_alpha(alpha)
+        }
+    };
 
-                    time_area_painter.vline(x, top..=rect.bottom(), fg_stroke);
+    let min_ns = min_time.nanos_since_epoch();
+    let max_ns = max_time.nanos_since_epoch();
+    let width_ns = max_ns - min_ns;
 
-                    ns += small_step_size_ns;
+    let mut shapes = vec![];
+
+    let visible_rect = clip_rect.intersect(*canvas);
+    if !visible_rect.is_positive() {
+        return shapes;
+    }
+
+    let alpha_multiplier = 0.3;
+
+    let max_lines = canvas.width() / 4.0;
+    let mut grid_spacing_ns = 1_000;
+    while width_ns as f32 / (grid_spacing_ns as f32) > max_lines {
+        grid_spacing_ns = next_grid_tick_magnitude(grid_spacing_ns);
+    }
+
+    // We fade in lines as we zoom in:
+    let num_tiny_lines = width_ns as f32 / (grid_spacing_ns as f32);
+    let zoom_factor = remap_clamp(num_tiny_lines, (0.1 * max_lines)..=max_lines, 1.0..=0.0);
+    let zoom_factor = zoom_factor * zoom_factor;
+    let big_alpha = remap_clamp(zoom_factor, 0.0..=1.0, 0.5..=1.0);
+    let medium_alpha = remap_clamp(zoom_factor, 0.0..=1.0, 0.1..=0.5);
+    let tiny_alpha = remap_clamp(zoom_factor, 0.0..=1.0, 0.0..=0.1);
+
+    let x_from_ns = |ns: i64| -> f32 {
+        let t = ns.saturating_sub(min_ns) as f32 / max_ns.saturating_sub(min_ns) as f32;
+        lerp(canvas.x_range(), t)
+    };
+
+    let mut grid_ns = min_ns / grid_spacing_ns * grid_spacing_ns;
+    while grid_ns <= max_ns {
+        let line_x = x_from_ns(grid_ns);
+
+        if visible_rect.min.x <= line_x && line_x <= visible_rect.max.x {
+            let medium_line = grid_ns % next_grid_tick_magnitude(grid_spacing_ns) == 0;
+            let big_line =
+                grid_ns % next_grid_tick_magnitude(next_grid_tick_magnitude(grid_spacing_ns)) == 0;
+
+            let line_alpha = if big_line {
+                big_alpha
+            } else if medium_line {
+                medium_alpha
+            } else {
+                tiny_alpha
+            };
+
+            let top = if grid_ns % 1_000_000_000 == 0 {
+                canvas.top() // full second
+            } else {
+                lerp(canvas.y_range(), 0.75)
+            };
+
+            shapes.push(egui::Shape::line_segment(
+                [pos2(line_x, top), pos2(line_x, canvas.max.y)],
+                Stroke::new(1.0, color_from_alpha(line_alpha * alpha_multiplier)),
+            ));
+
+            let text = true;
+            if text {
+                let text_alpha = if big_line {
+                    medium_alpha
+                } else if medium_line {
+                    tiny_alpha
+                } else {
+                    0.0
+                };
+
+                if text_alpha > 0.0 {
+                    let text = grid_text_from_ns(grid_ns);
+                    let text_x = line_x + 4.0;
+                    let text_color = color_from_alpha((text_alpha * 2.0).min(1.0)).into();
+
+                    // Text at top:
+                    shapes.push(egui::Shape::text(
+                        fonts,
+                        pos2(text_x, canvas.min.y),
+                        Align2::LEFT_TOP,
+                        &text,
+                        font_id.clone(),
+                        text_color,
+                    ));
                 }
             }
+        }
+
+        grid_ns += grid_spacing_ns;
+    }
+
+    shapes
+}
+
+fn next_grid_tick_magnitude(spacing_ns: i64) -> i64 {
+    if spacing_ns <= 1_000_000_000 {
+        spacing_ns * 10 // up to 10 second ticks
+    } else if spacing_ns == 10_000_000_000 {
+        spacing_ns * 6 // to the whole minute
+    } else if spacing_ns == 60_000_000_000 {
+        spacing_ns * 10 // to ten minutes
+    } else if spacing_ns == 600_000_000_000 {
+        spacing_ns * 6 // to an hour
+    } else if spacing_ns < 24 * 60 * 60 * 1_000_000_000 {
+        spacing_ns * 24 // to a day
+    } else {
+        spacing_ns * 10 // multiple of ten days
+    }
+}
+
+fn grid_text_from_ns(ns: i64) -> String {
+    let relative_ns = ns % 1_000_000_000;
+    if relative_ns == 0 {
+        let time = Time::from_ns_since_epoch(ns);
+        if time.is_abolute_date() {
+            time.format_time("%H:%M:%S")
+        } else {
+            log_types::Duration::from_nanos(ns).to_string()
+        }
+    } else {
+        // show relative to whole second:
+        let ms = relative_ns as f64 * 1e-6;
+        if relative_ns % 1_000_000 == 0 {
+            format!("{:+.0} ms", ms)
+        } else if relative_ns % 100_000 == 0 {
+            format!("{:+.1} ms", ms)
+        } else if relative_ns % 10_000 == 0 {
+            format!("{:+.2} ms", ms)
+        } else {
+            format!("{:+.3} ms", ms)
         }
     }
 }

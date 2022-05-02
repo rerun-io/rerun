@@ -31,12 +31,19 @@ impl Time {
         Self::from_ns_since_epoch((secs * 1e9).round() as _)
     }
 
-    /// Human-readable formatting
-    pub fn format(&self) -> String {
+    /// If true, this time is likely relative to unix epoch.
+    pub fn is_abolute_date(&self) -> bool {
         let nanos_since_epoch = self.nanos_since_epoch();
         let years_since_epoch = nanos_since_epoch / 1_000_000_000 / 60 / 60 / 24 / 365;
 
-        if 50 <= years_since_epoch && years_since_epoch <= 150 {
+        50 <= years_since_epoch && years_since_epoch <= 150
+    }
+
+    /// Human-readable formatting
+    pub fn format(&self) -> String {
+        let nanos_since_epoch = self.nanos_since_epoch();
+
+        if self.is_abolute_date() {
             use chrono::TimeZone as _;
             let datetime = chrono::Utc.timestamp(
                 nanos_since_epoch / 1_000_000_000,
@@ -53,6 +60,16 @@ impl Time {
             // assume relative time
             format!("{:+.03}s", secs)
         }
+    }
+
+    pub fn format_time(&self, format_str: &str) -> String {
+        use chrono::TimeZone as _;
+        let nanos_since_epoch = self.nanos_since_epoch();
+        let datetime = chrono::Utc.timestamp(
+            nanos_since_epoch / 1_000_000_000,
+            (nanos_since_epoch % 1_000_000_000) as _,
+        );
+        datetime.format(format_str).to_string()
     }
 
     #[inline]
