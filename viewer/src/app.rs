@@ -46,6 +46,7 @@ impl App {
     }
 
     /// load a `.rrd` data file.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn from_rrd_path(storage: Option<&dyn eframe::Storage>, path: &std::path::Path) -> Self {
         let mut log_db = Default::default();
         load_file_path(path, &mut log_db);
