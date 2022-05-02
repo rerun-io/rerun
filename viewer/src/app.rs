@@ -168,12 +168,13 @@ impl AppState {
                 ui.selectable_value(&mut self.view_index, 0, "Spaces");
                 ui.selectable_value(&mut self.view_index, 1, "Table");
 
-                if !WATERMARK {
-                    ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                    if !WATERMARK {
                         let logo = self.static_image_cache.rerun_logo(ui.visuals());
                         logo.show_max_size(ui, [500.0, 16.0].into());
-                    });
-                }
+                    }
+                    egui::warn_if_debug_build(ui);
+                });
             });
         });
 
