@@ -22,7 +22,7 @@ pub(crate) struct ViewerContext {
     /// Properties, as inherited from parent.
     /// Read from this.
     ///
-    /// Recalculated at the start of each frame form [`Self::object_properties`].
+    /// Recalculated at the start of each frame form [`Self::individual_object_properties`].
     #[serde(skip)]
     pub projected_object_properties: ObjectsProperties,
 

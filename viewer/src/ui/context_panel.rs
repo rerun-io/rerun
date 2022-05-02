@@ -186,13 +186,13 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
         });
 
     if let Data::Image(image) = &msg.data {
-        let (dynamic_image, egui_image) = context.image_cache.get_pair(id, image);
+        let (_dynamic_image, egui_image) = context.image_cache.get_pair(id, image);
         let max_size = ui.available_size().min(egui_image.size_vec2());
         egui_image.show_max_size(ui, max_size);
 
         // TODO: support copying and saving images on web
         #[cfg(not(target_arch = "wasm32"))]
-        ui.horizontal(|ui| image_options(ui, image, dynamic_image));
+        ui.horizontal(|ui| image_options(ui, image, _dynamic_image));
 
         // TODO: support histograms of non-RGB images too
         if let image::DynamicImage::ImageRgb8(rgb_image) =

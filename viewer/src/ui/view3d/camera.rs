@@ -179,7 +179,7 @@ impl OrbitCamera {
     }
 }
 
-/// e.g. up is [0,0,1], we return things like [x,y,0]
+/// e.g. up is `[0,0,1]`, we return things like `[x,y,0]`
 fn project_onto(v: Vec3, up: Vec3) -> Vec3 {
     v - up * v.dot(up)
 }
