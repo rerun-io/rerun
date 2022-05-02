@@ -4,4 +4,4 @@ members = ["comms", "log_types", "viewer", "web_server"]
 
 
 [profile.dev]
-opt-level = 1 # Speed up debug builds
+# opt-level = 1 # Speed up debug builds
