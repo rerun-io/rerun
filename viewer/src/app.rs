@@ -33,6 +33,7 @@ impl App {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn from_log_db(storage: Option<&dyn eframe::Storage>, log_db: LogDb) -> Self {
         let state = storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))

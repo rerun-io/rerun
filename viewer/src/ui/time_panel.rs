@@ -1236,88 +1236,172 @@ fn paint_time_range_ticks(
     rect: &Rect,
     range: &TimeRange,
 ) {
-    let (min, max) = (range.min, range.max);
-    if let (TimeValue::Time(min), TimeValue::Time(max)) = (min, max) {
-        let font_id = egui::TextStyle::Body.resolve(ui.style());
-        let shapes = paint_ticks(
+    let font_id = egui::TextStyle::Body.resolve(ui.style());
+
+    let shapes = if let (TimeValue::Time(min), TimeValue::Time(max)) = (range.min, range.max) {
+        fn next_grid_tick_magnitude_ns(spacing_ns: i64) -> i64 {
+            if spacing_ns <= 1_000_000_000 {
+                spacing_ns * 10 // up to 10 second ticks
+            } else if spacing_ns == 10_000_000_000 {
+                spacing_ns * 6 // to the whole minute
+            } else if spacing_ns == 60_000_000_000 {
+                spacing_ns * 10 // to ten minutes
+            } else if spacing_ns == 600_000_000_000 {
+                spacing_ns * 6 // to an hour
+            } else if spacing_ns < 24 * 60 * 60 * 1_000_000_000 {
+                spacing_ns * 24 // to a day
+            } else {
+                spacing_ns * 10 // multiple of ten days
+            }
+        }
+
+        fn grid_text_from_ns(ns: i64) -> String {
+            let relative_ns = ns % 1_000_000_000;
+            if relative_ns == 0 {
+                let time = Time::from_ns_since_epoch(ns);
+                if time.is_abolute_date() {
+                    time.format_time("%H:%M:%S")
+                } else {
+                    log_types::Duration::from_nanos(ns).to_string()
+                }
+            } else {
+                // show relative to whole second:
+                let ms = relative_ns as f64 * 1e-6;
+                if relative_ns % 1_000_000 == 0 {
+                    format!("{:+.0} ms", ms)
+                } else if relative_ns % 100_000 == 0 {
+                    format!("{:+.1} ms", ms)
+                } else if relative_ns % 10_000 == 0 {
+                    format!("{:+.2} ms", ms)
+                } else {
+                    format!("{:+.3} ms", ms)
+                }
+            }
+        }
+
+        paint_ticks(
+            &ui.fonts(),
+            ui.visuals().dark_mode,
+            &font_id,
+            rect,
+            &ui.clip_rect(),
+            (min.nanos_since_epoch(), max.nanos_since_epoch()),
+            1_000,
+            next_grid_tick_magnitude_ns,
+            grid_text_from_ns,
+        )
+    } else if let (TimeValue::Sequence(min), TimeValue::Sequence(max)) = (range.min, range.max) {
+        fn next_power_of_10(i: i64) -> i64 {
+            i * 10
+        }
+        paint_ticks(
             &ui.fonts(),
             ui.visuals().dark_mode,
             &font_id,
             rect,
             &ui.clip_rect(),
             (min, max),
-        );
-        time_area_painter.extend(shapes);
-    }
-    // TODO: show tick lines for sequence numbers too!
+            1,
+            next_power_of_10,
+            |seq| format!("#{seq}"),
+        )
+    } else {
+        return;
+    };
+    time_area_painter.extend(shapes);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_ticks(
     fonts: &egui::epaint::Fonts,
     dark_mode: bool,
     font_id: &egui::FontId,
     canvas: &Rect,
     clip_rect: &Rect,
-    (min_time, max_time): (Time, Time),
+    (min_time, max_time): (i64, i64),
+    min_grid_spacing_time: i64,
+    next_time_step: fn(i64) -> i64,
+    format_tick: fn(i64) -> String,
 ) -> Vec<egui::Shape> {
-    let color_from_alpha = |alpha: f32| {
+    let color_from_alpha = |alpha: f32| -> Color32 {
         if dark_mode {
-            Rgba::from_white_alpha(alpha)
+            Rgba::from_white_alpha(alpha * alpha).into()
         } else {
-            Rgba::from_black_alpha(alpha)
+            Rgba::from_black_alpha(alpha).into()
         }
     };
 
-    let min_ns = min_time.nanos_since_epoch();
-    let max_ns = max_time.nanos_since_epoch();
-    let width_ns = max_ns - min_ns;
-
-    let mut shapes = vec![];
+    let x_from_time = |time: i64| -> f32 {
+        let t = time.saturating_sub(min_time) as f32 / max_time.saturating_sub(min_time) as f32;
+        lerp(canvas.x_range(), t)
+    };
 
     let visible_rect = clip_rect.intersect(*canvas);
+    let mut shapes = vec![];
+
     if !visible_rect.is_positive() {
         return shapes;
     }
 
-    let alpha_multiplier = 0.3;
+    let width_time = max_time - min_time;
+    let points_per_time = canvas.width() / width_time as f32;
+    let minimum_small_line_spacing = 4.0;
+    let expected_text_width = 60.0;
 
-    let max_lines = canvas.width() / 4.0;
-    let mut grid_spacing_ns = 1_000;
-    while width_ns as f32 / (grid_spacing_ns as f32) > max_lines {
-        grid_spacing_ns = next_grid_tick_magnitude(grid_spacing_ns);
-    }
-
-    // We fade in lines as we zoom in:
-    let num_tiny_lines = width_ns as f32 / (grid_spacing_ns as f32);
-    let zoom_factor = remap_clamp(num_tiny_lines, (0.1 * max_lines)..=max_lines, 1.0..=0.0);
-    let zoom_factor = zoom_factor * zoom_factor;
-    let big_alpha = remap_clamp(zoom_factor, 0.0..=1.0, 0.5..=1.0);
-    let medium_alpha = remap_clamp(zoom_factor, 0.0..=1.0, 0.1..=0.5);
-    let tiny_alpha = remap_clamp(zoom_factor, 0.0..=1.0, 0.0..=0.1);
-
-    let x_from_ns = |ns: i64| -> f32 {
-        let t = ns.saturating_sub(min_ns) as f32 / max_ns.saturating_sub(min_ns) as f32;
-        lerp(canvas.x_range(), t)
+    let line_color_from_spacing = |spacing_time: i64| -> Color32 {
+        let next_tick_magnitude = next_time_step(spacing_time) / spacing_time; // usually 10, but could be 6 or 24 for time
+        let alpha = remap_clamp(
+            spacing_time as f32 * points_per_time,
+            minimum_small_line_spacing..=(next_tick_magnitude as f32 * minimum_small_line_spacing),
+            0.0..=0.6,
+        );
+        color_from_alpha(alpha)
     };
 
-    let mut grid_ns = min_ns / grid_spacing_ns * grid_spacing_ns;
-    while grid_ns <= max_ns {
-        let line_x = x_from_ns(grid_ns);
+    let text_color_from_spacing = |spacing_time: i64| -> Color32 {
+        let alpha = remap_clamp(
+            spacing_time as f32 * points_per_time,
+            expected_text_width..=(3.0 * expected_text_width),
+            0.0..=1.0,
+        );
+        color_from_alpha(alpha)
+    };
+
+    let max_small_lines = canvas.width() / minimum_small_line_spacing;
+    let mut small_spacing_time = min_grid_spacing_time;
+    while width_time as f32 / (small_spacing_time as f32) > max_small_lines {
+        small_spacing_time = next_time_step(small_spacing_time);
+    }
+    let medium_spacing_time = next_time_step(small_spacing_time);
+    let big_spacing_time = next_time_step(medium_spacing_time);
+
+    // We fade in lines as we zoom in:
+    let big_line_color = line_color_from_spacing(big_spacing_time);
+    let medium_line_color = line_color_from_spacing(medium_spacing_time);
+    let small_line_color = line_color_from_spacing(small_spacing_time);
+
+    let big_text_color = text_color_from_spacing(big_spacing_time);
+    let medium_text_color = text_color_from_spacing(medium_spacing_time);
+    let small_text_color = text_color_from_spacing(small_spacing_time);
+
+    let mut current_time = min_time / small_spacing_time * small_spacing_time; // TODO: start at visible_rect.left()
+    while current_time <= max_time {
+        let line_x = x_from_time(current_time);
 
         if visible_rect.min.x <= line_x && line_x <= visible_rect.max.x {
-            let medium_line = grid_ns % next_grid_tick_magnitude(grid_spacing_ns) == 0;
-            let big_line =
-                grid_ns % next_grid_tick_magnitude(next_grid_tick_magnitude(grid_spacing_ns)) == 0;
+            let medium_line = current_time % medium_spacing_time == 0;
+            let big_line = current_time % big_spacing_time == 0;
 
-            let line_alpha = if big_line {
-                big_alpha
+            let (line_color, text_color) = if big_line {
+                (big_line_color, big_text_color)
             } else if medium_line {
-                medium_alpha
+                (medium_line_color, medium_text_color)
             } else {
-                tiny_alpha
+                (small_line_color, small_text_color)
             };
 
-            let top = if grid_ns % 1_000_000_000 == 0 {
+            let top = if current_time % 1_000_000_000 == 0 {
+                // TODO: for sequences (non-nanoseconds)
                 canvas.top() // full second
             } else {
                 lerp(canvas.y_range(), 0.75)
@@ -1325,81 +1409,29 @@ fn paint_ticks(
 
             shapes.push(egui::Shape::line_segment(
                 [pos2(line_x, top), pos2(line_x, canvas.max.y)],
-                Stroke::new(1.0, color_from_alpha(line_alpha * alpha_multiplier)),
+                Stroke::new(1.0, line_color),
             ));
 
-            let text = true;
-            if text {
-                let text_alpha = if big_line {
-                    medium_alpha
-                } else if medium_line {
-                    tiny_alpha
-                } else {
-                    0.0
-                };
+            if text_color != Color32::TRANSPARENT {
+                let text = format_tick(current_time);
+                let text_x = line_x + 4.0;
 
-                if text_alpha > 0.0 {
-                    let text = grid_text_from_ns(grid_ns);
-                    let text_x = line_x + 4.0;
-                    let text_color = color_from_alpha((text_alpha * 2.0).min(1.0)).into();
-
-                    // Text at top:
-                    shapes.push(egui::Shape::text(
-                        fonts,
-                        pos2(text_x, canvas.min.y),
-                        Align2::LEFT_TOP,
-                        &text,
-                        font_id.clone(),
-                        text_color,
-                    ));
-                }
+                // Text at top:
+                shapes.push(egui::Shape::text(
+                    fonts,
+                    pos2(text_x, canvas.min.y),
+                    Align2::LEFT_TOP,
+                    &text,
+                    font_id.clone(),
+                    text_color,
+                ));
             }
         }
 
-        grid_ns += grid_spacing_ns;
+        current_time += small_spacing_time;
     }
 
     shapes
-}
-
-fn next_grid_tick_magnitude(spacing_ns: i64) -> i64 {
-    if spacing_ns <= 1_000_000_000 {
-        spacing_ns * 10 // up to 10 second ticks
-    } else if spacing_ns == 10_000_000_000 {
-        spacing_ns * 6 // to the whole minute
-    } else if spacing_ns == 60_000_000_000 {
-        spacing_ns * 10 // to ten minutes
-    } else if spacing_ns == 600_000_000_000 {
-        spacing_ns * 6 // to an hour
-    } else if spacing_ns < 24 * 60 * 60 * 1_000_000_000 {
-        spacing_ns * 24 // to a day
-    } else {
-        spacing_ns * 10 // multiple of ten days
-    }
-}
-
-fn grid_text_from_ns(ns: i64) -> String {
-    let relative_ns = ns % 1_000_000_000;
-    if relative_ns == 0 {
-        let time = Time::from_ns_since_epoch(ns);
-        if time.is_abolute_date() {
-            time.format_time("%H:%M:%S")
-        } else {
-            log_types::Duration::from_nanos(ns).to_string()
-        }
-    } else {
-        // show relative to whole second:
-        let ms = relative_ns as f64 * 1e-6;
-        if relative_ns % 1_000_000 == 0 {
-            format!("{:+.0} ms", ms)
-        } else if relative_ns % 100_000 == 0 {
-            format!("{:+.1} ms", ms)
-        } else if relative_ns % 10_000 == 0 {
-            format!("{:+.2} ms", ms)
-        } else {
-            format!("{:+.3} ms", ms)
-        }
-    }
 }
 
 // ----------------------------------------------------------------------------

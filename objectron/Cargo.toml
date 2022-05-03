@@ -1,0 +1,43 @@
+[package]
+name = "objectron"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.60"
+license = "MIT OR Apache-2.0"
+publish = false
+
+
+[features]
+default = []
+web = ["comms", "web_server", "tokio", "webbrowser"]
+
+
+[dependencies]
+log_types = { path = "../log_types" }
+viewer = { path = "../viewer" }
+
+anyhow = "1"
+clap = "3.1"
+glam = "0.20" # to convert rotation matrices to quaternions
+image = { version = "0.23", default-features = false, features = ["jpeg"] }
+itertools = "0.10"
+prost = "0.10"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Optional:
+comms = { path = "../comms", optional = true, features = ["server"] }
+web_server = { path = "../../rerun/web_server", optional = true }
+tokio = { version = "1.0.0", optional = true, default-features = false, features = [
+    "io-std",
+    "macros",
+    "net",
+    "rt-multi-thread",
+    "sync",
+    "time",
+] }
+webbrowser = {version = "0.7", optional = true }
+
+
+[build-dependencies]
+prost-build = "0.10"

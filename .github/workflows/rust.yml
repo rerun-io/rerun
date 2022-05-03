@@ -110,10 +110,27 @@ jobs:
           args: --all-features -- -D warnings
 
   cargo-deny:
-    runs-on: ubuntu-20.04
+    name: cargo deny
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: EmbarkStudios/cargo-deny-action@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.60.0
+          override: true
+      - run: cargo install cargo-deny
+      - run: cargo deny check
+
+  # For some reason this causes weird problems:
+  # https://github.com/rerun-io/rerun/runs/6271778805?check_suite_focus=true
+  # Error: -03 10:39:38 [ERROR] `cargo metadata` exited with an error: info: syncing channel updates for '1.60.0-x86_64-unknown-linux-musl'
+  # failed to read `/github/rerun/web_server/Cargo.toml`
+  # cargo-deny:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: EmbarkStudios/cargo-deny-action@v1
 
   wasm_bindgen:
     name: wasm-bindgen
