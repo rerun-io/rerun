@@ -1,27 +1,7 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    ops::RangeInclusive,
-};
+use std::{collections::BTreeSet, ops::RangeInclusive};
 
+use itertools::Itertools;
 use log_types::TimeValue;
-
-use crate::misc::TimePoints;
-
-/// All the different time sources split into separate [`TimeSourceAxis`].
-pub(crate) struct TimeSourceAxes {
-    pub sources: BTreeMap<String, TimeSourceAxis>,
-}
-
-impl TimeSourceAxes {
-    pub fn new(time_axes: &TimePoints) -> Self {
-        let sources = time_axes
-            .0
-            .iter()
-            .map(|(name, values)| (name.clone(), TimeSourceAxis::new(values)))
-            .collect();
-        Self { sources }
-    }
-}
 
 /// A piece-wise linear view of a single time source.
 ///
@@ -34,13 +14,55 @@ pub(crate) struct TimeSourceAxis {
 
 impl TimeSourceAxis {
     pub fn new(values: &BTreeSet<TimeValue>) -> Self {
+        fn count_gaps(values: &BTreeSet<TimeValue>, threshold: i64) -> usize {
+            let mut num_gaps = 0;
+            for (a, b) in values.iter().tuple_windows() {
+                if !is_close(*a, *b, threshold) {
+                    num_gaps += 1;
+                }
+            }
+            num_gaps
+        }
+
+        fn is_close(a: TimeValue, b: TimeValue, threshold: i64) -> bool {
+            match (a, b) {
+                (TimeValue::Sequence(a), TimeValue::Sequence(b)) => a.abs_diff(b) <= threshold as _,
+                (TimeValue::Sequence(_), TimeValue::Time(_))
+                | (TimeValue::Time(_), TimeValue::Sequence(_)) => false,
+                (TimeValue::Time(a), TimeValue::Time(b)) => {
+                    (b - a).as_secs_f32().abs() <= threshold as _
+                }
+            }
+        }
+
         assert!(!values.is_empty());
+
+        // First determine the threshold for when a gap should be closed.
+        // Sometimes, looking at data spanning milliseconds, a single second pause can be an eternity.
+        // When looking at data recorded over hours, a few minutes of pause may be nothing.
+        // So we start with a small gap and keep expanding it while it decreases the number of gaps.
+        let mut gap_size = 1;
+        let mut num_gaps = count_gaps(values, gap_size);
+
+        loop {
+            let new_gap_size = gap_size * 2;
+            let new_num_gaps = count_gaps(values, new_gap_size);
+            if new_num_gaps < num_gaps {
+                gap_size = new_gap_size;
+                num_gaps = new_num_gaps;
+            } else {
+                break;
+            }
+        }
+
+        // ----
+
         let mut values_it = values.iter();
         let mut latest_value = *values_it.next().unwrap();
         let mut ranges = vec1::vec1![TimeRange::point(latest_value)];
 
         for &new_value in values_it {
-            if is_close(latest_value, new_value) {
+            if is_close(latest_value, new_value, gap_size) {
                 ranges.last_mut().add(new_value);
             } else {
                 ranges.push(TimeRange::point(new_value));
@@ -69,17 +91,6 @@ impl TimeSourceAxis {
     // pub fn max(&self) -> TimeValue {
     //     self.ranges.last().max
     // }
-}
-
-fn is_close(a: TimeValue, b: TimeValue) -> bool {
-    match (a, b) {
-        (TimeValue::Sequence(_), TimeValue::Sequence(_)) => true,
-        (TimeValue::Sequence(_), TimeValue::Time(_))
-        | (TimeValue::Time(_), TimeValue::Sequence(_)) => false,
-        (TimeValue::Time(a), TimeValue::Time(b)) => {
-            (b - a).as_secs_f32().abs() < 2.0 // TODO: less hacky heuristic!
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]

@@ -1,11 +1,8 @@
 use std::ops::RangeInclusive;
 
 use crate::{
-    log_db::ObjectTree,
-    misc::time_axis::TimeSourceAxis,
-    misc::time_control::TimeSelectionType,
-    time_axis::{TimeRange, TimeSourceAxes},
-    LogDb, TimeControl, TimeView, ViewerContext,
+    log_db::ObjectTree, misc::time_axis::TimeSourceAxis, misc::time_control::TimeSelectionType,
+    time_axis::TimeRange, LogDb, TimeControl, TimeView, ViewerContext,
 };
 
 use egui::*;
@@ -464,11 +461,12 @@ fn initialize_time_ranges_ui(
     context: &mut ViewerContext,
     time_x_range: RangeInclusive<f32>,
 ) -> TimeRangesUi {
-    let time_source_axes = TimeSourceAxes::new(&log_db.time_points);
-    if let Some(time_source_axis) = time_source_axes.sources.get(context.time_control.source()) {
+    crate::profile_function!();
+    if let Some(time_points) = log_db.time_points.0.get(context.time_control.source()) {
+        let time_source_axis = TimeSourceAxis::new(time_points);
         let time_view = context.time_control.time_view();
         let time_view =
-            time_view.unwrap_or_else(|| view_everything(&time_x_range, time_source_axis));
+            time_view.unwrap_or_else(|| view_everything(&time_x_range, &time_source_axis));
 
         TimeRangesUi::new(time_x_range, time_view, &time_source_axis.ranges)
     } else {
