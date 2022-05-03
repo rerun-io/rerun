@@ -38,11 +38,12 @@ fn main() {
 
     tracing::debug!("Starting viewer…");
     viewer::run_native_viewer(rerun_rx);
+    handle.join().ok();
 }
 
 #[cfg(feature = "web")]
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log to stdout (if you run with `RUST_LOG=debug`).
     tracing_subscriber::fmt::init();
 
@@ -63,9 +64,7 @@ async fn main() {
 
     let pub_sub_url = comms::default_server_url();
 
-    let server = comms::Server::new(comms::DEFAULT_SERVER_PORT)
-        .await
-        .unwrap();
+    let server = comms::Server::new(comms::DEFAULT_SERVER_PORT).await?;
     let server_handle = tokio::spawn(server.listen(rerun_rx));
 
     let web_port = 9090;
@@ -82,8 +81,8 @@ async fn main() {
         println!("Web server is running - view it at {}", viewer_url);
     }
 
-    server_handle.await.unwrap().unwrap();
-    web_server_handle.await.unwrap();
-
+    server_handle.await??;
+    web_server_handle.await?;
     handle.join().ok();
+    Ok(())
 }

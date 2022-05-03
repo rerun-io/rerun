@@ -17,11 +17,13 @@ cargo doc --document-private-items --no-deps --all-features
 
 (cd comms && cargo check --no-default-features)
 (cd log_types && cargo check --no-default-features)
+(cd objectron && cargo check --no-default-features)
 (cd viewer && cargo check --no-default-features)
 (cd web_server && cargo check --no-default-features)
 
 (cd comms && cargo check --all-features)
 (cd log_types && cargo check --all-features)
+(cd objectron && cargo check --all-features)
 (cd viewer && cargo check --all-features)
 (cd web_server && cargo check --all-features)
 
