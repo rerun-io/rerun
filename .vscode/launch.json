@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug 'viewer'",
+            "name": "Debug 'viewer' recording.rrd",
             "type": "lldb",
             "request": "launch",
             "cargo": {
@@ -20,6 +20,25 @@
             },
             "args": [
                 "../recording.rrd"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug 'objectron'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--package=objectron"
+                ],
+                "filter": {
+                    "name": "objectron",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "objectron/dataset/bike/batch-11/48"
             ],
             "cwd": "${workspaceFolder}"
         },

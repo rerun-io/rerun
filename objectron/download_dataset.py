@@ -56,7 +56,7 @@ def download_dataset(name):
     video_ids = requests.get(
         f"{public_url}/v1/index/{name}_annotations_test").text
     video_ids = video_ids.split('\n')
-    for i in range(10):
+    for i in range(3):
         download_data(video_ids[i])
 
 

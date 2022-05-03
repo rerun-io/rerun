@@ -1920,15 +1920,19 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "comms",
  "glam",
  "image",
  "itertools",
  "log_types",
  "prost",
  "prost-build",
+ "tokio",
  "tracing",
  "tracing-subscriber",
  "viewer",
+ "web_server",
+ "webbrowser",
 ]
 
 [[package]]
