@@ -109,6 +109,19 @@ jobs:
           command: clippy
           args: --all-features -- -D warnings
 
+  cargo-deny2:
+    name: cargo deny 2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.60.0
+          override: true
+      - run: cargo install cargo-deny
+      - run: cargo deny check
+
   cargo-deny:
     runs-on: ubuntu-20.04
     steps:
