@@ -34,3 +34,9 @@ impl TimePoints {
         }
     }
 }
+
+pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
+    ui.add(
+        egui::Label::new("❓").sense(egui::Sense::click()), // sensing clicks also gives hover effect
+    )
+}

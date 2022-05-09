@@ -189,13 +189,12 @@ fn show_settings_ui(
         ui.toggle_value(&mut context.options.show_camera_mesh_in_3d, "📷")
             .on_hover_text("Show camera mesh");
 
-        ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
-            .on_hover_text(
-                "Drag to rotate.\n\
+        crate::misc::help_hover_button(ui).on_hover_text(
+            "Drag to rotate.\n\
                 Drag with secondary mouse button to pan.\n\
                 Scroll to zoom.\n\
                 Double-click to reset.",
-            );
+        );
     });
 }
 

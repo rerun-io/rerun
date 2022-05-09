@@ -433,13 +433,12 @@ fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
             .time_source_selector_ui(&log_db.time_points, ui);
 
         ui.with_layout(egui::Layout::right_to_left(), |ui| {
-            ui.colored_label(ui.visuals().widgets.inactive.text_color(), "Help!")
-                .on_hover_text(
-                    "Drag main area to pan.\n\
+            crate::misc::help_hover_button(ui).on_hover_text(
+                "Drag main area to pan.\n\
             Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
             Double-click to reset view.\n\
             Press spacebar to pause/resume.",
-                );
+            );
 
             if let Some(range) = context.time_control.time_range() {
                 ui.vertical_centered(|ui| {
