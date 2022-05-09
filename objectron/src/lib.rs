@@ -12,9 +12,9 @@ use log_types::*;
 use protos::{ArCamera, ArPlaneAnchor};
 
 pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
+    let frame_times = log_geometry_pbdata(path, tx)?;
     configure_world_space(tx);
-    log_annotation_pbdata(path, tx)?;
-    log_geometry_pbdata(path, tx)?;
+    log_annotation_pbdata(path, &frame_times, tx)?;
 
     Ok(())
 }
@@ -37,7 +37,11 @@ fn configure_world_space(tx: &Sender<LogMsg>) {
     .ok();
 }
 
-fn log_annotation_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
+fn log_annotation_pbdata(
+    path: &Path,
+    frame_times: &[Time],
+    tx: &Sender<LogMsg>,
+) -> anyhow::Result<()> {
     use prost::Message as _;
 
     let file = std::fs::read(path.join("annotation.pbdata"))?;
@@ -85,7 +89,7 @@ fn log_annotation_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()>
     for frame_annotation in sequence.frame_annotations.iter() {
         let frame_idx = frame_annotation.frame_id as _;
         // let time = Time::from_seconds_since_epoch(frame_annotation.timestamp); // this is always zero :(
-        let time = Time::from_seconds_since_epoch(frame_idx as f64 / 30.0); // HACK
+        let time = frame_times[frame_idx as usize];
         let time_point = time_point([
             ("frame", TimeValue::Sequence(frame_idx)),
             ("time", TimeValue::Time(time)),
@@ -161,7 +165,7 @@ fn log_annotation_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()>
     Ok(())
 }
 
-fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
+fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<Time>> {
     let file = std::fs::File::open(path.join("geometry.pbdata"))?;
     let mut reader = std::io::BufReader::with_capacity(1024, file);
 
@@ -172,6 +176,8 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
 
     let world_space = ObjectPath::from("world");
 
+    let mut frame_times = vec![];
+
     while reader.read_exact(&mut msg_len).is_ok() {
         let msg_len = u32::from_le_bytes(msg_len);
         msg.resize(msg_len as usize, 0);
@@ -181,6 +187,7 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
         let ar_frame = protos::ArFrame::decode(msg.as_slice())?;
 
         let time = Time::from_seconds_since_epoch(ar_frame.timestamp.unwrap());
+        frame_times.push(time);
         let time_point = time_point([
             ("frame", TimeValue::Sequence(frame_idx)),
             ("time", TimeValue::Time(time)),
@@ -251,7 +258,7 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
         frame_idx += 1;
     }
 
-    Ok(())
+    Ok(frame_times)
 }
 
 fn log_image(path: &PathBuf, time_point: &TimePoint, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
