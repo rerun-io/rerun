@@ -48,3 +48,9 @@ macro_rules! profile_scope {
         puffin::profile_scope!($($arg)*);
     };
 }
+
+// ---------------------------------------------------------------------------
+
+pub fn customize_egui(_ctx: &egui::Context) {
+    // perhaps we want to use a different font, or change the theme
+}

@@ -27,6 +27,7 @@ async fn main() {
             "rerun viewer",
             native_options,
             Box::new(move |cc| {
+                viewer::customize_egui(&cc.egui_ctx);
                 let app = viewer::App::from_rrd_path(cc.storage, &path);
                 Box::new(app)
             }),
@@ -41,6 +42,7 @@ async fn main() {
             "rerun viewer",
             native_options,
             Box::new(move |cc| {
+                viewer::customize_egui(&cc.egui_ctx);
                 let app = viewer::RemoteViewerApp::new(cc.egui_ctx.clone(), cc.storage, url);
                 Box::new(app)
             }),

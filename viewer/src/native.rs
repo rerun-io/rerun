@@ -12,6 +12,7 @@ pub fn run_native_viewer(rx: std::sync::mpsc::Receiver<LogMsg>) {
         "rerun viewer",
         native_options,
         Box::new(move |cc| {
+            crate::customize_egui(&cc.egui_ctx);
             let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             Box::new(crate::App::from_receiver(cc.storage, rx))
         }),

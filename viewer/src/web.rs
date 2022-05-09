@@ -17,6 +17,7 @@ pub fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::J
     eframe::start_web(
         canvas_id,
         Box::new(move |cc| {
+            crate::customize_egui(&cc.egui_ctx);
             let url = get_url(&cc.integration_info);
             let app = crate::RemoteViewerApp::new(cc.egui_ctx.clone(), cc.storage.as_deref(), url);
             Box::new(app)
