@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use egui::NumExt;
 use log_types::*;
@@ -56,6 +56,7 @@ struct TimeState {
     fps: f32,
     /// How close we are to flipping over to the next sequence number (0-1).
     sequence_t: f32,
+    /// TODO: move into a `FractionalTimeValue` and use that for `Self::time`
 
     /// Selected time range, if any.
     #[serde(default)]
@@ -281,6 +282,58 @@ impl TimeControl {
                 .suffix("x"),
         )
         .on_hover_text("Playback speed.");
+
+        if let Some(time_values) = time_points.0.get(self.source()) {
+            let anything_has_kb_focus = ui.ctx().memory().focus().is_some();
+            let step_back = ui
+                .button("⏴")
+                .on_hover_text("Step back to previous time with any new data (left arrow)")
+                .clicked();
+            let step_back = step_back
+                || !anything_has_kb_focus
+                    && ui
+                        .input_mut()
+                        .consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft);
+
+            let step_fwd = ui
+                .button("⏵")
+                .on_hover_text("Step forwards to next time with any new data (right arrow)")
+                .clicked();
+            let step_fwd = step_fwd
+                || !anything_has_kb_focus
+                    && ui
+                        .input_mut()
+                        .consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight);
+
+            if step_back || step_fwd {
+                if let Some(time_range) = self.time_filter_range() {
+                    let span = time_range.span().unwrap_or(0.0);
+                    let new_min = if step_back {
+                        step_back_time(&time_range.min, time_values)
+                    } else {
+                        step_fwd_time(&time_range.min, time_values)
+                    };
+                    let new_max = new_min.add_offset_f64(span);
+                    self.set_time_selection(TimeRange::new(new_min, new_max));
+                } else if let Some(time) = self.time() {
+                    #[allow(clippy::collapsible_else_if)]
+                    let new_time = if let Some(loop_range) = self.loop_range() {
+                        if step_back {
+                            step_back_time_looped(&time, time_values, &loop_range)
+                        } else {
+                            step_fwd_time_looped(&time, time_values, &loop_range)
+                        }
+                    } else {
+                        if step_back {
+                            step_back_time(&time, time_values)
+                        } else {
+                            step_fwd_time(&time, time_values)
+                        }
+                    };
+                    self.set_time(new_time);
+                }
+            }
+        }
     }
 
     /// Update the current time
@@ -291,7 +344,7 @@ impl TimeControl {
             return;
         }
 
-        let full_range = if let Some(full_range) = time_points.0.get(&self.time_source).map(range) {
+        let full_range = if let Some(full_range) = self.full_range(time_points) {
             full_range
         } else {
             return;
@@ -303,6 +356,12 @@ impl TimeControl {
             .states
             .entry(self.time_source.clone())
             .or_insert_with(|| TimeState::new(full_range.min));
+
+        let loop_range = if self.looped && active_selection_type == Some(TimeSelectionType::Loop) {
+            state.selection.unwrap_or(full_range)
+        } else {
+            full_range
+        };
 
         egui_ctx.request_repaint();
 
@@ -323,7 +382,7 @@ impl TimeControl {
 
                 if self.looped {
                     // max must be in the range:
-                    new_min = new_min.max(full_range.min.add_offset_f64(-span));
+                    new_min = new_min.max(loop_range.min.add_offset_f64(-span));
                 }
 
                 match &mut new_min {
@@ -337,12 +396,12 @@ impl TimeControl {
                     }
                 }
 
-                if new_min > full_range.max {
+                if new_min > loop_range.max {
                     if self.looped {
                         // Put max just at start of loop:
-                        new_min = full_range.min.add_offset_f64(-span);
+                        new_min = loop_range.min.add_offset_f64(-span);
                     } else {
-                        new_min = full_range.max;
+                        new_min = loop_range.max;
                         self.playing = false;
                     }
                 }
@@ -355,12 +414,6 @@ impl TimeControl {
         }
 
         // Normal time marker:
-
-        let loop_range = if self.looped && active_selection_type == Some(TimeSelectionType::Loop) {
-            state.selection.unwrap_or(full_range)
-        } else {
-            full_range
-        };
 
         if self.looped {
             state.time = state.time.max(loop_range.min);
@@ -447,6 +500,29 @@ impl TimeControl {
         } else {
             Some(TimeRange::point(state.time))
         }
+    }
+
+    /// If the time filter is active, what range does it cover?
+    pub fn time_filter_range(&self) -> Option<TimeRange> {
+        if self.is_time_filter_active() {
+            self.states.get(&self.time_source)?.selection
+        } else {
+            None
+        }
+    }
+
+    /// The current loop range, iff looping is turned on
+    pub fn loop_range(&self) -> Option<TimeRange> {
+        if self.selection_active && self.selection_type == TimeSelectionType::Loop {
+            self.states.get(&self.time_source)?.selection
+        } else {
+            None
+        }
+    }
+
+    /// The full range of times for the current time source
+    pub fn full_range(&self, time_points: &TimePoints) -> Option<TimeRange> {
+        time_points.0.get(&self.time_source).map(range)
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
@@ -571,14 +647,67 @@ impl TimeControl {
     }
 }
 
-fn min(values: &std::collections::BTreeSet<TimeValue>) -> TimeValue {
+fn min(values: &BTreeSet<TimeValue>) -> TimeValue {
     *values.iter().next().unwrap()
 }
 
-fn max(values: &std::collections::BTreeSet<TimeValue>) -> TimeValue {
+fn max(values: &BTreeSet<TimeValue>) -> TimeValue {
     *values.iter().rev().next().unwrap()
 }
 
-fn range(values: &std::collections::BTreeSet<TimeValue>) -> TimeRange {
+fn range(values: &BTreeSet<TimeValue>) -> TimeRange {
     TimeRange::new(min(values), max(values))
+}
+
+fn step_fwd_time(time: &TimeValue, values: &BTreeSet<TimeValue>) -> TimeValue {
+    if let Some(next) = values
+        .range((std::ops::Bound::Excluded(time), std::ops::Bound::Unbounded))
+        .next()
+    {
+        *next
+    } else {
+        min(values)
+    }
+}
+
+fn step_fwd_time_looped(
+    time: &TimeValue,
+    values: &BTreeSet<TimeValue>,
+    loop_range: &TimeRange,
+) -> TimeValue {
+    if time < &loop_range.min || &loop_range.max <= time {
+        loop_range.min
+    } else if let Some(next) = values
+        .range((
+            std::ops::Bound::Excluded(*time),
+            std::ops::Bound::Included(loop_range.max),
+        ))
+        .next()
+    {
+        *next
+    } else {
+        step_fwd_time(time, values)
+    }
+}
+
+fn step_back_time(time: &TimeValue, values: &BTreeSet<TimeValue>) -> TimeValue {
+    if let Some(previous) = values.range(..time).rev().next() {
+        *previous
+    } else {
+        max(values)
+    }
+}
+
+fn step_back_time_looped(
+    time: &TimeValue,
+    values: &BTreeSet<TimeValue>,
+    loop_range: &TimeRange,
+) -> TimeValue {
+    if time <= &loop_range.min || &loop_range.max < time {
+        loop_range.max
+    } else if let Some(previous) = values.range(loop_range.min..*time).rev().next() {
+        *previous
+    } else {
+        step_back_time(time, values)
+    }
 }

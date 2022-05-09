@@ -2,6 +2,7 @@
 
 A crude, incomplete, reverse time-line of user-facing things added, removed and changed.
 
+* 2022-05-09: Step forward/back in time with arrow keys.
 * 2022-05-09: Hover image in context panel to zoom in on individual pixels.
 * 2022-05-02: Improve the time ticks in the time panel.
 * 2022-04-28: Follow camera in 3D by selecting a camera message or object path.
