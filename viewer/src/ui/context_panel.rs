@@ -186,22 +186,160 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
         });
 
     if let Data::Image(image) = &msg.data {
-        let (_dynamic_image, egui_image) = context.image_cache.get_pair(id, image);
-        let max_size = ui.available_size().min(egui_image.size_vec2());
-        egui_image.show_max_size(ui, max_size);
+        show_image(context, ui, msg, image);
+    }
+}
 
-        // TODO: support copying and saving images on web
-        #[cfg(not(target_arch = "wasm32"))]
-        ui.horizontal(|ui| image_options(ui, image, _dynamic_image));
+fn show_image(
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
+    msg: &LogMsg,
+    image: &log_types::Image,
+) {
+    let (dynamic_image, egui_image) = context.image_cache.get_pair(&msg.id, image);
+    let max_size = ui.available_size().min(egui_image.size_vec2());
+    let response = egui_image.show_max_size(ui, max_size);
 
-        // TODO: support histograms of non-RGB images too
-        if let image::DynamicImage::ImageRgb8(rgb_image) =
-            context.image_cache.get_dynamic_image(&msg.id, image)
-        {
-            ui.collapsing("Histogram", |ui| {
-                histogram_ui(ui, rgb_image);
-            });
+    let image_rect = response.rect;
+
+    response
+        .on_hover_cursor(egui::CursorIcon::ZoomIn)
+        .on_hover_ui_at_pointer(|ui| {
+            if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
+                ui.horizontal(|ui| {
+                    show_zoomed_image_region(ui, dynamic_image, image_rect, pointer_pos);
+                });
+            }
+        });
+
+    // TODO: support copying and saving images on web
+    #[cfg(not(target_arch = "wasm32"))]
+    ui.horizontal(|ui| image_options(ui, image, dynamic_image));
+
+    // TODO: support histograms of non-RGB images too
+    if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_image {
+        ui.collapsing("Histogram", |ui| {
+            histogram_ui(ui, rgb_image);
+        });
+    }
+}
+
+fn show_zoomed_image_region(
+    ui: &mut egui::Ui,
+    dynamic_image: &image::DynamicImage,
+    image_rect: egui::Rect,
+    pointer_pos: egui::Pos2,
+) {
+    use egui::*;
+    use image::GenericImageView as _;
+
+    let (_id, zoom_rect) = ui.allocate_space(vec2(192.0, 192.0));
+    let w = dynamic_image.width() as _;
+    let h = dynamic_image.height() as _;
+    let center_x =
+        (remap(pointer_pos.x, image_rect.x_range(), 0.0..=(w as f32)).floor() as isize).at_most(w);
+    let center_y =
+        (remap(pointer_pos.y, image_rect.y_range(), 0.0..=(h as f32)).floor() as isize).at_most(h);
+
+    ui.painter()
+        .rect_filled(zoom_rect, 0.0, ui.visuals().extreme_bg_color);
+
+    // Show all the surrounding pixels:
+    let texel_radius = 12;
+
+    let mut mesh = Mesh::default();
+    let mut center_texel_rect = None;
+    for dx in -texel_radius..=texel_radius {
+        for dy in -texel_radius..=texel_radius {
+            let x = center_x + dx;
+            let y = center_y + dy;
+            let color = get_pixel(dynamic_image, [x, y]);
+            if let Some(color) = color {
+                let image::Rgba([r, g, b, a]) = color;
+                let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+
+                if color != Color32::TRANSPARENT {
+                    let tr = texel_radius as f32;
+                    let left = remap(dx as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
+                    let right = remap((dx + 1) as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
+                    let top = remap(dy as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
+                    let bottom = remap((dy + 1) as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
+                    let rect = Rect {
+                        min: pos2(left, top),
+                        max: pos2(right, bottom),
+                    };
+                    mesh.add_colored_rect(rect, color);
+
+                    if dx == 0 && dy == 0 {
+                        center_texel_rect = Some(rect);
+                    }
+                }
+            }
         }
+    }
+
+    ui.painter().add(mesh);
+
+    if let Some(center_texel_rect) = center_texel_rect {
+        ui.painter()
+            .rect_stroke(center_texel_rect, 0.0, (2.0, Color32::BLACK));
+        ui.painter()
+            .rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
+    }
+
+    if let Some(color) = get_pixel(dynamic_image, [center_x, center_y]) {
+        ui.separator();
+
+        ui.vertical(|ui| {
+            let image::Rgba([r, g, b, a]) = color;
+            color_picker::show_color(
+                ui,
+                Color32::from_rgba_unmultiplied(r, g, b, a),
+                Vec2::splat(64.0),
+            );
+
+            use image::DynamicImage;
+
+            let text = match dynamic_image {
+                DynamicImage::ImageLuma8(_) | DynamicImage::ImageLuma16(_) => {
+                    format!("L: {}", r)
+                }
+
+                DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
+                    format!("L: {}\nA: {}", r, a)
+                }
+
+                DynamicImage::ImageRgb8(_)
+                | DynamicImage::ImageBgr8(_)
+                | DynamicImage::ImageRgb16(_) => {
+                    format!(
+                        "R: {}\nG: {}\nB: {}\n\n#{:02X}{:02X}{:02X}",
+                        r, g, b, r, g, b
+                    )
+                }
+
+                DynamicImage::ImageRgba8(_)
+                | DynamicImage::ImageBgra8(_)
+                | DynamicImage::ImageRgba16(_) => {
+                    format!(
+                        "R: {}\nG: {}\nB: {}\nA: {}\n\n#{:02X}{:02X}{:02X}{:02X}",
+                        r, g, b, a, r, g, b, a
+                    )
+                }
+            };
+
+            ui.label(text);
+        });
+    }
+}
+
+fn get_pixel(image: &image::DynamicImage, [x, y]: [isize; 2]) -> Option<image::Rgba<u8>> {
+    use image::GenericImageView;
+
+    if x < 0 || y < 0 || image.width() <= x as u32 || image.height() <= y as u32 {
+        None
+    } else {
+        Some(image.get_pixel(x as u32, y as u32))
     }
 }
 

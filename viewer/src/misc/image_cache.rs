@@ -21,9 +21,9 @@ impl ImageCache {
         &self.get_pair(log_id, image).1
     }
 
-    pub fn get_dynamic_image(&mut self, log_id: &LogId, image: &Image) -> &DynamicImage {
-        &self.get_pair(log_id, image).0
-    }
+    // pub fn get_dynamic_image(&mut self, log_id: &LogId, image: &Image) -> &DynamicImage {
+    //     &self.get_pair(log_id, image).0
+    // }
 }
 
 fn rr_image_to_image_pair(debug_name: String, rr_image: &Image) -> (DynamicImage, RetainedImage) {
