@@ -1034,6 +1034,8 @@ impl Default for TimeRangesUi {
 
 impl TimeRangesUi {
     fn new(x_range: RangeInclusive<f32>, time_view: TimeView, segments: &[TimeRange]) -> Self {
+        crate::profile_function!();
+
         fn span(time_range: &TimeRange) -> f64 {
             time_range.span().unwrap_or_default()
         }

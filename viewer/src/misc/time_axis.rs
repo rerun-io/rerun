@@ -14,60 +14,62 @@ pub(crate) struct TimeSourceAxis {
 
 impl TimeSourceAxis {
     pub fn new(values: &BTreeSet<TimeValue>) -> Self {
-        fn count_gaps(values: &BTreeSet<TimeValue>, threshold: i64) -> usize {
-            let mut num_gaps = 0;
-            for (a, b) in values.iter().tuple_windows() {
-                if !is_close(*a, *b, threshold) {
-                    num_gaps += 1;
-                }
-            }
-            num_gaps
-        }
+        crate::profile_function!();
 
-        fn is_close(a: TimeValue, b: TimeValue, threshold: i64) -> bool {
-            match (a, b) {
-                (TimeValue::Sequence(a), TimeValue::Sequence(b)) => a.abs_diff(b) <= threshold as _,
+        /// in seconds or sequences
+        fn time_diff(a: &TimeValue, b: &TimeValue) -> f64 {
+            match (*a, *b) {
+                (TimeValue::Sequence(a), TimeValue::Sequence(b)) => a.abs_diff(b) as f64,
                 (TimeValue::Sequence(_), TimeValue::Time(_))
-                | (TimeValue::Time(_), TimeValue::Sequence(_)) => false,
-                (TimeValue::Time(a), TimeValue::Time(b)) => {
-                    (b - a).as_secs_f32().abs() <= threshold as _
-                }
+                | (TimeValue::Time(_), TimeValue::Sequence(_)) => f64::INFINITY,
+                (TimeValue::Time(a), TimeValue::Time(b)) => (b - a).as_secs_f64().abs(),
             }
         }
-
-        assert!(!values.is_empty());
 
         // First determine the threshold for when a gap should be closed.
         // Sometimes, looking at data spanning milliseconds, a single second pause can be an eternity.
         // When looking at data recorded over hours, a few minutes of pause may be nothing.
         // So we start with a small gap and keep expanding it while it decreases the number of gaps.
-        let mut gap_size = 1;
-        let mut num_gaps = count_gaps(values, gap_size);
 
-        loop {
-            let new_gap_size = gap_size * 2;
-            let new_num_gaps = count_gaps(values, new_gap_size);
-            if new_num_gaps < num_gaps {
-                gap_size = new_gap_size;
-                num_gaps = new_num_gaps;
-            } else {
-                break;
+        /// measured in seconds or sequences.
+        /// Anything at least this close are considered one thing.
+        const MIN_GAP_SIZE: f64 = 1.0;
+
+        let mut gap_sizes = {
+            crate::profile_scope!("collect_gaps");
+            values
+                .iter()
+                .tuple_windows()
+                .map(|(a, b)| time_diff(a, b))
+                .filter(|&gap_size| gap_size >= MIN_GAP_SIZE)
+                .filter(|&gap_size| !gap_size.is_nan())
+                .collect_vec()
+        };
+
+        gap_sizes.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+
+        let mut gap_size = MIN_GAP_SIZE;
+        for gap in gap_sizes {
+            if gap >= gap_size * 2.0 {
+                break; // much bigger gap than anything before, let's use this
+            } else if gap > gap_size {
+                gap_size *= 2.0;
             }
         }
 
         // ----
 
+        crate::profile_scope!("create_ranges");
         let mut values_it = values.iter();
-        let mut latest_value = *values_it.next().unwrap();
-        let mut ranges = vec1::vec1![TimeRange::point(latest_value)];
+        let mut ranges = vec1::vec1![TimeRange::point(*values_it.next().unwrap())];
 
         for &new_value in values_it {
-            if is_close(latest_value, new_value, gap_size) {
-                ranges.last_mut().add(new_value);
+            let last_max = &mut ranges.last_mut().max;
+            if time_diff(last_max, &new_value) < gap_size {
+                *last_max = new_value;
             } else {
                 ranges.push(TimeRange::point(new_value));
             }
-            latest_value = new_value;
         }
 
         Self { ranges }
@@ -111,10 +113,10 @@ impl TimeRange {
         }
     }
 
-    pub fn add(&mut self, value: TimeValue) {
-        self.min = self.min.min(value);
-        self.max = self.max.max(value);
-    }
+    // pub fn add(&mut self, value: TimeValue) {
+    //     self.min = self.min.min(value);
+    //     self.max = self.max.max(value);
+    // }
 
     /// Inclusive
     pub fn contains(&self, value: TimeValue) -> bool {
