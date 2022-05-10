@@ -19,6 +19,9 @@ mod native;
 #[cfg(not(target_arch = "wasm32"))]
 pub use native::run_native_viewer;
 
+#[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+pub use misc::profiler::Profiler;
+
 // ----------------------------------------------------------------------------
 // When compiling for web:
 

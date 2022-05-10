@@ -40,7 +40,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --no-default-features --features __ci
+          args: --no-default-features --features __ci --lib
 
   check_wasm:
     name: Check wasm32

@@ -53,6 +53,11 @@ impl App {
         load_file_path(path, &mut log_db);
         Self::from_log_db(storage, log_db)
     }
+
+    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+    pub fn set_profiler(&mut self, profiler: crate::Profiler) {
+        self.state.profiler = profiler;
+    }
 }
 
 impl eframe::App for App {
@@ -142,7 +147,7 @@ struct AppState {
 
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
     #[serde(skip)]
-    profiler: crate::misc::profiler::Profiler,
+    profiler: crate::Profiler,
 
     // TODO: use an image cache
     #[serde(skip)]
@@ -340,6 +345,8 @@ fn load_file_path(path: &std::path::Path, log_db: &mut LogDb) {
         let file = std::fs::File::open(path).context("Failed to open file")?;
         load_rrd(file)
     }
+
+    tracing::info!("Loading {path:?}…");
 
     match load_file_path_impl(path) {
         Ok(new_log_db) => {

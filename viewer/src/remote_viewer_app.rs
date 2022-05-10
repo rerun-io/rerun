@@ -40,6 +40,13 @@ impl RemoteViewerApp {
 
         self.app = Some((connection, app));
     }
+
+    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+    pub fn set_profiler(&mut self, profiler: crate::Profiler) {
+        if let Some((_, app)) = &mut self.app {
+            app.set_profiler(profiler);
+        }
+    }
 }
 
 impl eframe::App for RemoteViewerApp {

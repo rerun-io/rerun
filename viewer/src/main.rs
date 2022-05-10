@@ -1,3 +1,6 @@
+#[cfg(not(feature = "puffin"))]
+compile_error!("Feature 'puffin' must be enabled when compiling the viewer binary");
+
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -5,6 +8,10 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
+    /// Start with the puffin profiler running.
+    #[clap(long)]
+    profile: bool,
+
     /// Either a path to a `.rrd` file, or an url to a websocket server.
     url_or_path: String,
 }
@@ -16,6 +23,11 @@ async fn main() {
 
     use clap::Parser as _;
     let args = Args::parse();
+
+    let mut profiler = viewer::Profiler::default();
+    if args.profile {
+        profiler.start();
+    }
 
     let native_options = eframe::NativeOptions {
         depth_buffer: 24,
@@ -31,7 +43,8 @@ async fn main() {
             native_options,
             Box::new(move |cc| {
                 viewer::customize_egui(&cc.egui_ctx);
-                let app = viewer::App::from_rrd_path(cc.storage, &path);
+                let mut app = viewer::App::from_rrd_path(cc.storage, &path);
+                app.set_profiler(profiler);
                 Box::new(app)
             }),
         );
@@ -46,7 +59,8 @@ async fn main() {
             native_options,
             Box::new(move |cc| {
                 viewer::customize_egui(&cc.egui_ctx);
-                let app = viewer::RemoteViewerApp::new(cc.egui_ctx.clone(), cc.storage, url);
+                let mut app = viewer::RemoteViewerApp::new(cc.egui_ctx.clone(), cc.storage, url);
+                app.set_profiler(profiler);
                 Box::new(app)
             }),
         );
