@@ -59,6 +59,7 @@ vec1 = "1.8"
 arboard = { version = "2.1", default-features = false, features = [
     "image-data",
 ] }
+mimalloc = "0.1.29"
 puffin = { version = "0.13", optional = true }
 puffin_http = { version = "0.10", optional = true }
 tracing-subscriber = "0.3"

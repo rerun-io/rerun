@@ -1,3 +1,6 @@
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 /// Run viewer connected to a rerun server over websocket.
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about, long_about = None)]

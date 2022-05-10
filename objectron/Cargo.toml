@@ -21,6 +21,7 @@ clap = "3.1"
 glam = "0.20" # to convert rotation matrices to quaternions
 image = { version = "0.23", default-features = false, features = ["jpeg"] }
 itertools = "0.10"
+mimalloc = "0.1.29"
 prost = "0.10"
 tracing = "0.1"
 tracing-subscriber = "0.3"

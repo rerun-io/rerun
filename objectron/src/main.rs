@@ -1,3 +1,6 @@
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 /// Visualize an Objectron data instance.
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about, long_about = None)]
