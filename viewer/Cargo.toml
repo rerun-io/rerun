@@ -21,11 +21,11 @@ clap = { version = "3.1.6", features = ["derive"] }
 comms = { path = "../comms", features = ["client"] }
 log_types = { path = "../log_types", features = ["save", "load"] }
 
-# We use bleeding edge egui, from 2022-05-09
-eframe      = { git = "https://github.com/emilk/egui", rev = "28efc0e1c8197dea2e9cd6f5a879d6f9a2defd0f", features = ["persistence"] }
-egui        = { git = "https://github.com/emilk/egui", rev = "28efc0e1c8197dea2e9cd6f5a879d6f9a2defd0f", features = ["extra_debug_asserts", "tracing"] }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "28efc0e1c8197dea2e9cd6f5a879d6f9a2defd0f", features = ["tracing"] }
-egui_glow   = { git = "https://github.com/emilk/egui", rev = "28efc0e1c8197dea2e9cd6f5a879d6f9a2defd0f" }
+# We use bleeding edge egui, from 2022-05-10
+eframe      = { git = "https://github.com/emilk/egui", rev = "7b18fab7a488999e08ff1cc62b129e6e46c41685", features = ["persistence"] }
+egui        = { git = "https://github.com/emilk/egui", rev = "7b18fab7a488999e08ff1cc62b129e6e46c41685", features = ["extra_debug_asserts", "tracing"] }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "7b18fab7a488999e08ff1cc62b129e6e46c41685", features = ["tracing"] }
+egui_glow   = { git = "https://github.com/emilk/egui", rev = "7b18fab7a488999e08ff1cc62b129e6e46c41685" }
 # eframe      = { path = "../../../egui/eframe", features = ["persistence"] }
 # egui        = { path = "../../../egui/egui", features = ["extra_debug_asserts", "tracing"] }
 # egui_extras = { path = "../../../egui/egui_extras", features = ["tracing"] }
