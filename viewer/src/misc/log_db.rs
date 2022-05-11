@@ -18,7 +18,6 @@ pub(crate) struct LogDb {
 
 impl LogDb {
     pub fn add(&mut self, msg: LogMsg) {
-        crate::profile_function!();
         santiy_check(&msg);
 
         self.chronological_message_ids.push(msg.id);

@@ -1,4 +1,7 @@
-use std::ops::RangeInclusive;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::RangeInclusive,
+};
 
 use crate::{
     log_db::ObjectTree, misc::time_axis::TimeSourceAxis, misc::time_control::TimeSelectionType,
@@ -290,103 +293,21 @@ impl TimePanel {
         );
 
         if ui.is_rect_visible(full_width_rect) {
-            crate::profile_scope!("balls");
-            let (top_y, bottom_y) = (full_width_rect.top(), full_width_rect.bottom());
-
-            let pointer_pos = ui.input().pointer.hover_pos();
-
             let source = if also_show_child_points {
                 &tree.prefix_times
             } else {
                 &tree.times
             };
 
-            let mut hovered_messages = vec![];
-
-            let mut scatter = BallScatterer::default();
-
-            let hovered_color = ui.visuals().widgets.hovered.text_color();
-            let inactive_color = ui
-                .visuals()
-                .widgets
-                .inactive
-                .text_color()
-                .linear_multiply(0.75);
-
-            let selected_time_range = if !context.time_control.selection_active {
-                None
-            } else {
-                context.time_control.time_selection()
-            };
-
-            for (time, log_ids) in source {
-                if let Some(time) = time.0.get(context.time_control.source()).copied() {
-                    if let Some(x) = self.time_ranges_ui.x_from_time(time) {
-                        let radius_multiplier = (log_ids.len() as f32).cbrt().at_most(3.0);
-                        let base_radius = 2.0 * radius_multiplier;
-                        let pos = scatter.add(x, base_radius, (top_y, bottom_y));
-
-                        let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
-                            pos.distance(pointer_pos) < base_radius + 1.0
-                        });
-
-                        let is_selected =
-                            selected_time_range.map_or(true, |range| range.contains(time));
-
-                        let mut color = if is_hovered {
-                            hovered_color
-                        } else {
-                            inactive_color
-                        };
-
-                        if ui.visuals().dark_mode {
-                            color = color.additive();
-                        }
-
-                        let radius = if is_hovered {
-                            3.0
-                        } else if is_selected {
-                            1.75
-                        } else {
-                            1.25
-                        };
-                        let radius = radius * radius_multiplier;
-
-                        time_area_painter.circle_filled(pos, radius, color);
-
-                        if is_hovered && !ui.ctx().memory().is_anything_being_dragged() {
-                            hovered_messages.extend(log_ids.iter().copied());
-                        }
-                    }
-                }
-            }
-
-            if !hovered_messages.is_empty() {
-                egui::containers::popup::show_tooltip_at_pointer(
-                    ui.ctx(),
-                    Id::new("data_tooltip"),
-                    |ui| {
-                        // TODO: show as a table?
-                        if hovered_messages.len() == 1 {
-                            let log_id = hovered_messages[0];
-                            if let Some(msg) = log_db.get_msg(&log_id) {
-                                ui.push_id(log_id, |ui| {
-                                    ui.group(|ui| {
-                                        crate::space_view::show_log_msg(
-                                            context,
-                                            ui,
-                                            msg,
-                                            crate::Preview::Small,
-                                        );
-                                    });
-                                });
-                            }
-                        } else {
-                            ui.label(format!("{} log messages", hovered_messages.len()));
-                        }
-                    },
-                );
-            }
+            show_balls(
+                log_db,
+                context,
+                time_area_painter,
+                ui,
+                source,
+                full_width_rect,
+                &self.time_ranges_ui,
+            );
         }
     }
 
@@ -451,6 +372,115 @@ fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
             }
         });
     });
+}
+
+fn show_balls(
+    log_db: &LogDb,
+    context: &mut ViewerContext,
+    time_area_painter: &egui::Painter,
+    ui: &mut egui::Ui,
+    source: &BTreeMap<TimePoint, BTreeSet<LogId>>,
+    full_width_rect: Rect,
+    time_ranges_ui: &TimeRangesUi,
+) {
+    crate::profile_function!();
+
+    let (top_y, bottom_y) = (full_width_rect.top(), full_width_rect.bottom());
+
+    let pointer_pos = ui.input().pointer.hover_pos();
+
+    let mut hovered_messages = vec![];
+
+    let mut scatter = BallScatterer::default();
+
+    let hovered_color = ui.visuals().widgets.hovered.text_color();
+    let inactive_color = ui
+        .visuals()
+        .widgets
+        .inactive
+        .text_color()
+        .linear_multiply(0.75);
+
+    let selected_time_range = if !context.time_control.selection_active {
+        None
+    } else {
+        context.time_control.time_selection()
+    };
+    let time_source = context.time_control.source();
+
+    // TODO: optimize this, a lot
+    let mut shapes = vec![];
+    for (time, log_ids) in source {
+        if let Some(time) = time.0.get(time_source).copied() {
+            if let Some(x) = time_ranges_ui.x_from_time(time) {
+                let radius_multiplier = (log_ids.len() as f32).cbrt().at_most(3.0);
+                let base_radius = 2.0 * radius_multiplier;
+
+                if x + base_radius < full_width_rect.min.x
+                    || full_width_rect.max.x < x - base_radius
+                {
+                    continue;
+                }
+
+                let pos = scatter.add(x, base_radius, (top_y, bottom_y));
+
+                let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
+                    pos.distance(pointer_pos) < base_radius + 1.0
+                });
+
+                let is_selected = selected_time_range.map_or(true, |range| range.contains(time));
+
+                let mut color = if is_hovered {
+                    hovered_color
+                } else {
+                    inactive_color
+                };
+
+                if ui.visuals().dark_mode {
+                    color = color.additive();
+                }
+
+                let radius = if is_hovered {
+                    3.0
+                } else if is_selected {
+                    1.75
+                } else {
+                    1.25
+                };
+                let radius = radius * radius_multiplier;
+
+                shapes.push(Shape::circle_filled(pos, radius, color));
+
+                if is_hovered && !ui.ctx().memory().is_anything_being_dragged() {
+                    hovered_messages.extend(log_ids.iter().copied());
+                }
+            }
+        }
+    }
+    time_area_painter.extend(shapes);
+
+    if !hovered_messages.is_empty() {
+        egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("data_tooltip"), |ui| {
+            // TODO: show as a table?
+            if hovered_messages.len() == 1 {
+                let log_id = hovered_messages[0];
+                if let Some(msg) = log_db.get_msg(&log_id) {
+                    ui.push_id(log_id, |ui| {
+                        ui.group(|ui| {
+                            crate::space_view::show_log_msg(
+                                context,
+                                ui,
+                                msg,
+                                crate::Preview::Small,
+                            );
+                        });
+                    });
+                }
+            } else {
+                ui.label(format!("{} log messages", hovered_messages.len()));
+            }
+        });
+    }
 }
 
 // ----------------------------------------------------------------------------

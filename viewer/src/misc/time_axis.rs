@@ -48,12 +48,12 @@ impl TimeSourceAxis {
 
         gap_sizes.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
-        let mut gap_size = MIN_GAP_SIZE;
+        let mut gap_threshold = MIN_GAP_SIZE;
         for gap in gap_sizes {
-            if gap >= gap_size * 2.0 {
+            if gap >= gap_threshold * 2.0 {
                 break; // much bigger gap than anything before, let's use this
-            } else if gap > gap_size {
-                gap_size *= 2.0;
+            } else if gap > gap_threshold {
+                gap_threshold *= 2.0;
             }
         }
 
@@ -65,10 +65,10 @@ impl TimeSourceAxis {
 
         for &new_value in values_it {
             let last_max = &mut ranges.last_mut().max;
-            if time_diff(last_max, &new_value) < gap_size {
-                *last_max = new_value;
+            if time_diff(last_max, &new_value) < gap_threshold {
+                *last_max = new_value; // join previous range
             } else {
-                ranges.push(TimeRange::point(new_value));
+                ranges.push(TimeRange::point(new_value)); // new range
             }
         }
 
