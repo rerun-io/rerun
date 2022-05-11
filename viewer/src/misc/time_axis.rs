@@ -65,7 +65,7 @@ impl TimeSourceAxis {
 
         for &new_value in values_it {
             let last_max = &mut ranges.last_mut().max;
-            if time_diff(last_max, &new_value) < gap_threshold {
+            if time_diff(last_max, &new_value) <= gap_threshold {
                 *last_max = new_value; // join previous range
             } else {
                 ranges.push(TimeRange::point(new_value)); // new range
