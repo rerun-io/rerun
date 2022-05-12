@@ -73,15 +73,24 @@ pub struct OrbitCamera {
     pub fov_y: f32,
     /// Zero = no up (3dof rotation)
     pub up: Vec3,
+
+    /// For controlling the camera with WSAD in a smooth way.
+    pub velocity: Vec3,
 }
 
 impl OrbitCamera {
     const MAX_PITCH: f32 = 0.999 * 0.25 * std::f32::consts::TAU;
 
+    pub fn position(&self) -> Vec3 {
+        self.center + self.world_from_view_rot * vec3(0.0, 0.0, self.radius)
+    }
+
     pub fn to_camera(self) -> Camera {
-        let pos = self.center + self.world_from_view_rot * vec3(0.0, 0.0, self.radius);
         Camera {
-            world_from_view: IsoTransform::from_rotation_translation(self.world_from_view_rot, pos),
+            world_from_view: IsoTransform::from_rotation_translation(
+                self.world_from_view_rot,
+                self.position(),
+            ),
             fov_y: self.fov_y,
         }
     }
@@ -94,6 +103,7 @@ impl OrbitCamera {
         self.center = camera.pos() + self.radius * camera.forward();
         self.world_from_view_rot = camera.world_from_view.rotation();
         self.fov_y = camera.fov_y;
+        self.velocity = Vec3::ZERO;
     }
 
     /// Direction we are looking at
@@ -136,6 +146,43 @@ impl OrbitCamera {
 
         if self.up != Vec3::ZERO {
             self.set_dir(self.fwd()); // this will clamp the rotation
+        }
+    }
+
+    /// Listen to WSAD and QE to move camera
+    pub fn keyboard_navigation(&mut self, ctx: &egui::Context) {
+        let input = ctx.input();
+        let dt = input.stable_dt.at_most(0.1);
+
+        // X=right, Y=up, Z=back
+        let mut local_movement = Vec3::ZERO;
+        local_movement.z -= input.key_down(egui::Key::W) as i32 as f32;
+        local_movement.z += input.key_down(egui::Key::S) as i32 as f32;
+        local_movement.x -= input.key_down(egui::Key::A) as i32 as f32;
+        local_movement.x += input.key_down(egui::Key::D) as i32 as f32;
+        local_movement.y -= input.key_down(egui::Key::Q) as i32 as f32;
+        local_movement.y += input.key_down(egui::Key::E) as i32 as f32;
+        local_movement = local_movement.normalize_or_zero();
+
+        let speed = self.radius
+            * (if input.modifiers.shift { 10.0 } else { 1.0 })
+            * (if input.modifiers.ctrl { 0.1 } else { 1.0 });
+        let world_movement = self.world_from_view_rot * (speed * local_movement);
+
+        self.velocity = egui::lerp(
+            self.velocity..=world_movement,
+            exponential_smooth_factor(0.90, 0.2, dt),
+        );
+        self.center += self.velocity * dt;
+
+        drop(input); // avoid deadlock on request_repaint
+        if local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed {
+            ctx.request_repaint();
+        }
+
+        // TODO: use emath::exponential_smooth_factor
+        fn exponential_smooth_factor(fraction: f32, in_how_many_seconds: f32, dt: f32) -> f32 {
+            1.0 - (1.0 - fraction).powf(dt / in_how_many_seconds)
         }
     }
 

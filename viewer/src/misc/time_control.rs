@@ -365,7 +365,7 @@ impl TimeControl {
 
         egui_ctx.request_repaint();
 
-        let dt = egui_ctx.input().unstable_dt.at_most(0.05) * self.speed;
+        let dt = egui_ctx.input().stable_dt.at_most(0.1) * self.speed;
 
         if active_selection_type == Some(TimeSelectionType::Filter) {
             if let Some(time_selection) = state.selection {

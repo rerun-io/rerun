@@ -88,8 +88,10 @@ impl State3D {
             }
 
             if response.hovered() {
-                let factor = response.ctx.input().zoom_delta()
-                    * (response.ctx.input().scroll_delta.y / 200.0).exp();
+                orbit_camera.keyboard_navigation(&response.ctx);
+                let input = response.ctx.input();
+
+                let factor = input.zoom_delta() * (input.scroll_delta.y / 200.0).exp();
                 if factor != 1.0 {
                     orbit_camera.radius /= factor;
                     did_interact = true;
@@ -191,9 +193,11 @@ fn show_settings_ui(
 
         crate::misc::help_hover_button(ui).on_hover_text(
             "Drag to rotate.\n\
-                Drag with secondary mouse button to pan.\n\
-                Scroll to zoom.\n\
-                Double-click to reset.",
+            Drag with secondary mouse button to pan.\n\
+            Scroll to zoom.\n\
+            Double-click to reset.\n\n\
+            While hovering the 3D view, navigate camera with WSAD and QE.\n\
+            CTRL slows down, SHIFT speeds up.",
         );
     });
 }
@@ -441,6 +445,7 @@ fn default_camera(space_summary: &SpaceSummary, space_spects: &SpaceSpecs) -> Or
         ),
         fov_y: 65.0_f32.to_radians(), // TODO: base on viewport size?
         up: space_spects.up,
+        velocity: Vec3::ZERO,
     }
 }
 

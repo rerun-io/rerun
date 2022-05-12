@@ -2,6 +2,7 @@
 
 A crude, incomplete, reverse time-line of user-facing things added, removed and changed.
 
+* 2022-05-12: Use WSAD and QE to move camera in 3D view.
 * 2022-05-09: Step forward/back in time with arrow keys.
 * 2022-05-09: Hover image in context panel to zoom in on individual pixels.
 * 2022-05-02: Improve the time ticks in the time panel.
