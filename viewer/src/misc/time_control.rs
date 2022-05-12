@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use egui::NumExt;
+use egui::NumExt as _;
 use log_types::*;
 
 use crate::log_db::MessageFilter;

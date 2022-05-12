@@ -1,4 +1,4 @@
-use egui::{lerp, NumExt, Rect};
+use egui::{lerp, NumExt as _, Rect};
 use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 

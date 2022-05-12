@@ -1,7 +1,7 @@
 use super::camera::Camera;
 use crate::{log_db::SpaceSummary, misc::ViewerContext};
-use egui::util::hash;
 use egui::Color32;
+use egui::{util::hash, NumExt as _};
 use glam::{vec3, Mat4, Quat, Vec3};
 use itertools::Itertools as _;
 use log_types::{Box3, Mesh3D};
@@ -52,8 +52,8 @@ impl Scene {
     ) {
         use log_types::*;
 
-        let point_radius_in_points = 2.0;
-        let line_radius_in_points = 1.0;
+        let line_radius_in_points = (0.0005 * viewport_size.length()).at_least(1.5);
+        let point_radius_in_points = 2.5 * line_radius_in_points;
 
         let radius_multiplier = if is_hovered { 1.5 } else { 1.0 };
 
@@ -65,12 +65,12 @@ impl Scene {
         let line_radius_from_distance =
             line_radius_in_points * point_size_at_one_meter * radius_multiplier;
 
-        let eye_pos = camera.pos();
+        let camera_plane = macaw::Plane3::from_normal_point(camera.forward(), camera.pos());
 
         match &msg.data {
             Data::Pos3(pos) => {
                 // scale with distance
-                let dist_to_camera = eye_pos.distance(Vec3::from(*pos));
+                let dist_to_camera = camera_plane.distance(Vec3::from(*pos));
                 self.points.push(Point {
                     pos: *pos,
                     radius: dist_to_camera * point_radius_from_distance,
@@ -85,7 +85,7 @@ impl Scene {
             }
             Data::Path3D(points) => {
                 let bbox = macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
-                let dist_to_camera = eye_pos.distance(bbox.center());
+                let dist_to_camera = camera_plane.distance(bbox.center());
                 let segments = points
                     .iter()
                     .tuple_windows()
@@ -104,7 +104,7 @@ impl Scene {
                         .iter()
                         .flat_map(|&[a, b]| [Vec3::from(a), Vec3::from(b)]),
                 );
-                let dist_to_camera = eye_pos.distance(bbox.center());
+                let dist_to_camera = camera_plane.distance(bbox.center());
                 self.line_segments.push(LineSegments {
                     segments: segments.clone(),
                     radius: dist_to_camera * line_radius_from_distance,
@@ -126,7 +126,7 @@ impl Scene {
                 // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
                 // The lens is at the origin.
 
-                let dist_to_camera = eye_pos.distance(translation);
+                let dist_to_camera = camera_plane.distance(translation);
 
                 if context.options.show_camera_mesh_in_3d {
                     let scale_based_on_scene_size =
