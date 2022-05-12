@@ -43,11 +43,10 @@ impl State3D {
 
         if response.double_clicked() {
             // Reset camera
-            self.orbit_camera = None;
-            self.cam_interpolation = None;
             if tracking_camera.is_some() {
                 context.selection = Selection::None;
             }
+            self.interpolate_to_orbit_camera(default_camera(space_summary, space_specs));
         }
 
         let orbit_camera = self
@@ -61,13 +60,19 @@ impl State3D {
 
         if let Some(cam_interpolation) = &mut self.cam_interpolation {
             if cam_interpolation.elapsed_time < cam_interpolation.target_time {
-                cam_interpolation.elapsed_time += response.ctx.input().unstable_dt.at_most(0.05);
+                cam_interpolation.elapsed_time += response.ctx.input().stable_dt.at_most(0.1);
                 response.ctx.request_repaint();
                 let t = cam_interpolation.elapsed_time / cam_interpolation.target_time;
                 let t = t.clamp(0.0, 1.0);
                 let t = ease_out(t);
-                let camera = cam_interpolation.start.lerp(&cam_interpolation.target, t);
-                orbit_camera.copy_from_camera(&camera);
+                if let Some(target_orbit) = &cam_interpolation.target_orbit {
+                    *orbit_camera = cam_interpolation.start.lerp(target_orbit, t);
+                } else if let Some(target_camera) = &cam_interpolation.target_camera {
+                    let camera = cam_interpolation.start.to_camera().lerp(target_camera, t);
+                    orbit_camera.copy_from_camera(&camera);
+                } else {
+                    self.cam_interpolation = None;
+                }
             }
         }
 
@@ -109,33 +114,56 @@ impl State3D {
         orbit_camera.to_camera()
     }
 
-    fn interpolate_to_camera(&mut self, cam: &log_types::Camera) {
-        let current_camera = self.orbit_camera.unwrap().to_camera(); // TODO: avoid unwrap
+    fn interpolate_to_camera(&mut self, target: Camera) {
+        if let Some(start) = self.orbit_camera {
+            let target_time = CameraInterpolation::target_time(&start.to_camera(), &target);
+            self.cam_interpolation = Some(CameraInterpolation {
+                elapsed_time: 0.0,
+                target_time,
+                start,
+                target_orbit: None,
+                target_camera: Some(target),
+            });
+        } else {
+            // self.orbit_camera = TODO
+        }
+    }
 
-        let target = Camera::from_camera_data(cam);
-
-        // Take more time if the rotation is big:
-        let angle_difference = current_camera
-            .world_from_view
-            .rotation()
-            .angle_between(target.world_from_view.rotation());
-        let target_time =
-            egui::remap_clamp(angle_difference, 0.0..=std::f32::consts::PI, 0.2..=0.7);
-
-        self.cam_interpolation = Some(CameraInterpolation {
-            elapsed_time: 0.0,
-            target_time,
-            start: current_camera,
-            target,
-        });
+    fn interpolate_to_orbit_camera(&mut self, target: OrbitCamera) {
+        if let Some(start) = self.orbit_camera {
+            let target_time =
+                CameraInterpolation::target_time(&start.to_camera(), &target.to_camera());
+            self.cam_interpolation = Some(CameraInterpolation {
+                elapsed_time: 0.0,
+                target_time,
+                start,
+                target_orbit: Some(target),
+                target_camera: None,
+            });
+        } else {
+            // self.orbit_camera = TODO
+        }
     }
 }
 
 struct CameraInterpolation {
     elapsed_time: f32,
     target_time: f32,
-    start: Camera,
-    target: Camera,
+    start: OrbitCamera,
+    target_orbit: Option<OrbitCamera>,
+    target_camera: Option<Camera>,
+}
+
+impl CameraInterpolation {
+    pub fn target_time(start: &Camera, stop: &Camera) -> f32 {
+        // Take more time if the rotation is big:
+        let angle_difference = start
+            .world_from_view
+            .rotation()
+            .angle_between(stop.world_from_view.rotation());
+
+        egui::remap_clamp(angle_difference, 0.0..=std::f32::consts::PI, 0.2..=0.7)
+    }
 }
 
 fn show_settings_ui(
@@ -195,9 +223,13 @@ fn show_settings_ui(
             "Drag to rotate.\n\
             Drag with secondary mouse button to pan.\n\
             Scroll to zoom.\n\
-            Double-click to reset.\n\n\
+            \n\
             While hovering the 3D view, navigate camera with WSAD and QE.\n\
-            CTRL slows down, SHIFT speeds up.",
+            CTRL slows down, SHIFT speeds up.\n\
+            \n\
+            Click on a object to focus the camera on it.\n\
+            \n\
+            Double-click anywhere to reset camera.",
         );
     });
 }
@@ -279,7 +311,16 @@ pub(crate) fn combined_view_3d(
             if let Some(msg) = log_db.get_msg(&clicked_id) {
                 context.selection = crate::Selection::LogId(clicked_id);
                 if let Data::Camera(cam) = &msg.data {
-                    state_3d.interpolate_to_camera(cam);
+                    state_3d.interpolate_to_camera(Camera::from_camera_data(cam));
+                } else if let Some(center) = msg.data.center3d() {
+                    // center camera on what we click on
+                    // TODO: center on where you clicked instead of the centroid of the data
+                    if let Some(mut new_orbit_cam) = state_3d.orbit_camera {
+                        let center = Vec3::from(center);
+                        new_orbit_cam.radius = new_orbit_cam.position().distance(center);
+                        new_orbit_cam.center = center;
+                        state_3d.interpolate_to_orbit_camera(new_orbit_cam);
+                    }
                 }
             }
         }

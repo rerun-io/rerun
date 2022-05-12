@@ -1,4 +1,4 @@
-use egui::{NumExt, Rect};
+use egui::{lerp, NumExt, Rect};
 use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
@@ -104,6 +104,17 @@ impl OrbitCamera {
         self.world_from_view_rot = camera.world_from_view.rotation();
         self.fov_y = camera.fov_y;
         self.velocity = Vec3::ZERO;
+    }
+
+    pub fn lerp(&self, other: &Self, t: f32) -> Self {
+        Self {
+            center: self.center.lerp(other.center, t),
+            radius: lerp(self.radius..=other.radius, t),
+            world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
+            fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
+            up: self.up.lerp(other.up, t).normalize_or_zero(),
+            velocity: self.velocity.lerp(other.velocity, t),
+        }
     }
 
     /// Direction we are looking at

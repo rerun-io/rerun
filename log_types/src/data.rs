@@ -71,6 +71,49 @@ impl Data {
     pub fn is_3d(&self) -> bool {
         self.typ().is_3d()
     }
+
+    /// The center of this 3D thing, if any
+    pub fn center3d(&self) -> Option<[f32; 3]> {
+        match self {
+            Self::Pos3(pos) => Some(*pos),
+            Self::Box3(bbox) => Some(bbox.translation),
+            Self::Path3D(points) => {
+                let mut sum = [0.0_f64; 3];
+                for point in points {
+                    sum[0] += point[0] as f64;
+                    sum[1] += point[1] as f64;
+                    sum[2] += point[2] as f64;
+                }
+                let n = points.len() as f32;
+                if n == 0.0 {
+                    None
+                } else {
+                    Some([sum[0] as f32 / n, sum[1] as f32 / n, sum[2] as f32 / n])
+                }
+            }
+            Self::LineSegments3D(segments) => {
+                let mut sum = [0.0_f64; 3];
+                for segment in segments {
+                    for point in segment {
+                        sum[0] += point[0] as f64;
+                        sum[1] += point[1] as f64;
+                        sum[2] += point[2] as f64;
+                    }
+                }
+                let n = 2.0 * segments.len() as f32;
+                if n == 0.0 {
+                    None
+                } else {
+                    Some([sum[0] as f32 / n, sum[1] as f32 / n, sum[2] as f32 / n])
+                }
+            }
+            Self::Mesh3D(_) => {
+                None // TODO
+            }
+            Self::Camera(cam) => Some(cam.position),
+            _ => None,
+        }
+    }
 }
 
 impl_into_enum!(i32, Data, I32);
