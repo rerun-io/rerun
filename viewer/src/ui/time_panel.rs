@@ -870,9 +870,12 @@ fn time_selection_ui(
 
     if did_interact {
         time_control.selection_active = true;
-    }
-    if did_interact && time_control.active_selection_type() == Some(TimeSelectionType::Filter) {
-        time_control.pause();
+        if time_control.active_selection_type() == Some(TimeSelectionType::Loop) {
+            time_control.set_looped(true);
+        }
+        if time_control.active_selection_type() == Some(TimeSelectionType::Filter) {
+            time_control.pause();
+        }
     }
 
     Some(())
