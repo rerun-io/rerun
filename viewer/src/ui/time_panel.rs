@@ -299,7 +299,7 @@ impl TimePanel {
                 &tree.times
             };
 
-            show_balls(
+            show_data_over_time(
                 log_db,
                 context,
                 time_area_painter,
@@ -374,7 +374,7 @@ fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
     });
 }
 
-fn show_balls(
+fn show_data_over_time(
     log_db: &LogDb,
     context: &mut ViewerContext,
     time_area_painter: &egui::Painter,
@@ -385,13 +385,12 @@ fn show_balls(
 ) {
     crate::profile_function!();
 
-    let (top_y, bottom_y) = (full_width_rect.top(), full_width_rect.bottom());
+    // painting each data point as a separate circle is slow (too many circles!)
+    // so we join time points that are close together.
+    let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f32::INFINITY);
+    let max_stretch_length_in_time = 1.0 / points_per_time as f64; // TODO
 
     let pointer_pos = ui.input().pointer.hover_pos();
-
-    let mut hovered_messages = vec![];
-
-    let mut scatter = BallScatterer::default();
 
     let hovered_color = ui.visuals().widgets.hovered.text_color();
     let inactive_color = ui
@@ -406,81 +405,131 @@ fn show_balls(
     } else {
         context.time_control.time_selection()
     };
-    let time_source = context.time_control.source();
+    let time_source = context.time_control.source().to_owned();
 
-    // TODO: optimize this, a lot
+    struct Stretch<'a> {
+        start_x: f32,
+        start_time: TimeValue,
+        stop_time: TimeValue,
+        selected: bool,
+        log_ids: Vec<&'a BTreeSet<LogId>>,
+    }
+
     let mut shapes = vec![];
+    let mut scatter = BallScatterer::default();
+    let mut hovered_messages = vec![];
+
+    let mut paint_stretch = |stretch: &Stretch<'_>| {
+        let stop_x = time_ranges_ui
+            .x_from_time(stretch.stop_time)
+            .unwrap_or(stretch.start_x);
+
+        let num_messages: usize = stretch.log_ids.iter().map(|l| l.len()).sum();
+        let radius = 2.5 * (1.0 + 0.5 * (num_messages as f32).log10());
+        let radius = radius.at_most(full_width_rect.height() / 3.0);
+
+        let x = (stretch.start_x + stop_x) * 0.5;
+        let pos = scatter.add(x, radius, (full_width_rect.top(), full_width_rect.bottom()));
+
+        let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
+            pos.distance(pointer_pos) < radius + 1.0
+        });
+
+        let mut color = if is_hovered {
+            hovered_color
+        } else {
+            inactive_color
+        };
+        if ui.visuals().dark_mode {
+            color = color.additive();
+        }
+
+        let radius = if is_hovered {
+            1.75 * radius
+        } else if stretch.selected {
+            1.25 * radius
+        } else {
+            radius
+        };
+
+        shapes.push(Shape::circle_filled(pos, radius, color));
+
+        if is_hovered && !ui.ctx().memory().is_anything_being_dragged() {
+            hovered_messages.extend(stretch.log_ids.iter().copied().flatten().copied());
+        }
+    };
+
+    let mut stretch: Option<Stretch<'_>> = None;
+
     for (time, log_ids) in source {
-        if let Some(time) = time.0.get(time_source).copied() {
-            if let Some(x) = time_ranges_ui.x_from_time(time) {
-                let radius_multiplier = (log_ids.len() as f32).cbrt().at_most(3.0);
-                let base_radius = 2.0 * radius_multiplier;
+        // TODO: avoid this lookup by pre-partitioning on time source
+        if let Some(time) = time.0.get(&time_source).copied() {
+            let selected = selected_time_range.map_or(true, |range| range.contains(time));
 
-                if x + base_radius < full_width_rect.min.x
-                    || full_width_rect.max.x < x - base_radius
+            if let Some(current_stretch) = &mut stretch {
+                if current_stretch.selected == selected
+                    && TimeRange::new(current_stretch.start_time, time)
+                        .span()
+                        .unwrap_or_default()
+                        < max_stretch_length_in_time
                 {
-                    continue;
-                }
-
-                let pos = scatter.add(x, base_radius, (top_y, bottom_y));
-
-                let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
-                    pos.distance(pointer_pos) < base_radius + 1.0
-                });
-
-                let is_selected = selected_time_range.map_or(true, |range| range.contains(time));
-
-                let mut color = if is_hovered {
-                    hovered_color
+                    // extend:
+                    current_stretch.stop_time = time;
+                    current_stretch.log_ids.push(log_ids);
                 } else {
-                    inactive_color
-                };
+                    // stop the previous…
+                    paint_stretch(current_stretch);
 
-                if ui.visuals().dark_mode {
-                    color = color.additive();
+                    stretch = None;
                 }
+            }
 
-                let radius = if is_hovered {
-                    3.0
-                } else if is_selected {
-                    1.75
-                } else {
-                    1.25
-                };
-                let radius = radius * radius_multiplier;
-
-                shapes.push(Shape::circle_filled(pos, radius, color));
-
-                if is_hovered && !ui.ctx().memory().is_anything_being_dragged() {
-                    hovered_messages.extend(log_ids.iter().copied());
+            if stretch.is_none() {
+                if let Some(x) = time_ranges_ui.x_from_time(time) {
+                    stretch = Some(Stretch {
+                        start_x: x,
+                        start_time: time,
+                        stop_time: time,
+                        selected,
+                        log_ids: vec![log_ids],
+                    });
                 }
             }
         }
     }
+
+    if let Some(stretch) = stretch {
+        paint_stretch(&stretch);
+    }
+
     time_area_painter.extend(shapes);
 
     if !hovered_messages.is_empty() {
-        egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("data_tooltip"), |ui| {
-            // TODO: show as a table?
-            if hovered_messages.len() == 1 {
-                let log_id = hovered_messages[0];
-                if let Some(msg) = log_db.get_msg(&log_id) {
-                    ui.push_id(log_id, |ui| {
-                        ui.group(|ui| {
-                            crate::space_view::show_log_msg(
-                                context,
-                                ui,
-                                msg,
-                                crate::Preview::Small,
-                            );
-                        });
-                    });
-                }
-            } else {
-                ui.label(format!("{} log messages", hovered_messages.len()));
-            }
-        });
+        show_log_ids_tooltip(log_db, context, ui.ctx(), &hovered_messages);
     }
+}
+
+fn show_log_ids_tooltip(
+    log_db: &LogDb,
+    context: &mut ViewerContext,
+    ctx: &egui::Context,
+    log_ids: &[LogId],
+) {
+    egui::containers::popup::show_tooltip_at_pointer(ctx, Id::new("data_tooltip"), |ui| {
+        // TODO: show as a table?
+        if log_ids.len() == 1 {
+            let log_id = log_ids[0];
+            if let Some(msg) = log_db.get_msg(&log_id) {
+                ui.push_id(log_id, |ui| {
+                    ui.group(|ui| {
+                        crate::space_view::show_log_msg(context, ui, msg, crate::Preview::Small);
+                    });
+                });
+            }
+        } else {
+            ui.label(format!("{} log messages", log_ids.len()));
+        }
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -1030,6 +1079,7 @@ fn view_everything(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceA
 struct Segment {
     /// Matches [`Self::time`] (linear transform).
     x: RangeInclusive<f32>,
+
     /// Matches [`Self::x`] (linear transform).
     time: TimeRange,
 
@@ -1259,6 +1309,19 @@ impl TimeRangesUi {
             min: self.time_from_x(min_x)?,
             time_spanned: self.time_view.time_spanned / zoom_factor as f64,
         })
+    }
+
+    /// How many egui points for each time unit?
+    fn points_per_time(&self) -> Option<f32> {
+        for segment in &self.segments {
+            let dx = *segment.x.end() - *segment.x.start();
+            if let Some(dt) = segment.time.span() {
+                if dx > 0.0 && dt >= 0.0 {
+                    return Some(dx / dt as f32);
+                }
+            }
+        }
+        None
     }
 }
 
