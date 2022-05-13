@@ -7,6 +7,7 @@ pub(crate) mod mesh_loader;
 pub(crate) mod profiler;
 pub(crate) mod time_axis;
 pub(crate) mod time_control;
+pub(crate) mod time_control_ui;
 mod viewer_context;
 
 #[cfg(not(target_arch = "wasm32"))]
