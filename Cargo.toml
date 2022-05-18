@@ -4,6 +4,7 @@ members = [
     "comms",
     "log_types",
     "objectron",
+    "prototype",
     "viewer",
     "web_server",
 ]
