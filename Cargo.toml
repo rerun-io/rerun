@@ -12,3 +12,13 @@ members = [
 
 [profile.dev]
 # opt-level = 1 # Speed up debug builds
+split-debuginfo = "off"
+
+[profile.release]
+debug = true # good for profilers
+split-debuginfo = "off"
+
+[profile.bench]
+debug = true
+
+split-debuginfo = "off"

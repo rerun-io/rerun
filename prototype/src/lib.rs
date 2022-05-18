@@ -1,4 +1,6 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
+
+use nohash_hasher::IntMap;
 
 pub enum AtomType {
     // 1D:
@@ -61,9 +63,9 @@ pub enum TypePathComponent {
 // pub struct DataPath(Vec<DataPathComponent>);
 pub type DataPath = im::Vector<DataPathComponent>;
 
-pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPath) {
+pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPathKey) {
     let mut type_path = im::Vector::default();
-    let mut index_path = im::Vector::default();
+    let mut index_path = IndexPathKey::default();
     for component in data_path {
         match component {
             DataPathComponent::Name(name) => {
@@ -109,7 +111,42 @@ pub enum Index {
     Temporary(u64),
 }
 
-type IndexPath = im::Vector<Index>;
+#[derive(Clone, Debug, Default, Eq, PartialOrd, Ord)]
+pub struct IndexPathKey {
+    hashes: [u64; 2],
+}
+
+impl IndexPathKey {
+    pub fn push_back(&mut self, comp: Index) {
+        self.hashes = [
+            hash_with_seed(&comp, ((self.hashes[0] as u128) << 64) | 123),
+            hash_with_seed(&comp, ((self.hashes[1] as u128) << 64) | 456),
+        ];
+    }
+}
+
+impl std::cmp::PartialEq for IndexPathKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.hashes == other.hashes // much faster, and extremely low chance of collision
+    }
+}
+
+impl std::hash::Hash for IndexPathKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hashes[0]);
+    }
+}
+
+impl nohash_hasher::IsEnabled for IndexPathKey {}
+
+/// Hash the given value.
+#[inline]
+fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
+    use std::hash::Hasher as _;
+    let mut hasher = ahash::AHasher::new_with_keys(123, seed);
+    value.hash(&mut hasher);
+    hasher.finish()
+}
 
 #[derive(Default)]
 pub struct DataTree {
@@ -136,7 +173,7 @@ impl DataTree {
     pub fn insert(
         &mut self,
         mut type_path: TypePath,
-        index_path: IndexPath,
+        index_path: IndexPathKey,
         time_stamp: TimeStamp,
         data: Data,
     ) {
@@ -153,7 +190,7 @@ impl DataTree {
                     .insert(type_path, index_path, time_stamp, data),
             }
         } else {
-            self.data_history.insert(index_path, time_stamp, data)
+            self.data_history.insert(index_path, time_stamp, data);
         }
     }
 }
@@ -177,28 +214,28 @@ impl DataHistory {
             .downcast_mut::<DataHistoryT<T>>()
     }
 
-    pub fn insert(&mut self, index_path: IndexPath, time_stamp: TimeStamp, data: Data) {
+    pub fn insert(&mut self, index_path: IndexPathKey, time_stamp: TimeStamp, data: Data) {
         match data {
             Data::F32(value) => {
                 if let Some(data_store) = self.write::<f32>() {
-                    data_store.insert(index_path, time_stamp, value)
+                    data_store.insert(index_path, time_stamp, value);
                 }
             }
             Data::Pos3(value) => {
                 if let Some(data_store) = self.write::<[f32; 3]>() {
-                    data_store.insert(index_path, time_stamp, value)
+                    data_store.insert(index_path, time_stamp, value);
                 }
             }
         }
     }
 }
 
-type DataAtTime<T> = HashMap<IndexPath, BTreeMap<TimeValue, T>>;
+type DataAtTime<T> = IntMap<IndexPathKey, BTreeMap<TimeValue, T>>;
 
 /// For a specific [`TypePath`].
 pub struct DataHistoryT<T> {
     /// fast to find latest value at a certain time.
-    values: BTreeMap<TimeSource, HashMap<IndexPath, BTreeMap<TimeValue, T>>>,
+    values: BTreeMap<TimeSource, IntMap<IndexPathKey, BTreeMap<TimeValue, T>>>,
 }
 
 impl<T> Default for DataHistoryT<T> {
@@ -210,7 +247,7 @@ impl<T> Default for DataHistoryT<T> {
 }
 
 impl<T: Clone> DataHistoryT<T> {
-    pub fn insert(&mut self, index_path: IndexPath, time_stamp: TimeStamp, data: T) {
+    pub fn insert(&mut self, index_path: IndexPathKey, time_stamp: TimeStamp, data: T) {
         // TODO: optimize away clones for the case when time_stamp.0.len() == 1
         for (time_source, time_value) in time_stamp.0 {
             self.values
@@ -223,6 +260,7 @@ impl<T: Clone> DataHistoryT<T> {
     }
 }
 
+#[inline(never)] // better profiling
 fn latest_at<'data, T>(
     data_over_time: &'data BTreeMap<TimeValue, T>,
     time: &'_ TimeValue,
@@ -230,6 +268,7 @@ fn latest_at<'data, T>(
     data_over_time.range(..=time).rev().next()
 }
 
+#[inline(never)] // better profiling
 fn values_in_range<'data, T>(
     data_over_time: &'data BTreeMap<TimeValue, T>,
     time_range: &'_ TimeRange,
@@ -239,7 +278,7 @@ fn values_in_range<'data, T>(
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TimeValue {
-    // Time(Time),
+    // Time(u64), // TODO
     Sequence(i64),
 }
 
@@ -324,6 +363,7 @@ impl<'a> Point3History<'a> {
         Some(Self { pos, radius })
     }
 
+    #[inline(never)] // better profiling
     pub fn read(&self, selector: &TimeSelector, visitor: impl FnMut(Point3)) {
         match selector {
             TimeSelector::LatestAt(time_source, time_value) => {
@@ -343,12 +383,13 @@ impl<'a> Point3History<'a> {
                     .and_then(|radius| radius.values.get(time_source));
 
                 if let Some(pos) = pos {
-                    Self::visit_over_time(time_range, pos, radius, visitor)
+                    Self::visit_over_time(time_range, pos, radius, visitor);
                 }
             }
         }
     }
 
+    #[inline(never)] // better profiling
     fn visit_latest_at<'b>(
         time: &TimeValue,
         pos: &'b DataAtTime<[f32; 3]>,
@@ -363,7 +404,7 @@ impl<'a> Point3History<'a> {
                         .and_then(|v| v.get(index_path))
                         .and_then(|v| latest_at(v, time))
                         .map(|(_, x)| *x),
-                })
+                });
             }
         }
     }
@@ -381,7 +422,7 @@ impl<'a> Point3History<'a> {
                     .and_then(|v| latest_at(v, pos_time));
                 // let radius = radius.filter(|(radius_time, _)| time_range.min <= radius_time); // allow attributes from before the range!
                 let radius = radius.map(|(_, x)| *x);
-                visitor(Point3 { pos: *pos, radius })
+                visitor(Point3 { pos: *pos, radius });
             }
         }
     }

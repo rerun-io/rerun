@@ -6,7 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ahash = "0.7"
+nohash-hasher = "0.2"
 im = "15"
+mimalloc = "0.1"
 
 [dev-dependencies]
 criterion = "0.3"

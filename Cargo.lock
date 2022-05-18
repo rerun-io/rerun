@@ -2356,8 +2356,11 @@ dependencies = [
 name = "prototype"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "criterion",
  "im",
+ "mimalloc",
+ "nohash-hasher",
 ]
 
 [[package]]
