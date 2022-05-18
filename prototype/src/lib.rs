@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 
+const SNAPSHOTS: bool = false;
+
 pub enum AtomType {
     // 1D:
     I32,
@@ -73,7 +75,7 @@ pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPathKey) {
             }
             DataPathComponent::Index(index) => {
                 type_path.push_back(TypePathComponent::Index);
-                index_path.push_back(index);
+                index_path.push_back(&index);
             }
         }
     }
@@ -111,13 +113,13 @@ pub enum Index {
     Temporary(u64),
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialOrd, Ord)]
 pub struct IndexPathKey {
     hashes: [u64; 2],
 }
 
 impl IndexPathKey {
-    pub fn push_back(&mut self, comp: Index) {
+    pub fn push_back(&mut self, comp: &Index) {
         self.hashes = [
             hash_with_seed(&comp, ((self.hashes[0] as u128) << 64) | 123),
             hash_with_seed(&comp, ((self.hashes[1] as u128) << 64) | 456),
@@ -219,29 +221,30 @@ impl DataHistory {
             Data::F32(value) => {
                 if let Some(data_store) = self.write::<f32>() {
                     data_store.insert(index_path, time_stamp, value);
+                } else {
+                    // TODO: log warning
                 }
             }
             Data::Pos3(value) => {
                 if let Some(data_store) = self.write::<[f32; 3]>() {
                     data_store.insert(index_path, time_stamp, value);
+                } else {
+                    // TODO: log warning
                 }
             }
         }
     }
 }
 
-type DataAtTime<T> = IntMap<IndexPathKey, BTreeMap<TimeValue, T>>;
-
 /// For a specific [`TypePath`].
 pub struct DataHistoryT<T> {
-    /// fast to find latest value at a certain time.
-    values: BTreeMap<TimeSource, IntMap<IndexPathKey, BTreeMap<TimeValue, T>>>,
+    per_time_source: BTreeMap<TimeSource, DataPerTimeSource<T>>,
 }
 
 impl<T> Default for DataHistoryT<T> {
     fn default() -> Self {
         Self {
-            values: Default::default(),
+            per_time_source: Default::default(),
         }
     }
 }
@@ -250,12 +253,90 @@ impl<T: Clone> DataHistoryT<T> {
     pub fn insert(&mut self, index_path: IndexPathKey, time_stamp: TimeStamp, data: T) {
         // TODO: optimize away clones for the case when time_stamp.0.len() == 1
         for (time_source, time_value) in time_stamp.0 {
+            self.per_time_source.entry(time_source).or_default().insert(
+                index_path,
+                time_value,
+                data.clone(),
+            );
+        }
+    }
+}
+
+struct DataPerTimeSource<T> {
+    /// fast to find latest value at a certain time.
+    values: IntMap<IndexPathKey, BTreeMap<TimeValue, T>>,
+
+    // for each new time slice, what is new?
+    new_per_time: BTreeMap<TimeValue, DataPerTime<T>>,
+
+    everything_per_time: BTreeMap<
+        TimeValue,
+        im::HashMap<IndexPathKey, T, nohash_hasher::BuildNoHashHasher<IndexPathKey>>,
+        // im::OrdMap<IndexPathKey, T>,
+        // nohash_hasher::IntMap<IndexPathKey, T>,
+    >,
+}
+
+impl<T> Default for DataPerTimeSource<T> {
+    fn default() -> Self {
+        Self {
+            values: Default::default(),
+            new_per_time: Default::default(),
+            everything_per_time: Default::default(),
+        }
+    }
+}
+
+impl<T: Clone> DataPerTimeSource<T> {
+    pub fn insert(&mut self, index_path: IndexPathKey, data_time: TimeValue, data: T) {
+        if SNAPSHOTS {
+            // these will be needed to handle the case of adding to old times
+            // self.new_per_time
+            //     .entry(data_time)
+            //     .or_default()
+            //     .values
+            //     .insert(index_path, data.clone());
+
+            let last = self.everything_per_time.iter().rev().next();
+            match last {
+                None => {
+                    self.everything_per_time
+                        .insert(data_time, Default::default());
+                }
+                Some((state_time, state)) => {
+                    if state_time < &data_time {
+                        let new_state = state.clone();
+                        self.everything_per_time.insert(data_time, new_state);
+                    } else if state_time == &data_time {
+                        // OK
+                    } else {
+                        unimplemented!("You must add data in chronological order. Sorry");
+                    }
+                }
+            };
+
+            self.everything_per_time
+                .get_mut(&data_time)
+                .unwrap()
+                .insert(index_path, data);
+        } else {
             self.values
-                .entry(time_source)
+                .entry(index_path)
                 .or_default()
-                .entry(index_path.clone())
-                .or_default()
-                .insert(time_value, data.clone());
+                .insert(data_time, data.clone());
+        }
+    }
+}
+
+struct DataPerTime<T> {
+    /// New values set this at this time.
+    values: IntMap<IndexPathKey, T>,
+}
+
+impl<T> Default for DataPerTime<T> {
+    fn default() -> Self {
+        Self {
+            values: Default::default(),
         }
     }
 }
@@ -367,20 +448,20 @@ impl<'a> Point3History<'a> {
     pub fn read(&self, selector: &TimeSelector, visitor: impl FnMut(Point3)) {
         match selector {
             TimeSelector::LatestAt(time_source, time_value) => {
-                let pos = self.pos.values.get(time_source);
+                let pos = self.pos.per_time_source.get(time_source);
                 let radius = self
                     .radius
-                    .and_then(|radius| radius.values.get(time_source));
+                    .and_then(|radius| radius.per_time_source.get(time_source));
 
                 if let Some(pos) = pos {
                     Self::visit_latest_at(time_value, pos, radius, visitor);
                 }
             }
             TimeSelector::Range(time_source, time_range) => {
-                let pos = self.pos.values.get(time_source);
+                let pos = self.pos.per_time_source.get(time_source);
                 let radius = self
                     .radius
-                    .and_then(|radius| radius.values.get(time_source));
+                    .and_then(|radius| radius.per_time_source.get(time_source));
 
                 if let Some(pos) = pos {
                     Self::visit_over_time(time_range, pos, radius, visitor);
@@ -392,37 +473,55 @@ impl<'a> Point3History<'a> {
     #[inline(never)] // better profiling
     fn visit_latest_at<'b>(
         time: &TimeValue,
-        pos: &'b DataAtTime<[f32; 3]>,
-        radius: Option<&'b DataAtTime<f32>>,
+        pos: &'b DataPerTimeSource<[f32; 3]>,
+        radius: Option<&'b DataPerTimeSource<f32>>,
         mut visitor: impl FnMut(Point3),
     ) {
-        for (index_path, pos) in pos {
-            if let Some((_, pos)) = latest_at(pos, time) {
-                visitor(Point3 {
-                    pos: *pos,
-                    radius: radius
-                        .and_then(|v| v.get(index_path))
-                        .and_then(|v| latest_at(v, time))
-                        .map(|(_, x)| *x),
-                });
+        if SNAPSHOTS {
+            if let Some((_, pos)) = latest_at(&pos.everything_per_time, time) {
+                let radius = radius
+                    .and_then(|radius| latest_at(&radius.everything_per_time, time))
+                    .map(|(_, x)| x);
+                for (index_path, pos) in pos {
+                    visitor(Point3 {
+                        pos: *pos,
+                        radius: radius.and_then(|v| v.get(index_path)).copied(),
+                    });
+                }
+            }
+        } else {
+            for (index_path, pos) in &pos.values {
+                if let Some((_, pos)) = latest_at(pos, time) {
+                    visitor(Point3 {
+                        pos: *pos,
+                        radius: radius
+                            .and_then(|v| v.values.get(index_path))
+                            .and_then(|v| latest_at(v, time))
+                            .map(|(_, x)| *x),
+                    });
+                }
             }
         }
     }
 
     fn visit_over_time<'b>(
         time_range: &TimeRange,
-        pos: &'b DataAtTime<[f32; 3]>,
-        radius: Option<&'b DataAtTime<f32>>,
+        pos: &'b DataPerTimeSource<[f32; 3]>,
+        radius: Option<&'b DataPerTimeSource<f32>>,
         mut visitor: impl FnMut(Point3),
     ) {
-        for (index_path, pos) in pos {
-            for (pos_time, pos) in values_in_range(pos, time_range) {
-                let radius = radius
-                    .and_then(|v| v.get(index_path))
-                    .and_then(|v| latest_at(v, pos_time));
-                // let radius = radius.filter(|(radius_time, _)| time_range.min <= radius_time); // allow attributes from before the range!
-                let radius = radius.map(|(_, x)| *x);
-                visitor(Point3 { pos: *pos, radius });
+        if SNAPSHOTS {
+            unimplemented!()
+        } else {
+            for (index_path, pos) in &pos.values {
+                for (pos_time, pos) in values_in_range(pos, time_range) {
+                    let radius = radius
+                        .and_then(|v| v.values.get(index_path))
+                        .and_then(|v| latest_at(v, pos_time));
+                    // let radius = radius.filter(|(radius_time, _)| time_range.min <= radius_time); // allow attributes from before the range!
+                    let radius = radius.map(|(_, x)| *x);
+                    visitor(Point3 { pos: *pos, radius });
+                }
             }
         }
     }
