@@ -10,14 +10,12 @@ pub struct DataStore {
     data: AHashMap<TypePath, DataPerTypePath>,
 }
 
-#[derive(Default)]
-struct DataPerTypePath {
-    // TODO: make this an enum
+enum DataPerTypePath {
     /// Individual data at this path.
-    individual: DataHistory,
+    Individual(DataHistory),
 
     /// The index path prefix (everything but the last value).
-    batched: IntMap<IndexPathKey, BatchedDataHistory>,
+    Batched(IntMap<IndexPathKey, BatchedDataHistory>),
 }
 
 impl DataStore {
@@ -30,7 +28,7 @@ impl DataStore {
     ) {
         self.data
             .entry(type_path)
-            .or_default()
+            .or_insert_with(|| DataPerTypePath::Individual(Default::default()))
             .insert_individual(index_path, time_stamp, data);
     }
 
@@ -43,19 +41,26 @@ impl DataStore {
     ) {
         self.data
             .entry(type_path)
-            .or_default()
+            .or_insert_with(|| DataPerTypePath::Batched(Default::default()))
             .insert_batch(index_path_prefix, time_stamp, data);
     }
 }
 
 impl DataPerTypePath {
+    fn as_individual(&mut self) -> &mut DataHistory {
+        match self {
+            Self::Individual(individual) => individual,
+            Self::Batched(_) => todo!("convert"),
+        }
+    }
+
     pub fn insert_individual(
         &mut self,
         index_path: IndexPathKey,
         time_stamp: TimeStamp,
         data: Data,
     ) {
-        self.individual.insert(index_path, time_stamp, data);
+        self.as_individual().insert(index_path, time_stamp, data);
     }
 
     pub fn insert_batch<T: 'static + Clone>(
@@ -64,10 +69,17 @@ impl DataPerTypePath {
         time_stamp: TimeStamp,
         data: impl Iterator<Item = (Index, T)> + Clone,
     ) {
-        self.batched
-            .entry(index_path_prefix)
-            .or_default()
-            .insert(time_stamp, data);
+        match self {
+            Self::Individual(individual) => {
+                todo!("implement slow path");
+            }
+            Self::Batched(batched) => {
+                batched
+                    .entry(index_path_prefix)
+                    .or_default()
+                    .insert(time_stamp, data);
+            }
+        }
     }
 }
 
@@ -261,79 +273,105 @@ fn values_in_range<'data, T>(
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Point3 {
-    pos: [f32; 3],
+pub struct Point3<'s> {
+    pos: &'s [f32; 3],
     radius: Option<f32>,
 }
 
 #[derive(Default)]
-pub struct Scene3D {
-    pub points: Vec<Point3>,
+pub struct Scene3D<'s> {
+    pub points: Vec<Point3<'s>>,
 }
 
-impl Scene3D {
-    pub fn from_store(store: &DataStore, time_source: &TimeSource, time_query: &TimeQuery) -> Self {
-        let mut points = vec![];
+impl<'s> Scene3D<'s> {
+    pub fn from_store(
+        store: &'s DataStore,
+        time_source: &TimeSource,
+        time_query: &TimeQuery,
+    ) -> Self {
+        let mut slf = Self::default();
 
         for (type_path, data) in &store.data {
             if type_path.last() == Some(&TypePathComponent::Name("pos".into())) {
-                let radius_path = sibling(type_path, "radius");
+                Self::collect_points(
+                    &mut slf.points,
+                    store,
+                    time_source,
+                    time_query,
+                    type_path,
+                    data,
+                );
+            }
+        }
 
-                if let Some(pos) = data.individual.read::<[f32; 3]>() {
-                    if let Some(pos) = pos.per_time_source.get(time_source) {
-                        let radius =
-                            IndividualDataReader::<f32>::new(store, &radius_path, time_source)
-                                .unwrap_or(IndividualDataReader::None);
+        slf
+    }
 
-                        for (index_path, values_over_time) in &pos.values {
-                            match time_query {
-                                TimeQuery::LatestAt(query_time) => {
-                                    if let Some((_, pos)) = latest_at(values_over_time, query_time)
-                                    {
-                                        points.push(Point3 {
-                                            pos: *pos,
-                                            radius: radius
-                                                .get_latest_at(index_path, query_time)
-                                                .copied(),
-                                        });
-                                    }
-                                }
-                                TimeQuery::Range(query_range) => {
-                                    for (pos_time, pos) in
-                                        values_in_range(values_over_time, query_range)
-                                    {
-                                        points.push(Point3 {
-                                            pos: *pos,
-                                            radius: radius
-                                                .get_latest_at(index_path, pos_time)
-                                                .copied(),
-                                        });
-                                    }
-                                }
+    fn collect_points(
+        out_points: &mut Vec<Point3<'s>>,
+        store: &'s DataStore,
+        time_source: &TimeSource,
+        time_query: &TimeQuery,
+        type_path: &TypePath,
+        pos_data: &'s DataPerTypePath,
+    ) -> Option<()> {
+        let radius_path = sibling(type_path, "radius");
+
+        match pos_data {
+            DataPerTypePath::Individual(individual) => {
+                let pos = individual
+                    .read::<[f32; 3]>()?
+                    .per_time_source
+                    .get(time_source)?;
+                let radius = IndividualDataReader::<f32>::new(store, &radius_path, time_source)
+                    .unwrap_or(IndividualDataReader::None);
+
+                for (index_path, values_over_time) in &pos.values {
+                    match time_query {
+                        TimeQuery::LatestAt(query_time) => {
+                            if let Some((_, pos)) = latest_at(values_over_time, query_time) {
+                                out_points.push(Point3 {
+                                    pos,
+                                    radius: radius.get_latest_at(index_path, query_time).copied(),
+                                });
+                            }
+                        }
+                        TimeQuery::Range(query_range) => {
+                            for (pos_time, pos) in values_in_range(values_over_time, query_range) {
+                                out_points.push(Point3 {
+                                    pos,
+                                    radius: radius.get_latest_at(index_path, pos_time).copied(),
+                                });
                             }
                         }
                     }
                 }
-                for (index_path_prefix, batched) in &data.batched {
+            }
+            DataPerTypePath::Batched(batched) => {
+                for (index_path_prefix, batched) in batched {
                     if let Some(pos) = batched.read::<[f32; 3]>() {
                         if let Some(pos) = pos.per_time_source.get(time_source) {
+                            let radius = store.data.get(&radius_path);
+
                             match time_query {
                                 TimeQuery::LatestAt(query_time) => {
                                     if let Some((_, pos)) =
                                         latest_at(&pos.everything_per_time, query_time)
                                     {
-                                        let radius = BatchedDataReader::new(
-                                            store,
-                                            &radius_path,
-                                            index_path_prefix,
-                                            time_source,
-                                            query_time,
-                                        )
-                                        .unwrap_or(BatchedDataReader::None);
+                                        let radius = radius
+                                            .and_then(|radius| {
+                                                BatchedDataReader::new(
+                                                    radius,
+                                                    index_path_prefix,
+                                                    time_source,
+                                                    query_time,
+                                                )
+                                            })
+                                            .unwrap_or(BatchedDataReader::None);
 
                                         for (index_path_suffix, pos) in pos {
-                                            points.push(Point3 {
-                                                pos: *pos,
+                                            out_points.push(Point3 {
+                                                pos,
                                                 radius: radius
                                                     .get_latest_at(index_path_suffix)
                                                     .copied(),
@@ -345,18 +383,20 @@ impl Scene3D {
                                     for (pos_time, pos) in
                                         values_in_range(&pos.everything_per_time, query_range)
                                     {
-                                        let radius = BatchedDataReader::new(
-                                            store,
-                                            &radius_path,
-                                            index_path_prefix,
-                                            time_source,
-                                            pos_time,
-                                        )
-                                        .unwrap_or(BatchedDataReader::None);
+                                        let radius = radius
+                                            .and_then(|radius| {
+                                                BatchedDataReader::new(
+                                                    radius,
+                                                    index_path_prefix,
+                                                    time_source,
+                                                    pos_time,
+                                                )
+                                            })
+                                            .unwrap_or(BatchedDataReader::None);
 
                                         for (index_path_suffix, pos) in pos {
-                                            points.push(Point3 {
-                                                pos: *pos,
+                                            out_points.push(Point3 {
+                                                pos,
                                                 radius: radius
                                                     .get_latest_at(index_path_suffix)
                                                     .copied(),
@@ -371,7 +411,7 @@ impl Scene3D {
             }
         }
 
-        Self { points }
+        Some(())
     }
 }
 
@@ -397,12 +437,13 @@ impl<'store, T: 'static> IndividualDataReader<'store, T> {
         time_source: &TimeSource,
     ) -> Option<Self> {
         let data = store.data.get(type_path)?;
-        if let Some(data) = data.individual.read::<T>() {
-            if let Some(data) = data.per_time_source.get(time_source) {
-                return Some(Self::Individual(data));
+        match data {
+            DataPerTypePath::Individual(individual) => {
+                let data = individual.read::<T>()?.per_time_source.get(time_source)?;
+                Some(Self::Individual(data))
             }
+            DataPerTypePath::Batched(batched) => Some(Self::Batched(time_source.clone(), &batched)),
         }
-        Some(Self::Batched(time_source.clone(), &data.batched))
     }
 
     pub fn get_latest_at(&self, index_path: &IndexPathKey, query_time: &TimeValue) -> Option<&T> {
@@ -439,31 +480,31 @@ enum BatchedDataReader<'store, T> {
 
 impl<'store, T: 'static> BatchedDataReader<'store, T> {
     pub fn new(
-        store: &'store DataStore,
-        type_path: &TypePath,
+        data: &'store DataPerTypePath,
         index_path_prefix: &IndexPathKey,
         time_source: &TimeSource,
         query_time: &TimeValue,
     ) -> Option<Self> {
-        let data = store.data.get(type_path)?;
-        if let Some(data) = data.individual.read::<T>() {
-            if let Some(data) = data.per_time_source.get(time_source) {
-                return Some(Self::Individual(
+        match data {
+            DataPerTypePath::Individual(individual) => {
+                let data = individual.read::<T>()?.per_time_source.get(time_source)?;
+                Some(Self::Individual(
                     index_path_prefix.clone(),
                     *query_time,
                     data,
-                ));
+                ))
+            }
+            DataPerTypePath::Batched(batched) => {
+                let everything_per_time = &batched
+                    .get(index_path_prefix)?
+                    .read::<T>()?
+                    .per_time_source
+                    .get(time_source)?
+                    .everything_per_time;
+                let (_, map) = latest_at(everything_per_time, query_time)?;
+                Some(Self::Batched(map))
             }
         }
-        let everything_per_time = &data
-            .batched
-            .get(index_path_prefix)?
-            .read::<T>()?
-            .per_time_source
-            .get(time_source)?
-            .everything_per_time;
-        let (_, map) = latest_at(everything_per_time, query_time)?;
-        Some(Self::Batched(map))
     }
 
     pub fn get_latest_at(&self, index_path_suffix: &Index) -> Option<&T> {
@@ -514,22 +555,37 @@ fn test_data_storage() {
     store.insert_individual(type_path, index_path, time_stamp(2), Data::F32(1.0));
 
     assert_eq!(
-        Scene3D::from_store(&store, &"frame".to_string(), &TimeValue::Sequence(0),).points,
+        Scene3D::from_store(
+            &store,
+            &"frame".to_string(),
+            &TimeQuery::LatestAt(TimeValue::Sequence(0))
+        )
+        .points,
         vec![]
     );
 
     assert_eq!(
-        Scene3D::from_store(&store, &"frame".to_string(), &TimeValue::Sequence(1),).points,
+        Scene3D::from_store(
+            &store,
+            &"frame".to_string(),
+            &TimeQuery::LatestAt(TimeValue::Sequence(1))
+        )
+        .points,
         vec![Point3 {
-            pos: [1.0, 2.0, 3.0],
+            pos: &[1.0, 2.0, 3.0],
             radius: None
         }]
     );
 
     assert_eq!(
-        Scene3D::from_store(&store, &"frame".to_string(), &TimeValue::Sequence(2),).points,
+        Scene3D::from_store(
+            &store,
+            &"frame".to_string(),
+            &TimeQuery::LatestAt(TimeValue::Sequence(2))
+        )
+        .points,
         vec![Point3 {
-            pos: [1.0, 2.0, 3.0],
+            pos: &[1.0, 2.0, 3.0],
             radius: Some(1.0)
         }]
     );
