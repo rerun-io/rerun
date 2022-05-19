@@ -4,8 +4,6 @@ pub use storage::*;
 
 use std::collections::BTreeMap;
 
-use nohash_hasher::IntMap;
-
 pub enum AtomType {
     // 1D:
     I32,
@@ -78,7 +76,7 @@ pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPathKey) {
             }
             DataPathComponent::Index(index) => {
                 type_path.push_back(TypePathComponent::Index);
-                index_path.push_back(&index);
+                index_path.push_back(index);
             }
         }
     }
@@ -116,17 +114,34 @@ pub enum Index {
     Temporary(u64),
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, Eq, PartialOrd, Ord)]
 pub struct IndexPathKey {
+    components: im::Vector<Index>,
     hashes: [u64; 2],
 }
 
 impl IndexPathKey {
-    pub fn push_back(&mut self, comp: &Index) {
-        self.hashes = [
-            hash_with_seed(&comp, ((self.hashes[0] as u128) << 64) | 123),
-            hash_with_seed(&comp, ((self.hashes[1] as u128) << 64) | 456),
+    pub fn new(components: im::Vector<Index>) -> Self {
+        let hashes = [
+            hash_with_seed(&components, 123),
+            hash_with_seed(&components, 456),
         ];
+        Self { components, hashes }
+    }
+
+    pub fn push_back(&mut self, comp: Index) {
+        self.components.push_back(comp);
+        self.hashes = [
+            hash_with_seed(&self.components, 123),
+            hash_with_seed(&self.components, 456),
+        ];
+    }
+
+    /// Split off the last component.
+    pub fn split_last(&self) -> (IndexPathKey, Index) {
+        let mut head = self.components.clone();
+        let tail = head.pop_back().unwrap();
+        (IndexPathKey::new(head), tail) // TODO: quickly restore previous hashes.
     }
 }
 

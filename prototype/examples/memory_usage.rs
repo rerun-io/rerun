@@ -59,6 +59,7 @@ fn time_stamp(seq: i64) -> TimeStamp {
         .insert("frame".to_string(), TimeValue::Sequence(seq));
     time_stamp
 }
+
 fn data_path(camera: u64, index: u64, field: &str) -> DataPath {
     im::vector![
         DataPathComponent::Name("camera".into()),
@@ -82,12 +83,12 @@ fn tracking_points() {
     let mut point_index = 0;
     let mut num_points = 0;
 
-    let mut tree = DataTree::default();
+    let mut store = DataStore::default();
     for frame in 0..NUM_FRAMES {
         for offset in 0..OVERLAP {
             let (type_path, index_path) =
                 into_type_path(data_path(0, (point_index + offset) as _, "pos"));
-            tree.insert(
+            store.insert_individual(
                 type_path,
                 index_path,
                 time_stamp(frame as _),
@@ -106,14 +107,14 @@ fn tracking_points() {
     println!("individual points overhead_factor: {overhead_factor}");
 }
 
-fn sage_big_clouds() {
+fn big_clouds() {
     let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
 
     const NUM_CAMERAS: usize = 4;
     const NUM_FRAMES: usize = 100;
     const NUM_POINTS_PER_CAMERA: usize = 1_000;
 
-    let mut tree = DataTree::default();
+    let mut store = DataStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {
@@ -121,7 +122,7 @@ fn sage_big_clouds() {
             for point in 0..NUM_POINTS_PER_CAMERA {
                 let (type_path, index_path) =
                     into_type_path(data_path(camera as _, point as _, "pos"));
-                tree.insert(
+                store.insert_individual(
                     type_path,
                     index_path,
                     time_stamp(frame as _),
@@ -143,5 +144,5 @@ fn sage_big_clouds() {
 
 fn main() {
     tracking_points();
-    sage_big_clouds();
+    big_clouds();
 }

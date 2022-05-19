@@ -1,53 +1,68 @@
 use crate::*;
 
-const SNAPSHOTS: bool = false;
-
 use std::collections::BTreeMap;
 
+use ahash::AHashMap;
+use nohash_hasher::IntMap;
+
 #[derive(Default)]
-pub struct DataTree {
-    /// If this is a struct
-    named_children: BTreeMap<String, DataTree>,
-
-    /// If this is a table (array, map, …)
-    /// Note: always homogenous!
-    indexed_children: Option<Box<DataTree>>,
-
-    // /// e.g. Point3
-    // typ: Option<StructType>,
-
-    // /// Could be e.g. "world" for a `Point3`, or "world.z` for `Point3.x`.
-    // space: Option<SpaceId>,
-
-    // /// If this is a leaf/atom.
-    // atom_type: Option<AtomType>,
-    /// If this is a leaf/atom
-    data_history: DataHistory,
+pub struct DataStore {
+    data: AHashMap<TypePath, DataPerTypePath>,
 }
 
-impl DataTree {
-    pub fn insert(
+#[derive(Default)]
+struct DataPerTypePath {
+    // TODO: make this an enum
+    /// Individual data at this path.
+    individual: DataHistory,
+
+    /// The index path prefix (everything but the last value).
+    batched: IntMap<IndexPathKey, BatchedDataHistory>,
+}
+
+impl DataStore {
+    pub fn insert_individual(
         &mut self,
-        mut type_path: TypePath,
+        type_path: TypePath,
         index_path: IndexPathKey,
         time_stamp: TimeStamp,
         data: Data,
     ) {
-        if let Some(first) = type_path.pop_front() {
-            match first {
-                TypePathComponent::Name(name) => self
-                    .named_children
-                    .entry(name)
-                    .or_default()
-                    .insert(type_path, index_path, time_stamp, data),
-                TypePathComponent::Index => self
-                    .indexed_children
-                    .get_or_insert_with(Default::default)
-                    .insert(type_path, index_path, time_stamp, data),
-            }
-        } else {
-            self.data_history.insert(index_path, time_stamp, data);
-        }
+        self.data
+            .entry(type_path)
+            .or_default()
+            .insert_individual(index_path, time_stamp, data)
+    }
+
+    pub fn insert_batch<T: 'static + Clone>(
+        &mut self,
+        type_path: TypePath,
+        index_path_prefix: IndexPathKey,
+        time_stamp: TimeStamp,
+        data: impl Iterator<Item = (Index, T)> + Clone,
+    ) {
+        self.data
+            .entry(type_path)
+            .or_default()
+            .insert_batch(index_path_prefix, time_stamp, data)
+    }
+}
+
+impl DataPerTypePath {
+    pub fn insert_individual(&mut self, index_path: IndexPathKey, time_stamp: TimeStamp, data: Data) {
+        self.individual.insert(index_path, time_stamp, data);
+    }
+
+    pub fn insert_batch<T: 'static + Clone>(
+        &mut self,
+        index_path_prefix: IndexPathKey,
+        time_stamp: TimeStamp,
+        data: impl Iterator<Item = (Index, T)> + Clone,
+    ) {
+        self.batched
+            .entry(index_path_prefix)
+            .or_default()
+            .insert(time_stamp, data);
     }
 }
 
@@ -108,7 +123,7 @@ impl<T: Clone> DataHistoryT<T> {
         // TODO: optimize away clones for the case when time_stamp.0.len() == 1
         for (time_source, time_value) in time_stamp.0 {
             self.per_time_source.entry(time_source).or_default().insert(
-                index_path,
+                index_path.clone(),
                 time_value,
                 data.clone(),
             );
@@ -119,88 +134,117 @@ impl<T: Clone> DataHistoryT<T> {
 struct DataPerTimeSource<T> {
     /// fast to find latest value at a certain time.
     values: IntMap<IndexPathKey, BTreeMap<TimeValue, T>>,
-
-    // for each new time slice, what is new?
-    new_per_time: BTreeMap<TimeValue, DataPerTime<T>>,
-
-    everything_per_time: BTreeMap<
-        TimeValue,
-        im::HashMap<IndexPathKey, T, nohash_hasher::BuildNoHashHasher<IndexPathKey>>,
-        // im::OrdMap<IndexPathKey, T>,
-        // nohash_hasher::IntMap<IndexPathKey, T>,
-    >,
 }
 
 impl<T> Default for DataPerTimeSource<T> {
     fn default() -> Self {
         Self {
             values: Default::default(),
-            new_per_time: Default::default(),
-            everything_per_time: Default::default(),
         }
     }
 }
 
 impl<T: Clone> DataPerTimeSource<T> {
     pub fn insert(&mut self, index_path: IndexPathKey, data_time: TimeValue, data: T) {
-        if SNAPSHOTS {
-            // these will be needed to handle the case of adding to old times
-            self.new_per_time
-                .entry(data_time)
-                .or_default()
-                .values
-                .insert(index_path, data.clone());
+        self.values
+            .entry(index_path)
+            .or_default()
+            .insert(data_time, data);
+    }
+}
 
-            let last = self.everything_per_time.iter().rev().next();
-            match last {
-                None => {
-                    self.everything_per_time
-                        .insert(data_time, Default::default());
-                }
-                Some((state_time, state)) => {
-                    if state_time < &data_time {
-                        let new_state = state.clone();
-                        self.everything_per_time.insert(data_time, new_state);
-                    } else if state_time == &data_time {
-                        // OK
-                    } else {
-                        unimplemented!("You must add data in chronological order. Sorry");
-                    }
-                }
-            };
+// ----------------------------------------------------------------------------
 
-            self.everything_per_time
-                .get_mut(&data_time)
-                .unwrap()
-                .insert(index_path, data);
+/// For a specific [`TypePath`].
+///
+/// type-erased version of [`BatchedDataHistoryT`].
+#[derive(Default)]
+pub struct BatchedDataHistory(Option<Box<dyn std::any::Any>>);
+
+impl BatchedDataHistory {
+    pub fn read<T: 'static>(&self) -> Option<&BatchedDataHistoryT<T>> {
+        self.0
+            .as_ref()
+            .and_then(|any| any.downcast_ref::<BatchedDataHistoryT<T>>())
+    }
+
+    pub fn write<T: 'static>(&mut self) -> Option<&mut BatchedDataHistoryT<T>> {
+        self.0
+            .get_or_insert_with(|| Box::new(BatchedDataHistoryT::<T>::default()))
+            .downcast_mut::<BatchedDataHistoryT<T>>()
+    }
+
+    pub fn insert<T: 'static + Clone>(
+        &mut self,
+        time_stamp: TimeStamp,
+        data: impl Iterator<Item = (Index, T)> + Clone,
+    ) {
+        if let Some(data_store) = self.write::<T>() {
+            data_store.insert(time_stamp, data);
         } else {
-            self.values
-                .entry(index_path)
-                .or_default()
-                .insert(data_time, data);
+            // TODO: log warning
         }
     }
 }
 
-struct DataPerTime<T> {
-    /// New values set this at this time.
-    values: IntMap<IndexPathKey, T>,
+/// For a specific [`TypePath`].
+pub struct BatchedDataHistoryT<T> {
+    per_time_source: BTreeMap<TimeSource, BatchedDataPerTimeSource<T>>,
 }
 
-impl<T> Default for DataPerTime<T> {
+impl<T> Default for BatchedDataHistoryT<T> {
     fn default() -> Self {
         Self {
-            values: Default::default(),
+            per_time_source: Default::default(),
         }
     }
 }
+
+impl<T: Clone> BatchedDataHistoryT<T> {
+    pub fn insert(
+        &mut self,
+        time_stamp: TimeStamp,
+        data: impl Iterator<Item = (Index, T)> + Clone,
+    ) {
+        // TODO: optimize away clones for the case when time_stamp.0.len() == 1
+        for (time_source, time_value) in time_stamp.0 {
+            self.per_time_source
+                .entry(time_source)
+                .or_default()
+                .insert(time_value, data.clone());
+        }
+    }
+}
+
+struct BatchedDataPerTimeSource<T> {
+    everything_per_time: BTreeMap<TimeValue, AHashMap<Index, T>>,
+}
+
+impl<T> Default for BatchedDataPerTimeSource<T> {
+    fn default() -> Self {
+        Self {
+            everything_per_time: Default::default(),
+        }
+    }
+}
+
+impl<T: Clone> BatchedDataPerTimeSource<T> {
+    pub fn insert(&mut self, data_time: TimeValue, data: impl Iterator<Item = (Index, T)> + Clone) {
+        let time_slot = self.everything_per_time.entry(data_time).or_default();
+        for (index_suffix, data) in data {
+            time_slot.insert(index_suffix, data);
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 #[inline(never)] // better profiling
 fn latest_at<'data, T>(
     data_over_time: &'data BTreeMap<TimeValue, T>,
-    time: &'_ TimeValue,
+    query_time: &'_ TimeValue,
 ) -> Option<(&'data TimeValue, &'data T)> {
-    data_over_time.range(..=time).rev().next()
+    data_over_time.range(..=query_time).rev().next()
 }
 
 #[inline(never)] // better profiling
@@ -211,22 +255,10 @@ fn values_in_range<'data, T>(
     data_over_time.range(time_range.min..=time_range.max)
 }
 
-pub fn visit_tree(
-    mut path: TypePath,
-    root: &DataTree,
-    visitor: &mut impl FnMut(&TypePath, &DataTree),
-) {
-    visitor(&path, root);
-    for (name, tree) in &root.named_children {
-        path.push_back(TypePathComponent::Name(name.to_string()));
-        visit_tree(path.clone(), tree, visitor);
-        path.pop_back();
-    }
-    if let Some(indexed_children) = &root.indexed_children {
-        path.push_back(TypePathComponent::Index);
-        visit_tree(path.clone(), indexed_children, visitor);
-        path.pop_back();
-    }
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Point3 {
+    pos: [f32; 3],
+    radius: Option<f32>,
 }
 
 #[derive(Default)]
@@ -235,128 +267,166 @@ pub struct Scene3D {
 }
 
 impl Scene3D {
-    pub fn from_tree(root: &DataTree, time_selector: &TimeSelector) -> Self {
-        let mut scene = Scene3D::default();
-        visit_tree(TypePath::default(), root, &mut |path, tree| {
-            if let Some(point3) = Point3History::from_tree(tree) {
-                point3.read(time_selector, |point3| {
-                    scene.points.push(point3);
-                });
-            }
-        });
-        scene
-    }
-}
+    pub fn from_store(store: &DataStore, time_source: &TimeSource, query_time: &TimeValue) -> Self {
+        let mut points = vec![];
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Point3 {
-    pos: [f32; 3],
-    radius: Option<f32>,
-}
+        for (type_path, data) in &store.data {
+            if type_path.last() == Some(&TypePathComponent::Name("pos".into())) {
+                let radius_path = sibling(type_path, "radius");
 
-pub struct Point3History<'a> {
-    pos: &'a DataHistoryT<[f32; 3]>,
-    radius: Option<&'a DataHistoryT<f32>>,
-}
+                if let Some(pos) = data.individual.read::<[f32; 3]>() {
+                    if let Some(pos) = pos.per_time_source.get(time_source) {
+                        let radius = IndividualDataReader::<f32>::new(store, &radius_path, time_source);
 
-impl<'a> Point3History<'a> {
-    pub fn from_tree(tree: &'a DataTree) -> Option<Self> {
-        let pos = tree
-            .named_children
-            .get("pos")?
-            .data_history
-            .read::<[f32; 3]>()?;
-
-        let radius = tree
-            .named_children
-            .get("radius")
-            .and_then(|v| v.data_history.read::<f32>());
-
-        Some(Self { pos, radius })
-    }
-
-    #[inline(never)] // better profiling
-    pub fn read(&self, selector: &TimeSelector, visitor: impl FnMut(Point3)) {
-        match selector {
-            TimeSelector::LatestAt(time_source, time_value) => {
-                let pos = self.pos.per_time_source.get(time_source);
-                let radius = self
-                    .radius
-                    .and_then(|radius| radius.per_time_source.get(time_source));
-
-                if let Some(pos) = pos {
-                    Self::visit_latest_at(time_value, pos, radius, visitor);
+                        for (index_path, values_over_time) in &pos.values {
+                            if let Some((_, pos)) = latest_at(values_over_time, query_time) {
+                                points.push(Point3 {
+                                    pos: *pos,
+                                    radius: radius
+                                        .as_ref()
+                                        .and_then(|radius| {
+                                            radius.get_latest_at(index_path, query_time)
+                                        })
+                                        .copied(),
+                                });
+                            }
+                        }
+                    }
                 }
-            }
-            TimeSelector::Range(time_source, time_range) => {
-                let pos = self.pos.per_time_source.get(time_source);
-                let radius = self
-                    .radius
-                    .and_then(|radius| radius.per_time_source.get(time_source));
+                for (index_path_prefix, batched) in &data.batched {
+                    if let Some(pos) = batched.read::<[f32; 3]>() {
+                        if let Some(pos) = pos.per_time_source.get(time_source) {
+                            if let Some((_, pos)) = latest_at(&pos.everything_per_time, query_time)
+                            {
+                                let radius = BatchedDataReader::new(
+                                    store,
+                                    &radius_path,
+                                    index_path_prefix,
+                                    time_source,
+                                    query_time,
+                                );
 
-                if let Some(pos) = pos {
-                    Self::visit_over_time(time_range, pos, radius, visitor);
+                                for (index_path_suffix, pos) in pos {
+                                    points.push(Point3 {
+                                        pos: *pos,
+                                        radius: radius
+                                            .as_ref()
+                                            .and_then(|radius| {
+                                                radius.get_latest_at(index_path_suffix)
+                                            })
+                                            .copied(),
+                                    });
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-    }
 
-    #[inline(never)] // better profiling
-    fn visit_latest_at<'b>(
-        time: &TimeValue,
-        pos: &'b DataPerTimeSource<[f32; 3]>,
-        radius: Option<&'b DataPerTimeSource<f32>>,
-        mut visitor: impl FnMut(Point3),
-    ) {
-        if SNAPSHOTS {
-            if let Some((_, pos)) = latest_at(&pos.everything_per_time, time) {
-                let radius = radius
-                    .and_then(|radius| latest_at(&radius.everything_per_time, time))
-                    .map(|(_, x)| x);
-                for (index_path, pos) in pos {
-                    visitor(Point3 {
-                        pos: *pos,
-                        radius: radius.and_then(|v| v.get(index_path)).copied(),
-                    });
-                }
-            }
-        } else {
-            for (index_path, pos) in &pos.values {
-                if let Some((_, pos)) = latest_at(pos, time) {
-                    visitor(Point3 {
-                        pos: *pos,
-                        radius: radius
-                            .and_then(|v| v.values.get(index_path))
-                            .and_then(|v| latest_at(v, time))
-                            .map(|(_, x)| *x),
-                    });
-                }
+        Self { points }
+    }
+}
+
+fn sibling(type_path: &TypePath, name: &str) -> TypePath {
+    let mut type_path = type_path.clone();
+    type_path.pop_back();
+    type_path.push_back(TypePathComponent::Name(name.into()));
+    type_path
+}
+
+// ----------------------------------------------------------------------------
+
+enum IndividualDataReader<'store, T> {
+    Individual(&'store DataPerTimeSource<T>),
+    Batched(TimeSource, &'store IntMap<IndexPathKey, BatchedDataHistory>),
+}
+
+impl<'store, T: 'static> IndividualDataReader<'store, T> {
+    pub fn new(
+        store: &'store DataStore,
+        type_path: &TypePath,
+        time_source: &TimeSource,
+    ) -> Option<Self> {
+        let data = store.data.get(type_path)?;
+        if let Some(data) = data.individual.read::<T>() {
+            if let Some(data) = data.per_time_source.get(time_source) {
+                return Some(Self::Individual(data));
             }
         }
+        Some(Self::Batched(time_source.clone(), &data.batched))
     }
 
-    fn visit_over_time<'b>(
-        time_range: &TimeRange,
-        pos: &'b DataPerTimeSource<[f32; 3]>,
-        radius: Option<&'b DataPerTimeSource<f32>>,
-        mut visitor: impl FnMut(Point3),
-    ) {
-        if SNAPSHOTS {
-            unimplemented!()
-        } else {
-            for (index_path, pos) in &pos.values {
-                for (pos_time, pos) in values_in_range(pos, time_range) {
-                    let radius = radius
-                        .and_then(|v| v.values.get(index_path))
-                        .and_then(|v| latest_at(v, pos_time));
-                    // let radius = radius.filter(|(radius_time, _)| time_range.min <= radius_time); // allow attributes from before the range!
-                    let radius = radius.map(|(_, x)| *x);
-                    visitor(Point3 { pos: *pos, radius });
-                }
+    pub fn get_latest_at(&self, index_path: &IndexPathKey, query_time: &TimeValue) -> Option<&T> {
+        match self {
+            Self::Individual(history) => {
+                latest_at(history.values.get(index_path)?, query_time).map(|(_time, value)| value)
+            }
+            Self::Batched(time_source, data) => {
+                let (prefix, suffix) = index_path.split_last();
+                latest_at(
+                    &data
+                        .get(&prefix)?
+                        .read::<T>()?
+                        .per_time_source
+                        .get(time_source)?
+                        .everything_per_time,
+                    query_time,
+                )?
+                .1
+                .get(&suffix)
             }
         }
     }
 }
+
+// ----------------------------------------------------------------------------
+
+enum BatchedDataReader<'store, T> {
+    Individual(IndexPathKey, TimeValue, &'store DataPerTimeSource<T>),
+    Batched(&'store AHashMap<Index, T>),
+}
+
+impl<'store, T: 'static> BatchedDataReader<'store, T> {
+    pub fn new(
+        store: &'store DataStore,
+        type_path: &TypePath,
+        index_path_prefix: &IndexPathKey,
+        time_source: &TimeSource,
+        query_time: &TimeValue,
+    ) -> Option<Self> {
+        let data = store.data.get(type_path)?;
+        if let Some(data) = data.individual.read::<T>() {
+            if let Some(data) = data.per_time_source.get(time_source) {
+                return Some(Self::Individual(index_path_prefix.clone(), *query_time, data));
+            }
+        }
+        let (_, map) = latest_at(
+            &data
+                .batched
+                .get(index_path_prefix)?
+                .read::<T>()?
+                .per_time_source
+                .get(time_source)?
+                .everything_per_time,
+            query_time,
+        )?;
+        Some(Self::Batched(map))
+    }
+
+    pub fn get_latest_at(&self, index_path_suffix: &Index) -> Option<&T> {
+        match self {
+            Self::Individual(index_path_prefix, query_time, history) => {
+                let mut index_path = index_path_prefix.clone();
+                index_path.push_back(index_path_suffix.clone());
+                latest_at(history.values.get(&index_path)?, query_time).map(|(_time, value)| value)
+            }
+            Self::Batched(data) => data.get(&index_path_suffix),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 #[test]
 fn test_data_storage() {
@@ -377,10 +447,10 @@ fn test_data_storage() {
         ]
     }
 
-    let mut tree = DataTree::default();
+    let mut store = DataStore::default();
 
     let (type_path, index_path) = into_type_path(data_path(0, "pos"));
-    tree.insert(
+    store.insert_individual(
         type_path,
         index_path,
         time_stamp(1),
@@ -388,23 +458,15 @@ fn test_data_storage() {
     );
 
     let (type_path, index_path) = into_type_path(data_path(0, "radius"));
-    tree.insert(type_path, index_path, time_stamp(2), Data::F32(1.0));
+    store.insert_individual(type_path, index_path, time_stamp(2), Data::F32(1.0));
 
     assert_eq!(
-        Scene3D::from_tree(
-            &tree,
-            &TimeSelector::LatestAt("frame".to_string(), TimeValue::Sequence(0)),
-        )
-        .points,
+        Scene3D::from_store(&store, &"frame".to_string(), &TimeValue::Sequence(0),).points,
         vec![]
     );
 
     assert_eq!(
-        Scene3D::from_tree(
-            &tree,
-            &TimeSelector::LatestAt("frame".to_string(), TimeValue::Sequence(1)),
-        )
-        .points,
+        Scene3D::from_store(&store, &"frame".to_string(), &TimeValue::Sequence(1),).points,
         vec![Point3 {
             pos: [1.0, 2.0, 3.0],
             radius: None
@@ -412,11 +474,7 @@ fn test_data_storage() {
     );
 
     assert_eq!(
-        Scene3D::from_tree(
-            &tree,
-            &TimeSelector::LatestAt("frame".to_string(), TimeValue::Sequence(2)),
-        )
-        .points,
+        Scene3D::from_store(&store, &"frame".to_string(), &TimeValue::Sequence(2),).points,
         vec![Point3 {
             pos: [1.0, 2.0, 3.0],
             radius: Some(1.0)
