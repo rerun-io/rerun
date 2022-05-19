@@ -186,7 +186,7 @@ pub struct TimeRange {
     pub max: TimeValue,
 }
 
-pub enum TimeSelector {
-    LatestAt(TimeSource, TimeValue),
-    Range(TimeSource, TimeRange),
+pub enum TimeQuery {
+    LatestAt(TimeValue),
+    Range(TimeRange),
 }
