@@ -48,8 +48,6 @@ pub enum StructType {
     Point3D,
 }
 
-type TimeSource = String; // TODO
-
 // pub struct TypePath(Vec<TypePathComponent>);
 pub type TypePath = im::Vector<TypePathComponent>;
 

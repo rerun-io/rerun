@@ -52,14 +52,6 @@ impl TrackingAllocator {
     }
 }
 
-fn time_stamp(seq: i64) -> TimeStamp {
-    let mut time_stamp = TimeStamp::default();
-    time_stamp
-        .0
-        .insert("frame".to_string(), TimeValue::Sequence(seq));
-    time_stamp
-}
-
 fn data_path(camera: u64, index: u64, field: &str) -> DataPath {
     im::vector![
         DataPathComponent::Name("camera".into()),
@@ -91,7 +83,7 @@ fn tracking_points() {
             store.insert_individual(
                 type_path,
                 index_path,
-                time_stamp(frame as _),
+                TimeValue::Sequence(frame as _),
                 Data::Pos3([1.0, 2.0, 3.0]),
             );
             num_points += 1;
@@ -125,7 +117,7 @@ fn big_clouds() {
                 store.insert_individual(
                     type_path,
                     index_path,
-                    time_stamp(frame as _),
+                    TimeValue::Sequence(frame as _),
                     Data::Pos3([1.0, 2.0, 3.0]),
                 );
                 num_points += 1;
