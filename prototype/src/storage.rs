@@ -64,8 +64,16 @@ impl DataPerTypePathTypeErased {
         Self(Box::new(DataPerTypePath::<T>::new_batched()))
     }
 
-    pub fn read<T: 'static>(&self) -> Option<&DataPerTypePath<T>> {
+    pub fn read_no_warn<T: 'static>(&self) -> Option<&DataPerTypePath<T>> {
         self.0.downcast_ref::<DataPerTypePath<T>>()
+    }
+
+    pub fn read<T: 'static>(&self) -> Option<&DataPerTypePath<T>> {
+        if let Some(read) = self.read_no_warn() {
+            Some(read)
+        } else {
+            panic!("Expected {}", std::any::type_name::<T>()); // TODO: just warn
+        }
     }
 
     pub fn write<T: 'static>(&mut self) -> Option<&mut DataPerTypePath<T>> {
@@ -212,8 +220,6 @@ impl<'s> Scene3D<'s> {
             if type_path.last() == Some(&TypePathComponent::Name("pos".into())) {
                 if let Some(pos_data) = data.read::<[f32; 3]>() {
                     Self::collect_points(&mut slf.points, store, time_query, type_path, pos_data);
-                } else {
-                    panic!("Expected 'pos' to be [f32; 3]"); // TODO: warn
                 }
             }
         }
