@@ -1,5 +1,7 @@
+mod scene;
 mod storage;
 
+pub use scene::*;
 pub use storage::*;
 
 use std::collections::BTreeMap;
