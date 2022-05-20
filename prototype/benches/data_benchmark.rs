@@ -48,7 +48,7 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> DataStore {
 
                 let data = (0..NUM_POINTS_PER_CAMERA).map(|pi| {
                     let pos: [f32; 3] = [1.0, 2.0, 3.0];
-                    (Index::Sequence(pi), pos)
+                    (IndexKey::new(Index::Sequence(pi)), pos)
                 });
 
                 data_store.insert_batch(type_path, index_path_prefix, time_value, data);
@@ -71,7 +71,8 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> DataStore {
                 let mut index_path_prefix = IndexPathKey::default();
                 index_path_prefix.push_back(Index::String(camera.into()));
 
-                let data = (0..NUM_POINTS_PER_CAMERA).map(|pi| (Index::Sequence(pi), 1.0_f32));
+                let data = (0..NUM_POINTS_PER_CAMERA)
+                    .map(|pi| (IndexKey::new(Index::Sequence(pi)), 1.0_f32));
 
                 data_store.insert_batch(type_path, index_path_prefix, time_value, data);
             }

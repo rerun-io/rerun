@@ -37,7 +37,7 @@ impl DataStore {
         type_path: TypePath,
         index_path_prefix: IndexPathKey,
         time: TimeValue,
-        values: impl Iterator<Item = (Index, T)>,
+        values: impl Iterator<Item = (IndexKey, T)>,
     ) {
         if let Some(store) = self
             .data
@@ -126,7 +126,7 @@ impl<T: 'static> DataPerTypePath<T> {
         &mut self,
         index_path_prefix: IndexPathKey,
         time: TimeValue,
-        values: impl Iterator<Item = (Index, T)>,
+        values: impl Iterator<Item = (IndexKey, T)>,
     ) {
         match self {
             Self::Individual(_individual) => {
@@ -173,7 +173,7 @@ impl<T> IndividualDataHistory<T> {
 /// For a specific [`TypePath`].
 pub struct BatchedDataHistory<T> {
     /// The index is the path prefix (everything but the last value).
-    batches_over_time: IntMap<IndexPathKey, BTreeMap<TimeValue, AHashMap<Index, T>>>,
+    batches_over_time: IntMap<IndexPathKey, BTreeMap<TimeValue, IntMap<IndexKey, T>>>,
 }
 
 impl<T> Default for BatchedDataHistory<T> {
@@ -189,7 +189,7 @@ impl<T> BatchedDataHistory<T> {
         &mut self,
         index_path_prefix: IndexPathKey,
         time: TimeValue,
-        values: impl Iterator<Item = (Index, T)>,
+        values: impl Iterator<Item = (IndexKey, T)>,
     ) {
         let time_slot = self
             .batches_over_time
@@ -204,7 +204,7 @@ impl<T> BatchedDataHistory<T> {
 
     pub fn iter(
         &self,
-    ) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<TimeValue, AHashMap<Index, T>>)>
+    ) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<TimeValue, IntMap<IndexKey, T>>)>
     {
         self.batches_over_time.iter()
     }
@@ -244,7 +244,7 @@ impl<'store, T: 'static> IndividualDataReader<'store, T> {
                 let (prefix, suffix) = index_path.split_last();
                 latest_at(data.batches_over_time.get(&prefix)?, query_time)?
                     .1
-                    .get(&suffix)
+                    .get(&IndexKey::new(suffix))
             }
         }
     }
@@ -255,7 +255,7 @@ impl<'store, T: 'static> IndividualDataReader<'store, T> {
 pub enum BatchedDataReader<'store, T> {
     None,
     Individual(IndexPathKey, TimeValue, &'store IndividualDataHistory<T>),
-    Batched(&'store AHashMap<Index, T>),
+    Batched(&'store IntMap<IndexKey, T>),
 }
 
 impl<'store, T: 'static> BatchedDataReader<'store, T> {
@@ -287,12 +287,12 @@ impl<'store, T: 'static> BatchedDataReader<'store, T> {
         }
     }
 
-    pub fn latest_at(&self, index_path_suffix: &Index) -> Option<&'store T> {
+    pub fn latest_at(&self, index_path_suffix: &IndexKey) -> Option<&'store T> {
         match self {
             Self::None => None,
             Self::Individual(index_path_prefix, query_time, history) => {
                 let mut index_path = index_path_prefix.clone();
-                index_path.push_back(index_path_suffix.clone());
+                index_path.push_back(index_path_suffix.index().clone());
                 latest_at(history.values.get(&index_path)?, query_time).map(|(_time, value)| value)
             }
             Self::Batched(data) => data.get(index_path_suffix),

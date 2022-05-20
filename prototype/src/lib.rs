@@ -114,50 +114,101 @@ pub enum Index {
     Temporary(u64),
 }
 
+// ----------------------------------------------------------------------------
+
+/// Like `Index` but also includes a precomputed hash.
+#[derive(Clone, Debug, Eq, PartialOrd, Ord)]
+pub struct IndexKey {
+    index: Index,
+    hash: u64,
+}
+
+impl IndexKey {
+    #[inline]
+    pub fn new(index: Index) -> Self {
+        let hash = hash(&index);
+        Self { index, hash }
+    }
+
+    pub fn index(&self) -> &Index {
+        &self.index
+    }
+}
+
+impl std::cmp::PartialEq for IndexKey {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.hash == other.hash // much faster, and low chance of collision
+    }
+}
+
+impl std::hash::Hash for IndexKey {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
+    }
+}
+
+impl nohash_hasher::IsEnabled for IndexKey {}
+
+impl From<Index> for IndexKey {
+    #[inline]
+    fn from(index: Index) -> Self {
+        IndexKey::new(index)
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(Clone, Debug, Default, Eq, PartialOrd, Ord)]
 pub struct IndexPathKey {
     components: im::Vector<Index>,
-    hashes: [u64; 2],
+    hash: u64,
 }
 
 impl IndexPathKey {
+    #[inline]
     pub fn new(components: im::Vector<Index>) -> Self {
-        let hashes = [
-            hash_with_seed(&components, 123),
-            hash_with_seed(&components, 456),
-        ];
-        Self { components, hashes }
+        let hash = hash(&components);
+        Self { components, hash }
     }
 
     pub fn push_back(&mut self, comp: Index) {
         self.components.push_back(comp);
-        self.hashes = [
-            hash_with_seed(&self.components, 123),
-            hash_with_seed(&self.components, 456),
-        ];
+        self.hash = hash(&self.components);
     }
 
     /// Split off the last component.
     pub fn split_last(&self) -> (IndexPathKey, Index) {
         let mut head = self.components.clone();
         let tail = head.pop_back().unwrap();
-        (IndexPathKey::new(head), tail) // TODO: quickly restore previous hashes.
+        (IndexPathKey::new(head), tail) // TODO: quickly restore previous hash.
     }
 }
 
 impl std::cmp::PartialEq for IndexPathKey {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.hashes == other.hashes // much faster, and extremely low chance of collision
+        self.hash == other.hash // much faster, and low chance of collision
     }
 }
 
 impl std::hash::Hash for IndexPathKey {
+    #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hashes[0]);
+        state.write_u64(self.hash);
     }
 }
 
 impl nohash_hasher::IsEnabled for IndexPathKey {}
+
+// ----------------------------------------------------------------------------
+
+/// Hash the given value.
+#[inline]
+fn hash(value: impl std::hash::Hash) -> u64 {
+    hash_with_seed(value, 456)
+}
 
 /// Hash the given value.
 #[inline]
@@ -167,6 +218,8 @@ fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
     value.hash(&mut hasher);
     hasher.finish()
 }
+
+// ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TimeValue {
