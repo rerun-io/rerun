@@ -108,10 +108,6 @@ pub enum Index {
 
     /// Anything goes
     String(String),
-
-    /// A child that only exists for one single instant.
-    /// The same path does not refer to the same object next instant.
-    Temporary(u64),
 }
 
 // ----------------------------------------------------------------------------
