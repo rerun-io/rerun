@@ -230,7 +230,11 @@ impl<'store, T: 'static> IndividualDataReader<'store, T> {
         }
     }
 
-    pub fn latest_at(&self, index_path: &IndexPathKey, query_time: &TimeValue) -> Option<&T> {
+    pub fn latest_at(
+        &self,
+        index_path: &IndexPathKey,
+        query_time: &TimeValue,
+    ) -> Option<&'store T> {
         match self {
             Self::None => None,
             Self::Individual(history) => {
@@ -283,7 +287,7 @@ impl<'store, T: 'static> BatchedDataReader<'store, T> {
         }
     }
 
-    pub fn latest_at(&self, index_path_suffix: &Index) -> Option<&T> {
+    pub fn latest_at(&self, index_path_suffix: &Index) -> Option<&'store T> {
         match self {
             Self::None => None,
             Self::Individual(index_path_prefix, query_time, history) => {
@@ -331,4 +335,81 @@ pub fn query<'data, T>(
             }
         }
     }
+}
+
+// ----------------------------------------------------------------------------
+
+pub fn visit_data<'s, T: 'static>(
+    store: &'s DataStore,
+    time_query: &TimeQuery,
+    primary_type_path: &TypePath,
+    mut visit: impl FnMut(&'s T),
+) -> Option<()> {
+    let primary_data = store.get::<T>(primary_type_path)?;
+
+    match primary_data {
+        DataPerTypePath::Individual(primary) => {
+            for (_index_path, values_over_time) in primary.iter() {
+                query(values_over_time, time_query, |_time, primary| {
+                    visit(primary);
+                });
+            }
+        }
+        DataPerTypePath::Batched(primary) => {
+            for (_index_path_prefix, primary) in primary.iter() {
+                query(primary, time_query, |_time, primary| {
+                    for primary in primary.values() {
+                        visit(primary);
+                    }
+                });
+            }
+        }
+    }
+
+    Some(())
+}
+
+pub fn visit_data_and_siblings<'s, T: 'static, S1: 'static>(
+    store: &'s DataStore,
+    time_query: &TimeQuery,
+    primary_type_path: &TypePath,
+    (sibling1,): (&str,),
+    mut visit: impl FnMut(&'s T, Option<&'s S1>),
+) -> Option<()> {
+    let primary_data = store.get::<T>(primary_type_path)?;
+    let sibling1_path = sibling(primary_type_path, sibling1);
+
+    match primary_data {
+        DataPerTypePath::Individual(primary) => {
+            let sibling1_reader = IndividualDataReader::<S1>::new(store, &sibling1_path);
+            for (index_path, values_over_time) in primary.iter() {
+                query(values_over_time, time_query, |time, primary| {
+                    let sibling1 = sibling1_reader.latest_at(index_path, time);
+                    visit(primary, sibling1);
+                });
+            }
+        }
+        DataPerTypePath::Batched(primary) => {
+            for (index_path_prefix, primary) in primary.iter() {
+                let sibling1_store = store.get::<S1>(&sibling1_path);
+                query(primary, time_query, |time, primary| {
+                    let sibling1_reader =
+                        BatchedDataReader::new(sibling1_store, index_path_prefix, time);
+                    for (index_path_suffix, primary) in primary {
+                        let sibling1 = sibling1_reader.latest_at(index_path_suffix);
+                        visit(primary, sibling1);
+                    }
+                });
+            }
+        }
+    }
+
+    Some(())
+}
+
+fn sibling(type_path: &TypePath, name: &str) -> TypePath {
+    let mut type_path = type_path.clone();
+    type_path.pop_back();
+    type_path.push_back(TypePathComponent::Name(name.into()));
+    type_path
 }
