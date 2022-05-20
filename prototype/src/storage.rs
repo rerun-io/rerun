@@ -7,169 +7,43 @@ use nohash_hasher::IntMap;
 
 #[derive(Default)]
 pub struct DataStore {
-    data: AHashMap<TypePath, DataPerTypePath>,
-}
-
-enum DataPerTypePath {
-    /// Individual data at this path.
-    Individual(DataHistory),
-
-    Batched(BatchedDataHistory),
+    data: AHashMap<TypePath, DataPerTypePathTypeErased>,
 }
 
 impl DataStore {
-    pub fn insert_individual(
+    pub fn insert_individual<T: 'static>(
         &mut self,
         type_path: TypePath,
         index_path: IndexPathKey,
-        time_value: TimeValue,
-        data: Data,
+        time: TimeValue,
+        value: T,
     ) {
-        self.data
+        if let Some(store) = self
+            .data
             .entry(type_path)
-            .or_insert_with(|| DataPerTypePath::Individual(Default::default()))
-            .insert_individual(index_path, time_value, data);
+            .or_insert_with(|| DataPerTypePathTypeErased::new_individual::<T>())
+            .write::<T>()
+        {
+            store.insert_individual(index_path, time, value);
+        } else {
+            // TODO: log warning
+        }
     }
 
-    pub fn insert_batch<T: 'static + Clone>(
+    pub fn insert_batch<T: 'static>(
         &mut self,
         type_path: TypePath,
         index_path_prefix: IndexPathKey,
-        time_value: TimeValue,
-        data: impl Iterator<Item = (Index, T)> + Clone,
+        time: TimeValue,
+        values: impl Iterator<Item = (Index, T)>,
     ) {
-        self.data
+        if let Some(store) = self
+            .data
             .entry(type_path)
-            .or_insert_with(|| DataPerTypePath::Batched(Default::default()))
-            .insert_batch(index_path_prefix, time_value, data);
-    }
-}
-
-impl DataPerTypePath {
-    fn as_individual(&mut self) -> &mut DataHistory {
-        match self {
-            Self::Individual(individual) => individual,
-            Self::Batched(_) => todo!("convert"),
-        }
-    }
-
-    pub fn insert_individual(
-        &mut self,
-        index_path: IndexPathKey,
-        time_value: TimeValue,
-        data: Data,
-    ) {
-        self.as_individual().insert(index_path, time_value, data);
-    }
-
-    pub fn insert_batch<T: 'static + Clone>(
-        &mut self,
-        index_path_prefix: IndexPathKey,
-        time_value: TimeValue,
-        data: impl Iterator<Item = (Index, T)> + Clone,
-    ) {
-        match self {
-            Self::Individual(_individual) => {
-                todo!("implement slow path");
-            }
-            Self::Batched(batched) => {
-                batched.insert(index_path_prefix, time_value, data);
-            }
-        }
-    }
-}
-
-/// For a specific [`TypePath`].
-///
-/// type-erased version of [`DataHistoryT`].
-#[derive(Default)]
-pub struct DataHistory(Option<Box<dyn std::any::Any>>);
-
-impl DataHistory {
-    pub fn read<T: 'static>(&self) -> Option<&DataHistoryT<T>> {
-        self.0
-            .as_ref()
-            .and_then(|any| any.downcast_ref::<DataHistoryT<T>>())
-    }
-
-    pub fn write<T: 'static>(&mut self) -> Option<&mut DataHistoryT<T>> {
-        self.0
-            .get_or_insert_with(|| Box::new(DataHistoryT::<T>::default()))
-            .downcast_mut::<DataHistoryT<T>>()
-    }
-
-    pub fn insert(&mut self, index_path: IndexPathKey, time_value: TimeValue, data: Data) {
-        match data {
-            Data::F32(value) => {
-                if let Some(data_store) = self.write::<f32>() {
-                    data_store.insert(index_path, time_value, value);
-                } else {
-                    // TODO: log warning
-                }
-            }
-            Data::Pos3(value) => {
-                if let Some(data_store) = self.write::<[f32; 3]>() {
-                    data_store.insert(index_path, time_value, value);
-                } else {
-                    // TODO: log warning
-                }
-            }
-        }
-    }
-}
-
-/// For a specific [`TypePath`].
-pub struct DataHistoryT<T> {
-    /// fast to find latest value at a certain time.
-    values: IntMap<IndexPathKey, BTreeMap<TimeValue, T>>,
-}
-
-impl<T> Default for DataHistoryT<T> {
-    fn default() -> Self {
-        Self {
-            values: Default::default(),
-        }
-    }
-}
-
-impl<T: Clone> DataHistoryT<T> {
-    pub fn insert(&mut self, index_path: IndexPathKey, data_time: TimeValue, data: T) {
-        self.values
-            .entry(index_path)
-            .or_default()
-            .insert(data_time, data);
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// For a specific [`TypePath`].
-///
-/// type-erased version of [`BatchedDataHistoryT`].
-#[derive(Default)]
-pub struct BatchedDataHistory(Option<Box<dyn std::any::Any>>);
-
-impl BatchedDataHistory {
-    pub fn read<T: 'static>(&self) -> Option<&BatchedDataHistoryT<T>> {
-        self.0
-            .as_ref()
-            .and_then(|any| any.downcast_ref::<BatchedDataHistoryT<T>>())
-    }
-
-    pub fn write<T: 'static>(&mut self) -> Option<&mut BatchedDataHistoryT<T>> {
-        self.0
-            .get_or_insert_with(|| Box::new(BatchedDataHistoryT::<T>::default()))
-            .downcast_mut::<BatchedDataHistoryT<T>>()
-    }
-
-    pub fn insert<T: 'static + Clone>(
-        &mut self,
-        index_path_prefix: IndexPathKey,
-        time_value: TimeValue,
-        data: impl Iterator<Item = (Index, T)> + Clone,
-    ) {
-        if let Some(data_store) = self.write::<T>() {
-            data_store.insert(index_path_prefix, time_value, data);
+            .or_insert_with(|| DataPerTypePathTypeErased::new_batched::<T>())
+            .write::<T>()
+        {
+            store.insert_batch(index_path_prefix, time, values);
         } else {
             // TODO: log warning
         }
@@ -177,12 +51,104 @@ impl BatchedDataHistory {
 }
 
 /// For a specific [`TypePath`].
-pub struct BatchedDataHistoryT<T> {
+///
+/// type-erased version of [`DataHistoryT`].
+struct DataPerTypePathTypeErased(Box<dyn std::any::Any>);
+
+impl DataPerTypePathTypeErased {
+    pub fn new_individual<T: 'static>() -> Self {
+        Self(Box::new(DataPerTypePath::<T>::new_individual()))
+    }
+
+    pub fn new_batched<T: 'static>() -> Self {
+        Self(Box::new(DataPerTypePath::<T>::new_batched()))
+    }
+
+    pub fn read<T: 'static>(&self) -> Option<&DataPerTypePath<T>> {
+        self.0.downcast_ref::<DataPerTypePath<T>>()
+    }
+
+    pub fn write<T: 'static>(&mut self) -> Option<&mut DataPerTypePath<T>> {
+        self.0.downcast_mut::<DataPerTypePath<T>>()
+    }
+}
+
+enum DataPerTypePath<T> {
+    /// Individual data at this path.
+    Individual(DataHistory<T>),
+
+    Batched(BatchedDataHistory<T>),
+}
+
+impl<T: 'static> DataPerTypePath<T> {
+    pub fn new_individual() -> Self {
+        Self::Individual(Default::default())
+    }
+
+    pub fn new_batched() -> Self {
+        Self::Batched(Default::default())
+    }
+
+    fn as_individual(&mut self) -> &mut DataHistory<T> {
+        match self {
+            Self::Individual(individual) => individual,
+            Self::Batched(_) => todo!("convert"),
+        }
+    }
+
+    pub fn insert_individual(&mut self, index_path: IndexPathKey, time: TimeValue, value: T) {
+        self.as_individual().insert(index_path, time, value);
+    }
+
+    pub fn insert_batch(
+        &mut self,
+        index_path_prefix: IndexPathKey,
+        time: TimeValue,
+        values: impl Iterator<Item = (Index, T)>,
+    ) {
+        match self {
+            Self::Individual(_individual) => {
+                todo!("implement slow path");
+            }
+            Self::Batched(batched) => {
+                batched.insert(index_path_prefix, time, values);
+            }
+        }
+    }
+}
+
+/// For a specific [`TypePath`].
+pub struct DataHistory<T> {
+    /// fast to find latest value at a certain time.
+    values: IntMap<IndexPathKey, BTreeMap<TimeValue, T>>,
+}
+
+impl<T> Default for DataHistory<T> {
+    fn default() -> Self {
+        Self {
+            values: Default::default(),
+        }
+    }
+}
+
+impl<T> DataHistory<T> {
+    pub fn insert(&mut self, index_path: IndexPathKey, time: TimeValue, value: T) {
+        self.values
+            .entry(index_path)
+            .or_default()
+            .insert(time, value);
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// For a specific [`TypePath`].
+pub struct BatchedDataHistory<T> {
     /// The index is the path prefix (everything but the last value).
     batches_over_time: IntMap<IndexPathKey, BTreeMap<TimeValue, AHashMap<Index, T>>>,
 }
 
-impl<T> Default for BatchedDataHistoryT<T> {
+impl<T> Default for BatchedDataHistory<T> {
     fn default() -> Self {
         Self {
             batches_over_time: Default::default(),
@@ -190,20 +156,20 @@ impl<T> Default for BatchedDataHistoryT<T> {
     }
 }
 
-impl<T: Clone> BatchedDataHistoryT<T> {
+impl<T> BatchedDataHistory<T> {
     pub fn insert(
         &mut self,
         index_path_prefix: IndexPathKey,
-        data_time: TimeValue,
-        data: impl Iterator<Item = (Index, T)> + Clone,
+        time: TimeValue,
+        values: impl Iterator<Item = (Index, T)>,
     ) {
         let time_slot = self
             .batches_over_time
             .entry(index_path_prefix)
             .or_default()
-            .entry(data_time)
+            .entry(time)
             .or_default();
-        for (index_suffix, data) in data {
+        for (index_suffix, data) in values {
             time_slot.insert(index_suffix, data);
         }
     }
@@ -244,7 +210,9 @@ impl<'s> Scene3D<'s> {
 
         for (type_path, data) in &store.data {
             if type_path.last() == Some(&TypePathComponent::Name("pos".into())) {
-                Self::collect_points(&mut slf.points, store, time_query, type_path, data);
+                if let Some(pos_data) = data.read::<[f32; 3]>() {
+                    Self::collect_points(&mut slf.points, store, time_query, type_path, pos_data);
+                }
             }
         }
 
@@ -256,20 +224,19 @@ impl<'s> Scene3D<'s> {
         store: &'s DataStore,
         time_query: &TimeQuery,
         type_path: &TypePath,
-        pos_data: &'s DataPerTypePath,
+        pos_data: &'s DataPerTypePath<[f32; 3]>,
     ) -> Option<()> {
         let radius_path = sibling(type_path, "radius");
 
         match pos_data {
-            DataPerTypePath::Individual(individual) => {
-                let pos = individual.read::<[f32; 3]>()?;
+            DataPerTypePath::Individual(pos) => {
                 let radius = IndividualDataReader::<f32>::new(store, &radius_path)
                     .unwrap_or(IndividualDataReader::None);
 
                 for (index_path, values_over_time) in &pos.values {
                     match time_query {
                         TimeQuery::LatestAt(query_time) => {
-                            if let Some((_, pos)) = latest_at(values_over_time, query_time) {
+                            if let Some((_pos_time, pos)) = latest_at(values_over_time, query_time) {
                                 out_points.push(Point3 {
                                     pos,
                                     radius: radius.get_latest_at(index_path, query_time).copied(),
@@ -288,9 +255,8 @@ impl<'s> Scene3D<'s> {
                 }
             }
             DataPerTypePath::Batched(pos) => {
-                let pos = pos.read::<[f32; 3]>()?;
                 for (index_path_prefix, pos) in &pos.batches_over_time {
-                    let radius = store.data.get(&radius_path);
+                    let radius = store.data.get(&radius_path).and_then(|x| x.read::<f32>());
 
                     match time_query {
                         TimeQuery::LatestAt(query_time) => {
@@ -335,7 +301,7 @@ fn sibling(type_path: &TypePath, name: &str) -> TypePath {
 }
 
 fn batch_data_reader<'store, T: 'static>(
-    data: Option<&'store DataPerTypePath>,
+    data: Option<&'store DataPerTypePath<T>>,
     index_path_prefix: &IndexPathKey,
     query_time: &TimeValue,
 ) -> BatchedDataReader<'store, T> {
@@ -347,18 +313,16 @@ fn batch_data_reader<'store, T: 'static>(
 
 enum IndividualDataReader<'store, T> {
     None,
-    Individual(&'store DataHistoryT<T>),
-    Batched(&'store BatchedDataHistoryT<T>),
+    Individual(&'store DataHistory<T>),
+    Batched(&'store BatchedDataHistory<T>),
 }
 
 impl<'store, T: 'static> IndividualDataReader<'store, T> {
     pub fn new(store: &'store DataStore, type_path: &TypePath) -> Option<Self> {
-        let data = store.data.get(type_path)?;
+        let data = store.data.get(type_path)?.read::<T>()?;
         match data {
-            DataPerTypePath::Individual(individual) => {
-                Some(Self::Individual(individual.read::<T>()?))
-            }
-            DataPerTypePath::Batched(batched) => Some(Self::Batched(batched.read::<T>()?)),
+            DataPerTypePath::Individual(individual) => Some(Self::Individual(individual)),
+            DataPerTypePath::Batched(batched) => Some(Self::Batched(batched)),
         }
     }
 
@@ -382,13 +346,13 @@ impl<'store, T: 'static> IndividualDataReader<'store, T> {
 
 enum BatchedDataReader<'store, T> {
     None,
-    Individual(IndexPathKey, TimeValue, &'store DataHistoryT<T>),
+    Individual(IndexPathKey, TimeValue, &'store DataHistory<T>),
     Batched(&'store AHashMap<Index, T>),
 }
 
 impl<'store, T: 'static> BatchedDataReader<'store, T> {
     pub fn new(
-        data: &'store DataPerTypePath,
+        data: &'store DataPerTypePath<T>,
         index_path_prefix: &IndexPathKey,
         query_time: &TimeValue,
     ) -> Option<Self> {
@@ -396,13 +360,10 @@ impl<'store, T: 'static> BatchedDataReader<'store, T> {
             DataPerTypePath::Individual(individual) => Some(Self::Individual(
                 index_path_prefix.clone(),
                 *query_time,
-                individual.read::<T>()?,
+                individual,
             )),
             DataPerTypePath::Batched(batched) => {
-                let everything_per_time = &batched
-                    .read::<T>()?
-                    .batches_over_time
-                    .get(index_path_prefix)?;
+                let everything_per_time = &batched.batches_over_time.get(index_path_prefix)?;
                 let (_, map) = latest_at(everything_per_time, query_time)?;
                 Some(Self::Batched(map))
             }
