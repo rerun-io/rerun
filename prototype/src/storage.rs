@@ -1,11 +1,15 @@
 use crate::*;
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use ahash::AHashMap;
 use nohash_hasher::IntMap;
 
 // ----------------------------------------------------------------------------
+
+/// Can be shared between different timelines.
+pub type Batch<T> = Arc<IntMap<IndexKey, T>>;
 
 #[derive(Default)]
 pub struct DataStore {
@@ -37,7 +41,7 @@ impl DataStore {
         type_path: TypePath,
         index_path_prefix: IndexPathKey,
         time: TimeValue,
-        values: impl Iterator<Item = (IndexKey, T)>,
+        values: Batch<T>,
     ) {
         if let Some(store) = self
             .data
@@ -126,7 +130,7 @@ impl<T: 'static> DataPerTypePath<T> {
         &mut self,
         index_path_prefix: IndexPathKey,
         time: TimeValue,
-        values: impl Iterator<Item = (IndexKey, T)>,
+        values: Batch<T>,
     ) {
         match self {
             Self::Individual(_individual) => {
@@ -173,7 +177,7 @@ impl<T> IndividualDataHistory<T> {
 /// For a specific [`TypePath`].
 pub struct BatchedDataHistory<T> {
     /// The index is the path prefix (everything but the last value).
-    batches_over_time: IntMap<IndexPathKey, BTreeMap<TimeValue, IntMap<IndexKey, T>>>,
+    batches_over_time: IntMap<IndexPathKey, BTreeMap<TimeValue, Batch<T>>>,
 }
 
 impl<T> Default for BatchedDataHistory<T> {
@@ -185,27 +189,16 @@ impl<T> Default for BatchedDataHistory<T> {
 }
 
 impl<T> BatchedDataHistory<T> {
-    pub fn insert(
-        &mut self,
-        index_path_prefix: IndexPathKey,
-        time: TimeValue,
-        values: impl Iterator<Item = (IndexKey, T)>,
-    ) {
-        let time_slot = self
-            .batches_over_time
+    pub fn insert(&mut self, index_path_prefix: IndexPathKey, time: TimeValue, values: Batch<T>) {
+        self.batches_over_time
             .entry(index_path_prefix)
             .or_default()
-            .entry(time)
-            .or_default();
-        for (index_suffix, data) in values {
-            time_slot.insert(index_suffix, data);
-        }
+            .insert(time, values);
     }
 
     pub fn iter(
         &self,
-    ) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<TimeValue, IntMap<IndexKey, T>>)>
-    {
+    ) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<TimeValue, Batch<T>>)> {
         self.batches_over_time.iter()
     }
 }
@@ -395,7 +388,7 @@ pub fn visit_data_and_siblings<'s, T: 'static, S1: 'static>(
                 query(primary, time_query, |time, primary| {
                     let sibling1_reader =
                         BatchedDataReader::new(sibling1_store, index_path_prefix, time);
-                    for (index_path_suffix, primary) in primary {
+                    for (index_path_suffix, primary) in primary.iter() {
                         let sibling1 = sibling1_reader.latest_at(index_path_suffix);
                         visit(primary, sibling1);
                     }

@@ -5,6 +5,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use prototype::DataStore;
 use prototype::*;
 
+use std::sync::Arc;
+
 const NUM_FRAMES: i64 = 1_000; // this can have a big impact on performance
 const NUM_POINTS_PER_CAMERA: u64 = 1_000;
 const TOTAL_POINTS: u64 = 2 * NUM_POINTS_PER_CAMERA;
@@ -46,12 +48,16 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> DataStore {
                 let mut index_path_prefix = IndexPathKey::default();
                 index_path_prefix.push_back(Index::String(camera.into()));
 
-                let data = (0..NUM_POINTS_PER_CAMERA).map(|pi| {
-                    let pos: [f32; 3] = [1.0, 2.0, 3.0];
-                    (IndexKey::new(Index::Sequence(pi)), pos)
-                });
+                let batch = Arc::new(
+                    (0..NUM_POINTS_PER_CAMERA)
+                        .map(|pi| {
+                            let pos: [f32; 3] = [1.0, 2.0, 3.0];
+                            (IndexKey::new(Index::Sequence(pi)), pos)
+                        })
+                        .collect(),
+                );
 
-                data_store.insert_batch(type_path, index_path_prefix, time_value, data);
+                data_store.insert_batch(type_path, index_path_prefix, time_value, batch);
             }
 
             if individual_radius {
@@ -71,10 +77,13 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> DataStore {
                 let mut index_path_prefix = IndexPathKey::default();
                 index_path_prefix.push_back(Index::String(camera.into()));
 
-                let data = (0..NUM_POINTS_PER_CAMERA)
-                    .map(|pi| (IndexKey::new(Index::Sequence(pi)), 1.0_f32));
+                let batch = Arc::new(
+                    (0..NUM_POINTS_PER_CAMERA)
+                        .map(|pi| (IndexKey::new(Index::Sequence(pi)), 1.0_f32))
+                        .collect(),
+                );
 
-                data_store.insert_batch(type_path, index_path_prefix, time_value, data);
+                data_store.insert_batch(type_path, index_path_prefix, time_value, batch);
             }
         }
     }

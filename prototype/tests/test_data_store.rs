@@ -1,5 +1,10 @@
 use prototype::*;
 
+fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
+    let batch: nohash_hasher::IntMap<IndexKey, T> = batch.into_iter().collect();
+    std::sync::Arc::new(batch)
+}
+
 #[test]
 fn test_singular() {
     fn points_at(store: &DataStore, frame: i64) -> Vec<Point3<'_>> {
@@ -151,76 +156,70 @@ fn test_batches() {
         prim(),
         index_path_prefix("left"),
         TimeValue::Sequence(1),
-        [
+        batch([
             (index(0), 0_i32),
             (index(1), 1_i32),
             (index(2), 2_i32),
             (index(3), 3_i32),
-        ]
-        .into_iter(),
+        ]),
     );
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
         TimeValue::Sequence(2),
-        [
+        batch([
             (index(0), 1_000_i32),
             (index(1), 1_001_i32),
             (index(2), 1_002_i32),
             (index(3), 1_003_i32),
-        ]
-        .into_iter(),
+        ]),
     );
     store.insert_batch(
         prim(),
         index_path_prefix("left"),
         TimeValue::Sequence(3),
-        [
+        batch([
             // 0, 1 omitted = dropped
             (index(2), 22_i32),
             (index(3), 33_i32),
-        ]
-        .into_iter(),
+        ]),
     );
     store.insert_batch(
         sibling(),
         index_path_prefix("left"),
         TimeValue::Sequence(4),
-        [(index(1), "one"), (index(2), "two")].into_iter(),
+        batch([(index(1), "one"), (index(2), "two")]),
     );
     store.insert_batch(
         sibling(),
         index_path_prefix("right"),
         TimeValue::Sequence(5),
-        [
+        batch([
             (index(0), "r0"),
             (index(1), "r1"),
             (index(2), "r2"),
             (index(3), "r3"),
             (index(4), "r4"), // has no point yet
-        ]
-        .into_iter(),
+        ]),
     );
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
         TimeValue::Sequence(6),
-        [
+        batch([
             (index(3), 1_003_i32),
             (index(4), 1_004_i32),
             (index(5), 1_005_i32),
-        ]
-        .into_iter(),
+        ]),
     );
     store.insert_batch(
         sibling(),
         index_path_prefix("right"),
         TimeValue::Sequence(7),
-        [
+        batch([
             (index(3), "r3_new"),
             // omitted = replaced
-        ]
-        .into_iter(),
+        ]),
     );
 
     assert_eq!(values(&store, 0), vec![]);
@@ -348,36 +347,33 @@ fn test_batched_and_individual() {
         prim(),
         index_path_prefix("left"),
         TimeValue::Sequence(1),
-        [
+        batch([
             (index(0), 0_i32),
             (index(1), 1_i32),
             (index(2), 2_i32),
             (index(3), 3_i32),
-        ]
-        .into_iter(),
+        ]),
     );
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
         TimeValue::Sequence(2),
-        [
+        batch([
             (index(0), 1_000_i32),
             (index(1), 1_001_i32),
             (index(2), 1_002_i32),
             (index(3), 1_003_i32),
-        ]
-        .into_iter(),
+        ]),
     );
     store.insert_batch(
         prim(),
         index_path_prefix("left"),
         TimeValue::Sequence(3),
-        [
+        batch([
             // 0, 1 omitted = dropped
             (index(2), 22_i32),
             (index(3), 33_i32),
-        ]
-        .into_iter(),
+        ]),
     );
     store.insert_individual(
         sibling(),
@@ -409,12 +405,11 @@ fn test_batched_and_individual() {
         prim(),
         index_path_prefix("right"),
         TimeValue::Sequence(6),
-        [
+        batch([
             (index(3), 1_003_i32),
             (index(4), 1_004_i32),
             (index(5), 1_005_i32),
-        ]
-        .into_iter(),
+        ]),
     );
     store.insert_individual(
         sibling(),
@@ -560,7 +555,7 @@ fn test_individual_and_batched() {
         sibling(),
         index_path_prefix("left"),
         TimeValue::Sequence(3),
-        [(index(1), "one"), (index(2), "two")].into_iter(),
+        batch([(index(1), "one"), (index(2), "two")]),
     );
     store.insert_individual(
         prim(),
@@ -578,7 +573,7 @@ fn test_individual_and_batched() {
         sibling(),
         index_path_prefix("left"),
         TimeValue::Sequence(5),
-        [(index(2), "two"), (index(3), "three")].into_iter(),
+        batch([(index(2), "two"), (index(3), "three")]),
     );
 
     assert_eq!(values(&store, 0), vec![]);

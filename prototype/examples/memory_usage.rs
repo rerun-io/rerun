@@ -134,7 +134,51 @@ fn big_clouds() {
     println!("big clouds overhead_factor: {overhead_factor}");
 }
 
+fn big_clouds_batched() {
+    let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+
+    const NUM_CAMERAS: usize = 4;
+    const NUM_FRAMES: usize = 100;
+    const NUM_POINTS_PER_CAMERA: usize = 1_000;
+
+    let mut store = DataStore::default();
+    let mut frame = 0;
+    let mut num_points = 0;
+    while frame < NUM_FRAMES {
+        for camera in 0..NUM_CAMERAS {
+            let batch = std::sync::Arc::new(
+                (0..NUM_POINTS_PER_CAMERA)
+                    .map(|i| {
+                        let point: [f32; 3] = [1.0, 2.0, 3.0];
+                        (IndexKey::new(Index::Sequence(i as _)), point)
+                    })
+                    .collect(),
+            );
+            let (type_path, index_path) = into_type_path(data_path(camera as _, 0, "pos"));
+            let (index_path_prefix, _) = index_path.split_last();
+            store.insert_batch::<[f32; 3]>(
+                type_path,
+                index_path_prefix,
+                TimeValue::Sequence(frame as _),
+                batch,
+            );
+
+            num_points += NUM_POINTS_PER_CAMERA;
+
+            frame += 1;
+        }
+    }
+
+    let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+
+    let bytes_per_point = used_bytes as f32 / num_points as f32;
+    let overhead_factor = bytes_per_point / BYTES_PER_POINT as f32;
+
+    println!("big clouds batched overhead_factor: {overhead_factor}");
+}
+
 fn main() {
     tracking_points();
     big_clouds();
+    big_clouds_batched();
 }
