@@ -26,7 +26,7 @@ impl DataStore {
         {
             store.insert_individual(index_path, time, value);
         } else {
-            // TODO: log warning
+            panic!("Wrong type!"); // TODO: log warning
         }
     }
 
@@ -45,7 +45,7 @@ impl DataStore {
         {
             store.insert_batch(index_path_prefix, time, values);
         } else {
-            // TODO: log warning
+            panic!("Wrong type!"); // TODO: log warning
         }
     }
 }
@@ -212,6 +212,8 @@ impl<'s> Scene3D<'s> {
             if type_path.last() == Some(&TypePathComponent::Name("pos".into())) {
                 if let Some(pos_data) = data.read::<[f32; 3]>() {
                     Self::collect_points(&mut slf.points, store, time_query, type_path, pos_data);
+                } else {
+                    panic!("Expected 'pos' to be [f32; 3]"); // TODO: warn
                 }
             }
         }
@@ -400,19 +402,19 @@ fn test_data_storage() {
     let mut store = DataStore::default();
 
     let (type_path, index_path) = into_type_path(data_path(0, "pos"));
-    store.insert_individual(
+    store.insert_individual::<[f32;3]>(
         type_path,
         index_path,
         TimeValue::Sequence(1),
-        Data::Pos3([1.0, 2.0, 3.0]),
+        [1.0, 2.0, 3.0],
     );
 
     let (type_path, index_path) = into_type_path(data_path(0, "radius"));
-    store.insert_individual(
+    store.insert_individual::<f32>(
         type_path,
         index_path,
         TimeValue::Sequence(2),
-        Data::F32(1.0),
+        1.0,
     );
 
     assert_eq!(

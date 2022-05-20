@@ -80,11 +80,11 @@ fn tracking_points() {
         for offset in 0..OVERLAP {
             let (type_path, index_path) =
                 into_type_path(data_path(0, (point_index + offset) as _, "pos"));
-            store.insert_individual(
+            store.insert_individual::<[f32;3]>(
                 type_path,
                 index_path,
                 TimeValue::Sequence(frame as _),
-                Data::Pos3([1.0, 2.0, 3.0]),
+                [1.0, 2.0, 3.0],
             );
             num_points += 1;
         }
@@ -114,11 +114,11 @@ fn big_clouds() {
             for point in 0..NUM_POINTS_PER_CAMERA {
                 let (type_path, index_path) =
                     into_type_path(data_path(camera as _, point as _, "pos"));
-                store.insert_individual(
+                store.insert_individual::<[f32;3]>(
                     type_path,
                     index_path,
                     TimeValue::Sequence(frame as _),
-                    Data::Pos3([1.0, 2.0, 3.0]),
+                    [1.0, 2.0, 3.0],
                 );
                 num_points += 1;
             }
