@@ -28,7 +28,7 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> DataStore {
             if individual_pos {
                 for point in 0..NUM_POINTS_PER_CAMERA {
                     let (type_path, index_path) = into_type_path(data_path(camera, point, "pos"));
-                    data_store.insert_individual::<[f32;3]>(
+                    data_store.insert_individual::<[f32; 3]>(
                         type_path,
                         index_path,
                         time_value,

@@ -48,6 +48,10 @@ impl DataStore {
             panic!("Wrong type!"); // TODO: log warning
         }
     }
+
+    fn get<T: 'static>(&self, type_path: &TypePath) -> Option<&DataPerTypePath<T>> {
+        self.data.get(type_path).and_then(|x| x.read::<T>())
+    }
 }
 
 /// For a specific [`TypePath`].
@@ -185,7 +189,6 @@ impl<T> BatchedDataHistory<T> {
 
 // ----------------------------------------------------------------------------
 
-#[inline(never)] // better profiling
 fn latest_at<'data, T>(
     data_over_time: &'data BTreeMap<TimeValue, T>,
     query_time: &'_ TimeValue,
@@ -193,12 +196,32 @@ fn latest_at<'data, T>(
     data_over_time.range(..=query_time).rev().next()
 }
 
-#[inline(never)] // better profiling
 fn values_in_range<'data, T>(
     data_over_time: &'data BTreeMap<TimeValue, T>,
     time_range: &'_ TimeRange,
 ) -> impl Iterator<Item = (&'data TimeValue, &'data T)> {
     data_over_time.range(time_range.min..=time_range.max)
+}
+
+fn query<'data, T>(
+    data_over_time: &'data BTreeMap<TimeValue, T>,
+    time_query: &TimeQuery,
+    mut visit: impl FnMut(&TimeValue, &'data T),
+) {
+    match time_query {
+        TimeQuery::LatestAt(query_time) => {
+            if let Some((_data_time, data)) = latest_at(data_over_time, query_time) {
+                // we use `query_time` here instead of a`data_time`
+                // because we want to also query for the latest radius, not the latest radius at the time of the position.
+                visit(query_time, data)
+            }
+        }
+        TimeQuery::Range(query_range) => {
+            for (data_time, data) in values_in_range(data_over_time, query_range) {
+                visit(data_time, data)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -233,71 +256,37 @@ impl<'s> Scene3D<'s> {
         time_query: &TimeQuery,
         type_path: &TypePath,
         pos_data: &'s DataPerTypePath<[f32; 3]>,
-    ) -> Option<()> {
+    ) {
         let radius_path = sibling(type_path, "radius");
 
         match pos_data {
             DataPerTypePath::Individual(pos) => {
-                let radius = IndividualDataReader::<f32>::new(store, &radius_path)
-                    .unwrap_or(IndividualDataReader::None);
-
+                let radius_reader = IndividualDataReader::<f32>::new(store, &radius_path);
                 for (index_path, values_over_time) in &pos.values {
-                    match time_query {
-                        TimeQuery::LatestAt(query_time) => {
-                            if let Some((_pos_time, pos)) = latest_at(values_over_time, query_time) {
-                                out_points.push(Point3 {
-                                    pos,
-                                    radius: radius.get_latest_at(index_path, query_time).copied(),
-                                });
-                            }
-                        }
-                        TimeQuery::Range(query_range) => {
-                            for (pos_time, pos) in values_in_range(values_over_time, query_range) {
-                                out_points.push(Point3 {
-                                    pos,
-                                    radius: radius.get_latest_at(index_path, pos_time).copied(),
-                                });
-                            }
-                        }
-                    }
+                    query(values_over_time, time_query, |time, pos| {
+                        out_points.push(Point3 {
+                            pos,
+                            radius: radius_reader.get_latest_at(index_path, time).copied(),
+                        });
+                    });
                 }
             }
             DataPerTypePath::Batched(pos) => {
                 for (index_path_prefix, pos) in &pos.batches_over_time {
-                    let radius = store.data.get(&radius_path).and_then(|x| x.read::<f32>());
-
-                    match time_query {
-                        TimeQuery::LatestAt(query_time) => {
-                            if let Some((_, pos)) = latest_at(pos, query_time) {
-                                let radius =
-                                    batch_data_reader(radius, index_path_prefix, query_time);
-
-                                for (index_path_suffix, pos) in pos {
-                                    out_points.push(Point3 {
-                                        pos,
-                                        radius: radius.get_latest_at(index_path_suffix).copied(),
-                                    });
-                                }
-                            }
+                    let radius_store = store.get::<f32>(&radius_path);
+                    query(pos, time_query, |time, pos| {
+                        let radius_reader =
+                            batch_data_reader(radius_store, index_path_prefix, time);
+                        for (index_path_suffix, pos) in pos {
+                            out_points.push(Point3 {
+                                pos,
+                                radius: radius_reader.get_latest_at(index_path_suffix).copied(),
+                            });
                         }
-                        TimeQuery::Range(query_range) => {
-                            for (pos_time, pos) in values_in_range(pos, query_range) {
-                                let radius = batch_data_reader(radius, index_path_prefix, pos_time);
-
-                                for (index_path_suffix, pos) in pos {
-                                    out_points.push(Point3 {
-                                        pos,
-                                        radius: radius.get_latest_at(index_path_suffix).copied(),
-                                    });
-                                }
-                            }
-                        }
-                    }
+                    });
                 }
             }
         }
-
-        Some(())
     }
 }
 
@@ -326,11 +315,14 @@ enum IndividualDataReader<'store, T> {
 }
 
 impl<'store, T: 'static> IndividualDataReader<'store, T> {
-    pub fn new(store: &'store DataStore, type_path: &TypePath) -> Option<Self> {
-        let data = store.data.get(type_path)?.read::<T>()?;
-        match data {
-            DataPerTypePath::Individual(individual) => Some(Self::Individual(individual)),
-            DataPerTypePath::Batched(batched) => Some(Self::Batched(batched)),
+    pub fn new(store: &'store DataStore, type_path: &TypePath) -> Self {
+        if let Some(data) = store.get::<T>(type_path) {
+            match data {
+                DataPerTypePath::Individual(individual) => Self::Individual(individual),
+                DataPerTypePath::Batched(batched) => Self::Batched(batched),
+            }
+        } else {
+            Self::None
         }
     }
 
@@ -408,7 +400,7 @@ fn test_data_storage() {
     let mut store = DataStore::default();
 
     let (type_path, index_path) = into_type_path(data_path(0, "pos"));
-    store.insert_individual::<[f32;3]>(
+    store.insert_individual::<[f32; 3]>(
         type_path,
         index_path,
         TimeValue::Sequence(1),
@@ -416,12 +408,7 @@ fn test_data_storage() {
     );
 
     let (type_path, index_path) = into_type_path(data_path(0, "radius"));
-    store.insert_individual::<f32>(
-        type_path,
-        index_path,
-        TimeValue::Sequence(2),
-        1.0,
-    );
+    store.insert_individual::<f32>(type_path, index_path, TimeValue::Sequence(2), 1.0);
 
     assert_eq!(
         Scene3D::from_store(&store, &TimeQuery::LatestAt(TimeValue::Sequence(0))).points,
