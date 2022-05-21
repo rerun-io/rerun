@@ -1,4 +1,6 @@
-use crate::*;
+// TODO: make generic enough
+// `TypePath` can be any `Id = Hash`.
+use crate::{IndexKey, IndexPathKey, TimeQuery, TypePath, TypePathComponent};
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -239,10 +241,10 @@ impl<'store, Time: 'static + Ord, T: 'static> IndividualDataReader<'store, Time,
                 latest_at(history.values.get(index_path)?, query_time).map(|(_time, value)| value)
             }
             Self::Batched(data) => {
-                let (prefix, suffix) = index_path.split_last();
+                let (prefix, suffix) = index_path.clone().split_last();
                 latest_at(data.batches_over_time.get(&prefix)?, query_time)?
                     .1
-                    .get(&IndexKey::new(suffix))
+                    .get(&suffix)
             }
         }
     }
@@ -291,7 +293,7 @@ impl<'store, Time: Clone + Ord, T: 'static> BatchedDataReader<'store, Time, T> {
             Self::None => None,
             Self::Individual(index_path_prefix, query_time, history) => {
                 let mut index_path = index_path_prefix.clone();
-                index_path.push_back(index_path_suffix.index().clone());
+                index_path.push_back(index_path_suffix.clone());
                 latest_at(history.values.get(&index_path)?, query_time).map(|(_time, value)| value)
             }
             Self::Batched(data) => data.get(index_path_suffix),

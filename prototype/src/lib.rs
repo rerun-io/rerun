@@ -165,20 +165,31 @@ pub struct IndexPathKey {
 impl IndexPathKey {
     #[inline]
     pub fn new(components: im::Vector<Index>) -> Self {
-        let hashes = double_hash(&components);
-        Self { components, hashes }
+        let mut slf = Self::default();
+        for index in components {
+            slf.push_back(index);
+        }
+        slf
     }
 
-    pub fn push_back(&mut self, comp: Index) {
-        self.components.push_back(comp);
-        self.hashes = double_hash(&self.components);
+    pub fn push_back(&mut self, index: impl Into<IndexKey>) {
+        let index = index.into();
+
+        self.components.push_back(index.index);
+        self.hashes[0] = self.hashes[0].rotate_left(5);
+        self.hashes[1] = self.hashes[1].rotate_left(5);
+        self.hashes[0] ^= index.hashes[0];
+        self.hashes[1] ^= index.hashes[1];
     }
 
     /// Split off the last component.
-    pub fn split_last(&self) -> (IndexPathKey, Index) {
-        let mut head = self.components.clone();
-        let tail = head.pop_back().unwrap();
-        (IndexPathKey::new(head), tail) // TODO: quickly restore previous hash.
+    pub fn split_last(mut self) -> (IndexPathKey, IndexKey) {
+        let index = IndexKey::new(self.components.pop_back().unwrap());
+        self.hashes[0] ^= index.hashes[0];
+        self.hashes[1] ^= index.hashes[1];
+        self.hashes[0] = self.hashes[0].rotate_right(5);
+        self.hashes[1] = self.hashes[1].rotate_right(5);
+        (self, index)
     }
 }
 
@@ -197,6 +208,33 @@ impl std::hash::Hash for IndexPathKey {
 }
 
 impl nohash_hasher::IsEnabled for IndexPathKey {}
+
+#[test]
+fn test_index_path_key() {
+    let key0 = IndexPathKey::default();
+
+    let mut key1 = key0.clone();
+    key1.push_back(Index::Sequence(0));
+    let key1 = key1;
+
+    let mut key2 = key1.clone();
+    key2.push_back(Index::Sequence(1));
+    let key2 = key2;
+
+    assert_eq!(key0.components.len(), 0);
+    assert_eq!(key1.components.len(), 1);
+    assert_eq!(key2.components.len(), 2);
+
+    let (key0_again, seq0) = key1.clone().split_last();
+    assert_eq!(key0_again.components.len(), 0);
+    assert_eq!(key0_again, key0);
+    assert_eq!(seq0, IndexKey::new(Index::Sequence(0)));
+
+    let (key1_again, seq1) = key2.clone().split_last();
+    assert_eq!(key1_again.components.len(), 1);
+    assert_eq!(key1_again, key1);
+    assert_eq!(seq1, IndexKey::new(Index::Sequence(1)));
+}
 
 // ----------------------------------------------------------------------------
 
