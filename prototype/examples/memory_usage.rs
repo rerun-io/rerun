@@ -72,23 +72,23 @@ fn tracking_points() {
     const NUM_FRAMES: usize = 10_000;
     const OVERLAP: usize = 100;
 
-    let mut point_index = 0;
     let mut num_points = 0;
 
     let mut store = TypePathDataStore::default();
     for frame in 0..NUM_FRAMES {
         for offset in 0..OVERLAP {
             let (type_path, index_path) =
-                into_type_path(data_path(0, (point_index + offset) as _, "pos"));
-            store.insert_individual::<[f32; 3]>(
-                type_path,
-                index_path,
-                TimeValue::Sequence(frame as _),
-                [1.0, 2.0, 3.0],
-            );
+                into_type_path(data_path(0, (frame + offset) as _, "pos"));
+            store
+                .insert_individual::<[f32; 3]>(
+                    type_path,
+                    index_path,
+                    TimeValue::Sequence(frame as _),
+                    [1.0, 2.0, 3.0],
+                )
+                .unwrap();
             num_points += 1;
         }
-        point_index += 1; // we stride them to get some overlap
     }
 
     let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
@@ -114,12 +114,14 @@ fn big_clouds() {
             for point in 0..NUM_POINTS_PER_CAMERA {
                 let (type_path, index_path) =
                     into_type_path(data_path(camera as _, point as _, "pos"));
-                store.insert_individual::<[f32; 3]>(
-                    type_path,
-                    index_path,
-                    TimeValue::Sequence(frame as _),
-                    [1.0, 2.0, 3.0],
-                );
+                store
+                    .insert_individual::<[f32; 3]>(
+                        type_path,
+                        index_path,
+                        TimeValue::Sequence(frame as _),
+                        [1.0, 2.0, 3.0],
+                    )
+                    .unwrap();
                 num_points += 1;
             }
             frame += 1;
@@ -156,12 +158,14 @@ fn big_clouds_batched() {
             );
             let (type_path, index_path) = into_type_path(data_path(camera as _, 0, "pos"));
             let (index_path_prefix, _) = index_path.split_last();
-            store.insert_batch::<[f32; 3]>(
-                type_path,
-                index_path_prefix,
-                TimeValue::Sequence(frame as _),
-                batch,
-            );
+            store
+                .insert_batch::<[f32; 3]>(
+                    type_path,
+                    index_path_prefix,
+                    TimeValue::Sequence(frame as _),
+                    batch,
+                )
+                .unwrap();
 
             num_points += NUM_POINTS_PER_CAMERA;
 

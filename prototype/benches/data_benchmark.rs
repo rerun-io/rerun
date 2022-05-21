@@ -33,12 +33,14 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
             if individual_pos {
                 for point in 0..NUM_POINTS_PER_CAMERA {
                     let (type_path, index_path) = into_type_path(data_path(camera, point, "pos"));
-                    data_store.insert_individual::<[f32; 3]>(
-                        type_path,
-                        index_path,
-                        time_value,
-                        [1.0, 2.0, 3.0],
-                    );
+                    data_store
+                        .insert_individual::<[f32; 3]>(
+                            type_path,
+                            index_path,
+                            time_value,
+                            [1.0, 2.0, 3.0],
+                        )
+                        .unwrap();
                 }
             } else {
                 let type_path = im::vector![
@@ -60,14 +62,18 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                         .collect(),
                 );
 
-                data_store.insert_batch(type_path, index_path_prefix, time_value, batch);
+                data_store
+                    .insert_batch(type_path, index_path_prefix, time_value, batch)
+                    .unwrap();
             }
 
             if individual_radius {
                 for point in 0..NUM_POINTS_PER_CAMERA {
                     let (type_path, index_path) =
                         into_type_path(data_path(camera, point, "radius"));
-                    data_store.insert_individual(type_path, index_path, time_value, 1.0_f32);
+                    data_store
+                        .insert_individual(type_path, index_path, time_value, 1.0_f32)
+                        .unwrap();
                 }
             } else {
                 let type_path = im::vector![
@@ -86,7 +92,9 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                         .collect(),
                 );
 
-                data_store.insert_batch(type_path, index_path_prefix, time_value, batch);
+                data_store
+                    .insert_batch(type_path, index_path_prefix, time_value, batch)
+                    .unwrap();
             }
         }
     }
@@ -104,7 +112,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let scene =
                 Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
             assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
-        })
+        });
     });
 
     let data_store = generate_date(true, true);
@@ -113,7 +121,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let scene =
                 Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
             assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
-        })
+        });
     });
 
     let data_store = generate_date(false, true);
@@ -122,7 +130,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let scene =
                 Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
             assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
-        })
+        });
     });
 
     let data_store = generate_date(true, false);
@@ -131,7 +139,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let scene =
                 Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
             assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
-        })
+        });
     });
 
     group.finish();

@@ -2361,6 +2361,7 @@ dependencies = [
  "im",
  "mimalloc",
  "nohash-hasher",
+ "tracing",
 ]
 
 [[package]]

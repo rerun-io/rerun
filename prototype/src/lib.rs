@@ -230,7 +230,7 @@ fn test_index_path_key() {
     assert_eq!(key0_again, key0);
     assert_eq!(seq0, IndexKey::new(Index::Sequence(0)));
 
-    let (key1_again, seq1) = key2.clone().split_last();
+    let (key1_again, seq1) = key2.split_last();
     assert_eq!(key1_again.components.len(), 1);
     assert_eq!(key1_again, key1);
     assert_eq!(seq1, IndexKey::new(Index::Sequence(1)));

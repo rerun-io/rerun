@@ -1,5 +1,3 @@
-// TODO: make generic enough
-// `TypePath` can be any `Id = Hash`.
 use crate::{IndexKey, IndexPathKey, TimeQuery, TypePath, TypePathComponent};
 
 use std::collections::BTreeMap;
@@ -7,6 +5,20 @@ use std::sync::Arc;
 
 use ahash::AHashMap;
 use nohash_hasher::IntMap;
+
+#[derive(Clone, Copy, Debug)]
+pub enum Error {
+    /// First stored as a batch, then individually. Not supported.
+    BatchFollowedByIndividual,
+
+    /// First stored individually, then followed by a batch. Not supported.
+    IndividualFollowedByBatch,
+
+    /// One type was first logged, then another.
+    WrongType,
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 // ----------------------------------------------------------------------------
 
@@ -33,16 +45,16 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
         index_path: IndexPathKey,
         time: Time,
         value: T,
-    ) {
+    ) -> Result<()> {
         if let Some(store) = self
             .data
             .entry(type_path)
             .or_insert_with(|| DataStoreTypeErased::new_individual::<T>())
             .write::<T>()
         {
-            store.insert_individual(index_path, time, value);
+            store.insert_individual(index_path, time, value)
         } else {
-            panic!("Wrong type!"); // TODO: log warning
+            Err(Error::WrongType)
         }
     }
 
@@ -52,16 +64,16 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
         index_path_prefix: IndexPathKey,
         time: Time,
         values: Batch<T>,
-    ) {
+    ) -> Result<()> {
         if let Some(store) = self
             .data
             .entry(type_path)
             .or_insert_with(|| DataStoreTypeErased::new_batched::<T>())
             .write::<T>()
         {
-            store.insert_batch(index_path_prefix, time, values);
+            store.insert_batch(index_path_prefix, time, values)
         } else {
-            panic!("Wrong type!"); // TODO: log warning
+            Err(Error::WrongType)
         }
     }
 
@@ -102,7 +114,8 @@ impl<Time: 'static + Ord> DataStoreTypeErased<Time> {
         if let Some(read) = self.read_no_warn() {
             Some(read)
         } else {
-            panic!("Expected {}", std::any::type_name::<T>()); // TODO: just warn
+            tracing::warn!("Expected {}", std::any::type_name::<T>());
+            None
         }
     }
 
@@ -114,8 +127,6 @@ impl<Time: 'static + Ord> DataStoreTypeErased<Time> {
 // ----------------------------------------------------------------------------
 
 pub enum DataStore<Time, T> {
-    // TODO: struct where `individual` are always read first and then the batch.
-    // `batch` always mean "reset", and "individual" is an addition or amendment.
     /// Individual data at this path.
     Individual(IndividualDataHistory<Time, T>),
 
@@ -131,24 +142,32 @@ impl<Time: Ord, T: 'static> DataStore<Time, T> {
         Self::Batched(Default::default())
     }
 
-    fn as_individual(&mut self) -> &mut IndividualDataHistory<Time, T> {
+    pub fn insert_individual(
+        &mut self,
+        index_path: IndexPathKey,
+        time: Time,
+        value: T,
+    ) -> Result<()> {
         match self {
-            Self::Individual(individual) => individual,
-            Self::Batched(_) => todo!("convert"),
+            Self::Individual(individual) => {
+                individual.insert(index_path, time, value);
+                Ok(())
+            }
+            Self::Batched(_) => Err(Error::BatchFollowedByIndividual),
         }
     }
 
-    pub fn insert_individual(&mut self, index_path: IndexPathKey, time: Time, value: T) {
-        self.as_individual().insert(index_path, time, value);
-    }
-
-    pub fn insert_batch(&mut self, index_path_prefix: IndexPathKey, time: Time, values: Batch<T>) {
+    pub fn insert_batch(
+        &mut self,
+        index_path_prefix: IndexPathKey,
+        time: Time,
+        values: Batch<T>,
+    ) -> Result<()> {
         match self {
-            Self::Individual(_individual) => {
-                todo!("implement slow path");
-            }
+            Self::Individual(_) => Err(Error::IndividualFollowedByBatch),
             Self::Batched(batched) => {
                 batched.insert(index_path_prefix, time, values);
+                Ok(())
             }
         }
     }
@@ -288,7 +307,6 @@ impl<'store, Time: Clone + Ord, T: 'static> BatchedDataReader<'store, Time, T> {
     }
 
     pub fn latest_at(&self, index_path_suffix: &IndexKey) -> Option<&'store T> {
-        // TODO: look up in individual first, the batched, take the latest.
         match self {
             Self::None => None,
             Self::Individual(index_path_prefix, query_time, history) => {

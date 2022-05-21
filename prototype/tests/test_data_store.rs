@@ -9,7 +9,7 @@ fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
 }
 
 #[test]
-fn test_singular() {
+fn test_singular() -> prototype::Result<()> {
     fn points_at(store: &TypePathDataStore<Time>, frame: i64) -> Vec<Point3<'_>> {
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut points = Scene3D::from_store(store, &time_query).points;
@@ -50,23 +50,23 @@ fn test_singular() {
         index_path("left", 0),
         Time(1),
         [1.0, 1.0, 1.0],
-    );
+    )?;
 
     store.insert_individual::<[f32; 3]>(
         pos_type_path(),
         index_path("left", 0),
         Time(3),
         [3.0, 3.0, 3.0],
-    );
+    )?;
 
-    store.insert_individual::<f32>(radius_type_path(), index_path("left", 0), Time(2), 1.0);
+    store.insert_individual::<f32>(radius_type_path(), index_path("left", 0), Time(2), 1.0)?;
 
     store.insert_individual::<[f32; 3]>(
         pos_type_path(),
         index_path("left", 1),
         Time(4),
         [4.0, 4.0, 4.0],
-    );
+    )?;
 
     assert_eq!(points_at(&store, 0), vec![]);
 
@@ -107,10 +107,12 @@ fn test_singular() {
             }
         ]
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_batches() {
+fn test_batches() -> prototype::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPathKey {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
@@ -160,7 +162,7 @@ fn test_batches() {
             (index(2), 2_i32),
             (index(3), 3_i32),
         ]),
-    );
+    )?;
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
@@ -171,7 +173,7 @@ fn test_batches() {
             (index(2), 1_002_i32),
             (index(3), 1_003_i32),
         ]),
-    );
+    )?;
     store.insert_batch(
         prim(),
         index_path_prefix("left"),
@@ -181,13 +183,13 @@ fn test_batches() {
             (index(2), 22_i32),
             (index(3), 33_i32),
         ]),
-    );
+    )?;
     store.insert_batch(
         sibling(),
         index_path_prefix("left"),
         Time(4),
         batch([(index(1), "one"), (index(2), "two")]),
-    );
+    )?;
     store.insert_batch(
         sibling(),
         index_path_prefix("right"),
@@ -199,7 +201,7 @@ fn test_batches() {
             (index(3), "r3"),
             (index(4), "r4"), // has no point yet
         ]),
-    );
+    )?;
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
@@ -209,7 +211,7 @@ fn test_batches() {
             (index(4), 1_004_i32),
             (index(5), 1_005_i32),
         ]),
-    );
+    )?;
     store.insert_batch(
         sibling(),
         index_path_prefix("right"),
@@ -218,7 +220,7 @@ fn test_batches() {
             (index(3), "r3_new"),
             // omitted = replaced
         ]),
-    );
+    )?;
 
     assert_eq!(values(&store, 0), vec![]);
     assert_eq!(
@@ -291,10 +293,12 @@ fn test_batches() {
             (1_005, None),
         ]
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_batched_and_individual() {
+fn test_batched_and_individual() -> prototype::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPathKey {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
@@ -351,7 +355,7 @@ fn test_batched_and_individual() {
             (index(2), 2_i32),
             (index(3), 3_i32),
         ]),
-    );
+    )?;
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
@@ -362,7 +366,7 @@ fn test_batched_and_individual() {
             (index(2), 1_002_i32),
             (index(3), 1_003_i32),
         ]),
-    );
+    )?;
     store.insert_batch(
         prim(),
         index_path_prefix("left"),
@@ -372,9 +376,9 @@ fn test_batched_and_individual() {
             (index(2), 22_i32),
             (index(3), 33_i32),
         ]),
-    );
-    store.insert_individual(sibling(), index_path_key("left", 1), Time(4), "one");
-    store.insert_individual(sibling(), index_path_key("left", 2), Time(4), "two");
+    )?;
+    store.insert_individual(sibling(), index_path_key("left", 1), Time(4), "one")?;
+    store.insert_individual(sibling(), index_path_key("left", 2), Time(4), "two")?;
     for (index, value) in [
         (0, "r0"),
         (1, "r1"),
@@ -382,7 +386,7 @@ fn test_batched_and_individual() {
         (3, "r3"),
         (4, "r4"), // has no point yet
     ] {
-        store.insert_individual(sibling(), index_path_key("right", index), Time(5), value);
+        store.insert_individual(sibling(), index_path_key("right", index), Time(5), value)?;
     }
     store.insert_batch(
         prim(),
@@ -393,8 +397,8 @@ fn test_batched_and_individual() {
             (index(4), 1_004_i32),
             (index(5), 1_005_i32),
         ]),
-    );
-    store.insert_individual(sibling(), index_path_key("right", 5), Time(7), "r5");
+    )?;
+    store.insert_individual(sibling(), index_path_key("right", 5), Time(7), "r5")?;
 
     assert_eq!(values(&store, 0), vec![]);
     assert_eq!(
@@ -467,10 +471,12 @@ fn test_batched_and_individual() {
             (1_005, Some("r5")),
         ]
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_individual_and_batched() {
+fn test_individual_and_batched() -> prototype::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPathKey {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
@@ -517,22 +523,22 @@ fn test_individual_and_batched() {
 
     let mut store = TypePathDataStore::default();
 
-    store.insert_individual(prim(), index_path_key("left", 0), Time(1), 0_i32);
-    store.insert_individual(prim(), index_path_key("left", 1), Time(2), 1_i32);
+    store.insert_individual(prim(), index_path_key("left", 0), Time(1), 0_i32)?;
+    store.insert_individual(prim(), index_path_key("left", 1), Time(2), 1_i32)?;
     store.insert_batch(
         sibling(),
         index_path_prefix("left"),
         Time(3),
         batch([(index(1), "one"), (index(2), "two")]),
-    );
-    store.insert_individual(prim(), index_path_key("left", 2), Time(4), 2_i32);
-    store.insert_individual(prim(), index_path_key("left", 3), Time(4), 3_i32);
+    )?;
+    store.insert_individual(prim(), index_path_key("left", 2), Time(4), 2_i32)?;
+    store.insert_individual(prim(), index_path_key("left", 3), Time(4), 3_i32)?;
     store.insert_batch(
         sibling(),
         index_path_prefix("left"),
         Time(5),
         batch([(index(2), "two"), (index(3), "three")]),
-    );
+    )?;
 
     assert_eq!(values(&store, 0), vec![]);
     assert_eq!(values(&store, 1), vec![(0, None)]);
@@ -546,4 +552,6 @@ fn test_individual_and_batched() {
         values(&store, 5),
         vec![(0, None), (1, None), (2, Some("two")), (3, Some("three"))]
     );
+
+    Ok(())
 }
