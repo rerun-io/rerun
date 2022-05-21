@@ -1,6 +1,5 @@
 use super::scene::*;
 use super::{camera::Camera, MeshCache};
-use egui::Color32;
 
 type LineMaterial = three_d::ColorMaterial;
 
@@ -13,12 +12,9 @@ pub struct RenderingContext {
 
     mesh_cache: MeshCache,
 
-    sphere_mesh: three_d::CpuMesh,
-    line_mesh: three_d::CpuMesh,
-
     /// So we don't need to re-allocate them.
-    points_cache: Vec<three_d::InstancedModel<three_d::PhysicalMaterial>>,
-    lines_cache: Vec<three_d::InstancedModel<LineMaterial>>,
+    points_cache: three_d::InstancedModel<three_d::PhysicalMaterial>,
+    lines_cache: three_d::InstancedModel<LineMaterial>,
 }
 
 impl RenderingContext {
@@ -46,17 +42,46 @@ impl RenderingContext {
         )
         .unwrap();
 
+        let sphere_mesh = three_d::CpuMesh::sphere(24);
+        let points_cache = three_d::InstancedModel::new_with_material(
+            &three_d,
+            &three_d::Instances {
+                // we must declare what we intend to use:
+                translations: vec![],
+                scales: Some(vec![]),
+                colors: Some(vec![]),
+                ..Default::default()
+            },
+            &sphere_mesh,
+            default_material(),
+        )
+        .unwrap();
+
+        let line_mesh = three_d::CpuMesh::cylinder(10);
+        let lines_cache = three_d::InstancedModel::new_with_material(
+            &three_d,
+            &three_d::Instances {
+                // we must declare what we intend to use:
+                translations: vec![],
+                rotations: Some(vec![]),
+                scales: Some(vec![]),
+                colors: Some(vec![]),
+                ..Default::default()
+            },
+            &line_mesh,
+            Default::default(),
+        )
+        .unwrap();
+
         Ok(Self {
             three_d,
             skybox_dark,
             skybox_light,
             ambient_dark,
             ambient_light,
-            sphere_mesh: three_d::CpuMesh::sphere(24),
-            line_mesh: three_d::CpuMesh::cylinder(10),
             mesh_cache: Default::default(),
-            points_cache: Default::default(),
-            lines_cache: Default::default(),
+            points_cache,
+            lines_cache,
         })
     }
 }
@@ -143,99 +168,68 @@ fn default_material() -> three_d::PhysicalMaterial {
     }
 }
 
-fn allocate_points<'a>(
-    three_d: &'a three_d::Context,
-    sphere_mesh: &'a three_d::CpuMesh,
-    points_cache: &'a mut Vec<three_d::InstancedModel<three_d::PhysicalMaterial>>,
-    render_states: three_d::RenderStates,
-    points: &'a [Point],
-) -> &'a [three_d::InstancedModel<three_d::PhysicalMaterial>] {
+fn allocate_points(points: &[Point]) -> three_d::Instances {
     crate::profile_function!();
     use three_d::*;
 
-    let mut per_color_instances: ahash::AHashMap<Color32, Vec<Instance>> = Default::default();
+    let mut translations = vec![];
+    let mut scales = vec![];
+    let mut colors = vec![];
+
     for point in points {
         let p = point.pos;
-        let geometry_transform =
-            Mat4::from_translation(vec3(p[0], p[1], p[2])) * Mat4::from_scale(point.radius);
-        per_color_instances
-            .entry(point.color)
-            .or_default()
-            .push(Instance {
-                geometry_transform,
-                ..Default::default()
-            });
+        translations.push(vec3(p[0], p[1], p[2]));
+        scales.push(vec3(point.radius, point.radius, point.radius));
+        colors.push(color_to_three_d(point.color));
     }
 
-    if points_cache.len() < per_color_instances.len() {
-        points_cache.resize_with(per_color_instances.len(), || {
-            InstancedModel::new_with_material(three_d, &[], sphere_mesh, default_material())
-                .unwrap()
-        });
+    three_d::Instances {
+        translations,
+        scales: Some(scales),
+        colors: Some(colors),
+        ..Default::default()
     }
-
-    for ((color, instances), points) in per_color_instances.iter().zip(points_cache.iter_mut()) {
-        points.material.albedo = color_to_three_d(*color);
-        points.material.render_states = render_states;
-        points.set_instances(instances).unwrap();
-    }
-
-    &points_cache[..per_color_instances.len()]
 }
 
-fn allocate_line_segments<'a>(
-    three_d: &'a three_d::Context,
-    line_mesh: &'a three_d::CpuMesh,
-    lines_cache: &'a mut Vec<three_d::InstancedModel<LineMaterial>>,
-    render_states: three_d::RenderStates,
-    line_segments: &'a [LineSegments],
-) -> &'a [three_d::InstancedModel<LineMaterial>] {
+fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances {
     crate::profile_function!();
     use three_d::*;
 
-    if lines_cache.len() < line_segments.len() {
-        lines_cache.resize_with(line_segments.len(), || {
-            // let material = default_material();
-            let material = Default::default();
-            InstancedModel::new_with_material(three_d, &[], line_mesh, material).unwrap()
-        });
-    }
+    let mut translations = vec![];
+    let mut rotations = vec![];
+    let mut scales = vec![];
+    let mut colors = vec![];
 
-    for (line_segments, model) in line_segments.iter().zip(lines_cache.iter_mut()) {
+    for line_segments in line_segments {
         let LineSegments {
             segments,
             radius,
             color,
         } = line_segments;
 
-        let line_instances: Vec<Instance> = segments
-            .iter()
-            .map(|&[p0, p1]| {
-                let p0 = vec3(p0[0], p0[1], p0[2]);
-                let p1 = vec3(p1[0], p1[1], p1[2]);
-                let scale = Mat4::from_nonuniform_scale((p0 - p1).magnitude(), 1.0, 1.0);
-                let rotation =
-                    rotation_matrix_from_dir_to_dir(vec3(1.0, 0.0, 0.0), (p1 - p0).normalize());
-                let translation = Mat4::from_translation(p0);
-                let geometry_transform = translation
-                    * rotation
-                    * scale
-                    * Mat4::from_nonuniform_scale(1.0, *radius, *radius);
-                Instance {
-                    geometry_transform,
-                    ..Default::default()
-                }
-            })
-            .collect();
+        for &[p0, p1] in segments {
+            rotations.push(three_d::Quat::from(mint::Quaternion::from(
+                glam::Quat::from_rotation_arc(
+                    glam::Vec3::X,
+                    (glam::Vec3::from(p1) - glam::Vec3::from(p0)).normalize(),
+                ),
+            )));
 
-        model.material.render_states = render_states;
-        model.material.color = color_to_three_d(*color);
-        model.material.is_transparent = model.material.color.a < 255;
-
-        model.set_instances(&line_instances).unwrap();
+            let p0 = vec3(p0[0], p0[1], p0[2]);
+            let p1 = vec3(p1[0], p1[1], p1[2]);
+            translations.push(p0);
+            scales.push(vec3((p0 - p1).magnitude(), *radius, *radius));
+            colors.push(color_to_three_d(*color));
+        }
     }
 
-    &lines_cache[..line_segments.len()]
+    three_d::Instances {
+        translations,
+        scales: Some(scales),
+        rotations: Some(rotations),
+        colors: Some(colors),
+        ..Default::default()
+    }
 }
 
 pub fn paint_with_three_d(
@@ -259,15 +253,12 @@ pub fn paint_with_three_d(
 
     // Respect the egui clip region (e.g. if we are inside an `egui::ScrollArea`).
     let clip_rect = info.clip_rect_in_pixels();
-    let render_states = RenderStates {
-        clip: Clip::Enabled {
-            x: clip_rect.left_px.round() as _,
-            y: clip_rect.from_bottom_px.round() as _,
-            width: clip_rect.width_px.round() as _,
-            height: clip_rect.height_px.round() as _,
-        },
-        ..Default::default()
-    };
+    three_d.set_scissor(ScissorBox {
+        x: clip_rect.left_px.round() as _,
+        y: clip_rect.from_bottom_px.round() as _,
+        width: clip_rect.width_px.round() as _,
+        height: clip_rect.height_px.round() as _,
+    });
 
     let position = camera.world_from_view.translation();
     let target = camera.world_from_view.transform_point3(-glam::Vec3::Z);
@@ -302,16 +293,28 @@ pub fn paint_with_three_d(
         meshes,
     } = scene;
 
-    let mut mesh_instances: std::collections::HashMap<u64, Vec<Instance>> = Default::default();
+    let mut mesh_instances: std::collections::HashMap<u64, Instances> = Default::default();
 
     for mesh in meshes {
-        mesh_instances
+        let instances = mesh_instances
             .entry(mesh.mesh_id)
-            .or_default()
-            .push(Instance {
-                geometry_transform: mint::ColumnMatrix4::from(mesh.world_from_mesh).into(),
+            .or_insert_with(|| Instances {
+                translations: vec![],
                 ..Default::default()
             });
+
+        let (scale, rotation, translation) = mesh.world_from_mesh.to_scale_rotation_translation();
+        instances
+            .translations
+            .push(mint::Vector3::from(translation).into());
+        instances
+            .rotations
+            .get_or_insert_with(Default::default)
+            .push(mint::Quaternion::from(rotation).into());
+        instances
+            .scales
+            .get_or_insert_with(Default::default)
+            .push(mint::Vector3::from(scale).into());
 
         rendering
             .mesh_cache
@@ -319,9 +322,7 @@ pub fn paint_with_three_d(
     }
 
     for (mesh_id, instances) in &mesh_instances {
-        rendering
-            .mesh_cache
-            .set_instances(*mesh_id, render_states, instances)?;
+        rendering.mesh_cache.set_instances(*mesh_id, instances)?;
     }
 
     let mut objects: Vec<&dyn Object> = vec![];
@@ -343,24 +344,15 @@ pub fn paint_with_three_d(
         }
     }
 
-    for obj in allocate_points(
-        &rendering.three_d,
-        &rendering.sphere_mesh,
-        &mut rendering.points_cache,
-        render_states,
-        points,
-    ) {
-        objects.push(obj);
-    }
-    for obj in allocate_line_segments(
-        &rendering.three_d,
-        &rendering.line_mesh,
-        &mut rendering.lines_cache,
-        render_states,
-        line_segments,
-    ) {
-        objects.push(obj);
-    }
+    rendering
+        .points_cache
+        .set_instances(&allocate_points(points))?;
+    objects.push(&rendering.points_cache);
+
+    rendering
+        .lines_cache
+        .set_instances(&allocate_line_segments(line_segments))?;
+    objects.push(&rendering.lines_cache);
 
     crate::profile_scope!("render_pass");
     render_pass(&camera, &objects, lights)?;

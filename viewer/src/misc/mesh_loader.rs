@@ -132,8 +132,18 @@ impl CpuMesh {
                 .context("missing material")?
                 .clone();
 
-            let m =
-                InstancedModel::new_with_material(three_d, &[], m, material).map_err(to_anyhow)?;
+            let m = InstancedModel::new_with_material(
+                three_d,
+                &three_d::Instances {
+                    translations: vec![],
+                    rotations: Some(vec![]),
+                    scales: Some(vec![]),
+                    ..Default::default()
+                },
+                m,
+                material,
+            )
+            .map_err(to_anyhow)?;
             aabb.expand_with_aabb(&m.aabb());
             models.push(m);
         }
