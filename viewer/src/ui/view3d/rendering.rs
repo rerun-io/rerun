@@ -339,7 +339,9 @@ pub fn paint_with_three_d(
     for &mesh_id in mesh_instances.keys() {
         if let Some(gpu_mesh) = rendering.mesh_cache.get(mesh_id) {
             for obj in &gpu_mesh.models {
-                objects.push(obj);
+                if obj.instance_count() > 0 {
+                    objects.push(obj);
+                }
             }
         }
     }
@@ -347,12 +349,16 @@ pub fn paint_with_three_d(
     rendering
         .points_cache
         .set_instances(&allocate_points(points))?;
-    objects.push(&rendering.points_cache);
+    if rendering.points_cache.instance_count() > 0 {
+        objects.push(&rendering.points_cache);
+    }
 
     rendering
         .lines_cache
         .set_instances(&allocate_line_segments(line_segments))?;
-    objects.push(&rendering.lines_cache);
+    if rendering.lines_cache.instance_count() > 0 {
+        objects.push(&rendering.lines_cache);
+    }
 
     crate::profile_scope!("render_pass");
     render_pass(&camera, &objects, lights)?;

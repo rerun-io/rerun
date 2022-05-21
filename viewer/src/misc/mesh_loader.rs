@@ -135,6 +135,7 @@ impl CpuMesh {
             let m = InstancedModel::new_with_material(
                 three_d,
                 &three_d::Instances {
+                    // Must declare what we intend to use:
                     translations: vec![],
                     rotations: Some(vec![]),
                     scales: Some(vec![]),
