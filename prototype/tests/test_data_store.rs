@@ -1,5 +1,8 @@
 use prototype::*;
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Time(i64);
+
 fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
     let batch: nohash_hasher::IntMap<IndexKey, T> = batch.into_iter().collect();
     std::sync::Arc::new(batch)
@@ -7,8 +10,8 @@ fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
 
 #[test]
 fn test_singular() {
-    fn points_at(store: &DataStore, frame: i64) -> Vec<Point3<'_>> {
-        let time_query = TimeQuery::LatestAt(TimeValue::Sequence(frame));
+    fn points_at(store: &TypePathDataStore<Time>, frame: i64) -> Vec<Point3<'_>> {
+        let time_query = TimeQuery::LatestAt(Time(frame));
         let mut points = Scene3D::from_store(store, &time_query).points;
         points.sort_by(|a, b| a.partial_cmp(b).unwrap());
         points
@@ -40,33 +43,28 @@ fn test_singular() {
         ]
     }
 
-    let mut store = DataStore::default();
+    let mut store = TypePathDataStore::default();
 
     store.insert_individual::<[f32; 3]>(
         pos_type_path(),
         index_path("left", 0),
-        TimeValue::Sequence(1),
+        Time(1),
         [1.0, 1.0, 1.0],
     );
 
     store.insert_individual::<[f32; 3]>(
         pos_type_path(),
         index_path("left", 0),
-        TimeValue::Sequence(3),
+        Time(3),
         [3.0, 3.0, 3.0],
     );
 
-    store.insert_individual::<f32>(
-        radius_type_path(),
-        index_path("left", 0),
-        TimeValue::Sequence(2),
-        1.0,
-    );
+    store.insert_individual::<f32>(radius_type_path(), index_path("left", 0), Time(2), 1.0);
 
     store.insert_individual::<[f32; 3]>(
         pos_type_path(),
         index_path("left", 1),
-        TimeValue::Sequence(4),
+        Time(4),
         [4.0, 4.0, 4.0],
     );
 
@@ -136,8 +134,8 @@ fn test_batches() {
         ]
     }
 
-    fn values(store: &DataStore, frame: i64) -> Vec<(i32, Option<&str>)> {
-        let time_query = TimeQuery::LatestAt(TimeValue::Sequence(frame));
+    fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
+        let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
         visit_data_and_siblings(store, &time_query, &prim(), ("label",), |prim, sibling| {
             values.push((*prim, sibling.copied()));
@@ -150,12 +148,12 @@ fn test_batches() {
         IndexKey::new(Index::Sequence(seq))
     }
 
-    let mut store = DataStore::default();
+    let mut store = TypePathDataStore::default();
 
     store.insert_batch(
         prim(),
         index_path_prefix("left"),
-        TimeValue::Sequence(1),
+        Time(1),
         batch([
             (index(0), 0_i32),
             (index(1), 1_i32),
@@ -166,7 +164,7 @@ fn test_batches() {
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
-        TimeValue::Sequence(2),
+        Time(2),
         batch([
             (index(0), 1_000_i32),
             (index(1), 1_001_i32),
@@ -177,7 +175,7 @@ fn test_batches() {
     store.insert_batch(
         prim(),
         index_path_prefix("left"),
-        TimeValue::Sequence(3),
+        Time(3),
         batch([
             // 0, 1 omitted = dropped
             (index(2), 22_i32),
@@ -187,13 +185,13 @@ fn test_batches() {
     store.insert_batch(
         sibling(),
         index_path_prefix("left"),
-        TimeValue::Sequence(4),
+        Time(4),
         batch([(index(1), "one"), (index(2), "two")]),
     );
     store.insert_batch(
         sibling(),
         index_path_prefix("right"),
-        TimeValue::Sequence(5),
+        Time(5),
         batch([
             (index(0), "r0"),
             (index(1), "r1"),
@@ -205,7 +203,7 @@ fn test_batches() {
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
-        TimeValue::Sequence(6),
+        Time(6),
         batch([
             (index(3), 1_003_i32),
             (index(4), 1_004_i32),
@@ -215,7 +213,7 @@ fn test_batches() {
     store.insert_batch(
         sibling(),
         index_path_prefix("right"),
-        TimeValue::Sequence(7),
+        Time(7),
         batch([
             (index(3), "r3_new"),
             // omitted = replaced
@@ -327,8 +325,8 @@ fn test_batched_and_individual() {
         ]
     }
 
-    fn values(store: &DataStore, frame: i64) -> Vec<(i32, Option<&str>)> {
-        let time_query = TimeQuery::LatestAt(TimeValue::Sequence(frame));
+    fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
+        let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
         visit_data_and_siblings(store, &time_query, &prim(), ("label",), |prim, sibling| {
             values.push((*prim, sibling.copied()));
@@ -341,12 +339,12 @@ fn test_batched_and_individual() {
         IndexKey::new(Index::Sequence(seq))
     }
 
-    let mut store = DataStore::default();
+    let mut store = TypePathDataStore::default();
 
     store.insert_batch(
         prim(),
         index_path_prefix("left"),
-        TimeValue::Sequence(1),
+        Time(1),
         batch([
             (index(0), 0_i32),
             (index(1), 1_i32),
@@ -357,7 +355,7 @@ fn test_batched_and_individual() {
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
-        TimeValue::Sequence(2),
+        Time(2),
         batch([
             (index(0), 1_000_i32),
             (index(1), 1_001_i32),
@@ -368,25 +366,15 @@ fn test_batched_and_individual() {
     store.insert_batch(
         prim(),
         index_path_prefix("left"),
-        TimeValue::Sequence(3),
+        Time(3),
         batch([
             // 0, 1 omitted = dropped
             (index(2), 22_i32),
             (index(3), 33_i32),
         ]),
     );
-    store.insert_individual(
-        sibling(),
-        index_path_key("left", 1),
-        TimeValue::Sequence(4),
-        "one",
-    );
-    store.insert_individual(
-        sibling(),
-        index_path_key("left", 2),
-        TimeValue::Sequence(4),
-        "two",
-    );
+    store.insert_individual(sibling(), index_path_key("left", 1), Time(4), "one");
+    store.insert_individual(sibling(), index_path_key("left", 2), Time(4), "two");
     for (index, value) in [
         (0, "r0"),
         (1, "r1"),
@@ -394,29 +382,19 @@ fn test_batched_and_individual() {
         (3, "r3"),
         (4, "r4"), // has no point yet
     ] {
-        store.insert_individual(
-            sibling(),
-            index_path_key("right", index),
-            TimeValue::Sequence(5),
-            value,
-        );
+        store.insert_individual(sibling(), index_path_key("right", index), Time(5), value);
     }
     store.insert_batch(
         prim(),
         index_path_prefix("right"),
-        TimeValue::Sequence(6),
+        Time(6),
         batch([
             (index(3), 1_003_i32),
             (index(4), 1_004_i32),
             (index(5), 1_005_i32),
         ]),
     );
-    store.insert_individual(
-        sibling(),
-        index_path_key("right", 5),
-        TimeValue::Sequence(7),
-        "r5",
-    );
+    store.insert_individual(sibling(), index_path_key("right", 5), Time(7), "r5");
 
     assert_eq!(values(&store, 0), vec![]);
     assert_eq!(
@@ -523,8 +501,8 @@ fn test_individual_and_batched() {
         ]
     }
 
-    fn values(store: &DataStore, frame: i64) -> Vec<(i32, Option<&str>)> {
-        let time_query = TimeQuery::LatestAt(TimeValue::Sequence(frame));
+    fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
+        let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
         visit_data_and_siblings(store, &time_query, &prim(), ("label",), |prim, sibling| {
             values.push((*prim, sibling.copied()));
@@ -537,42 +515,22 @@ fn test_individual_and_batched() {
         IndexKey::new(Index::Sequence(seq))
     }
 
-    let mut store = DataStore::default();
+    let mut store = TypePathDataStore::default();
 
-    store.insert_individual(
-        prim(),
-        index_path_key("left", 0),
-        TimeValue::Sequence(1),
-        0_i32,
-    );
-    store.insert_individual(
-        prim(),
-        index_path_key("left", 1),
-        TimeValue::Sequence(2),
-        1_i32,
-    );
+    store.insert_individual(prim(), index_path_key("left", 0), Time(1), 0_i32);
+    store.insert_individual(prim(), index_path_key("left", 1), Time(2), 1_i32);
     store.insert_batch(
         sibling(),
         index_path_prefix("left"),
-        TimeValue::Sequence(3),
+        Time(3),
         batch([(index(1), "one"), (index(2), "two")]),
     );
-    store.insert_individual(
-        prim(),
-        index_path_key("left", 2),
-        TimeValue::Sequence(4),
-        2_i32,
-    );
-    store.insert_individual(
-        prim(),
-        index_path_key("left", 3),
-        TimeValue::Sequence(4),
-        3_i32,
-    );
+    store.insert_individual(prim(), index_path_key("left", 2), Time(4), 2_i32);
+    store.insert_individual(prim(), index_path_key("left", 3), Time(4), 3_i32);
     store.insert_batch(
         sibling(),
         index_path_prefix("left"),
-        TimeValue::Sequence(5),
+        Time(5),
         batch([(index(2), "two"), (index(3), "three")]),
     );
 

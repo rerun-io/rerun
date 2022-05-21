@@ -2,7 +2,7 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use prototype::DataStore;
+use prototype::TypePathDataStore;
 use prototype::*;
 
 use std::sync::Arc;
@@ -21,11 +21,14 @@ fn data_path(camera: &str, index: u64, field: &str) -> DataPath {
     ]
 }
 
-fn generate_date(individual_pos: bool, individual_radius: bool) -> DataStore {
-    let mut data_store = DataStore::default();
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Time(i64);
+
+fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataStore<Time> {
+    let mut data_store = TypePathDataStore::default();
 
     for frame in 0..NUM_FRAMES {
-        let time_value = TimeValue::Sequence(frame);
+        let time_value = Time(frame);
         for camera in ["left", "right"] {
             if individual_pos {
                 for point in 0..NUM_POINTS_PER_CAMERA {
@@ -98,10 +101,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let data_store = generate_date(false, false);
     group.bench_function("batched_pos_batched_radius", |b| {
         b.iter(|| {
-            let scene = Scene3D::from_store(
-                &data_store,
-                &TimeQuery::LatestAt(TimeValue::Sequence(NUM_FRAMES / 2)),
-            );
+            let scene =
+                Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
             assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
         })
     });
@@ -109,10 +110,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let data_store = generate_date(true, true);
     group.bench_function("individual_pos_individual_radius", |b| {
         b.iter(|| {
-            let scene = Scene3D::from_store(
-                &data_store,
-                &TimeQuery::LatestAt(TimeValue::Sequence(NUM_FRAMES / 2)),
-            );
+            let scene =
+                Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
             assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
         })
     });
@@ -120,10 +119,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let data_store = generate_date(false, true);
     group.bench_function("batched_pos_individual_radius", |b| {
         b.iter(|| {
-            let scene = Scene3D::from_store(
-                &data_store,
-                &TimeQuery::LatestAt(TimeValue::Sequence(NUM_FRAMES / 2)),
-            );
+            let scene =
+                Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
             assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
         })
     });
@@ -131,10 +128,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let data_store = generate_date(true, false);
     group.bench_function("individual_pos_batched_radius", |b| {
         b.iter(|| {
-            let scene = Scene3D::from_store(
-                &data_store,
-                &TimeQuery::LatestAt(TimeValue::Sequence(NUM_FRAMES / 2)),
-            );
+            let scene =
+                Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
             assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
         })
     });

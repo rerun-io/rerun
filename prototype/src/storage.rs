@@ -11,23 +11,31 @@ use nohash_hasher::IntMap;
 /// Can be shared between different timelines.
 pub type Batch<T> = Arc<IntMap<IndexKey, T>>;
 
-#[derive(Default)]
-pub struct DataStore {
-    data: AHashMap<TypePath, DataPerTypePathTypeErased>,
+/// One per each time source.
+pub struct TypePathDataStore<Time> {
+    data: AHashMap<TypePath, DataStoreTypeErased<Time>>,
 }
 
-impl DataStore {
+impl<Time> Default for TypePathDataStore<Time> {
+    fn default() -> Self {
+        Self {
+            data: Default::default(),
+        }
+    }
+}
+
+impl<Time: 'static + Ord> TypePathDataStore<Time> {
     pub fn insert_individual<T: 'static>(
         &mut self,
         type_path: TypePath,
         index_path: IndexPathKey,
-        time: TimeValue,
+        time: Time,
         value: T,
     ) {
         if let Some(store) = self
             .data
             .entry(type_path)
-            .or_insert_with(|| DataPerTypePathTypeErased::new_individual::<T>())
+            .or_insert_with(|| DataStoreTypeErased::new_individual::<T>())
             .write::<T>()
         {
             store.insert_individual(index_path, time, value);
@@ -40,13 +48,13 @@ impl DataStore {
         &mut self,
         type_path: TypePath,
         index_path_prefix: IndexPathKey,
-        time: TimeValue,
+        time: Time,
         values: Batch<T>,
     ) {
         if let Some(store) = self
             .data
             .entry(type_path)
-            .or_insert_with(|| DataPerTypePathTypeErased::new_batched::<T>())
+            .or_insert_with(|| DataStoreTypeErased::new_batched::<T>())
             .write::<T>()
         {
             store.insert_batch(index_path_prefix, time, values);
@@ -55,36 +63,40 @@ impl DataStore {
         }
     }
 
-    pub fn get<T: 'static>(&self, type_path: &TypePath) -> Option<&DataPerTypePath<T>> {
+    pub fn get<T: 'static>(&self, type_path: &TypePath) -> Option<&DataStore<Time, T>> {
         self.data.get(type_path).and_then(|x| x.read::<T>())
     }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&TypePath, &DataPerTypePathTypeErased)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&TypePath, &DataStoreTypeErased<Time>)> {
         self.data.iter()
     }
 }
 
 // ----------------------------------------------------------------------------
 
-/// For a specific [`TypePath`].
-///
-/// type-erased version of [`DataHistoryT`].
-pub struct DataPerTypePathTypeErased(Box<dyn std::any::Any>);
+/// Type-erased version of [`DataStore`].
+pub struct DataStoreTypeErased<Time>(Box<dyn std::any::Any>, std::marker::PhantomData<Time>);
 
-impl DataPerTypePathTypeErased {
+impl<Time: 'static + Ord> DataStoreTypeErased<Time> {
     fn new_individual<T: 'static>() -> Self {
-        Self(Box::new(DataPerTypePath::<T>::new_individual()))
+        Self(
+            Box::new(DataStore::<Time, T>::new_individual()),
+            Default::default(),
+        )
     }
 
     fn new_batched<T: 'static>() -> Self {
-        Self(Box::new(DataPerTypePath::<T>::new_batched()))
+        Self(
+            Box::new(DataStore::<Time, T>::new_batched()),
+            Default::default(),
+        )
     }
 
-    pub fn read_no_warn<T: 'static>(&self) -> Option<&DataPerTypePath<T>> {
-        self.0.downcast_ref::<DataPerTypePath<T>>()
+    pub fn read_no_warn<T: 'static>(&self) -> Option<&DataStore<Time, T>> {
+        self.0.downcast_ref::<DataStore<Time, T>>()
     }
 
-    pub fn read<T: 'static>(&self) -> Option<&DataPerTypePath<T>> {
+    pub fn read<T: 'static>(&self) -> Option<&DataStore<Time, T>> {
         if let Some(read) = self.read_no_warn() {
             Some(read)
         } else {
@@ -92,21 +104,23 @@ impl DataPerTypePathTypeErased {
         }
     }
 
-    pub fn write<T: 'static>(&mut self) -> Option<&mut DataPerTypePath<T>> {
-        self.0.downcast_mut::<DataPerTypePath<T>>()
+    pub fn write<T: 'static>(&mut self) -> Option<&mut DataStore<Time, T>> {
+        self.0.downcast_mut::<DataStore<Time, T>>()
     }
 }
 
 // ----------------------------------------------------------------------------
 
-pub enum DataPerTypePath<T> {
+pub enum DataStore<Time, T> {
+    // TODO: struct where `individual` are always read first and then the batch.
+    // `batch` always mean "reset", and "individual" is an addition or amendment.
     /// Individual data at this path.
-    Individual(IndividualDataHistory<T>),
+    Individual(IndividualDataHistory<Time, T>),
 
-    Batched(BatchedDataHistory<T>),
+    Batched(BatchedDataHistory<Time, T>),
 }
 
-impl<T: 'static> DataPerTypePath<T> {
+impl<Time: Ord, T: 'static> DataStore<Time, T> {
     fn new_individual() -> Self {
         Self::Individual(Default::default())
     }
@@ -115,23 +129,18 @@ impl<T: 'static> DataPerTypePath<T> {
         Self::Batched(Default::default())
     }
 
-    fn as_individual(&mut self) -> &mut IndividualDataHistory<T> {
+    fn as_individual(&mut self) -> &mut IndividualDataHistory<Time, T> {
         match self {
             Self::Individual(individual) => individual,
             Self::Batched(_) => todo!("convert"),
         }
     }
 
-    pub fn insert_individual(&mut self, index_path: IndexPathKey, time: TimeValue, value: T) {
+    pub fn insert_individual(&mut self, index_path: IndexPathKey, time: Time, value: T) {
         self.as_individual().insert(index_path, time, value);
     }
 
-    pub fn insert_batch(
-        &mut self,
-        index_path_prefix: IndexPathKey,
-        time: TimeValue,
-        values: Batch<T>,
-    ) {
+    pub fn insert_batch(&mut self, index_path_prefix: IndexPathKey, time: Time, values: Batch<T>) {
         match self {
             Self::Individual(_individual) => {
                 todo!("implement slow path");
@@ -146,12 +155,12 @@ impl<T: 'static> DataPerTypePath<T> {
 // ----------------------------------------------------------------------------
 
 /// For a specific [`TypePath`].
-pub struct IndividualDataHistory<T> {
+pub struct IndividualDataHistory<Time, T> {
     /// fast to find latest value at a certain time.
-    values: IntMap<IndexPathKey, BTreeMap<TimeValue, T>>,
+    values: IntMap<IndexPathKey, BTreeMap<Time, T>>,
 }
 
-impl<T> Default for IndividualDataHistory<T> {
+impl<Time: Ord, T> Default for IndividualDataHistory<Time, T> {
     fn default() -> Self {
         Self {
             values: Default::default(),
@@ -159,15 +168,15 @@ impl<T> Default for IndividualDataHistory<T> {
     }
 }
 
-impl<T> IndividualDataHistory<T> {
-    pub fn insert(&mut self, index_path: IndexPathKey, time: TimeValue, value: T) {
+impl<Time: Ord, T> IndividualDataHistory<Time, T> {
+    pub fn insert(&mut self, index_path: IndexPathKey, time: Time, value: T) {
         self.values
             .entry(index_path)
             .or_default()
             .insert(time, value);
     }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<TimeValue, T>)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<Time, T>)> {
         self.values.iter()
     }
 }
@@ -175,12 +184,12 @@ impl<T> IndividualDataHistory<T> {
 // ----------------------------------------------------------------------------
 
 /// For a specific [`TypePath`].
-pub struct BatchedDataHistory<T> {
+pub struct BatchedDataHistory<Time, T> {
     /// The index is the path prefix (everything but the last value).
-    batches_over_time: IntMap<IndexPathKey, BTreeMap<TimeValue, Batch<T>>>,
+    batches_over_time: IntMap<IndexPathKey, BTreeMap<Time, Batch<T>>>,
 }
 
-impl<T> Default for BatchedDataHistory<T> {
+impl<Time: Ord, T> Default for BatchedDataHistory<Time, T> {
     fn default() -> Self {
         Self {
             batches_over_time: Default::default(),
@@ -188,8 +197,8 @@ impl<T> Default for BatchedDataHistory<T> {
     }
 }
 
-impl<T> BatchedDataHistory<T> {
-    pub fn insert(&mut self, index_path_prefix: IndexPathKey, time: TimeValue, values: Batch<T>) {
+impl<Time: Ord, T> BatchedDataHistory<Time, T> {
+    pub fn insert(&mut self, index_path_prefix: IndexPathKey, time: Time, values: Batch<T>) {
         self.batches_over_time
             .entry(index_path_prefix)
             .or_default()
@@ -198,36 +207,32 @@ impl<T> BatchedDataHistory<T> {
 
     pub fn iter(
         &self,
-    ) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<TimeValue, Batch<T>>)> {
+    ) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<Time, Batch<T>>)> {
         self.batches_over_time.iter()
     }
 }
 
 // ----------------------------------------------------------------------------
 
-pub enum IndividualDataReader<'store, T> {
+pub enum IndividualDataReader<'store, Time, T> {
     None,
-    Individual(&'store IndividualDataHistory<T>),
-    Batched(&'store BatchedDataHistory<T>),
+    Individual(&'store IndividualDataHistory<Time, T>),
+    Batched(&'store BatchedDataHistory<Time, T>),
 }
 
-impl<'store, T: 'static> IndividualDataReader<'store, T> {
-    pub fn new(store: &'store DataStore, type_path: &TypePath) -> Self {
+impl<'store, Time: 'static + Ord, T: 'static> IndividualDataReader<'store, Time, T> {
+    pub fn new(store: &'store TypePathDataStore<Time>, type_path: &TypePath) -> Self {
         if let Some(data) = store.get::<T>(type_path) {
             match data {
-                DataPerTypePath::Individual(individual) => Self::Individual(individual),
-                DataPerTypePath::Batched(batched) => Self::Batched(batched),
+                DataStore::Individual(individual) => Self::Individual(individual),
+                DataStore::Batched(batched) => Self::Batched(batched),
             }
         } else {
             Self::None
         }
     }
 
-    pub fn latest_at(
-        &self,
-        index_path: &IndexPathKey,
-        query_time: &TimeValue,
-    ) -> Option<&'store T> {
+    pub fn latest_at(&self, index_path: &IndexPathKey, query_time: &Time) -> Option<&'store T> {
         match self {
             Self::None => None,
             Self::Individual(history) => {
@@ -245,34 +250,34 @@ impl<'store, T: 'static> IndividualDataReader<'store, T> {
 
 // ----------------------------------------------------------------------------
 
-pub enum BatchedDataReader<'store, T> {
+pub enum BatchedDataReader<'store, Time, T> {
     None,
-    Individual(IndexPathKey, TimeValue, &'store IndividualDataHistory<T>),
+    Individual(IndexPathKey, Time, &'store IndividualDataHistory<Time, T>),
     Batched(&'store IntMap<IndexKey, T>),
 }
 
-impl<'store, T: 'static> BatchedDataReader<'store, T> {
+impl<'store, Time: Clone + Ord, T: 'static> BatchedDataReader<'store, Time, T> {
     pub fn new(
-        data: Option<&'store DataPerTypePath<T>>,
+        data: Option<&'store DataStore<Time, T>>,
         index_path_prefix: &IndexPathKey,
-        query_time: &TimeValue,
+        query_time: &Time,
     ) -> Self {
         data.and_then(|data| Self::new_opt(data, index_path_prefix, query_time))
             .unwrap_or(Self::None)
     }
 
     fn new_opt(
-        data: &'store DataPerTypePath<T>,
+        data: &'store DataStore<Time, T>,
         index_path_prefix: &IndexPathKey,
-        query_time: &TimeValue,
+        query_time: &Time,
     ) -> Option<Self> {
         match data {
-            DataPerTypePath::Individual(individual) => Some(Self::Individual(
+            DataStore::Individual(individual) => Some(Self::Individual(
                 index_path_prefix.clone(),
-                *query_time,
+                query_time.clone(),
                 individual,
             )),
-            DataPerTypePath::Batched(batched) => {
+            DataStore::Batched(batched) => {
                 let everything_per_time = &batched.batches_over_time.get(index_path_prefix)?;
                 let (_, map) = latest_at(everything_per_time, query_time)?;
                 Some(Self::Batched(map))
@@ -281,6 +286,7 @@ impl<'store, T: 'static> BatchedDataReader<'store, T> {
     }
 
     pub fn latest_at(&self, index_path_suffix: &IndexKey) -> Option<&'store T> {
+        // TODO: look up in individual first, the batched, take the latest.
         match self {
             Self::None => None,
             Self::Individual(index_path_prefix, query_time, history) => {
@@ -295,24 +301,24 @@ impl<'store, T: 'static> BatchedDataReader<'store, T> {
 
 // ----------------------------------------------------------------------------
 
-fn latest_at<'data, T>(
-    data_over_time: &'data BTreeMap<TimeValue, T>,
-    query_time: &'_ TimeValue,
-) -> Option<(&'data TimeValue, &'data T)> {
+fn latest_at<'data, Time: Ord, T>(
+    data_over_time: &'data BTreeMap<Time, T>,
+    query_time: &'_ Time,
+) -> Option<(&'data Time, &'data T)> {
     data_over_time.range(..=query_time).rev().next()
 }
 
-fn values_in_range<'data, T>(
-    data_over_time: &'data BTreeMap<TimeValue, T>,
-    time_range: &'_ TimeRange,
-) -> impl Iterator<Item = (&'data TimeValue, &'data T)> {
-    data_over_time.range(time_range.min..=time_range.max)
+fn values_in_range<'data, Time: Ord, T>(
+    data_over_time: &'data BTreeMap<Time, T>,
+    time_range: &'_ std::ops::RangeInclusive<Time>,
+) -> impl Iterator<Item = (&'data Time, &'data T)> {
+    data_over_time.range(time_range.start()..=time_range.end())
 }
 
-pub fn query<'data, T>(
-    data_over_time: &'data BTreeMap<TimeValue, T>,
-    time_query: &TimeQuery,
-    mut visit: impl FnMut(&TimeValue, &'data T),
+pub fn query<'data, Time: Ord, T>(
+    data_over_time: &'data BTreeMap<Time, T>,
+    time_query: &TimeQuery<Time>,
+    mut visit: impl FnMut(&Time, &'data T),
 ) {
     match time_query {
         TimeQuery::LatestAt(query_time) => {
@@ -332,23 +338,23 @@ pub fn query<'data, T>(
 
 // ----------------------------------------------------------------------------
 
-pub fn visit_data<'s, T: 'static>(
-    store: &'s DataStore,
-    time_query: &TimeQuery,
+pub fn visit_data<'s, Time: 'static + Ord, T: 'static>(
+    store: &'s TypePathDataStore<Time>,
+    time_query: &TimeQuery<Time>,
     primary_type_path: &TypePath,
     mut visit: impl FnMut(&'s T),
 ) -> Option<()> {
     let primary_data = store.get::<T>(primary_type_path)?;
 
     match primary_data {
-        DataPerTypePath::Individual(primary) => {
+        DataStore::Individual(primary) => {
             for (_index_path, values_over_time) in primary.iter() {
                 query(values_over_time, time_query, |_time, primary| {
                     visit(primary);
                 });
             }
         }
-        DataPerTypePath::Batched(primary) => {
+        DataStore::Batched(primary) => {
             for (_index_path_prefix, primary) in primary.iter() {
                 query(primary, time_query, |_time, primary| {
                     for primary in primary.values() {
@@ -362,9 +368,9 @@ pub fn visit_data<'s, T: 'static>(
     Some(())
 }
 
-pub fn visit_data_and_siblings<'s, T: 'static, S1: 'static>(
-    store: &'s DataStore,
-    time_query: &TimeQuery,
+pub fn visit_data_and_siblings<'s, Time: 'static + Clone + Ord, T: 'static, S1: 'static>(
+    store: &'s TypePathDataStore<Time>,
+    time_query: &TimeQuery<Time>,
     primary_type_path: &TypePath,
     (sibling1,): (&str,),
     mut visit: impl FnMut(&'s T, Option<&'s S1>),
@@ -373,8 +379,8 @@ pub fn visit_data_and_siblings<'s, T: 'static, S1: 'static>(
     let sibling1_path = sibling(primary_type_path, sibling1);
 
     match primary_data {
-        DataPerTypePath::Individual(primary) => {
-            let sibling1_reader = IndividualDataReader::<S1>::new(store, &sibling1_path);
+        DataStore::Individual(primary) => {
+            let sibling1_reader = IndividualDataReader::<Time, S1>::new(store, &sibling1_path);
             for (index_path, values_over_time) in primary.iter() {
                 query(values_over_time, time_query, |time, primary| {
                     let sibling1 = sibling1_reader.latest_at(index_path, time);
@@ -382,7 +388,7 @@ pub fn visit_data_and_siblings<'s, T: 'static, S1: 'static>(
                 });
             }
         }
-        DataPerTypePath::Batched(primary) => {
+        DataStore::Batched(primary) => {
             for (index_path_prefix, primary) in primary.iter() {
                 let sibling1_store = store.get::<S1>(&sibling1_path);
                 query(primary, time_query, |time, primary| {

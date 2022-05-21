@@ -75,7 +75,7 @@ fn tracking_points() {
     let mut point_index = 0;
     let mut num_points = 0;
 
-    let mut store = DataStore::default();
+    let mut store = TypePathDataStore::default();
     for frame in 0..NUM_FRAMES {
         for offset in 0..OVERLAP {
             let (type_path, index_path) =
@@ -106,7 +106,7 @@ fn big_clouds() {
     const NUM_FRAMES: usize = 100;
     const NUM_POINTS_PER_CAMERA: usize = 1_000;
 
-    let mut store = DataStore::default();
+    let mut store = TypePathDataStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {
@@ -141,7 +141,7 @@ fn big_clouds_batched() {
     const NUM_FRAMES: usize = 100;
     const NUM_POINTS_PER_CAMERA: usize = 1_000;
 
-    let mut store = DataStore::default();
+    let mut store = TypePathDataStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {

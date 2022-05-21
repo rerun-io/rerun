@@ -12,7 +12,10 @@ pub struct Scene3D<'s> {
 }
 
 impl<'s> Scene3D<'s> {
-    pub fn from_store(store: &'s DataStore, time_query: &TimeQuery) -> Self {
+    pub fn from_store<Time: 'static + Clone + Ord>(
+        store: &'s TypePathDataStore<Time>,
+        time_query: &TimeQuery<Time>,
+    ) -> Self {
         let mut slf = Self::default();
 
         for (type_path, _) in store.iter() {

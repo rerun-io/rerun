@@ -219,8 +219,16 @@ fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TimeValue {
-    // Time(u64), // TODO
+    // Time(Time), // TODO
     Sequence(i64),
+}
+
+impl TimeValue {
+    pub fn to_i64(&self) -> i64 {
+        match self {
+            Self::Sequence(value) => *value,
+        }
+    }
 }
 
 /// A point in time.
@@ -229,13 +237,7 @@ pub enum TimeValue {
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimeStamp(pub BTreeMap<String, TimeValue>);
 
-#[derive(Clone, Copy, Debug)]
-pub struct TimeRange {
-    pub min: TimeValue,
-    pub max: TimeValue,
-}
-
-pub enum TimeQuery {
-    LatestAt(TimeValue),
-    Range(TimeRange),
+pub enum TimeQuery<Time> {
+    LatestAt(Time),
+    Range(std::ops::RangeInclusive<Time>),
 }
