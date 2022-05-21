@@ -116,14 +116,14 @@ pub enum Index {
 #[derive(Clone, Debug, Eq, PartialOrd, Ord)]
 pub struct IndexKey {
     index: Index,
-    hash: u64,
+    hashes: [u64; 2], // 128 bit to avoid collisions
 }
 
 impl IndexKey {
     #[inline]
     pub fn new(index: Index) -> Self {
-        let hash = hash(&index);
-        Self { index, hash }
+        let hashes = double_hash(&index);
+        Self { index, hashes }
     }
 
     pub fn index(&self) -> &Index {
@@ -134,14 +134,14 @@ impl IndexKey {
 impl std::cmp::PartialEq for IndexKey {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash // much faster, and low chance of collision
+        self.hashes == other.hashes // much faster, and low chance of collision
     }
 }
 
 impl std::hash::Hash for IndexKey {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hash);
+        state.write_u64(self.hashes[0]);
     }
 }
 
@@ -159,19 +159,19 @@ impl From<Index> for IndexKey {
 #[derive(Clone, Debug, Default, Eq, PartialOrd, Ord)]
 pub struct IndexPathKey {
     components: im::Vector<Index>,
-    hash: u64,
+    hashes: [u64; 2], // 128 bit to avoid collisions
 }
 
 impl IndexPathKey {
     #[inline]
     pub fn new(components: im::Vector<Index>) -> Self {
-        let hash = hash(&components);
-        Self { components, hash }
+        let hashes = double_hash(&components);
+        Self { components, hashes }
     }
 
     pub fn push_back(&mut self, comp: Index) {
         self.components.push_back(comp);
-        self.hash = hash(&self.components);
+        self.hashes = double_hash(&self.components);
     }
 
     /// Split off the last component.
@@ -185,14 +185,14 @@ impl IndexPathKey {
 impl std::cmp::PartialEq for IndexPathKey {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash // much faster, and low chance of collision
+        self.hashes == other.hashes // much faster, and low chance of collision
     }
 }
 
 impl std::hash::Hash for IndexPathKey {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hash);
+        state.write_u64(self.hashes[0]);
     }
 }
 
@@ -200,17 +200,16 @@ impl nohash_hasher::IsEnabled for IndexPathKey {}
 
 // ----------------------------------------------------------------------------
 
-/// Hash the given value.
 #[inline]
-fn hash(value: impl std::hash::Hash) -> u64 {
-    hash_with_seed(value, 456)
+fn double_hash(value: impl std::hash::Hash + Copy) -> [u64; 2] {
+    [hash_with_seed(value, 123), hash_with_seed(value, 456)]
 }
 
 /// Hash the given value.
 #[inline]
 fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
     use std::hash::Hasher as _;
-    let mut hasher = ahash::AHasher::new_with_keys(123, seed);
+    let mut hasher = ahash::AHasher::new_with_keys(666, seed);
     value.hash(&mut hasher);
     hasher.finish()
 }
