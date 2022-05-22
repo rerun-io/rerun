@@ -237,9 +237,9 @@ impl TimePanel {
             // paint hline guide:
             let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
             stroke.color = stroke.color.linear_multiply(0.5);
+            let left = response.rect.left() + ui.spacing().indent;
             let y = response.rect.bottom() + ui.spacing().item_spacing.y * 0.5;
-            ui.painter()
-                .hline(response.rect.left()..=ui.max_rect().right(), y, stroke);
+            ui.painter().hline(left..=ui.max_rect().right(), y, stroke);
         }
 
         self.next_col_right = self.next_col_right.max(response.rect.right());
