@@ -18,7 +18,7 @@ pub struct RenderingContext {
 }
 
 impl RenderingContext {
-    pub fn new(gl: &std::rc::Rc<glow::Context>) -> three_d::ThreeDResult<Self> {
+    pub fn new(gl: &std::sync::Arc<glow::Context>) -> three_d::ThreeDResult<Self> {
         let three_d = three_d::Context::from_gl_context(gl.clone())?;
 
         let skybox_dark =

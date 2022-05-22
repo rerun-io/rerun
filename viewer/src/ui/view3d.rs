@@ -496,7 +496,7 @@ fn default_camera(space_summary: &SpaceSummary, space_spects: &SpaceSpecs) -> Or
 /// to the [`egui::PaintCallback`] because [`three_d::Context`] isn't `Send+Sync`, which
 /// [`egui::PaintCallback`] is.
 fn with_three_d_context<R>(
-    gl: &std::rc::Rc<glow::Context>,
+    gl: &std::sync::Arc<glow::Context>,
     f: impl FnOnce(&mut RenderingContext) -> R,
 ) -> R {
     use std::cell::RefCell;
