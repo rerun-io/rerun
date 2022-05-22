@@ -45,13 +45,7 @@ impl RenderingContext {
         let sphere_mesh = three_d::CpuMesh::sphere(24);
         let points_cache = three_d::InstancedModel::new_with_material(
             &three_d,
-            &three_d::Instances {
-                // we must declare what we intend to use:
-                translations: vec![],
-                scales: Some(vec![]),
-                colors: Some(vec![]),
-                ..Default::default()
-            },
+            &Default::default(),
             &sphere_mesh,
             default_material(),
         )
@@ -60,14 +54,7 @@ impl RenderingContext {
         let line_mesh = three_d::CpuMesh::cylinder(10);
         let lines_cache = three_d::InstancedModel::new_with_material(
             &three_d,
-            &three_d::Instances {
-                // we must declare what we intend to use:
-                translations: vec![],
-                rotations: Some(vec![]),
-                scales: Some(vec![]),
-                colors: Some(vec![]),
-                ..Default::default()
-            },
+            &Default::default(),
             &line_mesh,
             Default::default(),
         )
@@ -296,12 +283,7 @@ pub fn paint_with_three_d(
     let mut mesh_instances: std::collections::HashMap<u64, Instances> = Default::default();
 
     for mesh in meshes {
-        let instances = mesh_instances
-            .entry(mesh.mesh_id)
-            .or_insert_with(|| Instances {
-                translations: vec![],
-                ..Default::default()
-            });
+        let instances = mesh_instances.entry(mesh.mesh_id).or_default();
 
         let (scale, rotation, translation) = mesh.world_from_mesh.to_scale_rotation_translation();
         instances
