@@ -56,7 +56,7 @@ fn log_annotation_pbdata(
             ("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0))),
         ]);
 
-        let object_path = ObjectPath::from("object") / Identifier::U64(object.id as _);
+        let object_path = ObjectPath::from("objects") / Identifier::U64(object.id as _);
 
         // dbg!(&object.category); // Most cups have "chair" as the category
 
@@ -97,7 +97,7 @@ fn log_annotation_pbdata(
 
         for object_annotation in &frame_annotation.annotations {
             let object_path =
-                ObjectPath::from("object") / Identifier::U64(object_annotation.object_id as _);
+                ObjectPath::from("objects") / Identifier::U64(object_annotation.object_id as _);
 
             // always zero?
             // tx.send(log_msg(
@@ -149,7 +149,7 @@ fn log_annotation_pbdata(
                 .ok();
             } else {
                 for (id, pos2) in keypoint_ids.into_iter().zip(keypoints_2d) {
-                    let point_path = &object_path / "point" / Identifier::from(id as u64);
+                    let point_path = &object_path / "points" / Identifier::from(id as u64);
                     tx.send(
                         log_msg(&time_point, &point_path / "pos2d", Data::Pos2(pos2))
                             .space(&image_space),
@@ -231,7 +231,7 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<T
                     let identifier = raw_feature_points.identifier[i] as u64; // TODO: i64
 
                     if let (Some(x), Some(y), Some(z)) = (point.x, point.y, point.z) {
-                        let point_path = &points_path / "point" / Identifier::from(identifier);
+                        let point_path = &points_path / Identifier::from(identifier);
 
                         tx.send(
                             log_msg(&time_point, &point_path / "pos", Data::Pos3([x, y, z]))
@@ -321,7 +321,7 @@ fn log_plane_anchor(
     let transform = glam::Mat4::from_cols_slice(&plane_anchor.transform).transpose();
 
     let identifier = plane_anchor.identifier.clone().unwrap();
-    let plane_path = root_path / "plane" / Identifier::from(identifier);
+    let plane_path = root_path / "planes" / Identifier::from(identifier);
 
     if let Some(plane_geometry) = &plane_anchor.geometry {
         let positions = plane_geometry

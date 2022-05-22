@@ -278,6 +278,15 @@ impl std::ops::Div<Identifier> for ObjectPath {
     }
 }
 
+impl std::ops::Div<Identifier> for &ObjectPath {
+    type Output = ObjectPath;
+
+    #[inline]
+    fn div(self, rhs: Identifier) -> Self::Output {
+        self.clone() / rhs
+    }
+}
+
 impl std::ops::Div<ObjectPathComponent> for &ObjectPath {
     type Output = ObjectPath;
 
