@@ -21,11 +21,11 @@ clap = { version = "3.1.6", features = ["derive"] }
 comms = { path = "../comms", features = ["client"] }
 log_types = { path = "../log_types", features = ["save", "load"] }
 
-# We use bleeding edge egui, from 2022-05-12
-eframe      = { git = "https://github.com/emilk/egui", rev = "2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01", features = ["persistence"] }
-egui        = { git = "https://github.com/emilk/egui", rev = "2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01", features = ["extra_debug_asserts", "tracing"] }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01", features = ["tracing"] }
-egui_glow   = { git = "https://github.com/emilk/egui", rev = "2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01" }
+# We use bleeding edge egui, from 2022-05-22
+eframe      = { git = "https://github.com/emilk/egui", rev = "b2510676b9a7b45b38820da326e27c05b7b2d408", features = ["persistence"] }
+egui        = { git = "https://github.com/emilk/egui", rev = "b2510676b9a7b45b38820da326e27c05b7b2d408", features = ["extra_debug_asserts", "tracing"] }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "b2510676b9a7b45b38820da326e27c05b7b2d408", features = ["tracing"] }
+egui_glow   = { git = "https://github.com/emilk/egui", rev = "b2510676b9a7b45b38820da326e27c05b7b2d408" }
 # eframe      = { path = "../../../egui/eframe", features = ["persistence"] }
 # egui        = { path = "../../../egui/egui", features = ["extra_debug_asserts", "tracing"] }
 # egui_extras = { path = "../../../egui/egui_extras", features = ["tracing"] }
@@ -46,8 +46,8 @@ rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-# We use bleeding edge three-d from 2022-04-12
-three-d = { git = "https://github.com/asny/three-d", rev = "4cd766c1d5672ce02d444dc475684e24cc42e68b", default-features = false, features = [
+# We use bleeding edge three-d from 2022-05-22
+three-d = { git = "https://github.com/asny/three-d", rev = "43f210668197e8b1dc50ea9f074d2b8426ecb0f2", default-features = false, features = [
     "gltf-io",
     "obj-io",
 ] }

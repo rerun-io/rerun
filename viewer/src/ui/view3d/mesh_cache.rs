@@ -41,12 +41,10 @@ impl MeshCache {
     pub fn set_instances(
         &mut self,
         mesh_id: u64,
-        render_states: three_d::RenderStates,
-        instances: &[three_d::Instance],
+        instances: &three_d::Instances,
     ) -> three_d::ThreeDResult<()> {
         if let Some(Some(gpu_mesh)) = self.0.get_mut(&mesh_id) {
             for model in &mut gpu_mesh.models {
-                model.material.render_states = render_states;
                 model.set_instances(instances)?;
             }
         }

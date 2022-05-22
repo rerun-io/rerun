@@ -694,7 +694,7 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 [[package]]
 name = "eframe"
 version = "0.18.0"
-source = "git+https://github.com/emilk/egui?rev=2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01#2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01"
+source = "git+https://github.com/emilk/egui?rev=b2510676b9a7b45b38820da326e27c05b7b2d408#b2510676b9a7b45b38820da326e27c05b7b2d408"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -718,7 +718,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.18.1"
-source = "git+https://github.com/emilk/egui?rev=2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01#2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01"
+source = "git+https://github.com/emilk/egui?rev=b2510676b9a7b45b38820da326e27c05b7b2d408#b2510676b9a7b45b38820da326e27c05b7b2d408"
 dependencies = [
  "ahash",
  "epaint",
@@ -731,13 +731,14 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.18.0"
-source = "git+https://github.com/emilk/egui?rev=2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01#2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01"
+source = "git+https://github.com/emilk/egui?rev=b2510676b9a7b45b38820da326e27c05b7b2d408#b2510676b9a7b45b38820da326e27c05b7b2d408"
 dependencies = [
  "arboard",
  "egui",
  "instant",
  "puffin",
  "serde",
+ "smithay-clipboard",
  "tracing",
  "webbrowser",
  "winit",
@@ -746,7 +747,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.18.0"
-source = "git+https://github.com/emilk/egui?rev=2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01#2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01"
+source = "git+https://github.com/emilk/egui?rev=b2510676b9a7b45b38820da326e27c05b7b2d408#b2510676b9a7b45b38820da326e27c05b7b2d408"
 dependencies = [
  "egui",
  "tracing",
@@ -755,7 +756,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.18.1"
-source = "git+https://github.com/emilk/egui?rev=2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01#2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01"
+source = "git+https://github.com/emilk/egui?rev=b2510676b9a7b45b38820da326e27c05b7b2d408#b2510676b9a7b45b38820da326e27c05b7b2d408"
 dependencies = [
  "bytemuck",
  "egui",
@@ -777,7 +778,7 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 [[package]]
 name = "emath"
 version = "0.18.0"
-source = "git+https://github.com/emilk/egui?rev=2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01#2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01"
+source = "git+https://github.com/emilk/egui?rev=b2510676b9a7b45b38820da326e27c05b7b2d408#b2510676b9a7b45b38820da326e27c05b7b2d408"
 dependencies = [
  "bytemuck",
  "serde",
@@ -786,7 +787,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.18.1"
-source = "git+https://github.com/emilk/egui?rev=2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01#2e4138d05048f9a8cf66da5c0dc478fdfc3f0e01"
+source = "git+https://github.com/emilk/egui?rev=b2510676b9a7b45b38820da326e27c05b7b2d408#b2510676b9a7b45b38820da326e27c05b7b2d408"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -2532,6 +2533,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "smithay-clipboard"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "610b551bd25378bfd2b8e7a0fcbd83d427e8f2f6a40c47ae0f70688e9949dd55"
+dependencies = [
+ "smithay-client-toolkit",
+ "wayland-client",
+]
+
+[[package]]
 name = "socket2"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2661,18 +2672,16 @@ dependencies = [
 
 [[package]]
 name = "three-d"
-version = "0.11.0"
-source = "git+https://github.com/asny/three-d?rev=4cd766c1d5672ce02d444dc475684e24cc42e68b#4cd766c1d5672ce02d444dc475684e24cc42e68b"
+version = "0.12.0"
+source = "git+https://github.com/asny/three-d?rev=43f210668197e8b1dc50ea9f074d2b8426ecb0f2#43f210668197e8b1dc50ea9f074d2b8426ecb0f2"
 dependencies = [
  "cgmath",
- "gl_generator",
  "gloo-timers",
  "glow",
  "gltf",
  "half",
  "image",
  "js-sys",
- "log",
  "serde",
  "thiserror",
  "wasm-bindgen",
