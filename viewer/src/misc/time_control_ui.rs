@@ -178,6 +178,8 @@ impl TimeControl {
                         .consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight);
 
             if step_back || step_fwd {
+                self.pause();
+
                 if let Some(time_range) = self.time_filter_range() {
                     let span = time_range.span().unwrap_or(0.0);
                     let new_min = if step_back {
