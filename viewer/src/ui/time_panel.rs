@@ -169,7 +169,7 @@ impl TimePanel {
         ui: &mut egui::Ui,
     ) {
         let mut path = vec![];
-        self.show_tree(
+        self.show_children(
             log_db,
             context,
             time_area_painter,
