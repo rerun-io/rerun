@@ -204,22 +204,18 @@ impl From<ObjectPathComponent> for ObjectPath {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjectPathComponent {
-    /// Named child
+    /// Struct member. Each member can have a different type.
     String(String),
-    /// Many children with identities that persist over time
-    PersistId(String, Identifier),
-    /// Many children with transient identities that only are valid for a single [`TimePoint`].
-    TempId(String, Identifier),
+
+    /// Array/table/map member. Each member must be of the same type (homogenous).
+    Index(Identifier),
 }
 
 impl std::fmt::Display for ObjectPathComponent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String(string) => f.write_str(string),
-            // Self::PersistId(string, id) => f.write_str(&format!("Persist({string}={id}))),
-            // Self::TempId(string, id) => f.write_str(&format!("Temp({string}={id}))),
-            Self::PersistId(string, id) => f.write_str(&format!("{string}={id}")),
-            Self::TempId(string, id) => f.write_str(&format!("{string}=~{id}")),
+            Self::Index(index) => index.fmt(f),
         }
     }
 }
@@ -229,16 +225,6 @@ impl From<&str> for ObjectPathComponent {
     fn from(comp: &str) -> Self {
         Self::String(comp.to_owned())
     }
-}
-
-#[inline]
-pub fn persist_id(name: impl Into<String>, id: impl Into<Identifier>) -> ObjectPathComponent {
-    ObjectPathComponent::PersistId(name.into(), id.into())
-}
-
-#[inline]
-pub fn temp_id(name: impl Into<String>, id: impl Into<Identifier>) -> ObjectPathComponent {
-    ObjectPathComponent::TempId(name.into(), id.into())
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -253,7 +239,7 @@ pub enum Identifier {
 impl std::fmt::Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(value) => value.fmt(f),
+            Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
             Self::U64(value) => value.fmt(f),
             Self::Sequence(seq) => format!("#{seq}").fmt(f),
         }
@@ -278,6 +264,16 @@ impl std::ops::Div<ObjectPathComponent> for ObjectPath {
     #[inline]
     fn div(mut self, rhs: ObjectPathComponent) -> Self::Output {
         self.0.push(rhs);
+        self
+    }
+}
+
+impl std::ops::Div<Identifier> for ObjectPath {
+    type Output = ObjectPath;
+
+    #[inline]
+    fn div(mut self, rhs: Identifier) -> Self::Output {
+        self.0.push(ObjectPathComponent::Index(rhs));
         self
     }
 }

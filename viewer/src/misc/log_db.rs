@@ -323,8 +323,11 @@ impl SpaceSummary {
 /// Tree of object paths.
 #[derive(Default)]
 pub(crate) struct ObjectTree {
-    /// Distinguished only by the string-part (ignores any [`Identifier`] of e.g. [`ObjectPathComponent::PersistId`].
-    pub children: BTreeMap<String, ObjectTreeNode>,
+    /// Children of type [`ObjectPathComponent::String`].
+    pub string_children: BTreeMap<String, ObjectTree>,
+
+    /// Children of type [`ObjectPathComponent::Index`].
+    pub index_children: BTreeMap<Identifier, ObjectTree>,
 
     /// When do we have data?
     ///
@@ -340,19 +343,12 @@ pub(crate) struct ObjectTree {
     pub data: DataColumns,
 }
 
-#[derive(Default)]
-pub(crate) struct ObjectTreeNode {
-    /// Children of type [`ObjectPathComponent::String`].
-    pub string_children: ObjectTree,
-
-    /// Children of type [`ObjectPathComponent::PersistId`].
-    pub persist_id_children: BTreeMap<Identifier, ObjectTree>,
-
-    /// Children of type [`ObjectPathComponent::TempId`].
-    pub temp_id_children: BTreeMap<Identifier, ObjectTree>,
-}
-
 impl ObjectTree {
+    /// Has no children
+    pub fn is_leaf(&self) -> bool {
+        self.string_children.is_empty() && self.index_children.is_empty()
+    }
+
     pub fn add_log_msg(&mut self, msg: &LogMsg) {
         self.add_path(&msg.object_path.0[..], msg);
     }
@@ -373,27 +369,14 @@ impl ObjectTree {
             }
             [first, rest @ ..] => match first {
                 ObjectPathComponent::String(string) => {
-                    self.children
+                    self.string_children
                         .entry(string.clone())
-                        .or_default()
-                        .string_children
-                        .add_path(rest, msg);
-                }
-                ObjectPathComponent::PersistId(string, id) => {
-                    self.children
-                        .entry(string.clone())
-                        .or_default()
-                        .persist_id_children
-                        .entry(id.clone())
                         .or_default()
                         .add_path(rest, msg);
                 }
-                ObjectPathComponent::TempId(string, id) => {
-                    self.children
-                        .entry(string.clone())
-                        .or_default()
-                        .temp_id_children
-                        .entry(id.clone())
+                ObjectPathComponent::Index(index) => {
+                    self.index_children
+                        .entry(index.clone())
                         .or_default()
                         .add_path(rest, msg);
                 }

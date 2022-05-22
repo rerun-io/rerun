@@ -192,16 +192,12 @@ impl TimePanel {
 
         // TODO: ignore rows that have no data for the current time source?
 
-        if tree.children.is_empty() && tree.times.is_empty() {
-            return;
-        }
-
         let object_path = ObjectPath(path.clone());
 
         // The last part of the the path component
         let text = if let Some(last) = path.last() {
-            if tree.children.is_empty() {
-                last.to_string() // leaf
+            if tree.is_leaf() {
+                last.to_string()
             } else {
                 format!("{}/", last) // show we have children with a /
             }
@@ -213,8 +209,7 @@ impl TimePanel {
 
         let mut also_show_child_points = true;
 
-        let response = if tree.children.is_empty() {
-            // leaf
+        let response = if tree.is_leaf() {
             ui.horizontal(|ui| {
                 // Add some spacing to match CollapsingHeader:
                 ui.spacing_mut().item_spacing.x = 0.0;
@@ -320,29 +315,15 @@ impl TimePanel {
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
-        for (name, node) in &tree.children {
+        for (name, child) in &tree.string_children {
             path.push(ObjectPathComponent::String(name.clone()));
-            self.show_tree(
-                log_db,
-                context,
-                time_area_painter,
-                path,
-                &node.string_children,
-                ui,
-            );
+            self.show_tree(log_db, context, time_area_painter, path, child, ui);
             path.pop();
-
-            for (id, tree) in &node.persist_id_children {
-                path.push(ObjectPathComponent::PersistId(name.clone(), id.clone()));
-                self.show_tree(log_db, context, time_area_painter, path, tree, ui);
-                path.pop();
-            }
-
-            for (id, tree) in &node.temp_id_children {
-                path.push(ObjectPathComponent::TempId(name.clone(), id.clone()));
-                self.show_tree(log_db, context, time_area_painter, path, tree, ui);
-                path.pop();
-            }
+        }
+        for (index, child) in &tree.index_children {
+            path.push(ObjectPathComponent::Index(index.clone()));
+            self.show_tree(log_db, context, time_area_painter, path, child, ui);
+            path.pop();
         }
     }
 }
@@ -1545,22 +1526,15 @@ fn summary_of_children(ui: &mut egui::Ui, path: &mut Vec<ObjectPathComponent>, t
     ui.label(tree.data.summary());
     ui.end_row();
 
-    for (name, node) in &tree.children {
+    for (name, child) in &tree.string_children {
         path.push(ObjectPathComponent::String(name.clone()));
-        summary_of_children(ui, path, &node.string_children);
+        summary_of_children(ui, path, child);
         path.pop();
-
-        for (id, tree) in &node.persist_id_children {
-            path.push(ObjectPathComponent::PersistId(name.clone(), id.clone()));
-            summary_of_children(ui, path, tree);
-            path.pop();
-        }
-
-        for (id, tree) in &node.temp_id_children {
-            path.push(ObjectPathComponent::TempId(name.clone(), id.clone()));
-            summary_of_children(ui, path, tree);
-            path.pop();
-        }
+    }
+    for (index, child) in &tree.index_children {
+        path.push(ObjectPathComponent::Index(index.clone()));
+        summary_of_children(ui, path, child);
+        path.pop();
     }
 }
 

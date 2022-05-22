@@ -45,22 +45,15 @@ impl ViewerContext {
             let prop = prop.with_child(&context.individual_object_properties.get(&object_path));
             context.projected_object_properties.set(object_path, prop);
 
-            for (name, node) in &tree.children {
+            for (name, child) in &tree.string_children {
                 path.push(ObjectPathComponent::String(name.clone()));
-                project_tree(context, path, prop, &node.string_children);
+                project_tree(context, path, prop, child);
                 path.pop();
-
-                for (id, tree) in &node.persist_id_children {
-                    path.push(ObjectPathComponent::PersistId(name.clone(), id.clone()));
-                    project_tree(context, path, prop, tree);
-                    path.pop();
-                }
-
-                for (id, tree) in &node.temp_id_children {
-                    path.push(ObjectPathComponent::TempId(name.clone(), id.clone()));
-                    project_tree(context, path, prop, tree);
-                    path.pop();
-                }
+            }
+            for (index, child) in &tree.index_children {
+                path.push(ObjectPathComponent::Index(index.clone()));
+                project_tree(context, path, prop, child);
+                path.pop();
             }
         }
 
