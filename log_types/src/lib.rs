@@ -208,7 +208,7 @@ pub enum ObjectPathComponent {
     String(String),
 
     /// Array/table/map member. Each member must be of the same type (homogenous).
-    Index(Identifier),
+    Index(Index),
 }
 
 impl std::fmt::Display for ObjectPathComponent {
@@ -227,16 +227,17 @@ impl From<&str> for ObjectPathComponent {
     }
 }
 
+/// The key of a table.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Identifier {
+pub enum Index {
     String(String),
     U64(u64),
     Sequence(u64),
     // Uuid, …
 }
 
-impl std::fmt::Display for Identifier {
+impl std::fmt::Display for Index {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
@@ -246,8 +247,8 @@ impl std::fmt::Display for Identifier {
     }
 }
 
-impl_into_enum!(String, Identifier, String);
-impl_into_enum!(u64, Identifier, U64);
+impl_into_enum!(String, Index, String);
+impl_into_enum!(u64, Index, U64);
 
 impl std::ops::Div for ObjectPathComponent {
     type Output = ObjectPath;
@@ -268,21 +269,21 @@ impl std::ops::Div<ObjectPathComponent> for ObjectPath {
     }
 }
 
-impl std::ops::Div<Identifier> for ObjectPath {
+impl std::ops::Div<Index> for ObjectPath {
     type Output = ObjectPath;
 
     #[inline]
-    fn div(mut self, rhs: Identifier) -> Self::Output {
+    fn div(mut self, rhs: Index) -> Self::Output {
         self.0.push(ObjectPathComponent::Index(rhs));
         self
     }
 }
 
-impl std::ops::Div<Identifier> for &ObjectPath {
+impl std::ops::Div<Index> for &ObjectPath {
     type Output = ObjectPath;
 
     #[inline]
-    fn div(self, rhs: Identifier) -> Self::Output {
+    fn div(self, rhs: Index) -> Self::Output {
         self.clone() / rhs
     }
 }

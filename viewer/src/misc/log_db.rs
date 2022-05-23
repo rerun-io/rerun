@@ -327,7 +327,7 @@ pub(crate) struct ObjectTree {
     pub string_children: BTreeMap<String, ObjectTree>,
 
     /// Children of type [`ObjectPathComponent::Index`].
-    pub index_children: BTreeMap<Identifier, ObjectTree>,
+    pub index_children: BTreeMap<Index, ObjectTree>,
 
     /// When do we have data?
     ///
