@@ -4,6 +4,7 @@ members = [
     "comms",
     "log_types",
     "objectron",
+    "prototype",
     "viewer",
     "web_server",
 ]
@@ -11,3 +12,10 @@ members = [
 
 [profile.dev]
 # opt-level = 1 # Speed up debug builds
+
+[profile.release]
+# debug = true # good for profilers
+
+[profile.bench]
+debug = true
+

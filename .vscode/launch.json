@@ -42,5 +42,23 @@
             ],
             "cwd": "${workspaceFolder}"
         },
+        {
+            "name": "Debug 'prototype' tests",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--package=prototype"
+                ],
+                "filter": {
+                    "name": "prototype",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
     ]
 }

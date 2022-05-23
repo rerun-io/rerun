@@ -1,0 +1,23 @@
+[package]
+name = "prototype"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.60"
+license = "MIT OR Apache-2.0"
+publish = false
+
+
+[dependencies]
+ahash = "0.7"
+im = "15"
+mimalloc = "0.1"
+nohash-hasher = "0.2"
+tracing = "0.1"
+
+[dev-dependencies]
+criterion = "0.3"
+
+
+[[bench]]
+name = "data_benchmark"
+harness = false
