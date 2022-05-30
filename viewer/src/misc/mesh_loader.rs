@@ -2,27 +2,7 @@ use anyhow::{anyhow, Context as _};
 use log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
 use three_d::*;
 
-pub fn load(three_d: &three_d::Context, name: String, mesh: &Mesh3D) -> anyhow::Result<GpuMesh> {
-    // TODO: load CpuMesh in background thread.
-    match mesh {
-        Mesh3D::Encoded(encoded_mesh) => {
-            CpuMesh::load_encoded_mesh(name, encoded_mesh)?.to_gpu(three_d)
-        }
-        Mesh3D::Raw(raw_mesh) => CpuMesh::load_raw_mesh(name, raw_mesh)?.to_gpu(three_d),
-    }
-}
-
-pub fn load_raw(
-    three_d: &three_d::Context,
-    name: String,
-    mesh_format: MeshFormat,
-    bytes: &[u8],
-) -> anyhow::Result<GpuMesh> {
-    // TODO: load CpuMesh in background thread.
-    CpuMesh::load_raw(name, mesh_format, bytes)?.to_gpu(three_d)
-}
-
-struct CpuMesh {
+pub struct CpuMesh {
     name: String,
     meshes: Vec<three_d::CpuMesh>,
     materials: Vec<three_d::CpuMaterial>,
@@ -36,7 +16,15 @@ pub struct GpuMesh {
 }
 
 impl CpuMesh {
-    fn load_raw(name: String, format: MeshFormat, bytes: &[u8]) -> anyhow::Result<Self> {
+    pub fn load(name: String, mesh: &Mesh3D) -> anyhow::Result<Self> {
+        // TODO: load CpuMesh in background thread.
+        match mesh {
+            Mesh3D::Encoded(encoded_mesh) => Self::load_encoded_mesh(name, encoded_mesh),
+            Mesh3D::Raw(raw_mesh) => Self::load_raw_mesh(name, raw_mesh),
+        }
+    }
+
+    pub fn load_raw(name: String, format: MeshFormat, bytes: &[u8]) -> anyhow::Result<Self> {
         crate::profile_function!();
         let path = "mesh";
         let mut loaded = three_d::io::Loaded::new();
@@ -84,6 +72,7 @@ impl CpuMesh {
     }
 
     fn load_raw_mesh(name: String, raw_mesh: &RawMesh3D) -> anyhow::Result<Self> {
+        crate::profile_function!();
         let RawMesh3D { positions, indices } = raw_mesh;
         let positions = positions
             .iter()
@@ -115,7 +104,11 @@ impl CpuMesh {
         })
     }
 
-    fn to_gpu(&self, three_d: &three_d::Context) -> anyhow::Result<GpuMesh> {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn to_gpu(&self, three_d: &three_d::Context) -> anyhow::Result<GpuMesh> {
         crate::profile_function!();
 
         let mut materials = Vec::new();

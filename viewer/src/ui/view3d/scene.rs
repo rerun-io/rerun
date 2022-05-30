@@ -1,10 +1,14 @@
-use super::camera::Camera;
-use crate::{log_db::SpaceSummary, misc::ViewerContext};
+use std::sync::Arc;
+
 use egui::Color32;
 use egui::{util::hash, NumExt as _};
 use glam::{vec3, Mat4, Quat, Vec3};
 use itertools::Itertools as _;
 use log_types::{Box3, Mesh3D};
+
+use crate::{log_db::SpaceSummary, misc::mesh_loader::CpuMesh, misc::ViewerContext};
+
+use super::camera::Camera;
 
 pub struct Point {
     pub pos: [f32; 3],
@@ -26,9 +30,8 @@ pub enum MeshSourceData {
 
 pub struct MeshSource {
     pub mesh_id: u64,
-    pub name: String,
     pub world_from_mesh: glam::Mat4,
-    pub mesh_data: MeshSourceData,
+    pub cpu_mesh: Arc<CpuMesh>,
 }
 
 #[derive(Default)]
@@ -42,7 +45,7 @@ impl Scene {
     #[allow(clippy::too_many_arguments)] // TODO: fewer arguments
     pub(crate) fn add_msg(
         &mut self,
-        context: &ViewerContext,
+        context: &mut ViewerContext,
         space_summary: &SpaceSummary,
         viewport_size: egui::Vec2,
         camera: &Camera,
@@ -112,12 +115,18 @@ impl Scene {
                 });
             }
             Data::Mesh3D(mesh) => {
-                self.meshes.push(MeshSource {
-                    mesh_id: hash(msg.id),
-                    name: msg.object_path.to_string(),
-                    world_from_mesh: glam::Mat4::IDENTITY,
-                    mesh_data: MeshSourceData::Mesh3D(mesh.clone()),
-                });
+                let mesh_id = hash(msg.id);
+                if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
+                    mesh_id,
+                    &msg.object_path.to_string(),
+                    &MeshSourceData::Mesh3D(mesh.clone()),
+                ) {
+                    self.meshes.push(MeshSource {
+                        mesh_id,
+                        world_from_mesh: glam::Mat4::IDENTITY,
+                        cpu_mesh,
+                    });
+                }
             }
             Data::Camera(cam) => {
                 let rotation = Quat::from_slice(&cam.rotation);
@@ -136,16 +145,21 @@ impl Scene {
                     let scale = scale_based_on_scene_size.min(scale_based_on_distance);
                     let scale = Vec3::splat(scale);
 
+                    let mesh_id = hash("camera_mesh");
                     let world_from_mesh =
                         Mat4::from_scale_rotation_translation(scale, rotation, translation);
-                    self.meshes.push(MeshSource {
-                        mesh_id: hash("camera"),
-                        name: msg.object_path.to_string(),
-                        world_from_mesh,
-                        mesh_data: MeshSourceData::StaticGlb(include_bytes!(
-                            "../../../data/camera.glb"
-                        )),
-                    });
+
+                    if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
+                        mesh_id,
+                        &msg.object_path.to_string(),
+                        &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                    ) {
+                        self.meshes.push(MeshSource {
+                            mesh_id,
+                            world_from_mesh,
+                            cpu_mesh,
+                        });
+                    }
                 }
 
                 if let (Some(intrinsis), Some([w, h])) = (cam.intrinsics, cam.resolution) {

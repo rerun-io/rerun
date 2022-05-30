@@ -1,3 +1,14 @@
+mod camera;
+mod mesh_cache;
+mod rendering;
+mod scene;
+
+pub use mesh_cache::CpuMeshCache;
+
+use camera::*;
+use rendering::*;
+use scene::*;
+
 use egui::NumExt as _;
 use egui::{Color32, Rect};
 use glam::Affine3A;
@@ -6,16 +17,6 @@ use macaw::{vec3, Quat, Vec3};
 
 use crate::{log_db::SpaceSummary, LogDb};
 use crate::{misc::Selection, ViewerContext};
-
-mod camera;
-mod mesh_cache;
-mod rendering;
-mod scene;
-
-use camera::*;
-use mesh_cache::*;
-use rendering::*;
-use scene::*;
 
 fn ease_out(t: f32) -> f32 {
     1. - (1. - t) * (1. - t)

@@ -10,6 +10,10 @@ pub(crate) struct ViewerContext {
     #[serde(skip)]
     pub image_cache: crate::misc::ImageCache,
 
+    /// For displaying meshes effectively.
+    #[serde(skip)]
+    pub cpu_mesh_cache: crate::ui::view3d::CpuMeshCache,
+
     /// The current time.
     pub time_control: crate::TimeControl,
 

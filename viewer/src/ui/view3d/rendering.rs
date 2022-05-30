@@ -1,5 +1,4 @@
-use super::scene::*;
-use super::{camera::Camera, MeshCache};
+use super::{camera::Camera, mesh_cache::GpuMeshCache, scene::*};
 
 type LineMaterial = three_d::ColorMaterial;
 
@@ -10,7 +9,7 @@ pub struct RenderingContext {
     ambient_dark: three_d::AmbientLight,
     ambient_light: three_d::AmbientLight,
 
-    mesh_cache: MeshCache,
+    mesh_cache: GpuMeshCache,
 
     /// So we don't need to re-allocate them.
     points_cache: three_d::InstancedModel<three_d::PhysicalMaterial>,
@@ -300,7 +299,7 @@ pub fn paint_with_three_d(
 
         rendering
             .mesh_cache
-            .load(three_d, mesh.mesh_id, &mesh.name, &mesh.mesh_data);
+            .load(three_d, mesh.mesh_id, &mesh.cpu_mesh);
     }
 
     for (mesh_id, instances) in &mesh_instances {
