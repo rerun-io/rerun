@@ -241,7 +241,7 @@ pub enum Index {
     Integer(i128),
 
     /// UUID/GUID
-    // Uuid(Uuid),
+    Uuid(uuid::Uuid),
 
     /// Anything goes.
     String(String),
@@ -253,6 +253,7 @@ impl std::fmt::Display for Index {
             Self::Sequence(seq) => format!("#{seq}").fmt(f),
             Self::Pixel([x, y]) => format!("[{x}, {y}]").fmt(f),
             Self::Integer(value) => value.fmt(f),
+            Self::Uuid(value) => value.fmt(f),
             Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
         }
     }

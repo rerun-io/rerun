@@ -10,17 +10,20 @@ publish = false
 [features]
 default = []
 
+# Enable loading data from a file
+load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
+
 # Enable saving data to a file
 save = ["anyhow", "rmp-serde", "serde", "zstd"]
 
-# Enable loading data from a file
-load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
+# Enable (de)serialization using serde.
+serde = ["dep:serde"]
 
 
 [dependencies]
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 nohash-hasher = "0.2"
-uuid = { version = "0.8", features = ["serde", "v4", "wasm-bindgen"] }
+uuid = { version = "1.1", features = ["serde", "v4"] }
 
 # Optional:
 anyhow = { version = "1", optional = true }
