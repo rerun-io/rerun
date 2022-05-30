@@ -25,7 +25,7 @@ chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 im = "15.0"
 nohash-hasher = "0.2"
 rr_string_interner = { path = "../rr_string_interner" }
-uuid = { version = "1.1", features = ["serde", "v4"] }
+uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 # Optional:
 anyhow = { version = "1", optional = true }
