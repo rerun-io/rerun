@@ -5,6 +5,7 @@ members = [
     "log_types",
     "objectron",
     "prototype",
+    "rr_string_interner",
     "viewer",
     "web_server",
 ]
