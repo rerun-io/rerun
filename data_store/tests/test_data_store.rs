@@ -1,4 +1,4 @@
-use prototype::*;
+use data_store::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Time(i64);
@@ -9,7 +9,7 @@ fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
 }
 
 #[test]
-fn test_singular() -> prototype::Result<()> {
+fn test_singular() -> data_store::Result<()> {
     fn points_at(store: &TypePathDataStore<Time>, frame: i64) -> Vec<Point3<'_>> {
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut points = Scene3D::from_store(store, &time_query).points;
@@ -112,7 +112,7 @@ fn test_singular() -> prototype::Result<()> {
 }
 
 #[test]
-fn test_batches() -> prototype::Result<()> {
+fn test_batches() -> data_store::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPathKey {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
@@ -298,7 +298,7 @@ fn test_batches() -> prototype::Result<()> {
 }
 
 #[test]
-fn test_batched_and_individual() -> prototype::Result<()> {
+fn test_batched_and_individual() -> data_store::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPathKey {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
@@ -476,7 +476,7 @@ fn test_batched_and_individual() -> prototype::Result<()> {
 }
 
 #[test]
-fn test_individual_and_batched() -> prototype::Result<()> {
+fn test_individual_and_batched() -> data_store::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPathKey {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }

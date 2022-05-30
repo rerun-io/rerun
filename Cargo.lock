@@ -754,6 +754,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "data_store"
+version = "0.1.0"
+dependencies = [
+ "ahash",
+ "criterion",
+ "im",
+ "log_types",
+ "mimalloc",
+ "nohash-hasher",
+ "tracing",
+]
+
+[[package]]
 name = "deflate"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2350,19 +2363,6 @@ checksum = "2d0a014229361011dc8e69c8a1ec6c2e8d0f2af7c91e3ea3f5b2170298461e68"
 dependencies = [
  "bytes",
  "prost",
-]
-
-[[package]]
-name = "prototype"
-version = "0.1.0"
-dependencies = [
- "ahash",
- "criterion",
- "im",
- "log_types",
- "mimalloc",
- "nohash-hasher",
- "tracing",
 ]
 
 [[package]]

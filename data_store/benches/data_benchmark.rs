@@ -2,8 +2,8 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use prototype::TypePathDataStore;
-use prototype::*;
+use data_store::TypePathDataStore;
+use data_store::*;
 
 use std::sync::Arc;
 

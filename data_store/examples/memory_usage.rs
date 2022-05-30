@@ -44,7 +44,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 }
 
-use prototype::*;
+use data_store::*;
 
 impl TrackingAllocator {
     fn used_bytes(&self) -> usize {

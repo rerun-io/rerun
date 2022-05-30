@@ -2,9 +2,9 @@
 resolver = "2"
 members = [
     "comms",
+    "data_store",
     "log_types",
     "objectron",
-    "prototype",
     "rr_string_interner",
     "viewer",
     "web_server",
