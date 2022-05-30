@@ -213,27 +213,11 @@ fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum TimeValue {
-    // Time(Time), // TODO
-    Sequence(i64),
-}
-
-impl TimeValue {
-    pub fn to_i64(&self) -> i64 {
-        match self {
-            Self::Sequence(value) => *value,
-        }
-    }
-}
-
-/// A point in time.
-///
-/// It can be represented by [`Time`], a sequence index, or a mix of several things.
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct TimeStamp(pub BTreeMap<String, TimeValue>);
-
+/// A query in time.
 pub enum TimeQuery<Time> {
+    /// Get the latest version of the data available at this time.
     LatestAt(Time),
+
+    /// Get all the data within this time interval.
     Range(std::ops::RangeInclusive<Time>),
 }
