@@ -36,7 +36,7 @@ pub struct LogId(uuid::Uuid);
 
 impl nohash_hasher::IsEnabled for LogId {}
 
-// required for nohash_hasher
+// required for [`nohash_hasher`].
 #[allow(clippy::derive_hash_xor_eq)]
 impl std::hash::Hash for LogId {
     #[inline]

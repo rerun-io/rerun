@@ -44,11 +44,11 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 }
             } else {
                 let type_path = im::vector![
-                    TypePathComponent::Name("camera".into()),
+                    TypePathComponent::String("camera".into()),
                     TypePathComponent::Index,
-                    TypePathComponent::Name("point".into()),
+                    TypePathComponent::String("point".into()),
                     TypePathComponent::Index,
-                    TypePathComponent::Name("pos".into())
+                    TypePathComponent::String("pos".into())
                 ];
                 let mut index_path_prefix = IndexPathKey::default();
                 index_path_prefix.push_back(Index::String(camera.into()));
@@ -77,11 +77,11 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 }
             } else {
                 let type_path = im::vector![
-                    TypePathComponent::Name("camera".into()),
+                    TypePathComponent::String("camera".into()),
                     TypePathComponent::Index,
-                    TypePathComponent::Name("point".into()),
+                    TypePathComponent::String("point".into()),
                     TypePathComponent::Index,
-                    TypePathComponent::Name("radius".into())
+                    TypePathComponent::String("radius".into())
                 ];
                 let mut index_path_prefix = IndexPathKey::default();
                 index_path_prefix.push_back(Index::String(camera.into()));

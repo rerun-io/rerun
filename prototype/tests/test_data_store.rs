@@ -26,20 +26,20 @@ fn test_singular() -> prototype::Result<()> {
 
     fn pos_type_path() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("pos".into()),
+            TypePathComponent::String("pos".into()),
         ]
     }
     fn radius_type_path() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("radius".into()),
+            TypePathComponent::String("radius".into()),
         ]
     }
 
@@ -119,20 +119,20 @@ fn test_batches() -> prototype::Result<()> {
 
     fn prim() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("pos".into()),
+            TypePathComponent::String("pos".into()),
         ]
     }
     fn sibling() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("label".into()),
+            TypePathComponent::String("label".into()),
         ]
     }
 
@@ -312,20 +312,20 @@ fn test_batched_and_individual() -> prototype::Result<()> {
 
     fn prim() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("pos".into()),
+            TypePathComponent::String("pos".into()),
         ]
     }
     fn sibling() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("label".into()),
+            TypePathComponent::String("label".into()),
         ]
     }
 
@@ -490,20 +490,20 @@ fn test_individual_and_batched() -> prototype::Result<()> {
 
     fn prim() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("pos".into()),
+            TypePathComponent::String("pos".into()),
         ]
     }
     fn sibling() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("label".into()),
+            TypePathComponent::String("label".into()),
         ]
     }
 

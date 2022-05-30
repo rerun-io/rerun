@@ -8,6 +8,8 @@ publish = false
 
 
 [dependencies]
+log_types = { path = "../log_types" }
+
 ahash = "0.7"
 im = "15"
 mimalloc = "0.1"

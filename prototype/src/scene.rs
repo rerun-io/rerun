@@ -19,7 +19,7 @@ impl<'s> Scene3D<'s> {
         let mut slf = Self::default();
 
         for (type_path, _) in store.iter() {
-            if type_path.last() == Some(&TypePathComponent::Name("pos".into())) {
+            if type_path.last() == Some(&TypePathComponent::String("pos".into())) {
                 visit_data_and_siblings(
                     store,
                     time_query,

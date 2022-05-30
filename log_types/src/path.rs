@@ -5,7 +5,7 @@ use rr_string_interner::InternedString;
 /// A path to a specific piece of data (e.g. a single `f32`).
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct DataPath(pub Vec<DataPathComponent>);
+pub struct DataPath(pub Vec<DataPathComponent>); // TODO: private
 
 impl DataPath {
     #[inline]
@@ -24,6 +24,16 @@ impl DataPath {
         path.pop(); // TODO: handle root?
         path.push(last_comp.into());
         Self(path)
+    }
+}
+
+impl IntoIterator for DataPath {
+    type Item = DataPathComponent;
+    type IntoIter = <Vec<DataPathComponent> as IntoIterator>::IntoIter;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
@@ -186,3 +196,18 @@ impl std::fmt::Display for Index {
 }
 
 crate::impl_into_enum!(String, Index, String);
+
+// ----------------------------------------------------------------------------
+
+/// Like [`DataPath`], but without any specific indices.
+pub type TypePath = im::Vector<TypePathComponent>;
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TypePathComponent {
+    /// Struct member
+    String(InternedString),
+
+    /// Table (array/map) member.
+    /// Tables are homogenous, so it is the same type path for all.
+    Index,
+}

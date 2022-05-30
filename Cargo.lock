@@ -1711,6 +1711,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "im",
  "nohash-hasher",
  "rmp-serde",
  "rr_string_interner",
@@ -2358,6 +2359,7 @@ dependencies = [
  "ahash",
  "criterion",
  "im",
+ "log_types",
  "mimalloc",
  "nohash-hasher",
  "tracing",
