@@ -56,7 +56,7 @@ fn log_annotation_pbdata(
             ("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0))),
         ]);
 
-        let object_path = ObjectPath::from("objects") / Index::U64(object.id as _);
+        let object_path = ObjectPath::from("objects") / Index::Integer(object.id as _);
 
         // dbg!(&object.category); // Most cups have "chair" as the category
 
@@ -97,7 +97,7 @@ fn log_annotation_pbdata(
 
         for object_annotation in &frame_annotation.annotations {
             let object_path =
-                ObjectPath::from("objects") / Index::U64(object_annotation.object_id as _);
+                ObjectPath::from("objects") / Index::Integer(object_annotation.object_id as _);
 
             // always zero?
             // tx.send(log_msg(
@@ -149,7 +149,7 @@ fn log_annotation_pbdata(
                 .ok();
             } else {
                 for (id, pos2) in keypoint_ids.into_iter().zip(keypoints_2d) {
-                    let point_path = &object_path / "points" / Index::from(id as u64);
+                    let point_path = &object_path / "points" / Index::Integer(id as _);
                     tx.send(
                         log_msg(&time_point, &point_path / "pos2d", Data::Pos2(pos2))
                             .space(&image_space),
@@ -228,10 +228,10 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<T
 
                 for i in 0..count as usize {
                     let point = &raw_feature_points.point[i];
-                    let identifier = raw_feature_points.identifier[i] as u64; // TODO: i64
+                    let identifier = raw_feature_points.identifier[i];
 
                     if let (Some(x), Some(y), Some(z)) = (point.x, point.y, point.z) {
-                        let point_path = &points_path / Index::from(identifier);
+                        let point_path = &points_path / Index::Integer(identifier as _);
 
                         tx.send(
                             log_msg(&time_point, &point_path / "pos", Data::Pos3([x, y, z]))

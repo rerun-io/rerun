@@ -231,24 +231,34 @@ impl From<&str> for ObjectPathComponent {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Index {
-    String(String),
-    U64(u64),
+    /// For arrays, assumed to be dense (0, 1, 2, …).
     Sequence(u64),
-    // Uuid, …
+
+    /// X,Y pixel coordinates, from top left.
+    Pixel([u64; 2]),
+
+    /// Any integer, e.g. a hash or an arbitrary identifier.
+    Integer(i128),
+
+    /// UUID/GUID
+    // Uuid(Uuid),
+
+    /// Anything goes.
+    String(String),
 }
 
 impl std::fmt::Display for Index {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
-            Self::U64(value) => value.fmt(f),
             Self::Sequence(seq) => format!("#{seq}").fmt(f),
+            Self::Pixel([x, y]) => format!("[{x}, {y}]").fmt(f),
+            Self::Integer(value) => value.fmt(f),
+            Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
         }
     }
 }
 
 impl_into_enum!(String, Index, String);
-impl_into_enum!(u64, Index, U64);
 
 impl std::ops::Div for ObjectPathComponent {
     type Output = ObjectPath;
