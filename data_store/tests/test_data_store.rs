@@ -12,7 +12,12 @@ fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
 fn test_singular() -> data_store::Result<()> {
     fn points_at(store: &TypePathDataStore<Time>, frame: i64) -> Vec<Point3<'_>> {
         let time_query = TimeQuery::LatestAt(Time(frame));
-        let mut points = Scene3D::from_store(store, &time_query).points;
+        let mut points: Vec<_> = Scene3D::from_store(store, &time_query)
+            .points
+            .values()
+            .cloned()
+            .flatten()
+            .collect();
         points.sort_by(|a, b| a.partial_cmp(b).unwrap());
         points
     }

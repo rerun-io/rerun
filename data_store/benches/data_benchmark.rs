@@ -12,13 +12,13 @@ const NUM_POINTS_PER_CAMERA: u64 = 1_000;
 const TOTAL_POINTS: u64 = 2 * NUM_POINTS_PER_CAMERA;
 
 fn data_path(camera: &str, index: u64, field: &str) -> DataPath {
-    im::vector![
-        DataPathComponent::Name("camera".into()),
+    DataPath(vec![
+        DataPathComponent::String("camera".into()),
         DataPathComponent::Index(Index::String(camera.into())),
-        DataPathComponent::Name("point".into()),
+        DataPathComponent::String("point".into()),
         DataPathComponent::Index(Index::Sequence(index)),
-        DataPathComponent::Name(field.into()),
-    ]
+        DataPathComponent::String(field.into()),
+    ])
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -106,12 +106,20 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("query-points-throughput");
     group.throughput(criterion::Throughput::Elements(TOTAL_POINTS as _));
 
+    let point_type_path = im::vector![
+        TypePathComponent::String("camera".into()),
+        TypePathComponent::Index,
+        TypePathComponent::String("point".into()),
+        TypePathComponent::Index,
+    ];
+
     let data_store = generate_date(false, false);
     group.bench_function("batched_pos_batched_radius", |b| {
         b.iter(|| {
             let scene =
                 Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
+            assert_eq!(scene.points.len(), 1);
+            assert_eq!(scene.points[&point_type_path].len(), TOTAL_POINTS as usize);
         });
     });
 
@@ -120,7 +128,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             let scene =
                 Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
+            assert_eq!(scene.points.len(), 1);
+            assert_eq!(scene.points[&point_type_path].len(), TOTAL_POINTS as usize);
         });
     });
 
@@ -129,7 +138,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             let scene =
                 Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
+            assert_eq!(scene.points.len(), 1);
+            assert_eq!(scene.points[&point_type_path].len(), TOTAL_POINTS as usize);
         });
     });
 
@@ -138,7 +148,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             let scene =
                 Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(scene.points.len(), TOTAL_POINTS as usize);
+            assert_eq!(scene.points.len(), 1);
+            assert_eq!(scene.points[&point_type_path].len(), TOTAL_POINTS as usize);
         });
     });
 

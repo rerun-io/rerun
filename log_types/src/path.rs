@@ -202,7 +202,7 @@ crate::impl_into_enum!(String, Index, String);
 /// Like [`DataPath`], but without any specific indices.
 pub type TypePath = im::Vector<TypePathComponent>;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TypePathComponent {
     /// Struct member
     String(InternedString),
