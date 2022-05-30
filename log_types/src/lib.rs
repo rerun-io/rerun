@@ -93,12 +93,25 @@ pub fn log_msg(time_point: &TimePoint, data_path: DataPath, data: impl Into<Data
 
 // ----------------------------------------------------------------------------
 
+rr_string_interner::declare_new_type!(
+    /// The name of a time source. Often something like `"time"` or `"frame"`.
+    pub struct TimeSource;
+);
+
+impl Default for TimeSource {
+    fn default() -> Self {
+        Self::new("")
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// A point in time.
 ///
 /// It can be represented by [`Time`], a sequence index, or a mix of several things.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimePoint(pub BTreeMap<String, TimeValue>);
+pub struct TimePoint(pub BTreeMap<TimeSource, TimeValue>);
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -144,7 +157,7 @@ pub fn time_point(fields: impl IntoIterator<Item = (&'static str, TimeValue)>) -
     TimePoint(
         fields
             .into_iter()
-            .map(|(name, tt)| (name.to_string(), tt))
+            .map(|(name, tt)| (TimeSource::from(name), tt))
             .collect(),
     )
 }

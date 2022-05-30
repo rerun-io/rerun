@@ -26,6 +26,7 @@ pub struct InternedString {
 }
 
 impl InternedString {
+    #[inline]
     pub fn new(string: &str) -> Self {
         global_intern(string)
     }
@@ -43,12 +44,14 @@ impl InternedString {
 }
 
 impl From<&str> for InternedString {
+    #[inline]
     fn from(string: &str) -> Self {
         Self::new(string)
     }
 }
 
 impl From<String> for InternedString {
+    #[inline]
     fn from(string: String) -> Self {
         Self::new(&string)
     }
@@ -92,7 +95,7 @@ impl AsRef<str> for InternedString {
 impl std::borrow::Borrow<str> for InternedString {
     #[inline]
     fn borrow(&self) -> &str {
-        self.as_ref()
+        self.as_str()
     }
 }
 
@@ -100,7 +103,7 @@ impl std::ops::Deref for InternedString {
     type Target = str;
     #[inline]
     fn deref(&self) -> &str {
-        self.as_ref()
+        self.as_str()
     }
 }
 
@@ -118,13 +121,15 @@ impl std::fmt::Display for InternedString {
 
 #[cfg(feature = "serde")]
 impl serde::Serialize for InternedString {
+    #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.as_ref().serialize(serializer)
+        self.as_str().serialize(serializer)
     }
 }
 
 #[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for InternedString {
+    #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         String::deserialize(deserializer).map(|s| global_intern(&s))
     }
@@ -160,6 +165,99 @@ impl StringInterner {
 
 // ----------------------------------------------------------------------------
 
+/// Declare a newtype wrapper around [`InternedString`] with
+/// all the convenience methods you would want.
+///
+/// Usage:
+/// ```
+/// rr_string_interner::declare_new_type!(
+///     /// My typesafe string
+///     pub struct MyString;
+/// );
+/// ```
+#[macro_export]
+macro_rules! declare_new_type {
+    (
+        $(#[$outer:meta])*
+        $vis:vis struct $StructName:ident;
+    ) => {
+        // ($StructName: ident) => {
+        #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+        #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+        pub struct $StructName($crate::InternedString);
+
+        impl $StructName {
+            #[inline]
+            pub fn new(string: &str) -> Self {
+                Self($crate::InternedString::new(string))
+            }
+
+            #[inline]
+            pub fn as_str(&self) -> &'static str {
+                self.0.as_str()
+            }
+
+            /// Precomputed hash of the string.
+            #[inline]
+            pub fn hash(&self) -> u64 {
+                self.0.hash()
+            }
+        }
+
+        impl nohash_hasher::IsEnabled for $StructName {}
+
+        impl From<&str> for $StructName {
+            #[inline]
+            fn from(string: &str) -> Self {
+                Self::new(string)
+            }
+        }
+
+        impl From<String> for $StructName {
+            #[inline]
+            fn from(string: String) -> Self {
+                Self::new(&string)
+            }
+        }
+
+        impl AsRef<str> for $StructName {
+            #[inline]
+            fn as_ref(&self) -> &str {
+                self.as_str()
+            }
+        }
+
+        impl std::borrow::Borrow<str> for $StructName {
+            #[inline]
+            fn borrow(&self) -> &str {
+                self.as_str()
+            }
+        }
+
+        impl std::ops::Deref for $StructName {
+            type Target = str;
+            #[inline]
+            fn deref(&self) -> &str {
+                self.as_str()
+            }
+        }
+
+        impl std::fmt::Debug for $StructName {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.as_str().fmt(f)
+            }
+        }
+
+        impl std::fmt::Display for $StructName {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.as_str().fmt(f)
+            }
+        }
+    };
+}
+
+// ----------------------------------------------------------------------------
+
 /// global interning function.
 fn global_intern(string: &str) -> InternedString {
     use once_cell::sync::Lazy;
@@ -190,4 +288,18 @@ fn test_interner() {
 
     assert!(a.hash == b.hash);
     assert!(a.hash != c.hash);
+}
+
+#[test]
+fn test_newtype_macro() {
+    #![allow(dead_code)]
+
+    declare_new_type!(
+        /// My typesafe string
+        pub struct MyString;
+    );
+    let a = MyString::new("test");
+    let b = MyString::new("test");
+    assert_eq!(a, b);
+    assert_eq!(a.as_str(), "test");
 }

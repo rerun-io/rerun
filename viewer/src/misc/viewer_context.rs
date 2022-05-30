@@ -1,4 +1,4 @@
-use log_types::{Data, DataPath, DataPathComponent, LogId, LogMsg, TimeValue};
+use log_types::{Data, DataPath, DataPathComponent, LogId, LogMsg, TimeSource, TimeValue};
 
 use crate::{log_db::LogDb, misc::log_db::DataTree};
 
@@ -98,7 +98,7 @@ impl ViewerContext {
     pub fn time_button(
         &mut self,
         ui: &mut egui::Ui,
-        time_source: &str,
+        time_source: &TimeSource,
         value: TimeValue,
     ) -> egui::Response {
         let is_selected = self.time_control.is_time_selected(time_source, value);
@@ -106,7 +106,7 @@ impl ViewerContext {
         let response = ui.selectable_label(is_selected, value.to_string());
         if response.clicked() {
             self.time_control
-                .set_source_and_time(time_source.to_string(), value);
+                .set_source_and_time(time_source.clone(), value);
             self.time_control.pause();
         }
         response
