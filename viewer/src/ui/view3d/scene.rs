@@ -230,7 +230,7 @@ impl Scene {
 
     pub fn add_box(
         &mut self,
-        id: LogId,
+        log_id: LogId,
         camera: &Camera,
         color: Color32,
         line_radius_from_distance: f32,
@@ -280,17 +280,21 @@ impl Scene {
 
         let dist_to_camera = camera.pos().distance(translation);
         self.line_segments.push(LineSegments {
-            log_id: id,
+            log_id,
             segments,
             radius: dist_to_camera * line_radius_from_distance,
             color,
         });
     }
 
-    pub fn picking(&self, ui: &egui::Ui, rect: &egui::Rect, camera: &Camera) -> Option<LogId> {
+    pub fn picking(
+        &self,
+        pointer_pos: egui::Pos2,
+        rect: &egui::Rect,
+        camera: &Camera,
+    ) -> Option<LogId> {
         crate::profile_function!();
 
-        let pointer_pos = ui.ctx().pointer_hover_pos()?;
         let screen_from_world = camera.screen_from_world(rect);
         let world_from_screen = screen_from_world.inverse();
         let ray_dir =

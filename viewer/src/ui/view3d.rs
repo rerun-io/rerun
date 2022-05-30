@@ -18,10 +18,6 @@ use macaw::{vec3, Quat, Vec3};
 use crate::{log_db::SpaceSummary, LogDb};
 use crate::{misc::Selection, ViewerContext};
 
-fn ease_out(t: f32) -> f32 {
-    1. - (1. - t) * (1. - t)
-}
-
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State3D {
@@ -69,7 +65,7 @@ impl State3D {
                 response.ctx.request_repaint();
                 let t = cam_interpolation.elapsed_time / cam_interpolation.target_time;
                 let t = t.clamp(0.0, 1.0);
-                let t = ease_out(t);
+                let t = crate::math::ease_out(t);
                 if let Some(target_orbit) = &cam_interpolation.target_orbit {
                     *orbit_camera = cam_interpolation.start.lerp(target_orbit, t);
                 } else if let Some(target_camera) = &cam_interpolation.target_camera {
@@ -379,7 +375,9 @@ pub(crate) fn combined_view_3d(
         }
     }
 
-    state_3d.hovered = scene.picking(ui, &rect, &camera);
+    state_3d.hovered = response
+        .hover_pos()
+        .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &camera));
 
     let dark_mode = ui.visuals().dark_mode;
 

@@ -9,7 +9,7 @@ pub struct RenderingContext {
     ambient_dark: three_d::AmbientLight,
     ambient_light: three_d::AmbientLight,
 
-    mesh_cache: GpuMeshCache,
+    gpu_mesh_cache: GpuMeshCache,
 
     /// So we don't need to re-allocate them.
     points_cache: three_d::InstancedModel<three_d::PhysicalMaterial>,
@@ -65,7 +65,7 @@ impl RenderingContext {
             skybox_light,
             ambient_dark,
             ambient_light,
-            mesh_cache: Default::default(),
+            gpu_mesh_cache: Default::default(),
             points_cache,
             lines_cache,
         })
@@ -299,12 +299,14 @@ pub fn paint_with_three_d(
             .push(mint::Vector3::from(scale).into());
 
         rendering
-            .mesh_cache
+            .gpu_mesh_cache
             .load(three_d, mesh.mesh_id, &mesh.cpu_mesh);
     }
 
     for (mesh_id, instances) in &mesh_instances {
-        rendering.mesh_cache.set_instances(*mesh_id, instances)?;
+        rendering
+            .gpu_mesh_cache
+            .set_instances(*mesh_id, instances)?;
     }
 
     let mut objects: Vec<&dyn Object> = vec![];
@@ -320,7 +322,7 @@ pub fn paint_with_three_d(
     // objects.push(&axes);
 
     for &mesh_id in mesh_instances.keys() {
-        if let Some(gpu_mesh) = rendering.mesh_cache.get(mesh_id) {
+        if let Some(gpu_mesh) = rendering.gpu_mesh_cache.get(mesh_id) {
             for obj in &gpu_mesh.models {
                 if obj.instance_count() > 0 {
                     objects.push(obj);

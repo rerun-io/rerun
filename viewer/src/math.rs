@@ -38,3 +38,7 @@ fn min(a: f32, b: f32) -> f32 {
 fn max(a: f32, b: f32) -> f32 {
     a.max(b)
 }
+
+pub fn ease_out(t: f32) -> f32 {
+    1. - (1. - t) * (1. - t)
+}

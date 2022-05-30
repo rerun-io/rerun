@@ -6,11 +6,11 @@ use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct ViewerContext {
-    /// For displaying images effectively.
+    /// For displaying images efficiently in immediate mode.
     #[serde(skip)]
     pub image_cache: crate::misc::ImageCache,
 
-    /// For displaying meshes effectively.
+    /// For displaying meshes efficiently in immediate mode.
     #[serde(skip)]
     pub cpu_mesh_cache: crate::ui::view3d::CpuMeshCache,
 
