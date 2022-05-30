@@ -6,13 +6,13 @@ pub struct CpuMesh {
     name: String,
     meshes: Vec<three_d::CpuMesh>,
     materials: Vec<three_d::CpuMaterial>,
+    bbox: macaw::BoundingBox,
 }
 
 pub struct GpuMesh {
     pub name: String,
     pub models: Vec<InstancedModel<PhysicalMaterial>>,
     // pub materials: Vec<PhysicalMaterial>,
-    pub aabb: AxisAlignedBoundingBox,
 }
 
 impl CpuMesh {
@@ -43,10 +43,13 @@ impl CpuMesh {
             }
         }
 
+        let bbox = bbox(&meshes);
+
         Ok(Self {
             name,
             meshes,
             materials,
+            bbox,
         })
     }
 
@@ -92,6 +95,9 @@ impl CpuMesh {
         };
         mesh.compute_normals();
 
+        let meshes = vec![mesh];
+        let bbox = bbox(&meshes);
+
         let material = three_d::CpuMaterial {
             name: material_name,
             ..Default::default()
@@ -99,13 +105,18 @@ impl CpuMesh {
 
         Ok(Self {
             name,
-            meshes: vec![mesh],
+            meshes,
             materials: vec![material],
+            bbox,
         })
     }
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn bbox(&self) -> &macaw::BoundingBox {
+        &self.bbox
     }
 
     pub fn to_gpu(&self, three_d: &three_d::Context) -> anyhow::Result<GpuMesh> {
@@ -117,7 +128,6 @@ impl CpuMesh {
         }
 
         let mut models = Vec::new();
-        let mut aabb = AxisAlignedBoundingBox::EMPTY;
         for m in self.meshes.iter() {
             let material = materials
                 .iter()
@@ -127,7 +137,6 @@ impl CpuMesh {
 
             let m = InstancedModel::new_with_material(three_d, &Default::default(), m, material)
                 .map_err(to_anyhow)?;
-            aabb.expand_with_aabb(&m.aabb());
             models.push(m);
         }
 
@@ -135,7 +144,6 @@ impl CpuMesh {
             name: self.name.clone(),
             models,
             // materials,
-            aabb,
         })
     }
 }
@@ -143,4 +151,23 @@ impl CpuMesh {
 #[allow(clippy::needless_pass_by_value)]
 fn to_anyhow(err: Box<dyn std::error::Error>) -> anyhow::Error {
     anyhow!("{}", err)
+}
+
+fn bbox(meshes: &[three_d::CpuMesh]) -> macaw::BoundingBox {
+    let mut bbox = macaw::BoundingBox::nothing();
+    for mesh in meshes {
+        match &mesh.positions {
+            three_d::Positions::F32(positions) => {
+                for pos in positions {
+                    bbox.extend(glam::Vec3::from(pos.as_array()));
+                }
+            }
+            three_d::Positions::F64(positions) => {
+                for pos in positions {
+                    bbox.extend(glam::Vec3::from(pos.cast::<f32>().unwrap().as_array()));
+                }
+            }
+        }
+    }
+    bbox
 }

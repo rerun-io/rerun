@@ -30,6 +30,7 @@ impl Camera {
         0.01 // TODO
     }
 
+    /// Screen coordinates are in points.
     pub fn screen_from_world(&self, rect: &Rect) -> Mat4 {
         let aspect_ratio = rect.width() / rect.height();
         Mat4::from_translation(vec3(rect.center().x, rect.center().y, 0.0))
