@@ -1,18 +1,27 @@
-use super::camera::Camera;
-use crate::{log_db::SpaceSummary, misc::ViewerContext};
+use std::sync::Arc;
+
 use egui::Color32;
 use egui::{util::hash, NumExt as _};
 use glam::{vec3, Mat4, Quat, Vec3};
 use itertools::Itertools as _;
-use log_types::{Box3, Mesh3D};
+use log_types::{Box3, LogId, Mesh3D};
+
+use crate::{
+    log_db::SpaceSummary, math::line_segment_distance_sq_to_point, misc::mesh_loader::CpuMesh,
+    misc::ViewerContext,
+};
+
+use super::camera::Camera;
 
 pub struct Point {
+    pub log_id: LogId,
     pub pos: [f32; 3],
     pub radius: f32,
     pub color: Color32,
 }
 
 pub struct LineSegments {
+    pub log_id: LogId,
     pub segments: Vec<[[f32; 3]; 2]>,
     pub radius: f32,
     pub color: Color32,
@@ -25,10 +34,10 @@ pub enum MeshSourceData {
 }
 
 pub struct MeshSource {
+    pub log_id: LogId,
     pub mesh_id: u64,
-    pub name: String,
     pub world_from_mesh: glam::Mat4,
-    pub mesh_data: MeshSourceData,
+    pub cpu_mesh: Arc<CpuMesh>,
 }
 
 #[derive(Default)]
@@ -42,7 +51,7 @@ impl Scene {
     #[allow(clippy::too_many_arguments)] // TODO: fewer arguments
     pub(crate) fn add_msg(
         &mut self,
-        context: &ViewerContext,
+        context: &mut ViewerContext,
         space_summary: &SpaceSummary,
         viewport_size: egui::Vec2,
         camera: &Camera,
@@ -72,6 +81,7 @@ impl Scene {
                 // scale with distance
                 let dist_to_camera = camera_plane.distance(Vec3::from(*pos));
                 self.points.push(Point {
+                    log_id: msg.id,
                     pos: *pos,
                     radius: dist_to_camera * point_radius_from_distance,
                     color,
@@ -81,7 +91,7 @@ impl Scene {
                 // Can't visualize vectors (yet)
             }
             Data::Box3(box3) => {
-                self.add_box(camera, color, line_radius_from_distance, box3);
+                self.add_box(msg.id, camera, color, line_radius_from_distance, box3);
             }
             Data::Path3D(points) => {
                 let bbox = macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
@@ -93,6 +103,7 @@ impl Scene {
                     .collect();
 
                 self.line_segments.push(LineSegments {
+                    log_id: msg.id,
                     segments,
                     radius: dist_to_camera * line_radius_from_distance,
                     color,
@@ -106,18 +117,26 @@ impl Scene {
                 );
                 let dist_to_camera = camera_plane.distance(bbox.center());
                 self.line_segments.push(LineSegments {
+                    log_id: msg.id,
                     segments: segments.clone(),
                     radius: dist_to_camera * line_radius_from_distance,
                     color,
                 });
             }
             Data::Mesh3D(mesh) => {
-                self.meshes.push(MeshSource {
-                    mesh_id: hash(msg.id),
-                    name: msg.object_path.to_string(),
-                    world_from_mesh: glam::Mat4::IDENTITY,
-                    mesh_data: MeshSourceData::Mesh3D(mesh.clone()),
-                });
+                let mesh_id = hash(msg.id);
+                if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
+                    mesh_id,
+                    &msg.object_path.to_string(),
+                    &MeshSourceData::Mesh3D(mesh.clone()),
+                ) {
+                    self.meshes.push(MeshSource {
+                        log_id: msg.id,
+                        mesh_id,
+                        world_from_mesh: glam::Mat4::IDENTITY,
+                        cpu_mesh,
+                    });
+                }
             }
             Data::Camera(cam) => {
                 let rotation = Quat::from_slice(&cam.rotation);
@@ -136,16 +155,22 @@ impl Scene {
                     let scale = scale_based_on_scene_size.min(scale_based_on_distance);
                     let scale = Vec3::splat(scale);
 
+                    let mesh_id = hash("camera_mesh");
                     let world_from_mesh =
                         Mat4::from_scale_rotation_translation(scale, rotation, translation);
-                    self.meshes.push(MeshSource {
-                        mesh_id: hash("camera"),
-                        name: msg.object_path.to_string(),
-                        world_from_mesh,
-                        mesh_data: MeshSourceData::StaticGlb(include_bytes!(
-                            "../../../data/camera.glb"
-                        )),
-                    });
+
+                    if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
+                        mesh_id,
+                        &msg.object_path.to_string(),
+                        &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                    ) {
+                        self.meshes.push(MeshSource {
+                            log_id: msg.id,
+                            mesh_id,
+                            world_from_mesh,
+                            cpu_mesh,
+                        });
+                    }
                 }
 
                 if let (Some(intrinsis), Some([w, h])) = (cam.intrinsics, cam.resolution) {
@@ -190,6 +215,7 @@ impl Scene {
                     ];
 
                     self.line_segments.push(LineSegments {
+                        log_id: msg.id,
                         segments,
                         radius: dist_to_camera * line_radius_from_distance,
                         color: Color32::GRAY, // TODO
@@ -204,6 +230,7 @@ impl Scene {
 
     pub fn add_box(
         &mut self,
+        log_id: LogId,
         camera: &Camera,
         color: Color32,
         line_radius_from_distance: f32,
@@ -253,9 +280,105 @@ impl Scene {
 
         let dist_to_camera = camera.pos().distance(translation);
         self.line_segments.push(LineSegments {
+            log_id,
             segments,
             radius: dist_to_camera * line_radius_from_distance,
             color,
         });
+    }
+
+    pub fn picking(
+        &self,
+        pointer_pos: egui::Pos2,
+        rect: &egui::Rect,
+        camera: &Camera,
+    ) -> Option<LogId> {
+        crate::profile_function!();
+
+        let screen_from_world = camera.screen_from_world(rect);
+        let world_from_screen = screen_from_world.inverse();
+        let ray_dir =
+            world_from_screen.project_point3(Vec3::new(pointer_pos.x, pointer_pos.y, -1.0))
+                - camera.pos();
+        let ray_in_world = macaw::Ray3::from_origin_dir(camera.pos(), ray_dir.normalize());
+
+        let Self {
+            points,
+            line_segments,
+            meshes,
+        } = self;
+
+        // in points
+        let max_side_dist_sq = 5.0 * 5.0; // TODO: interaction radius from egui
+
+        // meters along the ray
+        let mut closest_t = f32::INFINITY;
+        // in points
+        let mut closest_side_dist_sq = max_side_dist_sq;
+        let mut closest_id = None;
+
+        {
+            crate::profile_scope!("points");
+            for point in points {
+                // TODO: take radius into account
+                let screen_pos = screen_from_world.project_point3(point.pos.into());
+                if screen_pos.z < 0.0 {
+                    continue; // TODO: don't we expect negative Z!? RHS etc
+                }
+                let dist_sq = egui::pos2(screen_pos.x, screen_pos.y).distance_sq(pointer_pos);
+                if dist_sq < max_side_dist_sq {
+                    let t = screen_pos.z.abs();
+                    if t < closest_t || dist_sq < closest_side_dist_sq {
+                        closest_t = t;
+                        closest_side_dist_sq = dist_sq;
+                        closest_id = Some(point.log_id);
+                    }
+                }
+            }
+        }
+
+        {
+            crate::profile_scope!("line_segments");
+            for line_segments in line_segments {
+                // TODO: take radius into account
+                use egui::pos2;
+
+                for [a, b] in &line_segments.segments {
+                    let a = screen_from_world.project_point3((*a).into());
+                    let b = screen_from_world.project_point3((*b).into());
+                    let dist_sq = line_segment_distance_sq_to_point(
+                        [pos2(a.x, a.y), pos2(b.x, b.y)],
+                        pointer_pos,
+                    );
+
+                    if dist_sq < max_side_dist_sq {
+                        let t = a.z.abs(); // not very accurate
+                        if t < closest_t || dist_sq < closest_side_dist_sq {
+                            closest_t = t;
+                            closest_side_dist_sq = dist_sq;
+                            closest_id = Some(line_segments.log_id);
+                        }
+                    }
+                }
+            }
+        }
+
+        {
+            crate::profile_scope!("meshes");
+            for mesh in meshes {
+                let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
+                let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.cpu_mesh.bbox());
+                if t < f32::INFINITY {
+                    let dist_sq = 0.0;
+                    if t < closest_t || dist_sq < closest_side_dist_sq {
+                        closest_t = t;
+                        closest_side_dist_sq = dist_sq;
+                        closest_id = Some(mesh.log_id);
+                    }
+                }
+            }
+        }
+
+        closest_id
     }
 }

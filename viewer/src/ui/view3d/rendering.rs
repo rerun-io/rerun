@@ -1,5 +1,4 @@
-use super::scene::*;
-use super::{camera::Camera, MeshCache};
+use super::{camera::Camera, mesh_cache::GpuMeshCache, scene::*};
 
 type LineMaterial = three_d::ColorMaterial;
 
@@ -10,7 +9,7 @@ pub struct RenderingContext {
     ambient_dark: three_d::AmbientLight,
     ambient_light: three_d::AmbientLight,
 
-    mesh_cache: MeshCache,
+    gpu_mesh_cache: GpuMeshCache,
 
     /// So we don't need to re-allocate them.
     points_cache: three_d::InstancedModel<three_d::PhysicalMaterial>,
@@ -66,7 +65,7 @@ impl RenderingContext {
             skybox_light,
             ambient_dark,
             ambient_light,
-            mesh_cache: Default::default(),
+            gpu_mesh_cache: Default::default(),
             points_cache,
             lines_cache,
         })
@@ -189,6 +188,7 @@ fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances 
 
     for line_segments in line_segments {
         let LineSegments {
+            log_id: _,
             segments,
             radius,
             color,
@@ -299,12 +299,14 @@ pub fn paint_with_three_d(
             .push(mint::Vector3::from(scale).into());
 
         rendering
-            .mesh_cache
-            .load(three_d, mesh.mesh_id, &mesh.name, &mesh.mesh_data);
+            .gpu_mesh_cache
+            .load(three_d, mesh.mesh_id, &mesh.cpu_mesh);
     }
 
     for (mesh_id, instances) in &mesh_instances {
-        rendering.mesh_cache.set_instances(*mesh_id, instances)?;
+        rendering
+            .gpu_mesh_cache
+            .set_instances(*mesh_id, instances)?;
     }
 
     let mut objects: Vec<&dyn Object> = vec![];
@@ -315,11 +317,12 @@ pub fn paint_with_three_d(
         objects.push(&rendering.skybox_light);
     }
 
-    // let axes = three_d::Axes::new(three_d, 0.5, 10.0).unwrap();
+    // TODO: option to show/hide these axes
+    // let axes = three_d::Axes::new(three_d, 0.05, 1.0).unwrap();
     // objects.push(&axes);
 
     for &mesh_id in mesh_instances.keys() {
-        if let Some(gpu_mesh) = rendering.mesh_cache.get(mesh_id) {
+        if let Some(gpu_mesh) = rendering.gpu_mesh_cache.get(mesh_id) {
             for obj in &gpu_mesh.models {
                 if obj.instance_count() > 0 {
                     objects.push(obj);
