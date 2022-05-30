@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log_types::{Data, LogMsg, ObjectPath};
+use log_types::{Data, DataPath, LogMsg};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
@@ -41,14 +41,14 @@ impl ContextPanel {
                 ui.separator();
                 self.view_log_msg_siblings(log_db, context, ui, msg);
             }
-            Selection::ObjectPath(object_path) => {
-                ui.label(format!("Selected object: {}", object_path));
+            Selection::ObjectPath(data_path) => {
+                ui.label(format!("Selected object: {}", data_path));
 
                 ui.separator();
 
                 let mut messages = context
                     .time_control
-                    .selected_messages_for_object(log_db, object_path);
+                    .selected_messages_for_object(log_db, data_path);
                 messages.sort_by_key(|msg| &msg.time_point);
 
                 if context.time_control.is_time_filter_active() {
@@ -60,7 +60,7 @@ impl ContextPanel {
                 if messages.is_empty() {
                     // nothing to see here
                 } else if messages.len() == 1 {
-                    // probably viewing the latest message of this object path
+                    // probably viewing the latest message of this data path
                     show_detailed_log_msg(context, ui, messages[0]);
                 } else {
                     crate::log_table_view::message_table(log_db, context, ui, &messages);
@@ -93,18 +93,18 @@ impl ContextPanel {
         crate::profile_function!();
         let messages = context.time_control.selected_messages(log_db);
 
-        let mut parent_path = msg.object_path.0.clone();
+        let mut parent_path = msg.data_path.0.clone();
         parent_path.pop();
 
         let mut sibling_messages: Vec<&LogMsg> = messages
             .iter()
             .copied()
-            .filter(|other_msg| other_msg.object_path.0.starts_with(&parent_path))
+            .filter(|other_msg| other_msg.data_path.0.starts_with(&parent_path))
             .collect();
 
         sibling_messages.sort_by_key(|msg| &msg.time_point);
 
-        ui.label(format!("{}:", ObjectPath(parent_path.clone())));
+        ui.label(format!("{}:", DataPath(parent_path.clone())));
 
         use egui_extras::Size;
         egui_extras::TableBuilder::new(ui)
@@ -127,13 +127,8 @@ impl ContextPanel {
                     let msg = sibling_messages[index];
 
                     row.col(|ui| {
-                        let relative_path =
-                            ObjectPath(msg.object_path.0[parent_path.len()..].to_vec());
-                        context.object_path_button_to(
-                            ui,
-                            relative_path.to_string(),
-                            &msg.object_path,
-                        );
+                        let relative_path = DataPath(msg.data_path.0[parent_path.len()..].to_vec());
+                        context.data_path_button_to(ui, relative_path.to_string(), &msg.data_path);
                     });
                     row.col(|ui| {
                         crate::space_view::ui_data(
@@ -153,7 +148,7 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
     let LogMsg {
         id,
         time_point,
-        object_path,
+        data_path,
         space,
         data,
     } = msg;
@@ -164,8 +159,8 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
         .striped(true)
         .num_columns(2)
         .show(ui, |ui| {
-            ui.monospace("object_path:");
-            context.object_path_button(ui, object_path);
+            ui.monospace("data_path:");
+            context.data_path_button(ui, data_path);
             ui.end_row();
 
             ui.monospace("time_point:");

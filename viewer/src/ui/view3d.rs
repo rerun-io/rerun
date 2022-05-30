@@ -12,7 +12,7 @@ use scene::*;
 use egui::Color32;
 use egui::NumExt as _;
 use glam::Affine3A;
-use log_types::{Data, LogId, LogMsg, ObjectPath};
+use log_types::{Data, DataPath, LogId, LogMsg};
 use macaw::{vec3, Quat, Vec3};
 
 use crate::{log_db::SpaceSummary, LogDb};
@@ -171,7 +171,7 @@ fn show_settings_ui(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
     state_3d: &mut State3D,
-    space: &ObjectPath,
+    space: &DataPath,
     space_summary: &SpaceSummary,
     space_specs: &SpaceSpecs,
 ) {
@@ -242,13 +242,13 @@ struct SpaceSpecs {
 }
 
 impl SpaceSpecs {
-    fn from_messages(space: &ObjectPath, messages: &[&LogMsg]) -> Self {
+    fn from_messages(space: &DataPath, messages: &[&LogMsg]) -> Self {
         let mut slf = Self::default();
 
         let up_path = space / "up";
 
         for msg in messages {
-            if msg.object_path == up_path {
+            if msg.data_path == up_path {
                 if let Data::Vec3(vec3) = msg.data {
                     slf.up = Vec3::from(vec3).normalize_or_zero();
                 } else {
@@ -262,11 +262,11 @@ impl SpaceSpecs {
 
 /// If the path to a camera is selected, we follow that camera.
 fn tracking_camera(context: &ViewerContext, messages: &[&LogMsg]) -> Option<Camera> {
-    if let Selection::ObjectPath(object_path) = &context.selection {
+    if let Selection::ObjectPath(data_path) = &context.selection {
         let mut selected_camera = None;
 
         for msg in messages {
-            if &msg.object_path == object_path {
+            if &msg.data_path == data_path {
                 if let Data::Camera(cam) = &msg.data {
                     if selected_camera.is_some() {
                         return None; // More than one camera
@@ -288,7 +288,7 @@ pub(crate) fn combined_view_3d(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
     state_3d: &mut State3D,
-    space: &ObjectPath,
+    space: &DataPath,
     space_summary: &SpaceSummary,
     messages: &[&LogMsg],
 ) {
@@ -348,7 +348,7 @@ pub(crate) fn combined_view_3d(
             }
             if !context
                 .projected_object_properties
-                .get(&msg.object_path)
+                .get(&msg.data_path)
                 .visible
             {
                 continue;

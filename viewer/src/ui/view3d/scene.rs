@@ -127,7 +127,7 @@ impl Scene {
                 let mesh_id = hash(msg.id);
                 if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
                     mesh_id,
-                    &msg.object_path.to_string(),
+                    &msg.data_path.to_string(),
                     &MeshSourceData::Mesh3D(mesh.clone()),
                 ) {
                     self.meshes.push(MeshSource {
@@ -161,7 +161,7 @@ impl Scene {
 
                     if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
                         mesh_id,
-                        &msg.object_path.to_string(),
+                        &msg.data_path.to_string(),
                         &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
                     ) {
                         self.meshes.push(MeshSource {

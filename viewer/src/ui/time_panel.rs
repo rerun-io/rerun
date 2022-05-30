@@ -184,7 +184,7 @@ impl TimePanel {
         log_db: &LogDb,
         context: &mut ViewerContext,
         time_area_painter: &egui::Painter,
-        path: &mut Vec<ObjectPathComponent>,
+        path: &mut Vec<DataPathComponent>,
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
@@ -192,7 +192,7 @@ impl TimePanel {
 
         // TODO: ignore rows that have no data for the current time source?
 
-        let object_path = ObjectPath(path.clone());
+        let data_path = DataPath(path.clone());
 
         // The last part of the the path component
         let text = if let Some(last) = path.last() {
@@ -216,14 +216,14 @@ impl TimePanel {
                 let response = ui.allocate_response(egui::vec2(indent, 0.0), egui::Sense::hover());
                 ui.painter()
                     .circle_filled(response.rect.center(), 2.0, ui.visuals().text_color());
-                context.object_path_button_to(ui, text, &object_path);
+                context.data_path_button_to(ui, text, &data_path);
             })
             .response
         } else {
             // node with more children
             let collapsing_response = egui::CollapsingHeader::new(text)
                 .id_source(&path)
-                .default_open(path.is_empty()) //  || (path.len() == 1 && tree.children.len() < 3)) TODO when object path has been simplified
+                .default_open(path.is_empty()) //  || (path.len() == 1 && tree.children.len() < 3)) TODO when data path has been simplified
                 .show(ui, |ui| {
                     self.show_children(log_db, context, time_area_painter, path, tree, ui);
                 });
@@ -246,7 +246,7 @@ impl TimePanel {
 
         let response = if true {
             response.on_hover_ui(|ui| {
-                ui.label(object_path.to_string());
+                ui.label(data_path.to_string());
                 let summary = tree.data.summary();
                 if !summary.is_empty() {
                     ui.label(summary);
@@ -262,20 +262,20 @@ impl TimePanel {
         // Property column:
 
         {
-            let are_all_ancestors_visible = object_path.is_root()
+            let are_all_ancestors_visible = data_path.is_root()
                 || context
                     .projected_object_properties
-                    .get(&object_path.parent())
+                    .get(&data_path.parent())
                     .visible;
 
-            let mut props = context.individual_object_properties.get(&object_path);
+            let mut props = context.individual_object_properties.get(&data_path);
             let property_rect =
                 Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response.rect.y_range());
             let mut ui = ui.child_ui(property_rect, egui::Layout::left_to_right());
             ui.set_enabled(are_all_ancestors_visible);
             ui.toggle_value(&mut props.visible, "👁")
                 .on_hover_text("Toggle visibility");
-            context.individual_object_properties.set(object_path, props);
+            context.individual_object_properties.set(data_path, props);
         }
 
         // ----------------------------------------------
@@ -311,17 +311,17 @@ impl TimePanel {
         log_db: &LogDb,
         context: &mut ViewerContext,
         time_area_painter: &egui::Painter,
-        path: &mut Vec<ObjectPathComponent>,
+        path: &mut Vec<DataPathComponent>,
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
         for (name, child) in &tree.string_children {
-            path.push(ObjectPathComponent::String(*name));
+            path.push(DataPathComponent::String(*name));
             self.show_tree(log_db, context, time_area_painter, path, child, ui);
             path.pop();
         }
         for (index, child) in &tree.index_children {
-            path.push(ObjectPathComponent::Index(index.clone()));
+            path.push(DataPathComponent::Index(index.clone()));
             self.show_tree(log_db, context, time_area_painter, path, child, ui);
             path.pop();
         }
@@ -1512,7 +1512,7 @@ fn paint_ticks(
 
 // ----------------------------------------------------------------------------
 
-fn summary_of_tree(ui: &mut egui::Ui, path: &mut Vec<ObjectPathComponent>, tree: &ObjectTree) {
+fn summary_of_tree(ui: &mut egui::Ui, path: &mut Vec<DataPathComponent>, tree: &ObjectTree) {
     egui::Grid::new("summary_of_children")
         .num_columns(2)
         .striped(true)
@@ -1521,18 +1521,18 @@ fn summary_of_tree(ui: &mut egui::Ui, path: &mut Vec<ObjectPathComponent>, tree:
         });
 }
 
-fn summary_of_children(ui: &mut egui::Ui, path: &mut Vec<ObjectPathComponent>, tree: &ObjectTree) {
-    ui.label(ObjectPath(path.clone()).to_string());
+fn summary_of_children(ui: &mut egui::Ui, path: &mut Vec<DataPathComponent>, tree: &ObjectTree) {
+    ui.label(DataPath(path.clone()).to_string());
     ui.label(tree.data.summary());
     ui.end_row();
 
     for (name, child) in &tree.string_children {
-        path.push(ObjectPathComponent::String(*name));
+        path.push(DataPathComponent::String(*name));
         summary_of_children(ui, path, child);
         path.pop();
     }
     for (index, child) in &tree.index_children {
-        path.push(ObjectPathComponent::Index(index.clone()));
+        path.push(DataPathComponent::Index(index.clone()));
         summary_of_children(ui, path, child);
         path.pop();
     }

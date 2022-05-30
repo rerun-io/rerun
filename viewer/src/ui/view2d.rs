@@ -11,7 +11,7 @@ pub(crate) fn combined_view_2d(
     log_db: &LogDb,
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    space: &ObjectPath,
+    space: &DataPath,
     space_summary: &SpaceSummary,
     messages: &[&LogMsg],
 ) {
@@ -24,7 +24,7 @@ pub(crate) fn combined_view_2d(
         .filter(|msg| {
             context
                 .projected_object_properties
-                .get(&msg.object_path)
+                .get(&msg.data_path)
                 .visible
         })
         .collect_vec();
@@ -161,8 +161,8 @@ pub(crate) fn on_hover_ui(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &
         .striped(true)
         .num_columns(2)
         .show(ui, |ui| {
-            ui.monospace("object_path:");
-            ui.label(format!("{}", msg.object_path));
+            ui.monospace("data_path:");
+            ui.label(format!("{}", msg.data_path));
             ui.end_row();
 
             ui.monospace("data:");
@@ -174,7 +174,7 @@ pub(crate) fn on_hover_ui(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &
 }
 
 fn hovered(
-    space: &ObjectPath,
+    space: &DataPath,
     messages: &[&LogMsg],
     to_screen: &RectTransform,
     pointer_pos: Pos2,

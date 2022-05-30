@@ -1,4 +1,4 @@
-use log_types::{Data, LogId, LogMsg, ObjectPath, ObjectPathComponent, TimeValue};
+use log_types::{Data, DataPath, DataPathComponent, LogId, LogMsg, TimeValue};
 
 use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 
@@ -40,22 +40,22 @@ impl ViewerContext {
 
         fn project_tree(
             context: &mut ViewerContext,
-            path: &mut Vec<ObjectPathComponent>,
+            path: &mut Vec<DataPathComponent>,
             prop: ObjectProps,
             tree: &ObjectTree,
         ) {
             // TODO: we need to speed up and simplify this a lot.
-            let object_path = ObjectPath(path.clone());
-            let prop = prop.with_child(&context.individual_object_properties.get(&object_path));
-            context.projected_object_properties.set(object_path, prop);
+            let data_path = DataPath(path.clone());
+            let prop = prop.with_child(&context.individual_object_properties.get(&data_path));
+            context.projected_object_properties.set(data_path, prop);
 
             for (name, child) in &tree.string_children {
-                path.push(ObjectPathComponent::String(*name));
+                path.push(DataPathComponent::String(*name));
                 project_tree(context, path, prop, child);
                 path.pop();
             }
             for (index, child) in &tree.index_children {
-                path.push(ObjectPathComponent::Index(index.clone()));
+                path.push(DataPathComponent::Index(index.clone()));
                 project_tree(context, path, prop, child);
                 path.pop();
             }
@@ -65,32 +65,28 @@ impl ViewerContext {
         project_tree(self, &mut path, ObjectProps::default(), &log_db.object_tree);
     }
 
-    /// Show a object path and make it selectable.
-    pub fn object_path_button(
-        &mut self,
-        ui: &mut egui::Ui,
-        object_path: &ObjectPath,
-    ) -> egui::Response {
-        self.object_path_button_to(ui, object_path.to_string(), object_path)
+    /// Show a data path and make it selectable.
+    pub fn data_path_button(&mut self, ui: &mut egui::Ui, data_path: &DataPath) -> egui::Response {
+        self.data_path_button_to(ui, data_path.to_string(), data_path)
     }
 
-    /// Show a object path and make it selectable.
-    pub fn object_path_button_to(
+    /// Show a data path and make it selectable.
+    pub fn data_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
-        object_path: &ObjectPath,
+        data_path: &DataPath,
     ) -> egui::Response {
-        // TODO: common hover-effect of all buttons for the same object_path!
-        let response = ui.selectable_label(self.selection.is_object_path(object_path), text);
+        // TODO: common hover-effect of all buttons for the same data_path!
+        let response = ui.selectable_label(self.selection.is_data_path(data_path), text);
         if response.clicked() {
-            self.selection = Selection::ObjectPath(object_path.clone());
+            self.selection = Selection::ObjectPath(data_path.clone());
         }
         response
     }
 
     /// Button to select the current space.
-    pub fn space_button(&mut self, ui: &mut egui::Ui, space: &ObjectPath) -> egui::Response {
+    pub fn space_button(&mut self, ui: &mut egui::Ui, space: &DataPath) -> egui::Response {
         // TODO: common hover-effect of all buttons for the same space!
         let response = ui.selectable_label(self.selection.is_space(space), space.to_string());
         if response.clicked() {
@@ -122,7 +118,7 @@ impl ViewerContext {
         // TODO: pre-compute this to avoid lookups?
         let time_source = self.time_control.source();
         if let Some(time) = msg.time_point.0.get(time_source) {
-            let color_path = msg.object_path.sibling("color");
+            let color_path = msg.data_path.sibling("color");
             if let Some(color_msg) = log_db.latest(time_source, *time, &color_path) {
                 if let Data::Color([r, g, b, a]) = &color_msg.data {
                     return egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
@@ -140,7 +136,7 @@ impl ViewerContext {
         use rand::{Rng, SeedableRng};
 
         // TODO: ignore `TempId` id:s!
-        let mut small_rng = SmallRng::seed_from_u64(egui::util::hash(&msg.object_path));
+        let mut small_rng = SmallRng::seed_from_u64(egui::util::hash(&msg.data_path));
 
         // TODO: OKLab
         let hsva = egui::color::Hsva {
@@ -171,8 +167,8 @@ impl Default for Options {
 pub(crate) enum Selection {
     None,
     LogId(LogId),
-    ObjectPath(ObjectPath),
-    Space(ObjectPath),
+    ObjectPath(DataPath),
+    Space(DataPath),
 }
 
 impl Default for Selection {
@@ -190,7 +186,7 @@ impl Selection {
         !matches!(self, Self::None)
     }
 
-    pub fn is_object_path(&self, needle: &ObjectPath) -> bool {
+    pub fn is_data_path(&self, needle: &DataPath) -> bool {
         if let Self::ObjectPath(hay) = self {
             hay == needle
         } else {
@@ -198,7 +194,7 @@ impl Selection {
         }
     }
 
-    pub fn is_space(&self, needle: &ObjectPath) -> bool {
+    pub fn is_space(&self, needle: &DataPath) -> bool {
         if let Self::Space(hay) = self {
             hay == needle
         } else {
@@ -209,19 +205,19 @@ impl Selection {
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ObjectsProperties {
-    props: ahash::AHashMap<ObjectPath, ObjectProps>,
+    props: ahash::AHashMap<DataPath, ObjectProps>,
 }
 
 impl ObjectsProperties {
-    pub fn get(&self, object_path: &ObjectPath) -> ObjectProps {
-        self.props.get(object_path).copied().unwrap_or_default()
+    pub fn get(&self, data_path: &DataPath) -> ObjectProps {
+        self.props.get(data_path).copied().unwrap_or_default()
     }
 
-    pub fn set(&mut self, object_path: ObjectPath, prop: ObjectProps) {
+    pub fn set(&mut self, data_path: DataPath, prop: ObjectProps) {
         if prop == ObjectProps::default() {
-            self.props.remove(&object_path); // save space
+            self.props.remove(&data_path); // save space
         } else {
-            self.props.insert(object_path, prop);
+            self.props.insert(data_path, prop);
         }
     }
 }

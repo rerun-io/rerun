@@ -63,28 +63,28 @@ pub struct LogMsg {
     pub time_point: TimePoint,
 
     /// What this is.
-    pub object_path: ObjectPath,
+    pub data_path: DataPath,
 
     /// The value of this.
     pub data: Data,
 
     /// Where ("camera", "world") this thing is in.
-    pub space: Option<ObjectPath>,
+    pub space: Option<DataPath>,
 }
 
 impl LogMsg {
     #[inline]
-    pub fn space(mut self, space: &ObjectPath) -> Self {
+    pub fn space(mut self, space: &DataPath) -> Self {
         self.space = Some(space.clone());
         self
     }
 }
 
 #[inline]
-pub fn log_msg(time_point: &TimePoint, object_path: ObjectPath, data: impl Into<Data>) -> LogMsg {
+pub fn log_msg(time_point: &TimePoint, data_path: DataPath, data: impl Into<Data>) -> LogMsg {
     LogMsg {
         time_point: time_point.clone(),
-        object_path,
+        data_path,
         data: data.into(),
         space: None,
         id: LogId::random(),
@@ -151,12 +151,12 @@ pub fn time_point(fields: impl IntoIterator<Item = (&'static str, TimeValue)>) -
 
 // ----------------------------------------------------------------------------
 
-/// A hierarchy
+/// A path to a specific piece of data (e.g. a single `f32`).
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct ObjectPath(pub Vec<ObjectPathComponent>);
+pub struct DataPath(pub Vec<DataPathComponent>);
 
-impl ObjectPath {
+impl DataPath {
     #[inline]
     pub fn is_root(&self) -> bool {
         self.0.is_empty()
@@ -168,7 +168,7 @@ impl ObjectPath {
         Self(path)
     }
 
-    pub fn sibling(&self, last_comp: impl Into<ObjectPathComponent>) -> Self {
+    pub fn sibling(&self, last_comp: impl Into<DataPathComponent>) -> Self {
         let mut path = self.0.clone();
         path.pop(); // TODO: handle root?
         path.push(last_comp.into());
@@ -176,7 +176,7 @@ impl ObjectPath {
     }
 }
 
-impl std::fmt::Display for ObjectPath {
+impl std::fmt::Display for DataPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_char('/')?;
         for (i, comp) in self.0.iter().enumerate() {
@@ -189,23 +189,23 @@ impl std::fmt::Display for ObjectPath {
     }
 }
 
-impl From<&str> for ObjectPath {
+impl From<&str> for DataPath {
     #[inline]
     fn from(component: &str) -> Self {
         Self(vec![component.into()])
     }
 }
 
-impl From<ObjectPathComponent> for ObjectPath {
+impl From<DataPathComponent> for DataPath {
     #[inline]
-    fn from(component: ObjectPathComponent) -> Self {
+    fn from(component: DataPathComponent) -> Self {
         Self(vec![component])
     }
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ObjectPathComponent {
+pub enum DataPathComponent {
     /// Struct member. Each member can have a different type.
     String(InternedString),
 
@@ -213,7 +213,7 @@ pub enum ObjectPathComponent {
     Index(Index),
 }
 
-impl std::fmt::Display for ObjectPathComponent {
+impl std::fmt::Display for DataPathComponent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String(string) => f.write_str(string),
@@ -222,7 +222,7 @@ impl std::fmt::Display for ObjectPathComponent {
     }
 }
 
-impl From<&str> for ObjectPathComponent {
+impl From<&str> for DataPathComponent {
     #[inline]
     fn from(comp: &str) -> Self {
         Self::String(comp.into())
@@ -263,37 +263,37 @@ impl std::fmt::Display for Index {
 
 impl_into_enum!(String, Index, String);
 
-impl std::ops::Div for ObjectPathComponent {
-    type Output = ObjectPath;
+impl std::ops::Div for DataPathComponent {
+    type Output = DataPath;
 
     #[inline]
-    fn div(self, rhs: ObjectPathComponent) -> Self::Output {
-        ObjectPath(vec![self, rhs])
+    fn div(self, rhs: DataPathComponent) -> Self::Output {
+        DataPath(vec![self, rhs])
     }
 }
 
-impl std::ops::Div<ObjectPathComponent> for ObjectPath {
-    type Output = ObjectPath;
+impl std::ops::Div<DataPathComponent> for DataPath {
+    type Output = DataPath;
 
     #[inline]
-    fn div(mut self, rhs: ObjectPathComponent) -> Self::Output {
+    fn div(mut self, rhs: DataPathComponent) -> Self::Output {
         self.0.push(rhs);
         self
     }
 }
 
-impl std::ops::Div<Index> for ObjectPath {
-    type Output = ObjectPath;
+impl std::ops::Div<Index> for DataPath {
+    type Output = DataPath;
 
     #[inline]
     fn div(mut self, rhs: Index) -> Self::Output {
-        self.0.push(ObjectPathComponent::Index(rhs));
+        self.0.push(DataPathComponent::Index(rhs));
         self
     }
 }
 
-impl std::ops::Div<Index> for &ObjectPath {
-    type Output = ObjectPath;
+impl std::ops::Div<Index> for &DataPath {
+    type Output = DataPath;
 
     #[inline]
     fn div(self, rhs: Index) -> Self::Output {
@@ -301,27 +301,27 @@ impl std::ops::Div<Index> for &ObjectPath {
     }
 }
 
-impl std::ops::Div<ObjectPathComponent> for &ObjectPath {
-    type Output = ObjectPath;
+impl std::ops::Div<DataPathComponent> for &DataPath {
+    type Output = DataPath;
 
     #[inline]
-    fn div(self, rhs: ObjectPathComponent) -> Self::Output {
+    fn div(self, rhs: DataPathComponent) -> Self::Output {
         self.clone() / rhs
     }
 }
 
-impl std::ops::Div<&'static str> for ObjectPath {
-    type Output = ObjectPath;
+impl std::ops::Div<&'static str> for DataPath {
+    type Output = DataPath;
 
     #[inline]
     fn div(mut self, rhs: &'static str) -> Self::Output {
-        self.0.push(ObjectPathComponent::String(rhs.into()));
+        self.0.push(DataPathComponent::String(rhs.into()));
         self
     }
 }
 
-impl std::ops::Div<&'static str> for &ObjectPath {
-    type Output = ObjectPath;
+impl std::ops::Div<&'static str> for &DataPath {
+    type Output = DataPath;
 
     #[inline]
     fn div(self, rhs: &'static str) -> Self::Output {

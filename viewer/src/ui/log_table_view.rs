@@ -102,7 +102,7 @@ fn table_row(
     let LogMsg {
         id,
         time_point,
-        object_path,
+        data_path,
         space,
         data,
     } = msg;
@@ -115,7 +115,7 @@ fn table_row(
         });
     }
     row.col(|ui| {
-        context.object_path_button(ui, object_path);
+        context.data_path_button(ui, data_path);
     });
     row.col(|ui| {
         if let Some(space) = space {
