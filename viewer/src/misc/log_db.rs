@@ -14,7 +14,7 @@ pub(crate) struct LogDb {
     messages: nohash_hasher::IntMap<LogId, LogMsg>,
     pub time_points: TimePoints,
     pub spaces: BTreeMap<DataPath, SpaceSummary>,
-    pub object_tree: ObjectTree,
+    pub data_tree: DataTree,
     object_history: HashMap<DataPath, ObjectHistory>,
 }
 
@@ -136,7 +136,7 @@ impl LogDb {
             .entry(msg.data_path.clone())
             .or_default()
             .add(&msg.time_point, msg.id);
-        self.object_tree.add_log_msg(&msg);
+        self.data_tree.add_log_msg(&msg);
         self.messages.insert(msg.id, msg);
     }
 
@@ -324,12 +324,12 @@ impl SpaceSummary {
 
 /// Tree of data paths.
 #[derive(Default)]
-pub(crate) struct ObjectTree {
+pub(crate) struct DataTree {
     /// Children of type [`ObjectPathComponent::String`].
-    pub string_children: BTreeMap<InternedString, ObjectTree>,
+    pub string_children: BTreeMap<InternedString, DataTree>,
 
     /// Children of type [`ObjectPathComponent::Index`].
-    pub index_children: BTreeMap<Index, ObjectTree>,
+    pub index_children: BTreeMap<Index, DataTree>,
 
     /// When do we have data?
     ///
@@ -345,7 +345,7 @@ pub(crate) struct ObjectTree {
     pub data: DataColumns,
 }
 
-impl ObjectTree {
+impl DataTree {
     /// Has no children
     pub fn is_leaf(&self) -> bool {
         self.string_children.is_empty() && self.index_children.is_empty()

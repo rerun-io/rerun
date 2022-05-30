@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    log_db::ObjectTree, misc::time_axis::TimeSourceAxis, misc::time_control::TimeSelectionType,
+    log_db::DataTree, misc::time_axis::TimeSourceAxis, misc::time_control::TimeSelectionType,
     time_axis::TimeRange, LogDb, TimeControl, TimeView, ViewerContext,
 };
 
@@ -174,7 +174,7 @@ impl TimePanel {
             context,
             time_area_painter,
             &mut path,
-            &log_db.object_tree,
+            &log_db.data_tree,
             ui,
         );
     }
@@ -185,7 +185,7 @@ impl TimePanel {
         context: &mut ViewerContext,
         time_area_painter: &egui::Painter,
         path: &mut Vec<DataPathComponent>,
-        tree: &ObjectTree,
+        tree: &DataTree,
         ui: &mut egui::Ui,
     ) {
         use egui::*;
@@ -312,7 +312,7 @@ impl TimePanel {
         context: &mut ViewerContext,
         time_area_painter: &egui::Painter,
         path: &mut Vec<DataPathComponent>,
-        tree: &ObjectTree,
+        tree: &DataTree,
         ui: &mut egui::Ui,
     ) {
         for (name, child) in &tree.string_children {
@@ -1512,7 +1512,7 @@ fn paint_ticks(
 
 // ----------------------------------------------------------------------------
 
-fn summary_of_tree(ui: &mut egui::Ui, path: &mut Vec<DataPathComponent>, tree: &ObjectTree) {
+fn summary_of_tree(ui: &mut egui::Ui, path: &mut Vec<DataPathComponent>, tree: &DataTree) {
     egui::Grid::new("summary_of_children")
         .num_columns(2)
         .striped(true)
@@ -1521,7 +1521,7 @@ fn summary_of_tree(ui: &mut egui::Ui, path: &mut Vec<DataPathComponent>, tree: &
         });
 }
 
-fn summary_of_children(ui: &mut egui::Ui, path: &mut Vec<DataPathComponent>, tree: &ObjectTree) {
+fn summary_of_children(ui: &mut egui::Ui, path: &mut Vec<DataPathComponent>, tree: &DataTree) {
     ui.label(DataPath(path.clone()).to_string());
     ui.label(tree.data.summary());
     ui.end_row();

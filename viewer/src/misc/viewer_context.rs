@@ -1,6 +1,6 @@
 use log_types::{Data, DataPath, DataPathComponent, LogId, LogMsg, TimeValue};
 
-use crate::{log_db::LogDb, misc::log_db::ObjectTree};
+use crate::{log_db::LogDb, misc::log_db::DataTree};
 
 /// Common things needed by many parts of the viewer.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -42,7 +42,7 @@ impl ViewerContext {
             context: &mut ViewerContext,
             path: &mut Vec<DataPathComponent>,
             prop: ObjectProps,
-            tree: &ObjectTree,
+            tree: &DataTree,
         ) {
             // TODO: we need to speed up and simplify this a lot.
             let data_path = DataPath(path.clone());
@@ -62,7 +62,7 @@ impl ViewerContext {
         }
 
         let mut path = vec![];
-        project_tree(self, &mut path, ObjectProps::default(), &log_db.object_tree);
+        project_tree(self, &mut path, ObjectProps::default(), &log_db.data_tree);
     }
 
     /// Show a data path and make it selectable.
