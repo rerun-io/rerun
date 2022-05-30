@@ -236,7 +236,7 @@ fn santiy_check(msg: &LogMsg) {
 ///
 /// This allows fast lookup of "latest version" of an object.
 #[derive(Default)]
-pub(crate) struct ObjectHistory(HashMap<TimeSource, BTreeMap<TimeValue, Vec<LogId>>>);
+pub(crate) struct ObjectHistory(nohash_hasher::IntMap<TimeSource, BTreeMap<TimeValue, Vec<LogId>>>);
 
 impl ObjectHistory {
     fn add(&mut self, time_point: &TimePoint, id: LogId) {
