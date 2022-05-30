@@ -13,6 +13,8 @@ pub use time::{Duration, Time};
 
 use std::{collections::BTreeMap, fmt::Write as _};
 
+use rr_string_interner::InternedString;
+
 #[macro_export]
 macro_rules! impl_into_enum {
     ($from_ty: ty, $enum_name: ident, $to_enum_variant: ident) => {
@@ -205,7 +207,7 @@ impl From<ObjectPathComponent> for ObjectPath {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjectPathComponent {
     /// Struct member. Each member can have a different type.
-    String(String),
+    String(InternedString),
 
     /// Array/table/map member. Each member must be of the same type (homogenous).
     Index(Index),
@@ -223,7 +225,7 @@ impl std::fmt::Display for ObjectPathComponent {
 impl From<&str> for ObjectPathComponent {
     #[inline]
     fn from(comp: &str) -> Self {
-        Self::String(comp.to_owned())
+        Self::String(comp.into())
     }
 }
 

@@ -26,6 +26,10 @@ pub struct InternedString {
 }
 
 impl InternedString {
+    pub fn new(string: &str) -> Self {
+        global_intern(string)
+    }
+
     #[inline]
     pub fn as_str(&self) -> &'static str {
         self.string
@@ -35,6 +39,18 @@ impl InternedString {
     #[inline]
     pub fn hash(&self) -> u64 {
         self.hash
+    }
+}
+
+impl From<&str> for InternedString {
+    fn from(string: &str) -> Self {
+        Self::new(string)
+    }
+}
+
+impl From<String> for InternedString {
+    fn from(string: String) -> Self {
+        Self::new(&string)
     }
 }
 
@@ -145,7 +161,7 @@ impl StringInterner {
 // ----------------------------------------------------------------------------
 
 /// global interning function.
-pub fn global_intern(string: &str) -> InternedString {
+fn global_intern(string: &str) -> InternedString {
     use once_cell::sync::Lazy;
     use parking_lot::Mutex;
     static GLOBAL_INTERNER: Lazy<Mutex<StringInterner>> =

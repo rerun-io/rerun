@@ -17,12 +17,13 @@ load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
 save = ["anyhow", "rmp-serde", "serde", "zstd"]
 
 # Enable (de)serialization using serde.
-serde = ["dep:serde"]
+serde = ["dep:serde", "rr_string_interner/serde"]
 
 
 [dependencies]
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 nohash-hasher = "0.2"
+rr_string_interner = { path = "../rr_string_interner" }
 uuid = { version = "1.1", features = ["serde", "v4"] }
 
 # Optional:

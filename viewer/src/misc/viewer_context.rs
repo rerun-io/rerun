@@ -50,7 +50,7 @@ impl ViewerContext {
             context.projected_object_properties.set(object_path, prop);
 
             for (name, child) in &tree.string_children {
-                path.push(ObjectPathComponent::String(name.clone()));
+                path.push(ObjectPathComponent::String(*name));
                 project_tree(context, path, prop, child);
                 path.pop();
             }

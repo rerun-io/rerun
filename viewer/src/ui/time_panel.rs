@@ -316,7 +316,7 @@ impl TimePanel {
         ui: &mut egui::Ui,
     ) {
         for (name, child) in &tree.string_children {
-            path.push(ObjectPathComponent::String(name.clone()));
+            path.push(ObjectPathComponent::String(*name));
             self.show_tree(log_db, context, time_area_painter, path, child, ui);
             path.pop();
         }
@@ -1527,7 +1527,7 @@ fn summary_of_children(ui: &mut egui::Ui, path: &mut Vec<ObjectPathComponent>, t
     ui.end_row();
 
     for (name, child) in &tree.string_children {
-        path.push(ObjectPathComponent::String(name.clone()));
+        path.push(ObjectPathComponent::String(*name));
         summary_of_children(ui, path, child);
         path.pop();
     }

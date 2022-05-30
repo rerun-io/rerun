@@ -1,7 +1,9 @@
-use crate::misc::TimePoints;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log_types::*;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use rr_string_interner::InternedString;
+
+use crate::misc::TimePoints;
 
 use super::time_axis::TimeRange;
 
@@ -324,7 +326,7 @@ impl SpaceSummary {
 #[derive(Default)]
 pub(crate) struct ObjectTree {
     /// Children of type [`ObjectPathComponent::String`].
-    pub string_children: BTreeMap<String, ObjectTree>,
+    pub string_children: BTreeMap<InternedString, ObjectTree>,
 
     /// Children of type [`ObjectPathComponent::Index`].
     pub index_children: BTreeMap<Index, ObjectTree>,
@@ -370,7 +372,7 @@ impl ObjectTree {
             [first, rest @ ..] => match first {
                 ObjectPathComponent::String(string) => {
                     self.string_children
-                        .entry(string.clone())
+                        .entry(*string)
                         .or_default()
                         .add_path(rest, msg);
                 }
