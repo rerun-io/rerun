@@ -315,7 +315,8 @@ pub fn paint_with_three_d(
         objects.push(&rendering.skybox_light);
     }
 
-    // let axes = three_d::Axes::new(three_d, 0.5, 10.0).unwrap();
+    // TODO: option to show/hide these axes
+    // let axes = three_d::Axes::new(three_d, 0.05, 1.0).unwrap();
     // objects.push(&axes);
 
     for &mesh_id in mesh_instances.keys() {

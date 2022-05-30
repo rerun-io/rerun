@@ -25,9 +25,7 @@ pub fn ray_bbox_intersect(ray: &macaw::Ray3, bbox: &macaw::BoundingBox) -> f32 {
     let tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
     let tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
 
-    if tmax < 0.0 {
-        f32::INFINITY
-    } else if tmax < tmin {
+    if tmax < 0.0 || tmax < tmin {
         f32::INFINITY
     } else {
         tmin

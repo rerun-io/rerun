@@ -9,8 +9,8 @@ use camera::*;
 use rendering::*;
 use scene::*;
 
+use egui::Color32;
 use egui::NumExt as _;
-use egui::{Color32, Rect};
 use glam::Affine3A;
 use log_types::{Data, LogId, LogMsg, ObjectPath};
 use macaw::{vec3, Quat, Vec3};
@@ -29,6 +29,10 @@ pub(crate) struct State3D {
 
     #[serde(skip)]
     cam_interpolation: Option<CameraInterpolation>,
+
+    /// What the mouse is hovering (from previous frame)
+    #[serde(skip)]
+    hovered: Option<LogId>,
 }
 
 impl State3D {
@@ -304,9 +308,7 @@ pub(crate) fn combined_view_3d(
 
     let camera = state_3d.update_camera(context, messages, &response, space_summary, &space_specs);
 
-    // TODO: do picking on `Scene` instead, at the end of the frame. Then we have the correct sizes etc.
-    // remember hovered from last frame.
-    let mut hovered_id = picking(ui, &rect, space, messages, &camera);
+    let mut hovered_id = state_3d.hovered;
     if ui.input().pointer.any_click() {
         if let Some(clicked_id) = hovered_id {
             if let Some(msg) = log_db.get_msg(&clicked_id) {
@@ -377,6 +379,8 @@ pub(crate) fn combined_view_3d(
         }
     }
 
+    state_3d.hovered = scene.picking(ui, &rect, &camera);
+
     let dark_mode = ui.visuals().dark_mode;
 
     let callback = egui::PaintCallback {
@@ -392,69 +396,6 @@ pub(crate) fn combined_view_3d(
         }),
     };
     ui.painter().add(callback);
-}
-
-fn picking(
-    ui: &egui::Ui,
-    rect: &Rect,
-    space: &ObjectPath,
-    messages: &[&LogMsg],
-    camera: &Camera,
-) -> Option<LogId> {
-    crate::profile_function!();
-
-    let pointer_pos = ui.ctx().pointer_hover_pos()?;
-
-    let screen_from_world = camera.screen_from_world(rect);
-
-    let mut closest_dist_sq = 5.0 * 5.0; // TODO: interaction radius from egui
-    let mut closest_id = None;
-
-    for msg in messages {
-        if msg.space.as_ref() == Some(space) {
-            match &msg.data {
-                Data::Pos3([x, y, z]) => {
-                    let screen_pos = screen_from_world.project_point3(vec3(*x, *y, *z));
-                    if screen_pos.z < 0.0 {
-                        continue; // TODO: don't we expect negative Z!? RHS etc
-                    }
-                    let screen_pos = egui::pos2(screen_pos.x, screen_pos.y);
-
-                    let dist_sq = screen_pos.distance_sq(pointer_pos);
-                    if dist_sq < closest_dist_sq {
-                        closest_dist_sq = dist_sq;
-                        closest_id = Some(msg.id);
-                    }
-                }
-                Data::Camera(cam) => {
-                    let screen_pos = screen_from_world.project_point3(cam.position.into());
-                    if screen_pos.z < 0.0 {
-                        continue; // TODO: don't we expect negative Z!? RHS etc
-                    }
-                    let screen_pos = egui::pos2(screen_pos.x, screen_pos.y);
-
-                    let dist_sq = screen_pos.distance_sq(pointer_pos);
-                    if dist_sq < closest_dist_sq {
-                        closest_dist_sq = dist_sq;
-                        closest_id = Some(msg.id);
-                    }
-                }
-
-                Data::Vec3(_)
-                | Data::Box3(_)
-                | Data::Path3D(_)
-                | Data::LineSegments3D(_)
-                | Data::Mesh3D(_) => {
-                    // TODO: more picking
-                }
-                _ => {
-                    debug_assert!(!msg.data.is_3d());
-                }
-            }
-        }
-    }
-
-    closest_id
 }
 
 fn default_camera(space_summary: &SpaceSummary, space_spects: &SpaceSpecs) -> OrbitCamera {

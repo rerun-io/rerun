@@ -1,7 +1,6 @@
 use super::scene::MeshSourceData;
 use crate::mesh_loader::{CpuMesh, GpuMesh};
 use log_types::MeshFormat;
-use macaw::BoundingBox;
 use std::sync::Arc;
 
 // ----------------------------------------------------------------------------
@@ -39,14 +38,6 @@ impl CpuMeshCache {
                 }
             })
             .clone()
-    }
-
-    fn get(&self, mesh_id: u64) -> Option<&Arc<CpuMesh>> {
-        self.0.get(&mesh_id)?.as_ref()
-    }
-
-    pub fn bbox(&self, mesh_id: u64) -> Option<&BoundingBox> {
-        self.get(mesh_id).map(|mesh| mesh.bbox())
     }
 }
 
