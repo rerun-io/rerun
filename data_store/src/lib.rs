@@ -4,6 +4,8 @@ mod storage;
 pub use scene::*;
 pub use storage::*;
 
+pub use log_types::{DataPath, DataPathComponent, Index, TypePath, TypePathComponent};
+
 use std::collections::BTreeMap;
 
 pub enum AtomType {
@@ -50,29 +52,13 @@ pub enum StructType {
     Point3D,
 }
 
-// pub struct TypePath(Vec<TypePathComponent>);
-pub type TypePath = im::Vector<TypePathComponent>;
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum TypePathComponent {
-    /// Struct member
-    Name(String),
-
-    /// Table (array/map) member.
-    /// Tables are homogenous, so it is the same type path for all.
-    Index,
-}
-
-// pub struct DataPath(Vec<DataPathComponent>);
-pub type DataPath = im::Vector<DataPathComponent>;
-
 pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPathKey) {
     let mut type_path = im::Vector::default();
     let mut index_path = IndexPathKey::default();
     for component in data_path {
         match component {
-            DataPathComponent::Name(name) => {
-                type_path.push_back(TypePathComponent::Name(name));
+            DataPathComponent::String(name) => {
+                type_path.push_back(TypePathComponent::String(name));
             }
             DataPathComponent::Index(index) => {
                 type_path.push_back(TypePathComponent::Index);
@@ -81,33 +67,6 @@ pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPathKey) {
         }
     }
     (type_path, index_path)
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum DataPathComponent {
-    /// struct member
-    Name(String),
-
-    /// array/table/map member
-    Index(Index),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Index {
-    /// For arrays, assumed to be dense (0, 1, 2, …)
-    Sequence(u64),
-
-    /// X,Y pixel coordinates, from top left.
-    Pixel([u64; 2]),
-
-    /// Any integer, e.g. a hash
-    Integer(i128),
-
-    /// UUID/GUID
-    // Uuid(Uuid),
-
-    /// Anything goes
-    String(String),
 }
 
 // ----------------------------------------------------------------------------

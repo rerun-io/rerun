@@ -1,7 +1,9 @@
-use crate::misc::TimePoints;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use log_types::*;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use rr_string_interner::InternedString;
+
+use crate::misc::TimePoints;
 
 use super::time_axis::TimeRange;
 
@@ -11,9 +13,9 @@ pub(crate) struct LogDb {
     chronological_message_ids: Vec<LogId>,
     messages: nohash_hasher::IntMap<LogId, LogMsg>,
     pub time_points: TimePoints,
-    pub spaces: BTreeMap<ObjectPath, SpaceSummary>,
-    pub object_tree: ObjectTree,
-    object_history: HashMap<ObjectPath, ObjectHistory>,
+    pub spaces: BTreeMap<DataPath, SpaceSummary>,
+    pub data_tree: DataTree,
+    object_history: HashMap<DataPath, ObjectHistory>,
 }
 
 impl LogDb {
@@ -131,10 +133,10 @@ impl LogDb {
         }
 
         self.object_history
-            .entry(msg.object_path.clone())
+            .entry(msg.data_path.clone())
             .or_default()
             .add(&msg.time_point, msg.id);
-        self.object_tree.add_log_msg(&msg);
+        self.data_tree.add_log_msg(&msg);
         self.messages.insert(msg.id, msg);
     }
 
@@ -164,8 +166,8 @@ impl LogDb {
         crate::profile_function!();
         self.object_history
             .iter()
-            .filter_map(|(object_path, history)| {
-                if filter.allow(object_path) {
+            .filter_map(|(data_path, history)| {
+                if filter.allow(data_path) {
                     history
                         .latest(time_source, no_later_than)
                         .and_then(|id| self.get_msg(&id))
@@ -187,8 +189,8 @@ impl LogDb {
     ) -> Vec<&LogMsg> {
         crate::profile_function!();
         let mut ids = vec![];
-        for (object_path, history) in &self.object_history {
-            if filter.allow(object_path) {
+        for (data_path, history) in &self.object_history {
+            if filter.allow(data_path) {
                 history.collect_in_range(time_source, range, &mut ids);
             }
         }
@@ -199,11 +201,11 @@ impl LogDb {
         &self,
         time_source: &str,
         no_later_than: TimeValue,
-        object_path: &ObjectPath,
+        data_path: &DataPath,
     ) -> Option<&LogMsg> {
         let id = self
             .object_history
-            .get(object_path)?
+            .get(data_path)?
             .latest(time_source, no_later_than)?;
         self.get_msg(&id)
     }
@@ -212,11 +214,11 @@ impl LogDb {
 pub enum MessageFilter {
     All,
     /// Only return messages with this path
-    ObjectPath(ObjectPath),
+    ObjectPath(DataPath),
 }
 
 impl MessageFilter {
-    pub fn allow(&self, candidate: &ObjectPath) -> bool {
+    pub fn allow(&self, candidate: &DataPath) -> bool {
         match self {
             MessageFilter::All => true,
             MessageFilter::ObjectPath(needle) => needle == candidate,
@@ -320,14 +322,14 @@ impl SpaceSummary {
 
 // ----------------------------------------------------------------------------
 
-/// Tree of object paths.
+/// Tree of data paths.
 #[derive(Default)]
-pub(crate) struct ObjectTree {
+pub(crate) struct DataTree {
     /// Children of type [`ObjectPathComponent::String`].
-    pub string_children: BTreeMap<String, ObjectTree>,
+    pub string_children: BTreeMap<InternedString, DataTree>,
 
     /// Children of type [`ObjectPathComponent::Index`].
-    pub index_children: BTreeMap<Index, ObjectTree>,
+    pub index_children: BTreeMap<Index, DataTree>,
 
     /// When do we have data?
     ///
@@ -343,17 +345,17 @@ pub(crate) struct ObjectTree {
     pub data: DataColumns,
 }
 
-impl ObjectTree {
+impl DataTree {
     /// Has no children
     pub fn is_leaf(&self) -> bool {
         self.string_children.is_empty() && self.index_children.is_empty()
     }
 
     pub fn add_log_msg(&mut self, msg: &LogMsg) {
-        self.add_path(&msg.object_path.0[..], msg);
+        self.add_path(&msg.data_path.0[..], msg);
     }
 
-    fn add_path(&mut self, path: &[ObjectPathComponent], msg: &LogMsg) {
+    fn add_path(&mut self, path: &[DataPathComponent], msg: &LogMsg) {
         self.prefix_times
             .entry(msg.time_point.clone())
             .or_default()
@@ -368,13 +370,13 @@ impl ObjectTree {
                 self.data.add(msg);
             }
             [first, rest @ ..] => match first {
-                ObjectPathComponent::String(string) => {
+                DataPathComponent::String(string) => {
                     self.string_children
-                        .entry(string.clone())
+                        .entry(*string)
                         .or_default()
                         .add_path(rest, msg);
                 }
-                ObjectPathComponent::Index(index) => {
+                DataPathComponent::Index(index) => {
                     self.index_children
                         .entry(index.clone())
                         .or_default()

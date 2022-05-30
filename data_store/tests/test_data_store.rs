@@ -1,4 +1,4 @@
-use prototype::*;
+use data_store::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Time(i64);
@@ -9,10 +9,15 @@ fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
 }
 
 #[test]
-fn test_singular() -> prototype::Result<()> {
+fn test_singular() -> data_store::Result<()> {
     fn points_at(store: &TypePathDataStore<Time>, frame: i64) -> Vec<Point3<'_>> {
         let time_query = TimeQuery::LatestAt(Time(frame));
-        let mut points = Scene3D::from_store(store, &time_query).points;
+        let mut points: Vec<_> = Scene3D::from_store(store, &time_query)
+            .points
+            .values()
+            .cloned()
+            .flatten()
+            .collect();
         points.sort_by(|a, b| a.partial_cmp(b).unwrap());
         points
     }
@@ -26,20 +31,20 @@ fn test_singular() -> prototype::Result<()> {
 
     fn pos_type_path() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("pos".into()),
+            TypePathComponent::String("pos".into()),
         ]
     }
     fn radius_type_path() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("radius".into()),
+            TypePathComponent::String("radius".into()),
         ]
     }
 
@@ -112,27 +117,27 @@ fn test_singular() -> prototype::Result<()> {
 }
 
 #[test]
-fn test_batches() -> prototype::Result<()> {
+fn test_batches() -> data_store::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPathKey {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
 
     fn prim() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("pos".into()),
+            TypePathComponent::String("pos".into()),
         ]
     }
     fn sibling() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("label".into()),
+            TypePathComponent::String("label".into()),
         ]
     }
 
@@ -298,7 +303,7 @@ fn test_batches() -> prototype::Result<()> {
 }
 
 #[test]
-fn test_batched_and_individual() -> prototype::Result<()> {
+fn test_batched_and_individual() -> data_store::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPathKey {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
@@ -312,20 +317,20 @@ fn test_batched_and_individual() -> prototype::Result<()> {
 
     fn prim() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("pos".into()),
+            TypePathComponent::String("pos".into()),
         ]
     }
     fn sibling() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("label".into()),
+            TypePathComponent::String("label".into()),
         ]
     }
 
@@ -476,7 +481,7 @@ fn test_batched_and_individual() -> prototype::Result<()> {
 }
 
 #[test]
-fn test_individual_and_batched() -> prototype::Result<()> {
+fn test_individual_and_batched() -> data_store::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPathKey {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
@@ -490,20 +495,20 @@ fn test_individual_and_batched() -> prototype::Result<()> {
 
     fn prim() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("pos".into()),
+            TypePathComponent::String("pos".into()),
         ]
     }
     fn sibling() -> TypePath {
         im::vector![
-            TypePathComponent::Name("camera".into()),
+            TypePathComponent::String("camera".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("point".into()),
+            TypePathComponent::String("point".into()),
             TypePathComponent::Index,
-            TypePathComponent::Name("label".into()),
+            TypePathComponent::String("label".into()),
         ]
     }
 

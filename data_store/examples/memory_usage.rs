@@ -44,7 +44,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 }
 
-use prototype::*;
+use data_store::*;
 
 impl TrackingAllocator {
     fn used_bytes(&self) -> usize {
@@ -53,13 +53,13 @@ impl TrackingAllocator {
 }
 
 fn data_path(camera: u64, index: u64, field: &str) -> DataPath {
-    im::vector![
-        DataPathComponent::Name("camera".into()),
+    DataPath(vec![
+        DataPathComponent::String("camera".into()),
         DataPathComponent::Index(Index::Sequence(camera)),
-        DataPathComponent::Name("point".into()),
+        DataPathComponent::String("point".into()),
         DataPathComponent::Index(Index::Sequence(index)),
-        DataPathComponent::Name(field.into()),
-    ]
+        DataPathComponent::String(field.into()),
+    ])
 }
 
 const BYTES_PER_POINT: usize = 16 + 24; // IndexPathKey + [f32; 3]

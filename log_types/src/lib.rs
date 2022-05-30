@@ -6,12 +6,14 @@
 pub mod encoding;
 
 mod data;
+mod path;
 mod time;
 
 pub use data::*;
+pub use path::*;
 pub use time::{Duration, Time};
 
-use std::{collections::BTreeMap, fmt::Write as _};
+use std::collections::BTreeMap;
 
 #[macro_export]
 macro_rules! impl_into_enum {
@@ -34,7 +36,7 @@ pub struct LogId(uuid::Uuid);
 
 impl nohash_hasher::IsEnabled for LogId {}
 
-// required for nohash_hasher
+// required for [`nohash_hasher`].
 #[allow(clippy::derive_hash_xor_eq)]
 impl std::hash::Hash for LogId {
     #[inline]
@@ -61,28 +63,28 @@ pub struct LogMsg {
     pub time_point: TimePoint,
 
     /// What this is.
-    pub object_path: ObjectPath,
+    pub data_path: DataPath,
 
     /// The value of this.
     pub data: Data,
 
     /// Where ("camera", "world") this thing is in.
-    pub space: Option<ObjectPath>,
+    pub space: Option<DataPath>,
 }
 
 impl LogMsg {
     #[inline]
-    pub fn space(mut self, space: &ObjectPath) -> Self {
+    pub fn space(mut self, space: &DataPath) -> Self {
         self.space = Some(space.clone());
         self
     }
 }
 
 #[inline]
-pub fn log_msg(time_point: &TimePoint, object_path: ObjectPath, data: impl Into<Data>) -> LogMsg {
+pub fn log_msg(time_point: &TimePoint, data_path: DataPath, data: impl Into<Data>) -> LogMsg {
     LogMsg {
         time_point: time_point.clone(),
-        object_path,
+        data_path,
         data: data.into(),
         space: None,
         id: LogId::random(),
@@ -145,173 +147,4 @@ pub fn time_point(fields: impl IntoIterator<Item = (&'static str, TimeValue)>) -
             .map(|(name, tt)| (name.to_string(), tt))
             .collect(),
     )
-}
-
-// ----------------------------------------------------------------------------
-
-/// A hierarchy
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct ObjectPath(pub Vec<ObjectPathComponent>);
-
-impl ObjectPath {
-    #[inline]
-    pub fn is_root(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn parent(&self) -> Self {
-        let mut path = self.0.clone();
-        path.pop();
-        Self(path)
-    }
-
-    pub fn sibling(&self, last_comp: impl Into<ObjectPathComponent>) -> Self {
-        let mut path = self.0.clone();
-        path.pop(); // TODO: handle root?
-        path.push(last_comp.into());
-        Self(path)
-    }
-}
-
-impl std::fmt::Display for ObjectPath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_char('/')?;
-        for (i, comp) in self.0.iter().enumerate() {
-            comp.fmt(f)?;
-            if i + 1 != self.0.len() {
-                f.write_char('/')?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl From<&str> for ObjectPath {
-    #[inline]
-    fn from(component: &str) -> Self {
-        Self(vec![component.into()])
-    }
-}
-
-impl From<ObjectPathComponent> for ObjectPath {
-    #[inline]
-    fn from(component: ObjectPathComponent) -> Self {
-        Self(vec![component])
-    }
-}
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ObjectPathComponent {
-    /// Struct member. Each member can have a different type.
-    String(String),
-
-    /// Array/table/map member. Each member must be of the same type (homogenous).
-    Index(Index),
-}
-
-impl std::fmt::Display for ObjectPathComponent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::String(string) => f.write_str(string),
-            Self::Index(index) => index.fmt(f),
-        }
-    }
-}
-
-impl From<&str> for ObjectPathComponent {
-    #[inline]
-    fn from(comp: &str) -> Self {
-        Self::String(comp.to_owned())
-    }
-}
-
-/// The key of a table.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Index {
-    String(String),
-    U64(u64),
-    Sequence(u64),
-    // Uuid, …
-}
-
-impl std::fmt::Display for Index {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
-            Self::U64(value) => value.fmt(f),
-            Self::Sequence(seq) => format!("#{seq}").fmt(f),
-        }
-    }
-}
-
-impl_into_enum!(String, Index, String);
-impl_into_enum!(u64, Index, U64);
-
-impl std::ops::Div for ObjectPathComponent {
-    type Output = ObjectPath;
-
-    #[inline]
-    fn div(self, rhs: ObjectPathComponent) -> Self::Output {
-        ObjectPath(vec![self, rhs])
-    }
-}
-
-impl std::ops::Div<ObjectPathComponent> for ObjectPath {
-    type Output = ObjectPath;
-
-    #[inline]
-    fn div(mut self, rhs: ObjectPathComponent) -> Self::Output {
-        self.0.push(rhs);
-        self
-    }
-}
-
-impl std::ops::Div<Index> for ObjectPath {
-    type Output = ObjectPath;
-
-    #[inline]
-    fn div(mut self, rhs: Index) -> Self::Output {
-        self.0.push(ObjectPathComponent::Index(rhs));
-        self
-    }
-}
-
-impl std::ops::Div<Index> for &ObjectPath {
-    type Output = ObjectPath;
-
-    #[inline]
-    fn div(self, rhs: Index) -> Self::Output {
-        self.clone() / rhs
-    }
-}
-
-impl std::ops::Div<ObjectPathComponent> for &ObjectPath {
-    type Output = ObjectPath;
-
-    #[inline]
-    fn div(self, rhs: ObjectPathComponent) -> Self::Output {
-        self.clone() / rhs
-    }
-}
-
-impl std::ops::Div<&'static str> for ObjectPath {
-    type Output = ObjectPath;
-
-    #[inline]
-    fn div(mut self, rhs: &'static str) -> Self::Output {
-        self.0.push(ObjectPathComponent::String(rhs.into()));
-        self
-    }
-}
-
-impl std::ops::Div<&'static str> for &ObjectPath {
-    type Output = ObjectPath;
-
-    #[inline]
-    fn div(self, rhs: &'static str) -> Self::Output {
-        self.clone() / rhs
-    }
 }

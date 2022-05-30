@@ -429,6 +429,6 @@ pub fn visit_data_and_siblings<'s, Time: 'static + Clone + Ord, T: 'static, S1: 
 fn sibling(type_path: &TypePath, name: &str) -> TypePath {
     let mut type_path = type_path.clone();
     type_path.pop_back();
-    type_path.push_back(TypePathComponent::Name(name.into()));
+    type_path.push_back(TypePathComponent::String(name.into()));
     type_path
 }

@@ -754,6 +754,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "data_store"
+version = "0.1.0"
+dependencies = [
+ "ahash",
+ "criterion",
+ "im",
+ "log_types",
+ "mimalloc",
+ "nohash-hasher",
+ "tracing",
+]
+
+[[package]]
 name = "deflate"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1713,8 +1726,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "im",
  "nohash-hasher",
  "rmp-serde",
+ "rr_string_interner",
  "ruzstd",
  "serde",
  "uuid",
@@ -2074,9 +2089,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.10.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
+checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
 
 [[package]]
 name = "oorandom"
@@ -2353,18 +2368,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prototype"
-version = "0.1.0"
-dependencies = [
- "ahash",
- "criterion",
- "im",
- "mimalloc",
- "nohash-hasher",
- "tracing",
-]
-
-[[package]]
 name = "puffin"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2592,6 +2595,17 @@ checksum = "1b861ecaade43ac97886a512b360d01d66be9f41f3c61088b42cedf92e03d678"
 dependencies = [
  "base64 0.13.0",
  "bitflags",
+ "serde",
+]
+
+[[package]]
+name = "rr_string_interner"
+version = "0.1.0"
+dependencies = [
+ "ahash",
+ "nohash-hasher",
+ "once_cell",
+ "parking_lot 0.12.0",
  "serde",
 ]
 
@@ -3266,9 +3280,9 @@ checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
 
 [[package]]
 name = "uuid"
-version = "0.8.2"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+checksum = "93bbc61e655a4833cf400d0d15bf3649313422fa7572886ad6dab16d79886365"
 dependencies = [
  "getrandom",
  "serde",
@@ -3327,6 +3341,7 @@ dependencies = [
  "puffin_http",
  "rand",
  "rfd",
+ "rr_string_interner",
  "serde",
  "serde_json",
  "three-d",

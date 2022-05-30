@@ -465,9 +465,9 @@ impl TimeControl {
     pub fn selected_messages_for_object<'db>(
         &self,
         log_db: &'db crate::log_db::LogDb,
-        object_path: &ObjectPath,
+        data_path: &DataPath,
     ) -> Vec<&'db LogMsg> {
-        self.selected_messages_filtered(log_db, &MessageFilter::ObjectPath(object_path.clone()))
+        self.selected_messages_filtered(log_db, &MessageFilter::ObjectPath(data_path.clone()))
     }
 
     /// Return the messages that should be visible at this time.

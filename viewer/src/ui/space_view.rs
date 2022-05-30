@@ -15,7 +15,7 @@ use crate::{LogDb, Preview, Selection, ViewerContext};
 #[serde(default)]
 pub(crate) struct SpaceView {
     // per space
-    state_3d: AHashMap<ObjectPath, crate::view3d::State3D>,
+    state_3d: AHashMap<DataPath, crate::view3d::State3D>,
 }
 
 impl SpaceView {
@@ -80,7 +80,7 @@ impl SpaceView {
 #[derive(Clone)]
 struct SpaceInfo {
     /// Path to the space
-    space_path: ObjectPath,
+    space_path: DataPath,
 
     /// Only set for 2D spaces
     size: Option<Vec2>,
@@ -153,7 +153,7 @@ fn group_by_path_prefix(spaces: &[SpaceInfo]) -> Vec<Vec<SpaceInfo>> {
     }
 
     for i in 0.. {
-        let mut groups: std::collections::BTreeMap<Option<&ObjectPathComponent>, Vec<&SpaceInfo>> =
+        let mut groups: std::collections::BTreeMap<Option<&DataPathComponent>, Vec<&SpaceInfo>> =
             Default::default();
         for space in spaces {
             groups
@@ -202,7 +202,7 @@ impl SpaceView {
         log_db: &LogDb,
         messages: &[&LogMsg],
         context: &mut ViewerContext,
-        space: &ObjectPath,
+        space: &DataPath,
         ui: &mut egui::Ui,
     ) {
         crate::profile_function!(&space.to_string());
@@ -249,7 +249,7 @@ pub(crate) fn show_log_msg(
     let LogMsg {
         id,
         time_point,
-        object_path,
+        data_path,
         space,
         data,
     } = msg;
@@ -258,8 +258,8 @@ pub(crate) fn show_log_msg(
         .striped(true)
         .num_columns(2)
         .show(ui, |ui| {
-            ui.monospace("object_path:");
-            ui.label(format!("{object_path}"));
+            ui.monospace("data_path:");
+            ui.label(format!("{data_path}"));
             ui.end_row();
 
             ui.monospace("time_point:");
