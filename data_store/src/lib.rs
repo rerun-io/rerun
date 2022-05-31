@@ -8,8 +8,6 @@ pub use storage::*;
 
 pub use log_types::{DataPath, DataPathComponent, Index, TypePath, TypePathComponent};
 
-use std::collections::BTreeMap;
-
 pub enum AtomType {
     // 1D:
     I32,

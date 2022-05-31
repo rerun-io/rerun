@@ -47,7 +47,7 @@ impl std::hash::Hash for LogId {
 
 impl LogId {
     #[inline]
-    fn random() -> Self {
+    pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())
     }
 }

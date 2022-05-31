@@ -8,6 +8,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use data_store::TypePathDataStore;
 use data_store::*;
+use log_types::LogId;
 
 const NUM_FRAMES: i64 = 1_000; // this can have a big impact on performance
 const NUM_POINTS_PER_CAMERA: u64 = 1_000;
@@ -28,12 +29,12 @@ pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
     for (type_path, _) in store.iter() {
         if type_path.last() == Some(&TypePathComponent::String("pos".into())) {
             let mut point_vec = vec![];
-            visit_data_and_siblings(
+            visit_data_and_1_sibling(
                 store,
                 time_query,
                 type_path,
                 ("radius",),
-                |pos: &[f32; 3], radius: Option<&f32>| {
+                |_log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
                     point_vec.push(Point3 {
                         pos,
                         radius: radius.copied(),
@@ -80,6 +81,7 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                             type_path,
                             index_path,
                             time_value,
+                            LogId::random(),
                             [1.0, 2.0, 3.0],
                         )
                         .unwrap();
@@ -105,7 +107,13 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 );
 
                 data_store
-                    .insert_batch(type_path, index_path_prefix, time_value, batch)
+                    .insert_batch(
+                        type_path,
+                        index_path_prefix,
+                        time_value,
+                        LogId::random(),
+                        batch,
+                    )
                     .unwrap();
             }
 
@@ -114,7 +122,13 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                     let (type_path, index_path) =
                         into_type_path(data_path(camera, point, "radius"));
                     data_store
-                        .insert_individual(type_path, index_path, time_value, 1.0_f32)
+                        .insert_individual(
+                            type_path,
+                            index_path,
+                            time_value,
+                            LogId::random(),
+                            1.0_f32,
+                        )
                         .unwrap();
                 }
             } else {
@@ -135,7 +149,13 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 );
 
                 data_store
-                    .insert_batch(type_path, index_path_prefix, time_value, batch)
+                    .insert_batch(
+                        type_path,
+                        index_path_prefix,
+                        time_value,
+                        LogId::random(),
+                        batch,
+                    )
                     .unwrap();
             }
         }

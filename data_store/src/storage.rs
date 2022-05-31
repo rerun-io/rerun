@@ -1,10 +1,12 @@
-use crate::{IndexKey, IndexPathKey, TimeQuery, TypePath, TypePathComponent};
-
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use ahash::AHashMap;
 use nohash_hasher::IntMap;
+
+use log_types::LogId;
+
+use crate::{IndexKey, IndexPathKey, TimeQuery, TypePath, TypePathComponent};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
@@ -44,6 +46,7 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
         type_path: TypePath,
         index_path: IndexPathKey,
         time: Time,
+        log_id: LogId,
         value: T,
     ) -> Result<()> {
         if let Some(store) = self
@@ -52,7 +55,7 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
             .or_insert_with(|| DataStoreTypeErased::new_individual::<T>())
             .write::<T>()
         {
-            store.insert_individual(index_path, time, value)
+            store.insert_individual(index_path, time, log_id, value)
         } else {
             Err(Error::WrongType)
         }
@@ -63,7 +66,8 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
         type_path: TypePath,
         index_path_prefix: IndexPathKey,
         time: Time,
-        values: Batch<T>,
+        log_id: LogId,
+        batch: Batch<T>,
     ) -> Result<()> {
         if let Some(store) = self
             .data
@@ -71,7 +75,7 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
             .or_insert_with(|| DataStoreTypeErased::new_batched::<T>())
             .write::<T>()
         {
-            store.insert_batch(index_path_prefix, time, values)
+            store.insert_batch(index_path_prefix, time, log_id, batch)
         } else {
             Err(Error::WrongType)
         }
@@ -146,11 +150,12 @@ impl<Time: Ord, T: 'static> DataStore<Time, T> {
         &mut self,
         index_path: IndexPathKey,
         time: Time,
+        log_id: LogId,
         value: T,
     ) -> Result<()> {
         match self {
             Self::Individual(individual) => {
-                individual.insert(index_path, time, value);
+                individual.insert(index_path, time, log_id, value);
                 Ok(())
             }
             Self::Batched(_) => Err(Error::BatchFollowedByIndividual),
@@ -161,12 +166,13 @@ impl<Time: Ord, T: 'static> DataStore<Time, T> {
         &mut self,
         index_path_prefix: IndexPathKey,
         time: Time,
-        values: Batch<T>,
+        log_id: LogId,
+        batch: Batch<T>,
     ) -> Result<()> {
         match self {
             Self::Individual(_) => Err(Error::IndividualFollowedByBatch),
             Self::Batched(batched) => {
-                batched.insert(index_path_prefix, time, values);
+                batched.insert(index_path_prefix, time, log_id, batch);
                 Ok(())
             }
         }
@@ -178,7 +184,7 @@ impl<Time: Ord, T: 'static> DataStore<Time, T> {
 /// For a specific [`TypePath`].
 pub struct IndividualDataHistory<Time, T> {
     /// fast to find latest value at a certain time.
-    values: IntMap<IndexPathKey, BTreeMap<Time, T>>,
+    values: IntMap<IndexPathKey, BTreeMap<Time, (LogId, T)>>,
 }
 
 impl<Time: Ord, T> Default for IndividualDataHistory<Time, T> {
@@ -190,14 +196,16 @@ impl<Time: Ord, T> Default for IndividualDataHistory<Time, T> {
 }
 
 impl<Time: Ord, T> IndividualDataHistory<Time, T> {
-    pub fn insert(&mut self, index_path: IndexPathKey, time: Time, value: T) {
+    pub fn insert(&mut self, index_path: IndexPathKey, time: Time, log_id: LogId, value: T) {
         self.values
             .entry(index_path)
             .or_default()
-            .insert(time, value);
+            .insert(time, (log_id, value));
     }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<Time, T>)> {
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<Time, (LogId, T)>)> {
         self.values.iter()
     }
 }
@@ -207,7 +215,7 @@ impl<Time: Ord, T> IndividualDataHistory<Time, T> {
 /// For a specific [`TypePath`].
 pub struct BatchedDataHistory<Time, T> {
     /// The index is the path prefix (everything but the last value).
-    batches_over_time: IntMap<IndexPathKey, BTreeMap<Time, Batch<T>>>,
+    batches_over_time: IntMap<IndexPathKey, BTreeMap<Time, (LogId, Batch<T>)>>,
 }
 
 impl<Time: Ord, T> Default for BatchedDataHistory<Time, T> {
@@ -219,16 +227,22 @@ impl<Time: Ord, T> Default for BatchedDataHistory<Time, T> {
 }
 
 impl<Time: Ord, T> BatchedDataHistory<Time, T> {
-    pub fn insert(&mut self, index_path_prefix: IndexPathKey, time: Time, values: Batch<T>) {
+    pub fn insert(
+        &mut self,
+        index_path_prefix: IndexPathKey,
+        time: Time,
+        log_id: LogId,
+        batch: Batch<T>,
+    ) {
         self.batches_over_time
             .entry(index_path_prefix)
             .or_default()
-            .insert(time, values);
+            .insert(time, (log_id, batch));
     }
 
     pub fn iter(
         &self,
-    ) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<Time, Batch<T>>)> {
+    ) -> impl ExactSizeIterator<Item = (&IndexPathKey, &BTreeMap<Time, (LogId, Batch<T>)>)> {
         self.batches_over_time.iter()
     }
 }
@@ -256,14 +270,13 @@ impl<'store, Time: 'static + Ord, T: 'static> IndividualDataReader<'store, Time,
     pub fn latest_at(&self, index_path: &IndexPathKey, query_time: &Time) -> Option<&'store T> {
         match self {
             Self::None => None,
-            Self::Individual(history) => {
-                latest_at(history.values.get(index_path)?, query_time).map(|(_time, value)| value)
-            }
+            Self::Individual(history) => latest_at(history.values.get(index_path)?, query_time)
+                .map(|(_time, (_log_id, value))| value),
             Self::Batched(data) => {
                 let (prefix, suffix) = index_path.clone().split_last();
-                latest_at(data.batches_over_time.get(&prefix)?, query_time)?
-                    .1
-                    .get(&suffix)
+                let (_time, (_log_id, batch)) =
+                    latest_at(data.batches_over_time.get(&prefix)?, query_time)?;
+                batch.get(&suffix)
             }
         }
     }
@@ -300,7 +313,7 @@ impl<'store, Time: Clone + Ord, T: 'static> BatchedDataReader<'store, Time, T> {
             )),
             DataStore::Batched(batched) => {
                 let everything_per_time = &batched.batches_over_time.get(index_path_prefix)?;
-                let (_, map) = latest_at(everything_per_time, query_time)?;
+                let (_time, (_log_id, map)) = latest_at(everything_per_time, query_time)?;
                 Some(Self::Batched(map))
             }
         }
@@ -312,7 +325,8 @@ impl<'store, Time: Clone + Ord, T: 'static> BatchedDataReader<'store, Time, T> {
             Self::Individual(index_path_prefix, query_time, history) => {
                 let mut index_path = index_path_prefix.clone();
                 index_path.push_back(index_path_suffix.clone());
-                latest_at(history.values.get(&index_path)?, query_time).map(|(_time, value)| value)
+                latest_at(history.values.get(&index_path)?, query_time)
+                    .map(|(_time, (_log_id, value))| value)
             }
             Self::Batched(data) => data.get(index_path_suffix),
         }
@@ -362,23 +376,23 @@ pub fn visit_data<'s, Time: 'static + Ord, T: 'static>(
     store: &'s TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
     primary_type_path: &TypePath,
-    mut visit: impl FnMut(&'s T),
+    mut visit: impl FnMut(&'s LogId, &'s T),
 ) -> Option<()> {
     let primary_data = store.get::<T>(primary_type_path)?;
 
     match primary_data {
         DataStore::Individual(primary) => {
             for (_index_path, values_over_time) in primary.iter() {
-                query(values_over_time, time_query, |_time, primary| {
-                    visit(primary);
+                query(values_over_time, time_query, |_time, (log_id, primary)| {
+                    visit(log_id, primary);
                 });
             }
         }
         DataStore::Batched(primary) => {
             for (_index_path_prefix, primary) in primary.iter() {
-                query(primary, time_query, |_time, primary| {
+                query(primary, time_query, |_time, (log_id, primary)| {
                     for primary in primary.values() {
-                        visit(primary);
+                        visit(log_id, primary);
                     }
                 });
             }
@@ -388,12 +402,12 @@ pub fn visit_data<'s, Time: 'static + Ord, T: 'static>(
     Some(())
 }
 
-pub fn visit_data_and_siblings<'s, Time: 'static + Clone + Ord, T: 'static, S1: 'static>(
+pub fn visit_data_and_1_sibling<'s, Time: 'static + Clone + Ord, T: 'static, S1: 'static>(
     store: &'s TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
     primary_type_path: &TypePath,
     (sibling1,): (&str,),
-    mut visit: impl FnMut(&'s T, Option<&'s S1>),
+    mut visit: impl FnMut(&'s LogId, &'s T, Option<&'s S1>),
 ) -> Option<()> {
     let primary_data = store.get::<T>(primary_type_path)?;
     let sibling1_path = sibling(primary_type_path, sibling1);
@@ -401,22 +415,95 @@ pub fn visit_data_and_siblings<'s, Time: 'static + Clone + Ord, T: 'static, S1: 
     match primary_data {
         DataStore::Individual(primary) => {
             let sibling1_reader = IndividualDataReader::<Time, S1>::new(store, &sibling1_path);
+
             for (index_path, values_over_time) in primary.iter() {
-                query(values_over_time, time_query, |time, primary| {
-                    let sibling1 = sibling1_reader.latest_at(index_path, time);
-                    visit(primary, sibling1);
+                query(values_over_time, time_query, |time, (log_id, primary)| {
+                    visit(log_id, primary, sibling1_reader.latest_at(index_path, time));
                 });
             }
         }
         DataStore::Batched(primary) => {
             for (index_path_prefix, primary) in primary.iter() {
                 let sibling1_store = store.get::<S1>(&sibling1_path);
-                query(primary, time_query, |time, primary| {
+
+                query(primary, time_query, |time, (log_id, primary)| {
                     let sibling1_reader =
                         BatchedDataReader::new(sibling1_store, index_path_prefix, time);
+
                     for (index_path_suffix, primary) in primary.iter() {
-                        let sibling1 = sibling1_reader.latest_at(index_path_suffix);
-                        visit(primary, sibling1);
+                        visit(
+                            log_id,
+                            primary,
+                            sibling1_reader.latest_at(index_path_suffix),
+                        );
+                    }
+                });
+            }
+        }
+    }
+
+    Some(())
+}
+
+pub fn visit_data_and_3_siblings<
+    's,
+    Time: 'static + Clone + Ord,
+    T: 'static,
+    S1: 'static,
+    S2: 'static,
+    S3: 'static,
+>(
+    store: &'s TypePathDataStore<Time>,
+    time_query: &TimeQuery<Time>,
+    primary_type_path: &TypePath,
+    (sibling1, sibling2, sibling3): (&str, &str, &str),
+    mut visit: impl FnMut(&'s LogId, &'s T, Option<&'s S1>, Option<&'s S2>, Option<&'s S3>),
+) -> Option<()> {
+    let primary_data = store.get::<T>(primary_type_path)?;
+    let sibling1_path = sibling(primary_type_path, sibling1);
+    let sibling2_path = sibling(primary_type_path, sibling2);
+    let sibling3_path = sibling(primary_type_path, sibling3);
+
+    match primary_data {
+        DataStore::Individual(primary) => {
+            let sibling1_reader = IndividualDataReader::<Time, S1>::new(store, &sibling1_path);
+            let sibling2_reader = IndividualDataReader::<Time, S2>::new(store, &sibling2_path);
+            let sibling3_reader = IndividualDataReader::<Time, S3>::new(store, &sibling3_path);
+
+            for (index_path, values_over_time) in primary.iter() {
+                query(values_over_time, time_query, |time, (log_id, primary)| {
+                    visit(
+                        log_id,
+                        primary,
+                        sibling1_reader.latest_at(index_path, time),
+                        sibling2_reader.latest_at(index_path, time),
+                        sibling3_reader.latest_at(index_path, time),
+                    );
+                });
+            }
+        }
+        DataStore::Batched(primary) => {
+            for (index_path_prefix, primary) in primary.iter() {
+                let sibling1_store = store.get::<S1>(&sibling1_path);
+                let sibling2_store = store.get::<S2>(&sibling2_path);
+                let sibling3_store = store.get::<S3>(&sibling3_path);
+
+                query(primary, time_query, |time, (log_id, primary)| {
+                    let sibling1_reader =
+                        BatchedDataReader::new(sibling1_store, index_path_prefix, time);
+                    let sibling2_reader =
+                        BatchedDataReader::new(sibling2_store, index_path_prefix, time);
+                    let sibling3_reader =
+                        BatchedDataReader::new(sibling3_store, index_path_prefix, time);
+
+                    for (index_path_suffix, primary) in primary.iter() {
+                        visit(
+                            log_id,
+                            primary,
+                            sibling1_reader.latest_at(index_path_suffix),
+                            sibling2_reader.latest_at(index_path_suffix),
+                            sibling3_reader.latest_at(index_path_suffix),
+                        );
                     }
                 });
             }
