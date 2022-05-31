@@ -1,6 +1,8 @@
+mod log_store;
 mod scene;
 mod storage;
 
+pub use log_store::*;
 pub use scene::*;
 pub use storage::*;
 

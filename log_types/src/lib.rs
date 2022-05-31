@@ -113,10 +113,23 @@ impl Default for TimeSource {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(pub BTreeMap<TimeSource, TimeValue>);
 
+/// The type of a [`TimeValue`].
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub enum TimeType {
+    /// Normal wall time.
+    Time,
+
+    /// Used e.g. for frames in a film.
+    Sequence,
+}
+
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeValue {
+    /// Normal wall time.
     Time(Time),
+
+    /// Used e.g. for frames in a film.
     Sequence(i64),
 }
 
@@ -136,6 +149,21 @@ impl TimeValue {
         match self {
             Self::Time(time) => Self::Time(time + Duration::from_nanos(offset as _)),
             Self::Sequence(seq) => Self::Sequence(seq.saturating_add(offset as _)),
+        }
+    }
+
+    pub fn typ(&self) -> TimeType {
+        match self {
+            Self::Time(_) => TimeType::Time,
+            Self::Sequence(_) => TimeType::Sequence,
+        }
+    }
+
+    /// Either nanos since epoch, or a sequence number.
+    pub fn as_i64(&self) -> i64 {
+        match self {
+            Self::Time(time) => time.nanos_since_epoch(),
+            Self::Sequence(seq) => *seq,
         }
     }
 }

@@ -350,5 +350,7 @@ pub(crate) fn ui_data(
         Data::Camera(_) => ui.label("Camera"),
 
         Data::Vecf32(data) => ui.label(format!("Vecf32({data:?})")),
+
+        Data::Space(space) => ui.label(format!("space {space:?}")),
     }
 }

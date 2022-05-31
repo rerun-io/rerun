@@ -1,4 +1,4 @@
-use crate::impl_into_enum;
+use crate::{impl_into_enum, DataPath};
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -35,6 +35,11 @@ pub enum Data {
     // ----------------------------
     // N-D:
     Vecf32(Vec<f32>),
+
+    // ----------------------------
+    // Meta:
+    /// Used for specifying which space data belongs to.
+    Space(DataPath),
 }
 
 impl Data {
@@ -59,6 +64,8 @@ impl Data {
             Self::Camera(_) => DataType::Camera,
 
             Self::Vecf32(_) => DataType::Vecf32,
+
+            Self::Space(_) => DataType::Space,
         }
     }
 
@@ -154,6 +161,9 @@ pub enum DataType {
     // ----------------------------
     // N-D:
     Vecf32,
+
+    // ----------------------------
+    Space,
 }
 
 impl DataType {
@@ -172,7 +182,7 @@ impl DataType {
             | Self::Mesh3D
             | Self::Camera => Some(3),
 
-            Self::Color | Self::Vecf32 => None,
+            Self::Color | Self::Vecf32 | Self::Space => None,
         }
     }
 

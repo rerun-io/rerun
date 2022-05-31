@@ -17,8 +17,8 @@ puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin"]
 
 
 [dependencies]
-clap = { version = "3.1.6", features = ["derive"] }
 comms = { path = "../comms", features = ["client"] }
+data_store = { path = "../data_store" }
 log_types = { path = "../log_types", features = ["save", "load"] }
 rr_string_interner = { path = "../rr_string_interner" }
 
@@ -36,6 +36,7 @@ ahash = "0.7"
 anyhow = "1.0"
 bytemuck = "1.7"
 cgmath = { version = "0.18", features = ["mint"] }
+clap = { version = "3.1.6", features = ["derive"] }
 glam = { version = "0.20", features = ["mint"] }
 glow = "0.11"
 image = { version = "0.23", default-features = false, features = ["png"] }

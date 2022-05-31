@@ -3617,6 +3617,7 @@ dependencies = [
  "clap 3.1.17",
  "comms",
  "console_error_panic_hook",
+ "data_store",
  "eframe",
  "egui",
  "egui_extras",

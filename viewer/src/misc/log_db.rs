@@ -15,12 +15,31 @@ pub(crate) struct LogDb {
     pub time_points: TimePoints,
     pub spaces: BTreeMap<DataPath, SpaceSummary>,
     pub data_tree: DataTree,
+    pub data_store: data_store::LogDataStore,
     object_history: nohash_hasher::IntMap<DataPath, ObjectHistory>,
 }
 
 impl LogDb {
     pub fn add(&mut self, msg: LogMsg) {
         santiy_check(&msg);
+
+        if let Err(err) = self.data_store.insert(&msg) {
+            tracing::warn!("Failed to add data to data_store: {:?}", err);
+        }
+
+        if let Some(space) = msg.space.clone() {
+            // HACK until we change how spaces are logged
+            let space_msg = LogMsg {
+                id: msg.id,
+                time_point: msg.time_point.clone(),
+                data_path: msg.data_path.sibling("space"),
+                data: Data::Space(space),
+                space: None,
+            };
+            if let Err(err) = self.data_store.insert(&space_msg) {
+                tracing::warn!("Failed to add space data to data_store: {:?}", err);
+            }
+        }
 
         self.chronological_message_ids.push(msg.id);
         self.time_points.insert(&msg.time_point);
@@ -424,6 +443,8 @@ impl DataColumns {
                 DataType::Camera => ("camera", "s"),
 
                 DataType::Vecf32 => ("float vector", "s"),
+
+                DataType::Space => ("space", "s"),
             };
 
             summaries.push(plurality(set.len(), stem, plur));
