@@ -1,15 +1,57 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
 use criterion::{criterion_group, criterion_main, Criterion};
+
 use data_store::TypePathDataStore;
 use data_store::*;
-
-use std::sync::Arc;
 
 const NUM_FRAMES: i64 = 1_000; // this can have a big impact on performance
 const NUM_POINTS_PER_CAMERA: u64 = 1_000;
 const TOTAL_POINTS: u64 = 2 * NUM_POINTS_PER_CAMERA;
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+pub struct Point3<'s> {
+    pub pos: &'s [f32; 3],
+    pub radius: Option<f32>,
+}
+
+pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
+    store: &'store TypePathDataStore<Time>,
+    time_query: &TimeQuery<Time>,
+) -> BTreeMap<TypePath, Vec<Point3<'store>>> {
+    let mut all = BTreeMap::default();
+
+    for (type_path, _) in store.iter() {
+        if type_path.last() == Some(&TypePathComponent::String("pos".into())) {
+            let mut point_vec = vec![];
+            visit_data_and_siblings(
+                store,
+                time_query,
+                type_path,
+                ("radius",),
+                |pos: &[f32; 3], radius: Option<&f32>| {
+                    point_vec.push(Point3 {
+                        pos,
+                        radius: radius.copied(),
+                    });
+                },
+            );
+            all.insert(parent(type_path), point_vec);
+        }
+    }
+
+    all
+}
+
+fn parent(type_path: &TypePath) -> TypePath {
+    let mut type_path = type_path.clone();
+    type_path.pop_back();
+    type_path
+}
 
 fn data_path(camera: &str, index: u64, field: &str) -> DataPath {
     DataPath::new(vec![
@@ -116,40 +158,36 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let data_store = generate_date(false, false);
     group.bench_function("batched_pos_batched_radius", |b| {
         b.iter(|| {
-            let scene =
-                Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(scene.points.len(), 1);
-            assert_eq!(scene.points[&point_type_path].len(), TOTAL_POINTS as usize);
+            let points = points_from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
+            assert_eq!(points.len(), 1);
+            assert_eq!(points[&point_type_path].len(), TOTAL_POINTS as usize);
         });
     });
 
     let data_store = generate_date(true, true);
     group.bench_function("individual_pos_individual_radius", |b| {
         b.iter(|| {
-            let scene =
-                Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(scene.points.len(), 1);
-            assert_eq!(scene.points[&point_type_path].len(), TOTAL_POINTS as usize);
+            let points = points_from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
+            assert_eq!(points.len(), 1);
+            assert_eq!(points[&point_type_path].len(), TOTAL_POINTS as usize);
         });
     });
 
     let data_store = generate_date(false, true);
     group.bench_function("batched_pos_individual_radius", |b| {
         b.iter(|| {
-            let scene =
-                Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(scene.points.len(), 1);
-            assert_eq!(scene.points[&point_type_path].len(), TOTAL_POINTS as usize);
+            let points = points_from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
+            assert_eq!(points.len(), 1);
+            assert_eq!(points[&point_type_path].len(), TOTAL_POINTS as usize);
         });
     });
 
     let data_store = generate_date(true, false);
     group.bench_function("individual_pos_batched_radius", |b| {
         b.iter(|| {
-            let scene =
-                Scene3D::from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(scene.points.len(), 1);
-            assert_eq!(scene.points[&point_type_path].len(), TOTAL_POINTS as usize);
+            let points = points_from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
+            assert_eq!(points.len(), 1);
+            assert_eq!(points[&point_type_path].len(), TOTAL_POINTS as usize);
         });
     });
 

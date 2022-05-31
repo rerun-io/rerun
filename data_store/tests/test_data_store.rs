@@ -1,7 +1,49 @@
+use std::collections::BTreeMap;
+
 use data_store::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Time(i64);
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+pub struct Point3<'s> {
+    pub pos: &'s [f32; 3],
+    pub radius: Option<f32>,
+}
+
+pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
+    store: &'store TypePathDataStore<Time>,
+    time_query: &TimeQuery<Time>,
+) -> BTreeMap<TypePath, Vec<Point3<'store>>> {
+    let mut all = BTreeMap::default();
+
+    for (type_path, _) in store.iter() {
+        if type_path.last() == Some(&TypePathComponent::String("pos".into())) {
+            let mut point_vec = vec![];
+            visit_data_and_siblings(
+                store,
+                time_query,
+                type_path,
+                ("radius",),
+                |pos: &[f32; 3], radius: Option<&f32>| {
+                    point_vec.push(Point3 {
+                        pos,
+                        radius: radius.copied(),
+                    });
+                },
+            );
+            all.insert(parent(type_path), point_vec);
+        }
+    }
+
+    all
+}
+
+fn parent(type_path: &TypePath) -> TypePath {
+    let mut type_path = type_path.clone();
+    type_path.pop_back();
+    type_path
+}
 
 fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
     let batch: nohash_hasher::IntMap<IndexKey, T> = batch.into_iter().collect();
@@ -12,8 +54,7 @@ fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
 fn test_singular() -> data_store::Result<()> {
     fn points_at(store: &TypePathDataStore<Time>, frame: i64) -> Vec<Point3<'_>> {
         let time_query = TimeQuery::LatestAt(Time(frame));
-        let mut points: Vec<_> = Scene3D::from_store(store, &time_query)
-            .points
+        let mut points: Vec<_> = points_from_store(store, &time_query)
             .values()
             .flatten()
             .cloned()
