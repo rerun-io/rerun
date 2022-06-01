@@ -1,9 +1,9 @@
 mod log_store;
-mod scene;
+mod objects;
 mod storage;
 
 pub use log_store::*;
-pub use scene::*;
+pub use objects::*;
 pub use storage::*;
 
 pub use log_types::{DataPath, DataPathComponent, Index, TypePath, TypePathComponent};

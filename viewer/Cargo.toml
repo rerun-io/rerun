@@ -18,7 +18,7 @@ puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin"]
 
 [dependencies]
 comms = { path = "../comms", features = ["client"] }
-data_store = { path = "../data_store" }
+data_store = { path = "../data_store", features = ["puffin"] }
 log_types = { path = "../log_types", features = ["save", "load"] }
 rr_string_interner = { path = "../rr_string_interner" }
 
