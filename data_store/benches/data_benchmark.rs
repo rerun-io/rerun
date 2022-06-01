@@ -35,7 +35,7 @@ pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
                 type_path,
                 data_store,
                 ("radius",),
-                |_log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
+                |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
                     point_vec.push(Point3 {
                         pos,
                         radius: radius.copied(),
@@ -76,11 +76,9 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
         for camera in ["left", "right"] {
             if individual_pos {
                 for point in 0..NUM_POINTS_PER_CAMERA {
-                    let (type_path, index_path) = into_type_path(data_path(camera, point, "pos"));
                     data_store
                         .insert_individual::<[f32; 3]>(
-                            type_path,
-                            index_path,
+                            data_path(camera, point, "pos"),
                             time_value,
                             LogId::random(),
                             [1.0, 2.0, 3.0],
@@ -120,12 +118,9 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
 
             if individual_radius {
                 for point in 0..NUM_POINTS_PER_CAMERA {
-                    let (type_path, index_path) =
-                        into_type_path(data_path(camera, point, "radius"));
                     data_store
                         .insert_individual(
-                            type_path,
-                            index_path,
+                            data_path(camera, point, "radius"),
                             time_value,
                             LogId::random(),
                             1.0_f32,

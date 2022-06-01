@@ -27,7 +27,7 @@ pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
                 type_path,
                 data_store,
                 ("radius",),
-                |_log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
+                |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
                     point_vec.push(Point3 {
                         pos,
                         radius: radius.copied(),
@@ -69,61 +69,45 @@ fn test_singular() -> data_store::Result<()> {
         points
     }
 
-    fn index_path(cam: &str, point: u64) -> IndexPathKey {
-        IndexPathKey::new(im::vector![
-            Index::String(cam.into()),
-            Index::Sequence(point)
+    fn pos_data_path(cam: &str, point: u64) -> DataPath {
+        DataPath(vec![
+            DataPathComponent::String("camera".into()),
+            DataPathComponent::Index(Index::String(cam.into())),
+            DataPathComponent::String("point".into()),
+            DataPathComponent::Index(Index::Sequence(point)),
+            DataPathComponent::String("pos".into()),
         ])
     }
-
-    fn pos_type_path() -> TypePath {
-        im::vector![
-            TypePathComponent::String("camera".into()),
-            TypePathComponent::Index,
-            TypePathComponent::String("point".into()),
-            TypePathComponent::Index,
-            TypePathComponent::String("pos".into()),
-        ]
-    }
-    fn radius_type_path() -> TypePath {
-        im::vector![
-            TypePathComponent::String("camera".into()),
-            TypePathComponent::Index,
-            TypePathComponent::String("point".into()),
-            TypePathComponent::Index,
-            TypePathComponent::String("radius".into()),
-        ]
+    fn radius_data_path(cam: &str, point: u64) -> DataPath {
+        DataPath(vec![
+            DataPathComponent::String("camera".into()),
+            DataPathComponent::Index(Index::String(cam.into())),
+            DataPathComponent::String("point".into()),
+            DataPathComponent::Index(Index::Sequence(point)),
+            DataPathComponent::String("radius".into()),
+        ])
     }
 
     let mut store = TypePathDataStore::default();
 
     store.insert_individual::<[f32; 3]>(
-        pos_type_path(),
-        index_path("left", 0),
+        pos_data_path("left", 0),
         Time(1),
         id(),
         [1.0, 1.0, 1.0],
     )?;
 
     store.insert_individual::<[f32; 3]>(
-        pos_type_path(),
-        index_path("left", 0),
+        pos_data_path("left", 0),
         Time(3),
         id(),
         [3.0, 3.0, 3.0],
     )?;
 
-    store.insert_individual::<f32>(
-        radius_type_path(),
-        index_path("left", 0),
-        Time(2),
-        id(),
-        1.0,
-    )?;
+    store.insert_individual::<f32>(radius_data_path("left", 0), Time(2), id(), 1.0)?;
 
     store.insert_individual::<[f32; 3]>(
-        pos_type_path(),
-        index_path("left", 1),
+        pos_data_path("left", 1),
         Time(4),
         id(),
         [4.0, 4.0, 4.0],
@@ -206,7 +190,7 @@ fn test_batches() -> data_store::Result<()> {
             &prim(),
             store.get::<i32>(&prim()).unwrap(),
             ("label",),
-            |_log_id, prim, sibling| {
+            |_object_path, _log_id, prim, sibling| {
                 values.push((*prim, sibling.copied()));
             },
         );
@@ -378,13 +362,6 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
 
-    fn index_path_key(cam: &str, point: u64) -> IndexPathKey {
-        IndexPathKey::new(im::vector![
-            Index::String(cam.into()),
-            Index::Sequence(point)
-        ])
-    }
-
     fn prim() -> TypePath {
         im::vector![
             TypePathComponent::String("camera".into()),
@@ -394,14 +371,14 @@ fn test_batched_and_individual() -> data_store::Result<()> {
             TypePathComponent::String("pos".into()),
         ]
     }
-    fn sibling() -> TypePath {
-        im::vector![
-            TypePathComponent::String("camera".into()),
-            TypePathComponent::Index,
-            TypePathComponent::String("point".into()),
-            TypePathComponent::Index,
-            TypePathComponent::String("label".into()),
-        ]
+    fn sibling_data_path(cam: &str, point: u64) -> DataPath {
+        DataPath(vec![
+            DataPathComponent::String("camera".into()),
+            DataPathComponent::Index(Index::String(cam.into())),
+            DataPathComponent::String("point".into()),
+            DataPathComponent::Index(Index::Sequence(point)),
+            DataPathComponent::String("label".into()),
+        ])
     }
 
     fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
@@ -413,7 +390,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
             &prim(),
             store.get::<i32>(&prim()).unwrap(),
             ("label",),
-            |_log_id, prim, sibling| {
+            |_object_path, _log_id, prim, sibling| {
                 values.push((*prim, sibling.copied()));
             },
         );
@@ -462,8 +439,8 @@ fn test_batched_and_individual() -> data_store::Result<()> {
             (index(3), 33_i32),
         ]),
     )?;
-    store.insert_individual(sibling(), index_path_key("left", 1), Time(4), id(), "one")?;
-    store.insert_individual(sibling(), index_path_key("left", 2), Time(4), id(), "two")?;
+    store.insert_individual(sibling_data_path("left", 1), Time(4), id(), "one")?;
+    store.insert_individual(sibling_data_path("left", 2), Time(4), id(), "two")?;
     for (index, value) in [
         (0, "r0"),
         (1, "r1"),
@@ -471,13 +448,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         (3, "r3"),
         (4, "r4"), // has no point yet
     ] {
-        store.insert_individual(
-            sibling(),
-            index_path_key("right", index),
-            Time(5),
-            id(),
-            value,
-        )?;
+        store.insert_individual(sibling_data_path("right", index), Time(5), id(), value)?;
     }
     store.insert_batch(
         prim(),
@@ -490,7 +461,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
             (index(5), 1_005_i32),
         ]),
     )?;
-    store.insert_individual(sibling(), index_path_key("right", 5), Time(7), id(), "r5")?;
+    store.insert_individual(sibling_data_path("right", 5), Time(7), id(), "r5")?;
 
     assert_eq!(values(&store, 0), vec![]);
     assert_eq!(
@@ -573,13 +544,6 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         IndexPathKey::new(im::vector![Index::String(cam.into())])
     }
 
-    fn index_path_key(cam: &str, point: u64) -> IndexPathKey {
-        IndexPathKey::new(im::vector![
-            Index::String(cam.into()),
-            Index::Sequence(point)
-        ])
-    }
-
     fn prim() -> TypePath {
         im::vector![
             TypePathComponent::String("camera".into()),
@@ -588,6 +552,15 @@ fn test_individual_and_batched() -> data_store::Result<()> {
             TypePathComponent::Index,
             TypePathComponent::String("pos".into()),
         ]
+    }
+    fn prim_data_path(cam: &str, point: u64) -> DataPath {
+        DataPath(vec![
+            DataPathComponent::String("camera".into()),
+            DataPathComponent::Index(Index::String(cam.into())),
+            DataPathComponent::String("point".into()),
+            DataPathComponent::Index(Index::Sequence(point)),
+            DataPathComponent::String("pos".into()),
+        ])
     }
     fn sibling() -> TypePath {
         im::vector![
@@ -608,7 +581,7 @@ fn test_individual_and_batched() -> data_store::Result<()> {
             &prim(),
             store.get::<i32>(&prim()).unwrap(),
             ("label",),
-            |_log_id, prim, sibling| {
+            |_object_path, _log_id, prim, sibling| {
                 values.push((*prim, sibling.copied()));
             },
         );
@@ -622,8 +595,8 @@ fn test_individual_and_batched() -> data_store::Result<()> {
 
     let mut store = TypePathDataStore::default();
 
-    store.insert_individual(prim(), index_path_key("left", 0), Time(1), id(), 0_i32)?;
-    store.insert_individual(prim(), index_path_key("left", 1), Time(2), id(), 1_i32)?;
+    store.insert_individual(prim_data_path("left", 0), Time(1), id(), 0_i32)?;
+    store.insert_individual(prim_data_path("left", 1), Time(2), id(), 1_i32)?;
     store.insert_batch(
         sibling(),
         index_path_prefix("left"),
@@ -631,8 +604,8 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         id(),
         batch([(index(1), "one"), (index(2), "two")]),
     )?;
-    store.insert_individual(prim(), index_path_key("left", 2), Time(4), id(), 2_i32)?;
-    store.insert_individual(prim(), index_path_key("left", 3), Time(4), id(), 3_i32)?;
+    store.insert_individual(prim_data_path("left", 2), Time(4), id(), 2_i32)?;
+    store.insert_individual(prim_data_path("left", 3), Time(4), id(), 3_i32)?;
     store.insert_batch(
         sibling(),
         index_path_prefix("left"),

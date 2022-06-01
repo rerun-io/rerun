@@ -69,6 +69,84 @@ pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPathKey) {
     (type_path, index_path)
 }
 
+#[allow(dead_code)]
+pub(crate) fn data_path_from_type_and_index(
+    type_path: &TypePath,
+    index_path: &IndexPathKey,
+) -> DataPath {
+    let mut index_it = index_path.components.iter();
+
+    let ret = DataPath(
+        type_path
+            .iter()
+            .map(|typ| match typ {
+                TypePathComponent::String(name) => DataPathComponent::String(*name),
+                TypePathComponent::Index => {
+                    DataPathComponent::Index(index_it.next().expect("Bad type/index split").clone())
+                }
+            })
+            .collect(),
+    );
+
+    assert!(index_it.next().is_none(), "Bad type/index split");
+
+    ret
+}
+
+#[allow(dead_code)]
+pub(crate) fn data_path_from_type_and_index_prefix(
+    type_path: &TypePath,
+    index_prefix: &IndexPathKey,
+    last_index: &Index,
+) -> DataPath {
+    let mut index_it = index_prefix.components.iter();
+
+    let ret = DataPath(
+        type_path
+            .iter()
+            .map(|typ| match typ {
+                TypePathComponent::String(name) => DataPathComponent::String(*name),
+                TypePathComponent::Index => DataPathComponent::Index(
+                    index_it
+                        .next()
+                        .cloned()
+                        .unwrap_or_else(|| last_index.clone()),
+                ),
+            })
+            .collect(),
+    );
+
+    assert!(index_it.next().is_none(), "Bad type/index split");
+
+    ret
+}
+
+/// Path to the object owning the batch, i.e. stopping before the last index
+pub(crate) fn batch_parent_object_path(
+    type_path: &TypePath,
+    index_path_prefix: &IndexPathKey,
+) -> DataPath {
+    let mut index_it = index_path_prefix.components.iter();
+
+    let mut components = vec![];
+
+    for typ in type_path {
+        match typ {
+            TypePathComponent::String(name) => {
+                components.push(DataPathComponent::String(*name));
+            }
+            TypePathComponent::Index => {
+                if let Some(index) = index_it.next() {
+                    components.push(DataPathComponent::Index(index.clone()));
+                } else {
+                    return DataPath(components);
+                }
+            }
+        }
+    }
+
+    panic!("Not a batch path");
+}
 // ----------------------------------------------------------------------------
 
 /// Like `Index` but also includes a precomputed hash.

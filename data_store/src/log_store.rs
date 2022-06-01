@@ -33,38 +33,35 @@ impl LogDataStore {
     }
 
     pub fn insert(&mut self, log_msg: &LogMsg) -> crate::Result<()> {
-        let (type_path, index_path) = crate::into_type_path(log_msg.data_path.clone());
-
         for (time_source, time_value) in &log_msg.time_point.0 {
             let store = self.entry(time_source, time_value.typ());
-            let tp = type_path.clone();
-            let ip = index_path.clone();
+            let dp = log_msg.data_path.clone();
             let time = time_value.as_i64();
             let id = log_msg.id;
 
             #[allow(clippy::match_same_arms)]
             match log_msg.data.clone() {
-                Data::I32(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::F32(data) => store.insert_individual(tp, ip, time, id, data),
+                Data::I32(data) => store.insert_individual(dp, time, id, data),
+                Data::F32(data) => store.insert_individual(dp, time, id, data),
 
-                Data::Color(data) => store.insert_individual(tp, ip, time, id, data),
+                Data::Color(data) => store.insert_individual(dp, time, id, data),
 
-                Data::Pos2(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::BBox2D(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::LineSegments2D(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::Image(data) => store.insert_individual(tp, ip, time, id, data),
+                Data::Pos2(data) => store.insert_individual(dp, time, id, data),
+                Data::BBox2D(data) => store.insert_individual(dp, time, id, data),
+                Data::LineSegments2D(data) => store.insert_individual(dp, time, id, data),
+                Data::Image(data) => store.insert_individual(dp, time, id, data),
 
-                Data::Pos3(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::Vec3(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::Box3(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::Path3D(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::LineSegments3D(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::Mesh3D(data) => store.insert_individual(tp, ip, time, id, data),
-                Data::Camera(data) => store.insert_individual(tp, ip, time, id, data),
+                Data::Pos3(data) => store.insert_individual(dp, time, id, data),
+                Data::Vec3(data) => store.insert_individual(dp, time, id, data),
+                Data::Box3(data) => store.insert_individual(dp, time, id, data),
+                Data::Path3D(data) => store.insert_individual(dp, time, id, data),
+                Data::LineSegments3D(data) => store.insert_individual(dp, time, id, data),
+                Data::Mesh3D(data) => store.insert_individual(dp, time, id, data),
+                Data::Camera(data) => store.insert_individual(dp, time, id, data),
 
-                Data::Vecf32(data) => store.insert_individual(tp, ip, time, id, data),
+                Data::Vecf32(data) => store.insert_individual(dp, time, id, data),
 
-                Data::Space(data) => store.insert_individual(tp, ip, time, id, data),
+                Data::Space(data) => store.insert_individual(dp, time, id, data),
             }?;
         }
 
