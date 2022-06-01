@@ -18,13 +18,14 @@ pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
 ) -> BTreeMap<TypePath, Vec<Point3<'store>>> {
     let mut all = BTreeMap::default();
 
-    for (type_path, _) in store.iter() {
-        if type_path.last() == Some(&TypePathComponent::String("pos".into())) {
+    for (type_path, data_store) in store.iter() {
+        if let Some(data_store) = data_store.read_no_warn::<[f32; 3]>() {
             let mut point_vec = vec![];
             visit_data_and_1_sibling(
                 store,
                 time_query,
                 type_path,
+                data_store,
                 ("radius",),
                 |_log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
                     point_vec.push(Point3 {
@@ -203,6 +204,7 @@ fn test_batches() -> data_store::Result<()> {
             store,
             &time_query,
             &prim(),
+            store.get::<i32>(&prim()).unwrap(),
             ("label",),
             |_log_id, prim, sibling| {
                 values.push((*prim, sibling.copied()));
@@ -409,6 +411,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
             store,
             &time_query,
             &prim(),
+            store.get::<i32>(&prim()).unwrap(),
             ("label",),
             |_log_id, prim, sibling| {
                 values.push((*prim, sibling.copied()));
@@ -603,6 +606,7 @@ fn test_individual_and_batched() -> data_store::Result<()> {
             store,
             &time_query,
             &prim(),
+            store.get::<i32>(&prim()).unwrap(),
             ("label",),
             |_log_id, prim, sibling| {
                 values.push((*prim, sibling.copied()));

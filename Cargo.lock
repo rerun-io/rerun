@@ -891,9 +891,11 @@ dependencies = [
  "ahash 0.7.6",
  "criterion",
  "im",
+ "itertools",
  "log_types",
  "mimalloc",
  "nohash-hasher",
+ "puffin",
  "tracing",
 ]
 

@@ -110,6 +110,10 @@ impl<Time: 'static + Ord> DataStoreTypeErased<Time> {
         )
     }
 
+    pub fn is<T: 'static>(&self) -> bool {
+        self.0.is::<DataStore<Time, T>>()
+    }
+
     pub fn read_no_warn<T: 'static>(&self) -> Option<&DataStore<Time, T>> {
         self.0.downcast_ref::<DataStore<Time, T>>()
     }
@@ -378,6 +382,8 @@ pub fn visit_data<'s, Time: 'static + Ord, T: 'static>(
     primary_type_path: &TypePath,
     mut visit: impl FnMut(&'s LogId, &'s T),
 ) -> Option<()> {
+    crate::profile_function!();
+
     let primary_data = store.get::<T>(primary_type_path)?;
 
     match primary_data {
@@ -406,10 +412,12 @@ pub fn visit_data_and_1_sibling<'s, Time: 'static + Clone + Ord, T: 'static, S1:
     store: &'s TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
     primary_type_path: &TypePath,
+    primary_data: &'s DataStore<Time, T>,
     (sibling1,): (&str,),
     mut visit: impl FnMut(&'s LogId, &'s T, Option<&'s S1>),
 ) -> Option<()> {
-    let primary_data = store.get::<T>(primary_type_path)?;
+    crate::profile_function!();
+
     let sibling1_path = sibling(primary_type_path, sibling1);
 
     match primary_data {
@@ -445,6 +453,68 @@ pub fn visit_data_and_1_sibling<'s, Time: 'static + Clone + Ord, T: 'static, S1:
     Some(())
 }
 
+pub fn visit_data_and_2_siblings<
+    's,
+    Time: 'static + Clone + Ord,
+    T: 'static,
+    S1: 'static,
+    S2: 'static,
+>(
+    store: &'s TypePathDataStore<Time>,
+    time_query: &TimeQuery<Time>,
+    primary_type_path: &TypePath,
+    primary_data: &'s DataStore<Time, T>,
+    (sibling1, sibling2): (&str, &str),
+    mut visit: impl FnMut(&'s LogId, &'s T, Option<&'s S1>, Option<&'s S2>),
+) -> Option<()> {
+    crate::profile_function!();
+
+    let sibling1_path = sibling(primary_type_path, sibling1);
+    let sibling2_path = sibling(primary_type_path, sibling2);
+
+    match primary_data {
+        DataStore::Individual(primary) => {
+            let sibling1_reader = IndividualDataReader::<Time, S1>::new(store, &sibling1_path);
+            let sibling2_reader = IndividualDataReader::<Time, S2>::new(store, &sibling2_path);
+
+            for (index_path, values_over_time) in primary.iter() {
+                query(values_over_time, time_query, |time, (log_id, primary)| {
+                    visit(
+                        log_id,
+                        primary,
+                        sibling1_reader.latest_at(index_path, time),
+                        sibling2_reader.latest_at(index_path, time),
+                    );
+                });
+            }
+        }
+        DataStore::Batched(primary) => {
+            for (index_path_prefix, primary) in primary.iter() {
+                let sibling1_store = store.get::<S1>(&sibling1_path);
+                let sibling2_store = store.get::<S2>(&sibling2_path);
+
+                query(primary, time_query, |time, (log_id, primary)| {
+                    let sibling1_reader =
+                        BatchedDataReader::new(sibling1_store, index_path_prefix, time);
+                    let sibling2_reader =
+                        BatchedDataReader::new(sibling2_store, index_path_prefix, time);
+
+                    for (index_path_suffix, primary) in primary.iter() {
+                        visit(
+                            log_id,
+                            primary,
+                            sibling1_reader.latest_at(index_path_suffix),
+                            sibling2_reader.latest_at(index_path_suffix),
+                        );
+                    }
+                });
+            }
+        }
+    }
+
+    Some(())
+}
+
 pub fn visit_data_and_3_siblings<
     's,
     Time: 'static + Clone + Ord,
@@ -456,10 +526,12 @@ pub fn visit_data_and_3_siblings<
     store: &'s TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
     primary_type_path: &TypePath,
+    primary_data: &'s DataStore<Time, T>,
     (sibling1, sibling2, sibling3): (&str, &str, &str),
     mut visit: impl FnMut(&'s LogId, &'s T, Option<&'s S1>, Option<&'s S2>, Option<&'s S3>),
 ) -> Option<()> {
-    let primary_data = store.get::<T>(primary_type_path)?;
+    crate::profile_function!();
+
     let sibling1_path = sibling(primary_type_path, sibling1);
     let sibling2_path = sibling(primary_type_path, sibling2);
     let sibling3_path = sibling(primary_type_path, sibling3);

@@ -12,8 +12,13 @@ log_types = { path = "../log_types" }
 
 ahash = "0.7"
 im = "15"
+itertools = "0.10"
 nohash-hasher = "0.2"
 tracing = "0.1"
+
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+puffin = { version = "0.13", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
