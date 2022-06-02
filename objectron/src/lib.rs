@@ -71,7 +71,8 @@ fn log_annotation_pbdata(
                 half_size: half_size.to_array(),
             };
             tx.send(
-                log_msg(&time_point, &data_path / "bbox3d", Data::Box3(box3)).space(&world_space),
+                log_msg(&time_point, &data_path / "bbox3d" / "box", Data::Box3(box3))
+                    .space(&world_space),
             )
             .ok();
         } else {
@@ -80,7 +81,7 @@ fn log_annotation_pbdata(
 
         tx.send(log_msg(
             &time_point,
-            &data_path / "color",
+            &data_path / "bbox3d" / "color",
             Data::Color([130, 160, 250, 255]),
         ))
         .ok();
@@ -141,11 +142,18 @@ fn log_annotation_pbdata(
                 tx.send(
                     log_msg(
                         &time_point,
-                        &data_path / "bbox2d",
+                        &data_path / "bbox2d" / "lines",
                         Data::LineSegments2D(line_segments),
                     )
                     .space(&image_space),
                 )
+                .ok();
+
+                tx.send(log_msg(
+                    &time_point,
+                    &data_path / "bbox2d" / "color",
+                    Data::Color([130, 160, 250, 255]),
+                ))
                 .ok();
             } else {
                 for (id, pos2) in keypoint_ids.into_iter().zip(keypoints_2d) {
