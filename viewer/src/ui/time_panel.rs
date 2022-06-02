@@ -261,7 +261,9 @@ impl TimePanel {
         // ----------------------------------------------
         // Property column:
 
-        {
+        // we don't show the visibility button for leafs (such as "color");
+        // just for objects and their parents.
+        if !tree.is_leaf() {
             let are_all_ancestors_visible = data_path.is_root()
                 || context
                     .projected_object_properties

@@ -50,14 +50,20 @@ impl ViewerContext {
             context.projected_object_properties.set(data_path, prop);
 
             for (name, child) in &tree.string_children {
-                path.push(DataPathComponent::String(*name));
-                project_tree(context, path, prop, child);
-                path.pop();
+                // leafs such as "color" and "radius" doesn't have properties.
+                // only objects do.
+                if !child.is_leaf() {
+                    path.push(DataPathComponent::String(*name));
+                    project_tree(context, path, prop, child);
+                    path.pop();
+                }
             }
             for (index, child) in &tree.index_children {
-                path.push(DataPathComponent::Index(index.clone()));
-                project_tree(context, path, prop, child);
-                path.pop();
+                if !child.is_leaf() {
+                    path.push(DataPathComponent::Index(index.clone()));
+                    project_tree(context, path, prop, child);
+                    path.pop();
+                }
             }
         }
 
