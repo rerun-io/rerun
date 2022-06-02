@@ -420,14 +420,11 @@ pub fn query<'data, Time: Ord, T>(
 
 /// The visitor is called with the object data path, the closest individually addressable parent object. It can be used to test if the object should be visible.
 pub fn visit_data<'s, Time: 'static + Ord, T: 'static>(
-    store: &'s TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
-    primary_type_path: &TypePath,
+    primary_data: &'s DataStore<Time, T>,
     mut visit: impl FnMut(&'s DataPath, &'s LogId, &'s T),
 ) -> Option<()> {
     crate::profile_function!();
-
-    let primary_data = store.get::<T>(primary_type_path)?;
 
     match primary_data {
         DataStore::Individual(primary) => {

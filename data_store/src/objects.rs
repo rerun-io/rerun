@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
-use log_types::{DataPath, LogId};
+use log_types::{DataPath, LogId, TypePathComponent};
 
 use crate::{
-    storage::{visit_data_and_2_siblings, visit_data_and_3_siblings},
+    storage::{visit_data, visit_data_and_2_siblings, visit_data_and_3_siblings},
     TimeQuery, TypePath, TypePathDataStore,
 };
 
@@ -271,7 +271,7 @@ impl<'s> BBox2D<'s> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Box3D<'s> {
-    pub bbox: &'s log_types::Box3,
+    pub obb: &'s log_types::Box3,
     pub stroke_width: Option<f32>,
 }
 
@@ -295,7 +295,7 @@ impl<'s> Box3D<'s> {
                     ("space", "color", "stroke_width"),
                     |parent_object_path: &DataPath,
                      log_id: &LogId,
-                     bbox: &log_types::Box3,
+                     obb: &log_types::Box3,
                      space: Option<&DataPath>,
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>| {
@@ -307,7 +307,7 @@ impl<'s> Box3D<'s> {
                                 parent_object_path,
                             },
                             obj: Box3D {
-                                bbox,
+                                obb,
                                 stroke_width: stroke_width.copied(),
                             },
                         });
@@ -572,6 +572,41 @@ impl<'s> Camera<'s> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct Space<'s> {
+    /// The up axis
+    pub up: &'s [f32; 3],
+}
+
+impl<'s> Space<'s> {
+    pub fn from_store<Time: 'static + Clone + Ord>(
+        store: &'s TypePathDataStore<Time>,
+        time_query: &TimeQuery<Time>,
+    ) -> BTreeMap<DataPath, Space<'s>> {
+        crate::profile_function!();
+
+        let mut all = BTreeMap::default();
+
+        let last_component_name = TypePathComponent::String("up".into());
+
+        for (type_path, data_store) in store.iter() {
+            if type_path.last() == Some(&last_component_name) {
+                if let Some(primary_data) = data_store.read_no_warn::<[f32; 3]>() {
+                    visit_data(
+                        time_query,
+                        primary_data,
+                        |parent_object_path: &DataPath, _log_id: &LogId, up: &[f32; 3]| {
+                            all.insert(parent_object_path.clone(), Space { up });
+                        },
+                    );
+                }
+            }
+        }
+
+        all
+    }
+}
+
 #[derive(Default)]
 pub struct Objects<'s> {
     pub image: ObjectMap<'s, Image<'s>>,
@@ -585,6 +620,8 @@ pub struct Objects<'s> {
     pub line_segments3d: ObjectMap<'s, LineSegments3D<'s>>,
     pub mesh3d: ObjectMap<'s, Mesh3D<'s>>,
     pub camera: ObjectMap<'s, Camera<'s>>,
+
+    pub space: BTreeMap<DataPath, Space<'s>>, // SPECIAL!
 }
 
 impl<'s> Objects<'s> {
@@ -604,6 +641,8 @@ impl<'s> Objects<'s> {
             line_segments3d: LineSegments3D::from_store(store, time_query),
             mesh3d: Mesh3D::from_store(store, time_query),
             camera: Camera::from_store(store, time_query),
+
+            space: Space::from_store(store, time_query),
         }
     }
 
@@ -621,6 +660,8 @@ impl<'s> Objects<'s> {
             line_segments3d: self.line_segments3d.filter(&keep),
             mesh3d: self.mesh3d.filter(&keep),
             camera: self.camera.filter(&keep),
+
+            space: self.space.clone(), // SPECIAL don't filter
         }
     }
 }
