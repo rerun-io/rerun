@@ -8,14 +8,18 @@ use crate::{
 };
 
 #[derive(Copy, Clone, Debug)]
-pub struct Object<'s, T: Copy + Clone + std::fmt::Debug> {
+pub struct ObjectProps<'s> {
     pub log_id: &'s LogId,
     pub space: Option<&'s DataPath>,
     pub color: Option<[u8; 4]>,
 
     /// Use this to test if the object should be visible, etc.
     pub parent_object_path: &'s DataPath,
+}
 
+#[derive(Copy, Clone, Debug)]
+struct Object<'s, T: Copy + Clone + std::fmt::Debug> {
+    pub props: ObjectProps<'s>,
     pub obj: T,
 }
 
@@ -38,23 +42,19 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectMap<'s, T> {
         self.len() == 0
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&TypePath, &Object<'s, T>)> {
-        self.0
-            .iter()
-            .flat_map(|(type_path, vec)| vec.iter().map(move |obj| (type_path, obj)))
+    pub fn iter(&self) -> impl Iterator<Item = (&TypePath, &ObjectProps<'s>, &T)> {
+        self.0.iter().flat_map(|(type_path, vec)| {
+            vec.iter().map(move |obj| (type_path, &obj.props, &obj.obj))
+        })
     }
 
-    fn filter_space(&self, space: &DataPath) -> ObjectMap<'s, T> {
+    fn filter(&self, keep: &impl Fn(&ObjectProps<'_>) -> bool) -> ObjectMap<'s, T> {
         use itertools::Itertools as _;
         Self(
             self.0
                 .iter()
                 .filter_map(|(tp, vec)| {
-                    let vec = vec
-                        .iter()
-                        .filter(|x| x.space == Some(space))
-                        .copied()
-                        .collect_vec();
+                    let vec = vec.iter().filter(|x| keep(&x.props)).copied().collect_vec();
                     if vec.is_empty() {
                         None
                     } else {
@@ -95,10 +95,12 @@ impl<'s> Image<'s> {
                      space: Option<&DataPath>,
                      color: Option<&[u8; 4]>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: Image { image },
                         });
                     },
@@ -142,10 +144,12 @@ impl<'s> Point2D<'s> {
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: Point2D {
                                 pos,
                                 radius: radius.copied(),
@@ -192,10 +196,12 @@ impl<'s> Point3D<'s> {
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: Point3D {
                                 pos,
                                 radius: radius.copied(),
@@ -242,10 +248,12 @@ impl<'s> BBox2D<'s> {
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: BBox2D {
                                 bbox,
                                 stroke_width: stroke_width.copied(),
@@ -292,10 +300,12 @@ impl<'s> Box3D<'s> {
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: Box3D {
                                 bbox,
                                 stroke_width: stroke_width.copied(),
@@ -342,10 +352,12 @@ impl<'s> Path3D<'s> {
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: Path3D {
                                 points,
                                 stroke_width: stroke_width.copied(),
@@ -392,10 +404,12 @@ impl<'s> LineSegments2D<'s> {
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: LineSegments2D {
                                 line_segments,
                                 stroke_width: stroke_width.copied(),
@@ -442,10 +456,12 @@ impl<'s> LineSegments3D<'s> {
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: LineSegments3D {
                                 line_segments,
                                 stroke_width: stroke_width.copied(),
@@ -490,10 +506,12 @@ impl<'s> Mesh3D<'s> {
                      space: Option<&DataPath>,
                      color: Option<&[u8; 4]>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: Mesh3D { mesh },
                         });
                     },
@@ -536,10 +554,12 @@ impl<'s> Camera<'s> {
                      space: Option<&DataPath>,
                      color: Option<&[u8; 4]>| {
                         vec.push(Object {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            parent_object_path,
+                            props: ObjectProps {
+                                log_id,
+                                space,
+                                color: color.copied(),
+                                parent_object_path,
+                            },
                             obj: Camera { camera },
                         });
                     },
@@ -587,21 +607,20 @@ impl<'s> Objects<'s> {
         }
     }
 
-    /// Only keep data that has this space
-    pub fn filter_space(&self, space: &DataPath) -> Self {
+    pub fn filter(&self, keep: impl Fn(&ObjectProps<'_>) -> bool) -> Self {
         crate::profile_function!();
         Self {
-            image: self.image.filter_space(space),
-            point2d: self.point2d.filter_space(space),
-            bbox2d: self.bbox2d.filter_space(space),
-            line_segments2d: self.line_segments2d.filter_space(space),
+            image: self.image.filter(&keep),
+            point2d: self.point2d.filter(&keep),
+            bbox2d: self.bbox2d.filter(&keep),
+            line_segments2d: self.line_segments2d.filter(&keep),
 
-            point3d: self.point3d.filter_space(space),
-            box3d: self.box3d.filter_space(space),
-            path3d: self.path3d.filter_space(space),
-            line_segments3d: self.line_segments3d.filter_space(space),
-            mesh3d: self.mesh3d.filter_space(space),
-            camera: self.camera.filter_space(space),
+            point3d: self.point3d.filter(&keep),
+            box3d: self.box3d.filter(&keep),
+            path3d: self.path3d.filter(&keep),
+            line_segments3d: self.line_segments3d.filter(&keep),
+            mesh3d: self.mesh3d.filter(&keep),
+            camera: self.camera.filter(&keep),
         }
     }
 }
