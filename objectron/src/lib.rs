@@ -272,7 +272,7 @@ fn log_image(path: &PathBuf, time_point: &TimePoint, tx: &Sender<LogMsg>) -> any
         data,
     };
 
-    let data_path = DataPath::from("video");
+    let data_path = DataPath::from("video") / "image";
 
     tx.send(log_msg(time_point, data_path, Data::Image(image)).space(&image_space))
         .ok();

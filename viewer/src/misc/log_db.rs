@@ -216,18 +216,18 @@ impl LogDb {
         ids.into_iter().filter_map(|id| self.get_msg(&id)).collect()
     }
 
-    pub fn latest(
-        &self,
-        time_source: &TimeSource,
-        no_later_than: TimeValue,
-        data_path: &DataPath,
-    ) -> Option<&LogMsg> {
-        let id = self
-            .object_history
-            .get(data_path)?
-            .latest(time_source, no_later_than)?;
-        self.get_msg(&id)
-    }
+    // pub fn latest(
+    //     &self,
+    //     time_source: &TimeSource,
+    //     no_later_than: TimeValue,
+    //     data_path: &DataPath,
+    // ) -> Option<&LogMsg> {
+    //     let id = self
+    //         .object_history
+    //         .get(data_path)?
+    //         .latest(time_source, no_later_than)?;
+    //     self.get_msg(&id)
+    // }
 }
 
 pub enum MessageFilter {

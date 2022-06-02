@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use data_store::TimeQuery;
 use egui::NumExt as _;
 use log_types::*;
 
@@ -494,6 +495,34 @@ impl TimeControl {
         }
 
         log_db.latest_of_each_object(self.source(), state.time, filter)
+    }
+
+    /// Return the data that should be visible at this time.
+    ///
+    /// This is either based on a time selection, or it is the latest message at the current time.
+    pub fn selected_objects<'db>(
+        &self,
+        log_db: &'db crate::log_db::LogDb,
+    ) -> data_store::Objects<'db> {
+        crate::profile_function!();
+
+        if let Some(time_query) = self.time_query() {
+            if let Some((_, store)) = log_db.data_store.get(self.source()) {
+                return data_store::Objects::from_store(store, &time_query);
+            }
+        }
+        Default::default()
+    }
+
+    fn time_query(&self) -> Option<TimeQuery<i64>> {
+        if self.is_time_filter_active() {
+            if let Some(state) = self.states.get(&self.time_source) {
+                if let Some(range) = state.selection {
+                    return Some(TimeQuery::Range(range.min.as_i64()..=range.max.as_i64()));
+                }
+            }
+        }
+        Some(TimeQuery::LatestAt(self.time()?.as_i64()))
     }
 }
 

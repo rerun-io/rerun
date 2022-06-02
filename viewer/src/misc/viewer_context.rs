@@ -1,4 +1,4 @@
-use log_types::{Data, DataPath, DataPathComponent, LogId, LogMsg, TimeSource, TimeValue};
+use log_types::{DataPath, DataPathComponent, LogId, TimeSource, TimeValue};
 
 use crate::{log_db::LogDb, misc::log_db::DataTree};
 
@@ -110,43 +110,6 @@ impl ViewerContext {
             self.time_control.pause();
         }
         response
-    }
-
-    #[allow(clippy::unused_self)]
-    pub fn object_color(&self, log_db: &LogDb, msg: &LogMsg) -> egui::Color32 {
-        // Try to get the latest color at the time of the message:
-        // TODO: pre-compute this to avoid lookups?
-        let time_source = self.time_control.source();
-        if let Some(time) = msg.time_point.0.get(time_source) {
-            let color_path = msg.data_path.sibling("color");
-            if let Some(color_msg) = log_db.latest(time_source, *time, &color_path) {
-                if let Data::Color([r, g, b, a]) = &color_msg.data {
-                    return egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
-                } else {
-                    tracing::warn!(
-                        "Expected color data in {:?}; found {:?}",
-                        color_path,
-                        color_msg.data
-                    );
-                }
-            }
-        }
-
-        use rand::rngs::SmallRng;
-        use rand::{Rng, SeedableRng};
-
-        // TODO: ignore `TempId` id:s!
-        let mut small_rng = SmallRng::seed_from_u64(egui::util::hash(&msg.data_path));
-
-        // TODO: OKLab
-        let hsva = egui::color::Hsva {
-            h: small_rng.gen(),
-            s: small_rng.gen_range(0.35..=0.55_f32).sqrt(),
-            v: small_rng.gen_range(0.55..=0.80_f32).cbrt(),
-            a: 1.0,
-        };
-
-        hsva.into()
     }
 }
 

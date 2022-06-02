@@ -41,3 +41,25 @@ pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
         egui::Label::new("❓").sense(egui::Sense::click()), // sensing clicks also gives hover effect
     )
 }
+
+pub fn random_object_color(props: &data_store::ObjectProps<'_>) -> egui::Color32 {
+    random_color(egui::util::hash(props.parent_object_path))
+}
+
+fn random_color(seed: u64) -> egui::Color32 {
+    use rand::rngs::SmallRng;
+    use rand::{Rng, SeedableRng};
+
+    // TODO: ignore `TempId` id:s!
+    let mut small_rng = SmallRng::seed_from_u64(seed);
+
+    // TODO: OKLab
+    let hsva = egui::color::Hsva {
+        h: small_rng.gen(),
+        s: small_rng.gen_range(0.35..=0.55_f32).sqrt(),
+        v: small_rng.gen_range(0.55..=0.80_f32).cbrt(),
+        a: 1.0,
+    };
+
+    hsva.into()
+}

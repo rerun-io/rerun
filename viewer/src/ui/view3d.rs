@@ -9,10 +9,9 @@ use camera::*;
 use rendering::*;
 use scene::*;
 
-use egui::Color32;
 use egui::NumExt as _;
 use glam::Affine3A;
-use log_types::{Data, DataPath, LogId, LogMsg};
+use log_types::{Data, DataPath, LogId};
 use macaw::{vec3, Quat, Vec3};
 
 use crate::{log_db::SpaceSummary, LogDb};
@@ -35,13 +34,11 @@ impl State3D {
     fn update_camera(
         &mut self,
         context: &mut ViewerContext,
-        messages: &[&LogMsg],
+        tracking_camera: Option<Camera>,
         response: &egui::Response,
         space_summary: &SpaceSummary,
         space_specs: &SpaceSpecs,
     ) -> Camera {
-        let tracking_camera = tracking_camera(context, messages);
-
         if response.double_clicked() {
             // Reset camera
             if tracking_camera.is_some() {
@@ -242,36 +239,33 @@ struct SpaceSpecs {
 }
 
 impl SpaceSpecs {
-    fn from_messages(space: &DataPath, messages: &[&LogMsg]) -> Self {
-        let mut slf = Self::default();
-
-        let up_path = space / "up";
-
-        for msg in messages {
-            if msg.data_path == up_path {
-                if let Data::Vec3(vec3) = msg.data {
-                    slf.up = Vec3::from(vec3).normalize_or_zero();
-                } else {
-                    tracing::warn!("Expected {} to be a Vec3; got: {:?}", up_path, msg.data);
-                }
+    fn from_objects(space: &DataPath, objects: &data_store::Objects<'_>) -> Self {
+        if let Some(space) = objects.space.get(space) {
+            SpaceSpecs {
+                up: Vec3::from(*space.up).normalize_or_zero(),
             }
+        } else {
+            Default::default()
         }
-        slf
     }
 }
 
 /// If the path to a camera is selected, we follow that camera.
-fn tracking_camera(context: &ViewerContext, messages: &[&LogMsg]) -> Option<Camera> {
+fn tracking_camera(
+    log_db: &LogDb,
+    context: &ViewerContext,
+    objects: &data_store::Objects<'_>,
+) -> Option<Camera> {
     if let Selection::ObjectPath(data_path) = &context.selection {
         let mut selected_camera = None;
 
-        for msg in messages {
-            if &msg.data_path == data_path {
-                if let Data::Camera(cam) = &msg.data {
+        for (_, props, camera) in objects.camera.iter() {
+            if let Some(msg) = log_db.get_msg(props.log_id) {
+                if &msg.data_path == data_path {
                     if selected_camera.is_some() {
                         return None; // More than one camera
                     } else {
-                        selected_camera = Some(cam);
+                        selected_camera = Some(camera.camera);
                     }
                 }
             }
@@ -290,11 +284,11 @@ pub(crate) fn combined_view_3d(
     state_3d: &mut State3D,
     space: &DataPath,
     space_summary: &SpaceSummary,
-    messages: &[&LogMsg],
+    objects: &data_store::Objects<'_>,
 ) {
     crate::profile_function!();
 
-    let space_specs = SpaceSpecs::from_messages(space, messages);
+    let space_specs = SpaceSpecs::from_objects(space, objects);
 
     // TODO: show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
@@ -302,7 +296,14 @@ pub(crate) fn combined_view_3d(
 
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-    let camera = state_3d.update_camera(context, messages, &response, space_summary, &space_specs);
+    let tracking_camera = tracking_camera(log_db, context, objects);
+    let camera = state_3d.update_camera(
+        context,
+        tracking_camera,
+        &response,
+        space_summary,
+        &space_specs,
+    );
 
     let mut hovered_id = state_3d.hovered;
     if ui.input().pointer.any_click() {
@@ -339,41 +340,14 @@ pub(crate) fn combined_view_3d(
         }
     }
 
-    let mut scene = Scene::default();
-    {
-        crate::profile_scope!("Build scene");
-        for msg in messages {
-            if msg.space.as_ref() != Some(space) {
-                continue;
-            }
-            if !context
-                .projected_object_properties
-                .get(&msg.data_path)
-                .visible
-            {
-                continue;
-            }
-
-            let is_hovered = Some(msg.id) == hovered_id;
-
-            // TODO: selection color
-            let color = if is_hovered {
-                Color32::WHITE
-            } else {
-                context.object_color(log_db, msg)
-            };
-
-            scene.add_msg(
-                context,
-                space_summary,
-                rect.size(),
-                &camera,
-                is_hovered,
-                color,
-                msg,
-            );
-        }
-    }
+    let scene = Scene::from_objects(
+        context,
+        space_summary,
+        rect.size(),
+        &camera,
+        hovered_id.as_ref(),
+        objects,
+    );
 
     state_3d.hovered = response
         .hover_pos()

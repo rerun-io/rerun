@@ -2,6 +2,7 @@ use std::ops::RangeInclusive;
 
 use egui::{Rect, Vec2};
 
+use data_store::Objects;
 use itertools::Itertools;
 use log_types::*;
 
@@ -13,6 +14,7 @@ use crate::{LogDb, Preview, Selection, ViewerContext};
 #[serde(default)]
 pub(crate) struct SpaceView {
     // per space
+    state_2d: nohash_hasher::IntMap<DataPath, crate::view2d::State2D>,
     state_3d: nohash_hasher::IntMap<DataPath, crate::view3d::State3D>,
 }
 
@@ -20,13 +22,7 @@ impl SpaceView {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        let messages = context.time_control.selected_messages(log_db);
-        if messages.is_empty() {
-            return;
-        }
-
-        // ui.small("Showing latest versions of each object.")
-        //     .on_hover_text("Latest by the current time, that is");
+        let scene = context.time_control.selected_objects(log_db);
 
         if let Selection::Space(selected_space) = &context.selection {
             let selected_space = selected_space.clone();
@@ -36,16 +32,16 @@ impl SpaceView {
                 }
                 context.space_button(ui, &selected_space);
             });
-            self.show_space(log_db, &messages, context, &selected_space, ui);
+            self.show_space(log_db, &scene, context, &selected_space, ui);
         } else {
-            self.show_all(log_db, &messages, context, ui);
+            self.show_all(log_db, &scene, context, ui);
         }
     }
 
     fn show_all(
         &mut self,
         log_db: &LogDb,
-        messages: &[&LogMsg],
+        objects: &Objects<'_>,
         context: &mut ViewerContext,
         ui: &mut egui::Ui,
     ) {
@@ -67,7 +63,7 @@ impl SpaceView {
                 .show(&mut ui, |ui| {
                     ui.vertical_centered(|ui| {
                         context.space_button(ui, space);
-                        self.show_space(log_db, messages, context, &space.clone(), ui);
+                        self.show_space(log_db, objects, context, &space.clone(), ui);
                         ui.allocate_space(ui.available_size());
                     });
                 });
@@ -198,7 +194,7 @@ impl SpaceView {
     fn show_space(
         &mut self,
         log_db: &LogDb,
-        messages: &[&LogMsg],
+        objects: &Objects<'_>,
         context: &mut ViewerContext,
         space: &DataPath,
         ui: &mut egui::Ui,
@@ -212,10 +208,13 @@ impl SpaceView {
             return;
         };
 
-        // ui.label(format!(
-        //     "{} log lines in this space",
-        //     space_summary.messages.len()
-        // ));
+        let objects = objects.filter(|props| {
+            props.space == Some(space)
+                && context
+                    .projected_object_properties
+                    .get(props.parent_object_path)
+                    .visible
+        });
 
         if !space_summary.messages_3d.is_empty() {
             let state_3d = self.state_3d.entry(space.clone()).or_default();
@@ -226,12 +225,13 @@ impl SpaceView {
                 state_3d,
                 space,
                 space_summary,
-                messages,
+                &objects,
             );
         }
 
         if !space_summary.messages_2d.is_empty() {
-            crate::view2d::combined_view_2d(log_db, context, ui, space, space_summary, messages);
+            let state_2d = self.state_2d.entry(space.clone()).or_default();
+            crate::view2d::combined_view_2d(log_db, context, ui, state_2d, space_summary, &objects);
         }
     }
 }
