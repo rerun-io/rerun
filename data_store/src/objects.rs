@@ -11,8 +11,11 @@ use crate::{
 pub struct Object<'s, T: Copy + Clone + std::fmt::Debug> {
     pub log_id: &'s LogId,
     pub space: Option<&'s DataPath>,
+    pub color: Option<[u8; 4]>,
+
     /// Use this to test if the object should be visible, etc.
     pub parent_object_path: &'s DataPath,
+
     pub obj: T,
 }
 
@@ -66,7 +69,6 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectMap<'s, T> {
 #[derive(Copy, Clone, Debug)]
 pub struct Image<'s> {
     pub image: &'s log_types::Image,
-    pub color: Option<[u8; 4]>,
 }
 
 impl<'s> Image<'s> {
@@ -95,11 +97,9 @@ impl<'s> Image<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
-                            obj: Image {
-                                image,
-                                color: color.copied(),
-                            },
+                            obj: Image { image },
                         });
                     },
                 );
@@ -114,7 +114,6 @@ impl<'s> Image<'s> {
 #[derive(Copy, Clone, Debug)]
 pub struct Point2D<'s> {
     pub pos: &'s [f32; 2],
-    pub color: Option<[u8; 4]>,
     pub radius: Option<f32>,
 }
 
@@ -145,10 +144,10 @@ impl<'s> Point2D<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
                             obj: Point2D {
                                 pos,
-                                color: color.copied(),
                                 radius: radius.copied(),
                             },
                         });
@@ -165,7 +164,6 @@ impl<'s> Point2D<'s> {
 #[derive(Copy, Clone, Debug)]
 pub struct Point3D<'s> {
     pub pos: &'s [f32; 3],
-    pub color: Option<[u8; 4]>,
     pub radius: Option<f32>,
 }
 
@@ -196,10 +194,10 @@ impl<'s> Point3D<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
                             obj: Point3D {
                                 pos,
-                                color: color.copied(),
                                 radius: radius.copied(),
                             },
                         });
@@ -216,7 +214,6 @@ impl<'s> Point3D<'s> {
 #[derive(Copy, Clone, Debug)]
 pub struct BBox2D<'s> {
     pub bbox: &'s log_types::BBox2D,
-    pub color: Option<[u8; 4]>,
     pub stroke_width: Option<f32>,
 }
 
@@ -247,10 +244,10 @@ impl<'s> BBox2D<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
                             obj: BBox2D {
                                 bbox,
-                                color: color.copied(),
                                 stroke_width: stroke_width.copied(),
                             },
                         });
@@ -267,7 +264,6 @@ impl<'s> BBox2D<'s> {
 #[derive(Copy, Clone, Debug)]
 pub struct Box3D<'s> {
     pub bbox: &'s log_types::Box3,
-    pub color: Option<[u8; 4]>,
     pub stroke_width: Option<f32>,
 }
 
@@ -298,10 +294,10 @@ impl<'s> Box3D<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
                             obj: Box3D {
                                 bbox,
-                                color: color.copied(),
                                 stroke_width: stroke_width.copied(),
                             },
                         });
@@ -318,7 +314,6 @@ impl<'s> Box3D<'s> {
 #[derive(Copy, Clone, Debug)]
 pub struct Path3D<'s> {
     pub points: &'s Vec<[f32; 3]>,
-    pub color: Option<[u8; 4]>,
     pub stroke_width: Option<f32>,
 }
 
@@ -349,10 +344,10 @@ impl<'s> Path3D<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
                             obj: Path3D {
                                 points,
-                                color: color.copied(),
                                 stroke_width: stroke_width.copied(),
                             },
                         });
@@ -369,7 +364,6 @@ impl<'s> Path3D<'s> {
 #[derive(Copy, Clone, Debug)]
 pub struct LineSegments2D<'s> {
     pub line_segments: &'s Vec<[[f32; 2]; 2]>,
-    pub color: Option<[u8; 4]>,
     pub stroke_width: Option<f32>,
 }
 
@@ -400,10 +394,10 @@ impl<'s> LineSegments2D<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
                             obj: LineSegments2D {
                                 line_segments,
-                                color: color.copied(),
                                 stroke_width: stroke_width.copied(),
                             },
                         });
@@ -420,7 +414,6 @@ impl<'s> LineSegments2D<'s> {
 #[derive(Copy, Clone, Debug)]
 pub struct LineSegments3D<'s> {
     pub line_segments: &'s Vec<[[f32; 3]; 2]>,
-    pub color: Option<[u8; 4]>,
     pub stroke_width: Option<f32>,
 }
 
@@ -451,10 +444,10 @@ impl<'s> LineSegments3D<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
                             obj: LineSegments3D {
                                 line_segments,
-                                color: color.copied(),
                                 stroke_width: stroke_width.copied(),
                             },
                         });
@@ -471,7 +464,6 @@ impl<'s> LineSegments3D<'s> {
 #[derive(Copy, Clone, Debug)]
 pub struct Mesh3D<'s> {
     pub mesh: &'s log_types::Mesh3D,
-    pub color: Option<[u8; 4]>,
 }
 
 impl<'s> Mesh3D<'s> {
@@ -500,11 +492,9 @@ impl<'s> Mesh3D<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
-                            obj: Mesh3D {
-                                mesh,
-                                color: color.copied(),
-                            },
+                            obj: Mesh3D { mesh },
                         });
                     },
                 );
@@ -520,7 +510,6 @@ impl<'s> Mesh3D<'s> {
 pub struct Camera<'s> {
     // TODO: break up in parts
     pub camera: &'s log_types::Camera,
-    pub color: Option<[u8; 4]>,
 }
 
 impl<'s> Camera<'s> {
@@ -549,11 +538,9 @@ impl<'s> Camera<'s> {
                         vec.push(Object {
                             log_id,
                             space,
+                            color: color.copied(),
                             parent_object_path,
-                            obj: Camera {
-                                camera,
-                                color: color.copied(),
-                            },
+                            obj: Camera { camera },
                         });
                     },
                 );
