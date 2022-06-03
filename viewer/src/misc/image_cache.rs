@@ -53,9 +53,13 @@ fn rr_image_to_dynamic_image(rr_image: &Image) -> anyhow::Result<DynamicImage> {
                 .map(DynamicImage::ImageLuma8)
         }
 
-        log_types::ImageFormat::Rgba8 => image::RgbImage::from_raw(w, h, rr_image.data.clone())
-            .context("Bad Rgba8")
+        log_types::ImageFormat::Rgb8 => image::RgbImage::from_raw(w, h, rr_image.data.clone())
+            .context("Bad Rgb8")
             .map(DynamicImage::ImageRgb8),
+
+        log_types::ImageFormat::Rgba8 => image::RgbaImage::from_raw(w, h, rr_image.data.clone())
+            .context("Bad Rgba8")
+            .map(DynamicImage::ImageRgba8),
 
         log_types::ImageFormat::Jpeg => {
             crate::profile_scope!("Decode JPEG");

@@ -433,7 +433,7 @@ fn image_options(
                     }
                 }
             }
-            ImageFormat::Luminance8 | ImageFormat::Rgba8 => {
+            ImageFormat::Luminance8 | ImageFormat::Rgb8 | ImageFormat::Rgba8 => {
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("image.png")
                     .save_file()
