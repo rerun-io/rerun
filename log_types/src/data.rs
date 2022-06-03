@@ -282,6 +282,7 @@ pub enum MeshFormat {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ImageFormat {
     Luminance8,
+    Luminance16,
     Rgb8,
     Rgba8,
     Jpeg,

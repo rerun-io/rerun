@@ -46,11 +46,18 @@ fn rr_image_to_dynamic_image(rr_image: &Image) -> anyhow::Result<DynamicImage> {
 
     let [w, h] = rr_image.size;
 
+    type Gray16Image = image::ImageBuffer<image::Luma<u16>, Vec<u16>>;
+
     match rr_image.format {
         log_types::ImageFormat::Luminance8 => {
             image::GrayImage::from_raw(w, h, rr_image.data.clone())
                 .context("Bad Luminance8")
                 .map(DynamicImage::ImageLuma8)
+        }
+        log_types::ImageFormat::Luminance16 => {
+            Gray16Image::from_raw(w, h, bytemuck::cast_slice(&rr_image.data).to_vec())
+                .context("Bad Luminance16")
+                .map(DynamicImage::ImageLuma16)
         }
 
         log_types::ImageFormat::Rgb8 => image::RgbImage::from_raw(w, h, rr_image.data.clone())
@@ -66,7 +73,7 @@ fn rr_image_to_dynamic_image(rr_image: &Image) -> anyhow::Result<DynamicImage> {
             use image::io::Reader as ImageReader;
             let mut reader = ImageReader::new(std::io::Cursor::new(&rr_image.data));
             reader.set_format(image::ImageFormat::Jpeg);
-            let img = reader.decode()?.to_rgb8();
+            let img = reader.decode()?.into_rgb8();
 
             let size = [img.width(), img.height()];
             if size != rr_image.size {
@@ -92,6 +99,13 @@ fn dynamic_image_to_egui_color_image(dynamic_image: &DynamicImage) -> ColorImage
             pixels: gray
                 .pixels()
                 .map(|pixel| Color32::from_gray(pixel[0]))
+                .collect(),
+        },
+        DynamicImage::ImageLuma16(gray) => ColorImage {
+            size: [gray.width() as _, gray.height() as _],
+            pixels: gray
+                .pixels()
+                .map(|pixel| Color32::from_gray((pixel[0] / 256) as u8))
                 .collect(),
         },
         DynamicImage::ImageRgb8(rgb) => ColorImage {
@@ -166,7 +180,7 @@ fn dynamic_image_to_egui_color_image(dynamic_image: &DynamicImage) -> ColorImage
 //             use image::io::Reader as ImageReader;
 //             let mut reader = ImageReader::new(std::io::Cursor::new(&rr_image.data));
 //             reader.set_format(image::ImageFormat::Jpeg);
-//             let img = reader.decode()?.to_rgba8();
+//             let img = reader.decode()?.into_rgba8();
 //             let rgba = img.to_vec();
 //             let size = [img.width(), img.height()];
 

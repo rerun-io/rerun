@@ -410,7 +410,7 @@ impl StaticImageCache {
 
 pub fn load_image_bytes(image_bytes: &[u8]) -> Result<egui::ColorImage, String> {
     let image = image::load_from_memory(image_bytes).map_err(|err| err.to_string())?;
-    let image = image.to_rgba8();
+    let image = image.into_rgba8();
     let size = [image.width() as _, image.height() as _];
     let pixels = image.as_flat_samples();
     Ok(egui::ColorImage::from_rgba_unmultiplied(
