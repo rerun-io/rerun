@@ -127,7 +127,7 @@ impl InstancedSperesGeom {
 
         for pos in &self.instances.translations_and_scale {
             let radius = glam::Vec3A::splat(pos.w);
-            let pos = glam::Vec3A::from_slice(&pos.as_array());
+            let pos = glam::Vec3A::new(pos.x, pos.y, pos.z);
             min = min.min(pos - radius);
             max = max.max(pos + radius);
         }
