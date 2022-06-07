@@ -192,7 +192,7 @@ impl TimePanel {
 
         // TODO: ignore rows that have no data for the current time source?
 
-        let data_path = DataPath(path.clone());
+        let data_path = DataPath::new(path.clone());
 
         // The last part of the the path component
         let text = if let Some(last) = path.last() {
@@ -1522,7 +1522,7 @@ fn summary_of_tree(ui: &mut egui::Ui, path: &mut Vec<DataPathComponent>, tree: &
 }
 
 fn summary_of_children(ui: &mut egui::Ui, path: &mut Vec<DataPathComponent>, tree: &DataTree) {
-    ui.label(DataPath(path.clone()).to_string());
+    ui.label(DataPath::new(path.clone()).to_string());
     ui.label(tree.data.summary());
     ui.end_row();
 

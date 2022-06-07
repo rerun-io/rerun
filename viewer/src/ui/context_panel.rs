@@ -93,18 +93,17 @@ impl ContextPanel {
         crate::profile_function!();
         let messages = context.time_control.selected_messages(log_db);
 
-        let mut parent_path = msg.data_path.0.clone();
-        parent_path.pop();
+        let parent_path = msg.data_path.parent();
 
         let mut sibling_messages: Vec<&LogMsg> = messages
             .iter()
             .copied()
-            .filter(|other_msg| other_msg.data_path.0.starts_with(&parent_path))
+            .filter(|other_msg| other_msg.data_path.starts_with(&parent_path))
             .collect();
 
         sibling_messages.sort_by_key(|msg| &msg.time_point);
 
-        ui.label(format!("{}:", DataPath(parent_path.clone())));
+        ui.label(format!("{}:", parent_path));
 
         use egui_extras::Size;
         egui_extras::TableBuilder::new(ui)
@@ -127,7 +126,8 @@ impl ContextPanel {
                     let msg = sibling_messages[index];
 
                     row.col(|ui| {
-                        let relative_path = DataPath(msg.data_path.0[parent_path.len()..].to_vec());
+                        let relative_path =
+                            DataPath::new(msg.data_path.as_slice()[parent_path.len()..].to_vec());
                         context.data_path_button_to(ui, relative_path.to_string(), &msg.data_path);
                     });
                     row.col(|ui| {

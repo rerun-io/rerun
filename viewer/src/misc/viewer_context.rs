@@ -45,7 +45,7 @@ impl ViewerContext {
             tree: &DataTree,
         ) {
             // TODO: we need to speed up and simplify this a lot.
-            let data_path = DataPath(path.clone());
+            let data_path = DataPath::new(path.clone());
             let prop = prop.with_child(&context.individual_object_properties.get(&data_path));
             context.projected_object_properties.set(data_path, prop);
 

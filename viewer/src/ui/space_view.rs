@@ -157,7 +157,7 @@ fn group_by_path_prefix(spaces: &[SpaceInfo]) -> Vec<Vec<SpaceInfo>> {
             Default::default();
         for space in spaces {
             groups
-                .entry(space.space_path.0.get(i))
+                .entry(space.space_path.get(i))
                 .or_default()
                 .push(space);
         }

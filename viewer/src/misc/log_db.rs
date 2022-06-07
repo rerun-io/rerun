@@ -352,7 +352,7 @@ impl DataTree {
     }
 
     pub fn add_log_msg(&mut self, msg: &LogMsg) {
-        self.add_path(&msg.data_path.0[..], msg);
+        self.add_path(&msg.data_path, msg);
     }
 
     fn add_path(&mut self, path: &[DataPathComponent], msg: &LogMsg) {

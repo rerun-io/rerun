@@ -3,27 +3,60 @@ use rr_string_interner::InternedString;
 // ----------------------------------------------------------------------------
 
 /// A path to a specific piece of data (e.g. a single `f32`).
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct DataPath(pub Vec<DataPathComponent>); // TODO: private
+pub struct DataPath {
+    components: Vec<DataPathComponent>,
+}
 
 impl DataPath {
+    pub fn new(components: Vec<DataPathComponent>) -> Self {
+        Self { components }
+    }
+
+    #[inline]
+    pub fn as_slice(&self) -> &[DataPathComponent] {
+        self.components.as_slice()
+    }
+
     #[inline]
     pub fn is_root(&self) -> bool {
-        self.0.is_empty()
+        self.components.is_empty()
+    }
+
+    pub fn starts_with(&self, prefix: &[DataPathComponent]) -> bool {
+        self.components.starts_with(prefix)
+    }
+
+    #[inline]
+    pub fn get(&self, i: usize) -> Option<&DataPathComponent> {
+        self.components.get(i)
     }
 
     pub fn parent(&self) -> Self {
-        let mut path = self.0.clone();
+        let mut path = self.components.clone();
         path.pop();
-        Self(path)
+        Self::new(path)
     }
 
     pub fn sibling(&self, last_comp: impl Into<DataPathComponent>) -> Self {
-        let mut path = self.0.clone();
+        let mut path = self.components.clone();
         path.pop(); // TODO: handle root?
         path.push(last_comp.into());
-        Self(path)
+        Self::new(path)
+    }
+
+    pub fn push(&mut self, component: DataPathComponent) {
+        self.components.push(component);
+    }
+}
+
+impl std::ops::Deref for DataPath {
+    type Target = [DataPathComponent];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.components
     }
 }
 
@@ -33,7 +66,7 @@ impl IntoIterator for DataPath {
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.components.into_iter()
     }
 }
 
@@ -42,9 +75,9 @@ impl std::fmt::Display for DataPath {
         use std::fmt::Write as _;
 
         f.write_char('/')?;
-        for (i, comp) in self.0.iter().enumerate() {
+        for (i, comp) in self.components.iter().enumerate() {
             comp.fmt(f)?;
-            if i + 1 != self.0.len() {
+            if i + 1 != self.components.len() {
                 f.write_char('/')?;
             }
         }
@@ -55,17 +88,18 @@ impl std::fmt::Display for DataPath {
 impl From<&str> for DataPath {
     #[inline]
     fn from(component: &str) -> Self {
-        Self(vec![component.into()])
+        Self::new(vec![component.into()])
     }
 }
-// ----------------------------------------------------------------------------
 
 impl From<DataPathComponent> for DataPath {
     #[inline]
     fn from(component: DataPathComponent) -> Self {
-        Self(vec![component])
+        Self::new(vec![component])
     }
 }
+
+// ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -100,7 +134,7 @@ impl std::ops::Div for DataPathComponent {
 
     #[inline]
     fn div(self, rhs: DataPathComponent) -> Self::Output {
-        DataPath(vec![self, rhs])
+        DataPath::new(vec![self, rhs])
     }
 }
 
@@ -109,7 +143,7 @@ impl std::ops::Div<DataPathComponent> for DataPath {
 
     #[inline]
     fn div(mut self, rhs: DataPathComponent) -> Self::Output {
-        self.0.push(rhs);
+        self.push(rhs);
         self
     }
 }
@@ -119,7 +153,7 @@ impl std::ops::Div<Index> for DataPath {
 
     #[inline]
     fn div(mut self, rhs: Index) -> Self::Output {
-        self.0.push(DataPathComponent::Index(rhs));
+        self.push(DataPathComponent::Index(rhs));
         self
     }
 }
@@ -147,7 +181,7 @@ impl std::ops::Div<&'static str> for DataPath {
 
     #[inline]
     fn div(mut self, rhs: &'static str) -> Self::Output {
-        self.0.push(DataPathComponent::String(rhs.into()));
+        self.push(DataPathComponent::String(rhs.into()));
         self
     }
 }
