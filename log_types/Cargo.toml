@@ -21,6 +21,7 @@ serde = ["dep:serde", "rr_string_interner/serde"]
 
 
 [dependencies]
+ahash = "0.7"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 im = "15.0"
 nohash-hasher = "0.2"

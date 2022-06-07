@@ -205,7 +205,7 @@ impl Selection {
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ObjectsProperties {
-    props: ahash::AHashMap<DataPath, ObjectProps>,
+    props: nohash_hasher::IntMap<DataPath, ObjectProps>,
 }
 
 impl ObjectsProperties {

@@ -3,15 +3,16 @@ use rr_string_interner::InternedString;
 // ----------------------------------------------------------------------------
 
 /// A path to a specific piece of data (e.g. a single `f32`).
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Debug, Eq, PartialOrd, Ord)]
 pub struct DataPath {
     components: Vec<DataPathComponent>,
+    hashes: [u64; 2], // low chance of collisions
 }
 
 impl DataPath {
     pub fn new(components: Vec<DataPathComponent>) -> Self {
-        Self { components }
+        let hashes = double_hash(&components);
+        Self { components, hashes }
     }
 
     #[inline]
@@ -47,8 +48,58 @@ impl DataPath {
     }
 
     pub fn push(&mut self, component: DataPathComponent) {
-        self.components.push(component);
+        // TODO(emilk): optimize DataPath construction.
+        // This is quite slow, but we only do this in rare circumstances, so it is ok for now.
+        let mut components = std::mem::take(&mut self.components);
+        components.push(component);
+        *self = Self::new(components);
     }
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for DataPath {
+    #[inline]
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.as_slice().serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for DataPath {
+    #[inline]
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        <Vec<DataPathComponent>>::deserialize(deserializer).map(DataPath::new)
+    }
+}
+
+impl std::cmp::PartialEq for DataPath {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.hashes == other.hashes // much faster, and low chance of collision
+    }
+}
+
+impl std::hash::Hash for DataPath {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hashes[0]);
+    }
+}
+
+impl nohash_hasher::IsEnabled for DataPath {}
+
+#[inline]
+fn double_hash(value: impl std::hash::Hash + Copy) -> [u64; 2] {
+    [hash_with_seed(value, 123), hash_with_seed(value, 456)]
+}
+
+/// Hash the given value.
+#[inline]
+fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
+    use std::hash::Hasher as _;
+    let mut hasher = ahash::AHasher::new_with_keys(666, seed);
+    value.hash(&mut hasher);
+    hasher.finish()
 }
 
 impl std::ops::Deref for DataPath {

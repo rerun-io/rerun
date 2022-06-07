@@ -1,7 +1,5 @@
 use std::ops::RangeInclusive;
 
-use ahash::AHashMap;
-
 use egui::{Rect, Vec2};
 
 use itertools::Itertools;
@@ -15,7 +13,7 @@ use crate::{LogDb, Preview, Selection, ViewerContext};
 #[serde(default)]
 pub(crate) struct SpaceView {
     // per space
-    state_3d: AHashMap<DataPath, crate::view3d::State3D>,
+    state_3d: nohash_hasher::IntMap<DataPath, crate::view3d::State3D>,
 }
 
 impl SpaceView {

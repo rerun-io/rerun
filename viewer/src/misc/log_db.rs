@@ -15,7 +15,7 @@ pub(crate) struct LogDb {
     pub time_points: TimePoints,
     pub spaces: BTreeMap<DataPath, SpaceSummary>,
     pub data_tree: DataTree,
-    object_history: HashMap<DataPath, ObjectHistory>,
+    object_history: nohash_hasher::IntMap<DataPath, ObjectHistory>,
 }
 
 impl LogDb {

@@ -1724,6 +1724,7 @@ dependencies = [
 name = "log_types"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "anyhow",
  "chrono",
  "im",
