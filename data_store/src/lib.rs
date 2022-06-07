@@ -76,7 +76,7 @@ pub(crate) fn data_path_from_type_and_index(
 ) -> DataPath {
     let mut index_it = index_path.components.iter();
 
-    let ret = DataPath(
+    let ret = DataPath::new(
         type_path
             .iter()
             .map(|typ| match typ {
@@ -101,7 +101,7 @@ pub(crate) fn data_path_from_type_and_index_prefix(
 ) -> DataPath {
     let mut index_it = index_prefix.components.iter();
 
-    let ret = DataPath(
+    let ret = DataPath::new(
         type_path
             .iter()
             .map(|typ| match typ {
@@ -139,7 +139,7 @@ pub(crate) fn batch_parent_object_path(
                 if let Some(index) = index_it.next() {
                     components.push(DataPathComponent::Index(index.clone()));
                 } else {
-                    return DataPath(components);
+                    return DataPath::new(components);
                 }
             }
         }
