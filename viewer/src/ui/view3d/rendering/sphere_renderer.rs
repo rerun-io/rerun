@@ -1,3 +1,7 @@
+//! A lot of this is copied from [`three-d`](https://github.com/asny/three-d).
+//!
+//! TODO(emilk): use billboards for each sphere instead to reduce vertex counts for large point clouds.
+
 use std::collections::HashMap;
 use three_d::core::*;
 use three_d::renderer::*;
@@ -77,12 +81,6 @@ pub struct InstancedSperesGeom {
 }
 
 impl InstancedSperesGeom {
-    ///
-    /// Creates a new 3D mesh from the given [CpuMesh].
-    /// All data in the [CpuMesh] is transfered to the GPU, so make sure to remove all unnecessary data from the [CpuMesh] before calling this method.
-    /// The mesh is rendered in as many instances as there are [Instance] structs given as input.
-    /// The transformation and texture transform in [Instance] are applied to each instance before they are rendered.
-    ///
     pub fn new(
         context: &Context,
         instances: SphereInstances,
@@ -102,14 +100,10 @@ impl InstancedSperesGeom {
         Ok(model)
     }
 
-    /// Returns the number of instances that is rendered.
     pub fn instance_count(&self) -> u32 {
         self.instances.count()
     }
 
-    ///
-    /// Update the instances.
-    ///
     pub fn set_instances(&mut self, instances: SphereInstances) -> ThreeDResult<()> {
         crate::profile_function!();
         instances.validate()?;
@@ -225,9 +219,8 @@ in vec4 instance_translation_scale;
 
 void main()
 {
-    mat4 local2World = modelMatrix;
-
-    vec4 worldPosition = local2World * vec4(instance_translation_scale.w * position, 1.0);
+    let scale = instance_translation_scale.w;
+    vec4 worldPosition = modelMatrix * vec4(scale * position, 1.0);
     worldPosition.xyz += instance_translation_scale.xyz;
     gl_Position = viewProjection * worldPosition;
 
@@ -237,12 +230,12 @@ void main()
 
 #ifdef USE_NORMALS
     mat3 normalMat = mat3(normalMatrix);
-#endif
     nor = normalize(normalMat * normal);
 
-#ifdef USE_TANGENTS
-    tang = normalize(normalMat * tangent.xyz);
-    bitang = normalize(cross(nor, tang) * tangent.w);
+    #ifdef USE_TANGENTS
+        tang = normalize(normalMat * tangent.xyz);
+        bitang = normalize(cross(nor, tang) * tangent.w);
+    #endif
 #endif
 
 #ifdef USE_COLORS
@@ -330,10 +323,6 @@ impl Geometry for InstancedSperesGeom {
     }
 }
 
-///
-/// Defines the attributes for the instances of the model defined in [InstancedSperesGeom] or [InstancedModel].
-/// Each list of attributes must contain the same number of elements as the number of instances.
-///
 #[derive(Clone, Debug, Default)]
 pub struct SphereInstances {
     /// The translation applied to the positions of each instance.
@@ -343,9 +332,6 @@ pub struct SphereInstances {
 }
 
 impl SphereInstances {
-    ///
-    /// Returns an error if the instances is not valid.
-    ///
     pub fn validate(&self) -> ThreeDResult<()> {
         if let Some(colors) = &self.colors {
             if colors.len() != self.translations_and_scale.len() {
@@ -360,7 +346,6 @@ impl SphereInstances {
         Ok(())
     }
 
-    /// Returns the number of instances.
     pub fn count(&self) -> u32 {
         self.translations_and_scale.len() as u32
     }

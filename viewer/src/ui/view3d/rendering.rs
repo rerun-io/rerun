@@ -43,20 +43,18 @@ impl RenderingContext {
         )
         .unwrap();
 
-        let sphere_mesh = three_d::CpuMesh::sphere(24);
         let points_cache = sphere_renderer::InstancedSpheres::new_with_material(
             &three_d,
             Default::default(),
-            &sphere_mesh,
+            &three_d::CpuMesh::sphere(6),
             default_material(),
         )
         .unwrap();
 
-        let line_mesh = three_d::CpuMesh::cylinder(10);
         let lines_cache = three_d::InstancedModel::new_with_material(
             &three_d,
             &Default::default(),
-            &line_mesh,
+            &three_d::CpuMesh::cylinder(10),
             Default::default(),
         )
         .unwrap();
@@ -160,8 +158,8 @@ fn allocate_points(points: &[Point]) -> sphere_renderer::SphereInstances {
     crate::profile_function!();
     use three_d::*;
 
-    let mut translations_and_scale = vec![];
-    let mut colors = vec![];
+    let mut translations_and_scale = Vec::with_capacity(points.len());
+    let mut colors = Vec::with_capacity(points.len());
 
     for point in points {
         let p = point.pos;
