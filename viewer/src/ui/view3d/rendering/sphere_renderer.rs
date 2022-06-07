@@ -219,7 +219,7 @@ in vec4 instance_translation_scale;
 
 void main()
 {
-    let scale = instance_translation_scale.w;
+    float scale = instance_translation_scale.w;
     vec4 worldPosition = modelMatrix * vec4(scale * position, 1.0);
     worldPosition.xyz += instance_translation_scale.xyz;
     gl_Position = viewProjection * worldPosition;
