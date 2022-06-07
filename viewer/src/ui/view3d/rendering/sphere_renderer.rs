@@ -145,10 +145,10 @@ impl InstancedSperesGeom {
 
     fn vertex_shader_source(&self, fragment_shader_source: &str) -> ThreeDResult<String> {
         crate::profile_function!();
-        let use_positions = fragment_shader_source.find("in vec3 pos;").is_some();
-        let use_normals = fragment_shader_source.find("in vec3 nor;").is_some();
-        let use_tangents = fragment_shader_source.find("in vec3 tang;").is_some();
-        let use_colors = fragment_shader_source.find("in vec4 col;").is_some();
+        let use_positions = fragment_shader_source.contains("in vec3 pos;");
+        let use_normals = fragment_shader_source.contains("in vec3 nor;");
+        let use_tangents = fragment_shader_source.contains("in vec3 tang;");
+        let use_colors = fragment_shader_source.contains("in vec4 col;");
         Ok(format!(
             "{}{}{}{}{}",
             if use_positions {
@@ -162,8 +162,8 @@ impl InstancedSperesGeom {
                 ""
             },
             if use_tangents {
-                if fragment_shader_source.find("in vec3 bitang;").is_none() {
-                    Err(CoreError::MissingBitangent)?;
+                if fragment_shader_source.contains("in vec3 bitang;") {
+                    return Err(CoreError::MissingBitangent.into());
                 }
                 "#define USE_TANGENTS\n"
             } else {
@@ -286,9 +286,9 @@ impl Geometry for InstancedSperesGeom {
                     if program.requires_attribute(attribute_name) {
                         program.use_vertex_attribute(
                             attribute_name,
-                            self.vertex_buffers
-                                .get(attribute_name)
-                                .ok_or(CoreError::MissingMeshBuffer(attribute_name.to_string()))?,
+                            self.vertex_buffers.get(attribute_name).ok_or_else(|| {
+                                CoreError::MissingMeshBuffer(attribute_name.to_string())
+                            })?,
                         )?;
                     }
                 }
@@ -335,11 +335,12 @@ impl SphereInstances {
     pub fn validate(&self) -> ThreeDResult<()> {
         if let Some(colors) = &self.colors {
             if colors.len() != self.translations_and_scale.len() {
-                Err(CoreError::InvalidBufferLength(
+                return Err(CoreError::InvalidBufferLength(
                     "colors".to_string(),
                     self.translations_and_scale.len(),
                     colors.len(),
-                ))?;
+                )
+                .into());
             }
         }
 

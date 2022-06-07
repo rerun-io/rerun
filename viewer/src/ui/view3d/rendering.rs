@@ -170,7 +170,6 @@ fn allocate_points(points: &[Point]) -> sphere_renderer::SphereInstances {
     sphere_renderer::SphereInstances {
         translations_and_scale,
         colors: Some(colors),
-        ..Default::default()
     }
 }
 
