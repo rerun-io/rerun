@@ -67,7 +67,9 @@ impl<M: Material> std::ops::DerefMut for InstancedSpheres<M> {
 pub struct InstancedSperesGeom {
     context: Context,
     vertex_buffers: HashMap<String, VertexBuffer>,
-    instance_buffers: HashMap<String, InstanceBuffer>,
+    translation_scale_buffer: InstanceBuffer,
+    color_buffer: InstanceBuffer,
+
     index_buffer: Option<ElementBuffer>,
     aabb: AxisAlignedBoundingBox,
     transformation: Mat4,
@@ -90,7 +92,8 @@ impl InstancedSperesGeom {
             context: context.clone(),
             index_buffer: index_buffer_from_mesh(context, cpu_mesh)?,
             vertex_buffers: vertex_buffers_from_mesh(context, cpu_mesh)?,
-            instance_buffers: HashMap::new(),
+            translation_scale_buffer: InstanceBuffer::new(context)?,
+            color_buffer: InstanceBuffer::new(context)?,
             aabb: AxisAlignedBoundingBox::EMPTY,
             transformation: Mat4::identity(),
             instances: Default::default(),
@@ -111,18 +114,11 @@ impl InstancedSperesGeom {
         crate::profile_function!();
         instances.validate()?;
 
-        self.instance_buffers.clear();
-
-        self.instance_buffers.insert(
-            "instance_translation_scale".to_string(),
-            InstanceBuffer::new_with_data(&self.context, &instances.translations_and_scale)?,
-        );
+        self.translation_scale_buffer
+            .fill(&instances.translations_and_scale)?;
 
         if let Some(instance_colors) = &instances.colors {
-            self.instance_buffers.insert(
-                "instance_color".to_string(),
-                InstanceBuffer::new_with_data(&self.context, &instance_colors)?,
-            );
+            self.color_buffer.fill(instance_colors)?;
         }
         self.instances = instances;
         self.update_aabb();
@@ -180,11 +176,9 @@ impl InstancedSperesGeom {
                 ""
             },
             if use_colors {
-                if self.instance_buffers.contains_key("instance_color")
-                    && self.vertex_buffers.contains_key("color")
-                {
+                if self.instances.colors.is_some() && self.vertex_buffers.contains_key("color") {
                     "#define USE_COLORS\n#define USE_VERTEX_COLORS\n#define USE_INSTANCE_COLORS\n"
-                } else if self.instance_buffers.contains_key("instance_color") {
+                } else if self.instances.colors.is_some() {
                     "#define USE_COLORS\n#define USE_INSTANCE_COLORS\n"
                 } else {
                     "#define USE_COLORS\n#define USE_VERTEX_COLORS\n"
@@ -279,8 +273,7 @@ impl Geometry for InstancedSperesGeom {
     ) -> ThreeDResult<()> {
         crate::profile_function!();
         let fragment_shader_source = material.fragment_shader_source(
-            self.vertex_buffers.contains_key("color")
-                || self.instance_buffers.contains_key("instance_color"),
+            self.vertex_buffers.contains_key("color") || self.instances.colors.is_some(),
             lights,
         );
         self.context.program(
@@ -307,15 +300,14 @@ impl Geometry for InstancedSperesGeom {
                     }
                 }
 
-                for attribute_name in ["instance_translation_scale", "instance_color"] {
-                    if program.requires_attribute(attribute_name) {
-                        program.use_instance_attribute(
-                            attribute_name,
-                            self.instance_buffers
-                                .get(attribute_name)
-                                .ok_or(CoreError::MissingMeshBuffer(attribute_name.to_string()))?,
-                        )?;
-                    }
+                if program.requires_attribute("instance_translation_scale") {
+                    program.use_instance_attribute(
+                        "instance_translation_scale",
+                        &self.translation_scale_buffer,
+                    )?;
+                }
+                if program.requires_attribute("instance_color") {
+                    program.use_instance_attribute("instance_color", &self.color_buffer)?;
                 }
 
                 if let Some(ref index_buffer) = self.index_buffer {
