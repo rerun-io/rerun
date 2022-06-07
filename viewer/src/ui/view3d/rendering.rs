@@ -46,7 +46,7 @@ impl RenderingContext {
         let sphere_mesh = three_d::CpuMesh::sphere(24);
         let points_cache = sphere_renderer::InstancedSpheres::new_with_material(
             &three_d,
-            &Default::default(),
+            Default::default(),
             &sphere_mesh,
             default_material(),
         )
@@ -160,20 +160,17 @@ fn allocate_points(points: &[Point]) -> sphere_renderer::SphereInstances {
     crate::profile_function!();
     use three_d::*;
 
-    let mut translations = vec![];
-    let mut scales = vec![];
+    let mut translations_and_scale = vec![];
     let mut colors = vec![];
 
     for point in points {
         let p = point.pos;
-        translations.push(vec3(p[0], p[1], p[2]));
-        scales.push(vec3(point.radius, point.radius, point.radius));
+        translations_and_scale.push(vec4(p[0], p[1], p[2], point.radius));
         colors.push(color_to_three_d(point.color));
     }
 
     sphere_renderer::SphereInstances {
-        translations,
-        scales: Some(scales),
+        translations_and_scale,
         colors: Some(colors),
         ..Default::default()
     }
@@ -335,7 +332,7 @@ pub fn paint_with_three_d(
 
     rendering
         .points_cache
-        .set_instances(&allocate_points(points))?;
+        .set_instances(allocate_points(points))?;
     if rendering.points_cache.instance_count() > 0 {
         objects.push(&rendering.points_cache);
     }
