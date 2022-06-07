@@ -1,3 +1,5 @@
+mod sphere_renderer;
+
 use super::{camera::Camera, mesh_cache::GpuMeshCache, scene::*};
 
 type LineMaterial = three_d::ColorMaterial;
@@ -12,7 +14,7 @@ pub struct RenderingContext {
     gpu_mesh_cache: GpuMeshCache,
 
     /// So we don't need to re-allocate them.
-    points_cache: three_d::InstancedModel<three_d::PhysicalMaterial>,
+    points_cache: sphere_renderer::InstancedSpheres<three_d::PhysicalMaterial>,
     lines_cache: three_d::InstancedModel<LineMaterial>,
 }
 
@@ -42,7 +44,7 @@ impl RenderingContext {
         .unwrap();
 
         let sphere_mesh = three_d::CpuMesh::sphere(24);
-        let points_cache = three_d::InstancedModel::new_with_material(
+        let points_cache = sphere_renderer::InstancedSpheres::new_with_material(
             &three_d,
             &Default::default(),
             &sphere_mesh,
@@ -154,7 +156,7 @@ fn default_material() -> three_d::PhysicalMaterial {
     }
 }
 
-fn allocate_points(points: &[Point]) -> three_d::Instances {
+fn allocate_points(points: &[Point]) -> sphere_renderer::SphereInstances {
     crate::profile_function!();
     use three_d::*;
 
@@ -169,7 +171,7 @@ fn allocate_points(points: &[Point]) -> three_d::Instances {
         colors.push(color_to_three_d(point.color));
     }
 
-    three_d::Instances {
+    sphere_renderer::SphereInstances {
         translations,
         scales: Some(scales),
         colors: Some(colors),
