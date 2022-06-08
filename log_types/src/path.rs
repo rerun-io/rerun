@@ -2,22 +2,69 @@ use rr_string_interner::InternedString;
 
 // ----------------------------------------------------------------------------
 
+#[inline]
+fn double_hash(value: impl std::hash::Hash + Copy) -> [u64; 2] {
+    [hash_with_seed(value, 123), hash_with_seed(value, 456)]
+}
+
+/// Hash the given value.
+#[inline]
+fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
+    use std::hash::Hasher as _;
+    let mut hasher = ahash::AHasher::new_with_keys(666, seed);
+    value.hash(&mut hasher);
+    hasher.finish()
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialOrd, Ord)]
+pub struct DataPathHash([u64; 2]);
+
+impl DataPathHash {
+    fn new(components: &[DataPathComponent]) -> Self {
+        Self(double_hash(components))
+    }
+}
+
+impl std::hash::Hash for DataPathHash {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.0[0]);
+    }
+}
+
+impl std::cmp::PartialEq for DataPathHash {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl nohash_hasher::IsEnabled for DataPathHash {}
+
+// ----------------------------------------------------------------------------
+
 /// A path to a specific piece of data (e.g. a single `f32`).
 #[derive(Clone, Debug, Eq, PartialOrd, Ord)]
 pub struct DataPath {
     components: Vec<DataPathComponent>,
-    hashes: [u64; 2], // low chance of collisions
+    hash: DataPathHash,
 }
 
 impl DataPath {
     pub fn new(components: Vec<DataPathComponent>) -> Self {
-        let hashes = double_hash(&components);
-        Self { components, hashes }
+        let hash = DataPathHash::new(&components);
+        Self { components, hash }
     }
 
     #[inline]
     pub fn as_slice(&self) -> &[DataPathComponent] {
         self.components.as_slice()
+    }
+
+    /// Precomputed hash.
+    #[inline]
+    pub fn hash(&self) -> DataPathHash {
+        self.hash
     }
 
     #[inline]
@@ -75,32 +122,18 @@ impl<'de> serde::Deserialize<'de> for DataPath {
 impl std::cmp::PartialEq for DataPath {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.hashes == other.hashes // much faster, and low chance of collision
+        self.hash == other.hash // much faster, and low chance of collision
     }
 }
 
 impl std::hash::Hash for DataPath {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hashes[0]);
+        state.write_u64(self.hash.0[0]);
     }
 }
 
 impl nohash_hasher::IsEnabled for DataPath {}
-
-#[inline]
-fn double_hash(value: impl std::hash::Hash + Copy) -> [u64; 2] {
-    [hash_with_seed(value, 123), hash_with_seed(value, 456)]
-}
-
-/// Hash the given value.
-#[inline]
-fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
-    use std::hash::Hasher as _;
-    let mut hasher = ahash::AHasher::new_with_keys(666, seed);
-    value.hash(&mut hasher);
-    hasher.finish()
-}
 
 impl std::ops::Deref for DataPath {
     type Target = [DataPathComponent];
