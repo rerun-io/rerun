@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use egui::Color32;
 use egui::{util::hash, NumExt as _};
 use glam::{vec3, Mat4, Quat, Vec3};
 use itertools::Itertools as _;
@@ -17,14 +16,14 @@ pub struct Point {
     pub log_id: LogId,
     pub pos: [f32; 3],
     pub radius: f32,
-    pub color: Color32,
+    pub color: [u8; 4],
 }
 
 pub struct LineSegments {
     pub log_id: LogId,
     pub segments: Vec<[[f32; 3]; 2]>,
     pub radius: f32,
-    pub color: Color32,
+    pub color: [u8; 4],
 }
 
 pub enum MeshSourceData {
@@ -65,13 +64,14 @@ impl Scene {
                 radius
             }
         };
-        let object_color = |props: &data_store::ObjectProps<'_>| {
+        let object_color = |context: &mut ViewerContext, props: &data_store::ObjectProps<'_>| {
             if Some(props.log_id) == hovered_id {
-                Color32::WHITE
-            } else if let Some([r, g, b, a]) = props.color {
-                Color32::from_rgba_unmultiplied(r, g, b, a)
+                [255; 4]
+            } else if let Some(color) = props.color {
+                color
             } else {
-                crate::misc::random_object_color(props)
+                let [r, g, b] = context.random_color(props.parent_object_path.hash64());
+                [r, g, b, 255]
             }
         };
 
@@ -88,6 +88,7 @@ impl Scene {
 
         let mut scene = Self::default();
 
+        scene.points.reserve(objects.point3d.len());
         for (_type_path, props, obj) in objects.point3d.iter() {
             let data_store::Point3D { pos, radius } = *obj;
 
@@ -99,7 +100,7 @@ impl Scene {
                 log_id: *props.log_id,
                 pos: *pos,
                 radius,
-                color: object_color(props),
+                color: object_color(context, props),
             });
         }
 
@@ -113,7 +114,7 @@ impl Scene {
                 |w| w / 2.0,
             );
             let line_radius = boost_size_on_hover(props, line_radius);
-            let color = object_color(props);
+            let color = object_color(context, props);
             scene.add_box(*props.log_id, color, line_radius, obb);
         }
 
@@ -133,7 +134,7 @@ impl Scene {
                 |w| w / 2.0,
             );
             let line_radius = boost_size_on_hover(props, line_radius);
-            let color = object_color(props);
+            let color = object_color(context, props);
 
             let segments = points
                 .iter()
@@ -168,7 +169,7 @@ impl Scene {
                 |w| w / 2.0,
             );
             let line_radius = boost_size_on_hover(props, line_radius);
-            let color = object_color(props);
+            let color = object_color(context, props);
 
             scene.line_segments.push(LineSegments {
                 log_id: *props.log_id,
@@ -203,7 +204,7 @@ impl Scene {
             let translation = Vec3::from_slice(&camera.position);
 
             let dist_to_camera = camera_plane.distance(translation);
-            let color = object_color(props);
+            let color = object_color(context, props);
 
             if context.options.show_camera_mesh_in_3d {
                 // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
@@ -246,7 +247,7 @@ impl Scene {
         space_summary: &SpaceSummary,
         log_id: &LogId,
         line_radius: f32,
-        color: Color32,
+        color: [u8; 4],
     ) {
         let rotation = Quat::from_slice(&cam.rotation);
         let translation = Vec3::from_slice(&cam.position);
@@ -301,7 +302,7 @@ impl Scene {
         }
     }
 
-    fn add_box(&mut self, log_id: LogId, color: Color32, line_radius: f32, box3: &Box3) {
+    fn add_box(&mut self, log_id: LogId, color: [u8; 4], line_radius: f32, box3: &Box3) {
         let Box3 {
             rotation,
             translation,

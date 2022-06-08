@@ -30,6 +30,9 @@ pub(crate) struct ViewerContext {
     #[serde(skip)]
     pub projected_object_properties: ObjectsProperties,
 
+    /// cached auto-generated colors.
+    object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,
+
     pub options: Options,
 }
 
@@ -116,6 +119,14 @@ impl ViewerContext {
             self.time_control.pause();
         }
         response
+    }
+
+    pub fn random_color(&mut self, hash: u64) -> [u8; 3] {
+        let color = *self
+            .object_colors
+            .entry(hash)
+            .or_insert_with(|| crate::misc::random_rgb(hash));
+        color
     }
 }
 

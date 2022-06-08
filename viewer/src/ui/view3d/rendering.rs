@@ -347,14 +347,7 @@ pub fn paint_with_three_d(
     Ok(())
 }
 
-/// TODO: don't use `Color32` here, it is unnecessary to premultiply alpha only to again unmultiply it here!
-fn color_to_three_d(color: egui::Color32) -> three_d::Color {
+fn color_to_three_d([r, g, b, a]: [u8; 4]) -> three_d::Color {
     // TODO: figure out why three_d colors are messed up. Are they in linear space and in bytes!?!?!
-    let [r, g, b, a] = egui::Rgba::from(color).to_rgba_unmultiplied();
-    three_d::Color::new(
-        (r * 255.0).round() as _,
-        (g * 255.0).round() as _,
-        (b * 255.0).round() as _,
-        (a * 255.0).round() as _,
-    )
+    three_d::Color::new(r, g, b, a)
 }

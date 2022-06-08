@@ -80,7 +80,8 @@ pub(crate) fn combined_view_2d(
 
     for (image_idx, (_type_path, props, obj)) in objects.image.iter().enumerate() {
         let data_store::Image { image } = obj;
-        let paint_props = paint_properties(&state2d.hovered, props, DefaultColor::White, &None);
+        let paint_props =
+            paint_properties(context, &state2d.hovered, props, DefaultColor::White, &None);
 
         let texture_id = context
             .image_cache
@@ -114,8 +115,13 @@ pub(crate) fn combined_view_2d(
 
     for (_type_path, props, obj) in objects.bbox2d.iter() {
         let data_store::BBox2D { bbox, stroke_width } = obj;
-        let paint_props =
-            paint_properties(&state2d.hovered, props, DefaultColor::Random, stroke_width);
+        let paint_props = paint_properties(
+            context,
+            &state2d.hovered,
+            props,
+            DefaultColor::Random,
+            stroke_width,
+        );
 
         let screen_rect =
             to_screen.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
@@ -144,8 +150,13 @@ pub(crate) fn combined_view_2d(
             line_segments,
             stroke_width,
         } = obj;
-        let paint_props =
-            paint_properties(&state2d.hovered, props, DefaultColor::Random, stroke_width);
+        let paint_props = paint_properties(
+            context,
+            &state2d.hovered,
+            props,
+            DefaultColor::Random,
+            stroke_width,
+        );
 
         for [a, b] in line_segments.iter() {
             let a = to_screen.transform_pos(a.into());
@@ -173,7 +184,13 @@ pub(crate) fn combined_view_2d(
 
     for (_type_path, props, obj) in objects.point2d.iter() {
         let data_store::Point2D { pos, radius } = obj;
-        let paint_props = paint_properties(&state2d.hovered, props, DefaultColor::Random, &None);
+        let paint_props = paint_properties(
+            context,
+            &state2d.hovered,
+            props,
+            DefaultColor::Random,
+            &None,
+        );
 
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
@@ -223,6 +240,7 @@ enum DefaultColor {
 }
 
 fn paint_properties(
+    context: &mut ViewerContext,
     hovered: &Option<LogId>,
     props: &data_store::ObjectProps<'_>,
     default_color: DefaultColor,
@@ -232,7 +250,10 @@ fn paint_properties(
     let color = props.color.map_or_else(
         || match default_color {
             DefaultColor::White => Color32::WHITE,
-            DefaultColor::Random => crate::misc::random_object_color(props),
+            DefaultColor::Random => {
+                let [r, g, b] = context.random_color(props.parent_object_path.hash64());
+                Color32::from_rgb(r, g, b)
+            }
         },
         to_egui_color,
     );

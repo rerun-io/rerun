@@ -23,6 +23,11 @@ impl DataPathHash {
     fn new(components: &[DataPathComponent]) -> Self {
         Self(double_hash(components))
     }
+
+    #[inline]
+    pub fn hash64(&self) -> u64 {
+        self.0[0]
+    }
 }
 
 impl std::hash::Hash for DataPathHash {
@@ -65,6 +70,12 @@ impl DataPath {
     #[inline]
     pub fn hash(&self) -> DataPathHash {
         self.hash
+    }
+
+    /// Precomputed hash.
+    #[inline]
+    pub fn hash64(&self) -> u64 {
+        self.hash.0[0]
     }
 
     #[inline]

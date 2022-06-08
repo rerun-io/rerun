@@ -42,11 +42,7 @@ pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
     )
 }
 
-pub fn random_object_color(props: &data_store::ObjectProps<'_>) -> egui::Color32 {
-    random_color(egui::util::hash(props.parent_object_path))
-}
-
-fn random_color(seed: u64) -> egui::Color32 {
+pub fn random_rgb(seed: u64) -> [u8; 3] {
     use rand::rngs::SmallRng;
     use rand::{Rng, SeedableRng};
 
@@ -61,5 +57,6 @@ fn random_color(seed: u64) -> egui::Color32 {
         a: 1.0,
     };
 
-    hsva.into()
+    let color = egui::Color32::from(hsva);
+    [color.r(), color.g(), color.b()]
 }
