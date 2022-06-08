@@ -1,8 +1,15 @@
-use crate::{impl_into_enum, DataPath};
+use crate::{impl_into_enum, DataPath, Index};
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Data {
+    Batch {
+        indices: Vec<Index>,
+        data: DataBatch,
+    },
+
+    // ----------------------------
+
     // 1D:
     I32(i32),
     F32(f32),
@@ -46,6 +53,8 @@ impl Data {
     #[inline]
     pub fn typ(&self) -> DataType {
         match self {
+            Self::Batch { data, .. } => data.typ(),
+
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
             Self::Color(_) => DataType::Color,
@@ -129,6 +138,41 @@ impl_into_enum!(BBox2D, Data, BBox2D);
 impl_into_enum!(Vec<f32>, Data, Vecf32);
 impl_into_enum!(Image, Data, Image);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
+
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum DataBatch {
+    Pos3(Vec<[f32; 3]>),
+    Space(Vec<DataPath>),
+    // TODO: support more types
+}
+
+impl DataBatch {
+    #[inline]
+    pub fn typ(&self) -> DataType {
+        match self {
+            Self::Pos3(_) => DataType::Pos3,
+            Self::Space(_) => DataType::Space,
+        }
+    }
+}
+
+impl std::fmt::Debug for DataBatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pos3(batch) => f
+                .debug_struct("DataBatch::Pos3")
+                .field("len", &batch.len())
+                .finish_non_exhaustive(),
+            Self::Space(batch) => f
+                .debug_struct("DataBatch::Space")
+                .field("len", &batch.len())
+                .finish_non_exhaustive(),
+        }
+    }
+}
 
 // ----------------------------------------------------------------------------
 

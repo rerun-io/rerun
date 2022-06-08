@@ -28,16 +28,18 @@ impl LogDb {
         }
 
         if let Some(space) = msg.space.clone() {
-            // HACK until we change how spaces are logged
-            let space_msg = LogMsg {
-                id: msg.id,
-                time_point: msg.time_point.clone(),
-                data_path: msg.data_path.sibling("space"),
-                data: Data::Space(space),
-                space: None,
-            };
-            if let Err(err) = self.data_store.insert(&space_msg) {
-                tracing::warn!("Failed to add space data to data_store: {:?}", err);
+            if !matches!(msg.data, Data::Batch { .. }) {
+                // HACK until we change how spaces are logged
+                let space_msg = LogMsg {
+                    id: msg.id,
+                    time_point: msg.time_point.clone(),
+                    data_path: msg.data_path.sibling("space"),
+                    data: Data::Space(space),
+                    space: None,
+                };
+                if let Err(err) = self.data_store.insert(&space_msg) {
+                    tracing::warn!("Failed to add space data to data_store: {:?}", err);
+                }
             }
         }
 
@@ -49,6 +51,16 @@ impl LogDb {
             summary.messages.insert(msg.id);
 
             match &msg.data {
+                Data::Batch { data, .. } => match data {
+                    DataBatch::Pos3(pos) => {
+                        summary.messages_2d.insert(msg.id);
+                        for p in pos {
+                            summary.bbox3d.extend((*p).into());
+                        }
+                    }
+                    DataBatch::Space(_) => {}
+                },
+
                 Data::Pos2(vec) => {
                     summary.messages_2d.insert(msg.id);
                     summary.bbox2d.extend_with(vec.into());

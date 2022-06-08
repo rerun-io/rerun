@@ -310,6 +310,9 @@ pub enum Index {
 
     /// Anything goes.
     String(String),
+
+    /// Used as the last index when logging a batch of data.
+    Placeholder, // TODO: `DataPathComponent::IndexPlaceholder` instead?
 }
 
 impl std::fmt::Display for Index {
@@ -320,6 +323,7 @@ impl std::fmt::Display for Index {
             Self::Integer(value) => value.fmt(f),
             Self::Uuid(value) => value.fmt(f),
             Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
+            Self::Placeholder => "*".fmt(f),                    // put it in quotes
         }
     }
 }

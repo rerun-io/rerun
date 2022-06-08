@@ -1,8 +1,8 @@
 use nohash_hasher::IntMap;
 
-use log_types::{Data, LogMsg, TimeSource, TimeType};
+use log_types::{Data, DataBatch, DataPath, LogMsg, TimeSource, TimeType};
 
-use crate::TypePathDataStore;
+use crate::{IndexKey, TypePathDataStore};
 
 #[derive(Default)]
 pub struct LogDataStore(IntMap<TimeSource, (TimeType, TypePathDataStore<i64>)>);
@@ -41,6 +41,36 @@ impl LogDataStore {
 
             #[allow(clippy::match_same_arms)]
             match log_msg.data.clone() {
+                Data::Batch { indices, data } => {
+                    // TODO: reuse batch over time sources to save RAM
+                    let (tp, ip) = crate::into_type_path(dp);
+
+                    match data {
+                        DataBatch::Pos3(data) => {
+                            assert_eq!(indices.len(), data.len());
+                            let batch: crate::Batch<[f32; 3]> = std::sync::Arc::new(
+                                indices
+                                    .iter()
+                                    .zip(data)
+                                    .map(|(index, value)| (IndexKey::new(index.clone()), value))
+                                    .collect(),
+                            );
+                            store.insert_batch(tp, ip, time, id, batch)
+                        }
+                        DataBatch::Space(data) => {
+                            assert_eq!(indices.len(), data.len());
+                            let batch: crate::Batch<DataPath> = std::sync::Arc::new(
+                                indices
+                                    .iter()
+                                    .zip(data)
+                                    .map(|(index, value)| (IndexKey::new(index.clone()), value))
+                                    .collect(),
+                            );
+                            store.insert_batch(tp, ip, time, id, batch)
+                        }
+                    }
+                }
+
                 Data::I32(data) => store.insert_individual(dp, time, id, data),
                 Data::F32(data) => store.insert_individual(dp, time, id, data),
 

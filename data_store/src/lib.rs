@@ -60,6 +60,9 @@ pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPathKey) {
             DataPathComponent::String(name) => {
                 type_path.push_back(TypePathComponent::String(name));
             }
+            DataPathComponent::Index(Index::Placeholder) => {
+                type_path.push_back(TypePathComponent::Index);
+            }
             DataPathComponent::Index(index) => {
                 type_path.push_back(TypePathComponent::Index);
                 index_path.push_back(index);

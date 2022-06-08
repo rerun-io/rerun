@@ -300,6 +300,8 @@ pub(crate) fn ui_data(
     preview: Preview,
 ) -> egui::Response {
     match data {
+        Data::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
+
         Data::I32(value) => ui.label(value.to_string()),
         Data::F32(value) => ui.label(value.to_string()),
         Data::Color([r, g, b, a]) => {
