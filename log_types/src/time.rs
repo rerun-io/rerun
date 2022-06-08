@@ -36,7 +36,7 @@ impl Time {
         let nanos_since_epoch = self.nanos_since_epoch();
         let years_since_epoch = nanos_since_epoch / 1_000_000_000 / 60 / 60 / 24 / 365;
 
-        50 <= years_since_epoch && years_since_epoch <= 150
+        20 <= years_since_epoch && years_since_epoch <= 150
     }
 
     /// Human-readable formatting
