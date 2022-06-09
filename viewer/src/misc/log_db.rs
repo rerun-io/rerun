@@ -58,7 +58,7 @@ impl LogDb {
                             summary.bbox3d.extend((*p).into());
                         }
                     }
-                    DataBatch::Space(_) => {}
+                    DataBatch::Color(_) | DataBatch::Space(_) => {}
                 },
 
                 Data::Pos2(vec) => {

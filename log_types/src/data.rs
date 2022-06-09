@@ -144,6 +144,7 @@ impl_into_enum!(Mesh3D, Data, Mesh3D);
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum DataBatch {
+    Color(Vec<[u8; 4]>),
     Pos3(Vec<[f32; 3]>),
     Space(Vec<DataPath>),
     // TODO: support more types
@@ -153,6 +154,7 @@ impl DataBatch {
     #[inline]
     pub fn typ(&self) -> DataType {
         match self {
+            Self::Color(_) => DataType::Color,
             Self::Pos3(_) => DataType::Pos3,
             Self::Space(_) => DataType::Space,
         }
@@ -162,6 +164,10 @@ impl DataBatch {
 impl std::fmt::Debug for DataBatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Color(batch) => f
+                .debug_struct("DataBatch::Color")
+                .field("len", &batch.len())
+                .finish_non_exhaustive(),
             Self::Pos3(batch) => f
                 .debug_struct("DataBatch::Pos3")
                 .field("len", &batch.len())

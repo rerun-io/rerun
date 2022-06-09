@@ -46,6 +46,17 @@ impl LogDataStore {
                     let (tp, ip) = crate::into_type_path(dp);
 
                     match data {
+                        DataBatch::Color(data) => {
+                            assert_eq!(indices.len(), data.len());
+                            let batch: crate::Batch<[u8; 4]> = std::sync::Arc::new(
+                                indices
+                                    .iter()
+                                    .zip(data)
+                                    .map(|(index, value)| (IndexKey::new(index.clone()), value))
+                                    .collect(),
+                            );
+                            store.insert_batch(tp, ip, time, id, batch)
+                        }
                         DataBatch::Pos3(data) => {
                             assert_eq!(indices.len(), data.len());
                             let batch: crate::Batch<[f32; 3]> = std::sync::Arc::new(
