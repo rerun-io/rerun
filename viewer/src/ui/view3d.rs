@@ -256,7 +256,7 @@ fn tracking_camera(
     context: &ViewerContext,
     objects: &data_store::Objects<'_>,
 ) -> Option<Camera> {
-    if let Selection::ObjectPath(data_path) = &context.selection {
+    if let Selection::DataPath(data_path) = &context.selection {
         let mut selected_camera = None;
 
         for (_, props, camera) in objects.camera.iter() {

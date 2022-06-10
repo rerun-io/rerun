@@ -89,7 +89,7 @@ impl ViewerContext {
         // TODO: common hover-effect of all buttons for the same data_path!
         let response = ui.selectable_label(self.selection.is_data_path(data_path), text);
         if response.clicked() {
-            self.selection = Selection::ObjectPath(data_path.clone());
+            self.selection = Selection::DataPath(data_path.clone());
         }
         response
     }
@@ -147,7 +147,7 @@ impl Default for Options {
 pub(crate) enum Selection {
     None,
     LogId(LogId),
-    ObjectPath(DataPath),
+    DataPath(DataPath),
     Space(DataPath),
 }
 
@@ -167,7 +167,7 @@ impl Selection {
     }
 
     pub fn is_data_path(&self, needle: &DataPath) -> bool {
-        if let Self::ObjectPath(hay) = self {
+        if let Self::DataPath(hay) = self {
             hay == needle
         } else {
             false

@@ -186,7 +186,7 @@ impl LogDb {
         self.messages.get(id)
     }
 
-    /// Grouped by [`ObjectPath`], find the latest [`LogMsg`] that matches
+    /// Grouped by [`DataPath`], find the latest [`LogMsg`] that matches
     /// the given time source and is not after the given time.
     pub fn latest_of_each_object(
         &self,
@@ -245,14 +245,14 @@ impl LogDb {
 pub enum MessageFilter {
     All,
     /// Only return messages with this path
-    ObjectPath(DataPath),
+    DataPath(DataPath),
 }
 
 impl MessageFilter {
     pub fn allow(&self, candidate: &DataPath) -> bool {
         match self {
             MessageFilter::All => true,
-            MessageFilter::ObjectPath(needle) => needle == candidate,
+            MessageFilter::DataPath(needle) => needle == candidate,
         }
     }
 }
@@ -356,10 +356,10 @@ impl SpaceSummary {
 /// Tree of data paths.
 #[derive(Default)]
 pub(crate) struct DataTree {
-    /// Children of type [`ObjectPathComponent::String`].
+    /// Children of type [`DataPathComponent::String`].
     pub string_children: BTreeMap<InternedString, DataTree>,
 
-    /// Children of type [`ObjectPathComponent::Index`].
+    /// Children of type [`DataPathComponent::Index`].
     pub index_children: BTreeMap<Index, DataTree>,
 
     /// When do we have data?

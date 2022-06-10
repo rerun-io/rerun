@@ -41,7 +41,7 @@ impl ContextPanel {
                 ui.separator();
                 self.view_log_msg_siblings(log_db, context, ui, msg);
             }
-            Selection::ObjectPath(data_path) => {
+            Selection::DataPath(data_path) => {
                 ui.label(format!("Selected object: {}", data_path));
 
                 ui.separator();
