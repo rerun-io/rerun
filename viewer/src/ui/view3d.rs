@@ -383,15 +383,11 @@ pub(crate) fn combined_view_3d(
 
     let callback = egui::PaintCallback {
         rect,
-        callback: std::sync::Arc::new(move |info, render_ctx| {
-            if let Some(painter) = render_ctx.downcast_ref::<egui_glow::Painter>() {
-                with_three_d_context(painter.gl(), |rendering| {
-                    paint_with_three_d(rendering, &camera, info, &scene, dark_mode).unwrap();
-                });
-            } else {
-                eprintln!("Can't do custom painting because we are not using a glow context");
-            }
-        }),
+        callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
+            with_three_d_context(painter.gl(), |rendering| {
+                paint_with_three_d(rendering, &camera, &info, &scene, dark_mode).unwrap();
+            });
+        })),
     };
     ui.painter().add(callback);
 }

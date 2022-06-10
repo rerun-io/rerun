@@ -15,8 +15,8 @@ fn test_singular() -> data_store::Result<()> {
         let mut points: Vec<_> = Scene3D::from_store(store, &time_query)
             .points
             .values()
-            .cloned()
             .flatten()
+            .cloned()
             .collect();
         points.sort_by(|a, b| a.partial_cmp(b).unwrap());
         points
