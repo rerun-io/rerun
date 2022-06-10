@@ -70,7 +70,7 @@ fn test_singular() -> data_store::Result<()> {
     }
 
     fn pos_data_path(cam: &str, point: u64) -> DataPath {
-        DataPath(vec![
+        DataPath::new(vec![
             DataPathComponent::String("camera".into()),
             DataPathComponent::Index(Index::String(cam.into())),
             DataPathComponent::String("point".into()),
@@ -79,7 +79,7 @@ fn test_singular() -> data_store::Result<()> {
         ])
     }
     fn radius_data_path(cam: &str, point: u64) -> DataPath {
-        DataPath(vec![
+        DataPath::new(vec![
             DataPathComponent::String("camera".into()),
             DataPathComponent::Index(Index::String(cam.into())),
             DataPathComponent::String("point".into()),
@@ -372,7 +372,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         ]
     }
     fn sibling_data_path(cam: &str, point: u64) -> DataPath {
-        DataPath(vec![
+        DataPath::new(vec![
             DataPathComponent::String("camera".into()),
             DataPathComponent::Index(Index::String(cam.into())),
             DataPathComponent::String("point".into()),
@@ -554,7 +554,7 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         ]
     }
     fn prim_data_path(cam: &str, point: u64) -> DataPath {
-        DataPath(vec![
+        DataPath::new(vec![
             DataPathComponent::String("camera".into()),
             DataPathComponent::Index(Index::String(cam.into())),
             DataPathComponent::String("point".into()),
