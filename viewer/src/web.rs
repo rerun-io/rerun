@@ -14,8 +14,11 @@ pub fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::J
     // Redirect tracing to console.log and friends:
     tracing_wasm::set_as_global_default();
 
+    let web_options = eframe::WebOptions::default();
+
     eframe::start_web(
         canvas_id,
+        web_options,
         Box::new(move |cc| {
             crate::customize_egui(&cc.egui_ctx);
             let url = get_url(&cc.integration_info);
