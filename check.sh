@@ -2,6 +2,7 @@
 # This scripts runs various CI-like checks in a convenient way.
 set -eux
 
+RUSTFLAGS="-D warnings"
 RUSTDOCFLAGS="-D warnings" # https://github.com/emilk/egui/pull/1454
 
 cargo build --all-features
