@@ -88,10 +88,9 @@ impl TimeState {
 #[serde(default)]
 pub(crate) struct TimeControl {
     /// Name of the time source (e.g. "log_time").
-    time_source: String,
+    time_source: TimeSource,
 
-    /// For each time source.
-    states: BTreeMap<String, TimeState>,
+    states: BTreeMap<TimeSource, TimeState>,
 
     playing: bool,
     looped: bool,
@@ -323,16 +322,16 @@ impl TimeControl {
         if let Some(source) = time_points.0.keys().next() {
             self.time_source = source.clone();
         } else {
-            self.time_source.clear();
+            self.time_source = Default::default();
         }
     }
 
     /// The currently selected time source
-    pub fn source(&self) -> &str {
+    pub fn source(&self) -> &TimeSource {
         &self.time_source
     }
 
-    pub fn set_source(&mut self, time_source: String) {
+    pub fn set_source(&mut self, time_source: TimeSource) {
         self.time_source = time_source;
     }
 
@@ -381,8 +380,8 @@ impl TimeControl {
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
-    pub fn is_time_selected(&self, time_source: &str, needle: TimeValue) -> bool {
-        if time_source != self.time_source {
+    pub fn is_time_selected(&self, time_source: &TimeSource, needle: TimeValue) -> bool {
+        if time_source != &self.time_source {
             return false;
         }
 
@@ -399,7 +398,7 @@ impl TimeControl {
         }
     }
 
-    pub fn set_source_and_time(&mut self, time_source: String, time: TimeValue) {
+    pub fn set_source_and_time(&mut self, time_source: TimeSource, time: TimeValue) {
         self.time_source = time_source;
         self.set_time(time);
     }

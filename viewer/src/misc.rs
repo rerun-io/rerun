@@ -26,7 +26,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// An aggregate of `TimePoint`:s.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct TimePoints(pub BTreeMap<String, BTreeSet<TimeValue>>);
+pub struct TimePoints(pub BTreeMap<log_types::TimeSource, BTreeSet<TimeValue>>);
 
 impl TimePoints {
     pub fn insert(&mut self, time_point: &TimePoint) {

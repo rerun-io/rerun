@@ -386,7 +386,7 @@ fn show_data_over_time(
     } else {
         context.time_control.time_selection()
     };
-    let time_source = context.time_control.source().to_owned();
+    let time_source = context.time_control.source().clone();
 
     struct Stretch<'a> {
         start_x: f32,

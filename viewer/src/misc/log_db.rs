@@ -159,7 +159,7 @@ impl LogDb {
     /// the given time source and is not after the given time.
     pub fn latest_of_each_object(
         &self,
-        time_source: &str,
+        time_source: &TimeSource,
         no_later_than: TimeValue,
         filter: &MessageFilter,
     ) -> Vec<&LogMsg> {
@@ -183,7 +183,7 @@ impl LogDb {
     /// This last addition is so that we get "static" assets too. We should maybe have a nicer way to accomplish this.
     pub fn messages_in_range(
         &self,
-        time_source: &str,
+        time_source: &TimeSource,
         range: TimeRange,
         filter: &MessageFilter,
     ) -> Vec<&LogMsg> {
@@ -199,7 +199,7 @@ impl LogDb {
 
     pub fn latest(
         &self,
-        time_source: &str,
+        time_source: &TimeSource,
         no_later_than: TimeValue,
         data_path: &DataPath,
     ) -> Option<&LogMsg> {
@@ -236,7 +236,7 @@ fn santiy_check(msg: &LogMsg) {
 ///
 /// This allows fast lookup of "latest version" of an object.
 #[derive(Default)]
-pub(crate) struct ObjectHistory(HashMap<String, BTreeMap<TimeValue, Vec<LogId>>>);
+pub(crate) struct ObjectHistory(nohash_hasher::IntMap<TimeSource, BTreeMap<TimeValue, Vec<LogId>>>);
 
 impl ObjectHistory {
     fn add(&mut self, time_point: &TimePoint, id: LogId) {
@@ -250,7 +250,7 @@ impl ObjectHistory {
         }
     }
 
-    fn latest(&self, time_source: &str, no_later_than: TimeValue) -> Option<LogId> {
+    fn latest(&self, time_source: &TimeSource, no_later_than: TimeValue) -> Option<LogId> {
         self.0
             .get(time_source)?
             .range(..=no_later_than)
@@ -264,7 +264,7 @@ impl ObjectHistory {
     /// All messages in the range, plus the last one before the range.
     ///
     /// This last addition is so that we get "static" assets too. We should maybe have a nicer way to accomplish this.
-    fn collect_in_range(&self, time_source: &str, range: TimeRange, out: &mut Vec<LogId>) {
+    fn collect_in_range(&self, time_source: &TimeSource, range: TimeRange, out: &mut Vec<LogId>) {
         if let Some(map) = self.0.get(time_source) {
             for (time, ids) in map.range(..=range.max).rev() {
                 if time < &range.min {

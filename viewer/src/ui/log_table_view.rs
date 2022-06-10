@@ -52,7 +52,7 @@ pub(crate) fn message_table(
         .header(20.0, |mut header| {
             for time_source in log_db.time_points.0.keys() {
                 header.col(|ui| {
-                    ui.heading(time_source);
+                    ui.heading(time_source.as_str());
                 });
             }
             header.col(|ui| {

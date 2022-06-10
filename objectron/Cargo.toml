@@ -40,5 +40,5 @@ tokio = { version = "1.0.0", optional = true, default-features = false, features
 webbrowser = {version = "0.7", optional = true }
 
 
-[build-dependencies]
-prost-build = "0.10"
+# [build-dependencies]
+# prost-build = "0.10"

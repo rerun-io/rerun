@@ -282,6 +282,8 @@ pub enum MeshFormat {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ImageFormat {
     Luminance8,
+    Luminance16,
+    Rgb8,
     Rgba8,
     Jpeg,
 }
@@ -289,7 +291,7 @@ pub enum ImageFormat {
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Image {
-    // TODO: pub pos: [f32; 2],
+    // TODO: pub pos: [f32; 2], or a transform matrix
     /// Must always be set and correct, even for [`ImageFormat::Jpeg`].
     pub size: [u32; 2],
     pub format: ImageFormat,

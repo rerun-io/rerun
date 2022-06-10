@@ -284,6 +284,7 @@ fn show_zoomed_image_region(
 
     if let Some(color) = get_pixel(dynamic_image, [center_x, center_y]) {
         ui.separator();
+        let (x, y) = (center_x as _, center_y as _);
 
         ui.vertical(|ui| {
             let image::Rgba([r, g, b, a]) = color;
@@ -296,8 +297,13 @@ fn show_zoomed_image_region(
             use image::DynamicImage;
 
             let text = match dynamic_image {
-                DynamicImage::ImageLuma8(_) | DynamicImage::ImageLuma16(_) => {
+                DynamicImage::ImageLuma8(_) => {
                     format!("L: {}", r)
+                }
+
+                DynamicImage::ImageLuma16(image) => {
+                    let l = image.get_pixel(x, y)[0];
+                    format!("L: {} ({:.5})", l, l as f32 / 65535.0)
                 }
 
                 DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
@@ -433,7 +439,10 @@ fn image_options(
                     }
                 }
             }
-            ImageFormat::Luminance8 | ImageFormat::Rgba8 => {
+            ImageFormat::Luminance8
+            | ImageFormat::Luminance16
+            | ImageFormat::Rgb8
+            | ImageFormat::Rgba8 => {
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("image.png")
                     .save_file()

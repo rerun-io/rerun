@@ -12,12 +12,12 @@ log_types = { path = "../log_types" }
 
 ahash = "0.7"
 im = "15"
-mimalloc = "0.1"
 nohash-hasher = "0.2"
 tracing = "0.1"
 
 [dev-dependencies]
 criterion = "0.3"
+mimalloc = "0.1"
 
 
 [[bench]]
