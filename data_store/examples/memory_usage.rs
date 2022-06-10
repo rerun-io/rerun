@@ -53,7 +53,7 @@ impl TrackingAllocator {
 }
 
 fn data_path(camera: u64, index: u64, field: &str) -> DataPath {
-    DataPath(vec![
+    DataPath::new(vec![
         DataPathComponent::String("camera".into()),
         DataPathComponent::Index(Index::Sequence(camera)),
         DataPathComponent::String("point".into()),
