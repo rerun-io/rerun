@@ -12,7 +12,7 @@ const NUM_POINTS_PER_CAMERA: u64 = 1_000;
 const TOTAL_POINTS: u64 = 2 * NUM_POINTS_PER_CAMERA;
 
 fn data_path(camera: &str, index: u64, field: &str) -> DataPath {
-    DataPath(vec![
+    DataPath::new(vec![
         DataPathComponent::String("camera".into()),
         DataPathComponent::Index(Index::String(camera.into())),
         DataPathComponent::String("point".into()),

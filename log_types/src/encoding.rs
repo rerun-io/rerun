@@ -152,10 +152,10 @@ fn test_encode_decode() {
         TimeValue::Time(Time::from_ns_since_epoch(1_649_934_625_012_345_678)),
     )]);
     let messages = vec![
-        log_msg(&time_point, DataPath::default() / "foo" / "bar" / "baz", 42),
+        log_msg(&time_point, DataPath::from("foo") / "bar" / "baz", 42),
         crate::log_msg(
             &time_point,
-            DataPath::default() / "badger" / "mushroom" / "snake",
+            DataPath::from("badger") / "mushroom" / "snake",
             1337.0,
         ),
     ];
