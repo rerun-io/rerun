@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 
 use log_types::{DataPath, LogId};
 
-use crate::{IndexKey, IndexPathKey, TimeQuery, TypePath, TypePathComponent};
+use crate::{IndexKey, IndexPathKey, TimeQuery, TypePath};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
@@ -466,7 +466,7 @@ pub fn visit_data_and_1_sibling<'s, Time: 'static + Clone + Ord, T: 'static, S1:
 ) -> Option<()> {
     crate::profile_function!();
 
-    let sibling1_path = sibling(primary_type_path, sibling1);
+    let sibling1_path = primary_type_path.sibling(sibling1);
 
     match primary_data {
         DataStore::Individual(primary) => {
@@ -531,8 +531,8 @@ pub fn visit_data_and_2_siblings<
 ) -> Option<()> {
     crate::profile_function!();
 
-    let sibling1_path = sibling(primary_type_path, sibling1);
-    let sibling2_path = sibling(primary_type_path, sibling2);
+    let sibling1_path = primary_type_path.sibling(sibling1);
+    let sibling2_path = primary_type_path.sibling(sibling2);
 
     match primary_data {
         DataStore::Individual(primary) => {
@@ -611,9 +611,9 @@ pub fn visit_data_and_3_siblings<
 ) -> Option<()> {
     crate::profile_function!();
 
-    let sibling1_path = sibling(primary_type_path, sibling1);
-    let sibling2_path = sibling(primary_type_path, sibling2);
-    let sibling3_path = sibling(primary_type_path, sibling3);
+    let sibling1_path = primary_type_path.sibling(sibling1);
+    let sibling2_path = primary_type_path.sibling(sibling2);
+    let sibling3_path = primary_type_path.sibling(sibling3);
 
     match primary_data {
         DataStore::Individual(primary) => {
@@ -672,11 +672,4 @@ pub fn visit_data_and_3_siblings<
     }
 
     Some(())
-}
-
-fn sibling(type_path: &TypePath, name: &str) -> TypePath {
-    let mut type_path = type_path.clone();
-    type_path.pop_back();
-    type_path.push_back(TypePathComponent::String(name.into()));
-    type_path
 }

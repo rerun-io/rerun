@@ -69,7 +69,7 @@ pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPathKey) {
             }
         }
     }
-    (type_path, index_path)
+    (TypePath::new(type_path), index_path)
 }
 
 #[allow(dead_code)]

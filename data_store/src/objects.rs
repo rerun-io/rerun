@@ -105,7 +105,7 @@ impl<'s> Image<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -157,7 +157,7 @@ impl<'s> Point2D<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -209,7 +209,7 @@ impl<'s> Point3D<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -261,7 +261,7 @@ impl<'s> BBox2D<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -313,7 +313,7 @@ impl<'s> Box3D<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -365,7 +365,7 @@ impl<'s> Path3D<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -417,7 +417,7 @@ impl<'s> LineSegments2D<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -469,7 +469,7 @@ impl<'s> LineSegments3D<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -516,7 +516,7 @@ impl<'s> Mesh3D<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -564,7 +564,7 @@ impl<'s> Camera<'s> {
                         });
                     },
                 );
-                all.insert(parent(type_path), vec);
+                all.insert(type_path.parent(), vec);
             }
         }
 
@@ -664,10 +664,4 @@ impl<'s> Objects<'s> {
             space: self.space.clone(), // SPECIAL don't filter
         }
     }
-}
-
-fn parent(type_path: &TypePath) -> TypePath {
-    let mut type_path = type_path.clone();
-    type_path.pop_back();
-    type_path
 }

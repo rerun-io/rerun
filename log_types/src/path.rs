@@ -332,9 +332,6 @@ crate::impl_into_enum!(String, Index, String);
 
 // ----------------------------------------------------------------------------
 
-/// Like [`DataPath`], but without any specific indices.
-pub type TypePath = im::Vector<TypePathComponent>;
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TypePathComponent {
@@ -344,4 +341,87 @@ pub enum TypePathComponent {
     /// Table (array/map) member.
     /// Tables are homogenous, so it is the same type path for all.
     Index,
+}
+
+impl std::fmt::Display for TypePathComponent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::String(string) => f.write_str(string),
+            Self::Index => f.write_str("*"),
+        }
+    }
+}
+
+/// Like [`DataPath`], but without any specific indices.
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TypePath {
+    components: im::Vector<TypePathComponent>,
+}
+
+impl TypePath {
+    #[inline]
+    pub fn new(components: im::Vector<TypePathComponent>) -> Self {
+        Self { components }
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = &TypePathComponent> {
+        self.components.iter()
+    }
+
+    #[inline]
+    pub fn last(&self) -> Option<&TypePathComponent> {
+        self.components.last()
+    }
+
+    #[must_use]
+    pub fn parent(&self) -> Self {
+        let mut components = self.components.clone();
+        components.pop_back();
+        Self::new(components)
+    }
+
+    #[must_use]
+    pub fn sibling(&self, name: &str) -> TypePath {
+        let mut components = self.components.clone();
+        components.pop_back();
+        components.push_back(TypePathComponent::String(name.into()));
+        Self::new(components)
+    }
+}
+
+impl<'a> IntoIterator for &'a TypePath {
+    type Item = &'a TypePathComponent;
+    type IntoIter = im::vector::Iter<'a, TypePathComponent>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.components.iter()
+    }
+}
+
+impl IntoIterator for TypePath {
+    type Item = TypePathComponent;
+    type IntoIter = <im::Vector<TypePathComponent> as IntoIterator>::IntoIter;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.components.into_iter()
+    }
+}
+
+impl std::fmt::Display for TypePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use std::fmt::Write as _;
+
+        f.write_char('/')?;
+        for (i, comp) in self.components.iter().enumerate() {
+            comp.fmt(f)?;
+            if i + 1 != self.components.len() {
+                f.write_char('/')?;
+            }
+        }
+        Ok(())
+    }
 }
