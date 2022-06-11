@@ -14,7 +14,7 @@ pub(crate) struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<LogId>,
     log_messages: nohash_hasher::IntMap<LogId, LogMsg>,
-    object_types: HashMap<TypePath, ObjectType>,
+    pub object_types: HashMap<TypePath, ObjectType>,
     pub time_points: TimePoints,
     pub spaces: BTreeMap<DataPath, SpaceSummary>,
     pub data_tree: DataTree,

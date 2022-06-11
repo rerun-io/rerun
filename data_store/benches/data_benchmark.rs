@@ -1,7 +1,6 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -23,30 +22,29 @@ pub struct Point3<'s> {
 pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
     store: &'store TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
-) -> BTreeMap<TypePath, Vec<Point3<'store>>> {
-    let mut all = BTreeMap::default();
+) -> Vec<Point3<'store>> {
+    let object_type_path = TypePathComponent::String("camera".into())
+        / TypePathComponent::Index
+        / TypePathComponent::String("point".into())
+        / TypePathComponent::Index;
 
-    for (type_path, data_store) in store.iter() {
-        if let Some(data_store) = data_store.read_no_warn::<[f32; 3]>() {
-            let mut point_vec = vec![];
-            visit_data_and_1_sibling(
-                store,
-                time_query,
-                type_path,
-                data_store,
-                ("radius",),
-                |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
-                    point_vec.push(Point3 {
-                        pos,
-                        radius: radius.copied(),
-                    });
-                },
-            );
-            all.insert(type_path.parent(), point_vec);
-        }
-    }
+    let data_store = store.get::<[f32; 3]>(&(&object_type_path / "pos")).unwrap();
 
-    all
+    let mut points = vec![];
+    visit_data_and_1_child(
+        store,
+        time_query,
+        &object_type_path,
+        data_store,
+        ("radius",),
+        |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
+            points.push(Point3 {
+                pos,
+                radius: radius.copied(),
+            });
+        },
+    );
+    points
 }
 
 fn data_path(camera: &str, index: u64, field: &str) -> DataPath {
@@ -158,19 +156,11 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("query-points-throughput");
     group.throughput(criterion::Throughput::Elements(TOTAL_POINTS as _));
 
-    let point_type_path = TypePath::new(vec![
-        TypePathComponent::String("camera".into()),
-        TypePathComponent::Index,
-        TypePathComponent::String("point".into()),
-        TypePathComponent::Index,
-    ]);
-
     let data_store = generate_date(false, false);
     group.bench_function("batched_pos_batched_radius", |b| {
         b.iter(|| {
             let points = points_from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(points.len(), 1);
-            assert_eq!(points[&point_type_path].len(), TOTAL_POINTS as usize);
+            assert_eq!(points.len(), TOTAL_POINTS as usize);
         });
     });
 
@@ -178,8 +168,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     group.bench_function("individual_pos_individual_radius", |b| {
         b.iter(|| {
             let points = points_from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(points.len(), 1);
-            assert_eq!(points[&point_type_path].len(), TOTAL_POINTS as usize);
+            assert_eq!(points.len(), TOTAL_POINTS as usize);
         });
     });
 
@@ -187,8 +176,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     group.bench_function("batched_pos_individual_radius", |b| {
         b.iter(|| {
             let points = points_from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(points.len(), 1);
-            assert_eq!(points[&point_type_path].len(), TOTAL_POINTS as usize);
+            assert_eq!(points.len(), TOTAL_POINTS as usize);
         });
     });
 
@@ -196,8 +184,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     group.bench_function("individual_pos_batched_radius", |b| {
         b.iter(|| {
             let points = points_from_store(&data_store, &TimeQuery::LatestAt(Time(NUM_FRAMES / 2)));
-            assert_eq!(points.len(), 1);
-            assert_eq!(points[&point_type_path].len(), TOTAL_POINTS as usize);
+            assert_eq!(points.len(), TOTAL_POINTS as usize);
         });
     });
 

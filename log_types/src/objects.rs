@@ -6,7 +6,7 @@ pub enum ObjectType {
 
     Image,
     Point2D,
-    BBox2d,
+    BBox2D,
     LineSegments2D,
 
     Point3D,
@@ -25,7 +25,7 @@ impl ObjectType {
 
             Self::Image => &["space", "color", "image"],
             Self::Point2D => &["space", "color", "pos", "radius"],
-            Self::BBox2d => &["space", "color", "bbox", "stroke_width"],
+            Self::BBox2D => &["space", "color", "bbox", "stroke_width"],
             Self::LineSegments2D => &["space", "color", "line_segments", "stroke_width"],
 
             Self::Point3D => &["space", "color", "pos", "radius"],

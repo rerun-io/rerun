@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
-use log_types::{DataPath, LogId, TypePathComponent};
+use log_types::{DataPath, LogId};
 
 pub use log_types::objects::*;
 
 use crate::{
-    storage::{visit_data, visit_data_and_2_siblings, visit_data_and_3_siblings},
+    storage::{visit_data, visit_data_and_2_children, visit_data_and_3_children},
     TimeQuery, TypePath, TypePathDataStore,
 };
 
@@ -25,7 +25,7 @@ struct Object<'s, T: Copy + Clone + std::fmt::Debug> {
     pub obj: T,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ObjectMap<'s, T: Clone + Copy + std::fmt::Debug>(BTreeMap<TypePath, Vec<Object<'s, T>>>);
 
 impl<'s, T: Clone + Copy + std::fmt::Debug> Default for ObjectMap<'s, T> {
@@ -74,44 +74,41 @@ pub struct Image<'s> {
 }
 
 impl<'s> Image<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, Image<'s>> {
+    ) -> Vec<Object<'s, Image<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
-
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<log_types::Image>() {
-                let mut vec = vec![];
-                visit_data_and_2_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     image: &log_types::Image,
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: Image { image },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+        if let Some(primary_data) = store.get::<log_types::Image>(&(object_type_path / "image")) {
+            let mut vec = vec![];
+            visit_data_and_2_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 image: &log_types::Image,
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: Image { image },
+                    });
+                },
+            );
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -122,48 +119,46 @@ pub struct Point2D<'s> {
 }
 
 impl<'s> Point2D<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, Point2D<'s>> {
+    ) -> Vec<Object<'s, Point2D<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
+        if let Some(primary_data) = store.get::<[f32; 2]>(&(object_type_path / "pos")) {
+            let mut vec = vec![];
+            visit_data_and_3_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color", "radius"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 pos: &[f32; 2],
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>,
+                 radius: Option<&f32>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: Point2D {
+                            pos,
+                            radius: radius.copied(),
+                        },
+                    });
+                },
+            );
 
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<[f32; 2]>() {
-                let mut vec = vec![];
-                visit_data_and_3_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color", "radius"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     pos: &[f32; 2],
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>,
-                     radius: Option<&f32>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: Point2D {
-                                pos,
-                                radius: radius.copied(),
-                            },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -174,48 +169,46 @@ pub struct Point3D<'s> {
 }
 
 impl<'s> Point3D<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, Point3D<'s>> {
+    ) -> Vec<Object<'s, Point3D<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
+        if let Some(primary_data) = store.get::<[f32; 3]>(&(object_type_path / "pos")) {
+            let mut vec = vec![];
+            visit_data_and_3_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color", "radius"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 pos: &[f32; 3],
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>,
+                 radius: Option<&f32>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: Point3D {
+                            pos,
+                            radius: radius.copied(),
+                        },
+                    });
+                },
+            );
 
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<[f32; 3]>() {
-                let mut vec = vec![];
-                visit_data_and_3_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color", "radius"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     pos: &[f32; 3],
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>,
-                     radius: Option<&f32>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: Point3D {
-                                pos,
-                                radius: radius.copied(),
-                            },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -226,48 +219,46 @@ pub struct BBox2D<'s> {
 }
 
 impl<'s> BBox2D<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, BBox2D<'s>> {
+    ) -> Vec<Object<'s, BBox2D<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
+        if let Some(primary_data) = store.get::<log_types::BBox2D>(&(object_type_path / "bbox")) {
+            let mut vec = vec![];
+            visit_data_and_3_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color", "stroke_width"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 bbox: &log_types::BBox2D,
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: BBox2D {
+                            bbox,
+                            stroke_width: stroke_width.copied(),
+                        },
+                    });
+                },
+            );
 
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<log_types::BBox2D>() {
-                let mut vec = vec![];
-                visit_data_and_3_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color", "stroke_width"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     bbox: &log_types::BBox2D,
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>,
-                     stroke_width: Option<&f32>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: BBox2D {
-                                bbox,
-                                stroke_width: stroke_width.copied(),
-                            },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -278,48 +269,46 @@ pub struct Box3D<'s> {
 }
 
 impl<'s> Box3D<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, Box3D<'s>> {
+    ) -> Vec<Object<'s, Box3D<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
+        if let Some(primary_data) = store.get::<log_types::Box3>(&(object_type_path / "obb")) {
+            let mut vec = vec![];
+            visit_data_and_3_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color", "stroke_width"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 obb: &log_types::Box3,
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: Box3D {
+                            obb,
+                            stroke_width: stroke_width.copied(),
+                        },
+                    });
+                },
+            );
 
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<log_types::Box3>() {
-                let mut vec = vec![];
-                visit_data_and_3_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color", "stroke_width"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     obb: &log_types::Box3,
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>,
-                     stroke_width: Option<&f32>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: Box3D {
-                                obb,
-                                stroke_width: stroke_width.copied(),
-                            },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -330,48 +319,46 @@ pub struct Path3D<'s> {
 }
 
 impl<'s> Path3D<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, Path3D<'s>> {
+    ) -> Vec<Object<'s, Path3D<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
+        if let Some(primary_data) = store.get::<Vec<[f32; 3]>>(&(object_type_path / "points")) {
+            let mut vec = vec![];
+            visit_data_and_3_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color", "stroke_width"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 points: &Vec<[f32; 3]>,
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: Path3D {
+                            points,
+                            stroke_width: stroke_width.copied(),
+                        },
+                    });
+                },
+            );
 
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<Vec<[f32; 3]>>() {
-                let mut vec = vec![];
-                visit_data_and_3_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color", "stroke_width"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     points: &Vec<[f32; 3]>,
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>,
-                     stroke_width: Option<&f32>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: Path3D {
-                                points,
-                                stroke_width: stroke_width.copied(),
-                            },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -382,48 +369,48 @@ pub struct LineSegments2D<'s> {
 }
 
 impl<'s> LineSegments2D<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, LineSegments2D<'s>> {
+    ) -> Vec<Object<'s, LineSegments2D<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
+        if let Some(primary_data) =
+            store.get::<Vec<[[f32; 2]; 2]>>(&(object_type_path / "line_segments)"))
+        {
+            let mut vec = vec![];
+            visit_data_and_3_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color", "stroke_width"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 line_segments: &Vec<[[f32; 2]; 2]>,
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: LineSegments2D {
+                            line_segments,
+                            stroke_width: stroke_width.copied(),
+                        },
+                    });
+                },
+            );
 
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<Vec<[[f32; 2]; 2]>>() {
-                let mut vec = vec![];
-                visit_data_and_3_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color", "stroke_width"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     line_segments: &Vec<[[f32; 2]; 2]>,
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>,
-                     stroke_width: Option<&f32>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: LineSegments2D {
-                                line_segments,
-                                stroke_width: stroke_width.copied(),
-                            },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -434,48 +421,48 @@ pub struct LineSegments3D<'s> {
 }
 
 impl<'s> LineSegments3D<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, LineSegments3D<'s>> {
+    ) -> Vec<Object<'s, LineSegments3D<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
+        if let Some(primary_data) =
+            store.get::<Vec<[[f32; 3]; 2]>>(&(object_type_path / "line_segments)"))
+        {
+            let mut vec = vec![];
+            visit_data_and_3_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color", "stroke_width"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 line_segments: &Vec<[[f32; 3]; 2]>,
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: LineSegments3D {
+                            line_segments,
+                            stroke_width: stroke_width.copied(),
+                        },
+                    });
+                },
+            );
 
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<Vec<[[f32; 3]; 2]>>() {
-                let mut vec = vec![];
-                visit_data_and_3_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color", "stroke_width"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     line_segments: &Vec<[[f32; 3]; 2]>,
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>,
-                     stroke_width: Option<&f32>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: LineSegments3D {
-                                line_segments,
-                                stroke_width: stroke_width.copied(),
-                            },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -485,44 +472,42 @@ pub struct Mesh3D<'s> {
 }
 
 impl<'s> Mesh3D<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, Mesh3D<'s>> {
+    ) -> Vec<Object<'s, Mesh3D<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
+        if let Some(primary_data) = store.get::<log_types::Mesh3D>(&(object_type_path / "mesh")) {
+            let mut vec = vec![];
+            visit_data_and_2_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 mesh: &log_types::Mesh3D,
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: Mesh3D { mesh },
+                    });
+                },
+            );
 
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<log_types::Mesh3D>() {
-                let mut vec = vec![];
-                visit_data_and_2_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     mesh: &log_types::Mesh3D,
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: Mesh3D { mesh },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -533,44 +518,42 @@ pub struct Camera<'s> {
 }
 
 impl<'s> Camera<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> ObjectMap<'s, Camera<'s>> {
+    ) -> Vec<Object<'s, Camera<'s>>> {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
+        if let Some(primary_data) = store.get::<log_types::Camera>(&(object_type_path / "camera")) {
+            let mut vec = vec![];
+            visit_data_and_2_children(
+                store,
+                time_query,
+                object_type_path,
+                primary_data,
+                ("space", "color"),
+                |parent_object_path: &DataPath,
+                 log_id: &LogId,
+                 camera: &log_types::Camera,
+                 space: Option<&DataPath>,
+                 color: Option<&[u8; 4]>| {
+                    vec.push(Object {
+                        props: ObjectProps {
+                            log_id,
+                            space,
+                            color: color.copied(),
+                            parent_object_path,
+                        },
+                        obj: Camera { camera },
+                    });
+                },
+            );
 
-        for (type_path, data_store) in store.iter() {
-            if let Some(primary_data) = data_store.read_no_warn::<log_types::Camera>() {
-                let mut vec = vec![];
-                visit_data_and_2_siblings(
-                    store,
-                    time_query,
-                    type_path,
-                    primary_data,
-                    ("space", "color"),
-                    |parent_object_path: &DataPath,
-                     log_id: &LogId,
-                     camera: &log_types::Camera,
-                     space: Option<&DataPath>,
-                     color: Option<&[u8; 4]>| {
-                        vec.push(Object {
-                            props: ObjectProps {
-                                log_id,
-                                space,
-                                color: color.copied(),
-                                parent_object_path,
-                            },
-                            obj: Camera { camera },
-                        });
-                    },
-                );
-                all.insert(type_path.parent(), vec);
-            }
+            vec
+        } else {
+            vec![] // nothing logged yet
         }
-
-        ObjectMap(all)
     }
 }
 
@@ -581,35 +564,27 @@ pub struct Space<'s> {
 }
 
 impl<'s> Space<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    fn read<Time: 'static + Clone + Ord>(
+        object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> BTreeMap<DataPath, Space<'s>> {
+        out: &mut BTreeMap<&'s DataPath, Space<'s>>,
+    ) {
         crate::profile_function!();
 
-        let mut all = BTreeMap::default();
-
-        let last_component_name = TypePathComponent::String("up".into());
-
-        for (type_path, data_store) in store.iter() {
-            if type_path.last() == Some(&last_component_name) {
-                if let Some(primary_data) = data_store.read_no_warn::<[f32; 3]>() {
-                    visit_data(
-                        time_query,
-                        primary_data,
-                        |parent_object_path: &DataPath, _log_id: &LogId, up: &[f32; 3]| {
-                            all.insert(parent_object_path.clone(), Space { up });
-                        },
-                    );
-                }
-            }
+        if let Some(primary_data) = store.get::<[f32; 3]>(&(object_type_path / "up")) {
+            visit_data(
+                time_query,
+                primary_data,
+                |parent_object_path: &DataPath, _log_id: &LogId, up: &[f32; 3]| {
+                    out.insert(parent_object_path, Space { up });
+                },
+            );
         }
-
-        all
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Objects<'s> {
     pub image: ObjectMap<'s, Image<'s>>,
     pub point2d: ObjectMap<'s, Point2D<'s>>,
@@ -623,28 +598,83 @@ pub struct Objects<'s> {
     pub mesh3d: ObjectMap<'s, Mesh3D<'s>>,
     pub camera: ObjectMap<'s, Camera<'s>>,
 
-    pub space: BTreeMap<DataPath, Space<'s>>, // SPECIAL!
+    pub space: BTreeMap<&'s DataPath, Space<'s>>, // SPECIAL!
 }
 
 impl<'s> Objects<'s> {
-    pub fn from_store<Time: 'static + Clone + Ord>(
+    pub fn query_object<Time: 'static + Clone + Ord>(
+        &mut self,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Self {
-        Self {
-            image: Image::from_store(store, time_query),
-            point2d: Point2D::from_store(store, time_query),
-            bbox2d: BBox2D::from_store(store, time_query),
-            line_segments2d: LineSegments2D::from_store(store, time_query),
+        object_type_path: &TypePath,
+        object_type: ObjectType,
+    ) {
+        crate::profile_function!();
 
-            point3d: Point3D::from_store(store, time_query),
-            box3d: Box3D::from_store(store, time_query),
-            path3d: Path3D::from_store(store, time_query),
-            line_segments3d: LineSegments3D::from_store(store, time_query),
-            mesh3d: Mesh3D::from_store(store, time_query),
-            camera: Camera::from_store(store, time_query),
-
-            space: Space::from_store(store, time_query),
+        match object_type {
+            ObjectType::Space => {
+                Space::read(object_type_path, store, time_query, &mut self.space);
+            }
+            ObjectType::Image => {
+                self.image.0.insert(
+                    object_type_path.clone(),
+                    Image::read(object_type_path, store, time_query),
+                );
+            }
+            ObjectType::Point2D => {
+                self.point2d.0.insert(
+                    object_type_path.clone(),
+                    Point2D::read(object_type_path, store, time_query),
+                );
+            }
+            ObjectType::BBox2D => {
+                self.bbox2d.0.insert(
+                    object_type_path.clone(),
+                    BBox2D::read(object_type_path, store, time_query),
+                );
+            }
+            ObjectType::LineSegments2D => {
+                self.line_segments2d.0.insert(
+                    object_type_path.clone(),
+                    LineSegments2D::read(object_type_path, store, time_query),
+                );
+            }
+            ObjectType::Point3D => {
+                self.point3d.0.insert(
+                    object_type_path.clone(),
+                    Point3D::read(object_type_path, store, time_query),
+                );
+            }
+            ObjectType::Box3D => {
+                self.box3d.0.insert(
+                    object_type_path.clone(),
+                    Box3D::read(object_type_path, store, time_query),
+                );
+            }
+            ObjectType::Path3D => {
+                self.path3d.0.insert(
+                    object_type_path.clone(),
+                    Path3D::read(object_type_path, store, time_query),
+                );
+            }
+            ObjectType::LineSegments3D => {
+                self.line_segments3d.0.insert(
+                    object_type_path.clone(),
+                    LineSegments3D::read(object_type_path, store, time_query),
+                );
+            }
+            ObjectType::Mesh3D => {
+                self.mesh3d.0.insert(
+                    object_type_path.clone(),
+                    Mesh3D::read(object_type_path, store, time_query),
+                );
+            }
+            ObjectType::Camera => {
+                self.camera.0.insert(
+                    object_type_path.clone(),
+                    Camera::read(object_type_path, store, time_query),
+                );
+            }
         }
     }
 

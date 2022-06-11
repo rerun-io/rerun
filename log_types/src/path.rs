@@ -480,21 +480,21 @@ impl std::ops::Div<TypePathComponent> for TypePath {
     }
 }
 
-impl std::ops::Div<&'static str> for TypePath {
+impl std::ops::Div<&str> for TypePath {
     type Output = TypePath;
 
     #[inline]
-    fn div(mut self, rhs: &'static str) -> Self::Output {
+    fn div(mut self, rhs: &str) -> Self::Output {
         self.push(TypePathComponent::String(rhs.into()));
         self
     }
 }
 
-impl std::ops::Div<&'static str> for &TypePath {
+impl std::ops::Div<&str> for &TypePath {
     type Output = TypePath;
 
     #[inline]
-    fn div(self, rhs: &'static str) -> Self::Output {
+    fn div(self, rhs: &str) -> Self::Output {
         self.clone() / rhs
     }
 }

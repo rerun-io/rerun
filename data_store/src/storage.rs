@@ -456,21 +456,21 @@ pub fn visit_data<'s, Time: 'static + Ord, T: 'static>(
     Some(())
 }
 
-pub fn visit_data_and_1_sibling<'s, Time: 'static + Clone + Ord, T: 'static, S1: 'static>(
+pub fn visit_data_and_1_child<'s, Time: 'static + Clone + Ord, T: 'static, S1: 'static>(
     store: &'s TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
-    primary_type_path: &TypePath,
+    parent_type_path: &TypePath,
     primary_data: &'s DataStore<Time, T>,
-    (sibling1,): (&str,),
+    (child1,): (&str,),
     mut visit: impl FnMut(&'s DataPath, &'s LogId, &'s T, Option<&'s S1>),
 ) -> Option<()> {
     crate::profile_function!();
 
-    let sibling1_path = primary_type_path.sibling(sibling1);
+    let child1_path = parent_type_path / child1;
 
     match primary_data {
         DataStore::Individual(primary) => {
-            let sibling1_reader = IndividualDataReader::<Time, S1>::new(store, &sibling1_path);
+            let child1_reader = IndividualDataReader::<Time, S1>::new(store, &child1_path);
 
             for (index_path, primary) in primary.iter() {
                 query(
@@ -481,7 +481,7 @@ pub fn visit_data_and_1_sibling<'s, Time: 'static + Clone + Ord, T: 'static, S1:
                             &primary.parent_object_path,
                             log_id,
                             primary_value,
-                            sibling1_reader.latest_at(index_path, time),
+                            child1_reader.latest_at(index_path, time),
                         );
                     },
                 );
@@ -489,21 +489,21 @@ pub fn visit_data_and_1_sibling<'s, Time: 'static + Clone + Ord, T: 'static, S1:
         }
         DataStore::Batched(primary) => {
             for (index_path_prefix, primary) in primary.iter() {
-                let sibling1_store = store.get::<S1>(&sibling1_path);
+                let child1_store = store.get::<S1>(&child1_path);
 
                 query(
                     &primary.history,
                     time_query,
                     |time, (log_id, primary_batch)| {
-                        let sibling1_reader =
-                            BatchedDataReader::new(sibling1_store, index_path_prefix, time);
+                        let child1_reader =
+                            BatchedDataReader::new(child1_store, index_path_prefix, time);
 
                         for (index_path_suffix, primary_value) in primary_batch.iter() {
                             visit(
                                 &primary.parent_object_path,
                                 log_id,
                                 primary_value,
-                                sibling1_reader.latest_at(index_path_suffix),
+                                child1_reader.latest_at(index_path_suffix),
                             );
                         }
                     },
@@ -515,7 +515,7 @@ pub fn visit_data_and_1_sibling<'s, Time: 'static + Clone + Ord, T: 'static, S1:
     Some(())
 }
 
-pub fn visit_data_and_2_siblings<
+pub fn visit_data_and_2_children<
     's,
     Time: 'static + Clone + Ord,
     T: 'static,
@@ -524,20 +524,20 @@ pub fn visit_data_and_2_siblings<
 >(
     store: &'s TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
-    primary_type_path: &TypePath,
+    parent_type_path: &TypePath,
     primary_data: &'s DataStore<Time, T>,
-    (sibling1, sibling2): (&str, &str),
+    (child1, child2): (&str, &str),
     mut visit: impl FnMut(&'s DataPath, &'s LogId, &'s T, Option<&'s S1>, Option<&'s S2>),
 ) -> Option<()> {
     crate::profile_function!();
 
-    let sibling1_path = primary_type_path.sibling(sibling1);
-    let sibling2_path = primary_type_path.sibling(sibling2);
+    let child1_path = parent_type_path / child1;
+    let child2_path = parent_type_path / child2;
 
     match primary_data {
         DataStore::Individual(primary) => {
-            let sibling1_reader = IndividualDataReader::<Time, S1>::new(store, &sibling1_path);
-            let sibling2_reader = IndividualDataReader::<Time, S2>::new(store, &sibling2_path);
+            let child1_reader = IndividualDataReader::<Time, S1>::new(store, &child1_path);
+            let child2_reader = IndividualDataReader::<Time, S2>::new(store, &child2_path);
 
             for (index_path, primary) in primary.iter() {
                 query(
@@ -548,8 +548,8 @@ pub fn visit_data_and_2_siblings<
                             &primary.parent_object_path,
                             log_id,
                             primary_value,
-                            sibling1_reader.latest_at(index_path, time),
-                            sibling2_reader.latest_at(index_path, time),
+                            child1_reader.latest_at(index_path, time),
+                            child2_reader.latest_at(index_path, time),
                         );
                     },
                 );
@@ -557,25 +557,25 @@ pub fn visit_data_and_2_siblings<
         }
         DataStore::Batched(primary) => {
             for (index_path_prefix, primary) in primary.iter() {
-                let sibling1_store = store.get::<S1>(&sibling1_path);
-                let sibling2_store = store.get::<S2>(&sibling2_path);
+                let child1_store = store.get::<S1>(&child1_path);
+                let child2_store = store.get::<S2>(&child2_path);
 
                 query(
                     &primary.history,
                     time_query,
                     |time, (log_id, primary_batch)| {
-                        let sibling1_reader =
-                            BatchedDataReader::new(sibling1_store, index_path_prefix, time);
-                        let sibling2_reader =
-                            BatchedDataReader::new(sibling2_store, index_path_prefix, time);
+                        let child1_reader =
+                            BatchedDataReader::new(child1_store, index_path_prefix, time);
+                        let child2_reader =
+                            BatchedDataReader::new(child2_store, index_path_prefix, time);
 
                         for (index_path_suffix, primary_value) in primary_batch.iter() {
                             visit(
                                 &primary.parent_object_path,
                                 log_id,
                                 primary_value,
-                                sibling1_reader.latest_at(index_path_suffix),
-                                sibling2_reader.latest_at(index_path_suffix),
+                                child1_reader.latest_at(index_path_suffix),
+                                child2_reader.latest_at(index_path_suffix),
                             );
                         }
                     },
@@ -587,7 +587,7 @@ pub fn visit_data_and_2_siblings<
     Some(())
 }
 
-pub fn visit_data_and_3_siblings<
+pub fn visit_data_and_3_children<
     's,
     Time: 'static + Clone + Ord,
     T: 'static,
@@ -597,9 +597,9 @@ pub fn visit_data_and_3_siblings<
 >(
     store: &'s TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
-    primary_type_path: &TypePath,
+    parent_type_path: &TypePath,
     primary_data: &'s DataStore<Time, T>,
-    (sibling1, sibling2, sibling3): (&str, &str, &str),
+    (child1, child2, child3): (&str, &str, &str),
     mut visit: impl FnMut(
         &'s DataPath,
         &'s LogId,
@@ -611,15 +611,15 @@ pub fn visit_data_and_3_siblings<
 ) -> Option<()> {
     crate::profile_function!();
 
-    let sibling1_path = primary_type_path.sibling(sibling1);
-    let sibling2_path = primary_type_path.sibling(sibling2);
-    let sibling3_path = primary_type_path.sibling(sibling3);
+    let child1_path = parent_type_path / child1;
+    let child2_path = parent_type_path / child2;
+    let child3_path = parent_type_path / child3;
 
     match primary_data {
         DataStore::Individual(primary) => {
-            let sibling1_reader = IndividualDataReader::<Time, S1>::new(store, &sibling1_path);
-            let sibling2_reader = IndividualDataReader::<Time, S2>::new(store, &sibling2_path);
-            let sibling3_reader = IndividualDataReader::<Time, S3>::new(store, &sibling3_path);
+            let child1_reader = IndividualDataReader::<Time, S1>::new(store, &child1_path);
+            let child2_reader = IndividualDataReader::<Time, S2>::new(store, &child2_path);
+            let child3_reader = IndividualDataReader::<Time, S3>::new(store, &child3_path);
 
             for (index_path, primary) in primary.iter() {
                 query(
@@ -630,9 +630,9 @@ pub fn visit_data_and_3_siblings<
                             &primary.parent_object_path,
                             log_id,
                             primary_value,
-                            sibling1_reader.latest_at(index_path, time),
-                            sibling2_reader.latest_at(index_path, time),
-                            sibling3_reader.latest_at(index_path, time),
+                            child1_reader.latest_at(index_path, time),
+                            child2_reader.latest_at(index_path, time),
+                            child3_reader.latest_at(index_path, time),
                         );
                     },
                 );
@@ -640,29 +640,29 @@ pub fn visit_data_and_3_siblings<
         }
         DataStore::Batched(primary) => {
             for (index_path_prefix, primary) in primary.iter() {
-                let sibling1_store = store.get::<S1>(&sibling1_path);
-                let sibling2_store = store.get::<S2>(&sibling2_path);
-                let sibling3_store = store.get::<S3>(&sibling3_path);
+                let child1_store = store.get::<S1>(&child1_path);
+                let child2_store = store.get::<S2>(&child2_path);
+                let child3_store = store.get::<S3>(&child3_path);
 
                 query(
                     &primary.history,
                     time_query,
                     |time, (log_id, primary_batch)| {
-                        let sibling1_reader =
-                            BatchedDataReader::new(sibling1_store, index_path_prefix, time);
-                        let sibling2_reader =
-                            BatchedDataReader::new(sibling2_store, index_path_prefix, time);
-                        let sibling3_reader =
-                            BatchedDataReader::new(sibling3_store, index_path_prefix, time);
+                        let child1_reader =
+                            BatchedDataReader::new(child1_store, index_path_prefix, time);
+                        let child2_reader =
+                            BatchedDataReader::new(child2_store, index_path_prefix, time);
+                        let child3_reader =
+                            BatchedDataReader::new(child3_store, index_path_prefix, time);
 
                         for (index_path_suffix, primary_value) in primary_batch.iter() {
                             visit(
                                 &primary.parent_object_path,
                                 log_id,
                                 primary_value,
-                                sibling1_reader.latest_at(index_path_suffix),
-                                sibling2_reader.latest_at(index_path_suffix),
-                                sibling3_reader.latest_at(index_path_suffix),
+                                child1_reader.latest_at(index_path_suffix),
+                                child2_reader.latest_at(index_path_suffix),
+                                child3_reader.latest_at(index_path_suffix),
                             );
                         }
                     },

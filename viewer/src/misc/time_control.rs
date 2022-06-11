@@ -506,12 +506,15 @@ impl TimeControl {
     ) -> data_store::Objects<'db> {
         crate::profile_function!();
 
+        let mut objects = data_store::Objects::default();
         if let Some(time_query) = self.time_query() {
             if let Some((_, store)) = log_db.data_store.get(self.source()) {
-                return data_store::Objects::from_store(store, &time_query);
+                for (object_type_path, object_type) in &log_db.object_types {
+                    objects.query_object(store, &time_query, object_type_path, *object_type);
+                }
             }
         }
-        Default::default()
+        objects
     }
 
     fn time_query(&self) -> Option<TimeQuery<i64>> {

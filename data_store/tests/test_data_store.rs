@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use data_store::*;
 use log_types::LogId;
 
@@ -15,30 +13,29 @@ pub struct Point3<'s> {
 pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
     store: &'store TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
-) -> BTreeMap<TypePath, Vec<Point3<'store>>> {
-    let mut all = BTreeMap::default();
+) -> Vec<Point3<'store>> {
+    let object_type_path = TypePathComponent::String("camera".into())
+        / TypePathComponent::Index
+        / TypePathComponent::String("point".into())
+        / TypePathComponent::Index;
 
-    for (type_path, data_store) in store.iter() {
-        if let Some(data_store) = data_store.read_no_warn::<[f32; 3]>() {
-            let mut point_vec = vec![];
-            visit_data_and_1_sibling(
-                store,
-                time_query,
-                type_path,
-                data_store,
-                ("radius",),
-                |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
-                    point_vec.push(Point3 {
-                        pos,
-                        radius: radius.copied(),
-                    });
-                },
-            );
-            all.insert(type_path.parent(), point_vec);
-        }
-    }
+    let data_store = store.get::<[f32; 3]>(&(&object_type_path / "pos")).unwrap();
 
-    all
+    let mut points = vec![];
+    visit_data_and_1_child(
+        store,
+        time_query,
+        &object_type_path,
+        data_store,
+        ("radius",),
+        |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
+            points.push(Point3 {
+                pos,
+                radius: radius.copied(),
+            });
+        },
+    );
+    points
 }
 
 fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
@@ -54,11 +51,7 @@ fn id() -> LogId {
 fn test_singular() -> data_store::Result<()> {
     fn points_at(store: &TypePathDataStore<Time>, frame: i64) -> Vec<Point3<'_>> {
         let time_query = TimeQuery::LatestAt(Time(frame));
-        let mut points: Vec<_> = points_from_store(store, &time_query)
-            .values()
-            .flatten()
-            .cloned()
-            .collect();
+        let mut points: Vec<_> = points_from_store(store, &time_query);
         points.sort_by(|a, b| a.partial_cmp(b).unwrap());
         points
     }
@@ -178,10 +171,10 @@ fn test_batches() -> data_store::Result<()> {
     fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
-        visit_data_and_1_sibling(
+        visit_data_and_1_child(
             store,
             &time_query,
-            &prim(),
+            &prim().parent(),
             store.get::<i32>(&prim()).unwrap(),
             ("label",),
             |_object_path, _log_id, prim, sibling| {
@@ -378,10 +371,10 @@ fn test_batched_and_individual() -> data_store::Result<()> {
     fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
-        visit_data_and_1_sibling(
+        visit_data_and_1_child(
             store,
             &time_query,
-            &prim(),
+            &prim().parent(),
             store.get::<i32>(&prim()).unwrap(),
             ("label",),
             |_object_path, _log_id, prim, sibling| {
@@ -569,10 +562,10 @@ fn test_individual_and_batched() -> data_store::Result<()> {
     fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
-        visit_data_and_1_sibling(
+        visit_data_and_1_child(
             store,
             &time_query,
-            &prim(),
+            &prim().parent(),
             store.get::<i32>(&prim()).unwrap(),
             ("label",),
             |_object_path, _log_id, prim, sibling| {
