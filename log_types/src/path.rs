@@ -92,12 +92,12 @@ impl DataPath {
         self.components.get(i)
     }
 
+    #[must_use]
     pub fn parent(&self) -> Self {
-        let mut path = self.components.clone();
-        path.pop();
-        Self::new(path)
+        Self::new(self.components[0..self.components.len() - 1].to_vec())
     }
 
+    #[must_use]
     pub fn sibling(&self, last_comp: impl Into<DataPathComponent>) -> Self {
         let mut path = self.components.clone();
         path.pop(); // TODO: handle root?
@@ -374,12 +374,12 @@ impl std::fmt::Display for TypePathComponent {
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TypePath {
-    components: im::Vector<TypePathComponent>,
+    components: Vec<TypePathComponent>,
 }
 
 impl TypePath {
     #[inline]
-    pub fn new(components: im::Vector<TypePathComponent>) -> Self {
+    pub fn new(components: Vec<TypePathComponent>) -> Self {
         Self { components }
     }
 
@@ -389,33 +389,32 @@ impl TypePath {
     }
 
     #[inline]
+    #[must_use]
     pub fn last(&self) -> Option<&TypePathComponent> {
         self.components.last()
     }
 
     #[must_use]
     pub fn parent(&self) -> Self {
-        let mut components = self.components.clone();
-        components.pop_back();
-        Self::new(components)
+        Self::new(self.components[0..self.components.len() - 1].to_vec())
     }
 
     #[must_use]
     pub fn sibling(&self, name: &str) -> TypePath {
         let mut components = self.components.clone();
-        components.pop_back();
-        components.push_back(TypePathComponent::String(name.into()));
+        components.pop();
+        components.push(TypePathComponent::String(name.into()));
         Self::new(components)
     }
 
     pub fn push(&mut self, comp: TypePathComponent) {
-        self.components.push_back(comp);
+        self.components.push(comp);
     }
 }
 
 impl<'a> IntoIterator for &'a TypePath {
     type Item = &'a TypePathComponent;
-    type IntoIter = im::vector::Iter<'a, TypePathComponent>;
+    type IntoIter = std::slice::Iter<'a, TypePathComponent>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -425,7 +424,7 @@ impl<'a> IntoIterator for &'a TypePath {
 
 impl IntoIterator for TypePath {
     type Item = TypePathComponent;
-    type IntoIter = <im::Vector<TypePathComponent> as IntoIterator>::IntoIter;
+    type IntoIter = <Vec<TypePathComponent> as IntoIterator>::IntoIter;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -451,14 +450,14 @@ impl std::fmt::Display for TypePath {
 impl From<&str> for TypePath {
     #[inline]
     fn from(component: &str) -> Self {
-        Self::new(im::vector![TypePathComponent::String(component.into())])
+        Self::new(vec![TypePathComponent::String(component.into())])
     }
 }
 
 impl From<TypePathComponent> for TypePath {
     #[inline]
     fn from(component: TypePathComponent) -> Self {
-        Self::new(im::vector![component])
+        Self::new(vec![component])
     }
 }
 
@@ -467,7 +466,7 @@ impl std::ops::Div for TypePathComponent {
 
     #[inline]
     fn div(self, rhs: TypePathComponent) -> Self::Output {
-        TypePath::new(im::vector![self, rhs])
+        TypePath::new(vec![self, rhs])
     }
 }
 

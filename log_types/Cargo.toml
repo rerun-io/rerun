@@ -23,7 +23,6 @@ serde = ["dep:serde", "rr_string_interner/serde"]
 [dependencies]
 ahash = "0.7"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
-im = { version = "15.0", features = ["serde"] }
 nohash-hasher = "0.2"
 rr_string_interner = { path = "../rr_string_interner" }
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }

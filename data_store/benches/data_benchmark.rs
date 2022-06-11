@@ -42,17 +42,11 @@ pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
                     });
                 },
             );
-            all.insert(parent(type_path), point_vec);
+            all.insert(type_path.parent(), point_vec);
         }
     }
 
     all
-}
-
-fn parent(type_path: &TypePath) -> TypePath {
-    let mut type_path = type_path.clone();
-    type_path.pop_back();
-    type_path
 }
 
 fn data_path(camera: &str, index: u64, field: &str) -> DataPath {
@@ -86,15 +80,15 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                         .unwrap();
                 }
             } else {
-                let type_path = im::vector![
+                let type_path = TypePath::new(vec![
                     TypePathComponent::String("camera".into()),
                     TypePathComponent::Index,
                     TypePathComponent::String("point".into()),
                     TypePathComponent::Index,
-                    TypePathComponent::String("pos".into())
-                ];
+                    TypePathComponent::String("pos".into()),
+                ]);
                 let mut index_path_prefix = IndexPathKey::default();
-                index_path_prefix.push_back(Index::String(camera.into()));
+                index_path_prefix.push(Index::String(camera.into()));
 
                 let batch = Arc::new(
                     (0..NUM_POINTS_PER_CAMERA)
@@ -128,15 +122,15 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                         .unwrap();
                 }
             } else {
-                let type_path = im::vector![
+                let type_path = TypePath::new(vec![
                     TypePathComponent::String("camera".into()),
                     TypePathComponent::Index,
                     TypePathComponent::String("point".into()),
                     TypePathComponent::Index,
-                    TypePathComponent::String("radius".into())
-                ];
+                    TypePathComponent::String("radius".into()),
+                ]);
                 let mut index_path_prefix = IndexPathKey::default();
-                index_path_prefix.push_back(Index::String(camera.into()));
+                index_path_prefix.push(Index::String(camera.into()));
 
                 let batch = Arc::new(
                     (0..NUM_POINTS_PER_CAMERA)
@@ -164,12 +158,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("query-points-throughput");
     group.throughput(criterion::Throughput::Elements(TOTAL_POINTS as _));
 
-    let point_type_path = im::vector![
+    let point_type_path = TypePath::new(vec![
         TypePathComponent::String("camera".into()),
         TypePathComponent::Index,
         TypePathComponent::String("point".into()),
         TypePathComponent::Index,
-    ];
+    ]);
 
     let data_store = generate_date(false, false);
     group.bench_function("batched_pos_batched_radius", |b| {

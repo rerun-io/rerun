@@ -152,12 +152,16 @@ fn test_encode_decode() {
         TimeValue::Time(Time::from_ns_since_epoch(1_649_934_625_012_345_678)),
     )]);
     let messages = vec![
-        data_msg(&time_point, DataPath::from("foo") / "bar" / "baz", 42),
-        crate::data_msg(
+        LogMsg::from(data_msg(
+            &time_point,
+            DataPath::from("foo") / "bar" / "baz",
+            42,
+        )),
+        LogMsg::from(data_msg(
             &time_point,
             DataPath::from("badger") / "mushroom" / "snake",
             1337.0,
-        ),
+        )),
     ];
 
     let mut file = vec![];

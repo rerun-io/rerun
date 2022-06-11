@@ -370,7 +370,7 @@ impl<'store, Time: Clone + Ord, T: 'static> BatchedDataReader<'store, Time, T> {
             Self::None => None,
             Self::Individual(index_path_prefix, query_time, history) => {
                 let mut index_path = index_path_prefix.clone();
-                index_path.push_back(index_path_suffix.clone());
+                index_path.push(index_path_suffix.clone());
                 latest_at(&history.values.get(&index_path)?.history, query_time)
                     .map(|(_time, (_log_id, value))| value)
             }

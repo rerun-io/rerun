@@ -53,19 +53,19 @@ pub enum StructType {
 }
 
 pub fn into_type_path(data_path: DataPath) -> (TypePath, IndexPathKey) {
-    let mut type_path = im::Vector::default();
+    let mut type_path = Vec::default();
     let mut index_path = IndexPathKey::default();
     for component in data_path {
         match component {
             DataPathComponent::String(name) => {
-                type_path.push_back(TypePathComponent::String(name));
+                type_path.push(TypePathComponent::String(name));
             }
             DataPathComponent::Index(Index::Placeholder) => {
-                type_path.push_back(TypePathComponent::Index);
+                type_path.push(TypePathComponent::Index);
             }
             DataPathComponent::Index(index) => {
-                type_path.push_back(TypePathComponent::Index);
-                index_path.push_back(index);
+                type_path.push(TypePathComponent::Index);
+                index_path.push(index);
             }
         }
     }
@@ -198,24 +198,24 @@ impl From<Index> for IndexKey {
 
 #[derive(Clone, Debug, Default, Eq, PartialOrd, Ord)]
 pub struct IndexPathKey {
-    components: im::Vector<Index>,
+    components: Vec<Index>,
     hashes: [u64; 2], // 128 bit to avoid collisions
 }
 
 impl IndexPathKey {
     #[inline]
-    pub fn new(components: im::Vector<Index>) -> Self {
+    pub fn new(components: Vec<Index>) -> Self {
         let mut slf = Self::default();
         for index in components {
-            slf.push_back(index);
+            slf.push(index);
         }
         slf
     }
 
-    pub fn push_back(&mut self, index: impl Into<IndexKey>) {
+    pub fn push(&mut self, index: impl Into<IndexKey>) {
         let index = index.into();
 
-        self.components.push_back(index.index);
+        self.components.push(index.index);
         self.hashes[0] = self.hashes[0].rotate_left(5);
         self.hashes[1] = self.hashes[1].rotate_left(5);
         self.hashes[0] ^= index.hashes[0];
@@ -224,7 +224,7 @@ impl IndexPathKey {
 
     /// Split off the last component.
     pub fn split_last(mut self) -> (IndexPathKey, IndexKey) {
-        let index = IndexKey::new(self.components.pop_back().unwrap());
+        let index = IndexKey::new(self.components.pop().unwrap());
         self.hashes[0] ^= index.hashes[0];
         self.hashes[1] ^= index.hashes[1];
         self.hashes[0] = self.hashes[0].rotate_right(5);
@@ -254,11 +254,11 @@ fn test_index_path_key() {
     let key0 = IndexPathKey::default();
 
     let mut key1 = key0.clone();
-    key1.push_back(Index::Sequence(0));
+    key1.push(Index::Sequence(0));
     let key1 = key1;
 
     let mut key2 = key1.clone();
-    key2.push_back(Index::Sequence(1));
+    key2.push(Index::Sequence(1));
     let key2 = key2;
 
     assert_eq!(key0.components.len(), 0);
