@@ -41,6 +41,8 @@ glam = { version = "0.20", features = ["mint"] }
 glow = "0.11"
 image = { version = "0.23", default-features = false, features = ["png"] }
 itertools = "0.10"
+log = "0.4"  # TODO: tracing specific crate instead
+log-once = "0.3" # TODO: tracing specific crate instead
 macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
 nohash-hasher = "0.2"

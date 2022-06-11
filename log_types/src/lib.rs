@@ -92,6 +92,16 @@ pub struct TypeMsg {
     pub object_type: ObjectType,
 }
 
+impl TypeMsg {
+    pub fn object_type(type_path: TypePath, object_type: ObjectType) -> Self {
+        Self {
+            id: LogId::random(),
+            type_path,
+            object_type,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjectType {
@@ -106,6 +116,9 @@ pub enum ObjectType {
     LineSegments3D,
     Mesh3D,
     Camera,
+
+    /// Information about a space (up axis etc).
+    Space,
 }
 
 // ----------------------------------------------------------------------------
@@ -121,7 +134,7 @@ pub struct DataMsg {
     pub time_point: TimePoint,
 
     /// What this is.
-    pub data_path: DataPath,
+    pub data_path: DataPath, // TODO: consider splitting this into object_path + InternedString for last member
 
     /// The value of this.
     pub data: Data,

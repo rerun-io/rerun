@@ -21,6 +21,36 @@ impl<'a> Logger<'a> {
 
 pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     let logger = Logger(tx);
+
+    logger.log(TypeMsg::object_type(
+        TypePath::from("world"),
+        ObjectType::Space,
+    ));
+    logger.log(TypeMsg::object_type(
+        TypePath::from("camera"),
+        ObjectType::Camera,
+    ));
+    logger.log(TypeMsg::object_type(
+        TypePath::from("video"),
+        ObjectType::Image,
+    ));
+    logger.log(TypeMsg::object_type(
+        TypePath::from("rgb"),
+        ObjectType::Image,
+    ));
+    logger.log(TypeMsg::object_type(
+        TypePath::from("points") / TypePathComponent::Index,
+        ObjectType::Point3D,
+    ));
+    logger.log(TypeMsg::object_type(
+        TypePath::from("objects") / TypePathComponent::Index / "bbox2d",
+        ObjectType::BBox2d,
+    ));
+    logger.log(TypeMsg::object_type(
+        TypePath::from("objects") / TypePathComponent::Index / "bbox3d",
+        ObjectType::LineSegments3D,
+    ));
+
     let frame_times = log_geometry_pbdata(path, &logger)?;
     configure_world_space(&logger);
     log_annotation_pbdata(path, &frame_times, &logger)?;
@@ -211,7 +241,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
         if let Some(ar_camera) = &ar_frame.camera {
             log_ar_camera(
                 &time_point,
-                DataPath::from("camera"),
+                DataPath::from("camera") / "camera",
                 &world_space,
                 ar_camera,
                 logger,

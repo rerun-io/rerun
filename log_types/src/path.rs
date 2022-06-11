@@ -112,6 +112,15 @@ impl DataPath {
         components.push(component);
         *self = Self::new(components);
     }
+
+    pub fn to_type_path(&self) -> TypePath {
+        TypePath::new(
+            self.components
+                .iter()
+                .map(DataPathComponent::to_type_path_component)
+                .collect(),
+        )
+    }
 }
 
 #[cfg(feature = "serde")]
@@ -204,6 +213,15 @@ pub enum DataPathComponent {
 
     /// Array/table/map member. Each member must be of the same type (homogenous).
     Index(Index),
+}
+
+impl DataPathComponent {
+    pub fn to_type_path_component(&self) -> TypePathComponent {
+        match self {
+            Self::String(name) => TypePathComponent::String(*name),
+            Self::Index(_) => TypePathComponent::Index,
+        }
+    }
 }
 
 impl std::fmt::Display for DataPathComponent {
@@ -389,6 +407,10 @@ impl TypePath {
         components.push_back(TypePathComponent::String(name.into()));
         Self::new(components)
     }
+
+    pub fn push(&mut self, comp: TypePathComponent) {
+        self.components.push_back(comp);
+    }
 }
 
 impl<'a> IntoIterator for &'a TypePath {
@@ -423,5 +445,57 @@ impl std::fmt::Display for TypePath {
             }
         }
         Ok(())
+    }
+}
+
+impl From<&str> for TypePath {
+    #[inline]
+    fn from(component: &str) -> Self {
+        Self::new(im::vector![TypePathComponent::String(component.into())])
+    }
+}
+
+impl From<TypePathComponent> for TypePath {
+    #[inline]
+    fn from(component: TypePathComponent) -> Self {
+        Self::new(im::vector![component])
+    }
+}
+
+impl std::ops::Div for TypePathComponent {
+    type Output = TypePath;
+
+    #[inline]
+    fn div(self, rhs: TypePathComponent) -> Self::Output {
+        TypePath::new(im::vector![self, rhs])
+    }
+}
+
+impl std::ops::Div<TypePathComponent> for TypePath {
+    type Output = TypePath;
+
+    #[inline]
+    fn div(mut self, rhs: TypePathComponent) -> Self::Output {
+        self.push(rhs);
+        self
+    }
+}
+
+impl std::ops::Div<&'static str> for TypePath {
+    type Output = TypePath;
+
+    #[inline]
+    fn div(mut self, rhs: &'static str) -> Self::Output {
+        self.push(TypePathComponent::String(rhs.into()));
+        self
+    }
+}
+
+impl std::ops::Div<&'static str> for &TypePath {
+    type Output = TypePath;
+
+    #[inline]
+    fn div(self, rhs: &'static str) -> Self::Output {
+        self.clone() / rhs
     }
 }

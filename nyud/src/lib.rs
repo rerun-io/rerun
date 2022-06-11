@@ -16,12 +16,31 @@ impl<'a> Logger<'a> {
 
 pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     let logger = Logger(tx);
+
+    logger.log(TypeMsg::object_type(
+        TypePath::from("world"),
+        ObjectType::Space,
+    ));
+    logger.log(TypeMsg::object_type(
+        TypePath::from("depth"),
+        ObjectType::Image,
+    ));
+    logger.log(TypeMsg::object_type(
+        TypePath::from("rgb"),
+        ObjectType::Image,
+    ));
+    logger.log(TypeMsg::object_type(
+        TypePath::from("points") / TypePathComponent::Index,
+        ObjectType::Point3D,
+    ));
+
     configure_world_space(&logger);
     log_dataset_zip(path, &logger)
 }
 
 fn configure_world_space(logger: &Logger<'_>) {
     let world_space = DataPath::from("world");
+
     // TODO: what time point should we use?
     let time_point = time_point([("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0)))]);
     logger.log(
@@ -173,8 +192,6 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     )
                     .space(&DataPath::from("world")),
                 );
-
-                tracing::info!("Logged {w} x {h} = {} points", w * h);
             }
         }
     }

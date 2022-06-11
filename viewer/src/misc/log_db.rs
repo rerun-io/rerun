@@ -12,6 +12,7 @@ pub(crate) struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<LogId>,
     log_messages: nohash_hasher::IntMap<LogId, LogMsg>,
+    object_types: HashMap<TypePath, ObjectType>,
     pub time_points: TimePoints,
     pub spaces: BTreeMap<DataPath, SpaceSummary>,
     pub data_tree: DataTree,
@@ -28,11 +29,24 @@ impl LogDb {
         self.log_messages.insert(msg.id(), msg);
     }
 
-    fn add_type_msg(&mut self, msg: &TypeMsg) {}
+    fn add_type_msg(&mut self, msg: &TypeMsg) {
+        self.object_types
+            .insert(msg.type_path.clone(), msg.object_type);
+    }
 
     fn add_data_msg(&mut self, msg: &DataMsg) {
         if (msg.data.is_2d() || msg.data.is_3d()) && msg.space.is_none() {
             tracing::warn!("Got 2D/3D data message without a space: {:?}", msg);
+        }
+
+        let object_type_path = msg.data_path.parent().to_type_path();
+        if let Some(object_type) = self.object_types.get(&object_type_path) {
+        } else {
+            log_once::warn_once!(
+                "Logging to {} without first registering object path of {}",
+                msg.data_path.to_type_path(),
+                object_type_path
+            );
         }
 
         if let Err(err) = self.data_store.insert(msg) {
