@@ -453,7 +453,7 @@ impl TimeControl {
     /// This is either based on a time selection, or it is the latest message at the current time.
     ///
     /// Returns them in arbitrary order.
-    pub fn selected_messages<'db>(&self, log_db: &'db crate::log_db::LogDb) -> Vec<&'db LogMsg> {
+    pub fn selected_messages<'db>(&self, log_db: &'db crate::log_db::LogDb) -> Vec<&'db DataMsg> {
         self.selected_messages_filtered(log_db, &MessageFilter::All)
     }
 
@@ -466,7 +466,7 @@ impl TimeControl {
         &self,
         log_db: &'db crate::log_db::LogDb,
         data_path: &DataPath,
-    ) -> Vec<&'db LogMsg> {
+    ) -> Vec<&'db DataMsg> {
         self.selected_messages_filtered(log_db, &MessageFilter::DataPath(data_path.clone()))
     }
 
@@ -479,7 +479,7 @@ impl TimeControl {
         &self,
         log_db: &'db crate::log_db::LogDb,
         filter: &MessageFilter,
-    ) -> Vec<&'db LogMsg> {
+    ) -> Vec<&'db DataMsg> {
         crate::profile_function!();
 
         let state = if let Some(state) = self.states.get(&self.time_source) {

@@ -11,7 +11,7 @@ use super::time_axis::TimeRange;
 pub(crate) struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<LogId>,
-    messages: nohash_hasher::IntMap<LogId, LogMsg>,
+    messages: nohash_hasher::IntMap<LogId, DataMsg>,
     pub time_points: TimePoints,
     pub spaces: BTreeMap<DataPath, SpaceSummary>,
     pub data_tree: DataTree,
@@ -20,7 +20,7 @@ pub(crate) struct LogDb {
 }
 
 impl LogDb {
-    pub fn add(&mut self, msg: LogMsg) {
+    pub fn add(&mut self, msg: DataMsg) {
         santiy_check(&msg);
 
         if let Err(err) = self.data_store.insert(&msg) {
@@ -30,7 +30,7 @@ impl LogDb {
         if let Some(space) = msg.space.clone() {
             if !matches!(msg.data, Data::Batch { .. }) {
                 // HACK until we change how spaces are logged
-                let space_msg = LogMsg {
+                let space_msg = DataMsg {
                     id: msg.id,
                     time_point: msg.time_point.clone(),
                     data_path: msg.data_path.sibling("space"),
@@ -176,24 +176,24 @@ impl LogDb {
     }
 
     /// In the order they arrived
-    pub fn chronological_messages(&self) -> impl Iterator<Item = &LogMsg> {
+    pub fn chronological_messages(&self) -> impl Iterator<Item = &DataMsg> {
         self.chronological_message_ids
             .iter()
             .filter_map(|id| self.messages.get(id))
     }
 
-    pub fn get_msg(&self, id: &LogId) -> Option<&LogMsg> {
+    pub fn get_msg(&self, id: &LogId) -> Option<&DataMsg> {
         self.messages.get(id)
     }
 
-    /// Grouped by [`DataPath`], find the latest [`LogMsg`] that matches
+    /// Grouped by [`DataPath`], find the latest [`DataMsg`] that matches
     /// the given time source and is not after the given time.
     pub fn latest_of_each_object(
         &self,
         time_source: &TimeSource,
         no_later_than: TimeValue,
         filter: &MessageFilter,
-    ) -> Vec<&LogMsg> {
+    ) -> Vec<&DataMsg> {
         crate::profile_function!();
         self.object_history
             .iter()
@@ -217,7 +217,7 @@ impl LogDb {
         time_source: &TimeSource,
         range: TimeRange,
         filter: &MessageFilter,
-    ) -> Vec<&LogMsg> {
+    ) -> Vec<&DataMsg> {
         crate::profile_function!();
         let mut ids = vec![];
         for (data_path, history) in &self.object_history {
@@ -233,7 +233,7 @@ impl LogDb {
     //     time_source: &TimeSource,
     //     no_later_than: TimeValue,
     //     data_path: &DataPath,
-    // ) -> Option<&LogMsg> {
+    // ) -> Option<&DataMsg> {
     //     let id = self
     //         .object_history
     //         .get(data_path)?
@@ -257,9 +257,9 @@ impl MessageFilter {
     }
 }
 
-fn santiy_check(msg: &LogMsg) {
+fn santiy_check(msg: &DataMsg) {
     if (msg.data.is_2d() || msg.data.is_3d()) && msg.space.is_none() {
-        tracing::warn!("Got 2D/3D log message without a space: {:?}", msg);
+        tracing::warn!("Got 2D/3D data message without a space: {:?}", msg);
     }
 }
 
@@ -382,11 +382,11 @@ impl DataTree {
         self.string_children.is_empty() && self.index_children.is_empty()
     }
 
-    pub fn add_log_msg(&mut self, msg: &LogMsg) {
+    pub fn add_log_msg(&mut self, msg: &DataMsg) {
         self.add_path(&msg.data_path, msg);
     }
 
-    fn add_path(&mut self, path: &[DataPathComponent], msg: &LogMsg) {
+    fn add_path(&mut self, path: &[DataPathComponent], msg: &DataMsg) {
         self.prefix_times
             .entry(msg.time_point.clone())
             .or_default()
@@ -425,7 +425,7 @@ pub(crate) struct DataColumns {
 }
 
 impl DataColumns {
-    pub fn add(&mut self, msg: &LogMsg) {
+    pub fn add(&mut self, msg: &DataMsg) {
         self.per_type
             .entry(msg.data.typ())
             .or_default()

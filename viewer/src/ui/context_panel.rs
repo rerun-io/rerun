@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log_types::{Data, DataPath, LogMsg};
+use log_types::{Data, DataMsg, DataPath};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
@@ -37,7 +37,7 @@ impl ContextPanel {
                     return;
                 };
 
-                show_detailed_log_msg(context, ui, msg);
+                show_detailed_data_msg(context, ui, msg);
                 ui.separator();
                 self.view_log_msg_siblings(log_db, context, ui, msg);
             }
@@ -62,7 +62,7 @@ impl ContextPanel {
                     // nothing to see here
                 } else if messages.len() == 1 {
                     // probably viewing the latest message of this data path
-                    show_detailed_log_msg(context, ui, messages[0]);
+                    show_detailed_data_msg(context, ui, messages[0]);
                 } else {
                     crate::log_table_view::message_table(log_db, context, ui, &messages);
                 }
@@ -89,14 +89,14 @@ impl ContextPanel {
         log_db: &LogDb,
         context: &mut ViewerContext,
         ui: &mut egui::Ui,
-        msg: &LogMsg,
+        msg: &DataMsg,
     ) {
         crate::profile_function!();
         let messages = context.time_control.selected_messages(log_db);
 
         let parent_path = msg.data_path.parent();
 
-        let mut sibling_messages: Vec<&LogMsg> = messages
+        let mut sibling_messages: Vec<&DataMsg> = messages
             .iter()
             .copied()
             .filter(|other_msg| other_msg.data_path.starts_with(&parent_path))
@@ -145,8 +145,12 @@ impl ContextPanel {
     }
 }
 
-pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &LogMsg) {
-    let LogMsg {
+pub(crate) fn show_detailed_data_msg(
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
+    msg: &DataMsg,
+) {
+    let DataMsg {
         id,
         time_point,
         data_path,
@@ -189,7 +193,7 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
 fn show_image(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    msg: &LogMsg,
+    msg: &DataMsg,
     image: &log_types::Image,
 ) {
     let (dynamic_image, egui_image) = context.image_cache.get_pair(&msg.id, image);

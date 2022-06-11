@@ -1,5 +1,5 @@
 use ewebsock::*;
-use log_types::LogMsg;
+use log_types::DataMsg;
 use std::ops::ControlFlow;
 
 use crate::{decode_log_msg, Result};
@@ -13,7 +13,7 @@ impl Connection {
     /// Connect viewer to ser
     pub fn viewer_to_server(
         url: String,
-        on_log_msg: impl Fn(LogMsg) -> ControlFlow<()> + Send + 'static,
+        on_log_msg: impl Fn(DataMsg) -> ControlFlow<()> + Send + 'static,
     ) -> Result<Self> {
         let sender = ewebsock::ws_connect(
             url,
@@ -24,7 +24,7 @@ impl Connection {
                 }
                 WsEvent::Message(message) => match message {
                     WsMessage::Binary(binary) => match decode_log_msg(&binary) {
-                        Ok(log_msg) => on_log_msg(log_msg),
+                        Ok(data_msg) => on_log_msg(data_msg),
                         Err(err) => {
                             tracing::error!("Failed to parse message: {:?}", err);
                             ControlFlow::Break(())

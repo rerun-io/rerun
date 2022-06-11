@@ -1,6 +1,6 @@
-use log_types::LogMsg;
+use log_types::DataMsg;
 
-pub fn run_native_viewer(rx: std::sync::mpsc::Receiver<LogMsg>) {
+pub fn run_native_viewer(rx: std::sync::mpsc::Receiver<DataMsg>) {
     let native_options = eframe::NativeOptions {
         depth_buffer: 24,
         multisampling: 8,

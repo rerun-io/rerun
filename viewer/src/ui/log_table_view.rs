@@ -32,7 +32,7 @@ pub(crate) fn message_table(
     log_db: &LogDb,
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    messages: &[&LogMsg],
+    messages: &[&DataMsg],
 ) {
     crate::profile_function!();
 
@@ -84,7 +84,7 @@ pub(crate) fn message_table(
         });
 }
 
-fn row_height(msg: &LogMsg) -> f32 {
+fn row_height(msg: &DataMsg) -> f32 {
     if matches!(&msg.data, log_types::Data::Image(_)) {
         48.0
     } else {
@@ -96,10 +96,10 @@ fn table_row(
     log_db: &LogDb,
     context: &mut ViewerContext,
     row: &mut egui_extras::TableRow<'_, '_>,
-    msg: &LogMsg,
+    msg: &DataMsg,
     row_height: f32,
 ) {
-    let LogMsg {
+    let DataMsg {
         id,
         time_point,
         data_path,

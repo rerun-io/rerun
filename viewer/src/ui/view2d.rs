@@ -275,7 +275,7 @@ fn paint_properties(
     }
 }
 
-pub(crate) fn on_hover_ui(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &LogMsg) {
+pub(crate) fn on_hover_ui(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &DataMsg) {
     // A very short summary:
     egui::Grid::new("fields")
         .striped(true)

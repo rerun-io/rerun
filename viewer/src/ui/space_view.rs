@@ -241,10 +241,10 @@ impl SpaceView {
 pub(crate) fn show_log_msg(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    msg: &LogMsg,
+    msg: &DataMsg,
     preview: Preview,
 ) {
-    let LogMsg {
+    let DataMsg {
         id,
         time_point,
         data_path,

@@ -29,7 +29,7 @@ macro_rules! impl_into_enum {
 
 // ----------------------------------------------------------------------------
 
-/// A unique id per [`LogMsg`].
+/// A unique id per [`DataMsg`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct LogId(uuid::Uuid);
@@ -55,8 +55,8 @@ impl LogId {
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct LogMsg {
-    /// A unique id per [`LogMsg`].
+pub struct DataMsg {
+    /// A unique id per [`DataMsg`].
     pub id: LogId,
 
     /// Time information (when it was logged, when it was received, …)
@@ -72,7 +72,7 @@ pub struct LogMsg {
     pub space: Option<DataPath>,
 }
 
-impl LogMsg {
+impl DataMsg {
     #[inline]
     pub fn space(mut self, space: &DataPath) -> Self {
         self.space = Some(space.clone());
@@ -81,8 +81,8 @@ impl LogMsg {
 }
 
 #[inline]
-pub fn log_msg(time_point: &TimePoint, data_path: DataPath, data: impl Into<Data>) -> LogMsg {
-    LogMsg {
+pub fn data_msg(time_point: &TimePoint, data_path: DataPath, data: impl Into<Data>) -> DataMsg {
+    DataMsg {
         time_point: time_point.clone(),
         data_path,
         data: data.into(),

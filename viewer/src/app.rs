@@ -8,7 +8,7 @@ const WATERMARK: bool = false; // Nice for recording media material
 // ----------------------------------------------------------------------------
 
 pub struct App {
-    rx: Option<std::sync::mpsc::Receiver<LogMsg>>,
+    rx: Option<std::sync::mpsc::Receiver<DataMsg>>,
 
     /// Where the logs are stored.
     log_db: LogDb,
@@ -20,7 +20,7 @@ impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
         storage: Option<&dyn eframe::Storage>,
-        rx: std::sync::mpsc::Receiver<LogMsg>,
+        rx: std::sync::mpsc::Receiver<DataMsg>,
     ) -> Self {
         let state = storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
@@ -67,8 +67,8 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         if let Some(rx) = &mut self.rx {
-            while let Ok(log_msg) = rx.try_recv() {
-                self.log_db.add(log_msg);
+            while let Ok(data_msg) = rx.try_recv() {
+                self.log_db.add(data_msg);
             }
         }
 

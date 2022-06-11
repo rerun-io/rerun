@@ -1,6 +1,6 @@
 use nohash_hasher::IntMap;
 
-use log_types::{Data, DataBatch, DataPath, LogMsg, TimeSource, TimeType};
+use log_types::{Data, DataBatch, DataMsg, DataPath, TimeSource, TimeType};
 
 use crate::{IndexKey, TypePathDataStore};
 
@@ -32,15 +32,15 @@ impl LogDataStore {
         }
     }
 
-    pub fn insert(&mut self, log_msg: &LogMsg) -> crate::Result<()> {
-        for (time_source, time_value) in &log_msg.time_point.0 {
+    pub fn insert(&mut self, data_msg: &DataMsg) -> crate::Result<()> {
+        for (time_source, time_value) in &data_msg.time_point.0 {
             let store = self.entry(time_source, time_value.typ());
-            let dp = log_msg.data_path.clone();
+            let dp = data_msg.data_path.clone();
             let time = time_value.as_i64();
-            let id = log_msg.id;
+            let id = data_msg.id;
 
             #[allow(clippy::match_same_arms)]
-            match log_msg.data.clone() {
+            match data_msg.data.clone() {
                 Data::Batch { indices, data } => {
                     // TODO: reuse batch over time sources to save RAM
                     let (tp, ip) = crate::into_type_path(dp);

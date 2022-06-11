@@ -1,5 +1,5 @@
 use futures_util::{SinkExt, StreamExt};
-use log_types::LogMsg;
+use log_types::DataMsg;
 use parking_lot::Mutex;
 use std::sync::Arc;
 use std::{net::SocketAddr, time::Duration};
@@ -29,7 +29,7 @@ impl Server {
     }
 
     /// Accept new connections forever
-    pub async fn listen(self, rx: std::sync::mpsc::Receiver<LogMsg>) -> anyhow::Result<()> {
+    pub async fn listen(self, rx: std::sync::mpsc::Receiver<DataMsg>) -> anyhow::Result<()> {
         use anyhow::Context as _;
 
         let history = Arc::new(Mutex::new(Vec::new()));
@@ -53,14 +53,14 @@ impl Server {
 }
 
 fn to_broadcast_stream(
-    log_rx: std::sync::mpsc::Receiver<LogMsg>,
+    log_rx: std::sync::mpsc::Receiver<DataMsg>,
     history: Arc<Mutex<Vec<Arc<[u8]>>>>,
 ) -> tokio::sync::broadcast::Sender<Arc<[u8]>> {
     let (tx, _) = tokio::sync::broadcast::channel(1024);
     let tx1 = tx.clone();
     tokio::task::spawn_blocking(move || {
-        while let Ok(log_msg) = log_rx.recv() {
-            let bytes = crate::encode_log_msg(&log_msg);
+        while let Ok(data_msg) = log_rx.recv() {
+            let bytes = crate::encode_log_msg(&data_msg);
             let bytes: Arc<[u8]> = bytes.into();
             history.lock().push(bytes.clone());
 
@@ -131,10 +131,10 @@ async fn handle_connection(
                     }
                 }
             }
-            log_msg = log_rx.recv() => {
-                let log_msg = log_msg.unwrap();
+            data_msg = log_rx.recv() => {
+                let data_msg = data_msg.unwrap();
 
-                ws_sender.send(tungstenite::Message::Binary(log_msg.to_vec())).await?;
+                ws_sender.send(tungstenite::Message::Binary(data_msg.to_vec())).await?;
             }
             _ = interval.tick() => {
                 // ws_sender.send(Message::Text("tick".to_owned())).await?;

@@ -510,7 +510,7 @@ fn show_log_ids_tooltip(
                 });
             }
         } else {
-            ui.label(format!("{} log messages", log_ids.len()));
+            ui.label(format!("{} messages", log_ids.len()));
         }
     });
 }
