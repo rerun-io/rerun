@@ -6,28 +6,35 @@ use std::sync::mpsc::Sender;
 use itertools::Itertools as _;
 use log_types::*;
 
-fn configure_world_space(tx: &Sender<DataMsg>) {
+struct Logger<'a>(&'a Sender<LogMsg>);
+
+impl<'a> Logger<'a> {
+    fn log(&self, msg: impl Into<LogMsg>) {
+        self.0.send(msg.into()).ok();
+    }
+}
+
+pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
+    let logger = Logger(tx);
+    configure_world_space(&logger);
+    log_dataset_zip(path, &logger)
+}
+
+fn configure_world_space(logger: &Logger<'_>) {
     let world_space = DataPath::from("world");
     // TODO: what time point should we use?
     let time_point = time_point([("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0)))]);
-    tx.send(
+    logger.log(
         data_msg(
             &time_point,
             &world_space / "up",
             Data::Vec3([0.0, -1.0, 0.0]),
         )
         .space(&world_space), // TODO: this seems redundant
-    )
-    .ok();
+    );
 }
 
-pub fn log_dataset(path: &Path, tx: &Sender<DataMsg>) -> anyhow::Result<()> {
-    configure_world_space(tx);
-
-    log_dataset_zip(path, tx)
-}
-
-pub fn log_dataset_zip(path: &Path, tx: &Sender<DataMsg>) -> anyhow::Result<()> {
+fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
     let file = std::fs::File::open(path).unwrap();
     let mut archive = zip::ZipArchive::new(file).unwrap();
     let dir = select_first_dir(&mut archive);
@@ -67,15 +74,14 @@ pub fn log_dataset_zip(path: &Path, tx: &Sender<DataMsg>) -> anyhow::Result<()> 
                     data: image.to_vec(),
                 };
 
-                tx.send(
+                logger.log(
                     data_msg(
                         &time_point,
                         DataPath::from("rgb") / "image",
                         Data::Image(image),
                     )
                     .space(&DataPath::from("image")),
-                )
-                .ok();
+                );
             }
 
             if file_name.ends_with(".pgm") && num_depth_images < MAX_DEPTH_IMAGES {
@@ -91,15 +97,14 @@ pub fn log_dataset_zip(path: &Path, tx: &Sender<DataMsg>) -> anyhow::Result<()> 
                         format: log_types::ImageFormat::Luminance16,
                         data: bytemuck::cast_slice(depth_image.as_raw()).to_vec(),
                     };
-                    tx.send(
+                    logger.log(
                         data_msg(
                             &time_point,
                             DataPath::from("depth") / "image",
                             Data::Image(image),
                         )
                         .space(&DataPath::from("depth_image")),
-                    )
-                    .ok();
+                    );
                 }
 
                 let (w, h) = (depth_image.width(), depth_image.height());
@@ -126,7 +131,7 @@ pub fn log_dataset_zip(path: &Path, tx: &Sender<DataMsg>) -> anyhow::Result<()> 
 
                         indices.push(Index::Pixel([x as _, y as _]));
                         positions.push(pos.to_array());
-                        // tx.send(
+                        // logger.log(
                         //     data_msg(
                         //         &time_point,
                         //         DataPath::from("points")
@@ -136,11 +141,11 @@ pub fn log_dataset_zip(path: &Path, tx: &Sender<DataMsg>) -> anyhow::Result<()> 
                         //     )
                         //     .space(&DataPath::from("world")),
                         // )
-                        // .ok();
+                        // ;
                     }
                 }
 
-                tx.send(
+                logger.log(
                     data_msg(
                         &time_point,
                         DataPath::from("points")
@@ -152,11 +157,10 @@ pub fn log_dataset_zip(path: &Path, tx: &Sender<DataMsg>) -> anyhow::Result<()> 
                         },
                     )
                     .space(&DataPath::from("world")),
-                )
-                .ok();
+                );
 
                 let spaces = vec![DataPath::from("world"); indices.len()];
-                tx.send(
+                logger.log(
                     data_msg(
                         &time_point,
                         DataPath::from("points")
@@ -168,8 +172,7 @@ pub fn log_dataset_zip(path: &Path, tx: &Sender<DataMsg>) -> anyhow::Result<()> 
                         },
                     )
                     .space(&DataPath::from("world")),
-                )
-                .ok();
+                );
 
                 tracing::info!("Logged {w} x {h} = {} points", w * h);
             }

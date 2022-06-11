@@ -29,7 +29,7 @@ impl Server {
     }
 
     /// Accept new connections forever
-    pub async fn listen(self, rx: std::sync::mpsc::Receiver<DataMsg>) -> anyhow::Result<()> {
+    pub async fn listen(self, rx: std::sync::mpsc::Receiver<LogMsg>) -> anyhow::Result<()> {
         use anyhow::Context as _;
 
         let history = Arc::new(Mutex::new(Vec::new()));
@@ -53,7 +53,7 @@ impl Server {
 }
 
 fn to_broadcast_stream(
-    log_rx: std::sync::mpsc::Receiver<DataMsg>,
+    log_rx: std::sync::mpsc::Receiver<LogMsg>,
     history: Arc<Mutex<Vec<Arc<[u8]>>>>,
 ) -> tokio::sync::broadcast::Sender<Arc<[u8]>> {
     let (tx, _) = tokio::sync::broadcast::channel(1024);

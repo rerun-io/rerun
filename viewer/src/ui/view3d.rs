@@ -260,7 +260,7 @@ fn tracking_camera(
         let mut selected_camera = None;
 
         for (_, props, camera) in objects.camera.iter() {
-            if let Some(msg) = log_db.get_msg(props.log_id) {
+            if let Some(msg) = log_db.get_data_msg(props.log_id) {
                 if &msg.data_path == data_path {
                     if selected_camera.is_some() {
                         return None; // More than one camera
@@ -308,7 +308,7 @@ pub(crate) fn combined_view_3d(
     let mut hovered_id = state_3d.hovered;
     if ui.input().pointer.any_click() {
         if let Some(clicked_id) = hovered_id {
-            if let Some(msg) = log_db.get_msg(&clicked_id) {
+            if let Some(msg) = log_db.get_data_msg(&clicked_id) {
                 context.selection = crate::Selection::LogId(clicked_id);
                 if let Data::Camera(cam) = &msg.data {
                     state_3d.interpolate_to_camera(Camera::from_camera_data(cam));
@@ -329,7 +329,7 @@ pub(crate) fn combined_view_3d(
     }
 
     if let Some(hovered_id) = hovered_id {
-        if let Some(msg) = log_db.get_msg(&hovered_id) {
+        if let Some(msg) = log_db.get_data_msg(&hovered_id) {
             egui::containers::popup::show_tooltip_at_pointer(
                 ui.ctx(),
                 egui::Id::new("3d_tooltip"),

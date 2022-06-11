@@ -502,7 +502,7 @@ fn show_log_ids_tooltip(
         // TODO: show as a table?
         if log_ids.len() == 1 {
             let log_id = log_ids[0];
-            if let Some(msg) = log_db.get_msg(&log_id) {
+            if let Some(msg) = log_db.get_data_msg(&log_id) {
                 ui.push_id(log_id, |ui| {
                     ui.group(|ui| {
                         crate::space_view::show_log_msg(context, ui, msg, crate::Preview::Small);

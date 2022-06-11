@@ -1,5 +1,5 @@
 use ewebsock::*;
-use log_types::DataMsg;
+use log_types::LogMsg;
 use std::ops::ControlFlow;
 
 use crate::{decode_log_msg, Result};
@@ -13,7 +13,7 @@ impl Connection {
     /// Connect viewer to ser
     pub fn viewer_to_server(
         url: String,
-        on_log_msg: impl Fn(DataMsg) -> ControlFlow<()> + Send + 'static,
+        on_log_msg: impl Fn(LogMsg) -> ControlFlow<()> + Send + 'static,
     ) -> Result<Self> {
         let sender = ewebsock::ws_connect(
             url,

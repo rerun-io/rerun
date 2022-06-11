@@ -10,7 +10,7 @@ mod server;
 #[cfg(feature = "server")]
 pub use server::Server;
 
-use log_types::DataMsg;
+use log_types::LogMsg;
 
 pub type Result<T> = anyhow::Result<T>;
 
@@ -28,7 +28,7 @@ pub fn default_server_url() -> String {
 
 const PREFIX: [u8; 4] = *b"RR00";
 
-pub fn encode_log_msg(data_msg: &DataMsg) -> Vec<u8> {
+pub fn encode_log_msg(data_msg: &LogMsg) -> Vec<u8> {
     use bincode::Options as _;
     let mut bytes = PREFIX.to_vec();
     bincode::DefaultOptions::new()
@@ -37,7 +37,7 @@ pub fn encode_log_msg(data_msg: &DataMsg) -> Vec<u8> {
     bytes
 }
 
-pub fn decode_log_msg(data: &[u8]) -> Result<DataMsg> {
+pub fn decode_log_msg(data: &[u8]) -> Result<LogMsg> {
     let payload = data
         .strip_prefix(&PREFIX)
         .ok_or_else(|| anyhow::format_err!("Message didn't start with the correct prefix"))?;

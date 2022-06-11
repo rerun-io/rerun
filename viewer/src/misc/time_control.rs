@@ -490,7 +490,7 @@ impl TimeControl {
 
         if self.is_time_filter_active() {
             if let Some(range) = state.selection {
-                return log_db.messages_in_range(self.source(), range, filter);
+                return log_db.data_messages_in_range(self.source(), range, filter);
             }
         }
 

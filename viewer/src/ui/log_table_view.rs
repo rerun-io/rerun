@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 use log_types::*;
 
 use crate::{LogDb, Preview, ViewerContext};
@@ -17,7 +17,7 @@ impl LogTableView {
 
         let messages = {
             crate::profile_scope!("Collecting messages");
-            log_db.chronological_messages().collect_vec()
+            log_db.chronological_data_messages().collect_vec()
         };
 
         egui::ScrollArea::horizontal()

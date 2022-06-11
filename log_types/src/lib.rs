@@ -29,7 +29,7 @@ macro_rules! impl_into_enum {
 
 // ----------------------------------------------------------------------------
 
-/// A unique id per [`DataMsg`].
+/// A unique id per [`LogMsg`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct LogId(uuid::Uuid);
@@ -51,6 +51,64 @@ impl LogId {
         Self(uuid::Uuid::new_v4())
     }
 }
+
+// ----------------------------------------------------------------------------
+
+#[must_use]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum LogMsg {
+    /// Log type-into to a [`TypePath`].
+    TypeMsg(TypeMsg),
+    /// Log some data to a [`DataPath`].
+    DataMsg(DataMsg),
+}
+
+impl LogMsg {
+    pub fn id(&self) -> LogId {
+        match self {
+            Self::TypeMsg(msg) => msg.id,
+            Self::DataMsg(msg) => msg.id,
+        }
+    }
+}
+
+impl_into_enum!(TypeMsg, LogMsg, TypeMsg);
+impl_into_enum!(DataMsg, LogMsg, DataMsg);
+
+// ----------------------------------------------------------------------------
+
+#[must_use]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TypeMsg {
+    /// A unique id per [`LogMsg`].
+    pub id: LogId,
+
+    /// The [`TypePath`] target.
+    pub type_path: TypePath,
+
+    /// The type of object at this object type path.
+    pub object_type: ObjectType,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum ObjectType {
+    Image,
+    Point2D,
+    BBox2d,
+    LineSegments2D,
+
+    Point3D,
+    Box3D,
+    Path3D,
+    LineSegments3D,
+    Mesh3D,
+    Camera,
+}
+
+// ----------------------------------------------------------------------------
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]

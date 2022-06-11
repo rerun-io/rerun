@@ -336,6 +336,7 @@ crate::impl_into_enum!(String, Index, String);
 pub type TypePath = im::Vector<TypePathComponent>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TypePathComponent {
     /// Struct member
     String(InternedString),

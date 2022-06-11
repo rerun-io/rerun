@@ -1,10 +1,10 @@
-//! Saving/loading [`DataMsg`]:es to/from a file.
-use crate::DataMsg;
+//! Saving/loading [`LogMsg`]:es to/from a file.
+use crate::LogMsg;
 
 #[cfg(feature = "save")]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn encode<'a>(
-    messages: impl Iterator<Item = &'a DataMsg>,
+    messages: impl Iterator<Item = &'a LogMsg>,
     mut write: impl std::io::Write,
 ) -> anyhow::Result<()> {
     use anyhow::Context as _;
@@ -65,7 +65,7 @@ impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
 #[cfg(feature = "load")]
 #[cfg(not(target_arch = "wasm32"))]
 impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
-    type Item = anyhow::Result<DataMsg>;
+    type Item = anyhow::Result<LogMsg>;
     fn next(&mut self) -> Option<Self::Item> {
         use std::io::Read as _;
 
@@ -119,7 +119,7 @@ impl<'r> Decoder<'r> {
 #[cfg(feature = "load")]
 #[cfg(target_arch = "wasm32")]
 impl<'r> Iterator for Decoder<'r> {
-    type Item = anyhow::Result<DataMsg>;
+    type Item = anyhow::Result<LogMsg>;
     fn next(&mut self) -> Option<Self::Item> {
         use std::io::Read as _;
 
@@ -165,7 +165,7 @@ fn test_encode_decode() {
 
     let decoded_messages = Decoder::new(&mut file.as_slice())
         .unwrap()
-        .collect::<anyhow::Result<Vec<DataMsg>>>()
+        .collect::<anyhow::Result<Vec<LogMsg>>>()
         .unwrap();
 
     assert_eq!(messages, decoded_messages);

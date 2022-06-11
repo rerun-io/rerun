@@ -39,7 +39,7 @@ pub(crate) fn combined_view_2d(
         if response.clicked() {
             context.selection = Selection::LogId(hovered_id);
         }
-        if let Some(msg) = log_db.get_msg(&hovered_id) {
+        if let Some(msg) = log_db.get_data_msg(&hovered_id) {
             egui::containers::popup::show_tooltip_at_pointer(
                 ui.ctx(),
                 Id::new("2d_tooltip"),

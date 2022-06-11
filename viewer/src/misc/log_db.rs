@@ -11,7 +11,7 @@ use super::time_axis::TimeRange;
 pub(crate) struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<LogId>,
-    messages: nohash_hasher::IntMap<LogId, DataMsg>,
+    log_messages: nohash_hasher::IntMap<LogId, LogMsg>,
     pub time_points: TimePoints,
     pub spaces: BTreeMap<DataPath, SpaceSummary>,
     pub data_tree: DataTree,
@@ -20,10 +20,22 @@ pub(crate) struct LogDb {
 }
 
 impl LogDb {
-    pub fn add(&mut self, msg: DataMsg) {
-        santiy_check(&msg);
+    pub fn add(&mut self, msg: LogMsg) {
+        match &msg {
+            LogMsg::TypeMsg(type_msg) => self.add_type_msg(type_msg),
+            LogMsg::DataMsg(data_msg) => self.add_data_msg(data_msg),
+        }
+        self.log_messages.insert(msg.id(), msg);
+    }
 
-        if let Err(err) = self.data_store.insert(&msg) {
+    fn add_type_msg(&mut self, msg: &TypeMsg) {}
+
+    fn add_data_msg(&mut self, msg: &DataMsg) {
+        if (msg.data.is_2d() || msg.data.is_3d()) && msg.space.is_none() {
+            tracing::warn!("Got 2D/3D data message without a space: {:?}", msg);
+        }
+
+        if let Err(err) = self.data_store.insert(msg) {
             tracing::warn!("Failed to add data to data_store: {:?}", err);
         }
 
@@ -167,23 +179,36 @@ impl LogDb {
             .entry(msg.data_path.clone())
             .or_default()
             .add(&msg.time_point, msg.id);
-        self.data_tree.add_log_msg(&msg);
-        self.messages.insert(msg.id, msg);
+        self.data_tree.add_data_msg(msg);
     }
 
     pub fn len(&self) -> usize {
-        self.messages.len()
+        self.log_messages.len()
     }
 
     /// In the order they arrived
-    pub fn chronological_messages(&self) -> impl Iterator<Item = &DataMsg> {
+    pub fn chronological_log_messages(&self) -> impl Iterator<Item = &LogMsg> {
         self.chronological_message_ids
             .iter()
-            .filter_map(|id| self.messages.get(id))
+            .filter_map(|id| self.get_log_msg(id))
     }
 
-    pub fn get_msg(&self, id: &LogId) -> Option<&DataMsg> {
-        self.messages.get(id)
+    /// In the order they arrived
+    pub fn chronological_data_messages(&self) -> impl Iterator<Item = &DataMsg> {
+        self.chronological_message_ids
+            .iter()
+            .filter_map(|id| self.get_data_msg(id))
+    }
+
+    pub fn get_log_msg(&self, id: &LogId) -> Option<&LogMsg> {
+        self.log_messages.get(id)
+    }
+
+    pub fn get_data_msg(&self, id: &LogId) -> Option<&DataMsg> {
+        match self.log_messages.get(id)? {
+            LogMsg::TypeMsg(_) => None,
+            LogMsg::DataMsg(msg) => Some(msg),
+        }
     }
 
     /// Grouped by [`DataPath`], find the latest [`DataMsg`] that matches
@@ -201,7 +226,7 @@ impl LogDb {
                 if filter.allow(data_path) {
                     history
                         .latest(time_source, no_later_than)
-                        .and_then(|id| self.get_msg(&id))
+                        .and_then(|id| self.get_data_msg(&id))
                 } else {
                     None
                 }
@@ -212,7 +237,7 @@ impl LogDb {
     /// All messages in the range, plus the last one before the range.
     ///
     /// This last addition is so that we get "static" assets too. We should maybe have a nicer way to accomplish this.
-    pub fn messages_in_range(
+    pub fn data_messages_in_range(
         &self,
         time_source: &TimeSource,
         range: TimeRange,
@@ -225,7 +250,9 @@ impl LogDb {
                 history.collect_in_range(time_source, range, &mut ids);
             }
         }
-        ids.into_iter().filter_map(|id| self.get_msg(&id)).collect()
+        ids.into_iter()
+            .filter_map(|id| self.get_data_msg(&id))
+            .collect()
     }
 
     // pub fn latest(
@@ -254,12 +281,6 @@ impl MessageFilter {
             MessageFilter::All => true,
             MessageFilter::DataPath(needle) => needle == candidate,
         }
-    }
-}
-
-fn santiy_check(msg: &DataMsg) {
-    if (msg.data.is_2d() || msg.data.is_3d()) && msg.space.is_none() {
-        tracing::warn!("Got 2D/3D data message without a space: {:?}", msg);
     }
 }
 
@@ -382,7 +403,7 @@ impl DataTree {
         self.string_children.is_empty() && self.index_children.is_empty()
     }
 
-    pub fn add_log_msg(&mut self, msg: &DataMsg) {
+    pub fn add_data_msg(&mut self, msg: &DataMsg) {
         self.add_path(&msg.data_path, msg);
     }
 

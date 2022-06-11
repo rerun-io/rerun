@@ -8,7 +8,7 @@ const WATERMARK: bool = false; // Nice for recording media material
 // ----------------------------------------------------------------------------
 
 pub struct App {
-    rx: Option<std::sync::mpsc::Receiver<DataMsg>>,
+    rx: Option<std::sync::mpsc::Receiver<LogMsg>>,
 
     /// Where the logs are stored.
     log_db: LogDb,
@@ -20,7 +20,7 @@ impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
         storage: Option<&dyn eframe::Storage>,
-        rx: std::sync::mpsc::Receiver<DataMsg>,
+        rx: std::sync::mpsc::Receiver<LogMsg>,
     ) -> Self {
         let state = storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
@@ -301,7 +301,7 @@ fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
         crate::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::create(path).context("Failed to create file")?;
-        log_types::encoding::encode(log_db.chronological_messages(), file)
+        log_types::encoding::encode(log_db.chronological_log_messages(), file)
     }
 
     match save_to_file_impl(log_db, path) {

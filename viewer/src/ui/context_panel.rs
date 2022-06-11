@@ -29,7 +29,7 @@ impl ContextPanel {
                 // ui.label(format!("Selected log_id: {:?}", log_id));
                 ui.label("Selected a specific log message");
 
-                let msg = if let Some(msg) = log_db.get_msg(log_id) {
+                let msg = if let Some(msg) = log_db.get_data_msg(log_id) {
                     msg
                 } else {
                     tracing::warn!("Unknown log_id selected. Resetting selection");
