@@ -46,7 +46,6 @@ pub fn random_rgb(seed: u64) -> [u8; 3] {
     use rand::rngs::SmallRng;
     use rand::{Rng, SeedableRng};
 
-    // TODO: ignore `TempId` id:s!
     let mut small_rng = SmallRng::seed_from_u64(seed);
 
     // TODO: OKLab

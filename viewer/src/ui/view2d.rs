@@ -251,7 +251,7 @@ fn paint_properties(
         || match default_color {
             DefaultColor::White => Color32::WHITE,
             DefaultColor::Random => {
-                let [r, g, b] = context.random_color(props.parent_object_path.hash64());
+                let [r, g, b] = context.random_color(props);
                 Color32::from_rgb(r, g, b)
             }
         },

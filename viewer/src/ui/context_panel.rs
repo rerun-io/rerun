@@ -42,7 +42,8 @@ impl ContextPanel {
                 self.view_log_msg_siblings(log_db, context, ui, msg);
             }
             Selection::DataPath(data_path) => {
-                ui.label(format!("Selected object: {}", data_path));
+                // TODO: distinguish data paths from object paths
+                ui.label(format!("Selected data: {}", data_path));
 
                 ui.separator();
 

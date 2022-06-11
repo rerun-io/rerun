@@ -70,7 +70,7 @@ impl Scene {
             } else if let Some(color) = props.color {
                 color
             } else {
-                let [r, g, b] = context.random_color(props.parent_object_path.hash64());
+                let [r, g, b] = context.random_color(props);
                 [r, g, b, 255]
             }
         };

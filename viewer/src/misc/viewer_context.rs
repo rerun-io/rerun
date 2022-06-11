@@ -121,7 +121,10 @@ impl ViewerContext {
         response
     }
 
-    pub fn random_color(&mut self, hash: u64) -> [u8; 3] {
+    pub fn random_color(&mut self, props: &data_store::ObjectProps<'_>) -> [u8; 3] {
+        // TODO: ignore "temporary" indices when calculating the hash.
+        let hash = props.parent_object_path.hash64();
+
         let color = *self
             .object_colors
             .entry(hash)
