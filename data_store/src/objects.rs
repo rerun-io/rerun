@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use log_types::{DataPath, LogId, TypePathComponent};
 
+pub use log_types::objects::*;
+
 use crate::{
     storage::{visit_data, visit_data_and_2_siblings, visit_data_and_3_siblings},
     TimeQuery, TypePath, TypePathDataStore,

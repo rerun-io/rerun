@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
+use itertools::Itertools as _;
+
 use log_types::*;
 use rr_string_interner::InternedString;
 
@@ -41,6 +43,25 @@ impl LogDb {
 
         let object_type_path = msg.data_path.parent().to_type_path();
         if let Some(object_type) = self.object_types.get(&object_type_path) {
+            match msg.data_path.last() {
+                Some(DataPathComponent::String(name)) => {
+                    let valid_members = object_type.members();
+                    if !valid_members.contains(&name.as_str()) {
+                        log_once::warn_once!(
+                            "Logged to {}, but the parent object ({:?}) does not have that member. Expected on of: {}",
+                            msg.data_path.to_type_path(),
+                            object_type,
+                            valid_members.iter().format(", ")
+                        );
+                    }
+                }
+                _ => {
+                    log_once::warn_once!(
+                        "Expected data path ending in a string {}",
+                        msg.data_path.to_type_path()
+                    );
+                }
+            }
         } else {
             log_once::warn_once!(
                 "Logging to {} without first registering object path of {}",

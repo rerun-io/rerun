@@ -44,11 +44,11 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     ));
     logger.log(TypeMsg::object_type(
         TypePath::from("objects") / TypePathComponent::Index / "bbox2d",
-        ObjectType::BBox2d,
+        ObjectType::LineSegments2D,
     ));
     logger.log(TypeMsg::object_type(
         TypePath::from("objects") / TypePathComponent::Index / "bbox3d",
-        ObjectType::LineSegments3D,
+        ObjectType::Box3D,
     ));
 
     let frame_times = log_geometry_pbdata(path, &logger)?;
@@ -109,7 +109,7 @@ fn log_annotation_pbdata(
                 half_size: half_size.to_array(),
             };
             logger.log(
-                data_msg(&time_point, &data_path / "bbox3d" / "box", Data::Box3(box3))
+                data_msg(&time_point, &data_path / "bbox3d" / "obb", Data::Box3(box3))
                     .space(&world_space),
             );
         } else {
@@ -178,7 +178,7 @@ fn log_annotation_pbdata(
                 logger.log(
                     data_msg(
                         &time_point,
-                        &data_path / "bbox2d" / "lines",
+                        &data_path / "bbox2d" / "line_segments",
                         Data::LineSegments2D(line_segments),
                     )
                     .space(&image_space),

@@ -6,10 +6,12 @@
 pub mod encoding;
 
 mod data;
+pub mod objects;
 mod path;
 mod time;
 
 pub use data::*;
+pub use objects::ObjectType;
 pub use path::*;
 pub use time::{Duration, Time};
 
@@ -100,25 +102,6 @@ impl TypeMsg {
             object_type,
         }
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ObjectType {
-    Image,
-    Point2D,
-    BBox2d,
-    LineSegments2D,
-
-    Point3D,
-    Box3D,
-    Path3D,
-    LineSegments3D,
-    Mesh3D,
-    Camera,
-
-    /// Information about a space (up axis etc).
-    Space,
 }
 
 // ----------------------------------------------------------------------------
