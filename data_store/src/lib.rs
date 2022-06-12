@@ -10,50 +10,6 @@ pub use log_types::{
     Index, IndexPath, ObjPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp,
 };
 
-pub enum AtomType {
-    // 1D:
-    I32,
-    F32,
-
-    Color,
-
-    // ----------------------------
-    // 2D:
-    Pos2,
-    BBox2D,
-    LineSegment2D,
-    Image,
-
-    // ----------------------------
-    // 3D:
-    Pos3,
-    BBox3,
-    Path3D,
-    LineSegment3D,
-    Mesh3D,
-    Camera,
-
-    // ----------------------------
-    // N-D:
-    Vecf32,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum Data {
-    F32(f32),
-    Pos3([f32; 3]),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum StructType {
-    /// ```ignore
-    /// pos: Pos3,
-    /// radius: Option<F32>,
-    /// color: Option<Color>,
-    /// ```
-    Point3D,
-}
-
 /// Path to the object owning the batch, i.e. stopping before the last index
 pub(crate) fn batch_parent_obj_path(
     type_path: &ObjTypePath,
