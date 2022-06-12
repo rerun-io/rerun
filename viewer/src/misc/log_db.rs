@@ -14,12 +14,12 @@ pub(crate) struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<LogId>,
     log_messages: nohash_hasher::IntMap<LogId, LogMsg>,
-    pub object_types: HashMap<TypePath, ObjectType>,
+    pub object_types: ahash::AHashMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
-    pub spaces: BTreeMap<DataPath, SpaceSummary>,
-    pub data_tree: DataTree,
+    pub spaces: BTreeMap<ObjPath, SpaceSummary>,
+    pub data_tree: ObjectTree,
     pub data_store: data_store::LogDataStore,
-    object_history: nohash_hasher::IntMap<DataPath, ObjectHistory>,
+    data_history: ahash::AHashMap<DataPath, DataHistoryLog>,
 }
 
 impl LogDb {
@@ -32,8 +32,26 @@ impl LogDb {
     }
 
     fn add_type_msg(&mut self, msg: &TypeMsg) {
-        self.object_types
+        let previous_value = self
+            .object_types
             .insert(msg.type_path.clone(), msg.object_type);
+
+        if let Some(previous_value) = previous_value {
+            if previous_value != msg.object_type {
+                tracing::warn!(
+                    "Object {} changed type from {:?} to {:?}",
+                    msg.type_path,
+                    previous_value,
+                    msg.object_type
+                );
+            }
+        } else {
+            tracing::debug!(
+                "Registered object type {}: {:?}",
+                msg.type_path,
+                msg.object_type
+            );
+        }
     }
 
     fn add_data_msg(&mut self, msg: &DataMsg) {
@@ -41,32 +59,22 @@ impl LogDb {
             tracing::warn!("Got 2D/3D data message without a space: {:?}", msg);
         }
 
-        let object_type_path = msg.data_path.parent().to_type_path();
-        if let Some(object_type) = self.object_types.get(&object_type_path) {
-            match msg.data_path.last() {
-                Some(DataPathComponent::String(name)) => {
-                    let valid_members = object_type.members();
-                    if !valid_members.contains(&name.as_str()) {
-                        log_once::warn_once!(
-                            "Logged to {}, but the parent object ({:?}) does not have that member. Expected on of: {}",
-                            msg.data_path.to_type_path(),
-                            object_type,
-                            valid_members.iter().format(", ")
-                        );
-                    }
-                }
-                _ => {
-                    log_once::warn_once!(
-                        "Expected data path ending in a string {}",
-                        msg.data_path.to_type_path()
-                    );
-                }
+        let obj_type_path = &msg.data_path.obj_path.obj_type_path();
+        if let Some(object_type) = self.object_types.get(obj_type_path) {
+            let valid_members = object_type.members();
+            if !valid_members.contains(&msg.data_path.field_name.as_str()) {
+                log_once::warn_once!(
+                    "Logged to {}, but the parent object ({:?}) does not have that field. Expected on of: {}",
+                    obj_type_path,
+                    object_type,
+                    valid_members.iter().format(", ")
+                );
             }
         } else {
             log_once::warn_once!(
-                "Logging to {} without first registering object path of {}",
-                msg.data_path.to_type_path(),
-                object_type_path
+                "Logging to {}.{} without first registering object type",
+                obj_type_path,
+                msg.data_path.field_name
             );
         }
 
@@ -210,7 +218,7 @@ impl LogDb {
             }
         }
 
-        self.object_history
+        self.data_history
             .entry(msg.data_path.clone())
             .or_default()
             .add(&msg.time_point, msg.id);
@@ -255,7 +263,7 @@ impl LogDb {
         filter: &MessageFilter,
     ) -> Vec<&DataMsg> {
         crate::profile_function!();
-        self.object_history
+        self.data_history
             .iter()
             .filter_map(|(data_path, history)| {
                 if filter.allow(data_path) {
@@ -280,7 +288,7 @@ impl LogDb {
     ) -> Vec<&DataMsg> {
         crate::profile_function!();
         let mut ids = vec![];
-        for (data_path, history) in &self.object_history {
+        for (data_path, history) in &self.data_history {
             if filter.allow(data_path) {
                 history.collect_in_range(time_source, range, &mut ids);
             }
@@ -323,13 +331,15 @@ impl MessageFilter {
 ///
 /// This allows fast lookup of "latest version" of an object.
 #[derive(Default)]
-pub(crate) struct ObjectHistory(nohash_hasher::IntMap<TimeSource, BTreeMap<TimeValue, Vec<LogId>>>);
+pub(crate) struct DataHistoryLog(
+    nohash_hasher::IntMap<TimeSource, BTreeMap<TimeValue, Vec<LogId>>>,
+);
 
-impl ObjectHistory {
+impl DataHistoryLog {
     fn add(&mut self, time_point: &TimePoint, id: LogId) {
         for (time_source, time_value) in &time_point.0 {
             self.0
-                .entry(time_source.clone())
+                .entry(*time_source)
                 .or_default()
                 .entry(*time_value)
                 .or_default()
@@ -411,38 +421,34 @@ impl SpaceSummary {
 
 /// Tree of data paths.
 #[derive(Default)]
-pub(crate) struct DataTree {
-    /// Children of type [`DataPathComponent::String`].
-    pub string_children: BTreeMap<InternedString, DataTree>,
+pub(crate) struct ObjectTree {
+    /// Children of type [`ObjPathComp::String`].
+    pub string_children: BTreeMap<InternedString, ObjectTree>,
 
-    /// Children of type [`DataPathComponent::Index`].
-    pub index_children: BTreeMap<Index, DataTree>,
-
-    /// When do we have data?
-    ///
-    /// Data logged at this exact path.
-    pub times: BTreeMap<TimePoint, BTreeSet<LogId>>,
+    /// Children of type [`ObjPathComp::Index`].
+    pub index_children: BTreeMap<Index, ObjectTree>,
 
     /// When do we or a child have data?
     ///
     /// Data logged at this exact path or any child path.
     pub prefix_times: BTreeMap<TimePoint, BTreeSet<LogId>>,
 
-    /// Data logged at this exact path.
-    pub data: DataColumns,
+    /// Data logged at this object path.
+    pub fields: BTreeMap<FieldName, DataColumns>,
 }
 
-impl DataTree {
-    /// Has no children
+impl ObjectTree {
+    /// Has no child objects.
     pub fn is_leaf(&self) -> bool {
         self.string_children.is_empty() && self.index_children.is_empty()
     }
 
     pub fn add_data_msg(&mut self, msg: &DataMsg) {
-        self.add_path(&msg.data_path, msg);
+        let obj_path = ObjPathBuilder::from(&msg.data_path.obj_path);
+        self.add_path(obj_path.as_slice(), msg.data_path.field_name, msg);
     }
 
-    fn add_path(&mut self, path: &[DataPathComponent], msg: &DataMsg) {
+    fn add_path(&mut self, path: &[ObjPathComp], field_name: FieldName, msg: &DataMsg) {
         self.prefix_times
             .entry(msg.time_point.clone())
             .or_default()
@@ -450,38 +456,43 @@ impl DataTree {
 
         match path {
             [] => {
-                self.times
-                    .entry(msg.time_point.clone())
-                    .or_default()
-                    .insert(msg.id);
-                self.data.add(msg);
+                self.fields.entry(field_name).or_default().add(msg);
             }
             [first, rest @ ..] => match first {
-                DataPathComponent::String(string) => {
+                ObjPathComp::String(string) => {
                     self.string_children
                         .entry(*string)
                         .or_default()
-                        .add_path(rest, msg);
+                        .add_path(rest, field_name, msg);
                 }
-                DataPathComponent::Index(index) => {
+                ObjPathComp::Index(index) => {
                     self.index_children
                         .entry(index.clone())
                         .or_default()
-                        .add_path(rest, msg);
+                        .add_path(rest, field_name, msg);
                 }
             },
         }
     }
 }
 
+// ----------------------------------------------------------------------------
+
 /// Column transform of [`Data`].
 #[derive(Default)]
 pub(crate) struct DataColumns {
+    /// When do we have data?
+    pub times: BTreeMap<TimePoint, BTreeSet<LogId>>,
     pub per_type: HashMap<DataType, BTreeSet<LogId>>,
 }
 
 impl DataColumns {
     pub fn add(&mut self, msg: &DataMsg) {
+        self.times
+            .entry(msg.time_point.clone())
+            .or_default()
+            .insert(msg.id);
+
         self.per_type
             .entry(msg.data.typ())
             .or_default()

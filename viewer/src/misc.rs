@@ -31,7 +31,7 @@ pub struct TimePoints(pub BTreeMap<log_types::TimeSource, BTreeSet<TimeValue>>);
 impl TimePoints {
     pub fn insert(&mut self, time_point: &TimePoint) {
         for (time_key, value) in &time_point.0 {
-            self.0.entry(time_key.clone()).or_default().insert(*value);
+            self.0.entry(*time_key).or_default().insert(*value);
         }
     }
 }

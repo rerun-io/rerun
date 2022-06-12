@@ -154,12 +154,14 @@ fn test_encode_decode() {
     let messages = vec![
         LogMsg::from(data_msg(
             &time_point,
-            DataPath::from("foo") / "bar" / "baz",
+            ObjPathBuilder::from("foo") / "bar",
+            "baz",
             42,
         )),
         LogMsg::from(data_msg(
             &time_point,
-            DataPath::from("badger") / "mushroom" / "snake",
+            ObjPathBuilder::from("badger") / "mushroom",
+            "snake",
             1337.0,
         )),
     ];

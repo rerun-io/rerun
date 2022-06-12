@@ -11,7 +11,7 @@ use scene::*;
 
 use egui::NumExt as _;
 use glam::Affine3A;
-use log_types::{Data, DataPath, LogId};
+use log_types::{Data, LogId, ObjPath};
 use macaw::{vec3, Quat, Vec3};
 
 use crate::{log_db::SpaceSummary, LogDb};
@@ -168,7 +168,7 @@ fn show_settings_ui(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
     state_3d: &mut State3D,
-    space: &DataPath,
+    space: &ObjPath,
     space_summary: &SpaceSummary,
     space_specs: &SpaceSpecs,
 ) {
@@ -239,7 +239,7 @@ struct SpaceSpecs {
 }
 
 impl SpaceSpecs {
-    fn from_objects(space: &DataPath, objects: &data_store::Objects<'_>) -> Self {
+    fn from_objects(space: &ObjPath, objects: &data_store::Objects<'_>) -> Self {
         if let Some(space) = objects.space.get(space) {
             SpaceSpecs {
                 up: Vec3::from(*space.up).normalize_or_zero(),
@@ -282,7 +282,7 @@ pub(crate) fn combined_view_3d(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
     state_3d: &mut State3D,
-    space: &DataPath,
+    space: &ObjPath,
     space_summary: &SpaceSummary,
     objects: &data_store::Objects<'_>,
 ) {

@@ -7,7 +7,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use data_store::TypePathDataStore;
 use data_store::*;
-use log_types::LogId;
+use log_types::{FieldName, IndexKey, LogId};
 
 const NUM_FRAMES: i64 = 1_000; // this can have a big impact on performance
 const NUM_POINTS_PER_CAMERA: u64 = 1_000;
@@ -23,18 +23,19 @@ pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
     store: &'store TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
 ) -> Vec<Point3<'store>> {
-    let object_type_path = TypePathComponent::String("camera".into())
-        / TypePathComponent::Index
-        / TypePathComponent::String("point".into())
-        / TypePathComponent::Index;
+    let obj_type_path = TypePathComp::String("camera".into())
+        / TypePathComp::Index
+        / TypePathComp::String("point".into())
+        / TypePathComp::Index;
 
-    let data_store = store.get::<[f32; 3]>(&(&object_type_path / "pos")).unwrap();
+    let obj_store = store.get(&obj_type_path).unwrap();
+
+    let data_store = obj_store.get::<[f32; 3]>(&FieldName::new("pos")).unwrap();
 
     let mut points = vec![];
     visit_data_and_1_child(
-        store,
+        obj_store,
         time_query,
-        &object_type_path,
         data_store,
         ("radius",),
         |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
@@ -47,14 +48,13 @@ pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
     points
 }
 
-fn data_path(camera: &str, index: u64, field: &str) -> DataPath {
-    DataPath::new(vec![
-        DataPathComponent::String("camera".into()),
-        DataPathComponent::Index(Index::String(camera.into())),
-        DataPathComponent::String("point".into()),
-        DataPathComponent::Index(Index::Sequence(index)),
-        DataPathComponent::String(field.into()),
-    ])
+fn obj_path(camera: &str, index: u64) -> ObjPath {
+    ObjPath::from(ObjPathBuilder::new(vec![
+        ObjPathComp::String("camera".into()),
+        ObjPathComp::Index(Index::String(camera.into())),
+        ObjPathComp::String("point".into()),
+        ObjPathComp::Index(Index::Sequence(index)),
+    ]))
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -70,7 +70,8 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 for point in 0..NUM_POINTS_PER_CAMERA {
                     data_store
                         .insert_individual::<[f32; 3]>(
-                            data_path(camera, point, "pos"),
+                            obj_path(camera, point),
+                            FieldName::from("pos"),
                             time_value,
                             LogId::random(),
                             [1.0, 2.0, 3.0],
@@ -78,14 +79,13 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                         .unwrap();
                 }
             } else {
-                let type_path = TypePath::new(vec![
-                    TypePathComponent::String("camera".into()),
-                    TypePathComponent::Index,
-                    TypePathComponent::String("point".into()),
-                    TypePathComponent::Index,
-                    TypePathComponent::String("pos".into()),
+                let type_path = ObjTypePath::new(vec![
+                    TypePathComp::String("camera".into()),
+                    TypePathComp::Index,
+                    TypePathComp::String("point".into()),
+                    TypePathComp::Index,
                 ]);
-                let mut index_path_prefix = IndexPathKey::default();
+                let mut index_path_prefix = IndexPath::default();
                 index_path_prefix.push(Index::String(camera.into()));
 
                 let batch = Arc::new(
@@ -101,6 +101,7 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                     .insert_batch(
                         type_path,
                         index_path_prefix,
+                        FieldName::from("pos"),
                         time_value,
                         LogId::random(),
                         batch,
@@ -112,7 +113,8 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 for point in 0..NUM_POINTS_PER_CAMERA {
                     data_store
                         .insert_individual(
-                            data_path(camera, point, "radius"),
+                            obj_path(camera, point),
+                            FieldName::from("radius"),
                             time_value,
                             LogId::random(),
                             1.0_f32,
@@ -120,14 +122,13 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                         .unwrap();
                 }
             } else {
-                let type_path = TypePath::new(vec![
-                    TypePathComponent::String("camera".into()),
-                    TypePathComponent::Index,
-                    TypePathComponent::String("point".into()),
-                    TypePathComponent::Index,
-                    TypePathComponent::String("radius".into()),
+                let type_path = ObjTypePath::new(vec![
+                    TypePathComp::String("camera".into()),
+                    TypePathComp::Index,
+                    TypePathComp::String("point".into()),
+                    TypePathComp::Index,
                 ]);
-                let mut index_path_prefix = IndexPathKey::default();
+                let mut index_path_prefix = IndexPath::default();
                 index_path_prefix.push(Index::String(camera.into()));
 
                 let batch = Arc::new(
@@ -140,6 +141,7 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                     .insert_batch(
                         type_path,
                         index_path_prefix,
+                        FieldName::from("radius"),
                         time_value,
                         LogId::random(),
                         batch,

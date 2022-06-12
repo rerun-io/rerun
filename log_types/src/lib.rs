@@ -60,8 +60,9 @@ impl LogId {
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[allow(clippy::large_enum_variant)]
 pub enum LogMsg {
-    /// Log type-into to a [`TypePath`].
+    /// Log type-into to a [`ObjTypePath`].
     TypeMsg(TypeMsg),
     /// Log some data to a [`DataPath`].
     DataMsg(DataMsg),
@@ -88,15 +89,15 @@ pub struct TypeMsg {
     /// A unique id per [`LogMsg`].
     pub id: LogId,
 
-    /// The [`TypePath`] target.
-    pub type_path: TypePath,
+    /// The [`ObjTypePath`] target.
+    pub type_path: ObjTypePath,
 
     /// The type of object at this object type path.
     pub object_type: ObjectType,
 }
 
 impl TypeMsg {
-    pub fn object_type(type_path: TypePath, object_type: ObjectType) -> Self {
+    pub fn object_type(type_path: ObjTypePath, object_type: ObjectType) -> Self {
         Self {
             id: LogId::random(),
             type_path,
@@ -117,29 +118,34 @@ pub struct DataMsg {
     /// Time information (when it was logged, when it was received, …)
     pub time_point: TimePoint,
 
-    /// What this is.
-    pub data_path: DataPath, // TODO: consider splitting this into object_path + InternedString for last member
+    /// What the data is targeting.
+    pub data_path: DataPath,
 
     /// The value of this.
     pub data: Data,
 
     /// Where ("camera", "world") this thing is in.
-    pub space: Option<DataPath>,
+    pub space: Option<ObjPath>,
 }
 
 impl DataMsg {
     #[inline]
-    pub fn space(mut self, space: &DataPath) -> Self {
+    pub fn space(mut self, space: &ObjPath) -> Self {
         self.space = Some(space.clone());
         self
     }
 }
 
 #[inline]
-pub fn data_msg(time_point: &TimePoint, data_path: DataPath, data: impl Into<Data>) -> DataMsg {
+pub fn data_msg(
+    time_point: &TimePoint,
+    obj_path: impl Into<ObjPath>,
+    field_name: impl Into<FieldName>,
+    data: impl Into<Data>,
+) -> DataMsg {
     DataMsg {
         time_point: time_point.clone(),
-        data_path,
+        data_path: DataPath::new(obj_path.into(), field_name.into()),
         data: data.into(),
         space: None,
         id: LogId::random(),

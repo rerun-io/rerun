@@ -182,7 +182,7 @@ macro_rules! declare_new_type {
         $vis:vis struct $StructName:ident;
     ) => {
         // ($StructName: ident) => {
-        #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+        #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
         #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
         pub struct $StructName($crate::InternedString);
 

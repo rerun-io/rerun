@@ -18,19 +18,19 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     let logger = Logger(tx);
 
     logger.log(TypeMsg::object_type(
-        TypePath::from("world"),
+        ObjTypePath::from("world"),
         ObjectType::Space,
     ));
     logger.log(TypeMsg::object_type(
-        TypePath::from("depth"),
+        ObjTypePath::from("depth"),
         ObjectType::Image,
     ));
     logger.log(TypeMsg::object_type(
-        TypePath::from("rgb"),
+        ObjTypePath::from("rgb"),
         ObjectType::Image,
     ));
     logger.log(TypeMsg::object_type(
-        TypePath::from("points") / TypePathComponent::Index,
+        ObjTypePath::from("points") / TypePathComp::Index,
         ObjectType::Point3D,
     ));
 
@@ -38,18 +38,23 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     log_dataset_zip(path, &logger)
 }
 
+fn space(name: &str) -> ObjPath {
+    ObjPath::from(ObjPathBuilder::from(name))
+}
+
 fn configure_world_space(logger: &Logger<'_>) {
-    let world_space = DataPath::from("world");
+    let world_space = space("world");
 
     // TODO: what time point should we use?
     let time_point = time_point([("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0)))]);
     logger.log(
         data_msg(
             &time_point,
-            &world_space / "up",
+            world_space.clone(),
+            "up",
             Data::Vec3([0.0, -1.0, 0.0]),
         )
-        .space(&world_space), // TODO: this seems redundant
+        .space(&world_space), // TODO: .space seems redundant
     );
 }
 
@@ -96,10 +101,11 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                 logger.log(
                     data_msg(
                         &time_point,
-                        DataPath::from("rgb") / "image",
+                        ObjPathBuilder::from("rgb"),
+                        "image",
                         Data::Image(image),
                     )
-                    .space(&DataPath::from("image")),
+                    .space(&space("image")),
                 );
             }
 
@@ -119,10 +125,11 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     logger.log(
                         data_msg(
                             &time_point,
-                            DataPath::from("depth") / "image",
+                            ObjPathBuilder::from("depth"),
+                            "image",
                             Data::Image(image),
                         )
-                        .space(&DataPath::from("depth_image")),
+                        .space(&space("depth_image")),
                     );
                 }
 
@@ -150,47 +157,34 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
 
                         indices.push(Index::Pixel([x as _, y as _]));
                         positions.push(pos.to_array());
-                        // logger.log(
-                        //     data_msg(
-                        //         &time_point,
-                        //         DataPath::from("points")
-                        //             / DataPathComponent::Index(Index::Pixel([x as _, y as _]))
-                        //             / "pos",
-                        //         Data::Pos3([pos.x, pos.y, pos.z]),
-                        //     )
-                        //     .space(&DataPath::from("world")),
-                        // )
-                        // ;
                     }
                 }
 
                 logger.log(
                     data_msg(
                         &time_point,
-                        DataPath::from("points")
-                            / DataPathComponent::Index(Index::Placeholder)
-                            / "pos",
+                        ObjPathBuilder::from("points") / ObjPathComp::Index(Index::Placeholder),
+                        "pos",
                         Data::Batch {
                             indices: indices.clone(),
                             data: DataBatch::Pos3(positions),
                         },
                     )
-                    .space(&DataPath::from("world")),
+                    .space(&space("world")),
                 );
 
-                let spaces = vec![DataPath::from("world"); indices.len()];
+                let spaces = vec![space("world"); indices.len()];
                 logger.log(
                     data_msg(
                         &time_point,
-                        DataPath::from("points")
-                            / DataPathComponent::Index(Index::Placeholder)
-                            / "space",
+                        ObjPathBuilder::from("points") / ObjPathComp::Index(Index::Placeholder),
+                        "space",
                         Data::Batch {
                             indices,
                             data: DataBatch::Space(spaces),
                         },
                     )
-                    .space(&DataPath::from("world")),
+                    .space(&space("world")),
                 );
             }
         }

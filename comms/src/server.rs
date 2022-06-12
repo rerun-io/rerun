@@ -1,10 +1,12 @@
-use futures_util::{SinkExt, StreamExt};
-use log_types::DataMsg;
-use parking_lot::Mutex;
 use std::sync::Arc;
 use std::{net::SocketAddr, time::Duration};
+
+use futures_util::{SinkExt, StreamExt};
+use parking_lot::Mutex;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Error};
+
+use log_types::LogMsg;
 
 // ----------------------------------------------------------------------------
 

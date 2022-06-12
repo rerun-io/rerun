@@ -1,199 +1,27 @@
+mod data_path;
+mod index_path;
+mod obj_path;
+mod obj_path_builder;
+mod obj_type_path;
+
+pub use data_path::DataPath;
+pub use index_path::{IndexKey, IndexPath};
+pub use obj_path::ObjPath;
+pub use obj_path_builder::ObjPathBuilder;
+pub use obj_type_path::ObjTypePath;
+
 use rr_string_interner::InternedString;
 
-use crate::hash::Hash128;
-
-// ----------------------------------------------------------------------------
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DataPathHash(Hash128);
-
-impl DataPathHash {
-    fn new(components: &[DataPathComponent]) -> Self {
-        Self(Hash128::hash(components))
-    }
-
-    #[inline]
-    pub fn hash64(&self) -> u64 {
-        self.0.hash64()
-    }
-}
-
-impl nohash_hasher::IsEnabled for DataPathHash {}
-
-// ----------------------------------------------------------------------------
-
-/// A path to a specific piece of data (e.g. a single `f32`).
-#[derive(Clone, Debug, Eq)]
-pub struct DataPath {
-    components: Vec<DataPathComponent>,
-    hash: DataPathHash,
-}
-
-impl DataPath {
-    pub fn new(components: Vec<DataPathComponent>) -> Self {
-        let hash = DataPathHash::new(&components);
-        Self { components, hash }
-    }
-
-    #[inline]
-    pub fn as_slice(&self) -> &[DataPathComponent] {
-        self.components.as_slice()
-    }
-
-    /// Precomputed hash.
-    #[inline]
-    pub fn hash(&self) -> DataPathHash {
-        self.hash
-    }
-
-    /// Precomputed hash.
-    #[inline]
-    pub fn hash64(&self) -> u64 {
-        self.hash.hash64()
-    }
-
-    #[inline]
-    pub fn is_root(&self) -> bool {
-        self.components.is_empty()
-    }
-
-    pub fn starts_with(&self, prefix: &[DataPathComponent]) -> bool {
-        self.components.starts_with(prefix)
-    }
-
-    #[inline]
-    pub fn get(&self, i: usize) -> Option<&DataPathComponent> {
-        self.components.get(i)
-    }
-
-    #[must_use]
-    pub fn parent(&self) -> Self {
-        Self::new(self.components[0..self.components.len() - 1].to_vec())
-    }
-
-    #[must_use]
-    pub fn sibling(&self, last_comp: impl Into<DataPathComponent>) -> Self {
-        let mut path = self.components.clone();
-        path.pop(); // TODO: handle root?
-        path.push(last_comp.into());
-        Self::new(path)
-    }
-
-    pub fn push(&mut self, component: DataPathComponent) {
-        // TODO(emilk): optimize DataPath construction.
-        // This is quite slow, but we only do this in rare circumstances, so it is ok for now.
-        let mut components = std::mem::take(&mut self.components);
-        components.push(component);
-        *self = Self::new(components);
-    }
-
-    pub fn to_type_path(&self) -> TypePath {
-        TypePath::new(
-            self.components
-                .iter()
-                .map(DataPathComponent::to_type_path_component)
-                .collect(),
-        )
-    }
-}
-
-#[cfg(feature = "serde")]
-impl serde::Serialize for DataPath {
-    #[inline]
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.as_slice().serialize(serializer)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for DataPath {
-    #[inline]
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        <Vec<DataPathComponent>>::deserialize(deserializer).map(DataPath::new)
-    }
-}
-
-impl std::cmp::PartialOrd for DataPath {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.components.partial_cmp(&other.components)
-    }
-}
-
-impl std::cmp::Ord for DataPath {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.components.cmp(&other.components)
-    }
-}
-
-impl std::cmp::PartialEq for DataPath {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash // much faster, and low chance of collision
-    }
-}
-
-impl std::hash::Hash for DataPath {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.hash.hash(state);
-    }
-}
-
-impl nohash_hasher::IsEnabled for DataPath {}
-
-impl std::ops::Deref for DataPath {
-    type Target = [DataPathComponent];
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.components
-    }
-}
-
-impl IntoIterator for DataPath {
-    type Item = DataPathComponent;
-    type IntoIter = <Vec<DataPathComponent> as IntoIterator>::IntoIter;
-
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        self.components.into_iter()
-    }
-}
-
-impl std::fmt::Display for DataPath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use std::fmt::Write as _;
-
-        f.write_char('/')?;
-        for (i, comp) in self.components.iter().enumerate() {
-            comp.fmt(f)?;
-            if i + 1 != self.components.len() {
-                f.write_char('/')?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl From<&str> for DataPath {
-    #[inline]
-    fn from(component: &str) -> Self {
-        Self::new(vec![component.into()])
-    }
-}
-
-impl From<DataPathComponent> for DataPath {
-    #[inline]
-    fn from(component: DataPathComponent) -> Self {
-        Self::new(vec![component])
-    }
-}
+rr_string_interner::declare_new_type!(
+    /// The name of a object field, e.g. "pos" or "color".
+    pub struct FieldName;
+);
 
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum DataPathComponent {
+pub enum ObjPathComp {
     /// Struct member. Each member can have a different type.
     String(InternedString),
 
@@ -201,16 +29,16 @@ pub enum DataPathComponent {
     Index(Index),
 }
 
-impl DataPathComponent {
-    pub fn to_type_path_component(&self) -> TypePathComponent {
+impl ObjPathComp {
+    pub fn to_type_path_comp(&self) -> TypePathComp {
         match self {
-            Self::String(name) => TypePathComponent::String(*name),
-            Self::Index(_) => TypePathComponent::Index,
+            Self::String(name) => TypePathComp::String(*name),
+            Self::Index(_) => TypePathComp::Index,
         }
     }
 }
 
-impl std::fmt::Display for DataPathComponent {
+impl std::fmt::Display for ObjPathComp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String(string) => f.write_str(string),
@@ -219,78 +47,10 @@ impl std::fmt::Display for DataPathComponent {
     }
 }
 
-impl From<&str> for DataPathComponent {
+impl From<&str> for ObjPathComp {
     #[inline]
     fn from(comp: &str) -> Self {
         Self::String(comp.into())
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-impl std::ops::Div for DataPathComponent {
-    type Output = DataPath;
-
-    #[inline]
-    fn div(self, rhs: DataPathComponent) -> Self::Output {
-        DataPath::new(vec![self, rhs])
-    }
-}
-
-impl std::ops::Div<DataPathComponent> for DataPath {
-    type Output = DataPath;
-
-    #[inline]
-    fn div(mut self, rhs: DataPathComponent) -> Self::Output {
-        self.push(rhs);
-        self
-    }
-}
-
-impl std::ops::Div<Index> for DataPath {
-    type Output = DataPath;
-
-    #[inline]
-    fn div(mut self, rhs: Index) -> Self::Output {
-        self.push(DataPathComponent::Index(rhs));
-        self
-    }
-}
-
-impl std::ops::Div<Index> for &DataPath {
-    type Output = DataPath;
-
-    #[inline]
-    fn div(self, rhs: Index) -> Self::Output {
-        self.clone() / rhs
-    }
-}
-
-impl std::ops::Div<DataPathComponent> for &DataPath {
-    type Output = DataPath;
-
-    #[inline]
-    fn div(self, rhs: DataPathComponent) -> Self::Output {
-        self.clone() / rhs
-    }
-}
-
-impl std::ops::Div<&'static str> for DataPath {
-    type Output = DataPath;
-
-    #[inline]
-    fn div(mut self, rhs: &'static str) -> Self::Output {
-        self.push(DataPathComponent::String(rhs.into()));
-        self
-    }
-}
-
-impl std::ops::Div<&'static str> for &DataPath {
-    type Output = DataPath;
-
-    #[inline]
-    fn div(self, rhs: &'static str) -> Self::Output {
-        self.clone() / rhs
     }
 }
 
@@ -316,7 +76,7 @@ pub enum Index {
     String(String),
 
     /// Used as the last index when logging a batch of data.
-    Placeholder, // TODO: `DataPathComponent::IndexPlaceholder` instead?
+    Placeholder, // TODO: `ObjPathComp::IndexPlaceholder` instead?
 }
 
 impl std::fmt::Display for Index {
@@ -327,7 +87,7 @@ impl std::fmt::Display for Index {
             Self::Integer(value) => value.fmt(f),
             Self::Uuid(value) => value.fmt(f),
             Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
-            Self::Placeholder => "*".fmt(f),                    // put it in quotes
+            Self::Placeholder => '_'.fmt(f),                    // put it in quotes
         }
     }
 }
@@ -338,7 +98,7 @@ crate::impl_into_enum!(String, Index, String);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum TypePathComponent {
+pub enum TypePathComp {
     /// Struct member
     String(InternedString),
 
@@ -347,140 +107,11 @@ pub enum TypePathComponent {
     Index,
 }
 
-impl std::fmt::Display for TypePathComponent {
+impl std::fmt::Display for TypePathComp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(string) => f.write_str(string),
-            Self::Index => f.write_str("*"),
+            Self::String(string) => string.fmt(f),
+            Self::Index => '*'.fmt(f),
         }
-    }
-}
-
-/// Like [`DataPath`], but without any specific indices.
-#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TypePath {
-    components: Vec<TypePathComponent>,
-}
-
-impl TypePath {
-    #[inline]
-    pub fn new(components: Vec<TypePathComponent>) -> Self {
-        Self { components }
-    }
-
-    #[inline]
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = &TypePathComponent> {
-        self.components.iter()
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn last(&self) -> Option<&TypePathComponent> {
-        self.components.last()
-    }
-
-    #[must_use]
-    pub fn parent(&self) -> Self {
-        Self::new(self.components[0..self.components.len() - 1].to_vec())
-    }
-
-    #[must_use]
-    pub fn sibling(&self, name: &str) -> TypePath {
-        let mut components = self.components.clone();
-        components.pop();
-        components.push(TypePathComponent::String(name.into()));
-        Self::new(components)
-    }
-
-    pub fn push(&mut self, comp: TypePathComponent) {
-        self.components.push(comp);
-    }
-}
-
-impl<'a> IntoIterator for &'a TypePath {
-    type Item = &'a TypePathComponent;
-    type IntoIter = std::slice::Iter<'a, TypePathComponent>;
-
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        self.components.iter()
-    }
-}
-
-impl IntoIterator for TypePath {
-    type Item = TypePathComponent;
-    type IntoIter = <Vec<TypePathComponent> as IntoIterator>::IntoIter;
-
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        self.components.into_iter()
-    }
-}
-
-impl std::fmt::Display for TypePath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use std::fmt::Write as _;
-
-        f.write_char('/')?;
-        for (i, comp) in self.components.iter().enumerate() {
-            comp.fmt(f)?;
-            if i + 1 != self.components.len() {
-                f.write_char('/')?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl From<&str> for TypePath {
-    #[inline]
-    fn from(component: &str) -> Self {
-        Self::new(vec![TypePathComponent::String(component.into())])
-    }
-}
-
-impl From<TypePathComponent> for TypePath {
-    #[inline]
-    fn from(component: TypePathComponent) -> Self {
-        Self::new(vec![component])
-    }
-}
-
-impl std::ops::Div for TypePathComponent {
-    type Output = TypePath;
-
-    #[inline]
-    fn div(self, rhs: TypePathComponent) -> Self::Output {
-        TypePath::new(vec![self, rhs])
-    }
-}
-
-impl std::ops::Div<TypePathComponent> for TypePath {
-    type Output = TypePath;
-
-    #[inline]
-    fn div(mut self, rhs: TypePathComponent) -> Self::Output {
-        self.push(rhs);
-        self
-    }
-}
-
-impl std::ops::Div<&str> for TypePath {
-    type Output = TypePath;
-
-    #[inline]
-    fn div(mut self, rhs: &str) -> Self::Output {
-        self.push(TypePathComponent::String(rhs.into()));
-        self
-    }
-}
-
-impl std::ops::Div<&str> for &TypePath {
-    type Output = TypePath;
-
-    #[inline]
-    fn div(self, rhs: &str) -> Self::Output {
-        self.clone() / rhs
     }
 }

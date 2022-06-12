@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log_types::{Data, DataMsg, DataPath};
+use log_types::{Data, DataMsg};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
@@ -21,7 +21,7 @@ impl ContextPanel {
 
         ui.separator();
 
-        match &context.selection {
+        match &context.selection.clone() {
             Selection::None => {
                 ui.weak("(nothing)");
             }
@@ -41,15 +41,33 @@ impl ContextPanel {
                 ui.separator();
                 self.view_log_msg_siblings(log_db, context, ui, msg);
             }
+            Selection::ObjTypePath(obj_type_path) => {
+                ui.label(format!("Selected object type path: {}", obj_type_path));
+            }
+            Selection::ObjPath(obj_path) => {
+                ui.label(format!("Selected object: {}", obj_path));
+                ui.horizontal(|ui| {
+                    ui.label("Type path:");
+                    context.type_path_button(ui, obj_path.obj_type_path());
+                });
+                // TODO: show object contents
+            }
             Selection::DataPath(data_path) => {
-                // TODO: distinguish data paths from object paths
-                ui.label(format!("Selected data: {}", data_path));
+                ui.label(format!("Selected data path: {}", data_path));
+                ui.horizontal(|ui| {
+                    ui.label("Object path:");
+                    context.obj_path_button(ui, &data_path.obj_path);
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Type path:");
+                    context.type_path_button(ui, data_path.obj_path.obj_type_path());
+                });
 
                 ui.separator();
 
                 let mut messages = context
                     .time_control
-                    .selected_messages_for_object(log_db, data_path);
+                    .selected_messages_for_data(log_db, data_path);
                 messages.sort_by_key(|msg| &msg.time_point);
 
                 if context.time_control.is_time_filter_active() {
@@ -94,17 +112,17 @@ impl ContextPanel {
         crate::profile_function!();
         let messages = context.time_control.selected_messages(log_db);
 
-        let parent_path = msg.data_path.parent();
+        let obj_path = msg.data_path.obj_path.clone();
 
         let mut sibling_messages: Vec<&DataMsg> = messages
             .iter()
             .copied()
-            .filter(|other_msg| other_msg.data_path.starts_with(&parent_path))
+            .filter(|other_msg| other_msg.data_path.obj_path == obj_path)
             .collect();
 
         sibling_messages.sort_by_key(|msg| &msg.time_point);
 
-        ui.label(format!("{}:", parent_path));
+        ui.label(format!("{}:", obj_path));
 
         use egui_extras::Size;
         egui_extras::TableBuilder::new(ui)
@@ -127,9 +145,11 @@ impl ContextPanel {
                     let msg = sibling_messages[index];
 
                     row.col(|ui| {
-                        let relative_path =
-                            DataPath::new(msg.data_path.as_slice()[parent_path.len()..].to_vec());
-                        context.data_path_button_to(ui, relative_path.to_string(), &msg.data_path);
+                        context.data_path_button_to(
+                            ui,
+                            msg.data_path.field_name.as_str(),
+                            &msg.data_path,
+                        );
                     });
                     row.col(|ui| {
                         crate::space_view::ui_data(
@@ -166,6 +186,9 @@ pub(crate) fn show_detailed_data_msg(
         .show(ui, |ui| {
             ui.monospace("data_path:");
             context.data_path_button(ui, data_path);
+            ui.end_row();
+            ui.monospace("object type path:");
+            context.type_path_button(ui, data_path.obj_path.obj_type_path());
             ui.end_row();
 
             ui.monospace("time_point:");

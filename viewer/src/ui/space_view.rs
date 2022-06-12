@@ -14,8 +14,8 @@ use crate::{LogDb, Preview, Selection, ViewerContext};
 #[serde(default)]
 pub(crate) struct SpaceView {
     // per space
-    state_2d: nohash_hasher::IntMap<DataPath, crate::view2d::State2D>,
-    state_3d: nohash_hasher::IntMap<DataPath, crate::view3d::State3D>,
+    state_2d: nohash_hasher::IntMap<ObjPath, crate::view2d::State2D>,
+    state_3d: nohash_hasher::IntMap<ObjPath, crate::view3d::State3D>,
 }
 
 impl SpaceView {
@@ -74,7 +74,7 @@ impl SpaceView {
 #[derive(Clone)]
 struct SpaceInfo {
     /// Path to the space
-    space_path: DataPath,
+    space_path: ObjPath,
 
     /// Only set for 2D spaces
     size: Option<Vec2>,
@@ -145,15 +145,18 @@ fn group_by_path_prefix(spaces: &[SpaceInfo]) -> Vec<Vec<SpaceInfo>> {
     if spaces.len() < 2 {
         return vec![spaces.to_vec()];
     }
+    crate::profile_function!();
+
+    let paths = spaces
+        .iter()
+        .map(|space| ObjPathBuilder::from(&space.space_path).as_slice().to_vec())
+        .collect_vec();
 
     for i in 0.. {
-        let mut groups: std::collections::BTreeMap<Option<&DataPathComponent>, Vec<&SpaceInfo>> =
+        let mut groups: std::collections::BTreeMap<Option<&ObjPathComp>, Vec<&SpaceInfo>> =
             Default::default();
-        for space in spaces {
-            groups
-                .entry(space.space_path.get(i))
-                .or_default()
-                .push(space);
+        for (path, space) in paths.iter().zip(spaces) {
+            groups.entry(path.get(i)).or_default().push(space);
         }
         if groups.len() == 1 && groups.contains_key(&None) {
             break;
@@ -196,7 +199,7 @@ impl SpaceView {
         log_db: &LogDb,
         objects: &Objects<'_>,
         context: &mut ViewerContext,
-        space: &DataPath,
+        space: &ObjPath,
         ui: &mut egui::Ui,
     ) {
         crate::profile_function!(&space.to_string());
@@ -212,7 +215,7 @@ impl SpaceView {
             props.space == Some(space)
                 && context
                     .projected_object_properties
-                    .get(props.parent_object_path)
+                    .get(props.parent_obj_path)
                     .visible
         });
 

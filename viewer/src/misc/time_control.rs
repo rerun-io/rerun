@@ -168,7 +168,7 @@ impl TimeControl {
 
         let state = self
             .states
-            .entry(self.time_source.clone())
+            .entry(self.time_source)
             .or_insert_with(|| TimeState::new(full_range.min));
 
         let loop_range = if self.looped && active_selection_type == Some(TimeSelectionType::Loop) {
@@ -271,7 +271,7 @@ impl TimeControl {
                 }
             } else {
                 self.states
-                    .insert(self.time_source.clone(), TimeState::new(min(axis)));
+                    .insert(self.time_source, TimeState::new(min(axis)));
             }
         }
         self.playing = true;
@@ -321,7 +321,7 @@ impl TimeControl {
             }
         }
         if let Some(source) = time_points.0.keys().next() {
-            self.time_source = source.clone();
+            self.time_source = *source;
         } else {
             self.time_source = Default::default();
         }
@@ -410,7 +410,7 @@ impl TimeControl {
         }
 
         self.states
-            .entry(self.time_source.clone())
+            .entry(self.time_source)
             .or_insert_with(|| TimeState::new(time))
             .time = time;
     }
@@ -425,7 +425,7 @@ impl TimeControl {
     /// The range of time we are currently zoomed in on.
     pub fn set_time_view(&mut self, view: TimeView) {
         self.states
-            .entry(self.time_source.clone())
+            .entry(self.time_source)
             .or_insert_with(|| TimeState::new(view.min))
             .view = Some(view);
     }
@@ -443,7 +443,7 @@ impl TimeControl {
 
     pub fn set_time_selection(&mut self, selection: TimeRange) {
         self.states
-            .entry(self.time_source.clone())
+            .entry(self.time_source)
             .or_insert_with(|| TimeState::new(selection.min))
             .selection = Some(selection);
     }
@@ -462,7 +462,7 @@ impl TimeControl {
     /// This is either based on a time selection, or it is the latest message at the current time.
     ///
     /// Returns them in arbitrary order.
-    pub fn selected_messages_for_object<'db>(
+    pub fn selected_messages_for_data<'db>(
         &self,
         log_db: &'db crate::log_db::LogDb,
         data_path: &DataPath,
@@ -509,8 +509,8 @@ impl TimeControl {
         let mut objects = data_store::Objects::default();
         if let Some(time_query) = self.time_query() {
             if let Some((_, store)) = log_db.data_store.get(self.source()) {
-                for (object_type_path, object_type) in &log_db.object_types {
-                    objects.query_object(store, &time_query, object_type_path, *object_type);
+                for (obj_type_path, object_type) in &log_db.object_types {
+                    objects.query_object(store, &time_query, obj_type_path, *object_type);
                 }
             }
         }

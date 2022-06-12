@@ -1,4 +1,4 @@
-use crate::{impl_into_enum, DataPath, Index};
+use crate::{impl_into_enum, Index, ObjPath};
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -46,7 +46,7 @@ pub enum Data {
     // ----------------------------
     // Meta:
     /// Used for specifying which space data belongs to.
-    Space(DataPath),
+    Space(ObjPath),
 }
 
 impl Data {
@@ -146,7 +146,7 @@ impl_into_enum!(Mesh3D, Data, Mesh3D);
 pub enum DataBatch {
     Color(Vec<[u8; 4]>),
     Pos3(Vec<[f32; 3]>),
-    Space(Vec<DataPath>),
+    Space(Vec<ObjPath>),
     // TODO: support more types
 }
 
