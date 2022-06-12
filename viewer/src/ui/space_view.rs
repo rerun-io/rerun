@@ -22,7 +22,7 @@ impl SpaceView {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        let scene = context.time_control.selected_objects(log_db);
+        let objects = context.time_control.selected_objects(log_db);
 
         if let Selection::Space(selected_space) = &context.selection {
             let selected_space = selected_space.clone();
@@ -32,9 +32,9 @@ impl SpaceView {
                 }
                 context.space_button(ui, &selected_space);
             });
-            self.show_space(log_db, &scene, context, &selected_space, ui);
+            self.show_space(log_db, &objects, context, &selected_space, ui);
         } else {
-            self.show_all(log_db, &scene, context, ui);
+            self.show_all(log_db, &objects, context, ui);
         }
     }
 

@@ -514,7 +514,7 @@ impl<'s> Space<'s> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Objects<'s> {
     pub space: BTreeMap<&'s ObjPath, Space<'s>>, // SPECIAL!
 
@@ -529,6 +529,7 @@ pub struct Objects<'s> {
     pub line_segments3d: ObjectVec<'s, LineSegments3D<'s>>,
     pub mesh3d: ObjectVec<'s, Mesh3D<'s>>,
     pub camera: ObjectVec<'s, Camera<'s>>,
+    // be very careful when adding to this to update everything, including `viwer::misc::calc_bbox_3d`.
 }
 
 impl<'s> Objects<'s> {
@@ -580,6 +581,10 @@ impl<'s> Objects<'s> {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.space.is_empty() && !self.has_any_2d() && !self.has_any_3d()
+    }
+
     pub fn has_any_2d(&self) -> bool {
         !self.image.is_empty()
             || !self.point2d.is_empty()
@@ -594,5 +599,92 @@ impl<'s> Objects<'s> {
             || !self.line_segments3d.is_empty()
             || !self.mesh3d.is_empty()
             || !self.camera.is_empty()
+    }
+
+    pub fn partition_on_space(self) -> ObjectsInSpace<'s> {
+        crate::profile_function!();
+
+        let mut partitioner = SpacePartitioner::default();
+
+        for obj in self.image.0 {
+            partitioner.slot(obj.props.space).image.0.push(obj);
+        }
+        for obj in self.point2d.0 {
+            partitioner.slot(obj.props.space).point2d.0.push(obj);
+        }
+        for obj in self.bbox2d.0 {
+            partitioner.slot(obj.props.space).bbox2d.0.push(obj);
+        }
+        for obj in self.line_segments2d.0 {
+            partitioner
+                .slot(obj.props.space)
+                .line_segments2d
+                .0
+                .push(obj);
+        }
+
+        for obj in self.point3d.0 {
+            partitioner.slot(obj.props.space).point3d.0.push(obj);
+        }
+        for obj in self.box3d.0 {
+            partitioner.slot(obj.props.space).box3d.0.push(obj);
+        }
+        for obj in self.path3d.0 {
+            partitioner.slot(obj.props.space).path3d.0.push(obj);
+        }
+        for obj in self.line_segments3d.0 {
+            partitioner
+                .slot(obj.props.space)
+                .line_segments3d
+                .0
+                .push(obj);
+        }
+        for obj in self.mesh3d.0 {
+            partitioner.slot(obj.props.space).mesh3d.0.push(obj);
+        }
+        for obj in self.camera.0 {
+            partitioner.slot(obj.props.space).camera.0.push(obj);
+        }
+
+        let mut partitioned = partitioner.finish();
+
+        for part in partitioned.values_mut() {
+            part.space = self.space.clone(); // TODO: probably only extract the relevant space
+        }
+
+        partitioned
+    }
+}
+
+/// Partitioned on space
+type ObjectsInSpace<'s> = ahash::AHashMap<Option<&'s ObjPath>, Objects<'s>>; // TODO: nohash_hasher
+
+#[derive(Default)]
+struct SpacePartitioner<'s> {
+    current_space: Option<&'s ObjPath>,
+    current_objects: Objects<'s>,
+    partitioned: ObjectsInSpace<'s>,
+}
+
+impl<'s> SpacePartitioner<'s> {
+    fn slot(&mut self, space: Option<&'s ObjPath>) -> &mut Objects<'s> {
+        // we often have runs of the same space, so optimize of that:
+        if space != self.current_space {
+            self.current_space = space;
+            self.current_objects = self.partitioned.remove(&space).unwrap_or_default();
+        }
+        &mut self.current_objects
+    }
+
+    fn finish(self) -> ObjectsInSpace<'s> {
+        let Self {
+            current_space,
+            current_objects,
+            mut partitioned,
+        } = self;
+        if !current_objects.is_empty() {
+            partitioned.insert(current_space, current_objects);
+        }
+        partitioned
     }
 }
