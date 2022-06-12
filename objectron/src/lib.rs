@@ -65,15 +65,12 @@ fn configure_world_space(logger: &Logger<'_>) {
         ("frame", TimeValue::Sequence(0)),
         ("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0))),
     ]);
-    logger.log(
-        data_msg(
-            &time_point,
-            world_space.clone(),
-            "up",
-            Data::Vec3([0.0, 1.0, 0.0]),
-        )
-        .space(&world_space), // TODO: this seems redundant
-    );
+    logger.log(data_msg(
+        &time_point,
+        world_space,
+        "up",
+        Data::Vec3([0.0, 1.0, 0.0]),
+    ));
 }
 
 fn log_annotation_pbdata(
@@ -109,10 +106,14 @@ fn log_annotation_pbdata(
                 translation: translation.to_array(),
                 half_size: half_size.to_array(),
             };
-            logger.log(
-                data_msg(&time_point, &data_path / "bbox3d", "obb", Data::Box3(box3))
-                    .space(&world_space),
-            );
+            let obj_path = &data_path / "bbox3d";
+            logger.log(data_msg(&time_point, &obj_path, "obb", box3));
+            logger.log(data_msg(
+                &time_point,
+                obj_path,
+                "space",
+                world_space.clone(),
+            ));
         } else {
             tracing::error!("Unsupported type: {}", object.r#type);
         }
@@ -177,29 +178,41 @@ fn log_annotation_pbdata(
                     [keypoints_2d[4], keypoints_2d[8]],
                 ];
 
-                logger.log(
-                    data_msg(
-                        &time_point,
-                        &data_path / "bbox2d",
-                        "line_segments",
-                        Data::LineSegments2D(line_segments),
-                    )
-                    .space(&image_space),
-                );
+                let obj_path = &data_path / "bbox2d";
+                logger.log(data_msg(
+                    &time_point,
+                    &obj_path,
+                    "line_segments",
+                    Data::LineSegments2D(line_segments),
+                ));
+                logger.log(data_msg(
+                    &time_point,
+                    &obj_path,
+                    "space",
+                    image_space.clone(),
+                ));
 
                 logger.log(data_msg(
                     &time_point,
-                    &data_path / "bbox2d",
+                    obj_path,
                     "color",
                     Data::Color([130, 160, 250, 255]),
                 ));
             } else {
                 for (id, pos2) in keypoint_ids.into_iter().zip(keypoints_2d) {
                     let point_path = &data_path / "points" / Index::Integer(id as _);
-                    logger.log(
-                        data_msg(&time_point, &point_path, "pos2d", Data::Pos2(pos2))
-                            .space(&image_space),
-                    );
+                    logger.log(data_msg(
+                        &time_point,
+                        &point_path,
+                        "pos2d",
+                        Data::Pos2(pos2),
+                    ));
+                    logger.log(data_msg(
+                        &time_point,
+                        point_path,
+                        "space",
+                        image_space.clone(),
+                    ));
                 }
             }
         }
@@ -278,10 +291,18 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
                     if let (Some(x), Some(y), Some(z)) = (point.x, point.y, point.z) {
                         let point_path = &points_path / Index::Integer(identifier as _);
 
-                        logger.log(
-                            data_msg(&time_point, &point_path, "pos", Data::Pos3([x, y, z]))
-                                .space(&world_space),
-                        );
+                        logger.log(data_msg(
+                            &time_point,
+                            &point_path,
+                            "pos",
+                            Data::Pos3([x, y, z]),
+                        ));
+                        logger.log(data_msg(
+                            &time_point,
+                            &point_path,
+                            "space",
+                            world_space.clone(),
+                        ));
                         // TODO: log once for the parent ("points")
                         logger.log(data_msg(
                             &time_point,
@@ -316,15 +337,9 @@ fn log_image(path: &PathBuf, time_point: &TimePoint, logger: &Logger<'_>) -> any
         data,
     };
 
-    logger.log(
-        data_msg(
-            time_point,
-            ObjPathBuilder::from("video"),
-            "image",
-            Data::Image(image),
-        )
-        .space(&image_space),
-    );
+    let obj_path = ObjPathBuilder::from("video");
+    logger.log(data_msg(time_point, obj_path.clone(), "image", image));
+    logger.log(data_msg(time_point, obj_path, "space", image_space));
 
     Ok(())
 }
@@ -356,7 +371,13 @@ fn log_ar_camera(
         resolution: Some([w, h]),
     };
 
-    logger.log(data_msg(time_point, data_path, "camera", Data::Camera(camera)).space(world_space));
+    logger.log(data_msg(time_point, &data_path, "camera", camera));
+    logger.log(data_msg(
+        time_point,
+        data_path,
+        "space",
+        world_space.clone(),
+    ));
 }
 
 fn log_plane_anchor(
@@ -392,14 +413,12 @@ fn log_plane_anchor(
             .map(|(a, b, c)| [a as u32, b as u32, c as u32])
             .collect();
         let mesh = RawMesh3D { positions, indices };
-        logger.log(
-            data_msg(
-                time_point,
-                &plane_path,
-                "mesh",
-                Data::Mesh3D(Mesh3D::Raw(mesh)),
-            )
-            .space(world_space),
-        );
+        logger.log(data_msg(time_point, &plane_path, "mesh", Mesh3D::Raw(mesh)));
+        logger.log(data_msg(
+            time_point,
+            &plane_path,
+            "space",
+            world_space.clone(),
+        ));
     }
 }

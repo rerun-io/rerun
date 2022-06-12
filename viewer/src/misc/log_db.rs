@@ -54,10 +54,6 @@ impl LogDb {
     }
 
     fn add_data_msg(&mut self, msg: &DataMsg) {
-        if (msg.data.is_2d() || msg.data.is_3d()) && msg.space.is_none() {
-            tracing::warn!("Got 2D/3D data message without a space: {:?}", msg);
-        }
-
         let obj_type_path = &msg.data_path.obj_path.obj_type_path();
         if let Some(object_type) = self.object_types.get(obj_type_path) {
             let valid_members = object_type.members();
@@ -79,22 +75,6 @@ impl LogDb {
 
         if let Err(err) = self.data_store.insert(msg) {
             tracing::warn!("Failed to add data to data_store: {:?}", err);
-        }
-
-        if let Some(space) = msg.space.clone() {
-            if !matches!(msg.data, Data::Batch { .. }) {
-                // HACK until we change how spaces are logged
-                let space_msg = DataMsg {
-                    id: msg.id,
-                    time_point: msg.time_point.clone(),
-                    data_path: msg.data_path.sibling("space"),
-                    data: Data::Space(space),
-                    space: None,
-                };
-                if let Err(err) = self.data_store.insert(&space_msg) {
-                    tracing::warn!("Failed to add space data to data_store: {:?}", err);
-                }
-            }
         }
 
         self.chronological_message_ids.push(msg.id);

@@ -311,7 +311,6 @@ pub(crate) fn show_log_msg(
         id,
         time_point,
         data_path,
-        space,
         data,
     } = msg;
 
@@ -325,12 +324,6 @@ pub(crate) fn show_log_msg(
 
             ui.monospace("time_point:");
             ui_time_point(context, ui, time_point);
-            ui.end_row();
-
-            ui.monospace("space:");
-            if let Some(space) = space {
-                context.space_button(ui, space);
-            }
             ui.end_row();
 
             ui.monospace("data:");
@@ -416,6 +409,6 @@ pub(crate) fn ui_data(
 
         Data::Vecf32(data) => ui.label(format!("Vecf32({data:?})")),
 
-        Data::Space(space) => ui.label(format!("space {space:?}")),
+        Data::Space(space) => ui.label(space.to_string()),
     }
 }

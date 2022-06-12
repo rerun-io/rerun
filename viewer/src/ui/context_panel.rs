@@ -88,15 +88,7 @@ impl ContextPanel {
             Selection::Space(space) => {
                 let space = space.clone();
                 ui.label(format!("Selected space: {}", space));
-                ui.small("Showing latest versions of each object.")
-                    .on_hover_text("Latest by the current time, that is");
-                egui::ScrollArea::horizontal().show(ui, |ui| {
-                    let mut messages = context.time_control.selected_messages(log_db);
-                    messages.retain(|msg| msg.space.as_ref() == Some(&space));
-
-                    messages.sort_by_key(|msg| &msg.time_point);
-                    crate::log_table_view::message_table(log_db, context, ui, &messages);
-                });
+                // I really don't know what we should show here.
             }
         }
     }
@@ -133,7 +125,7 @@ impl ContextPanel {
             .column(Size::remainder().at_least(180.0)) // data
             .header(20.0, |mut header| {
                 header.col(|ui| {
-                    ui.heading("Relative path");
+                    ui.heading("Field");
                 });
                 header.col(|ui| {
                     ui.heading("Data");
@@ -174,7 +166,6 @@ pub(crate) fn show_detailed_data_msg(
         id,
         time_point,
         data_path,
-        space,
         data,
     } = msg;
 
@@ -193,12 +184,6 @@ pub(crate) fn show_detailed_data_msg(
 
             ui.monospace("time_point:");
             crate::space_view::ui_time_point(context, ui, time_point);
-            ui.end_row();
-
-            ui.monospace("space:");
-            if let Some(space) = space {
-                context.space_button(ui, space);
-            }
             ui.end_row();
 
             if !is_image {

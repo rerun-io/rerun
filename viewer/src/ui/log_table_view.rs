@@ -59,9 +59,6 @@ pub(crate) fn message_table(
                 ui.heading("Path");
             });
             header.col(|ui| {
-                ui.heading("Space");
-            });
-            header.col(|ui| {
                 ui.heading("Data");
             });
         })
@@ -103,7 +100,6 @@ fn table_row(
         id,
         time_point,
         data_path,
-        space,
         data,
     } = msg;
 
@@ -116,11 +112,6 @@ fn table_row(
     }
     row.col(|ui| {
         context.data_path_button(ui, data_path);
-    });
-    row.col(|ui| {
-        if let Some(space) = space {
-            context.space_button(ui, space);
-        }
     });
     row.col(|ui| {
         crate::space_view::ui_data(context, ui, id, data, Preview::Specific(row_height));

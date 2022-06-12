@@ -123,17 +123,6 @@ pub struct DataMsg {
 
     /// The value of this.
     pub data: Data,
-
-    /// Where ("camera", "world") this thing is in.
-    pub space: Option<ObjPath>,
-}
-
-impl DataMsg {
-    #[inline]
-    pub fn space(mut self, space: &ObjPath) -> Self {
-        self.space = Some(space.clone());
-        self
-    }
 }
 
 #[inline]
@@ -147,7 +136,6 @@ pub fn data_msg(
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.into(), field_name.into()),
         data: data.into(),
-        space: None,
         id: LogId::random(),
     }
 }

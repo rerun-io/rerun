@@ -78,16 +78,6 @@ impl Data {
         }
     }
 
-    #[inline]
-    pub fn is_2d(&self) -> bool {
-        self.typ().is_2d()
-    }
-
-    #[inline]
-    pub fn is_3d(&self) -> bool {
-        self.typ().is_3d()
-    }
-
     /// The center of this 3D thing, if any
     pub fn center3d(&self) -> Option<[f32; 3]> {
         match self {
@@ -135,9 +125,12 @@ impl Data {
 impl_into_enum!(i32, Data, I32);
 impl_into_enum!(f32, Data, F32);
 impl_into_enum!(BBox2D, Data, BBox2D);
-impl_into_enum!(Vec<f32>, Data, Vecf32);
 impl_into_enum!(Image, Data, Image);
+impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
+impl_into_enum!(Camera, Data, Camera);
+impl_into_enum!(Vec<f32>, Data, Vecf32);
+impl_into_enum!(ObjPath, Data, Space);
 
 // ----------------------------------------------------------------------------
 
@@ -214,37 +207,6 @@ pub enum DataType {
 
     // ----------------------------
     Space,
-}
-
-impl DataType {
-    #[inline]
-    pub fn dimensionality(&self) -> Option<u32> {
-        match self {
-            Self::I32 | Self::F32 => Some(1),
-
-            Self::Pos2 | Self::BBox2D | Self::LineSegments2D | Self::Image => Some(2),
-
-            Self::Pos3
-            | Self::Vec3
-            | Self::Box3
-            | Self::Path3D
-            | Self::LineSegments3D
-            | Self::Mesh3D
-            | Self::Camera => Some(3),
-
-            Self::Color | Self::Vecf32 | Self::Space => None,
-        }
-    }
-
-    #[inline]
-    pub fn is_2d(&self) -> bool {
-        self.dimensionality() == Some(2)
-    }
-
-    #[inline]
-    pub fn is_3d(&self) -> bool {
-        self.dimensionality() == Some(3)
-    }
 }
 
 // ----------------------------------------------------------------------------
