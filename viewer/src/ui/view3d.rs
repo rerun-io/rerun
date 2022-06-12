@@ -182,7 +182,7 @@ fn show_settings_ui(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
     state_3d: &mut State3D,
-    space: &ObjPath,
+    space: Option<&ObjPath>,
     space_specs: &SpaceSpecs,
 ) {
     ui.horizontal(|ui| {
@@ -206,14 +206,16 @@ fn show_settings_ui(
             } else {
                 ui.label("Up: unspecified")
             };
-            up_response.on_hover_ui(|ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-                    ui.label("Set by logging to ");
-                    ui.code(format!("{space}/up"));
-                    ui.label(".");
+            if let Some(space) = space {
+                up_response.on_hover_ui(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 0.0;
+                        ui.label("Set by logging to ");
+                        ui.code(format!("{space}/up"));
+                        ui.label(".");
+                    });
                 });
-            });
+            }
         }
 
         if ui
@@ -252,14 +254,15 @@ struct SpaceSpecs {
 }
 
 impl SpaceSpecs {
-    fn from_objects(space: &ObjPath, objects: &data_store::Objects<'_>) -> Self {
-        if let Some(space) = objects.space.get(space) {
-            SpaceSpecs {
-                up: Vec3::from(*space.up).normalize_or_zero(),
+    fn from_objects(space: Option<&ObjPath>, objects: &data_store::Objects<'_>) -> Self {
+        if let Some(space) = space {
+            if let Some(space) = objects.space.get(&space) {
+                return SpaceSpecs {
+                    up: Vec3::from(*space.up).normalize_or_zero(),
+                };
             }
-        } else {
-            Default::default()
         }
+        Default::default()
     }
 }
 
@@ -295,7 +298,7 @@ pub(crate) fn combined_view_3d(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
     state: &mut State3D,
-    space: &ObjPath,
+    space: Option<&ObjPath>,
     objects: &data_store::Objects<'_>,
 ) {
     crate::profile_function!();

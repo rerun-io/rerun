@@ -17,6 +17,11 @@ pub struct ObjPath {
 }
 
 impl ObjPath {
+    #[inline]
+    pub fn root() -> Self {
+        Self::new(ObjTypePath::root(), IndexPath::default())
+    }
+
     pub fn new(obj_type_path: ObjTypePath, index_path: IndexPath) -> Self {
         // TODO: sanity check
         let hash = Hash128::hash((&obj_type_path, &index_path));

@@ -48,6 +48,7 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
     }
 
     pub fn filter(&self, keep: &impl Fn(&ObjectProps<'_>) -> bool) -> Self {
+        crate::profile_function!();
         Self(
             self.0
                 .iter()
@@ -601,7 +602,7 @@ impl<'s> Objects<'s> {
             || !self.camera.is_empty()
     }
 
-    pub fn partition_on_space(self) -> ObjectsInSpace<'s> {
+    pub fn partition_on_space(self) -> ObjectsBySpace<'s> {
         crate::profile_function!();
 
         let mut partitioner = SpacePartitioner::default();
@@ -656,35 +657,38 @@ impl<'s> Objects<'s> {
     }
 }
 
-/// Partitioned on space
-type ObjectsInSpace<'s> = ahash::AHashMap<Option<&'s ObjPath>, Objects<'s>>; // TODO: nohash_hasher
+/// Partitioned on space.
+pub type ObjectsBySpace<'s> = ahash::AHashMap<Option<&'s ObjPath>, Objects<'s>>; // TODO: nohash_hasher
 
 #[derive(Default)]
 struct SpacePartitioner<'s> {
     current_space: Option<&'s ObjPath>,
     current_objects: Objects<'s>,
-    partitioned: ObjectsInSpace<'s>,
+    partitioned: ObjectsBySpace<'s>,
 }
 
 impl<'s> SpacePartitioner<'s> {
-    fn slot(&mut self, space: Option<&'s ObjPath>) -> &mut Objects<'s> {
+    fn slot(&mut self, new_space: Option<&'s ObjPath>) -> &mut Objects<'s> {
         // we often have runs of the same space, so optimize of that:
-        if space != self.current_space {
-            self.current_space = space;
-            self.current_objects = self.partitioned.remove(&space).unwrap_or_default();
+        if new_space != self.current_space {
+            let new_objects = self.partitioned.remove(&new_space).unwrap_or_default();
+
+            let prev_objects = std::mem::replace(&mut self.current_objects, new_objects);
+            let prev_space = std::mem::replace(&mut self.current_space, new_space);
+
+            self.partitioned.insert(prev_space, prev_objects);
         }
         &mut self.current_objects
     }
 
-    fn finish(self) -> ObjectsInSpace<'s> {
+    fn finish(self) -> ObjectsBySpace<'s> {
         let Self {
             current_space,
             current_objects,
             mut partitioned,
         } = self;
-        if !current_objects.is_empty() {
-            partitioned.insert(current_space, current_objects);
-        }
+        partitioned.insert(current_space, current_objects);
+        partitioned.retain(|_, objects| !objects.is_empty());
         partitioned
     }
 }

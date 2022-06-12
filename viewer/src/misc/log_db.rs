@@ -16,8 +16,6 @@ pub(crate) struct LogDb {
     log_messages: nohash_hasher::IntMap<LogId, LogMsg>,
     pub object_types: ahash::AHashMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
-    /// All known spaces.
-    pub space_names: BTreeSet<ObjPath>,
     pub data_tree: ObjectTree,
     pub data_store: data_store::LogDataStore,
     data_history: ahash::AHashMap<DataPath, DataHistoryLog>,
@@ -83,15 +81,7 @@ impl LogDb {
             tracing::warn!("Failed to add data to data_store: {:?}", err);
         }
 
-        if msg.data_path.field_name == "space" {
-            if let Data::Space(space) = &msg.data {
-                self.space_names.insert(space.clone());
-            }
-        }
-
         if let Some(space) = msg.space.clone() {
-            self.space_names.insert(space.clone());
-
             if !matches!(msg.data, Data::Batch { .. }) {
                 // HACK until we change how spaces are logged
                 let space_msg = DataMsg {

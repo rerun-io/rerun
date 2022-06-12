@@ -14,6 +14,10 @@ pub struct ObjTypePath {
 
 impl ObjTypePath {
     #[inline]
+    pub fn root() -> Self {
+        Self::new(vec![])
+    }
+
     pub fn new(components: Vec<TypePathComp>) -> Self {
         let hash = Hash128::hash(&components);
         Self { components, hash }

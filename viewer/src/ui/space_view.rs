@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 
 use egui::{Rect, Vec2};
 
-use data_store::Objects;
+use data_store::ObjectsBySpace;
 use itertools::Itertools;
 use log_types::*;
 
@@ -10,77 +10,177 @@ use crate::{LogDb, Preview, Selection, ViewerContext};
 
 // ----------------------------------------------------------------------------
 
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+enum SelectedSpace {
+    All,
+    /// None is the catch-all space for object without a space.
+    Specific(Option<ObjPath>),
+}
+
+impl Default for SelectedSpace {
+    fn default() -> Self {
+        SelectedSpace::All
+    }
+}
+// ----------------------------------------------------------------------------
+
+#[derive(Clone)]
+struct SpaceInfo {
+    /// Path to the space.
+    ///
+    /// `None`: catch-all for all objects with no space assigned.
+    space_path: Option<ObjPath>,
+
+    /// Only set for 2D spaces
+    size: Option<Vec2>,
+}
+
+impl SpaceInfo {
+    fn obj_path_components(&self) -> Vec<ObjPathComp> {
+        self.space_path
+            .as_ref()
+            .map(|space_path| ObjPathBuilder::from(space_path).as_slice().to_vec())
+            .unwrap_or_default()
+    }
+}
+// ----------------------------------------------------------------------------
+
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct SpaceView {
     // per space
-    state_2d: nohash_hasher::IntMap<ObjPath, crate::view2d::State2D>,
-    state_3d: nohash_hasher::IntMap<ObjPath, crate::view3d::State3D>,
+    state_2d: ahash::AHashMap<Option<ObjPath>, crate::view2d::State2D>,
+    state_3d: ahash::AHashMap<Option<ObjPath>, crate::view3d::State3D>,
+
+    selected: SelectedSpace,
 }
 
 impl SpaceView {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        let objects = context.time_control.selected_objects(log_db);
+        let objects = context
+            .time_control
+            .selected_objects(log_db)
+            .partition_on_space();
+
+        if false {
+            use itertools::Itertools as _;
+            ui.label(format!(
+                "Spaces: {}",
+                objects.keys().sorted().map(|s| space_name(*s)).format(" ")
+            ));
+        }
 
         if let Selection::Space(selected_space) = &context.selection {
-            let selected_space = selected_space.clone();
-            ui.horizontal(|ui| {
-                if ui.button("Show all spaces").clicked() {
-                    context.selection = Selection::None;
-                }
-                context.space_button(ui, &selected_space);
-            });
-            self.show_space(log_db, &objects, context, &selected_space, ui);
-        } else {
-            self.show_all(log_db, &objects, context, ui);
+            self.selected = SelectedSpace::Specific(Some(selected_space.clone()));
+        }
+
+        match self.selected.clone() {
+            SelectedSpace::All => {
+                self.show_all(log_db, &objects, context, ui);
+            }
+            SelectedSpace::Specific(selected_space) => {
+                ui.horizontal(|ui| {
+                    if ui.button("Show all spaces").clicked() {
+                        self.selected = SelectedSpace::All;
+                    }
+                });
+                self.show_space(log_db, &objects, context, selected_space.as_ref(), ui);
+            }
         }
     }
 
     fn show_all(
         &mut self,
         log_db: &LogDb,
-        objects: &Objects<'_>,
+        objects: &ObjectsBySpace<'_>,
         context: &mut ViewerContext,
         ui: &mut egui::Ui,
     ) {
-        let spaces = log_db
-            .space_names
-            .iter()
-            .map(|space_path| {
-                let size = self.state_2d.get(space_path).and_then(|state| state.size());
+        let space_infos = objects
+            .keys()
+            .sorted()
+            .map(|opt_space_path| {
+                let size = self
+                    .state_2d
+                    .get(&opt_space_path.cloned())
+                    .and_then(|state| state.size());
                 SpaceInfo {
-                    space_path: space_path.clone(),
+                    space_path: opt_space_path.cloned(),
                     size,
                 }
             })
             .collect_vec();
 
-        let regions = layout_spaces(ui.available_rect_before_wrap(), &spaces);
+        let regions = layout_spaces(ui.available_rect_before_wrap(), &space_infos);
 
-        for (rect, space) in itertools::izip!(&regions, log_db.space_names.iter()) {
-            let mut ui = ui.child_ui_with_id_source(*rect, *ui.layout(), space);
+        for (rect, space_info) in itertools::izip!(&regions, &space_infos) {
+            let mut ui = ui.child_ui_with_id_source(*rect, *ui.layout(), &space_info.space_path);
             egui::Frame::group(ui.style())
                 .inner_margin(Vec2::splat(4.0))
                 .show(&mut ui, |ui| {
                     ui.vertical_centered(|ui| {
-                        context.space_button(ui, space);
-                        self.show_space(log_db, objects, context, &space.clone(), ui);
+                        if ui
+                            .selectable_label(false, space_name(space_info.space_path.as_ref()))
+                            .clicked()
+                        {
+                            self.selected = SelectedSpace::Specific(space_info.space_path.clone());
+                        }
+                        self.show_space(
+                            log_db,
+                            objects,
+                            context,
+                            space_info.space_path.as_ref(),
+                            ui,
+                        );
                         ui.allocate_space(ui.available_size());
                     });
                 });
         }
     }
+
+    fn show_space(
+        &mut self,
+        log_db: &LogDb,
+        objects: &ObjectsBySpace<'_>,
+        context: &mut ViewerContext,
+        space: Option<&ObjPath>,
+        ui: &mut egui::Ui,
+    ) {
+        crate::profile_function!(space_name(space));
+
+        let objects = if let Some(objects) = objects.get(&space) {
+            objects
+        } else {
+            return;
+        };
+
+        let objects = objects.filter(|props| {
+            context
+                .projected_object_properties
+                .get(props.parent_obj_path)
+                .visible
+        });
+
+        if objects.has_any_3d() {
+            let state_3d = self.state_3d.entry(space.cloned()).or_default();
+            crate::view3d::combined_view_3d(log_db, context, ui, state_3d, space, &objects);
+        }
+
+        if objects.has_any_2d() {
+            let state_2d = self.state_2d.entry(space.cloned()).or_default();
+            crate::view2d::combined_view_2d(log_db, context, ui, state_2d, &objects);
+        }
+    }
 }
 
-#[derive(Clone)]
-struct SpaceInfo {
-    /// Path to the space
-    space_path: ObjPath,
-
-    /// Only set for 2D spaces
-    size: Option<Vec2>,
+fn space_name(space: Option<&ObjPath>) -> String {
+    if let Some(space) = space {
+        space.to_string()
+    } else {
+        "<default space>".to_owned()
+    }
 }
 
 fn layout_spaces(available_rect: Rect, spaces: &[SpaceInfo]) -> Vec<Rect> {
@@ -144,21 +244,21 @@ fn desired_aspect_ratio(spaces: &[SpaceInfo]) -> Option<f32> {
     }
 }
 
-fn group_by_path_prefix(spaces: &[SpaceInfo]) -> Vec<Vec<SpaceInfo>> {
-    if spaces.len() < 2 {
-        return vec![spaces.to_vec()];
+fn group_by_path_prefix(space_infos: &[SpaceInfo]) -> Vec<Vec<SpaceInfo>> {
+    if space_infos.len() < 2 {
+        return vec![space_infos.to_vec()];
     }
     crate::profile_function!();
 
-    let paths = spaces
+    let paths = space_infos
         .iter()
-        .map(|space| ObjPathBuilder::from(&space.space_path).as_slice().to_vec())
+        .map(|space_info| space_info.obj_path_components())
         .collect_vec();
 
     for i in 0.. {
         let mut groups: std::collections::BTreeMap<Option<&ObjPathComp>, Vec<&SpaceInfo>> =
             Default::default();
-        for (path, space) in paths.iter().zip(spaces) {
+        for (path, space) in paths.iter().zip(space_infos) {
             groups.entry(path.get(i)).or_default().push(space);
         }
         if groups.len() == 1 && groups.contains_key(&None) {
@@ -171,7 +271,10 @@ fn group_by_path_prefix(spaces: &[SpaceInfo]) -> Vec<Vec<SpaceInfo>> {
                 .collect();
         }
     }
-    spaces.iter().map(|space| vec![space.clone()]).collect()
+    space_infos
+        .iter()
+        .map(|space| vec![space.clone()])
+        .collect()
 }
 
 fn weighted_split(
@@ -194,37 +297,6 @@ fn weighted_split(
             l..=r
         })
         .collect()
-}
-
-impl SpaceView {
-    fn show_space(
-        &mut self,
-        log_db: &LogDb,
-        objects: &Objects<'_>,
-        context: &mut ViewerContext,
-        space: &ObjPath,
-        ui: &mut egui::Ui,
-    ) {
-        crate::profile_function!(&space.to_string());
-
-        let objects = objects.filter(|props| {
-            props.space == Some(space)
-                && context
-                    .projected_object_properties
-                    .get(props.parent_obj_path)
-                    .visible
-        });
-
-        if objects.has_any_3d() {
-            let state_3d = self.state_3d.entry(space.clone()).or_default();
-            crate::view3d::combined_view_3d(log_db, context, ui, state_3d, space, &objects);
-        }
-
-        if objects.has_any_2d() {
-            let state_2d = self.state_2d.entry(space.clone()).or_default();
-            crate::view2d::combined_view_2d(log_db, context, ui, state_2d, &objects);
-        }
-    }
 }
 
 // ----------------------------------------------------------------------------
