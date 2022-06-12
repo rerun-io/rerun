@@ -6,14 +6,14 @@ use crate::{
 /// `camera / "left" / points / #42`
 #[derive(Clone, Debug, Eq)]
 pub struct ObjPath {
+    /// precomputed hash
+    hash: Hash128,
+
     /// `camera / * / points / *`
     obj_type_path: ObjTypePath,
 
     /// "left" / #42
     index_path: IndexPath,
-
-    /// precomputed hash
-    hash: Hash128,
 }
 
 impl ObjPath {

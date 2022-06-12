@@ -22,49 +22,37 @@ pub struct ObjectProps<'s> {
 #[derive(Copy, Clone, Debug)]
 struct Object<'s, T: Copy + Clone + std::fmt::Debug> {
     pub props: ObjectProps<'s>,
-    pub obj: T,
+    pub data: T,
 }
 
 #[derive(Clone, Debug)]
-pub struct ObjectMap<'s, T: Clone + Copy + std::fmt::Debug>(
-    BTreeMap<ObjTypePath, Vec<Object<'s, T>>>,
-);
+pub struct ObjectVec<'s, T: Copy + Clone + std::fmt::Debug>(Vec<Object<'s, T>>);
 
-impl<'s, T: Clone + Copy + std::fmt::Debug> Default for ObjectMap<'s, T> {
+impl<'s, T: Clone + Copy + std::fmt::Debug> Default for ObjectVec<'s, T> {
     fn default() -> Self {
         Self(Default::default())
     }
 }
 
-impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectMap<'s, T> {
-    /// Total number of objects
+impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
     pub fn len(&self) -> usize {
-        self.0.values().map(|vec| vec.len()).sum()
+        self.0.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.0.is_empty()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&ObjTypePath, &ObjectProps<'s>, &T)> {
-        self.0.iter().flat_map(|(type_path, vec)| {
-            vec.iter().map(move |obj| (type_path, &obj.props, &obj.obj))
-        })
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&ObjectProps<'s>, &T)> {
+        self.0.iter().map(|obj| (&obj.props, &obj.data))
     }
 
-    fn filter(&self, keep: &impl Fn(&ObjectProps<'_>) -> bool) -> ObjectMap<'s, T> {
-        use itertools::Itertools as _;
+    pub fn filter(&self, keep: &impl Fn(&ObjectProps<'_>) -> bool) -> Self {
         Self(
             self.0
                 .iter()
-                .filter_map(|(tp, vec)| {
-                    let vec = vec.iter().filter(|x| keep(&x.props)).copied().collect_vec();
-                    if vec.is_empty() {
-                        None
-                    } else {
-                        Some((tp.clone(), vec))
-                    }
-                })
+                .filter(|obj| keep(&obj.props))
+                .copied()
                 .collect(),
         )
     }
@@ -79,13 +67,11 @@ impl<'s> Image<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::Image>(&FieldName::from("image")) {
-            let mut vec = vec![];
             visit_data_and_2_children(
                 store,
                 time_query,
@@ -96,18 +82,17 @@ impl<'s> Image<'s> {
                  image: &log_types::Image,
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>| {
-                    vec.push(Object {
+                    out.image.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: Image { image },
+                        data: Image { image },
                     });
                 },
             );
-            out.image.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -122,13 +107,11 @@ impl<'s> Point2D<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<[f32; 2]>(&FieldName::from("pos")) {
-            let mut vec = vec![];
             visit_data_and_3_children(
                 store,
                 time_query,
@@ -140,22 +123,20 @@ impl<'s> Point2D<'s> {
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>,
                  radius: Option<&f32>| {
-                    vec.push(Object {
+                    out.point2d.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: Point2D {
+                        data: Point2D {
                             pos,
                             radius: radius.copied(),
                         },
                     });
                 },
             );
-
-            out.point2d.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -170,13 +151,11 @@ impl<'s> Point3D<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<[f32; 3]>(&FieldName::from("pos")) {
-            let mut vec = vec![];
             visit_data_and_3_children(
                 store,
                 time_query,
@@ -188,22 +167,20 @@ impl<'s> Point3D<'s> {
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>,
                  radius: Option<&f32>| {
-                    vec.push(Object {
+                    out.point3d.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: Point3D {
+                        data: Point3D {
                             pos,
                             radius: radius.copied(),
                         },
                     });
                 },
             );
-
-            out.point3d.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -218,13 +195,11 @@ impl<'s> BBox2D<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::BBox2D>(&FieldName::from("bbox")) {
-            let mut vec = vec![];
             visit_data_and_3_children(
                 store,
                 time_query,
@@ -236,22 +211,20 @@ impl<'s> BBox2D<'s> {
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>,
                  stroke_width: Option<&f32>| {
-                    vec.push(Object {
+                    out.bbox2d.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: BBox2D {
+                        data: BBox2D {
                             bbox,
                             stroke_width: stroke_width.copied(),
                         },
                     });
                 },
             );
-
-            out.bbox2d.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -266,13 +239,11 @@ impl<'s> Box3D<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::Box3>(&FieldName::from("obb")) {
-            let mut vec = vec![];
             visit_data_and_3_children(
                 store,
                 time_query,
@@ -284,22 +255,20 @@ impl<'s> Box3D<'s> {
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>,
                  stroke_width: Option<&f32>| {
-                    vec.push(Object {
+                    out.box3d.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: Box3D {
+                        data: Box3D {
                             obb,
                             stroke_width: stroke_width.copied(),
                         },
                     });
                 },
             );
-
-            out.box3d.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -314,13 +283,11 @@ impl<'s> Path3D<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<Vec<[f32; 3]>>(&FieldName::from("points")) {
-            let mut vec = vec![];
             visit_data_and_3_children(
                 store,
                 time_query,
@@ -332,22 +299,20 @@ impl<'s> Path3D<'s> {
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>,
                  stroke_width: Option<&f32>| {
-                    vec.push(Object {
+                    out.path3d.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: Path3D {
+                        data: Path3D {
                             points,
                             stroke_width: stroke_width.copied(),
                         },
                     });
                 },
             );
-
-            out.path3d.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -362,7 +327,6 @@ impl<'s> LineSegments2D<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
@@ -370,7 +334,6 @@ impl<'s> LineSegments2D<'s> {
         if let Some(primary_data) =
             store.get::<Vec<[[f32; 2]; 2]>>(&FieldName::from("line_segments"))
         {
-            let mut vec = vec![];
             visit_data_and_3_children(
                 store,
                 time_query,
@@ -382,22 +345,20 @@ impl<'s> LineSegments2D<'s> {
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>,
                  stroke_width: Option<&f32>| {
-                    vec.push(Object {
+                    out.line_segments2d.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: LineSegments2D {
+                        data: LineSegments2D {
                             line_segments,
                             stroke_width: stroke_width.copied(),
                         },
                     });
                 },
             );
-
-            out.line_segments2d.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -412,7 +373,6 @@ impl<'s> LineSegments3D<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
@@ -420,7 +380,6 @@ impl<'s> LineSegments3D<'s> {
         if let Some(primary_data) =
             store.get::<Vec<[[f32; 3]; 2]>>(&FieldName::from("line_segments"))
         {
-            let mut vec = vec![];
             visit_data_and_3_children(
                 store,
                 time_query,
@@ -432,22 +391,20 @@ impl<'s> LineSegments3D<'s> {
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>,
                  stroke_width: Option<&f32>| {
-                    vec.push(Object {
+                    out.line_segments3d.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: LineSegments3D {
+                        data: LineSegments3D {
                             line_segments,
                             stroke_width: stroke_width.copied(),
                         },
                     });
                 },
             );
-
-            out.line_segments3d.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -461,13 +418,11 @@ impl<'s> Mesh3D<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::Mesh3D>(&FieldName::from("mesh")) {
-            let mut vec = vec![];
             visit_data_and_2_children(
                 store,
                 time_query,
@@ -478,19 +433,17 @@ impl<'s> Mesh3D<'s> {
                  mesh: &log_types::Mesh3D,
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>| {
-                    vec.push(Object {
+                    out.mesh3d.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: Mesh3D { mesh },
+                        data: Mesh3D { mesh },
                     });
                 },
             );
-
-            out.mesh3d.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -505,13 +458,11 @@ impl<'s> Camera<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::Camera>(&FieldName::from("camera")) {
-            let mut vec = vec![];
             visit_data_and_2_children(
                 store,
                 time_query,
@@ -522,19 +473,17 @@ impl<'s> Camera<'s> {
                  camera: &log_types::Camera,
                  space: Option<&ObjPath>,
                  color: Option<&[u8; 4]>| {
-                    vec.push(Object {
+                    out.camera.0.push(Object {
                         props: ObjectProps {
                             log_id,
                             space,
                             color: color.copied(),
                             parent_obj_path,
                         },
-                        obj: Camera { camera },
+                        data: Camera { camera },
                     });
                 },
             );
-
-            out.camera.0.insert(obj_type_path.clone(), vec);
         }
     }
 }
@@ -549,7 +498,6 @@ impl<'s> Space<'s> {
     fn query<Time: 'static + Clone + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        _obj_type_path: &ObjTypePath,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
@@ -568,19 +516,19 @@ impl<'s> Space<'s> {
 
 #[derive(Debug, Default)]
 pub struct Objects<'s> {
-    pub image: ObjectMap<'s, Image<'s>>,
-    pub point2d: ObjectMap<'s, Point2D<'s>>,
-    pub bbox2d: ObjectMap<'s, BBox2D<'s>>,
-    pub line_segments2d: ObjectMap<'s, LineSegments2D<'s>>,
-
-    pub point3d: ObjectMap<'s, Point3D<'s>>,
-    pub box3d: ObjectMap<'s, Box3D<'s>>,
-    pub path3d: ObjectMap<'s, Path3D<'s>>,
-    pub line_segments3d: ObjectMap<'s, LineSegments3D<'s>>,
-    pub mesh3d: ObjectMap<'s, Mesh3D<'s>>,
-    pub camera: ObjectMap<'s, Camera<'s>>,
-
     pub space: BTreeMap<&'s ObjPath, Space<'s>>, // SPECIAL!
+
+    pub image: ObjectVec<'s, Image<'s>>,
+    pub point2d: ObjectVec<'s, Point2D<'s>>,
+    pub bbox2d: ObjectVec<'s, BBox2D<'s>>,
+    pub line_segments2d: ObjectVec<'s, LineSegments2D<'s>>,
+
+    pub point3d: ObjectVec<'s, Point3D<'s>>,
+    pub box3d: ObjectVec<'s, Box3D<'s>>,
+    pub path3d: ObjectVec<'s, Path3D<'s>>,
+    pub line_segments3d: ObjectVec<'s, LineSegments3D<'s>>,
+    pub mesh3d: ObjectVec<'s, Mesh3D<'s>>,
+    pub camera: ObjectVec<'s, Camera<'s>>,
 }
 
 impl<'s> Objects<'s> {
@@ -608,7 +556,7 @@ impl<'s> Objects<'s> {
                 ObjectType::Camera => Camera::query,
             };
 
-            query_fn(obj_store, time_query, obj_type_path, self);
+            query_fn(obj_store, time_query, self);
         }
     }
 
@@ -616,6 +564,8 @@ impl<'s> Objects<'s> {
         crate::profile_function!();
 
         Self {
+            space: self.space.clone(), // SPECIAL - can't filter
+
             image: self.image.filter(&keep),
             point2d: self.point2d.filter(&keep),
             bbox2d: self.bbox2d.filter(&keep),
@@ -627,8 +577,6 @@ impl<'s> Objects<'s> {
             line_segments3d: self.line_segments3d.filter(&keep),
             mesh3d: self.mesh3d.filter(&keep),
             camera: self.camera.filter(&keep),
-
-            space: self.space.clone(), // SPECIAL don't filter
         }
     }
 

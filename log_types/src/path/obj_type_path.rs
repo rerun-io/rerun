@@ -8,8 +8,8 @@ use crate::{
 /// `camera / * / points / *`
 #[derive(Clone, Debug, Eq)]
 pub struct ObjTypePath {
-    components: Vec<TypePathComp>,
     hash: Hash128,
+    components: Vec<TypePathComp>,
 }
 
 impl ObjTypePath {

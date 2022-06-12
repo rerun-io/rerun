@@ -70,22 +70,22 @@ pub fn calc_bbox_2d(objects: &data_store::Objects<'_>) -> emath::Rect {
 
     let mut bbox = emath::Rect::NOTHING;
 
-    for (_, _, obj) in objects.image.iter() {
+    for (_, obj) in objects.image.iter() {
         let [w, h] = obj.image.size;
         bbox.extend_with(emath::Pos2::ZERO);
         bbox.extend_with(emath::pos2(w as _, h as _));
     }
 
-    for (_, _, obj) in objects.point2d.iter() {
+    for (_, obj) in objects.point2d.iter() {
         bbox.extend_with(obj.pos.into());
     }
 
-    for (_, _, obj) in objects.bbox2d.iter() {
+    for (_, obj) in objects.bbox2d.iter() {
         bbox.extend_with(obj.bbox.min.into());
         bbox.extend_with(obj.bbox.max.into());
     }
 
-    for (_, _, obj) in objects.line_segments2d.iter() {
+    for (_, obj) in objects.line_segments2d.iter() {
         for [a, b] in obj.line_segments {
             bbox.extend_with(a.into());
             bbox.extend_with(b.into());
@@ -100,11 +100,11 @@ pub fn calc_bbox_3d(objects: &data_store::Objects<'_>) -> macaw::BoundingBox {
 
     let mut bbox = macaw::BoundingBox::nothing();
 
-    for (_, _, obj) in objects.point3d.iter() {
+    for (_, obj) in objects.point3d.iter() {
         bbox.extend((*obj.pos).into());
     }
 
-    for (_, _, obj) in objects.box3d.iter() {
+    for (_, obj) in objects.box3d.iter() {
         let log_types::Box3 {
             rotation,
             translation,
@@ -133,20 +133,20 @@ pub fn calc_bbox_3d(objects: &data_store::Objects<'_>) -> macaw::BoundingBox {
         }
     }
 
-    for (_, _, obj) in objects.path3d.iter() {
+    for (_, obj) in objects.path3d.iter() {
         for &p in obj.points {
             bbox.extend(p.into());
         }
     }
 
-    for (_, _, obj) in objects.line_segments3d.iter() {
+    for (_, obj) in objects.line_segments3d.iter() {
         for &[a, b] in obj.line_segments {
             bbox.extend(a.into());
             bbox.extend(b.into());
         }
     }
 
-    for (_, _, obj) in objects.mesh3d.iter() {
+    for (_, obj) in objects.mesh3d.iter() {
         match &obj.mesh {
             log_types::Mesh3D::Encoded(_) => {
                 // TODO: how to we get the bbox of an encoded mesh here?
@@ -159,7 +159,7 @@ pub fn calc_bbox_3d(objects: &data_store::Objects<'_>) -> macaw::BoundingBox {
         }
     }
 
-    for (_, _, obj) in objects.camera.iter() {
+    for (_, obj) in objects.camera.iter() {
         bbox.extend(obj.camera.position.into());
     }
 

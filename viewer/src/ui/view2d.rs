@@ -103,7 +103,7 @@ pub(crate) fn combined_view_2d(
         }
     };
 
-    for (image_idx, (_type_path, props, obj)) in objects.image.iter().enumerate() {
+    for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
         let data_store::Image { image } = obj;
         let paint_props =
             paint_properties(context, &state.hovered, props, DefaultColor::White, &None);
@@ -138,7 +138,7 @@ pub(crate) fn combined_view_2d(
         }
     }
 
-    for (_type_path, props, obj) in objects.bbox2d.iter() {
+    for (props, obj) in objects.bbox2d.iter() {
         let data_store::BBox2D { bbox, stroke_width } = obj;
         let paint_props = paint_properties(
             context,
@@ -170,7 +170,7 @@ pub(crate) fn combined_view_2d(
         }
     }
 
-    for (_type_path, props, obj) in objects.line_segments2d.iter() {
+    for (props, obj) in objects.line_segments2d.iter() {
         let data_store::LineSegments2D {
             line_segments,
             stroke_width,
@@ -207,7 +207,7 @@ pub(crate) fn combined_view_2d(
         }
     }
 
-    for (_type_path, props, obj) in objects.point2d.iter() {
+    for (props, obj) in objects.point2d.iter() {
         let data_store::Point2D { pos, radius } = obj;
         let paint_props =
             paint_properties(context, &state.hovered, props, DefaultColor::Random, &None);

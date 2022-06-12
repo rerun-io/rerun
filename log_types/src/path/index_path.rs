@@ -5,8 +5,8 @@ use crate::{hash::Hash128, path::Index};
 /// Like `Index` but also includes a precomputed hash.
 #[derive(Clone, Debug, Eq)]
 pub struct IndexKey {
-    index: Index,
     hash: Hash128,
+    index: Index,
 }
 
 impl IndexKey {

@@ -272,7 +272,7 @@ fn tracking_camera(
     if let Selection::DataPath(data_path) = &context.selection {
         let mut selected_camera = None;
 
-        for (_, props, camera) in objects.camera.iter() {
+        for (props, camera) in objects.camera.iter() {
             if let Some(msg) = log_db.get_data_msg(props.log_id) {
                 if &msg.data_path == data_path {
                     if selected_camera.is_some() {

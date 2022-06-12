@@ -88,7 +88,7 @@ impl Scene {
         let mut scene = Self::default();
 
         scene.points.reserve(objects.point3d.len());
-        for (_type_path, props, obj) in objects.point3d.iter() {
+        for (props, obj) in objects.point3d.iter() {
             let data_store::Point3D { pos, radius } = *obj;
 
             let dist_to_camera = camera_plane.distance(Vec3::from(*pos));
@@ -103,7 +103,7 @@ impl Scene {
             });
         }
 
-        for (_type_path, props, obj) in objects.box3d.iter() {
+        for (props, obj) in objects.box3d.iter() {
             let data_store::Box3D { obb, stroke_width } = obj;
             let line_radius = stroke_width.map_or_else(
                 || {
@@ -117,7 +117,7 @@ impl Scene {
             scene.add_box(*props.log_id, color, line_radius, obb);
         }
 
-        for (_type_path, props, obj) in objects.path3d.iter() {
+        for (props, obj) in objects.path3d.iter() {
             let data_store::Path3D {
                 points,
                 stroke_width,
@@ -149,7 +149,7 @@ impl Scene {
             });
         }
 
-        for (_type_path, props, obj) in objects.line_segments3d.iter() {
+        for (props, obj) in objects.line_segments3d.iter() {
             let data_store::LineSegments3D {
                 line_segments,
                 stroke_width,
@@ -178,7 +178,7 @@ impl Scene {
             });
         }
 
-        for (_type_path, props, obj) in objects.mesh3d.iter() {
+        for (props, obj) in objects.mesh3d.iter() {
             let data_store::Mesh3D { mesh } = *obj;
             let mesh_id = hash(props.log_id);
             if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
@@ -196,7 +196,7 @@ impl Scene {
             }
         }
 
-        for (_type_path, props, obj) in objects.camera.iter() {
+        for (props, obj) in objects.camera.iter() {
             let data_store::Camera { camera } = *obj;
 
             let rotation = Quat::from_slice(&camera.rotation);
