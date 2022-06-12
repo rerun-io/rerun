@@ -74,11 +74,12 @@ pub struct Image<'s> {
 }
 
 impl<'s> Image<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, Image<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::Image>(&(object_type_path / "image")) {
@@ -105,9 +106,7 @@ impl<'s> Image<'s> {
                     });
                 },
             );
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.image.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -119,11 +118,12 @@ pub struct Point2D<'s> {
 }
 
 impl<'s> Point2D<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, Point2D<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<[f32; 2]>(&(object_type_path / "pos")) {
@@ -155,9 +155,7 @@ impl<'s> Point2D<'s> {
                 },
             );
 
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.point2d.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -169,11 +167,12 @@ pub struct Point3D<'s> {
 }
 
 impl<'s> Point3D<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, Point3D<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<[f32; 3]>(&(object_type_path / "pos")) {
@@ -205,9 +204,7 @@ impl<'s> Point3D<'s> {
                 },
             );
 
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.point3d.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -219,11 +216,12 @@ pub struct BBox2D<'s> {
 }
 
 impl<'s> BBox2D<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, BBox2D<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::BBox2D>(&(object_type_path / "bbox")) {
@@ -255,9 +253,7 @@ impl<'s> BBox2D<'s> {
                 },
             );
 
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.bbox2d.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -269,11 +265,12 @@ pub struct Box3D<'s> {
 }
 
 impl<'s> Box3D<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, Box3D<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::Box3>(&(object_type_path / "obb")) {
@@ -305,9 +302,7 @@ impl<'s> Box3D<'s> {
                 },
             );
 
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.box3d.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -319,11 +314,12 @@ pub struct Path3D<'s> {
 }
 
 impl<'s> Path3D<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, Path3D<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<Vec<[f32; 3]>>(&(object_type_path / "points")) {
@@ -355,9 +351,7 @@ impl<'s> Path3D<'s> {
                 },
             );
 
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.path3d.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -369,11 +363,12 @@ pub struct LineSegments2D<'s> {
 }
 
 impl<'s> LineSegments2D<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, LineSegments2D<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) =
@@ -407,9 +402,7 @@ impl<'s> LineSegments2D<'s> {
                 },
             );
 
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.line_segments2d.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -421,11 +414,12 @@ pub struct LineSegments3D<'s> {
 }
 
 impl<'s> LineSegments3D<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, LineSegments3D<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) =
@@ -459,9 +453,7 @@ impl<'s> LineSegments3D<'s> {
                 },
             );
 
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.line_segments3d.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -472,11 +464,12 @@ pub struct Mesh3D<'s> {
 }
 
 impl<'s> Mesh3D<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, Mesh3D<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::Mesh3D>(&(object_type_path / "mesh")) {
@@ -504,9 +497,7 @@ impl<'s> Mesh3D<'s> {
                 },
             );
 
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.mesh3d.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -518,11 +509,12 @@ pub struct Camera<'s> {
 }
 
 impl<'s> Camera<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-    ) -> Vec<Object<'s, Camera<'s>>> {
+        out: &mut Objects<'s>,
+    ) {
         crate::profile_function!();
 
         if let Some(primary_data) = store.get::<log_types::Camera>(&(object_type_path / "camera")) {
@@ -550,9 +542,7 @@ impl<'s> Camera<'s> {
                 },
             );
 
-            vec
-        } else {
-            vec![] // nothing logged yet
+            out.camera.0.insert(object_type_path.clone(), vec);
         }
     }
 }
@@ -564,11 +554,11 @@ pub struct Space<'s> {
 }
 
 impl<'s> Space<'s> {
-    fn read<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Clone + Ord>(
         object_type_path: &TypePath,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut BTreeMap<&'s DataPath, Space<'s>>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -577,7 +567,7 @@ impl<'s> Space<'s> {
                 time_query,
                 primary_data,
                 |parent_object_path: &DataPath, _log_id: &LogId, up: &[f32; 3]| {
-                    out.insert(parent_object_path, Space { up });
+                    out.space.insert(parent_object_path, Space { up });
                 },
             );
         }
@@ -611,71 +601,21 @@ impl<'s> Objects<'s> {
     ) {
         crate::profile_function!();
 
-        match object_type {
-            ObjectType::Space => {
-                Space::read(object_type_path, store, time_query, &mut self.space);
-            }
-            ObjectType::Image => {
-                self.image.0.insert(
-                    object_type_path.clone(),
-                    Image::read(object_type_path, store, time_query),
-                );
-            }
-            ObjectType::Point2D => {
-                self.point2d.0.insert(
-                    object_type_path.clone(),
-                    Point2D::read(object_type_path, store, time_query),
-                );
-            }
-            ObjectType::BBox2D => {
-                self.bbox2d.0.insert(
-                    object_type_path.clone(),
-                    BBox2D::read(object_type_path, store, time_query),
-                );
-            }
-            ObjectType::LineSegments2D => {
-                self.line_segments2d.0.insert(
-                    object_type_path.clone(),
-                    LineSegments2D::read(object_type_path, store, time_query),
-                );
-            }
-            ObjectType::Point3D => {
-                self.point3d.0.insert(
-                    object_type_path.clone(),
-                    Point3D::read(object_type_path, store, time_query),
-                );
-            }
-            ObjectType::Box3D => {
-                self.box3d.0.insert(
-                    object_type_path.clone(),
-                    Box3D::read(object_type_path, store, time_query),
-                );
-            }
-            ObjectType::Path3D => {
-                self.path3d.0.insert(
-                    object_type_path.clone(),
-                    Path3D::read(object_type_path, store, time_query),
-                );
-            }
-            ObjectType::LineSegments3D => {
-                self.line_segments3d.0.insert(
-                    object_type_path.clone(),
-                    LineSegments3D::read(object_type_path, store, time_query),
-                );
-            }
-            ObjectType::Mesh3D => {
-                self.mesh3d.0.insert(
-                    object_type_path.clone(),
-                    Mesh3D::read(object_type_path, store, time_query),
-                );
-            }
-            ObjectType::Camera => {
-                self.camera.0.insert(
-                    object_type_path.clone(),
-                    Camera::read(object_type_path, store, time_query),
-                );
-            }
-        }
+        let query_fn = match object_type {
+            ObjectType::Space => Space::query,
+            ObjectType::Image => Image::query,
+            ObjectType::Point2D => Point2D::query,
+            ObjectType::BBox2D => BBox2D::query,
+            ObjectType::LineSegments2D => LineSegments2D::query,
+            ObjectType::Point3D => Point3D::query,
+            ObjectType::Box3D => Box3D::query,
+            ObjectType::Path3D => Path3D::query,
+            ObjectType::LineSegments3D => LineSegments3D::query,
+            ObjectType::Mesh3D => Mesh3D::query,
+            ObjectType::Camera => Camera::query,
+        };
+
+        query_fn(object_type_path, store, time_query, self);
     }
 
     pub fn filter(&self, keep: impl Fn(&ObjectProps<'_>) -> bool) -> Self {
