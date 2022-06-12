@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 
 use log_types::{FieldName, IndexKey, IndexPath, LogId, ObjPath};
 
-use crate::{ObjTypePath, TimeQuery};
+use crate::{DataType, ObjTypePath, TimeQuery};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
@@ -45,7 +45,7 @@ impl<Time> Default for TypePathDataStore<Time> {
 }
 
 impl<Time: 'static + Ord> TypePathDataStore<Time> {
-    pub fn insert_individual<T: 'static>(
+    pub fn insert_individual<T: DataType>(
         &mut self,
         parent_obj_path: ObjPath,
         field_name: FieldName,
@@ -61,7 +61,7 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
             .insert_individual(index_path, field_name, time, parent_obj_path, log_id, value)
     }
 
-    pub fn insert_batch<T: 'static>(
+    pub fn insert_batch<T: DataType>(
         &mut self,
         obj_type_path: ObjTypePath,
         index_path_prefix: IndexPath,
@@ -86,7 +86,7 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
         self.objects.get(obj_type_path)
     }
 
-    pub fn get_field<T: 'static>(
+    pub fn get_field<T: DataType>(
         &self,
         obj_type_path: &ObjTypePath,
         field_name: &FieldName,
@@ -116,7 +116,7 @@ impl<Time> Default for ObjStore<Time> {
 }
 
 impl<Time: 'static + Ord> ObjStore<Time> {
-    pub fn insert_individual<T: 'static>(
+    pub fn insert_individual<T: DataType>(
         &mut self,
         index_path: IndexPath,
         field_name: FieldName,
@@ -137,7 +137,7 @@ impl<Time: 'static + Ord> ObjStore<Time> {
         }
     }
 
-    pub fn insert_batch<T: 'static>(
+    pub fn insert_batch<T: DataType>(
         &mut self,
         index_path_prefix: IndexPath,
         field_name: FieldName,
@@ -158,7 +158,7 @@ impl<Time: 'static + Ord> ObjStore<Time> {
         }
     }
 
-    pub fn get<T: 'static>(&self, field_name: &FieldName) -> Option<&DataStore<Time, T>> {
+    pub fn get<T: DataType>(&self, field_name: &FieldName) -> Option<&DataStore<Time, T>> {
         self.fields.get(field_name).and_then(|x| x.read::<T>())
     }
 
@@ -173,29 +173,29 @@ impl<Time: 'static + Ord> ObjStore<Time> {
 pub struct DataStoreTypeErased<Time>(Box<dyn std::any::Any>, std::marker::PhantomData<Time>);
 
 impl<Time: 'static + Ord> DataStoreTypeErased<Time> {
-    fn new_individual<T: 'static>() -> Self {
+    fn new_individual<T: DataType>() -> Self {
         Self(
             Box::new(DataStore::<Time, T>::new_individual()),
             Default::default(),
         )
     }
 
-    fn new_batched<T: 'static>() -> Self {
+    fn new_batched<T: DataType>() -> Self {
         Self(
             Box::new(DataStore::<Time, T>::new_batched()),
             Default::default(),
         )
     }
 
-    pub fn is<T: 'static>(&self) -> bool {
+    pub fn is<T: DataType>(&self) -> bool {
         self.0.is::<DataStore<Time, T>>()
     }
 
-    pub fn read_no_warn<T: 'static>(&self) -> Option<&DataStore<Time, T>> {
+    pub fn read_no_warn<T: DataType>(&self) -> Option<&DataStore<Time, T>> {
         self.0.downcast_ref::<DataStore<Time, T>>()
     }
 
-    pub fn read<T: 'static>(&self) -> Option<&DataStore<Time, T>> {
+    pub fn read<T: DataType>(&self) -> Option<&DataStore<Time, T>> {
         if let Some(read) = self.read_no_warn() {
             Some(read)
         } else {
@@ -204,7 +204,7 @@ impl<Time: 'static + Ord> DataStoreTypeErased<Time> {
         }
     }
 
-    pub fn write<T: 'static>(&mut self) -> Option<&mut DataStore<Time, T>> {
+    pub fn write<T: DataType>(&mut self) -> Option<&mut DataStore<Time, T>> {
         self.0.downcast_mut::<DataStore<Time, T>>()
     }
 }
@@ -218,7 +218,7 @@ pub enum DataStore<Time, T> {
     Batched(BatchedDataHistory<Time, T>),
 }
 
-impl<Time: Ord, T: 'static> DataStore<Time, T> {
+impl<Time: Ord, T: DataType> DataStore<Time, T> {
     fn new_individual() -> Self {
         Self::Individual(Default::default())
     }
@@ -369,7 +369,7 @@ pub enum IndividualDataReader<'store, Time, T> {
     Batched(&'store BatchedDataHistory<Time, T>),
 }
 
-impl<'store, Time: 'static + Ord, T: 'static> IndividualDataReader<'store, Time, T> {
+impl<'store, Time: 'static + Ord, T: DataType> IndividualDataReader<'store, Time, T> {
     pub fn new(store: &'store ObjStore<Time>, field_name: &FieldName) -> Self {
         if let Some(data) = store.get::<T>(field_name) {
             match data {
@@ -406,7 +406,7 @@ pub enum BatchedDataReader<'store, Time, T> {
     Batched(&'store IntMap<IndexKey, T>),
 }
 
-impl<'store, Time: Clone + Ord, T: 'static> BatchedDataReader<'store, Time, T> {
+impl<'store, Time: Clone + Ord, T: DataType> BatchedDataReader<'store, Time, T> {
     pub fn new(
         data: Option<&'store DataStore<Time, T>>,
         index_path_prefix: &IndexPath,
@@ -490,7 +490,7 @@ pub fn query<'data, Time: Ord, T>(
 // ----------------------------------------------------------------------------
 
 /// The visitor is called with the object data path, the closest individually addressable parent object. It can be used to test if the object should be visible.
-pub fn visit_data<'s, Time: 'static + Ord, T: 'static>(
+pub fn visit_data<'s, Time: 'static + Ord, T: DataType>(
     time_query: &TimeQuery<Time>,
     primary_data: &'s DataStore<Time, T>,
     mut visit: impl FnMut(&'s ObjPath, &'s LogId, &'s T),
@@ -527,7 +527,7 @@ pub fn visit_data<'s, Time: 'static + Ord, T: 'static>(
     Some(())
 }
 
-pub fn visit_data_and_1_child<'s, Time: 'static + Clone + Ord, T: 'static, S1: 'static>(
+pub fn visit_data_and_1_child<'s, Time: 'static + Clone + Ord, T: DataType, S1: DataType>(
     store: &'s ObjStore<Time>,
     time_query: &TimeQuery<Time>,
     primary_data: &'s DataStore<Time, T>,
@@ -588,9 +588,9 @@ pub fn visit_data_and_1_child<'s, Time: 'static + Clone + Ord, T: 'static, S1: '
 pub fn visit_data_and_2_children<
     's,
     Time: 'static + Clone + Ord,
-    T: 'static,
-    S1: 'static,
-    S2: 'static,
+    T: DataType,
+    S1: DataType,
+    S2: DataType,
 >(
     store: &'s ObjStore<Time>,
     time_query: &TimeQuery<Time>,
@@ -659,10 +659,10 @@ pub fn visit_data_and_2_children<
 pub fn visit_data_and_3_children<
     's,
     Time: 'static + Clone + Ord,
-    T: 'static,
-    S1: 'static,
-    S2: 'static,
-    S3: 'static,
+    T: DataType,
+    S1: DataType,
+    S2: DataType,
+    S3: DataType,
 >(
     store: &'s ObjStore<Time>,
     time_query: &TimeQuery<Time>,
