@@ -253,6 +253,18 @@ macro_rules! declare_new_type {
                 self.as_str().fmt(f)
             }
         }
+
+        impl<'a> PartialEq<&'a str> for $StructName {
+            fn eq(&self, other: &&'a str) -> bool {
+                self.as_str() == *other
+            }
+        }
+
+        impl<'a> PartialEq<$StructName> for &'a str {
+            fn eq(&self, other: &$StructName) -> bool {
+                *self == other.as_str()
+            }
+        }
     };
 }
 

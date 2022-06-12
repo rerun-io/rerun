@@ -614,6 +614,7 @@ impl<'s> Objects<'s> {
 
     pub fn filter(&self, keep: impl Fn(&ObjectProps<'_>) -> bool) -> Self {
         crate::profile_function!();
+
         Self {
             image: self.image.filter(&keep),
             point2d: self.point2d.filter(&keep),
@@ -629,5 +630,21 @@ impl<'s> Objects<'s> {
 
             space: self.space.clone(), // SPECIAL don't filter
         }
+    }
+
+    pub fn has_any_2d(&self) -> bool {
+        !self.image.is_empty()
+            || !self.point2d.is_empty()
+            || !self.bbox2d.is_empty()
+            || !self.line_segments2d.is_empty()
+    }
+
+    pub fn has_any_3d(&self) -> bool {
+        !self.point3d.is_empty()
+            || !self.box3d.is_empty()
+            || !self.path3d.is_empty()
+            || !self.line_segments3d.is_empty()
+            || !self.mesh3d.is_empty()
+            || !self.camera.is_empty()
     }
 }

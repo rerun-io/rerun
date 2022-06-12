@@ -2,14 +2,38 @@ use egui::*;
 
 use log_types::*;
 
-use crate::{log_db::SpaceSummary, space_view::ui_data, LogDb, Preview, Selection, ViewerContext};
+use crate::{space_view::ui_data, LogDb, Preview, Selection, ViewerContext};
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State2D {
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
     hovered: Option<LogId>,
+
+    /// Estimate of the the bounding box of all data. Accumulated.
+    #[serde(skip)]
+    scene_bbox: epaint::Rect,
+}
+
+impl Default for State2D {
+    fn default() -> Self {
+        Self {
+            hovered: Default::default(),
+            scene_bbox: epaint::Rect::NOTHING,
+        }
+    }
+}
+
+impl State2D {
+    /// Size of the 2D bounding box, if any.
+    pub fn size(&self) -> Option<egui::Vec2> {
+        if self.scene_bbox.is_positive() {
+            Some(self.scene_bbox.size())
+        } else {
+            None
+        }
+    }
 }
 
 /// messages: latest version of each object (of all spaces).
@@ -17,15 +41,16 @@ pub(crate) fn combined_view_2d(
     log_db: &LogDb,
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    state2d: &mut State2D,
-    space_summary: &SpaceSummary,
+    state: &mut State2D,
     objects: &data_store::Objects<'_>,
 ) {
     crate::profile_function!();
 
+    state.scene_bbox = state.scene_bbox.union(crate::misc::calc_bbox_2d(objects));
+
     let desired_size = {
         let max_size = ui.available_size();
-        let mut desired_size = space_summary.bbox2d.size();
+        let mut desired_size = state.scene_bbox.size();
         desired_size *= max_size.x / desired_size.x; // fill full width
         desired_size *= (max_size.y / desired_size.y).at_most(1.0); // shrink so we don't fill more than full height
         desired_size
@@ -35,7 +60,7 @@ pub(crate) fn combined_view_2d(
 
     // ------------------------------------------------------------------------
 
-    if let Some(hovered_id) = state2d.hovered {
+    if let Some(hovered_id) = state.hovered {
         if response.clicked() {
             context.selection = Selection::LogId(hovered_id);
         }
@@ -52,11 +77,11 @@ pub(crate) fn combined_view_2d(
 
     // ------------------------------------------------------------------------
 
-    let to_screen = egui::emath::RectTransform::from_to(space_summary.bbox2d, response.rect);
+    let to_screen = egui::emath::RectTransform::from_to(state.scene_bbox, response.rect);
 
     // Paint background in case there is no image covering it all:
     let mut shapes = vec![Shape::rect_filled(
-        to_screen.transform_rect(space_summary.bbox2d),
+        to_screen.transform_rect(state.scene_bbox),
         3.0,
         ui.visuals().extreme_bg_color,
     )];
@@ -81,7 +106,7 @@ pub(crate) fn combined_view_2d(
     for (image_idx, (_type_path, props, obj)) in objects.image.iter().enumerate() {
         let data_store::Image { image } = obj;
         let paint_props =
-            paint_properties(context, &state2d.hovered, props, DefaultColor::White, &None);
+            paint_properties(context, &state.hovered, props, DefaultColor::White, &None);
 
         let texture_id = context
             .image_cache
@@ -117,7 +142,7 @@ pub(crate) fn combined_view_2d(
         let data_store::BBox2D { bbox, stroke_width } = obj;
         let paint_props = paint_properties(
             context,
-            &state2d.hovered,
+            &state.hovered,
             props,
             DefaultColor::Random,
             stroke_width,
@@ -152,7 +177,7 @@ pub(crate) fn combined_view_2d(
         } = obj;
         let paint_props = paint_properties(
             context,
-            &state2d.hovered,
+            &state.hovered,
             props,
             DefaultColor::Random,
             stroke_width,
@@ -184,13 +209,8 @@ pub(crate) fn combined_view_2d(
 
     for (_type_path, props, obj) in objects.point2d.iter() {
         let data_store::Point2D { pos, radius } = obj;
-        let paint_props = paint_properties(
-            context,
-            &state2d.hovered,
-            props,
-            DefaultColor::Random,
-            &None,
-        );
+        let paint_props =
+            paint_properties(context, &state.hovered, props, DefaultColor::Random, &None);
 
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
@@ -214,7 +234,7 @@ pub(crate) fn combined_view_2d(
 
     painter.extend(shapes);
 
-    state2d.hovered = closest_id;
+    state.hovered = closest_id;
 }
 
 struct ObjectPaintProperties {

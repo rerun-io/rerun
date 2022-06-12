@@ -14,10 +14,10 @@ use glam::Affine3A;
 use log_types::{Data, LogId, ObjPath};
 use macaw::{vec3, Quat, Vec3};
 
-use crate::{log_db::SpaceSummary, LogDb};
+use crate::LogDb;
 use crate::{misc::Selection, ViewerContext};
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State3D {
     orbit_camera: Option<OrbitCamera>,
@@ -28,6 +28,21 @@ pub(crate) struct State3D {
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
     hovered: Option<LogId>,
+
+    /// Estimate of the the bounding box of all data. Accumulated.
+    #[serde(skip)]
+    scene_bbox: macaw::BoundingBox,
+}
+
+impl Default for State3D {
+    fn default() -> Self {
+        Self {
+            orbit_camera: Default::default(),
+            cam_interpolation: Default::default(),
+            hovered: Default::default(),
+            scene_bbox: macaw::BoundingBox::nothing(),
+        }
+    }
 }
 
 impl State3D {
@@ -36,7 +51,6 @@ impl State3D {
         context: &mut ViewerContext,
         tracking_camera: Option<Camera>,
         response: &egui::Response,
-        space_summary: &SpaceSummary,
         space_specs: &SpaceSpecs,
     ) -> Camera {
         if response.double_clicked() {
@@ -44,12 +58,12 @@ impl State3D {
             if tracking_camera.is_some() {
                 context.selection = Selection::None;
             }
-            self.interpolate_to_orbit_camera(default_camera(space_summary, space_specs));
+            self.interpolate_to_orbit_camera(default_camera(&self.scene_bbox, space_specs));
         }
 
         let orbit_camera = self
             .orbit_camera
-            .get_or_insert_with(|| default_camera(space_summary, space_specs));
+            .get_or_insert_with(|| default_camera(&self.scene_bbox, space_specs));
 
         if let Some(tracking_camera) = tracking_camera {
             orbit_camera.copy_from_camera(&tracking_camera);
@@ -169,7 +183,6 @@ fn show_settings_ui(
     ui: &mut egui::Ui,
     state_3d: &mut State3D,
     space: &ObjPath,
-    space_summary: &SpaceSummary,
     space_specs: &SpaceSpecs,
 ) {
     ui.horizontal(|ui| {
@@ -208,7 +221,7 @@ fn show_settings_ui(
             .on_hover_text("You can also double-click the 3D view")
             .clicked()
         {
-            state_3d.orbit_camera = Some(default_camera(space_summary, space_specs));
+            state_3d.orbit_camera = Some(default_camera(&state_3d.scene_bbox, space_specs));
             state_3d.cam_interpolation = None;
             // TODO: reset tracking camera too
         }
@@ -281,45 +294,40 @@ pub(crate) fn combined_view_3d(
     log_db: &LogDb,
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    state_3d: &mut State3D,
+    state: &mut State3D,
     space: &ObjPath,
-    space_summary: &SpaceSummary,
     objects: &data_store::Objects<'_>,
 ) {
     crate::profile_function!();
+
+    state.scene_bbox = state.scene_bbox.union(crate::misc::calc_bbox_3d(objects));
 
     let space_specs = SpaceSpecs::from_objects(space, objects);
 
     // TODO: show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(context, ui, state_3d, space, space_summary, &space_specs);
+    show_settings_ui(context, ui, state, space, &space_specs);
 
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     let tracking_camera = tracking_camera(log_db, context, objects);
-    let camera = state_3d.update_camera(
-        context,
-        tracking_camera,
-        &response,
-        space_summary,
-        &space_specs,
-    );
+    let camera = state.update_camera(context, tracking_camera, &response, &space_specs);
 
-    let mut hovered_id = state_3d.hovered;
+    let mut hovered_id = state.hovered;
     if ui.input().pointer.any_click() {
         if let Some(clicked_id) = hovered_id {
             if let Some(msg) = log_db.get_data_msg(&clicked_id) {
                 context.selection = crate::Selection::LogId(clicked_id);
                 if let Data::Camera(cam) = &msg.data {
-                    state_3d.interpolate_to_camera(Camera::from_camera_data(cam));
+                    state.interpolate_to_camera(Camera::from_camera_data(cam));
                 } else if let Some(center) = msg.data.center3d() {
                     // center camera on what we click on
                     // TODO: center on where you clicked instead of the centroid of the data
-                    if let Some(mut new_orbit_cam) = state_3d.orbit_camera {
+                    if let Some(mut new_orbit_cam) = state.orbit_camera {
                         let center = Vec3::from(center);
                         new_orbit_cam.radius = new_orbit_cam.position().distance(center);
                         new_orbit_cam.center = center;
-                        state_3d.interpolate_to_orbit_camera(new_orbit_cam);
+                        state.interpolate_to_orbit_camera(new_orbit_cam);
                     }
                 }
             }
@@ -342,14 +350,14 @@ pub(crate) fn combined_view_3d(
 
     let scene = Scene::from_objects(
         context,
-        space_summary,
+        &state.scene_bbox,
         rect.size(),
         &camera,
         hovered_id.as_ref(),
         objects,
     );
 
-    state_3d.hovered = response
+    state.hovered = response
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &camera));
 
@@ -366,15 +374,13 @@ pub(crate) fn combined_view_3d(
     ui.painter().add(callback);
 }
 
-fn default_camera(space_summary: &SpaceSummary, space_spects: &SpaceSpecs) -> OrbitCamera {
-    let bbox = space_summary.bbox3d;
-
-    let mut center = bbox.center();
+fn default_camera(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> OrbitCamera {
+    let mut center = scene_bbox.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
     }
 
-    let mut radius = 2.0 * bbox.half_size().length();
+    let mut radius = 2.0 * scene_bbox.half_size().length();
     if !radius.is_finite() || radius == 0.0 {
         radius = 1.0;
     }

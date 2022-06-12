@@ -46,17 +46,20 @@ impl SpaceView {
         ui: &mut egui::Ui,
     ) {
         let spaces = log_db
-            .spaces
+            .space_names
             .iter()
-            .map(|(path, summary)| SpaceInfo {
-                space_path: path.clone(),
-                size: summary.size_2d(),
+            .map(|space_path| {
+                let size = self.state_2d.get(space_path).and_then(|state| state.size());
+                SpaceInfo {
+                    space_path: space_path.clone(),
+                    size,
+                }
             })
             .collect_vec();
 
         let regions = layout_spaces(ui.available_rect_before_wrap(), &spaces);
 
-        for (rect, space) in itertools::izip!(&regions, log_db.spaces.keys()) {
+        for (rect, space) in itertools::izip!(&regions, log_db.space_names.iter()) {
             let mut ui = ui.child_ui_with_id_source(*rect, *ui.layout(), space);
             egui::Frame::group(ui.style())
                 .inner_margin(Vec2::splat(4.0))
@@ -204,13 +207,6 @@ impl SpaceView {
     ) {
         crate::profile_function!(&space.to_string());
 
-        let space_summary = if let Some(space_summary) = log_db.spaces.get(space) {
-            space_summary
-        } else {
-            ui.label("[missing space]");
-            return;
-        };
-
         let objects = objects.filter(|props| {
             props.space == Some(space)
                 && context
@@ -219,22 +215,14 @@ impl SpaceView {
                     .visible
         });
 
-        if !space_summary.messages_3d.is_empty() {
+        if objects.has_any_3d() {
             let state_3d = self.state_3d.entry(space.clone()).or_default();
-            crate::view3d::combined_view_3d(
-                log_db,
-                context,
-                ui,
-                state_3d,
-                space,
-                space_summary,
-                &objects,
-            );
+            crate::view3d::combined_view_3d(log_db, context, ui, state_3d, space, &objects);
         }
 
-        if !space_summary.messages_2d.is_empty() {
+        if objects.has_any_2d() {
             let state_2d = self.state_2d.entry(space.clone()).or_default();
-            crate::view2d::combined_view_2d(log_db, context, ui, state_2d, space_summary, &objects);
+            crate::view2d::combined_view_2d(log_db, context, ui, state_2d, &objects);
         }
     }
 }

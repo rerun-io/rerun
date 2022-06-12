@@ -16,7 +16,8 @@ pub(crate) struct LogDb {
     log_messages: nohash_hasher::IntMap<LogId, LogMsg>,
     pub object_types: ahash::AHashMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
-    pub spaces: BTreeMap<ObjPath, SpaceSummary>,
+    /// All known spaces.
+    pub space_names: BTreeSet<ObjPath>,
     pub data_tree: ObjectTree,
     pub data_store: data_store::LogDataStore,
     data_history: ahash::AHashMap<DataPath, DataHistoryLog>,
@@ -82,7 +83,15 @@ impl LogDb {
             tracing::warn!("Failed to add data to data_store: {:?}", err);
         }
 
+        if msg.data_path.field_name == "space" {
+            if let Data::Space(space) = &msg.data {
+                self.space_names.insert(space.clone());
+            }
+        }
+
         if let Some(space) = msg.space.clone() {
+            self.space_names.insert(space.clone());
+
             if !matches!(msg.data, Data::Batch { .. }) {
                 // HACK until we change how spaces are logged
                 let space_msg = DataMsg {
@@ -100,123 +109,6 @@ impl LogDb {
 
         self.chronological_message_ids.push(msg.id);
         self.time_points.insert(&msg.time_point);
-
-        if let Some(space) = &msg.space {
-            let summary = self.spaces.entry(space.clone()).or_default();
-            summary.messages.insert(msg.id);
-
-            match &msg.data {
-                Data::Batch { data, .. } => match data {
-                    DataBatch::Pos3(pos) => {
-                        summary.messages_2d.insert(msg.id);
-                        for p in pos {
-                            summary.bbox3d.extend((*p).into());
-                        }
-                    }
-                    DataBatch::Color(_) | DataBatch::Space(_) => {}
-                },
-
-                Data::Pos2(vec) => {
-                    summary.messages_2d.insert(msg.id);
-                    summary.bbox2d.extend_with(vec.into());
-                }
-                Data::BBox2D(bbox) => {
-                    summary.messages_2d.insert(msg.id);
-                    summary.bbox2d.extend_with(bbox.min.into());
-                    summary.bbox2d.extend_with(bbox.max.into());
-                }
-                Data::LineSegments2D(line_segments) => {
-                    summary.messages_2d.insert(msg.id);
-                    for [a, b] in line_segments {
-                        summary.bbox2d.extend_with(a.into());
-                        summary.bbox2d.extend_with(b.into());
-                    }
-                }
-                Data::Image(image) => {
-                    summary.messages_2d.insert(msg.id);
-                    summary.bbox2d.extend_with(egui::Pos2::ZERO);
-                    summary
-                        .bbox2d
-                        .extend_with(egui::pos2(image.size[0] as _, image.size[1] as _));
-                }
-
-                Data::Pos3(pos) => {
-                    summary.messages_3d.insert(msg.id);
-                    summary.bbox3d.extend((*pos).into());
-                }
-                Data::Vec3(_) => {
-                    // NOTE: vectors aren't positions
-                    summary.messages_3d.insert(msg.id);
-                }
-                Data::Box3(box3) => {
-                    summary.messages_3d.insert(msg.id);
-                    let Box3 {
-                        rotation,
-                        translation,
-                        half_size,
-                    } = box3;
-                    let rotation = glam::Quat::from_array(*rotation);
-                    let translation = glam::Vec3::from(*translation);
-                    let half_size = glam::Vec3::from(*half_size);
-                    let transform = glam::Mat4::from_scale_rotation_translation(
-                        half_size,
-                        rotation,
-                        translation,
-                    );
-                    use glam::vec3;
-                    let corners = [
-                        transform
-                            .transform_point3(vec3(-0.5, -0.5, -0.5))
-                            .to_array(),
-                        transform.transform_point3(vec3(-0.5, -0.5, 0.5)).to_array(),
-                        transform.transform_point3(vec3(-0.5, 0.5, -0.5)).to_array(),
-                        transform.transform_point3(vec3(-0.5, 0.5, 0.5)).to_array(),
-                        transform.transform_point3(vec3(0.5, -0.5, -0.5)).to_array(),
-                        transform.transform_point3(vec3(0.5, -0.5, 0.5)).to_array(),
-                        transform.transform_point3(vec3(0.5, 0.5, -0.5)).to_array(),
-                        transform.transform_point3(vec3(0.5, 0.5, 0.5)).to_array(),
-                    ];
-                    for p in corners {
-                        summary.bbox3d.extend(p.into());
-                    }
-                }
-                Data::Path3D(points) => {
-                    summary.messages_3d.insert(msg.id);
-                    for &p in points {
-                        summary.bbox3d.extend(p.into());
-                    }
-                }
-                Data::LineSegments3D(segments) => {
-                    summary.messages_3d.insert(msg.id);
-                    for &[a, b] in segments {
-                        summary.bbox3d.extend(a.into());
-                        summary.bbox3d.extend(b.into());
-                    }
-                }
-                Data::Mesh3D(mesh) => {
-                    summary.messages_3d.insert(msg.id);
-                    match mesh {
-                        Mesh3D::Encoded(_) => {
-                            // TODO: how to we get the bbox of an encoded mesh here?
-                        }
-                        Mesh3D::Raw(mesh) => {
-                            for &pos in &mesh.positions {
-                                summary.bbox3d.extend(pos.into());
-                            }
-                        }
-                    }
-                }
-                Data::Camera(camera) => {
-                    summary.messages_3d.insert(msg.id);
-                    summary.bbox3d.extend(camera.position.into());
-                }
-
-                _ => {
-                    debug_assert!(!msg.data.is_2d(), "Missed handling 2D data: {:?}", msg.data);
-                    debug_assert!(!msg.data.is_3d(), "Missed handling 3D data: {:?}", msg.data);
-                }
-            }
-        }
 
         self.data_history
             .entry(msg.data_path.clone())
@@ -371,48 +263,6 @@ impl DataHistoryLog {
                     out.extend(ids.iter().copied());
                 }
             }
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-pub(crate) struct SpaceSummary {
-    /// All messages in this space
-    pub messages: BTreeSet<LogId>,
-
-    /// messages with 2D data
-    pub messages_2d: BTreeSet<LogId>,
-
-    /// messages with 3D data
-    pub messages_3d: BTreeSet<LogId>,
-
-    /// bounding box of 2D data
-    pub bbox2d: egui::Rect,
-
-    /// bounding box of 3D data
-    pub bbox3d: macaw::BoundingBox,
-}
-
-impl Default for SpaceSummary {
-    fn default() -> Self {
-        Self {
-            messages: Default::default(),
-            messages_2d: Default::default(),
-            messages_3d: Default::default(),
-            bbox2d: egui::Rect::NOTHING,
-            bbox3d: macaw::BoundingBox::nothing(),
-        }
-    }
-}
-
-impl SpaceSummary {
-    /// Only set for 2D spaces
-    pub fn size_2d(&self) -> Option<egui::Vec2> {
-        if self.bbox2d.is_positive() {
-            Some(self.bbox2d.size())
-        } else {
-            None
         }
     }
 }

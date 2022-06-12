@@ -6,8 +6,7 @@ use itertools::Itertools as _;
 use log_types::{Box3, LogId, Mesh3D};
 
 use crate::{
-    log_db::SpaceSummary, math::line_segment_distance_sq_to_point, misc::mesh_loader::CpuMesh,
-    misc::ViewerContext,
+    math::line_segment_distance_sq_to_point, misc::mesh_loader::CpuMesh, misc::ViewerContext,
 };
 
 use super::camera::Camera;
@@ -49,7 +48,7 @@ pub struct Scene {
 impl Scene {
     pub(crate) fn from_objects(
         context: &mut ViewerContext,
-        space_summary: &SpaceSummary,
+        scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         camera: &Camera,
         hovered_id: Option<&LogId>,
@@ -210,7 +209,7 @@ impl Scene {
                 // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
                 // The lens is at the origin.
 
-                let scale_based_on_scene_size = 0.05 * space_summary.bbox3d.size().length();
+                let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
                 let scale_based_on_distance = dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO: fade instead!
                 let scale = scale_based_on_scene_size.min(scale_based_on_distance);
                 let scale = boost_size_on_hover(props, scale);
@@ -235,7 +234,7 @@ impl Scene {
             }
 
             let line_radius = dist_to_camera * line_radius_from_distance;
-            scene.add_camera_frustum(camera, space_summary, props.log_id, line_radius, color);
+            scene.add_camera_frustum(camera, scene_bbox, props.log_id, line_radius, color);
         }
 
         scene
@@ -244,7 +243,7 @@ impl Scene {
     fn add_camera_frustum(
         &mut self,
         cam: &log_types::Camera,
-        space_summary: &SpaceSummary,
+        scene_bbox: &macaw::BoundingBox,
         log_id: &LogId,
         line_radius: f32,
         color: [u8; 4],
@@ -263,7 +262,7 @@ impl Scene {
                 * Mat4::from_mat3(intrinsis.inverse());
 
             // At what distance do we end the frustum?
-            let d = space_summary.bbox3d.size().length() * 0.25;
+            let d = scene_bbox.size().length() * 0.25;
 
             let corners = [
                 world_from_pixel
