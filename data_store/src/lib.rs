@@ -3,6 +3,7 @@ mod objects;
 mod storage;
 
 pub use log_store::*;
+use log_types::hash::Hash128;
 pub use objects::*;
 pub use storage::*;
 
@@ -153,17 +154,17 @@ pub(crate) fn batch_parent_object_path(
 // ----------------------------------------------------------------------------
 
 /// Like `Index` but also includes a precomputed hash.
-#[derive(Clone, Debug, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Eq)]
 pub struct IndexKey {
     index: Index,
-    hashes: [u64; 2], // 128 bit to avoid collisions
+    hash: Hash128,
 }
 
 impl IndexKey {
     #[inline]
     pub fn new(index: Index) -> Self {
-        let hashes = double_hash(&index);
-        Self { index, hashes }
+        let hash = Hash128::hash(&index);
+        Self { index, hash }
     }
 
     pub fn index(&self) -> &Index {
@@ -171,17 +172,29 @@ impl IndexKey {
     }
 }
 
+impl std::cmp::PartialOrd for IndexKey {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.index.partial_cmp(&other.index)
+    }
+}
+
+impl std::cmp::Ord for IndexKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.index.cmp(&other.index)
+    }
+}
+
 impl std::cmp::PartialEq for IndexKey {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.hashes == other.hashes // much faster, and low chance of collision
+        self.hash == other.hash // much faster, and low chance of collision
     }
 }
 
 impl std::hash::Hash for IndexKey {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hashes[0]);
+        self.hash.hash(state);
     }
 }
 
@@ -196,7 +209,7 @@ impl From<Index> for IndexKey {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, Eq)]
 pub struct IndexPathKey {
     components: Vec<Index>,
     hashes: [u64; 2], // 128 bit to avoid collisions
@@ -218,15 +231,15 @@ impl IndexPathKey {
         self.components.push(index.index);
         self.hashes[0] = self.hashes[0].rotate_left(5);
         self.hashes[1] = self.hashes[1].rotate_left(5);
-        self.hashes[0] ^= index.hashes[0];
-        self.hashes[1] ^= index.hashes[1];
+        self.hashes[0] ^= index.hash.first64();
+        self.hashes[1] ^= index.hash.second64();
     }
 
     /// Split off the last component.
     pub fn split_last(mut self) -> (IndexPathKey, IndexKey) {
         let index = IndexKey::new(self.components.pop().unwrap());
-        self.hashes[0] ^= index.hashes[0];
-        self.hashes[1] ^= index.hashes[1];
+        self.hashes[0] ^= index.hash.first64();
+        self.hashes[1] ^= index.hash.second64();
         self.hashes[0] = self.hashes[0].rotate_right(5);
         self.hashes[1] = self.hashes[1].rotate_right(5);
         (self, index)
@@ -274,22 +287,6 @@ fn test_index_path_key() {
     assert_eq!(key1_again.components.len(), 1);
     assert_eq!(key1_again, key1);
     assert_eq!(seq1, IndexKey::new(Index::Sequence(1)));
-}
-
-// ----------------------------------------------------------------------------
-
-#[inline]
-fn double_hash(value: impl std::hash::Hash + Copy) -> [u64; 2] {
-    [hash_with_seed(value, 123), hash_with_seed(value, 456)]
-}
-
-/// Hash the given value.
-#[inline]
-fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
-    use std::hash::Hasher as _;
-    let mut hasher = ahash::AHasher::new_with_keys(666, seed);
-    value.hash(&mut hasher);
-    hasher.finish()
 }
 
 // ----------------------------------------------------------------------------

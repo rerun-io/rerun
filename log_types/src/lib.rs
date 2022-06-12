@@ -6,6 +6,7 @@
 pub mod encoding;
 
 mod data;
+pub mod hash;
 pub mod objects;
 mod path;
 mod time;

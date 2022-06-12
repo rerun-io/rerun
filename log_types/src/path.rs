@@ -1,46 +1,20 @@
 use rr_string_interner::InternedString;
 
+use crate::hash::Hash128;
+
 // ----------------------------------------------------------------------------
 
-#[inline]
-fn double_hash(value: impl std::hash::Hash + Copy) -> [u64; 2] {
-    [hash_with_seed(value, 123), hash_with_seed(value, 456)]
-}
-
-/// Hash the given value.
-#[inline]
-fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
-    use std::hash::Hasher as _;
-    let mut hasher = ahash::AHasher::new_with_keys(666, seed);
-    value.hash(&mut hasher);
-    hasher.finish()
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialOrd, Ord)]
-pub struct DataPathHash([u64; 2]);
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct DataPathHash(Hash128);
 
 impl DataPathHash {
     fn new(components: &[DataPathComponent]) -> Self {
-        Self(double_hash(components))
+        Self(Hash128::hash(components))
     }
 
     #[inline]
     pub fn hash64(&self) -> u64 {
-        self.0[0]
-    }
-}
-
-impl std::hash::Hash for DataPathHash {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0[0]);
-    }
-}
-
-impl std::cmp::PartialEq for DataPathHash {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+        self.0.hash64()
     }
 }
 
@@ -49,7 +23,7 @@ impl nohash_hasher::IsEnabled for DataPathHash {}
 // ----------------------------------------------------------------------------
 
 /// A path to a specific piece of data (e.g. a single `f32`).
-#[derive(Clone, Debug, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Eq)]
 pub struct DataPath {
     components: Vec<DataPathComponent>,
     hash: DataPathHash,
@@ -75,7 +49,7 @@ impl DataPath {
     /// Precomputed hash.
     #[inline]
     pub fn hash64(&self) -> u64 {
-        self.hash.0[0]
+        self.hash.hash64()
     }
 
     #[inline]
@@ -139,6 +113,18 @@ impl<'de> serde::Deserialize<'de> for DataPath {
     }
 }
 
+impl std::cmp::PartialOrd for DataPath {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.components.partial_cmp(&other.components)
+    }
+}
+
+impl std::cmp::Ord for DataPath {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.components.cmp(&other.components)
+    }
+}
+
 impl std::cmp::PartialEq for DataPath {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -149,7 +135,7 @@ impl std::cmp::PartialEq for DataPath {
 impl std::hash::Hash for DataPath {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hash.0[0]);
+        self.hash.hash(state);
     }
 }
 
@@ -350,7 +336,7 @@ crate::impl_into_enum!(String, Index, String);
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TypePathComponent {
     /// Struct member
