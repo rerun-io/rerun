@@ -49,25 +49,19 @@ impl ViewerContext {
             tree: &ObjectTree,
         ) {
             // TODO: we need to speed up and simplify this a lot.
-            let data_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
-            let prop = prop.with_child(&context.individual_object_properties.get(&data_path));
-            context.projected_object_properties.set(data_path, prop);
+            let obj_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
+            let prop = prop.with_child(&context.individual_object_properties.get(&obj_path));
+            context.projected_object_properties.set(obj_path, prop);
 
             for (name, child) in &tree.string_children {
-                // leafs such as "color" and "radius" doesn't have properties.
-                // only objects do.
-                if !child.is_leaf() {
-                    path.push(ObjPathComp::String(*name));
-                    project_tree(context, path, prop, child);
-                    path.pop();
-                }
+                path.push(ObjPathComp::String(*name));
+                project_tree(context, path, prop, child);
+                path.pop();
             }
             for (index, child) in &tree.index_children {
-                if !child.is_leaf() {
-                    path.push(ObjPathComp::Index(index.clone()));
-                    project_tree(context, path, prop, child);
-                    path.pop();
-                }
+                path.push(ObjPathComp::Index(index.clone()));
+                project_tree(context, path, prop, child);
+                path.pop();
             }
         }
 
