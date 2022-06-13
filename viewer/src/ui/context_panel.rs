@@ -1,6 +1,6 @@
 use data_store::ObjPath;
 use itertools::Itertools;
-use log_types::{Data, DataMsg};
+use log_types::{Data, DataMsg, DataPath, LogId};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
@@ -42,8 +42,6 @@ impl ContextPanel {
                 show_detailed_data_msg(context, ui, msg);
                 ui.separator();
                 view_object(log_db, context, ui, &msg.data_path.obj_path);
-                ui.separator();
-                view_log_msg_siblings(log_db, context, ui, msg);
             }
             Selection::ObjTypePath(obj_type_path) => {
                 ui.label(format!("Selected object type path: {}", obj_type_path));
@@ -55,7 +53,7 @@ impl ContextPanel {
                     context.type_path_button(ui, obj_path.obj_type_path());
                 });
                 ui.separator();
-                view_object(log_db, context, ui, &obj_path);
+                view_object(log_db, context, ui, obj_path);
             }
             Selection::DataPath(data_path) => {
                 ui.label(format!("Selected data path: {}", data_path));
@@ -70,25 +68,7 @@ impl ContextPanel {
 
                 ui.separator();
 
-                let mut messages = context
-                    .time_control
-                    .selected_messages_for_data(log_db, data_path);
-                messages.sort_by_key(|msg| &msg.time_point);
-
-                if context.time_control.is_time_filter_active() {
-                    ui.label(format!("Viewing {} selected message(s):", messages.len()));
-                } else {
-                    ui.label("Viewing latest message:");
-                }
-
-                if messages.is_empty() {
-                    // nothing to see here
-                } else if messages.len() == 1 {
-                    // probably viewing the latest message of this data path
-                    show_detailed_data_msg(context, ui, messages[0]);
-                } else {
-                    crate::log_table_view::message_table(log_db, context, ui, &messages);
-                }
+                view_data(log_db, context, ui, data_path);
             }
             Selection::Space(space) => {
                 let space = space.clone();
@@ -133,65 +113,45 @@ fn view_object(
     Some(())
 }
 
-fn view_log_msg_siblings(
+fn view_data(
     log_db: &LogDb,
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    msg: &DataMsg,
+    data_path: &DataPath,
+) -> Option<()> {
+    let obj_path = data_path.obj_path();
+    let field_name = data_path.field_name();
+
+    let (_, store) = log_db.data_store.get(context.time_control.source())?;
+    let time_query = context.time_control.time_query()?;
+    let obj_store = store.get(obj_path.obj_type_path())?;
+    let data_store = obj_store.get_field(field_name)?;
+
+    let (_times, ids, data_vec) =
+        data_store.query_object(obj_path.index_path().clone(), &time_query);
+
+    if data_vec.len() == 1 {
+        let data = data_vec.last().unwrap();
+        let id = &ids[0];
+        show_detailed_data(context, ui, id, &data);
+    } else {
+        ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
+    }
+
+    Some(())
+}
+
+pub(crate) fn show_detailed_data(
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
+    log_id: &LogId,
+    data: &Data,
 ) {
-    crate::profile_function!();
-    let messages = context.time_control.selected_messages(log_db);
-
-    let obj_path = msg.data_path.obj_path.clone();
-
-    let mut sibling_messages: Vec<&DataMsg> = messages
-        .iter()
-        .copied()
-        .filter(|other_msg| other_msg.data_path.obj_path == obj_path)
-        .collect();
-
-    sibling_messages.sort_by_key(|msg| &msg.time_point);
-
-    ui.label(format!("{}:", obj_path));
-
-    use egui_extras::Size;
-    egui_extras::TableBuilder::new(ui)
-        .striped(true)
-        .cell_layout(egui::Layout::left_to_right().with_cross_align(egui::Align::Center))
-        .resizable(true)
-        .column(Size::initial(120.0).at_least(100.0)) // relative path
-        .column(Size::remainder().at_least(180.0)) // data
-        .header(20.0, |mut header| {
-            header.col(|ui| {
-                ui.heading("Field");
-            });
-            header.col(|ui| {
-                ui.heading("Data");
-            });
-        })
-        .body(|body| {
-            const ROW_HEIGHT: f32 = 24.0;
-            body.rows(ROW_HEIGHT, sibling_messages.len(), |index, mut row| {
-                let msg = sibling_messages[index];
-
-                row.col(|ui| {
-                    context.data_path_button_to(
-                        ui,
-                        msg.data_path.field_name.as_str(),
-                        &msg.data_path,
-                    );
-                });
-                row.col(|ui| {
-                    crate::space_view::ui_data(
-                        context,
-                        ui,
-                        &msg.id,
-                        &msg.data,
-                        Preview::Specific(ROW_HEIGHT),
-                    );
-                });
-            });
-        });
+    if let Data::Image(image) = data {
+        show_image(context, ui, log_id, image);
+    } else {
+        crate::space_view::ui_data(context, ui, log_id, data, Preview::Medium);
+    }
 }
 
 pub(crate) fn show_detailed_data_msg(
@@ -231,17 +191,17 @@ pub(crate) fn show_detailed_data_msg(
         });
 
     if let Data::Image(image) = &msg.data {
-        show_image(context, ui, msg, image);
+        show_image(context, ui, id, image);
     }
 }
 
 fn show_image(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    msg: &DataMsg,
+    log_id: &LogId,
     image: &log_types::Image,
 ) {
-    let (dynamic_image, egui_image) = context.image_cache.get_pair(&msg.id, image);
+    let (dynamic_image, egui_image) = context.image_cache.get_pair(log_id, image);
     let max_size = ui.available_size().min(egui_image.size_vec2());
     let response = egui_image.show_max_size(ui, max_size);
 

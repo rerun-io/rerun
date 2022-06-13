@@ -161,6 +161,10 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         }
     }
 
+    pub fn get_field(&self, field_name: &FieldName) -> Option<&DataStoreTypeErased<Time>> {
+        self.fields.get(field_name)
+    }
+
     pub fn get<T: DataTrait>(&self, field_name: &FieldName) -> Option<&DataStore<Time, T>> {
         self.fields
             .get(field_name)

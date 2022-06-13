@@ -4,7 +4,6 @@ use data_store::TimeQuery;
 use egui::NumExt as _;
 use log_types::*;
 
-use crate::log_db::MessageFilter;
 use crate::misc::TimePoints;
 
 use super::time_axis::TimeRange;
@@ -446,55 +445,6 @@ impl TimeControl {
             .entry(self.time_source)
             .or_insert_with(|| TimeState::new(selection.min))
             .selection = Some(selection);
-    }
-
-    /// Return the messages that should be visible at this time.
-    ///
-    /// This is either based on a time selection, or it is the latest message at the current time.
-    ///
-    /// Returns them in arbitrary order.
-    pub fn selected_messages<'db>(&self, log_db: &'db crate::log_db::LogDb) -> Vec<&'db DataMsg> {
-        self.selected_messages_filtered(log_db, &MessageFilter::All)
-    }
-
-    /// Return the messages that should be visible at this time.
-    ///
-    /// This is either based on a time selection, or it is the latest message at the current time.
-    ///
-    /// Returns them in arbitrary order.
-    pub fn selected_messages_for_data<'db>(
-        &self,
-        log_db: &'db crate::log_db::LogDb,
-        data_path: &DataPath,
-    ) -> Vec<&'db DataMsg> {
-        self.selected_messages_filtered(log_db, &MessageFilter::DataPath(data_path.clone()))
-    }
-
-    /// Return the messages that should be visible at this time.
-    ///
-    /// This is either based on a time selection, or it is the latest message at the current time.
-    ///
-    /// Returns them in arbitrary order.
-    pub fn selected_messages_filtered<'db>(
-        &self,
-        log_db: &'db crate::log_db::LogDb,
-        filter: &MessageFilter,
-    ) -> Vec<&'db DataMsg> {
-        crate::profile_function!();
-
-        let state = if let Some(state) = self.states.get(&self.time_source) {
-            state
-        } else {
-            return Default::default();
-        };
-
-        if self.is_time_filter_active() {
-            if let Some(range) = state.selection {
-                return log_db.data_messages_in_range(self.source(), range, filter);
-            }
-        }
-
-        log_db.latest_of_each_object(self.source(), state.time, filter)
     }
 
     /// Return the data that should be visible at this time.

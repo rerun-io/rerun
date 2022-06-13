@@ -21,6 +21,11 @@ impl DataPath {
     }
 
     #[inline]
+    pub fn obj_path(&self) -> &ObjPath {
+        &self.obj_path
+    }
+
+    #[inline]
     pub fn field_name(&self) -> &FieldName {
         &self.field_name
     }
