@@ -84,6 +84,9 @@ impl SpaceView {
                 ui.horizontal(|ui| {
                     if ui.button("Show all spaces").clicked() {
                         self.selected = SelectedSpace::All;
+                        if matches!(&context.selection, Selection::Space(_)) {
+                            context.selection = Selection::None;
+                        }
                     }
                 });
                 self.show_space(log_db, &objects, context, selected_space.as_ref(), ui);
@@ -408,6 +411,9 @@ pub(crate) fn ui_data(
 
         Data::Vecf32(data) => ui.label(format!("Vecf32({data:?})")),
 
-        Data::Space(space) => ui.label(space.to_string()),
+        Data::Space(space) => {
+            // ui.label(space.to_string())
+            context.space_button(ui, space)
+        }
     }
 }
