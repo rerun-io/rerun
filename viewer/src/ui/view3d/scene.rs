@@ -367,7 +367,7 @@ impl Scene {
         pointer_pos: egui::Pos2,
         rect: &egui::Rect,
         camera: &Camera,
-    ) -> Option<LogId> {
+    ) -> Option<(LogId, glam::Vec3)> {
         crate::profile_function!();
 
         let screen_from_world = camera.screen_from_world(rect);
@@ -454,6 +454,11 @@ impl Scene {
             }
         }
 
-        closest_id
+        if let Some(closest_id) = closest_id {
+            let closest_point = ray_in_world.point_along(closest_t);
+            Some((closest_id, closest_point))
+        } else {
+            None
+        }
     }
 }

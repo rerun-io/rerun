@@ -27,7 +27,10 @@ pub(crate) struct State3D {
 
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
-    hovered: Option<LogId>,
+    hovered_id: Option<LogId>,
+    /// Where in world space the mouse is hovering (from previous frame)
+    #[serde(skip)]
+    hovered_point: Option<glam::Vec3>,
 
     /// Estimate of the the bounding box of all data. Accumulated.
     #[serde(skip)]
@@ -39,7 +42,8 @@ impl Default for State3D {
         Self {
             orbit_camera: Default::default(),
             cam_interpolation: Default::default(),
-            hovered: Default::default(),
+            hovered_id: Default::default(),
+            hovered_point: Default::default(),
             scene_bbox: macaw::BoundingBox::nothing(),
         }
     }
@@ -316,20 +320,18 @@ pub(crate) fn combined_view_3d(
     let tracking_camera = tracking_camera(log_db, context, objects);
     let camera = state.update_camera(context, tracking_camera, &response, &space_specs);
 
-    let mut hovered_id = state.hovered;
+    let mut hovered_id = state.hovered_id;
     if ui.input().pointer.any_click() {
         if let Some(clicked_id) = hovered_id {
             if let Some(msg) = log_db.get_data_msg(&clicked_id) {
                 context.selection = crate::Selection::LogId(clicked_id);
                 if let Data::Camera(cam) = &msg.data {
                     state.interpolate_to_camera(Camera::from_camera_data(cam));
-                } else if let Some(center) = center3d(&msg.data) {
+                } else if let Some(clicked_point) = state.hovered_point {
                     // center camera on what we click on
-                    // TODO: center on where you clicked instead of the centroid of the data
                     if let Some(mut new_orbit_cam) = state.orbit_camera {
-                        let center = Vec3::from(center);
-                        new_orbit_cam.radius = new_orbit_cam.position().distance(center);
-                        new_orbit_cam.center = center;
+                        new_orbit_cam.radius = new_orbit_cam.position().distance(clicked_point);
+                        new_orbit_cam.center = clicked_point;
                         state.interpolate_to_orbit_camera(new_orbit_cam);
                     }
                 }
@@ -360,9 +362,11 @@ pub(crate) fn combined_view_3d(
         objects,
     );
 
-    state.hovered = response
+    let hovered = response
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &camera));
+    state.hovered_id = hovered.map(|x| x.0);
+    state.hovered_point = hovered.map(|x| x.1);
 
     let dark_mode = ui.visuals().dark_mode;
 
@@ -438,49 +442,4 @@ fn with_three_d_context<R>(
         let three_d = three_d.get_or_insert_with(|| RenderingContext::new(gl).unwrap());
         f(three_d)
     })
-}
-
-// ------------------------------------------
-
-/// The center of this 3D thing, if any.
-pub fn center3d(data: &log_types::Data) -> Option<[f32; 3]> {
-    match data {
-        Data::Vec3(pos) => Some(*pos), // TODO: this is ugly, we should stop this
-        Data::Box3(bbox) => Some(bbox.translation),
-        Data::Path3D(points) => {
-            let mut sum = [0.0_f64; 3];
-            for point in points {
-                sum[0] += point[0] as f64;
-                sum[1] += point[1] as f64;
-                sum[2] += point[2] as f64;
-            }
-            let n = points.len() as f32;
-            if n == 0.0 {
-                None
-            } else {
-                Some([sum[0] as f32 / n, sum[1] as f32 / n, sum[2] as f32 / n])
-            }
-        }
-        Data::LineSegments3D(segments) => {
-            let mut sum = [0.0_f64; 3];
-            for segment in segments {
-                for point in segment {
-                    sum[0] += point[0] as f64;
-                    sum[1] += point[1] as f64;
-                    sum[2] += point[2] as f64;
-                }
-            }
-            let n = 2.0 * segments.len() as f32;
-            if n == 0.0 {
-                None
-            } else {
-                Some([sum[0] as f32 / n, sum[1] as f32 / n, sum[2] as f32 / n])
-            }
-        }
-        Data::Mesh3D(_) => {
-            None // TODO
-        }
-        Data::Camera(cam) => Some(cam.position),
-        _ => None,
-    }
 }
