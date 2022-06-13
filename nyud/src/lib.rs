@@ -159,7 +159,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     "pos",
                     Data::Batch {
                         indices: indices.clone(),
-                        data: DataBatch::Pos3(positions),
+                        data: DataVec::Vec3(positions),
                     },
                 ));
 
@@ -170,7 +170,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     "space",
                     Data::Batch {
                         indices,
-                        data: DataBatch::Space(spaces),
+                        data: DataVec::Space(spaces),
                     },
                 ));
             }

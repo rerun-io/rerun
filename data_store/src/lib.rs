@@ -12,46 +12,9 @@ pub use log_types::{
 
 // ----------------------------------------------------------------------------
 
-/// Marker traits for types we allow in the the data store.
-///
-/// Everything in [`data_types`] implement this, and nothing else.
-pub trait DataType: 'static + Clone {}
-
-pub mod data_types {
-    use super::DataType;
-
-    impl DataType for i32 {}
-    impl DataType for f32 {}
-
-    pub type Vec2 = [f32; 2];
-    impl DataType for Vec2 {}
-
-    pub type LineSegment2D = [Vec2; 2];
-    impl DataType for LineSegment2D {}
-
-    pub type LineSegment3D = [Vec3; 2];
-    impl DataType for LineSegment3D {}
-
-    pub type Vec3 = [f32; 3];
-    impl DataType for Vec3 {}
-
-    pub type Color = [u8; 4];
-    impl DataType for Color {}
-
-    impl DataType for log_types::BBox2D {}
-    impl DataType for log_types::Box3 {}
-    impl DataType for log_types::Camera {}
-    impl DataType for log_types::Image {}
-    impl DataType for log_types::Mesh3D {}
-    impl DataType for log_types::ObjPath {}
-
-    /// For batches
-    impl<T: DataType> DataType for Vec<T> {}
-}
-
-// ----------------------------------------------------------------------------
-
 /// Path to the object owning the batch, i.e. stopping before the last index
+///
+/// `index_path_prefix` should have `Index::Placeholder` in the last position.
 pub(crate) fn batch_parent_obj_path(
     type_path: &ObjTypePath,
     index_path_prefix: &IndexPath,
@@ -61,6 +24,8 @@ pub(crate) fn batch_parent_obj_path(
     let mut obj_type_path = vec![];
     let mut index_path = vec![];
 
+    let mut found_placeholder = false;
+
     for typ in type_path {
         match typ {
             TypePathComp::String(name) => {
@@ -68,19 +33,34 @@ pub(crate) fn batch_parent_obj_path(
             }
             TypePathComp::Index => {
                 if let Some(index) = index_it.next() {
-                    obj_type_path.push(TypePathComp::Index);
-                    index_path.push(index.clone());
+                    if matches!(index, Index::Placeholder) {
+                        assert!(
+                            !found_placeholder,
+                            "Not a batch path. type_path: {}, index_path_prefix: {:?}",
+                            type_path, index_path_prefix
+                        );
+                        found_placeholder = true;
+                    } else {
+                        obj_type_path.push(TypePathComp::Index);
+                        index_path.push(index.clone());
+                    }
                 } else {
-                    return ObjPath::new(
-                        ObjTypePath::new(obj_type_path),
-                        IndexPath::new(index_path),
+                    panic!(
+                        "Not a batch path. type_path: {}, index_path_prefix: {:?}",
+                        type_path, index_path_prefix
                     );
                 }
             }
         }
     }
 
-    panic!("Not a batch path");
+    assert!(
+        found_placeholder,
+        "Not a batch path. type_path: {}, index_path_prefix: {:?}",
+        type_path, index_path_prefix
+    );
+
+    ObjPath::new(ObjTypePath::new(obj_type_path), IndexPath::new(index_path))
 }
 
 // ----------------------------------------------------------------------------

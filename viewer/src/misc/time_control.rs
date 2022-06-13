@@ -517,7 +517,7 @@ impl TimeControl {
         objects
     }
 
-    fn time_query(&self) -> Option<TimeQuery<i64>> {
+    pub fn time_query(&self) -> Option<TimeQuery<i64>> {
         if self.is_time_filter_active() {
             if let Some(state) = self.states.get(&self.time_source) {
                 if let Some(range) = state.selection {

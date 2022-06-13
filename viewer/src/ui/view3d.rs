@@ -444,10 +444,8 @@ fn with_three_d_context<R>(
 
 /// The center of this 3D thing, if any.
 pub fn center3d(data: &log_types::Data) -> Option<[f32; 3]> {
-    use log_types::Data;
-
     match data {
-        Data::Pos3(pos) => Some(*pos),
+        Data::Vec3(pos) => Some(*pos), // TODO: this is ugly, we should stop this
         Data::Box3(bbox) => Some(bbox.translation),
         Data::Path3D(points) => {
             let mut sum = [0.0_f64; 3];

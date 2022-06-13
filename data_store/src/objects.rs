@@ -65,7 +65,7 @@ pub struct Image<'s> {
 }
 
 impl<'s> Image<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -105,7 +105,7 @@ pub struct Point2D<'s> {
 }
 
 impl<'s> Point2D<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -149,7 +149,7 @@ pub struct Point3D<'s> {
 }
 
 impl<'s> Point3D<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -193,7 +193,7 @@ pub struct BBox2D<'s> {
 }
 
 impl<'s> BBox2D<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -237,7 +237,7 @@ pub struct Box3D<'s> {
 }
 
 impl<'s> Box3D<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -281,7 +281,7 @@ pub struct Path3D<'s> {
 }
 
 impl<'s> Path3D<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -325,7 +325,7 @@ pub struct LineSegments2D<'s> {
 }
 
 impl<'s> LineSegments2D<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -371,7 +371,7 @@ pub struct LineSegments3D<'s> {
 }
 
 impl<'s> LineSegments3D<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -416,7 +416,7 @@ pub struct Mesh3D<'s> {
 }
 
 impl<'s> Mesh3D<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -456,7 +456,7 @@ pub struct Camera<'s> {
 }
 
 impl<'s> Camera<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -496,7 +496,7 @@ pub struct Space<'s> {
 }
 
 impl<'s> Space<'s> {
-    fn query<Time: 'static + Clone + Ord>(
+    fn query<Time: 'static + Copy + Ord>(
         store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -534,7 +534,7 @@ pub struct Objects<'s> {
 }
 
 impl<'s> Objects<'s> {
-    pub fn query_object<Time: 'static + Clone + Ord>(
+    pub fn query_object<Time: 'static + Copy + Ord>(
         &mut self,
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,

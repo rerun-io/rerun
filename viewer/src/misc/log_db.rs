@@ -328,12 +328,11 @@ impl DataColumns {
                 DataType::F32 => ("float", "s"),
                 DataType::Color => ("color", "s"),
 
-                DataType::Pos2 => ("2D position", "s"),
+                DataType::Vec2 => ("2D vector", "s"),
                 DataType::BBox2D => ("2D bounding box", "es"),
                 DataType::LineSegments2D => ("2D line segment list", "s"),
                 DataType::Image => ("image", "s"),
 
-                DataType::Pos3 => ("3D position", "s"),
                 DataType::Vec3 => ("3D vector", "s"),
                 DataType::Box3 => ("3D box", "es"),
                 DataType::Path3D => ("3D path", "s"),

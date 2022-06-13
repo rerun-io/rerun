@@ -205,7 +205,7 @@ fn log_annotation_pbdata(
                         &time_point,
                         &point_path,
                         "pos2d",
-                        Data::Pos2(pos2),
+                        Data::Vec2(pos2),
                     ));
                     logger.log(data_msg(
                         &time_point,
@@ -295,7 +295,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
                             &time_point,
                             &point_path,
                             "pos",
-                            Data::Pos3([x, y, z]),
+                            Data::Vec3([x, y, z]),
                         ));
                         logger.log(data_msg(
                             &time_point,

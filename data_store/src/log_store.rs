@@ -1,8 +1,8 @@
 use nohash_hasher::IntMap;
 
-use log_types::{Data, DataBatch, DataMsg, DataPath, IndexKey, ObjPath, TimeSource, TimeType};
+use log_types::{Data, DataMsg, DataPath, DataVec, IndexKey, TimeSource, TimeType};
 
-use crate::TypePathDataStore;
+use crate::{Batch, TypePathDataStore};
 
 #[derive(Default)]
 pub struct LogDataStore(IntMap<TimeSource, (TimeType, TypePathDataStore<i64>)>);
@@ -33,6 +33,8 @@ impl LogDataStore {
     }
 
     pub fn insert(&mut self, data_msg: &DataMsg) -> crate::Result<()> {
+        let mut batcher = Batcher::default();
+
         for (time_source, time_value) in &data_msg.time_point.0 {
             let store = self.entry(time_source, time_value.typ());
             let time = time_value.as_i64();
@@ -43,47 +45,13 @@ impl LogDataStore {
                 field_name: fname,
             } = data_msg.data_path.clone();
 
-            #[allow(clippy::match_same_arms)]
             match data_msg.data.clone() {
                 Data::Batch { indices, data } => {
-                    // TODO: reuse batch over time sources to save RAM
                     let (obj_type_path, index_path) = op.into_type_path_and_index_path();
-
-                    match data {
-                        DataBatch::Color(data) => {
-                            assert_eq!(indices.len(), data.len());
-                            let batch: crate::Batch<[u8; 4]> = std::sync::Arc::new(
-                                indices
-                                    .iter()
-                                    .zip(data)
-                                    .map(|(index, value)| (IndexKey::new(index.clone()), value))
-                                    .collect(),
-                            );
-                            store.insert_batch(obj_type_path, index_path, fname, time, id, batch)
-                        }
-                        DataBatch::Pos3(data) => {
-                            assert_eq!(indices.len(), data.len());
-                            let batch: crate::Batch<[f32; 3]> = std::sync::Arc::new(
-                                indices
-                                    .iter()
-                                    .zip(data)
-                                    .map(|(index, value)| (IndexKey::new(index.clone()), value))
-                                    .collect(),
-                            );
-                            store.insert_batch(obj_type_path, index_path, fname, time, id, batch)
-                        }
-                        DataBatch::Space(data) => {
-                            assert_eq!(indices.len(), data.len());
-                            let batch: crate::Batch<ObjPath> = std::sync::Arc::new(
-                                indices
-                                    .iter()
-                                    .zip(data)
-                                    .map(|(index, value)| (IndexKey::new(index.clone()), value))
-                                    .collect(),
-                            );
-                            store.insert_batch(obj_type_path, index_path, fname, time, id, batch)
-                        }
-                    }
+                    log_types::data_vec_map!(data, |vec| {
+                        let batch = batcher.batch(indices, vec);
+                        store.insert_batch(obj_type_path, index_path, fname, time, id, batch)
+                    })
                 }
 
                 Data::I32(data) => store.insert_individual(op, fname, time, id, data),
@@ -91,12 +59,11 @@ impl LogDataStore {
 
                 Data::Color(data) => store.insert_individual(op, fname, time, id, data),
 
-                Data::Pos2(data) => store.insert_individual(op, fname, time, id, data),
+                Data::Vec2(data) => store.insert_individual(op, fname, time, id, data),
                 Data::BBox2D(data) => store.insert_individual(op, fname, time, id, data),
                 Data::LineSegments2D(data) => store.insert_individual(op, fname, time, id, data),
                 Data::Image(data) => store.insert_individual(op, fname, time, id, data),
 
-                Data::Pos3(data) => store.insert_individual(op, fname, time, id, data),
                 Data::Vec3(data) => store.insert_individual(op, fname, time, id, data),
                 Data::Box3(data) => store.insert_individual(op, fname, time, id, data),
                 Data::Path3D(data) => store.insert_individual(op, fname, time, id, data),
@@ -111,5 +78,32 @@ impl LogDataStore {
         }
 
         Ok(())
+    }
+}
+
+fn batch<T>(indices: Vec<log_types::Index>, data: Vec<T>) -> Batch<T> {
+    assert_eq!(indices.len(), data.len()); // TODO: runtime assert
+    std::sync::Arc::new(
+        itertools::izip!(indices, data)
+            .map(|(index, value)| (IndexKey::new(index), value))
+            .collect(),
+    )
+}
+
+/// Converts data to a batch ONCE, then reuses that batch for other time sources
+#[derive(Default)]
+struct Batcher {
+    batch: Option<Box<dyn std::any::Any>>,
+}
+
+impl Batcher {
+    pub fn batch<T: 'static>(&mut self, indices: Vec<log_types::Index>, data: Vec<T>) -> Batch<T> {
+        if let Some(batch) = &self.batch {
+            batch.downcast_ref::<Batch<T>>().unwrap().clone()
+        } else {
+            let batch = batch(indices, data);
+            self.batch = Some(Box::new(batch.clone()));
+            batch
+        }
     }
 }

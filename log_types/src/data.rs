@@ -1,11 +1,161 @@
 use crate::{impl_into_enum, Index, ObjPath};
 
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum DataType {
+    // 1D:
+    I32,
+    F32,
+
+    Color,
+
+    // ----------------------------
+    // 2D:
+    Vec2,
+    BBox2D,
+    LineSegments2D,
+    Image,
+
+    // ----------------------------
+    // 3D:
+    Vec3,
+    Box3,
+    Path3D,
+    LineSegments3D,
+    Mesh3D,
+    Camera,
+
+    // ----------------------------
+    // N-D:
+    Vecf32,
+
+    // ----------------------------
+    Space,
+}
+
+// ----------------------------------------------------------------------------
+
+/// Marker traits for types we allow in the the data store.
+///
+/// Everything in [`data_types`] implement this, and nothing else.
+pub trait DataTrait: 'static + Clone {
+    fn data_typ() -> DataType;
+}
+
+pub mod data_types {
+    use super::DataTrait;
+    use super::DataType;
+
+    /// For batches
+    impl<T: DataTrait> DataTrait for Vec<T> {
+        fn data_typ() -> DataType {
+            T::data_typ()
+        }
+    }
+
+    impl DataTrait for i32 {
+        fn data_typ() -> DataType {
+            DataType::I32
+        }
+    }
+    impl DataTrait for f32 {
+        fn data_typ() -> DataType {
+            DataType::F32
+        }
+    }
+
+    /// RGBA unmultiplied/separate alpha
+    pub type Color = [u8; 4];
+    impl DataTrait for Color {
+        fn data_typ() -> DataType {
+            DataType::Color
+        }
+    }
+
+    // ---
+
+    pub type Vec2 = [f32; 2];
+    impl DataTrait for Vec2 {
+        fn data_typ() -> DataType {
+            DataType::Vec2
+        }
+    }
+
+    impl DataTrait for crate::BBox2D {
+        fn data_typ() -> DataType {
+            DataType::BBox2D
+        }
+    }
+
+    pub type LineSegments2D = Vec<LineSegment2D>;
+    pub type LineSegment2D = [Vec2; 2];
+    impl DataTrait for LineSegment2D {
+        fn data_typ() -> DataType {
+            DataType::LineSegments2D
+        }
+    }
+    impl DataTrait for crate::Image {
+        fn data_typ() -> DataType {
+            DataType::Image
+        }
+    }
+
+    // ---
+
+    pub type Vec3 = [f32; 3];
+    impl DataTrait for Vec3 {
+        fn data_typ() -> DataType {
+            DataType::Vec3
+        }
+    }
+
+    impl DataTrait for crate::Box3 {
+        fn data_typ() -> DataType {
+            DataType::Box3
+        }
+    }
+
+    pub type Path3D = Vec<Vec3>;
+
+    pub type LineSegments3D = Vec<LineSegment3D>;
+    pub type LineSegment3D = [Vec3; 2];
+    impl DataTrait for LineSegment3D {
+        fn data_typ() -> DataType {
+            DataType::LineSegments3D
+        }
+    }
+
+    impl DataTrait for crate::Mesh3D {
+        fn data_typ() -> DataType {
+            DataType::Mesh3D
+        }
+    }
+
+    impl DataTrait for crate::Camera {
+        fn data_typ() -> DataType {
+            DataType::Camera
+        }
+    }
+
+    // ---
+
+    impl DataTrait for crate::ObjPath {
+        fn data_typ() -> DataType {
+            DataType::Space
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Data {
     Batch {
         indices: Vec<Index>,
-        data: DataBatch,
+        data: DataVec,
     },
 
     // ----------------------------
@@ -14,28 +164,21 @@ pub enum Data {
     I32(i32),
     F32(f32),
 
-    /// RGBA unmultiplied/separate alpha
-    Color([u8; 4]),
+    Color(data_types::Color),
 
     // ----------------------------
     // 2D:
-    /// Special sibling attributes: "color", "radius"
-    Pos2([f32; 2]),
-    /// Special sibling attributes: "color"
+    Vec2(data_types::Vec2),
     BBox2D(BBox2D),
-    LineSegments2D(Vec<[[f32; 2]; 2]>),
+    LineSegments2D(data_types::LineSegments2D),
     Image(Image),
 
     // ----------------------------
     // 3D:
-    /// Special sibling attributes: "color", "radius"
-    Pos3([f32; 3]),
-    /// Used for specifying the "up" axis of a 3D space
-    Vec3([f32; 3]),
+    Vec3(data_types::Vec3),
     Box3(Box3),
-    Path3D(Vec<[f32; 3]>),
-    /// Special sibling attributes: "color", "radius"
-    LineSegments3D(Vec<[[f32; 3]; 2]>),
+    Path3D(data_types::Path3D),
+    LineSegments3D(data_types::LineSegments3D),
     Mesh3D(Mesh3D),
     Camera(Camera),
 
@@ -53,18 +196,17 @@ impl Data {
     #[inline]
     pub fn typ(&self) -> DataType {
         match self {
-            Self::Batch { data, .. } => data.typ(),
+            Self::Batch { data, .. } => data.data_type(),
 
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
             Self::Color(_) => DataType::Color,
 
-            Self::Pos2(_) => DataType::Pos2,
+            Self::Vec2(_) => DataType::Vec2,
             Self::BBox2D(_) => DataType::BBox2D,
             Self::LineSegments2D(_) => DataType::LineSegments2D,
             Self::Image(_) => DataType::Image,
 
-            Self::Pos3(_) => DataType::Pos3,
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
             Self::Path3D(_) => DataType::Path3D,
@@ -91,79 +233,126 @@ impl_into_enum!(ObjPath, Data, Space);
 
 // ----------------------------------------------------------------------------
 
+/// Vectorized, type-erased version of [`Data`].
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum DataBatch {
-    Color(Vec<[u8; 4]>),
-    Pos3(Vec<[f32; 3]>),
+pub enum DataVec {
+    I32(Vec<i32>),
+    F32(Vec<f32>),
+    Color(Vec<data_types::Color>),
+
+    Vec2(Vec<data_types::Vec2>),
+    BBox2D(Vec<BBox2D>),
+    LineSegments2D(Vec<data_types::LineSegments2D>),
+    Image(Vec<Image>),
+
+    Vec3(Vec<data_types::Vec3>),
+    Box3(Vec<Box3>),
+    Path3D(Vec<data_types::Path3D>),
+    LineSegments3D(Vec<data_types::LineSegments3D>),
+    Mesh3D(Vec<Mesh3D>),
+    Camera(Vec<Camera>),
+
+    Vecf32(Vec<Vec<f32>>),
+
     Space(Vec<ObjPath>),
-    // TODO: support more types
 }
 
-impl DataBatch {
+/// Do the same thing with all members of a [`DataVec`].
+///
+/// ```
+/// # let data_vec: DataVec = DataVec::F32(vec![]);
+/// let length = data_vec_map!(data_vec, |vec| vec.len());
+/// ```
+#[macro_export]
+macro_rules! data_vec_map(
+    ($data_vec: expr, |$vec: pat_param| $action: expr) => ({
+        match $data_vec {
+            DataVec::I32($vec) => $action,
+            DataVec::F32($vec) => $action,
+            DataVec::Color($vec) => $action,
+            DataVec::Vec2($vec) => $action,
+            DataVec::BBox2D($vec) => $action,
+            DataVec::LineSegments2D($vec) => $action,
+            DataVec::Image($vec) => $action,
+            DataVec::Vec3($vec) => $action,
+            DataVec::Box3($vec) => $action,
+            DataVec::Path3D($vec) => $action,
+            DataVec::LineSegments3D($vec) => $action,
+            DataVec::Mesh3D($vec) => $action,
+            DataVec::Camera($vec) => $action,
+            DataVec::Vecf32($vec) => $action,
+            DataVec::Space($vec) => $action,
+        }
+    });
+);
+
+impl DataVec {
     #[inline]
-    pub fn typ(&self) -> DataType {
+    pub fn data_type(&self) -> DataType {
         match self {
+            Self::I32(_) => DataType::I32,
+            Self::F32(_) => DataType::F32,
             Self::Color(_) => DataType::Color,
-            Self::Pos3(_) => DataType::Pos3,
+
+            Self::Vec2(_) => DataType::Vec2,
+            Self::BBox2D(_) => DataType::BBox2D,
+            Self::LineSegments2D(_) => DataType::LineSegments2D,
+            Self::Image(_) => DataType::Image,
+
+            Self::Vec3(_) => DataType::Vec3,
+            Self::Box3(_) => DataType::Box3,
+            Self::Path3D(_) => DataType::Path3D,
+            Self::LineSegments3D(_) => DataType::LineSegments3D,
+            Self::Mesh3D(_) => DataType::Mesh3D,
+            Self::Camera(_) => DataType::Camera,
+
+            Self::Vecf32(_) => DataType::Vecf32,
+
             Self::Space(_) => DataType::Space,
         }
     }
-}
 
-impl std::fmt::Debug for DataBatch {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn len(&self) -> usize {
+        data_vec_map!(self, |vec| vec.len())
+    }
+
+    pub fn last(&self) -> Option<Data> {
         match self {
-            Self::Color(batch) => f
-                .debug_struct("DataBatch::Color")
-                .field("len", &batch.len())
-                .finish_non_exhaustive(),
-            Self::Pos3(batch) => f
-                .debug_struct("DataBatch::Pos3")
-                .field("len", &batch.len())
-                .finish_non_exhaustive(),
-            Self::Space(batch) => f
-                .debug_struct("DataBatch::Space")
-                .field("len", &batch.len())
-                .finish_non_exhaustive(),
+            Self::I32(vec) => vec.last().cloned().map(Data::I32),
+            Self::F32(vec) => vec.last().cloned().map(Data::F32),
+            Self::Color(vec) => vec.last().cloned().map(Data::Color),
+
+            Self::Vec2(vec) => vec.last().cloned().map(Data::Vec2),
+            Self::BBox2D(vec) => vec.last().cloned().map(Data::BBox2D),
+            Self::LineSegments2D(vec) => vec.last().cloned().map(Data::LineSegments2D),
+            Self::Image(vec) => vec.last().cloned().map(Data::Image),
+
+            Self::Vec3(vec) => vec.last().cloned().map(Data::Vec3),
+            Self::Box3(vec) => vec.last().cloned().map(Data::Box3),
+            Self::Path3D(vec) => vec.last().cloned().map(Data::Path3D),
+            Self::LineSegments3D(vec) => vec.last().cloned().map(Data::LineSegments3D),
+            Self::Mesh3D(vec) => vec.last().cloned().map(Data::Mesh3D),
+            Self::Camera(vec) => vec.last().cloned().map(Data::Camera),
+
+            Self::Vecf32(vec) => vec.last().cloned().map(Data::Vecf32),
+
+            Self::Space(vec) => vec.last().cloned().map(Data::Space),
         }
     }
 }
 
-// ----------------------------------------------------------------------------
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum DataType {
-    // 1D:
-    I32,
-    F32,
-
-    Color,
-
-    // ----------------------------
-    // 2D:
-    Pos2,
-    BBox2D,
-    LineSegments2D,
-    Image,
-
-    // ----------------------------
-    // 3D:
-    Pos3,
-    Vec3,
-    Box3,
-    Path3D,
-    LineSegments3D,
-    Mesh3D,
-    Camera,
-
-    // ----------------------------
-    // N-D:
-    Vecf32,
-
-    // ----------------------------
-    Space,
+impl std::fmt::Debug for DataVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DataVec")
+            .field("data_type", &self.data_type())
+            .field("len", &self.len())
+            .finish_non_exhaustive()
+    }
 }
 
 // ----------------------------------------------------------------------------

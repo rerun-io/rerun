@@ -6,7 +6,7 @@ use crate::{
 /// The shared type path for all objects at a path with different indices
 ///
 /// `camera / * / points / *`
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Eq)]
 pub struct ObjTypePath {
     hash: Hash128,
     components: Vec<TypePathComp>,
@@ -41,6 +41,16 @@ impl ObjTypePath {
     pub fn push(&mut self, comp: TypePathComp) {
         self.components.push(comp);
         self.hash = Hash128::hash(&self.components);
+    }
+
+    pub fn num_indices(&self) -> usize {
+        self.components
+            .iter()
+            .filter(|c| match c {
+                TypePathComp::String(_) => false,
+                TypePathComp::Index => true,
+            })
+            .count()
     }
 }
 
@@ -124,6 +134,12 @@ impl IntoIterator for ObjTypePath {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.components.into_iter()
+    }
+}
+
+impl std::fmt::Debug for ObjTypePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_slice().fmt(f)
     }
 }
 

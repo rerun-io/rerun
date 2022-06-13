@@ -157,7 +157,7 @@ fn big_clouds_batched() {
             );
             let (obj_type_path, index_path) =
                 obj_path(camera as _, 0).into_type_path_and_index_path();
-            let (index_path_prefix, _) = index_path.split_last();
+            let (index_path_prefix, _) = index_path.replace_last_with_placeholder();
             store
                 .insert_batch::<[f32; 3]>(
                     obj_type_path,

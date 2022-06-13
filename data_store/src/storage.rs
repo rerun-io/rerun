@@ -4,9 +4,11 @@ use std::sync::Arc;
 use ahash::AHashMap;
 use nohash_hasher::IntMap;
 
-use log_types::{FieldName, IndexKey, IndexPath, LogId, ObjPath};
+use log_types::{
+    data_types, DataTrait, DataType, DataVec, FieldName, IndexKey, IndexPath, LogId, ObjPath,
+};
 
-use crate::{DataType, ObjTypePath, TimeQuery};
+use crate::{ObjTypePath, TimeQuery};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
@@ -44,8 +46,8 @@ impl<Time> Default for TypePathDataStore<Time> {
     }
 }
 
-impl<Time: 'static + Ord> TypePathDataStore<Time> {
-    pub fn insert_individual<T: DataType>(
+impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
+    pub fn insert_individual<T: DataTrait>(
         &mut self,
         parent_obj_path: ObjPath,
         field_name: FieldName,
@@ -61,7 +63,8 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
             .insert_individual(index_path, field_name, time, parent_obj_path, log_id, value)
     }
 
-    pub fn insert_batch<T: DataType>(
+    /// `index_path_prefix` should have `Index::Placeholder` in the last position.
+    pub fn insert_batch<T: DataTrait>(
         &mut self,
         obj_type_path: ObjTypePath,
         index_path_prefix: IndexPath,
@@ -86,7 +89,7 @@ impl<Time: 'static + Ord> TypePathDataStore<Time> {
         self.objects.get(obj_type_path)
     }
 
-    pub fn get_field<T: DataType>(
+    pub fn get_field<T: DataTrait>(
         &self,
         obj_type_path: &ObjTypePath,
         field_name: &FieldName,
@@ -115,8 +118,8 @@ impl<Time> Default for ObjStore<Time> {
     }
 }
 
-impl<Time: 'static + Ord> ObjStore<Time> {
-    pub fn insert_individual<T: DataType>(
+impl<Time: 'static + Copy + Ord> ObjStore<Time> {
+    pub fn insert_individual<T: DataTrait>(
         &mut self,
         index_path: IndexPath,
         field_name: FieldName,
@@ -137,7 +140,7 @@ impl<Time: 'static + Ord> ObjStore<Time> {
         }
     }
 
-    pub fn insert_batch<T: DataType>(
+    pub fn insert_batch<T: DataTrait>(
         &mut self,
         index_path_prefix: IndexPath,
         field_name: FieldName,
@@ -158,8 +161,10 @@ impl<Time: 'static + Ord> ObjStore<Time> {
         }
     }
 
-    pub fn get<T: DataType>(&self, field_name: &FieldName) -> Option<&DataStore<Time, T>> {
-        self.fields.get(field_name).and_then(|x| x.read::<T>())
+    pub fn get<T: DataTrait>(&self, field_name: &FieldName) -> Option<&DataStore<Time, T>> {
+        self.fields
+            .get(field_name)
+            .and_then(|x| x.read_or_warn::<T>())
     }
 
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&FieldName, &DataStoreTypeErased<Time>)> {
@@ -170,42 +175,91 @@ impl<Time: 'static + Ord> ObjStore<Time> {
 // ----------------------------------------------------------------------------
 
 /// Type-erased version of [`DataStore`].
-pub struct DataStoreTypeErased<Time>(Box<dyn std::any::Any>, std::marker::PhantomData<Time>);
+pub struct DataStoreTypeErased<Time> {
+    data_store: Box<dyn std::any::Any>,
+    data_type: DataType,
+    _phantom: std::marker::PhantomData<Time>,
+}
 
-impl<Time: 'static + Ord> DataStoreTypeErased<Time> {
-    fn new_individual<T: DataType>() -> Self {
-        Self(
-            Box::new(DataStore::<Time, T>::new_individual()),
-            Default::default(),
-        )
+impl<Time: 'static + Copy + Ord> DataStoreTypeErased<Time> {
+    fn new_individual<T: DataTrait>() -> Self {
+        Self {
+            data_store: Box::new(DataStore::<Time, T>::new_individual()),
+            data_type: T::data_typ(),
+            _phantom: Default::default(),
+        }
     }
 
-    fn new_batched<T: DataType>() -> Self {
-        Self(
-            Box::new(DataStore::<Time, T>::new_batched()),
-            Default::default(),
-        )
+    fn new_batched<T: DataTrait>() -> Self {
+        Self {
+            data_store: Box::new(DataStore::<Time, T>::new_batched()),
+            data_type: T::data_typ(),
+            _phantom: Default::default(),
+        }
     }
 
-    pub fn is<T: DataType>(&self) -> bool {
-        self.0.is::<DataStore<Time, T>>()
+    pub fn is<T: DataTrait>(&self) -> bool {
+        self.data_store.is::<DataStore<Time, T>>()
     }
 
-    pub fn read_no_warn<T: DataType>(&self) -> Option<&DataStore<Time, T>> {
-        self.0.downcast_ref::<DataStore<Time, T>>()
+    pub fn read_no_warn<T: DataTrait>(&self) -> Option<&DataStore<Time, T>> {
+        self.data_store.downcast_ref::<DataStore<Time, T>>()
     }
 
-    pub fn read<T: DataType>(&self) -> Option<&DataStore<Time, T>> {
+    pub fn read_or_warn<T: DataTrait>(&self) -> Option<&DataStore<Time, T>> {
         if let Some(read) = self.read_no_warn() {
             Some(read)
         } else {
-            tracing::warn!("Expected {}", std::any::type_name::<T>());
+            tracing::warn!(
+                "Expected {} ({:?}), found {:?}",
+                std::any::type_name::<T>(),
+                T::data_typ(),
+                self.data_type
+            );
             None
         }
     }
 
-    pub fn write<T: DataType>(&mut self) -> Option<&mut DataStore<Time, T>> {
-        self.0.downcast_mut::<DataStore<Time, T>>()
+    pub fn write<T: DataTrait>(&mut self) -> Option<&mut DataStore<Time, T>> {
+        self.data_store.downcast_mut::<DataStore<Time, T>>()
+    }
+
+    /// Typed-erased query of the contents of an object.
+    ///
+    /// Returns vectors of equal length.
+    pub fn query_object(
+        &self,
+        index_path: IndexPath,
+        time_query: &TimeQuery<Time>,
+    ) -> (Vec<Time>, Vec<LogId>, DataVec) {
+        macro_rules! handle_type(
+            ($enum_variant: ident, $typ: ty) => {{
+                if let Some(data_store) = self.read_or_warn::<$typ>() {
+                    let (times, ids, data) = data_store.query_object(index_path, time_query);
+                    (times, ids, DataVec::$enum_variant(data))
+                } else {
+                    (vec![], vec![], DataVec::$enum_variant(vec![])) // this shouldn't happen
+                }
+            }}
+        );
+
+        match self.data_type {
+            DataType::I32 => handle_type!(I32, i32),
+            DataType::F32 => handle_type!(F32, f32),
+            DataType::Color => handle_type!(Color, data_types::Color),
+            DataType::Vec2 => handle_type!(Vec2, data_types::Vec2),
+            DataType::BBox2D => handle_type!(BBox2D, log_types::BBox2D),
+            DataType::LineSegments2D => handle_type!(LineSegments2D, data_types::LineSegments2D),
+            DataType::Image => handle_type!(Image, log_types::Image),
+            DataType::Vec3 => handle_type!(Vec3, data_types::Vec3),
+            DataType::Box3 => handle_type!(Box3, log_types::Box3),
+            DataType::Path3D => handle_type!(Path3D, data_types::Path3D),
+            DataType::LineSegments3D => handle_type!(LineSegments3D, data_types::LineSegments3D),
+            DataType::Mesh3D => handle_type!(Mesh3D, log_types::Mesh3D),
+            DataType::Camera => handle_type!(Camera, log_types::Camera),
+            DataType::Vecf32 => handle_type!(Vecf32, Vec<f32>),
+            DataType::Space => handle_type!(Space, ObjPath),
+        }
     }
 }
 
@@ -218,7 +272,7 @@ pub enum DataStore<Time, T> {
     Batched(BatchedDataHistory<Time, T>),
 }
 
-impl<Time: Ord, T: DataType> DataStore<Time, T> {
+impl<Time: Copy + Ord, T: DataTrait> DataStore<Time, T> {
     fn new_individual() -> Self {
         Self::Individual(Default::default())
     }
@@ -260,6 +314,18 @@ impl<Time: Ord, T: DataType> DataStore<Time, T> {
             }
         }
     }
+
+    /// Returns vectors of equal lengths.
+    pub fn query_object(
+        &self,
+        index_path: IndexPath,
+        time_query: &TimeQuery<Time>,
+    ) -> (Vec<Time>, Vec<LogId>, Vec<T>) {
+        match self {
+            Self::Individual(data_history) => data_history.query_object(&index_path, time_query),
+            Self::Batched(data_history) => data_history.query_object(index_path, time_query),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -278,7 +344,7 @@ pub struct IndividualHistory<Time, T> {
     pub history: BTreeMap<Time, (LogId, T)>,
 }
 
-impl<Time: Ord, T> Default for IndividualDataHistory<Time, T> {
+impl<Time: Copy + Ord, T> Default for IndividualDataHistory<Time, T> {
     fn default() -> Self {
         Self {
             values: Default::default(),
@@ -286,7 +352,7 @@ impl<Time: Ord, T> Default for IndividualDataHistory<Time, T> {
     }
 }
 
-impl<Time: Ord, T> IndividualDataHistory<Time, T> {
+impl<Time: Copy + Ord, T> IndividualDataHistory<Time, T> {
     pub fn insert(
         &mut self,
         index_path: IndexPath,
@@ -310,6 +376,29 @@ impl<Time: Ord, T> IndividualDataHistory<Time, T> {
     }
 }
 
+impl<Time: Copy + Ord, T: Clone> IndividualDataHistory<Time, T> {
+    /// Returns vectors of equal lengths.
+    pub fn query_object(
+        &self,
+        index_path: &IndexPath,
+        time_query: &TimeQuery<Time>,
+    ) -> (Vec<Time>, Vec<LogId>, Vec<T>) {
+        crate::profile_function!();
+
+        let mut times = vec![];
+        let mut ids = vec![];
+        let mut values = vec![];
+        if let Some(history) = self.values.get(index_path) {
+            query(&history.history, time_query, |time, (log_id, value)| {
+                times.push(*time);
+                ids.push(*log_id);
+                values.push(value.clone()); // TODO: return references instead
+            });
+        }
+        (times, ids, values)
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// For a specific [`ObjTypePath`].
@@ -329,7 +418,7 @@ pub struct BatchHistory<Time, T> {
     pub history: BTreeMap<Time, (LogId, Batch<T>)>,
 }
 
-impl<Time: Ord, T> Default for BatchedDataHistory<Time, T> {
+impl<Time: Copy + Ord, T> Default for BatchedDataHistory<Time, T> {
     fn default() -> Self {
         Self {
             batches_over_time: Default::default(),
@@ -337,7 +426,7 @@ impl<Time: Ord, T> Default for BatchedDataHistory<Time, T> {
     }
 }
 
-impl<Time: Ord, T> BatchedDataHistory<Time, T> {
+impl<Time: Copy + Ord, T> BatchedDataHistory<Time, T> {
     pub fn insert(
         &mut self,
         index_path_prefix: IndexPath,
@@ -361,6 +450,55 @@ impl<Time: Ord, T> BatchedDataHistory<Time, T> {
     }
 }
 
+impl<Time: Copy + Ord, T: Clone> BatchedDataHistory<Time, T> {
+    /// Returns vectors of equal lengths.
+    pub fn query_object(
+        &self,
+        index_path: IndexPath,
+        time_query: &TimeQuery<Time>,
+    ) -> (Vec<Time>, Vec<LogId>, Vec<T>) {
+        crate::profile_function!();
+
+        let mut times = vec![];
+        let mut ids = vec![];
+        let mut values = vec![];
+
+        if index_path.has_placeholder_last() {
+            // get all matches
+            if let Some(batch_history) = self.batches_over_time.get(&index_path) {
+                query(
+                    &batch_history.history,
+                    time_query,
+                    |time, (log_id, batch)| {
+                        for value in batch.values() {
+                            times.push(*time);
+                            ids.push(*log_id);
+                            values.push(value.clone()); // TODO: return references instead
+                        }
+                    },
+                );
+            }
+        } else {
+            let (index_path_prefix, index_suffix) = index_path.replace_last_with_placeholder();
+            if let Some(batch_history) = self.batches_over_time.get(&index_path_prefix) {
+                query(
+                    &batch_history.history,
+                    time_query,
+                    |time, (log_id, batch)| {
+                        if let Some(value) = batch.get(&index_suffix) {
+                            times.push(*time);
+                            ids.push(*log_id);
+                            values.push(value.clone()); // TODO: return references instead
+                        }
+                    },
+                );
+            }
+        }
+
+        (times, ids, values)
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 pub enum IndividualDataReader<'store, Time, T> {
@@ -369,7 +507,7 @@ pub enum IndividualDataReader<'store, Time, T> {
     Batched(&'store BatchedDataHistory<Time, T>),
 }
 
-impl<'store, Time: 'static + Ord, T: DataType> IndividualDataReader<'store, Time, T> {
+impl<'store, Time: 'static + Copy + Ord, T: DataTrait> IndividualDataReader<'store, Time, T> {
     pub fn new(store: &'store ObjStore<Time>, field_name: &FieldName) -> Self {
         if let Some(data) = store.get::<T>(field_name) {
             match data {
@@ -389,7 +527,7 @@ impl<'store, Time: 'static + Ord, T: DataType> IndividualDataReader<'store, Time
                     .map(|(_time, (_log_id, value))| value)
             }
             Self::Batched(data) => {
-                let (prefix, suffix) = index_path.clone().split_last();
+                let (prefix, suffix) = index_path.clone().replace_last_with_placeholder();
                 let (_time, (_log_id, batch)) =
                     latest_at(&data.batches_over_time.get(&prefix)?.history, query_time)?;
                 batch.get(&suffix)
@@ -406,7 +544,7 @@ pub enum BatchedDataReader<'store, Time, T> {
     Batched(&'store IntMap<IndexKey, T>),
 }
 
-impl<'store, Time: Clone + Ord, T: DataType> BatchedDataReader<'store, Time, T> {
+impl<'store, Time: Copy + Ord, T: DataTrait> BatchedDataReader<'store, Time, T> {
     pub fn new(
         data: Option<&'store DataStore<Time, T>>,
         index_path_prefix: &IndexPath,
@@ -424,7 +562,7 @@ impl<'store, Time: Clone + Ord, T: DataType> BatchedDataReader<'store, Time, T> 
         match data {
             DataStore::Individual(individual) => Some(Self::Individual(
                 index_path_prefix.clone(),
-                query_time.clone(),
+                *query_time,
                 individual,
             )),
             DataStore::Batched(batched) => {
@@ -441,7 +579,7 @@ impl<'store, Time: Clone + Ord, T: DataType> BatchedDataReader<'store, Time, T> 
             Self::None => None,
             Self::Individual(index_path_prefix, query_time, history) => {
                 let mut index_path = index_path_prefix.clone();
-                index_path.push(index_path_suffix.clone());
+                index_path.replace_last_placeholder_with(index_path_suffix.clone());
                 latest_at(&history.values.get(&index_path)?.history, query_time)
                     .map(|(_time, (_log_id, value))| value)
             }
@@ -452,21 +590,21 @@ impl<'store, Time: Clone + Ord, T: DataType> BatchedDataReader<'store, Time, T> 
 
 // ----------------------------------------------------------------------------
 
-fn latest_at<'data, Time: Ord, T>(
+fn latest_at<'data, Time: Copy + Ord, T>(
     data_over_time: &'data BTreeMap<Time, T>,
     query_time: &'_ Time,
 ) -> Option<(&'data Time, &'data T)> {
     data_over_time.range(..=query_time).rev().next()
 }
 
-fn values_in_range<'data, Time: Ord, T>(
+fn values_in_range<'data, Time: Copy + Ord, T>(
     data_over_time: &'data BTreeMap<Time, T>,
     time_range: &'_ std::ops::RangeInclusive<Time>,
 ) -> impl Iterator<Item = (&'data Time, &'data T)> {
     data_over_time.range(time_range.start()..=time_range.end())
 }
 
-pub fn query<'data, Time: Ord, T>(
+pub fn query<'data, Time: Copy + Ord, T>(
     data_over_time: &'data BTreeMap<Time, T>,
     time_query: &TimeQuery<Time>,
     mut visit: impl FnMut(&Time, &'data T),
@@ -490,7 +628,7 @@ pub fn query<'data, Time: Ord, T>(
 // ----------------------------------------------------------------------------
 
 /// The visitor is called with the object data path, the closest individually addressable parent object. It can be used to test if the object should be visible.
-pub fn visit_data<'s, Time: 'static + Ord, T: DataType>(
+pub fn visit_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
     time_query: &TimeQuery<Time>,
     primary_data: &'s DataStore<Time, T>,
     mut visit: impl FnMut(&'s ObjPath, &'s LogId, &'s T),
@@ -527,7 +665,7 @@ pub fn visit_data<'s, Time: 'static + Ord, T: DataType>(
     Some(())
 }
 
-pub fn visit_data_and_1_child<'s, Time: 'static + Clone + Ord, T: DataType, S1: DataType>(
+pub fn visit_data_and_1_child<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTrait>(
     store: &'s ObjStore<Time>,
     time_query: &TimeQuery<Time>,
     primary_data: &'s DataStore<Time, T>,
@@ -587,10 +725,10 @@ pub fn visit_data_and_1_child<'s, Time: 'static + Clone + Ord, T: DataType, S1: 
 
 pub fn visit_data_and_2_children<
     's,
-    Time: 'static + Clone + Ord,
-    T: DataType,
-    S1: DataType,
-    S2: DataType,
+    Time: 'static + Copy + Ord,
+    T: DataTrait,
+    S1: DataTrait,
+    S2: DataTrait,
 >(
     store: &'s ObjStore<Time>,
     time_query: &TimeQuery<Time>,
@@ -658,11 +796,11 @@ pub fn visit_data_and_2_children<
 
 pub fn visit_data_and_3_children<
     's,
-    Time: 'static + Clone + Ord,
-    T: DataType,
-    S1: DataType,
-    S2: DataType,
-    S3: DataType,
+    Time: 'static + Copy + Ord,
+    T: DataTrait,
+    S1: DataTrait,
+    S2: DataTrait,
+    S3: DataTrait,
 >(
     store: &'s ObjStore<Time>,
     time_query: &TimeQuery<Time>,

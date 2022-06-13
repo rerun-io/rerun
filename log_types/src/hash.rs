@@ -1,5 +1,5 @@
 /// 128-bit hash. Very small risk for collision.
-#[derive(Copy, Clone, Debug, Eq)]
+#[derive(Copy, Clone, Eq)]
 pub struct Hash128([u64; 2]);
 
 impl Hash128 {
@@ -38,6 +38,12 @@ impl std::cmp::PartialEq for Hash128 {
 }
 
 impl nohash_hasher::IsEnabled for Hash128 {}
+
+impl std::fmt::Debug for Hash128 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("Hash128({:016X}{:016X})", self.0[0], self.0[1]))
+    }
+}
 
 #[inline]
 fn double_hash(value: impl std::hash::Hash + Copy) -> [u64; 2] {

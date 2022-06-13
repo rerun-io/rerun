@@ -371,7 +371,7 @@ pub(crate) fn ui_data(
             response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a))
         }
 
-        Data::Pos2([x, y]) => ui.label(format!("Pos2({x:.1}, {y:.1})")),
+        Data::Vec2([x, y]) => ui.label(format!("[{x:.1}, {y:.1}]")),
         Data::LineSegments2D(linesegments) => {
             ui.label(format!("{} 2D line segment(s)", linesegments.len()))
         }
@@ -399,8 +399,7 @@ pub(crate) fn ui_data(
             .response
         }
 
-        Data::Pos3([x, y, z]) => ui.label(format!("Pos3({x:.3}, {y:.3}, {z:.3})")),
-        Data::Vec3([x, y, z]) => ui.label(format!("Vec3({x:.3}, {y:.3}, {z:.3})")),
+        Data::Vec3([x, y, z]) => ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]")),
         Data::Box3(_) => ui.label("3D box"),
         Data::Path3D(_) => ui.label("3D path"),
         Data::LineSegments3D(segments) => ui.label(format!("{} 3D line segments", segments.len())),

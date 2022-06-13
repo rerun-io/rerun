@@ -3,7 +3,7 @@ use crate::{hash::Hash128, path::Index};
 // ----------------------------------------------------------------------------
 
 /// Like `Index` but also includes a precomputed hash.
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Eq)]
 pub struct IndexKey {
     hash: Hash128,
     index: Index,
@@ -59,9 +59,15 @@ impl From<Index> for IndexKey {
     }
 }
 
+impl std::fmt::Debug for IndexKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.index.fmt(f)
+    }
+}
+
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, Eq)]
+#[derive(Clone, Default, Eq)]
 pub struct IndexPath {
     components: Vec<Index>,
     hashes: [u64; 2], // 128 bit to avoid collisions
@@ -75,6 +81,16 @@ impl IndexPath {
             slf.push(index);
         }
         slf
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.components.is_empty()
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.components.len()
     }
 
     #[inline]
@@ -97,14 +113,33 @@ impl IndexPath {
         self.hashes[1] ^= index.hash.second64();
     }
 
-    /// Split off the last component.
-    pub fn split_last(mut self) -> (IndexPath, IndexKey) {
-        let index = IndexKey::new(self.components.pop().unwrap());
+    pub fn pop(&mut self) -> Option<IndexKey> {
+        let index = IndexKey::new(self.components.pop()?);
         self.hashes[0] ^= index.hash.first64();
         self.hashes[1] ^= index.hash.second64();
         self.hashes[0] = self.hashes[0].rotate_right(5);
         self.hashes[1] = self.hashes[1].rotate_right(5);
+        Some(index)
+    }
+
+    /// Replace last component with `Index::Placeholder`, and return what was there.
+    pub fn replace_last_with_placeholder(mut self) -> (IndexPath, IndexKey) {
+        let index = self.pop().unwrap();
+        assert_ne!(index, IndexKey::new(Index::Placeholder));
+        self.push(Index::Placeholder);
         (self, index)
+    }
+
+    /// Replace last `Index::Placeholder` with the given key.
+    pub fn replace_last_placeholder_with(&mut self, key: IndexKey) {
+        let index = self.pop().unwrap();
+        assert_eq!(index, IndexKey::new(Index::Placeholder));
+        self.push(key);
+    }
+
+    /// If true, then this is an index prefix path for use with batches
+    pub fn has_placeholder_last(&self) -> bool {
+        matches!(self.components.last(), Some(Index::Placeholder))
     }
 }
 
@@ -142,6 +177,12 @@ impl std::hash::Hash for IndexPath {
 
 impl nohash_hasher::IsEnabled for IndexPath {}
 
+impl std::fmt::Debug for IndexPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_slice().fmt(f)
+    }
+}
+
 #[test]
 fn test_index_path_key() {
     let key0 = IndexPath::default();
@@ -158,12 +199,12 @@ fn test_index_path_key() {
     assert_eq!(key1.components.len(), 1);
     assert_eq!(key2.components.len(), 2);
 
-    let (key0_again, seq0) = key1.clone().split_last();
+    let (key0_again, seq0) = key1.clone().replace_last_with_placeholder();
     assert_eq!(key0_again.components.len(), 0);
     assert_eq!(key0_again, key0);
     assert_eq!(seq0, IndexKey::new(Index::Sequence(0)));
 
-    let (key1_again, seq1) = key2.split_last();
+    let (key1_again, seq1) = key2.replace_last_with_placeholder();
     assert_eq!(key1_again.components.len(), 1);
     assert_eq!(key1_again, key1);
     assert_eq!(seq1, IndexKey::new(Index::Sequence(1)));

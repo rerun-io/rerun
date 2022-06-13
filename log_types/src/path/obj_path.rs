@@ -23,7 +23,14 @@ impl ObjPath {
     }
 
     pub fn new(obj_type_path: ObjTypePath, index_path: IndexPath) -> Self {
-        // TODO: sanity check
+        assert_eq!(
+            obj_type_path.num_indices(),
+            index_path.len(),
+            "Bad object path: mismatched indices. Type path: {}, index path: {:?}",
+            obj_type_path,
+            index_path
+        );
+
         let hash = Hash128::hash((&obj_type_path, &index_path));
         Self {
             obj_type_path,
@@ -146,6 +153,7 @@ impl From<ObjPathBuilder> for ObjPath {
                 }
                 ObjPathComp::Index(Index::Placeholder) => {
                     obj_type_path.push(TypePathComp::Index);
+                    index_path.push(Index::Placeholder);
                 }
                 ObjPathComp::Index(index) => {
                     obj_type_path.push(TypePathComp::Index);
