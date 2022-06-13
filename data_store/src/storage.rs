@@ -49,18 +49,18 @@ impl<Time> Default for TypePathDataStore<Time> {
 impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
     pub fn insert_individual<T: DataTrait>(
         &mut self,
-        parent_obj_path: ObjPath,
+        obj_path: ObjPath,
         field_name: FieldName,
         time: Time,
         log_id: LogId,
         value: T,
     ) -> Result<()> {
-        let (obj_type_path, index_path) = parent_obj_path.clone().into_type_path_and_index_path();
+        let (obj_type_path, index_path) = obj_path.clone().into_type_path_and_index_path();
 
         self.objects
             .entry(obj_type_path)
             .or_default()
-            .insert_individual(index_path, field_name, time, parent_obj_path, log_id, value)
+            .insert_individual(index_path, field_name, time, obj_path, log_id, value)
     }
 
     /// `index_path_prefix` should have `Index::Placeholder` in the last position.
@@ -124,7 +124,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         index_path: IndexPath,
         field_name: FieldName,
         time: Time,
-        parent_obj_path: ObjPath,
+        obj_path: ObjPath,
         log_id: LogId,
         value: T,
     ) -> Result<()> {
@@ -134,7 +134,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
             .or_insert_with(|| DataStoreTypeErased::new_individual::<T>())
             .write::<T>()
         {
-            store.insert_individual(index_path, time, parent_obj_path, log_id, value)
+            store.insert_individual(index_path, time, obj_path, log_id, value)
         } else {
             Err(Error::WrongType)
         }
@@ -289,13 +289,13 @@ impl<Time: Copy + Ord, T: DataTrait> DataStore<Time, T> {
         &mut self,
         index_path: IndexPath,
         time: Time,
-        parent_obj_path: ObjPath,
+        obj_path: ObjPath,
         log_id: LogId,
         value: T,
     ) -> Result<()> {
         match self {
             Self::Individual(individual) => {
-                individual.insert(index_path, time, parent_obj_path, log_id, value);
+                individual.insert(index_path, time, obj_path, log_id, value);
                 Ok(())
             }
             Self::Batched(_) => Err(Error::BatchFollowedByIndividual),
@@ -344,7 +344,7 @@ pub struct IndividualHistory<Time, T> {
     /// Path to the parent object.
     ///
     /// This is so that we can quickly check for object visibility when rendering.
-    pub parent_obj_path: ObjPath,
+    pub obj_path: ObjPath,
     pub history: BTreeMap<Time, (LogId, T)>,
 }
 
@@ -361,14 +361,14 @@ impl<Time: Copy + Ord, T> IndividualDataHistory<Time, T> {
         &mut self,
         index_path: IndexPath,
         time: Time,
-        parent_obj_path: ObjPath,
+        obj_path: ObjPath,
         log_id: LogId,
         value: T,
     ) {
         self.values
             .entry(index_path)
             .or_insert_with(|| IndividualHistory {
-                parent_obj_path,
+                obj_path,
                 history: Default::default(),
             })
             .history
@@ -646,7 +646,7 @@ pub fn visit_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                     &primary.history,
                     time_query,
                     |_time, (log_id, primary_value)| {
-                        visit(&primary.parent_obj_path, log_id, primary_value);
+                        visit(&primary.obj_path, log_id, primary_value);
                     },
                 );
             }
@@ -690,7 +690,7 @@ pub fn visit_data_and_1_child<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: 
                     time_query,
                     |time, (log_id, primary_value)| {
                         visit(
-                            &primary.parent_obj_path,
+                            &primary.obj_path,
                             log_id,
                             primary_value,
                             child1_reader.latest_at(index_path, time),
@@ -756,7 +756,7 @@ pub fn visit_data_and_2_children<
                     time_query,
                     |time, (log_id, primary_value)| {
                         visit(
-                            &primary.parent_obj_path,
+                            &primary.obj_path,
                             log_id,
                             primary_value,
                             child1_reader.latest_at(index_path, time),
@@ -830,7 +830,7 @@ pub fn visit_data_and_3_children<
                     time_query,
                     |time, (log_id, primary_value)| {
                         visit(
-                            &primary.parent_obj_path,
+                            &primary.obj_path,
                             log_id,
                             primary_value,
                             child1_reader.latest_at(index_path, time),

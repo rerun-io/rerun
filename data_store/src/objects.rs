@@ -16,7 +16,7 @@ pub struct ObjectProps<'s> {
     pub color: Option<[u8; 4]>,
 
     /// Use this to test if the object should be visible, etc.
-    pub parent_obj_path: &'s ObjPath,
+    pub obj_path: &'s ObjPath,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -78,7 +78,7 @@ impl<'s> Image<'s> {
                 time_query,
                 primary_data,
                 ("space", "color"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  image: &log_types::Image,
                  space: Option<&ObjPath>,
@@ -88,7 +88,7 @@ impl<'s> Image<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: Image { image },
                     });
@@ -118,7 +118,7 @@ impl<'s> Point2D<'s> {
                 time_query,
                 primary_data,
                 ("space", "color", "radius"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  pos: &[f32; 2],
                  space: Option<&ObjPath>,
@@ -129,7 +129,7 @@ impl<'s> Point2D<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: Point2D {
                             pos,
@@ -162,7 +162,7 @@ impl<'s> Point3D<'s> {
                 time_query,
                 primary_data,
                 ("space", "color", "radius"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  pos: &[f32; 3],
                  space: Option<&ObjPath>,
@@ -173,7 +173,7 @@ impl<'s> Point3D<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: Point3D {
                             pos,
@@ -206,7 +206,7 @@ impl<'s> BBox2D<'s> {
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  bbox: &log_types::BBox2D,
                  space: Option<&ObjPath>,
@@ -217,7 +217,7 @@ impl<'s> BBox2D<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: BBox2D {
                             bbox,
@@ -250,7 +250,7 @@ impl<'s> Box3D<'s> {
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  obb: &log_types::Box3,
                  space: Option<&ObjPath>,
@@ -261,7 +261,7 @@ impl<'s> Box3D<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: Box3D {
                             obb,
@@ -294,7 +294,7 @@ impl<'s> Path3D<'s> {
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  points: &Vec<[f32; 3]>,
                  space: Option<&ObjPath>,
@@ -305,7 +305,7 @@ impl<'s> Path3D<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: Path3D {
                             points,
@@ -340,7 +340,7 @@ impl<'s> LineSegments2D<'s> {
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  line_segments: &Vec<[[f32; 2]; 2]>,
                  space: Option<&ObjPath>,
@@ -351,7 +351,7 @@ impl<'s> LineSegments2D<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: LineSegments2D {
                             line_segments,
@@ -386,7 +386,7 @@ impl<'s> LineSegments3D<'s> {
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  line_segments: &Vec<[[f32; 3]; 2]>,
                  space: Option<&ObjPath>,
@@ -397,7 +397,7 @@ impl<'s> LineSegments3D<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: LineSegments3D {
                             line_segments,
@@ -429,7 +429,7 @@ impl<'s> Mesh3D<'s> {
                 time_query,
                 primary_data,
                 ("space", "color"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  mesh: &log_types::Mesh3D,
                  space: Option<&ObjPath>,
@@ -439,7 +439,7 @@ impl<'s> Mesh3D<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: Mesh3D { mesh },
                     });
@@ -469,7 +469,7 @@ impl<'s> Camera<'s> {
                 time_query,
                 primary_data,
                 ("space", "color"),
-                |parent_obj_path: &ObjPath,
+                |obj_path: &ObjPath,
                  log_id: &LogId,
                  camera: &log_types::Camera,
                  space: Option<&ObjPath>,
@@ -479,7 +479,7 @@ impl<'s> Camera<'s> {
                             log_id,
                             space,
                             color: color.copied(),
-                            parent_obj_path,
+                            obj_path,
                         },
                         data: Camera { camera },
                     });
@@ -507,8 +507,8 @@ impl<'s> Space<'s> {
             visit_data(
                 time_query,
                 primary_data,
-                |parent_obj_path: &ObjPath, _log_id: &LogId, up: &[f32; 3]| {
-                    out.space.insert(parent_obj_path, Space { up });
+                |obj_path: &ObjPath, _log_id: &LogId, up: &[f32; 3]| {
+                    out.space.insert(obj_path, Space { up });
                 },
             );
         }

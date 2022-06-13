@@ -162,7 +162,7 @@ impl SpaceView {
         let objects = objects.filter(|props| {
             context
                 .projected_object_properties
-                .get(props.parent_obj_path)
+                .get(props.obj_path)
                 .visible
         });
 
