@@ -85,6 +85,13 @@ impl ObjPath {
     }
 }
 
+impl From<&str> for ObjPath {
+    #[inline]
+    fn from(component: &str) -> Self {
+        Self::from(&ObjPathBuilder::from(component))
+    }
+}
+
 impl From<&ObjPathBuilder> for ObjPath {
     #[inline]
     fn from(path: &ObjPathBuilder) -> Self {

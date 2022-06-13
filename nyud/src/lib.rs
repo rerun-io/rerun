@@ -39,7 +39,7 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
 }
 
 fn space(name: &str) -> ObjPath {
-    ObjPath::from(ObjPathBuilder::from(name))
+    ObjPath::from(name)
 }
 
 fn configure_world_space(logger: &Logger<'_>) {

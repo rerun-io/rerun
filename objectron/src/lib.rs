@@ -59,7 +59,7 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
 }
 
 fn configure_world_space(logger: &Logger<'_>) {
-    let world_space = ObjPath::from(ObjPathBuilder::from("world"));
+    let world_space = ObjPath::from("world");
     // TODO: what time point should we use?
     let time_point = time_point([
         ("frame", TimeValue::Sequence(0)),
@@ -82,8 +82,8 @@ fn log_annotation_pbdata(
 
     let file = std::fs::read(path.join("annotation.pbdata"))?;
     let sequence = protos::Sequence::decode(file.as_slice())?;
-    let world_space = ObjPath::from(ObjPathBuilder::from("world"));
-    let image_space = ObjPath::from(ObjPathBuilder::from("image"));
+    let world_space = ObjPath::from("world");
+    let image_space = ObjPath::from("image");
 
     for object in &sequence.objects {
         // TODO: what time point should we use?
@@ -230,7 +230,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
 
     let mut frame_idx = 0;
 
-    let world_space = ObjPath::from(ObjPathBuilder::from("world"));
+    let world_space = ObjPath::from("world");
 
     let mut frame_times = vec![];
 
@@ -325,7 +325,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
 }
 
 fn log_image(path: &PathBuf, time_point: &TimePoint, logger: &Logger<'_>) -> anyhow::Result<()> {
-    let image_space = ObjPath::from(ObjPathBuilder::from("image"));
+    let image_space = ObjPath::from("image");
 
     let data = std::fs::read(path)?;
 
