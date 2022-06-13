@@ -56,6 +56,11 @@ impl Scene {
     ) -> Self {
         crate::profile_function!();
 
+        // HACK because three-d handles colors wrong. TODO: fix three-d
+        let gamma_lut = (0..=255)
+            .map(|c| ((c as f32 / 255.0).powf(2.2) * 255.0).round() as u8)
+            .collect_vec();
+
         let boost_size_on_hover = |props: &data_store::ObjectProps<'_>, radius: f32| {
             if Some(props.log_id) == hovered_id {
                 1.5 * radius
@@ -64,14 +69,19 @@ impl Scene {
             }
         };
         let object_color = |context: &mut ViewerContext, props: &data_store::ObjectProps<'_>| {
-            if Some(props.log_id) == hovered_id {
+            let [r, g, b, a] = if Some(props.log_id) == hovered_id {
                 [255; 4]
             } else if let Some(color) = props.color {
                 color
             } else {
                 let [r, g, b] = context.random_color(props);
                 [r, g, b, 255]
-            }
+            };
+
+            let r = gamma_lut[r as usize];
+            let g = gamma_lut[g as usize];
+            let b = gamma_lut[b as usize];
+            [r, g, b, a]
         };
 
         let line_radius_in_points = (0.0005 * viewport_size.length()).at_least(1.5);

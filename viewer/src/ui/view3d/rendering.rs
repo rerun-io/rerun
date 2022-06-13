@@ -27,17 +27,17 @@ impl RenderingContext {
         let skybox_light =
             three_d::Skybox::new(&three_d, &load_skybox_texture(skybox_light)).unwrap();
 
-        let intensity = 1.0;
+        let ambient_light_intensity = 5.0;
         let ambient_dark = three_d::AmbientLight::new_with_environment(
             &three_d,
-            intensity,
+            ambient_light_intensity,
             three_d::Color::WHITE,
             skybox_dark.texture(),
         )
         .unwrap();
         let ambient_light = three_d::AmbientLight::new_with_environment(
             &three_d,
-            intensity,
+            ambient_light_intensity,
             three_d::Color::WHITE,
             skybox_light.texture(),
         )
@@ -264,8 +264,8 @@ pub fn paint_with_three_d(
     } else {
         &rendering.ambient_light
     };
-    let directional0 = DirectionalLight::new(three_d, 2.0, Color::WHITE, &vec3(-1.0, -1.0, -1.0))?;
-    let directional1 = DirectionalLight::new(three_d, 2.0, Color::WHITE, &vec3(1.0, 1.0, 1.0))?;
+    let directional0 = DirectionalLight::new(three_d, 5.0, Color::WHITE, &vec3(-1.0, -1.0, -1.0))?;
+    let directional1 = DirectionalLight::new(three_d, 5.0, Color::WHITE, &vec3(1.0, 1.0, 1.0))?;
     let lights: &[&dyn Light] = &[ambient, &directional0, &directional1];
 
     // -------------------
