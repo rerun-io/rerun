@@ -38,18 +38,12 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     log_dataset_zip(path, &logger)
 }
 
-fn space(name: &str) -> ObjPath {
-    ObjPath::from(name)
-}
-
 fn configure_world_space(logger: &Logger<'_>) {
-    let world_space = space("world");
-
     // TODO: what time point should we use?
     let time_point = time_point([("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0)))]);
     logger.log(data_msg(
         &time_point,
-        world_space,
+        ObjPath::from("world"),
         "up",
         Data::Vec3([0.0, -1.0, 0.0]),
     ));
@@ -96,8 +90,13 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                 };
 
                 let obj_path = ObjPathBuilder::from("rgb");
-                logger.log(data_msg(&time_point, obj_path.clone(), "image", image));
-                logger.log(data_msg(&time_point, obj_path, "space", space("image")));
+                logger.log(data_msg(&time_point, &obj_path, "image", image));
+                logger.log(data_msg(
+                    &time_point,
+                    obj_path,
+                    "space",
+                    ObjPath::from("image"),
+                ));
             }
 
             if file_name.ends_with(".pgm") && num_depth_images < MAX_DEPTH_IMAGES {
@@ -114,12 +113,12 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                         data: bytemuck::cast_slice(depth_image.as_raw()).to_vec(),
                     };
                     let obj_path = ObjPathBuilder::from("depth");
-                    logger.log(data_msg(&time_point, obj_path.clone(), "image", image));
+                    logger.log(data_msg(&time_point, &obj_path, "image", image));
                     logger.log(data_msg(
                         &time_point,
                         obj_path,
                         "space",
-                        space("depth_image"),
+                        ObjPath::from("depth_image"),
                     ));
                 }
 
@@ -155,7 +154,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
 
                 logger.log(data_msg(
                     &time_point,
-                    obj_path.clone(),
+                    &obj_path,
                     "pos",
                     Data::Batch {
                         indices: indices.clone(),
@@ -163,7 +162,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     },
                 ));
 
-                let spaces = vec![space("world"); indices.len()];
+                let spaces = vec![ObjPath::from("world"); indices.len()];
                 logger.log(data_msg(
                     &time_point,
                     obj_path,
