@@ -1,5 +1,9 @@
 use egui::emath::*;
 
+pub use egui::emath::{remap, remap_clamp, Rect};
+
+pub use macaw::BoundingBox;
+
 pub fn line_segment_distance_sq_to_point([a, b]: [Pos2; 2], p: Pos2) -> f32 {
     let l2 = a.distance_sq(b);
     if l2 == 0.0 {
