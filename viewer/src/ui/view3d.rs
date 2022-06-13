@@ -323,7 +323,7 @@ pub(crate) fn combined_view_3d(
                 context.selection = crate::Selection::LogId(clicked_id);
                 if let Data::Camera(cam) = &msg.data {
                     state.interpolate_to_camera(Camera::from_camera_data(cam));
-                } else if let Some(center) = msg.data.center3d() {
+                } else if let Some(center) = center3d(&msg.data) {
                     // center camera on what we click on
                     // TODO: center on where you clicked instead of the centroid of the data
                     if let Some(mut new_orbit_cam) = state.orbit_camera {
@@ -438,4 +438,51 @@ fn with_three_d_context<R>(
         let three_d = three_d.get_or_insert_with(|| RenderingContext::new(gl).unwrap());
         f(three_d)
     })
+}
+
+// ------------------------------------------
+
+/// The center of this 3D thing, if any.
+pub fn center3d(data: &log_types::Data) -> Option<[f32; 3]> {
+    use log_types::Data;
+
+    match data {
+        Data::Pos3(pos) => Some(*pos),
+        Data::Box3(bbox) => Some(bbox.translation),
+        Data::Path3D(points) => {
+            let mut sum = [0.0_f64; 3];
+            for point in points {
+                sum[0] += point[0] as f64;
+                sum[1] += point[1] as f64;
+                sum[2] += point[2] as f64;
+            }
+            let n = points.len() as f32;
+            if n == 0.0 {
+                None
+            } else {
+                Some([sum[0] as f32 / n, sum[1] as f32 / n, sum[2] as f32 / n])
+            }
+        }
+        Data::LineSegments3D(segments) => {
+            let mut sum = [0.0_f64; 3];
+            for segment in segments {
+                for point in segment {
+                    sum[0] += point[0] as f64;
+                    sum[1] += point[1] as f64;
+                    sum[2] += point[2] as f64;
+                }
+            }
+            let n = 2.0 * segments.len() as f32;
+            if n == 0.0 {
+                None
+            } else {
+                Some([sum[0] as f32 / n, sum[1] as f32 / n, sum[2] as f32 / n])
+            }
+        }
+        Data::Mesh3D(_) => {
+            None // TODO
+        }
+        Data::Camera(cam) => Some(cam.position),
+        _ => None,
+    }
 }
