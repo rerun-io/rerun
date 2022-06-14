@@ -83,6 +83,14 @@ impl ObjPath {
 
         Self::new(ObjTypePath::new(obj_type_path), IndexPath::new(index_path))
     }
+
+    /// Replace last [`Index::Placeholder`] with the given key.
+    #[must_use]
+    pub fn replace_last_placeholder_with(self, key: crate::IndexKey) -> Self {
+        let (type_path, mut index_path) = self.into_type_path_and_index_path();
+        index_path.replace_last_placeholder_with(key);
+        Self::new(type_path, index_path)
+    }
 }
 
 impl From<&str> for ObjPath {

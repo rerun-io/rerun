@@ -19,7 +19,7 @@ pub struct Point3<'s> {
     pub radius: Option<f32>,
 }
 
-pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
+pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
     store: &'store TypePathDataStore<Time>,
     time_query: &TimeQuery<Time>,
 ) -> Vec<Point3<'store>> {
@@ -87,6 +87,7 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 ]);
                 let mut index_path_prefix = IndexPath::default();
                 index_path_prefix.push(Index::String(camera.into()));
+                index_path_prefix.push(Index::Placeholder);
 
                 let batch = Arc::new(
                     (0..NUM_POINTS_PER_CAMERA)
@@ -130,6 +131,7 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 ]);
                 let mut index_path_prefix = IndexPath::default();
                 index_path_prefix.push(Index::String(camera.into()));
+                index_path_prefix.push(Index::Placeholder);
 
                 let batch = Arc::new(
                     (0..NUM_POINTS_PER_CAMERA)

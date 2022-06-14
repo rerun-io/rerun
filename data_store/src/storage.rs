@@ -73,13 +73,13 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         log_id: LogId,
         batch: Batch<T>,
     ) -> Result<()> {
-        let parent_obj_path = crate::batch_parent_obj_path(&obj_type_path, &index_path_prefix);
+        let parent_obj_path = ObjPath::new(obj_type_path.clone(), index_path_prefix.clone());
 
         self.objects.entry(obj_type_path).or_default().insert_batch(
             index_path_prefix,
             field_name,
             time,
-            parent_obj_path,
+            &parent_obj_path,
             log_id,
             batch,
         )
@@ -108,18 +108,22 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
 /// One for each time source + [`ObjTypePath`].
 pub struct ObjStore<Time> {
     fields: AHashMap<FieldName, DataStoreTypeErased<Time>>,
+
+    /// For each index suffix we know, what is the full object path?
+    obj_paths_from_batch_suffix: nohash_hasher::IntMap<IndexKey, ObjPath>,
 }
 
 impl<Time> Default for ObjStore<Time> {
     fn default() -> Self {
         Self {
             fields: Default::default(),
+            obj_paths_from_batch_suffix: Default::default(),
         }
     }
 }
 
 impl<Time: 'static + Copy + Ord> ObjStore<Time> {
-    pub fn insert_individual<T: DataTrait>(
+    fn insert_individual<T: DataTrait>(
         &mut self,
         index_path: IndexPath,
         field_name: FieldName,
@@ -140,22 +144,35 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         }
     }
 
-    pub fn insert_batch<T: DataTrait>(
+    fn insert_batch<T: DataTrait>(
         &mut self,
         index_path_prefix: IndexPath,
         field_name: FieldName,
         time: Time,
-        parent_obj_path: ObjPath,
+        parent_obj_path: &ObjPath,
         log_id: LogId,
         batch: Batch<T>,
     ) -> Result<()> {
+        for index_path_suffix in batch.keys() {
+            if !self
+                .obj_paths_from_batch_suffix
+                .contains_key(index_path_suffix)
+            {
+                let obj_path = parent_obj_path
+                    .clone()
+                    .replace_last_placeholder_with(index_path_suffix.clone());
+                self.obj_paths_from_batch_suffix
+                    .insert(index_path_suffix.clone(), obj_path);
+            }
+        }
+
         if let Some(store) = self
             .fields
             .entry(field_name)
             .or_insert_with(|| DataStoreTypeErased::new_batched::<T>())
             .write::<T>()
         {
-            store.insert_batch(index_path_prefix, time, parent_obj_path, log_id, batch)
+            store.insert_batch(index_path_prefix, time, log_id, batch)
         } else {
             Err(Error::WrongType)
         }
@@ -285,7 +302,7 @@ impl<Time: Copy + Ord, T: DataTrait> DataStore<Time, T> {
         Self::Batched(Default::default())
     }
 
-    pub fn insert_individual(
+    fn insert_individual(
         &mut self,
         index_path: IndexPath,
         time: Time,
@@ -302,18 +319,17 @@ impl<Time: Copy + Ord, T: DataTrait> DataStore<Time, T> {
         }
     }
 
-    pub fn insert_batch(
+    fn insert_batch(
         &mut self,
         index_path_prefix: IndexPath,
         time: Time,
-        parent_obj_path: ObjPath,
         log_id: LogId,
         batch: Batch<T>,
     ) -> Result<()> {
         match self {
             Self::Individual(_) => Err(Error::IndividualFollowedByBatch),
             Self::Batched(batched) => {
-                batched.insert(index_path_prefix, time, parent_obj_path, log_id, batch);
+                batched.insert(index_path_prefix, time, log_id, batch);
                 Ok(())
             }
         }
@@ -344,8 +360,8 @@ pub struct IndividualHistory<Time, T> {
     /// Path to the parent object.
     ///
     /// This is so that we can quickly check for object visibility when rendering.
-    pub obj_path: ObjPath,
-    pub history: BTreeMap<Time, (LogId, T)>,
+    obj_path: ObjPath,
+    history: BTreeMap<Time, (LogId, T)>,
 }
 
 impl<Time: Copy + Ord, T> Default for IndividualDataHistory<Time, T> {
@@ -357,7 +373,7 @@ impl<Time: Copy + Ord, T> Default for IndividualDataHistory<Time, T> {
 }
 
 impl<Time: Copy + Ord, T> IndividualDataHistory<Time, T> {
-    pub fn insert(
+    fn insert(
         &mut self,
         index_path: IndexPath,
         time: Time,
@@ -412,14 +428,7 @@ pub struct BatchedDataHistory<Time, T> {
 }
 
 pub struct BatchHistory<Time, T> {
-    /// Path to the parent object, owning the batch.
-    ///
-    /// For instance, this is the path to the whole point cloud.
-    ///
-    /// This is so that we can quickly check for object visibility when rendering.
-    pub parent_obj_path: ObjPath,
-
-    pub history: BTreeMap<Time, (LogId, Batch<T>)>,
+    history: BTreeMap<Time, (LogId, Batch<T>)>,
 }
 
 impl<Time: Copy + Ord, T> Default for BatchedDataHistory<Time, T> {
@@ -430,23 +439,18 @@ impl<Time: Copy + Ord, T> Default for BatchedDataHistory<Time, T> {
     }
 }
 
+impl<Time: Copy + Ord, T> Default for BatchHistory<Time, T> {
+    fn default() -> Self {
+        Self {
+            history: Default::default(),
+        }
+    }
+}
+
 impl<Time: Copy + Ord, T> BatchedDataHistory<Time, T> {
-    pub fn insert(
-        &mut self,
-        index_path_prefix: IndexPath,
-        time: Time,
-        parent_obj_path: ObjPath,
-        log_id: LogId,
-        batch: Batch<T>,
-    ) {
-        self.batches_over_time
-            .entry(index_path_prefix)
-            .or_insert_with(|| BatchHistory {
-                parent_obj_path,
-                history: Default::default(),
-            })
-            .history
-            .insert(time, (log_id, batch));
+    fn insert(&mut self, index_path_prefix: IndexPath, time: Time, log_id: LogId, batch: Batch<T>) {
+        let batch_history = self.batches_over_time.entry(index_path_prefix).or_default();
+        batch_history.history.insert(time, (log_id, batch));
     }
 
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexPath, &BatchHistory<Time, T>)> {
@@ -483,13 +487,13 @@ impl<Time: Copy + Ord, T: Clone> BatchedDataHistory<Time, T> {
                 );
             }
         } else {
-            let (index_path_prefix, index_suffix) = index_path.replace_last_with_placeholder();
+            let (index_path_prefix, index_path_suffix) = index_path.replace_last_with_placeholder();
             if let Some(batch_history) = self.batches_over_time.get(&index_path_prefix) {
                 query(
                     &batch_history.history,
                     time_query,
                     |time, (log_id, batch)| {
-                        if let Some(value) = batch.get(&index_suffix) {
+                        if let Some(value) = batch.get(&index_path_suffix) {
                             times.push(*time);
                             ids.push(*log_id);
                             values.push(value.clone()); // TODO: return references instead
@@ -633,35 +637,45 @@ pub fn query<'data, Time: Copy + Ord, T>(
 
 /// The visitor is called with the object data path, the closest individually addressable parent object. It can be used to test if the object should be visible.
 pub fn visit_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
+    obj_store: &'s ObjStore<Time>,
+    field_name: &FieldName,
     time_query: &TimeQuery<Time>,
-    primary_data: &'s DataStore<Time, T>,
     mut visit: impl FnMut(&'s ObjPath, &'s LogId, &'s T),
 ) -> Option<()> {
     crate::profile_function!();
 
-    match primary_data {
-        DataStore::Individual(primary) => {
-            for (_index_path, primary) in primary.iter() {
-                query(
-                    &primary.history,
-                    time_query,
-                    |_time, (log_id, primary_value)| {
-                        visit(&primary.obj_path, log_id, primary_value);
-                    },
-                );
+    if let Some(primary_data) = obj_store.get::<T>(field_name) {
+        match primary_data {
+            DataStore::Individual(primary) => {
+                for (_index_path, primary) in primary.iter() {
+                    query(
+                        &primary.history,
+                        time_query,
+                        |_time, (log_id, primary_value)| {
+                            visit(&primary.obj_path, log_id, primary_value);
+                        },
+                    );
+                }
             }
-        }
-        DataStore::Batched(primary) => {
-            for (_index_path_prefix, primary) in primary.iter() {
-                query(
-                    &primary.history,
-                    time_query,
-                    |_time, (log_id, primary_batch)| {
-                        for (_index_path_suffix, primary_value) in primary_batch.iter() {
-                            visit(&primary.parent_obj_path, log_id, primary_value);
-                        }
-                    },
-                );
+            DataStore::Batched(primary) => {
+                for (_index_path_prefix, primary) in primary.iter() {
+                    query(
+                        &primary.history,
+                        time_query,
+                        |_time, (log_id, primary_batch)| {
+                            for (index_path_suffix, primary_value) in primary_batch.iter() {
+                                visit(
+                                    obj_store
+                                        .obj_paths_from_batch_suffix
+                                        .get(index_path_suffix)
+                                        .unwrap(),
+                                    log_id,
+                                    primary_value,
+                                );
+                            }
+                        },
+                    );
+                }
             }
         }
     }
@@ -670,7 +684,7 @@ pub fn visit_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
 }
 
 pub fn visit_data_and_1_child<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTrait>(
-    store: &'s ObjStore<Time>,
+    obj_store: &'s ObjStore<Time>,
     time_query: &TimeQuery<Time>,
     primary_data: &'s DataStore<Time, T>,
     (child1,): (&str,),
@@ -682,7 +696,7 @@ pub fn visit_data_and_1_child<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: 
 
     match primary_data {
         DataStore::Individual(primary) => {
-            let child1_reader = IndividualDataReader::<Time, S1>::new(store, &child1);
+            let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
 
             for (index_path, primary) in primary.iter() {
                 query(
@@ -701,7 +715,7 @@ pub fn visit_data_and_1_child<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: 
         }
         DataStore::Batched(primary) => {
             for (index_path_prefix, primary) in primary.iter() {
-                let child1_store = store.get::<S1>(&child1);
+                let child1_store = obj_store.get::<S1>(&child1);
 
                 query(
                     &primary.history,
@@ -712,7 +726,10 @@ pub fn visit_data_and_1_child<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: 
 
                         for (index_path_suffix, primary_value) in primary_batch.iter() {
                             visit(
-                                &primary.parent_obj_path,
+                                obj_store
+                                    .obj_paths_from_batch_suffix
+                                    .get(index_path_suffix)
+                                    .unwrap(),
                                 log_id,
                                 primary_value,
                                 child1_reader.latest_at(index_path_suffix),
@@ -734,7 +751,7 @@ pub fn visit_data_and_2_children<
     S1: DataTrait,
     S2: DataTrait,
 >(
-    store: &'s ObjStore<Time>,
+    obj_store: &'s ObjStore<Time>,
     time_query: &TimeQuery<Time>,
     primary_data: &'s DataStore<Time, T>,
     (child1, child2): (&str, &str),
@@ -747,8 +764,8 @@ pub fn visit_data_and_2_children<
 
     match primary_data {
         DataStore::Individual(primary) => {
-            let child1_reader = IndividualDataReader::<Time, S1>::new(store, &child1);
-            let child2_reader = IndividualDataReader::<Time, S2>::new(store, &child2);
+            let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
+            let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
 
             for (index_path, primary) in primary.iter() {
                 query(
@@ -768,8 +785,8 @@ pub fn visit_data_and_2_children<
         }
         DataStore::Batched(primary) => {
             for (index_path_prefix, primary) in primary.iter() {
-                let child1_store = store.get::<S1>(&child1);
-                let child2_store = store.get::<S2>(&child2);
+                let child1_store = obj_store.get::<S1>(&child1);
+                let child2_store = obj_store.get::<S2>(&child2);
 
                 query(
                     &primary.history,
@@ -782,7 +799,10 @@ pub fn visit_data_and_2_children<
 
                         for (index_path_suffix, primary_value) in primary_batch.iter() {
                             visit(
-                                &primary.parent_obj_path,
+                                obj_store
+                                    .obj_paths_from_batch_suffix
+                                    .get(index_path_suffix)
+                                    .unwrap(),
                                 log_id,
                                 primary_value,
                                 child1_reader.latest_at(index_path_suffix),
@@ -806,7 +826,7 @@ pub fn visit_data_and_3_children<
     S2: DataTrait,
     S3: DataTrait,
 >(
-    store: &'s ObjStore<Time>,
+    obj_store: &'s ObjStore<Time>,
     time_query: &TimeQuery<Time>,
     primary_data: &'s DataStore<Time, T>,
     (child1, child2, child3): (&str, &str, &str),
@@ -820,9 +840,9 @@ pub fn visit_data_and_3_children<
 
     match primary_data {
         DataStore::Individual(primary) => {
-            let child1_reader = IndividualDataReader::<Time, S1>::new(store, &child1);
-            let child2_reader = IndividualDataReader::<Time, S2>::new(store, &child2);
-            let child3_reader = IndividualDataReader::<Time, S3>::new(store, &child3);
+            let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
+            let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
+            let child3_reader = IndividualDataReader::<Time, S3>::new(obj_store, &child3);
 
             for (index_path, primary) in primary.iter() {
                 query(
@@ -843,9 +863,9 @@ pub fn visit_data_and_3_children<
         }
         DataStore::Batched(primary) => {
             for (index_path_prefix, primary) in primary.iter() {
-                let child1_store = store.get::<S1>(&child1);
-                let child2_store = store.get::<S2>(&child2);
-                let child3_store = store.get::<S3>(&child3);
+                let child1_store = obj_store.get::<S1>(&child1);
+                let child2_store = obj_store.get::<S2>(&child2);
+                let child3_store = obj_store.get::<S3>(&child3);
 
                 query(
                     &primary.history,
@@ -860,7 +880,10 @@ pub fn visit_data_and_3_children<
 
                         for (index_path_suffix, primary_value) in primary_batch.iter() {
                             visit(
-                                &primary.parent_obj_path,
+                                obj_store
+                                    .obj_paths_from_batch_suffix
+                                    .get(index_path_suffix)
+                                    .unwrap(),
                                 log_id,
                                 primary_value,
                                 child1_reader.latest_at(index_path_suffix),

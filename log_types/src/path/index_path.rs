@@ -122,7 +122,7 @@ impl IndexPath {
         Some(index)
     }
 
-    /// Replace last component with `Index::Placeholder`, and return what was there.
+    /// Replace last component with [`Index::Placeholder`], and return what was there.
     pub fn replace_last_with_placeholder(mut self) -> (IndexPath, IndexKey) {
         let index = self.pop().unwrap();
         assert_ne!(index, IndexKey::new(Index::Placeholder));
@@ -130,7 +130,7 @@ impl IndexPath {
         (self, index)
     }
 
-    /// Replace last `Index::Placeholder` with the given key.
+    /// Replace last [`Index::Placeholder`] with the given key.
     pub fn replace_last_placeholder_with(&mut self, key: IndexKey) {
         let index = self.pop().unwrap();
         assert_eq!(index, IndexKey::new(Index::Placeholder));

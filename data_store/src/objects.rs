@@ -66,15 +66,15 @@ pub struct Image<'s> {
 
 impl<'s> Image<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = store.get::<log_types::Image>(&FieldName::from("image")) {
+        if let Some(primary_data) = obj_store.get::<log_types::Image>(&FieldName::from("image")) {
             visit_data_and_2_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color"),
@@ -106,15 +106,15 @@ pub struct Point2D<'s> {
 
 impl<'s> Point2D<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = store.get::<[f32; 2]>(&FieldName::from("pos")) {
+        if let Some(primary_data) = obj_store.get::<[f32; 2]>(&FieldName::from("pos")) {
             visit_data_and_3_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color", "radius"),
@@ -150,15 +150,15 @@ pub struct Point3D<'s> {
 
 impl<'s> Point3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = store.get::<[f32; 3]>(&FieldName::from("pos")) {
+        if let Some(primary_data) = obj_store.get::<[f32; 3]>(&FieldName::from("pos")) {
             visit_data_and_3_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color", "radius"),
@@ -194,15 +194,15 @@ pub struct BBox2D<'s> {
 
 impl<'s> BBox2D<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = store.get::<log_types::BBox2D>(&FieldName::from("bbox")) {
+        if let Some(primary_data) = obj_store.get::<log_types::BBox2D>(&FieldName::from("bbox")) {
             visit_data_and_3_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
@@ -238,15 +238,15 @@ pub struct Box3D<'s> {
 
 impl<'s> Box3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = store.get::<log_types::Box3>(&FieldName::from("obb")) {
+        if let Some(primary_data) = obj_store.get::<log_types::Box3>(&FieldName::from("obb")) {
             visit_data_and_3_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
@@ -282,15 +282,15 @@ pub struct Path3D<'s> {
 
 impl<'s> Path3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = store.get::<Vec<[f32; 3]>>(&FieldName::from("points")) {
+        if let Some(primary_data) = obj_store.get::<Vec<[f32; 3]>>(&FieldName::from("points")) {
             visit_data_and_3_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
@@ -326,17 +326,17 @@ pub struct LineSegments2D<'s> {
 
 impl<'s> LineSegments2D<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) =
-            store.get::<Vec<[[f32; 2]; 2]>>(&FieldName::from("line_segments"))
+            obj_store.get::<Vec<[[f32; 2]; 2]>>(&FieldName::from("line_segments"))
         {
             visit_data_and_3_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
@@ -372,17 +372,17 @@ pub struct LineSegments3D<'s> {
 
 impl<'s> LineSegments3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
         if let Some(primary_data) =
-            store.get::<Vec<[[f32; 3]; 2]>>(&FieldName::from("line_segments"))
+            obj_store.get::<Vec<[[f32; 3]; 2]>>(&FieldName::from("line_segments"))
         {
             visit_data_and_3_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color", "stroke_width"),
@@ -417,15 +417,15 @@ pub struct Mesh3D<'s> {
 
 impl<'s> Mesh3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = store.get::<log_types::Mesh3D>(&FieldName::from("mesh")) {
+        if let Some(primary_data) = obj_store.get::<log_types::Mesh3D>(&FieldName::from("mesh")) {
             visit_data_and_2_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color"),
@@ -457,15 +457,15 @@ pub struct Camera<'s> {
 
 impl<'s> Camera<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = store.get::<log_types::Camera>(&FieldName::from("camera")) {
+        if let Some(primary_data) = obj_store.get::<log_types::Camera>(&FieldName::from("camera")) {
             visit_data_and_2_children(
-                store,
+                obj_store,
                 time_query,
                 primary_data,
                 ("space", "color"),
@@ -497,21 +497,20 @@ pub struct Space<'s> {
 
 impl<'s> Space<'s> {
     fn query<Time: 'static + Copy + Ord>(
-        store: &'s ObjStore<Time>,
+        obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = store.get::<[f32; 3]>(&FieldName::from("up")) {
-            visit_data(
-                time_query,
-                primary_data,
-                |obj_path: &ObjPath, _log_id: &LogId, up: &[f32; 3]| {
-                    out.space.insert(obj_path, Space { up });
-                },
-            );
-        }
+        visit_data(
+            obj_store,
+            &FieldName::from("up"),
+            time_query,
+            |obj_path: &ObjPath, _log_id: &LogId, up: &[f32; 3]| {
+                out.space.insert(obj_path, Space { up });
+            },
+        );
     }
 }
 

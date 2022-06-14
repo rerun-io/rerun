@@ -10,7 +10,7 @@ pub struct Point3<'s> {
     pub radius: Option<f32>,
 }
 
-pub fn points_from_store<'store, Time: 'static + Clone + Ord>(
+pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
     store: &'store ObjStore<Time>,
     time_query: &TimeQuery<Time>,
 ) -> Vec<Point3<'store>> {
