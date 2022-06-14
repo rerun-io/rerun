@@ -1,10 +1,12 @@
 mod log_store;
 mod objects;
 mod storage;
+mod type_path_query;
 
 pub use log_store::*;
 pub use objects::*;
 pub use storage::*;
+pub use type_path_query::*;
 
 pub use log_types::{
     Index, IndexPath, ObjPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp,

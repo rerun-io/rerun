@@ -4,10 +4,7 @@ use log_types::{FieldName, LogId, ObjPath};
 
 pub use log_types::objects::*;
 
-use crate::{
-    storage::{visit_data, visit_data_and_2_children, visit_data_and_3_children, ObjStore},
-    ObjTypePath, TimeQuery, TypePathDataStore,
-};
+use crate::{storage::ObjStore, type_path_query::*, ObjTypePath, TimeQuery, TypePathDataStore};
 
 #[derive(Copy, Clone, Debug)]
 pub struct ObjectProps<'s> {
