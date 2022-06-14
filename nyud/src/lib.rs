@@ -165,11 +165,23 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                 let spaces = vec![ObjPath::from("world"); indices.len()];
                 logger.log(data_msg(
                     &time_point,
-                    obj_path,
+                    &obj_path,
                     "space",
                     Data::Batch {
-                        indices,
+                        indices: indices.clone(),
                         data: DataVec::Space(spaces),
+                    },
+                ));
+
+                // TODO: base color on depth?
+                let colors = vec![[255_u8; 4]; indices.len()];
+                logger.log(data_msg(
+                    &time_point,
+                    &obj_path,
+                    "color",
+                    Data::Batch {
+                        indices,
+                        data: DataVec::Color(colors),
                     },
                 ));
             }

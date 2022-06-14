@@ -97,154 +97,174 @@ impl Scene {
 
         let mut scene = Self::default();
 
-        scene.points.reserve(objects.point3d.len());
-        for (props, obj) in objects.point3d.iter() {
-            let data_store::Point3D { pos, radius } = *obj;
+        {
+            crate::profile_scope!("point3d");
+            scene.points.reserve(objects.point3d.len());
+            for (props, obj) in objects.point3d.iter() {
+                let data_store::Point3D { pos, radius } = *obj;
 
-            let dist_to_camera = camera_plane.distance(Vec3::from(*pos));
-            let radius = radius.unwrap_or(dist_to_camera * point_radius_from_distance);
-            let radius = boost_size_on_hover(props, radius);
+                let dist_to_camera = camera_plane.distance(Vec3::from(*pos));
+                let radius = radius.unwrap_or(dist_to_camera * point_radius_from_distance);
+                let radius = boost_size_on_hover(props, radius);
 
-            scene.points.push(Point {
-                log_id: *props.log_id,
-                pos: *pos,
-                radius,
-                color: object_color(context, props),
-            });
-        }
-
-        for (props, obj) in objects.box3d.iter() {
-            let data_store::Box3D { obb, stroke_width } = obj;
-            let line_radius = stroke_width.map_or_else(
-                || {
-                    let dist_to_camera = camera_plane.distance(glam::Vec3::from(obb.translation));
-                    dist_to_camera * line_radius_from_distance
-                },
-                |w| w / 2.0,
-            );
-            let line_radius = boost_size_on_hover(props, line_radius);
-            let color = object_color(context, props);
-            scene.add_box(*props.log_id, color, line_radius, obb);
-        }
-
-        for (props, obj) in objects.path3d.iter() {
-            let data_store::Path3D {
-                points,
-                stroke_width,
-            } = obj;
-
-            let line_radius = stroke_width.map_or_else(
-                || {
-                    let bbox =
-                        macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
-                    let dist_to_camera = camera_plane.distance(bbox.center());
-                    dist_to_camera * line_radius_from_distance
-                },
-                |w| w / 2.0,
-            );
-            let line_radius = boost_size_on_hover(props, line_radius);
-            let color = object_color(context, props);
-
-            let segments = points
-                .iter()
-                .tuple_windows()
-                .map(|(a, b)| [*a, *b])
-                .collect();
-
-            scene.line_segments.push(LineSegments {
-                log_id: *props.log_id,
-                segments,
-                radius: line_radius,
-                color,
-            });
-        }
-
-        for (props, obj) in objects.line_segments3d.iter() {
-            let data_store::LineSegments3D {
-                line_segments,
-                stroke_width,
-            } = *obj;
-
-            let line_radius = stroke_width.map_or_else(
-                || {
-                    let bbox = macaw::BoundingBox::from_points(
-                        line_segments
-                            .iter()
-                            .flat_map(|&[a, b]| [Vec3::from(a), Vec3::from(b)]),
-                    );
-                    let dist_to_camera = camera_plane.distance(bbox.center());
-                    dist_to_camera * line_radius_from_distance
-                },
-                |w| w / 2.0,
-            );
-            let line_radius = boost_size_on_hover(props, line_radius);
-            let color = object_color(context, props);
-
-            scene.line_segments.push(LineSegments {
-                log_id: *props.log_id,
-                segments: line_segments.clone(),
-                radius: line_radius,
-                color,
-            });
-        }
-
-        for (props, obj) in objects.mesh3d.iter() {
-            let data_store::Mesh3D { mesh } = *obj;
-            let mesh_id = hash(props.log_id);
-            if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
-                mesh_id,
-                "mesh.to_string()", // TODO(emilk): &type_path.to_string(),
-                &MeshSourceData::Mesh3D(mesh.clone()),
-            ) {
-                // TODO: props.color
-                scene.meshes.push(MeshSource {
+                scene.points.push(Point {
                     log_id: *props.log_id,
-                    mesh_id,
-                    world_from_mesh: glam::Mat4::IDENTITY,
-                    cpu_mesh,
+                    pos: *pos,
+                    radius,
+                    color: object_color(context, props),
                 });
             }
         }
 
-        for (props, obj) in objects.camera.iter() {
-            let data_store::Camera { camera } = *obj;
+        {
+            crate::profile_scope!("box3d");
+            for (props, obj) in objects.box3d.iter() {
+                let data_store::Box3D { obb, stroke_width } = obj;
+                let line_radius = stroke_width.map_or_else(
+                    || {
+                        let dist_to_camera =
+                            camera_plane.distance(glam::Vec3::from(obb.translation));
+                        dist_to_camera * line_radius_from_distance
+                    },
+                    |w| w / 2.0,
+                );
+                let line_radius = boost_size_on_hover(props, line_radius);
+                let color = object_color(context, props);
+                scene.add_box(*props.log_id, color, line_radius, obb);
+            }
+        }
 
-            let rotation = Quat::from_slice(&camera.rotation);
-            let translation = Vec3::from_slice(&camera.position);
+        {
+            crate::profile_scope!("path3d");
+            for (props, obj) in objects.path3d.iter() {
+                let data_store::Path3D {
+                    points,
+                    stroke_width,
+                } = obj;
 
-            let dist_to_camera = camera_plane.distance(translation);
-            let color = object_color(context, props);
+                let line_radius = stroke_width.map_or_else(
+                    || {
+                        let bbox =
+                            macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
+                        let dist_to_camera = camera_plane.distance(bbox.center());
+                        dist_to_camera * line_radius_from_distance
+                    },
+                    |w| w / 2.0,
+                );
+                let line_radius = boost_size_on_hover(props, line_radius);
+                let color = object_color(context, props);
 
-            if context.options.show_camera_mesh_in_3d {
-                // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
-                // The lens is at the origin.
+                let segments = points
+                    .iter()
+                    .tuple_windows()
+                    .map(|(a, b)| [*a, *b])
+                    .collect();
 
-                let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
-                let scale_based_on_distance = dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO: fade instead!
-                let scale = scale_based_on_scene_size.min(scale_based_on_distance);
-                let scale = boost_size_on_hover(props, scale);
-                let scale = Vec3::splat(scale);
+                scene.line_segments.push(LineSegments {
+                    log_id: *props.log_id,
+                    segments,
+                    radius: line_radius,
+                    color,
+                });
+            }
+        }
 
-                let mesh_id = hash("camera_mesh");
-                let world_from_mesh =
-                    Mat4::from_scale_rotation_translation(scale, rotation, translation);
+        {
+            crate::profile_scope!("line_segments3d");
+            for (props, obj) in objects.line_segments3d.iter() {
+                let data_store::LineSegments3D {
+                    line_segments,
+                    stroke_width,
+                } = *obj;
 
+                let line_radius = stroke_width.map_or_else(
+                    || {
+                        let bbox = macaw::BoundingBox::from_points(
+                            line_segments
+                                .iter()
+                                .flat_map(|&[a, b]| [Vec3::from(a), Vec3::from(b)]),
+                        );
+                        let dist_to_camera = camera_plane.distance(bbox.center());
+                        dist_to_camera * line_radius_from_distance
+                    },
+                    |w| w / 2.0,
+                );
+                let line_radius = boost_size_on_hover(props, line_radius);
+                let color = object_color(context, props);
+
+                scene.line_segments.push(LineSegments {
+                    log_id: *props.log_id,
+                    segments: line_segments.clone(),
+                    radius: line_radius,
+                    color,
+                });
+            }
+        }
+
+        {
+            crate::profile_scope!("mesh3d");
+            for (props, obj) in objects.mesh3d.iter() {
+                let data_store::Mesh3D { mesh } = *obj;
+                let mesh_id = hash(props.log_id);
                 if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
                     mesh_id,
-                    "camera_mesh",
-                    &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                    "mesh.to_string()", // TODO(emilk): &type_path.to_string(),
+                    &MeshSourceData::Mesh3D(mesh.clone()),
                 ) {
+                    // TODO: props.color
                     scene.meshes.push(MeshSource {
                         log_id: *props.log_id,
                         mesh_id,
-                        world_from_mesh,
+                        world_from_mesh: glam::Mat4::IDENTITY,
                         cpu_mesh,
                     });
                 }
             }
+        }
 
-            let line_radius = dist_to_camera * line_radius_from_distance;
-            scene.add_camera_frustum(camera, scene_bbox, props.log_id, line_radius, color);
+        {
+            crate::profile_scope!("camera");
+            for (props, obj) in objects.camera.iter() {
+                let data_store::Camera { camera } = *obj;
+
+                let rotation = Quat::from_slice(&camera.rotation);
+                let translation = Vec3::from_slice(&camera.position);
+
+                let dist_to_camera = camera_plane.distance(translation);
+                let color = object_color(context, props);
+
+                if context.options.show_camera_mesh_in_3d {
+                    // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
+                    // The lens is at the origin.
+
+                    let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
+                    let scale_based_on_distance =
+                        dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO: fade instead!
+                    let scale = scale_based_on_scene_size.min(scale_based_on_distance);
+                    let scale = boost_size_on_hover(props, scale);
+                    let scale = Vec3::splat(scale);
+
+                    let mesh_id = hash("camera_mesh");
+                    let world_from_mesh =
+                        Mat4::from_scale_rotation_translation(scale, rotation, translation);
+
+                    if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
+                        mesh_id,
+                        "camera_mesh",
+                        &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                    ) {
+                        scene.meshes.push(MeshSource {
+                            log_id: *props.log_id,
+                            mesh_id,
+                            world_from_mesh,
+                            cpu_mesh,
+                        });
+                    }
+                }
+
+                let line_radius = dist_to_camera * line_radius_from_distance;
+                scene.add_camera_frustum(camera, scene_bbox, props.log_id, line_radius, color);
+            }
         }
 
         scene
