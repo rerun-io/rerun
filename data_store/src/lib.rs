@@ -1,6 +1,6 @@
 mod log_store;
 pub mod obj_path_query;
-mod objects;
+pub mod objects;
 mod storage;
 pub mod type_path_query;
 

@@ -47,6 +47,14 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
         self.0.iter().map(|obj| (&obj.props, &obj.data))
     }
 
+    pub fn first(&self) -> Option<(&ObjectProps<'s>, &T)> {
+        self.0.first().map(|obj| (&obj.props, &obj.data))
+    }
+
+    pub fn last(&self) -> Option<(&ObjectProps<'s>, &T)> {
+        self.0.last().map(|obj| (&obj.props, &obj.data))
+    }
+
     pub fn filter(&self, keep: &impl Fn(&ObjectProps<'_>) -> bool) -> Self {
         crate::profile_function!();
         Self(

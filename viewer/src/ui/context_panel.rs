@@ -79,7 +79,7 @@ impl ContextPanel {
     }
 }
 
-fn view_object(
+pub(crate) fn view_object(
     log_db: &LogDb,
     context: &mut ViewerContext,
     ui: &mut egui::Ui,

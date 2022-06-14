@@ -184,7 +184,7 @@ fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances 
 
     for line_segments in line_segments {
         let LineSegments {
-            log_id: _,
+            obj_path: _,
             segments,
             radius,
             color,

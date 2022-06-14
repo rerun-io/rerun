@@ -149,8 +149,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     }
                 }
 
-                let obj_path =
-                    ObjPathBuilder::from("points") / ObjPathComp::Index(Index::Placeholder);
+                let obj_path = ObjPathBuilder::from("points") / Index::Placeholder;
 
                 logger.log(data_msg(
                     &time_point,

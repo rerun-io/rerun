@@ -11,7 +11,7 @@ use scene::*;
 
 use egui::NumExt as _;
 use glam::Affine3A;
-use log_types::{Data, LogId, ObjPath};
+use log_types::ObjPath;
 use macaw::{vec3, Quat, Vec3};
 
 use crate::LogDb;
@@ -27,7 +27,7 @@ pub(crate) struct State3D {
 
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
-    hovered_id: Option<LogId>,
+    hovered_obj_path: Option<ObjPath>,
     /// Where in world space the mouse is hovering (from previous frame)
     #[serde(skip)]
     hovered_point: Option<glam::Vec3>,
@@ -42,7 +42,7 @@ impl Default for State3D {
         Self {
             orbit_camera: Default::default(),
             cam_interpolation: Default::default(),
-            hovered_id: Default::default(),
+            hovered_obj_path: Default::default(),
             hovered_point: Default::default(),
             scene_bbox: macaw::BoundingBox::nothing(),
         }
@@ -297,6 +297,45 @@ fn tracking_camera(
     }
 }
 
+fn click_object(
+    log_db: &LogDb,
+    context: &mut ViewerContext,
+    state: &mut State3D,
+    obj_path: &ObjPath,
+) {
+    context.selection = crate::Selection::ObjPath(obj_path.clone());
+
+    if log_db.object_types.get(obj_path.obj_type_path()) == Some(&log_types::ObjectType::Camera) {
+        if let Some((_, data_store)) = log_db.data_store.get(context.time_control.source()) {
+            if let Some(obj_store) = data_store.get(obj_path.obj_type_path()) {
+                // TODO: use the time of what we clicked instead!
+                if let Some(time_query) = context.time_control.time_query() {
+                    let mut objects = data_store::Objects::default();
+                    data_store::objects::Camera::query_obj_path(
+                        obj_store,
+                        obj_path,
+                        &time_query,
+                        &mut objects,
+                    );
+                    if let Some((_, camera)) = objects.camera.last() {
+                        state.interpolate_to_camera(Camera::from_camera_data(camera.camera));
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(clicked_point) = state.hovered_point {
+        // center camera on what we click on
+        if let Some(mut new_orbit_cam) = state.orbit_camera {
+            new_orbit_cam.radius = new_orbit_cam.position().distance(clicked_point);
+            new_orbit_cam.center = clicked_point;
+            state.interpolate_to_orbit_camera(new_orbit_cam);
+        }
+    }
+}
+
 pub(crate) fn combined_view_3d(
     log_db: &LogDb,
     context: &mut ViewerContext,
@@ -320,37 +359,24 @@ pub(crate) fn combined_view_3d(
     let tracking_camera = tracking_camera(log_db, context, objects);
     let camera = state.update_camera(context, tracking_camera, &response, &space_specs);
 
-    let mut hovered_id = state.hovered_id;
+    let mut hovered_obj_path = state.hovered_obj_path.clone();
     if ui.input().pointer.any_click() {
-        if let Some(clicked_id) = hovered_id {
-            if let Some(msg) = log_db.get_data_msg(&clicked_id) {
-                context.selection = crate::Selection::LogId(clicked_id);
-                if let Data::Camera(cam) = &msg.data {
-                    state.interpolate_to_camera(Camera::from_camera_data(cam));
-                } else if let Some(clicked_point) = state.hovered_point {
-                    // center camera on what we click on
-                    if let Some(mut new_orbit_cam) = state.orbit_camera {
-                        new_orbit_cam.radius = new_orbit_cam.position().distance(clicked_point);
-                        new_orbit_cam.center = clicked_point;
-                        state.interpolate_to_orbit_camera(new_orbit_cam);
-                    }
-                }
-            }
+        if let Some(hovered_obj_path) = &hovered_obj_path {
+            click_object(log_db, context, state, hovered_obj_path);
         }
     } else if ui.input().pointer.any_down() {
-        hovered_id = None;
+        hovered_obj_path = None;
     }
 
-    if let Some(hovered_id) = hovered_id {
-        if let Some(msg) = log_db.get_data_msg(&hovered_id) {
-            egui::containers::popup::show_tooltip_at_pointer(
-                ui.ctx(),
-                egui::Id::new("3d_tooltip"),
-                |ui| {
-                    crate::view2d::on_hover_ui(context, ui, msg);
-                },
-            );
-        }
+    if let Some(obj_path) = &hovered_obj_path {
+        egui::containers::popup::show_tooltip_at_pointer(
+            ui.ctx(),
+            egui::Id::new("3d_tooltip"),
+            |ui| {
+                context.obj_path_button(ui, obj_path);
+                crate::ui::context_panel::view_object(log_db, context, ui, obj_path);
+            },
+        );
     }
 
     let scene = Scene::from_objects(
@@ -358,15 +384,15 @@ pub(crate) fn combined_view_3d(
         &state.scene_bbox,
         rect.size(),
         &camera,
-        hovered_id.as_ref(),
+        hovered_obj_path.as_ref(),
         objects,
     );
 
     let hovered = response
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &camera));
-    state.hovered_id = hovered.map(|x| x.0);
-    state.hovered_point = hovered.map(|x| x.1);
+    state.hovered_point = hovered.clone().map(|x| x.1);
+    state.hovered_obj_path = hovered.map(|x| x.0);
 
     let dark_mode = ui.visuals().dark_mode;
 

@@ -2,14 +2,14 @@ use egui::*;
 
 use log_types::*;
 
-use crate::{space_view::ui_data, LogDb, Preview, Selection, ViewerContext};
+use crate::{LogDb, Selection, ViewerContext};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State2D {
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
-    hovered: Option<LogId>,
+    hovered_obj: Option<ObjPath>,
 
     /// Estimate of the the bounding box of all data. Accumulated.
     #[serde(skip)]
@@ -19,7 +19,7 @@ pub(crate) struct State2D {
 impl Default for State2D {
     fn default() -> Self {
         Self {
-            hovered: Default::default(),
+            hovered_obj: Default::default(),
             scene_bbox: epaint::Rect::NOTHING,
         }
     }
@@ -60,19 +60,14 @@ pub(crate) fn combined_view_2d(
 
     // ------------------------------------------------------------------------
 
-    if let Some(hovered_id) = state.hovered {
+    if let Some(obj_path) = &state.hovered_obj {
         if response.clicked() {
-            context.selection = Selection::LogId(hovered_id);
+            context.selection = Selection::ObjPath(obj_path.clone());
         }
-        if let Some(msg) = log_db.get_data_msg(&hovered_id) {
-            egui::containers::popup::show_tooltip_at_pointer(
-                ui.ctx(),
-                Id::new("2d_tooltip"),
-                |ui| {
-                    on_hover_ui(context, ui, msg);
-                },
-            );
-        }
+        egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
+            context.obj_path_button(ui, obj_path);
+            crate::ui::context_panel::view_object(log_db, context, ui, obj_path);
+        });
     }
 
     // ------------------------------------------------------------------------
@@ -93,20 +88,25 @@ pub(crate) fn combined_view_2d(
     let hover_radius = 5.0; // TODO: from egui?
 
     let mut closest_dist = hover_radius;
-    let mut closest_id = None;
+    let mut closest_obj_path = None;
     let pointer_pos = response.hover_pos();
 
-    let mut check_hovering = |log_id: &LogId, dist: f32| {
+    let mut check_hovering = |obj_path: &ObjPath, dist: f32| {
         if dist <= closest_dist {
             closest_dist = dist;
-            closest_id = Some(*log_id);
+            closest_obj_path = Some(obj_path.clone());
         }
     };
 
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
         let data_store::Image { image } = obj;
-        let paint_props =
-            paint_properties(context, &state.hovered, props, DefaultColor::White, &None);
+        let paint_props = paint_properties(
+            context,
+            &state.hovered_obj,
+            props,
+            DefaultColor::White,
+            &None,
+        );
 
         let texture_id = context
             .image_cache
@@ -134,7 +134,7 @@ pub(crate) fn combined_view_2d(
         if let Some(pointer_pos) = pointer_pos {
             let dist = screen_rect.distance_sq_to_pos(pointer_pos).sqrt();
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
-            check_hovering(props.log_id, dist);
+            check_hovering(props.obj_path, dist);
         }
     }
 
@@ -142,7 +142,7 @@ pub(crate) fn combined_view_2d(
         let data_store::BBox2D { bbox, stroke_width } = obj;
         let paint_props = paint_properties(
             context,
-            &state.hovered,
+            &state.hovered_obj,
             props,
             DefaultColor::Random,
             stroke_width,
@@ -164,7 +164,7 @@ pub(crate) fn combined_view_2d(
 
         if let Some(pointer_pos) = pointer_pos {
             check_hovering(
-                props.log_id,
+                props.obj_path,
                 screen_rect.signed_distance_to_pos(pointer_pos).abs(),
             );
         }
@@ -177,7 +177,7 @@ pub(crate) fn combined_view_2d(
         } = obj;
         let paint_props = paint_properties(
             context,
-            &state.hovered,
+            &state.hovered_obj,
             props,
             DefaultColor::Random,
             stroke_width,
@@ -203,14 +203,19 @@ pub(crate) fn combined_view_2d(
                     crate::math::line_segment_distance_sq_to_point([a, b], pointer_pos);
                 min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
             }
-            check_hovering(props.log_id, min_dist_sq.sqrt());
+            check_hovering(props.obj_path, min_dist_sq.sqrt());
         }
     }
 
     for (props, obj) in objects.point2d.iter() {
         let data_store::Point2D { pos, radius } = obj;
-        let paint_props =
-            paint_properties(context, &state.hovered, props, DefaultColor::Random, &None);
+        let paint_props = paint_properties(
+            context,
+            &state.hovered_obj,
+            props,
+            DefaultColor::Random,
+            &None,
+        );
 
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
@@ -228,13 +233,13 @@ pub(crate) fn combined_view_2d(
         ));
 
         if let Some(pointer_pos) = pointer_pos {
-            check_hovering(props.log_id, screen_pos.distance(pointer_pos));
+            check_hovering(props.obj_path, screen_pos.distance(pointer_pos));
         }
     }
 
     painter.extend(shapes);
 
-    state.hovered = closest_id;
+    state.hovered_obj = closest_obj_path;
 }
 
 struct ObjectPaintProperties {
@@ -261,7 +266,7 @@ enum DefaultColor {
 
 fn paint_properties(
     context: &mut ViewerContext,
-    hovered: &Option<LogId>,
+    hovered: &Option<ObjPath>,
     props: &data_store::ObjectProps<'_>,
     default_color: DefaultColor,
     stroke_width: &Option<f32>,
@@ -277,7 +282,7 @@ fn paint_properties(
         },
         to_egui_color,
     );
-    let is_hovered = Some(props.log_id) == hovered.as_ref();
+    let is_hovered = Some(props.obj_path) == hovered.as_ref();
     let fg_color = if is_hovered { Color32::WHITE } else { color };
     let stroke_width = stroke_width.unwrap_or(1.5);
     let stoke_width = if is_hovered {
@@ -293,24 +298,6 @@ fn paint_properties(
         bg_stroke,
         fg_stroke,
     }
-}
-
-pub(crate) fn on_hover_ui(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &DataMsg) {
-    // A very short summary:
-    egui::Grid::new("fields")
-        .striped(true)
-        .num_columns(2)
-        .show(ui, |ui| {
-            ui.monospace("data_path:");
-            ui.label(format!("{}", msg.data_path));
-            ui.end_row();
-
-            ui.monospace("data:");
-            ui_data(context, ui, &msg.id, &msg.data, Preview::Medium);
-            ui.end_row();
-        });
-
-    ui.label("(click for more)");
 }
 
 fn to_egui_color([r, g, b, a]: [u8; 4]) -> Color32 {
