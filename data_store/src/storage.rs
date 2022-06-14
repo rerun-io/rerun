@@ -66,8 +66,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
     /// `index_path_prefix` should have `Index::Placeholder` in the last position.
     pub fn insert_batch<T: DataTrait>(
         &mut self,
-        obj_type_path: ObjTypePath,
-        index_path_prefix: IndexPath,
+        parent_obj_path: &ObjPath,
         field_name: FieldName,
         time: Time,
         log_id: LogId,
@@ -75,16 +74,17 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
     ) -> Result<()> {
         crate::profile_function!();
 
-        let parent_obj_path = ObjPath::new(obj_type_path.clone(), index_path_prefix.clone());
-
-        self.objects.entry(obj_type_path).or_default().insert_batch(
-            index_path_prefix,
-            field_name,
-            time,
-            &parent_obj_path,
-            log_id,
-            batch,
-        )
+        self.objects
+            .entry(parent_obj_path.obj_type_path().clone())
+            .or_default()
+            .insert_batch(
+                parent_obj_path.index_path().clone(),
+                field_name,
+                time,
+                parent_obj_path,
+                log_id,
+                batch,
+            )
     }
 
     #[inline]

@@ -150,10 +150,6 @@ fn test_singular() -> data_store::Result<()> {
 
 #[test]
 fn test_batches() -> data_store::Result<()> {
-    fn index_path_prefix(cam: &str) -> IndexPath {
-        IndexPath::new(vec![Index::String(cam.into()), Index::Placeholder])
-    }
-
     fn obj_type_path() -> ObjTypePath {
         ObjTypePath::new(vec![
             TypePathComp::String("camera".into()),
@@ -161,6 +157,16 @@ fn test_batches() -> data_store::Result<()> {
             TypePathComp::String("point".into()),
             TypePathComp::Index,
         ])
+    }
+
+    fn obj_path_batch(cam: &str) -> ObjPath {
+        ObjPathBuilder::new(vec![
+            ObjPathComp::String("camera".into()),
+            ObjPathComp::Index(Index::String(cam.into())),
+            ObjPathComp::String("point".into()),
+            ObjPathComp::Index(Index::Placeholder),
+        ])
+        .into()
     }
 
     fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<String>)> {
@@ -187,8 +193,7 @@ fn test_batches() -> data_store::Result<()> {
     let mut store = TypePathDataStore::default();
 
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("left"),
+        &obj_path_batch("left"),
         "pos".into(),
         Time(1),
         id(),
@@ -200,8 +205,7 @@ fn test_batches() -> data_store::Result<()> {
         ]),
     )?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("right"),
+        &obj_path_batch("right"),
         "pos".into(),
         Time(2),
         id(),
@@ -213,8 +217,7 @@ fn test_batches() -> data_store::Result<()> {
         ]),
     )?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("left"),
+        &obj_path_batch("left"),
         "pos".into(),
         Time(3),
         id(),
@@ -225,16 +228,14 @@ fn test_batches() -> data_store::Result<()> {
         ]),
     )?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("left"),
+        &obj_path_batch("left"),
         "label".into(),
         Time(4),
         id(),
         batch([(index(1), s("one")), (index(2), s("two"))]),
     )?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("right"),
+        &obj_path_batch("right"),
         "label".into(),
         Time(5),
         id(),
@@ -247,8 +248,7 @@ fn test_batches() -> data_store::Result<()> {
         ]),
     )?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("right"),
+        &obj_path_batch("right"),
         "pos".into(),
         Time(6),
         id(),
@@ -259,8 +259,7 @@ fn test_batches() -> data_store::Result<()> {
         ]),
     )?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("right"),
+        &obj_path_batch("right"),
         "label".into(),
         Time(7),
         id(),
@@ -347,10 +346,6 @@ fn test_batches() -> data_store::Result<()> {
 
 #[test]
 fn test_batched_and_individual() -> data_store::Result<()> {
-    fn index_path_prefix(cam: &str) -> IndexPath {
-        IndexPath::new(vec![Index::String(cam.into()), Index::Placeholder])
-    }
-
     fn obj_type_path() -> ObjTypePath {
         ObjTypePath::new(vec![
             TypePathComp::String("camera".into()),
@@ -365,6 +360,15 @@ fn test_batched_and_individual() -> data_store::Result<()> {
             ObjPathComp::Index(Index::String(cam.into())),
             ObjPathComp::String("point".into()),
             ObjPathComp::Index(Index::Sequence(point)),
+        ])
+        .into()
+    }
+    fn obj_path_batch(cam: &str) -> ObjPath {
+        ObjPathBuilder::new(vec![
+            ObjPathComp::String("camera".into()),
+            ObjPathComp::Index(Index::String(cam.into())),
+            ObjPathComp::String("point".into()),
+            ObjPathComp::Index(Index::Placeholder),
         ])
         .into()
     }
@@ -393,8 +397,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
     let mut store = TypePathDataStore::default();
 
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("left"),
+        &obj_path_batch("left"),
         "pos".into(),
         Time(1),
         id(),
@@ -406,8 +409,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         ]),
     )?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("right"),
+        &obj_path_batch("right"),
         "pos".into(),
         Time(2),
         id(),
@@ -419,8 +421,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         ]),
     )?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("left"),
+        &obj_path_batch("left"),
         "pos".into(),
         Time(3),
         id(),
@@ -448,8 +449,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         )?;
     }
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("right"),
+        &obj_path_batch("right"),
         "pos".into(),
         Time(6),
         id(),
@@ -538,10 +538,6 @@ fn test_batched_and_individual() -> data_store::Result<()> {
 
 #[test]
 fn test_individual_and_batched() -> data_store::Result<()> {
-    fn index_path_prefix(cam: &str) -> IndexPath {
-        IndexPath::new(vec![Index::String(cam.into()), Index::Placeholder])
-    }
-
     fn obj_type_path() -> ObjTypePath {
         ObjTypePath::new(vec![
             TypePathComp::String("camera".into()),
@@ -556,6 +552,15 @@ fn test_individual_and_batched() -> data_store::Result<()> {
             ObjPathComp::Index(Index::String(cam.into())),
             ObjPathComp::String("point".into()),
             ObjPathComp::Index(Index::Sequence(point)),
+        ])
+        .into()
+    }
+    fn obj_path_batch(cam: &str) -> ObjPath {
+        ObjPathBuilder::new(vec![
+            ObjPathComp::String("camera".into()),
+            ObjPathComp::Index(Index::String(cam.into())),
+            ObjPathComp::String("point".into()),
+            ObjPathComp::Index(Index::Placeholder),
         ])
         .into()
     }
@@ -586,8 +591,7 @@ fn test_individual_and_batched() -> data_store::Result<()> {
     store.insert_individual(obj_path("left", 0), "pos".into(), Time(1), id(), 0_i32)?;
     store.insert_individual(obj_path("left", 1), "pos".into(), Time(2), id(), 1_i32)?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("left"),
+        &obj_path_batch("left"),
         "label".into(),
         Time(3),
         id(),
@@ -596,8 +600,7 @@ fn test_individual_and_batched() -> data_store::Result<()> {
     store.insert_individual(obj_path("left", 2), "pos".into(), Time(4), id(), 2_i32)?;
     store.insert_individual(obj_path("left", 3), "pos".into(), Time(4), id(), 3_i32)?;
     store.insert_batch(
-        obj_type_path(),
-        index_path_prefix("left"),
+        &obj_path_batch("left"),
         "label".into(),
         Time(5),
         id(),

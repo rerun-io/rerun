@@ -59,10 +59,9 @@ impl LogDataStore {
 
             match data_msg.data.clone() {
                 Data::Batch { indices, data } => {
-                    let (obj_type_path, index_path_prefix) = op.into_type_path_and_index_path();
                     log_types::data_vec_map!(data, |vec| {
                         let batch = batcher.batch(indices, vec);
-                        store.insert_batch(obj_type_path, index_path_prefix, fname, time, id, batch)
+                        store.insert_batch(&op, fname, time, id, batch)
                     })
                 }
 

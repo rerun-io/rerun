@@ -160,8 +160,7 @@ fn big_clouds_batched() {
             let (index_path_prefix, _) = index_path.replace_last_with_placeholder();
             store
                 .insert_batch::<[f32; 3]>(
-                    obj_type_path,
-                    index_path_prefix,
+                    &ObjPath::new(obj_type_path, index_path_prefix),
                     "pos".into(),
                     TimeValue::Sequence(frame as _),
                     LogId::random(),

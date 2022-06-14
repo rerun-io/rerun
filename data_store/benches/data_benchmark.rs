@@ -100,8 +100,7 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
 
                 data_store
                     .insert_batch(
-                        type_path,
-                        index_path_prefix,
+                        &ObjPath::new(type_path, index_path_prefix),
                         FieldName::from("pos"),
                         time_value,
                         LogId::random(),
@@ -141,8 +140,7 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
 
                 data_store
                     .insert_batch(
-                        type_path,
-                        index_path_prefix,
+                        &ObjPath::new(type_path, index_path_prefix),
                         FieldName::from("radius"),
                         time_value,
                         LogId::random(),
