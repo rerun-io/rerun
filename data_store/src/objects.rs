@@ -4,7 +4,10 @@ use log_types::{FieldName, LogId, ObjPath};
 
 pub use log_types::objects::*;
 
-use crate::{storage::ObjStore, type_path_query::*, ObjTypePath, TimeQuery, TypePathDataStore};
+use crate::{
+    obj_path_query::*, storage::ObjStore, type_path_query::*, ObjTypePath, TimeQuery,
+    TypePathDataStore,
+};
 
 #[derive(Copy, Clone, Debug)]
 pub struct ObjectProps<'s> {
@@ -69,7 +72,7 @@ impl<'s> Image<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_2_children(
+        visit_type_data_2(
             obj_store,
             &FieldName::from("image"),
             time_query,
@@ -107,7 +110,7 @@ impl<'s> Point2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_3_children(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("pos"),
             time_query,
@@ -149,7 +152,7 @@ impl<'s> Point3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_3_children(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("pos"),
             time_query,
@@ -191,7 +194,7 @@ impl<'s> BBox2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_3_children(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("bbox"),
             time_query,
@@ -233,7 +236,7 @@ impl<'s> Box3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_3_children(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("obb"),
             time_query,
@@ -275,7 +278,7 @@ impl<'s> Path3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_3_children(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("points"),
             time_query,
@@ -317,7 +320,7 @@ impl<'s> LineSegments2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_3_children(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("line_segments"),
             time_query,
@@ -359,7 +362,7 @@ impl<'s> LineSegments3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_3_children(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("line_segments"),
             time_query,
@@ -400,7 +403,7 @@ impl<'s> Mesh3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_2_children(
+        visit_type_data_2(
             obj_store,
             &FieldName::from("mesh"),
             time_query,
@@ -438,8 +441,40 @@ impl<'s> Camera<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data_and_2_children(
+        visit_type_data_2(
             obj_store,
+            &FieldName::from("camera"),
+            time_query,
+            ("space", "color"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             camera: &log_types::Camera,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>| {
+                out.camera.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: Camera { camera },
+                });
+            },
+        );
+    }
+
+    pub fn query_obj_path<Time: 'static + Copy + Ord>(
+        obj_store: &'s ObjStore<Time>,
+        obj_path: &ObjPath,
+        time_query: &TimeQuery<Time>,
+        out: &mut Objects<'s>,
+    ) {
+        crate::profile_function!();
+
+        visit_obj_data_2(
+            obj_store,
+            obj_path.index_path(),
             &FieldName::from("camera"),
             time_query,
             ("space", "color"),
@@ -476,7 +511,7 @@ impl<'s> Space<'s> {
     ) {
         crate::profile_function!();
 
-        visit_data(
+        visit_type_data(
             obj_store,
             &FieldName::from("up"),
             time_query,

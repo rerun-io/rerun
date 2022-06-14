@@ -1,7 +1,8 @@
 mod log_store;
+pub mod obj_path_query;
 mod objects;
 mod storage;
-mod type_path_query;
+pub mod type_path_query;
 
 pub use log_store::*;
 pub use objects::*;

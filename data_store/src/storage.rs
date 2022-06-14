@@ -106,11 +106,13 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
 // ----------------------------------------------------------------------------
 
 /// One for each time source + [`ObjTypePath`].
+///
+/// That is, all objects with the same type path are stored here.
 pub struct ObjStore<Time> {
     fields: AHashMap<FieldName, DataStoreTypeErased<Time>>,
 
     /// For each index suffix we know, what is the full object path?
-    pub(crate) obj_paths_from_batch_suffix: nohash_hasher::IntMap<IndexKey, ObjPath>,
+    obj_paths_from_batch_suffix: nohash_hasher::IntMap<IndexKey, ObjPath>,
 }
 
 impl<Time> Default for ObjStore<Time> {
@@ -190,6 +192,12 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
 
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&FieldName, &DataStoreTypeErased<Time>)> {
         self.fields.iter()
+    }
+
+    pub(crate) fn obj_path_or_die(&self, index_path_suffix: &IndexKey) -> &ObjPath {
+        self.obj_paths_from_batch_suffix
+            .get(index_path_suffix)
+            .unwrap()
     }
 }
 
@@ -546,3 +554,90 @@ pub(crate) fn query<'data, Time: Copy + Ord, T>(
 }
 
 // ----------------------------------------------------------------------------
+
+pub(crate) enum IndividualDataReader<'store, Time, T> {
+    None,
+    Individual(&'store IndividualDataHistory<Time, T>),
+    Batched(&'store BatchedDataHistory<Time, T>),
+}
+
+impl<'store, Time: 'static + Copy + Ord, T: DataTrait> IndividualDataReader<'store, Time, T> {
+    pub fn new(store: &'store ObjStore<Time>, field_name: &FieldName) -> Self {
+        if let Some(data) = store.get::<T>(field_name) {
+            match data {
+                DataStore::Individual(individual) => Self::Individual(individual),
+                DataStore::Batched(batched) => Self::Batched(batched),
+            }
+        } else {
+            Self::None
+        }
+    }
+
+    pub fn latest_at(&self, index_path: &IndexPath, query_time: &Time) -> Option<&'store T> {
+        match self {
+            Self::None => None,
+            Self::Individual(history) => {
+                latest_at(&history.values.get(index_path)?.history, query_time)
+                    .map(|(_time, (_log_id, value))| value)
+            }
+            Self::Batched(data) => {
+                let (prefix, suffix) = index_path.clone().replace_last_with_placeholder();
+                let (_time, (_log_id, batch)) =
+                    latest_at(&data.batches_over_time.get(&prefix)?.history, query_time)?;
+                batch.get(&suffix)
+            }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+pub(crate) enum BatchedDataReader<'store, Time, T> {
+    None,
+    Individual(IndexPath, Time, &'store IndividualDataHistory<Time, T>),
+    Batched(&'store IntMap<IndexKey, T>),
+}
+
+impl<'store, Time: Copy + Ord, T: DataTrait> BatchedDataReader<'store, Time, T> {
+    pub fn new(
+        data: Option<&'store DataStore<Time, T>>,
+        index_path_prefix: &IndexPath,
+        query_time: &Time,
+    ) -> Self {
+        data.and_then(|data| Self::new_opt(data, index_path_prefix, query_time))
+            .unwrap_or(Self::None)
+    }
+
+    fn new_opt(
+        data: &'store DataStore<Time, T>,
+        index_path_prefix: &IndexPath,
+        query_time: &Time,
+    ) -> Option<Self> {
+        match data {
+            DataStore::Individual(individual) => Some(Self::Individual(
+                index_path_prefix.clone(),
+                *query_time,
+                individual,
+            )),
+            DataStore::Batched(batched) => {
+                let everything_per_time =
+                    &batched.batches_over_time.get(index_path_prefix)?.history;
+                let (_time, (_log_id, map)) = latest_at(everything_per_time, query_time)?;
+                Some(Self::Batched(map))
+            }
+        }
+    }
+
+    pub fn latest_at(&self, index_path_suffix: &IndexKey) -> Option<&'store T> {
+        match self {
+            Self::None => None,
+            Self::Individual(index_path_prefix, query_time, history) => {
+                let mut index_path = index_path_prefix.clone();
+                index_path.replace_last_placeholder_with(index_path_suffix.clone());
+                latest_at(&history.values.get(&index_path)?.history, query_time)
+                    .map(|(_time, (_log_id, value))| value)
+            }
+            Self::Batched(data) => data.get(index_path_suffix),
+        }
+    }
+}

@@ -1,14 +1,15 @@
-//! Queries of the type "read these fields, from all objects of this [`ObjTypePath`], over this time interval"
+//! Queries of the type "read these fields, from the object at this [`ObjPath`], over this time interval"
 
-use log_types::{DataTrait, FieldName, LogId, ObjPath};
+use log_types::{DataTrait, FieldName, IndexPath, LogId, ObjPath};
 
 use crate::{storage::*, TimeQuery};
 
 // ----------------------------------------------------------------------------
 
-/// Query all objects of the same type path (but different index paths).
-pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
+/// Do a time query for the single object the given path with one primary field.
+pub fn visit_obj_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
     obj_store: &'s ObjStore<Time>,
+    index_path: &IndexPath,
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
     mut visit: impl FnMut(&'s ObjPath, &'s LogId, &'s T),
@@ -18,7 +19,7 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
     if let Some(primary_data) = obj_store.get::<T>(field_name) {
         match primary_data {
             DataStore::Individual(primary) => {
-                for (_index_path, primary) in primary.iter() {
+                if let Some(primary) = primary.values.get(index_path) {
                     query(
                         &primary.history,
                         time_query,
@@ -29,14 +30,16 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                 }
             }
             DataStore::Batched(primary) => {
-                for (_index_path_prefix, primary) in primary.iter() {
+                let (index_path_prefix, index_path_suffix) =
+                    index_path.clone().replace_last_with_placeholder();
+                if let Some(primary) = primary.batches_over_time.get(&index_path_prefix) {
                     query(
                         &primary.history,
                         time_query,
                         |_time, (log_id, primary_batch)| {
-                            for (index_path_suffix, primary_value) in primary_batch.iter() {
+                            if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(&index_path_suffix),
                                     log_id,
                                     primary_value,
                                 );
@@ -51,8 +54,10 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
     Some(())
 }
 
-pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTrait>(
+/// Do a time query for the single object the given path with one primary field and one secondary field.
+pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTrait>(
     obj_store: &'s ObjStore<Time>,
+    index_path: &IndexPath,
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
     (child1,): (&str,),
@@ -65,9 +70,9 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
 
         match primary_data {
             DataStore::Individual(primary) => {
-                let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
+                if let Some(primary) = primary.values.get(index_path) {
+                    let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
 
-                for (index_path, primary) in primary.iter() {
                     query(
                         &primary.history,
                         time_query,
@@ -83,22 +88,24 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
                 }
             }
             DataStore::Batched(primary) => {
-                for (index_path_prefix, primary) in primary.iter() {
+                let (index_path_prefix, index_path_suffix) =
+                    index_path.clone().replace_last_with_placeholder();
+                if let Some(primary) = primary.batches_over_time.get(&index_path_prefix) {
                     let child1_store = obj_store.get::<S1>(&child1);
 
                     query(
                         &primary.history,
                         time_query,
                         |time, (log_id, primary_batch)| {
-                            let child1_reader =
-                                BatchedDataReader::new(child1_store, index_path_prefix, time);
+                            if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
+                                let child1_reader =
+                                    BatchedDataReader::new(child1_store, &index_path_prefix, time);
 
-                            for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(&index_path_suffix),
                                     log_id,
                                     primary_value,
-                                    child1_reader.latest_at(index_path_suffix),
+                                    child1_reader.latest_at(&index_path_suffix),
                                 );
                             }
                         },
@@ -111,7 +118,8 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
     Some(())
 }
 
-pub fn visit_type_data_2<
+/// Do a time query for the single object the given path with one primary field and two secondary field.
+pub fn visit_obj_data_2<
     's,
     Time: 'static + Copy + Ord,
     T: DataTrait,
@@ -119,6 +127,7 @@ pub fn visit_type_data_2<
     S2: DataTrait,
 >(
     obj_store: &'s ObjStore<Time>,
+    index_path: &IndexPath,
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
     (child1, child2): (&str, &str),
@@ -132,10 +141,10 @@ pub fn visit_type_data_2<
 
         match primary_data {
             DataStore::Individual(primary) => {
-                let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
-                let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
+                if let Some(primary) = primary.values.get(index_path) {
+                    let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
+                    let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
 
-                for (index_path, primary) in primary.iter() {
                     query(
                         &primary.history,
                         time_query,
@@ -152,7 +161,9 @@ pub fn visit_type_data_2<
                 }
             }
             DataStore::Batched(primary) => {
-                for (index_path_prefix, primary) in primary.iter() {
+                let (index_path_prefix, index_path_suffix) =
+                    index_path.clone().replace_last_with_placeholder();
+                if let Some(primary) = primary.batches_over_time.get(&index_path_prefix) {
                     let child1_store = obj_store.get::<S1>(&child1);
                     let child2_store = obj_store.get::<S2>(&child2);
 
@@ -160,18 +171,18 @@ pub fn visit_type_data_2<
                         &primary.history,
                         time_query,
                         |time, (log_id, primary_batch)| {
-                            let child1_reader =
-                                BatchedDataReader::new(child1_store, index_path_prefix, time);
-                            let child2_reader =
-                                BatchedDataReader::new(child2_store, index_path_prefix, time);
+                            if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
+                                let child1_reader =
+                                    BatchedDataReader::new(child1_store, &index_path_prefix, time);
+                                let child2_reader =
+                                    BatchedDataReader::new(child2_store, &index_path_prefix, time);
 
-                            for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(&index_path_suffix),
                                     log_id,
                                     primary_value,
-                                    child1_reader.latest_at(index_path_suffix),
-                                    child2_reader.latest_at(index_path_suffix),
+                                    child1_reader.latest_at(&index_path_suffix),
+                                    child2_reader.latest_at(&index_path_suffix),
                                 );
                             }
                         },
@@ -184,7 +195,8 @@ pub fn visit_type_data_2<
     Some(())
 }
 
-pub fn visit_type_data_3<
+/// Do a time query for the single object the given path with one primary field and three secondary field.
+pub fn visit_obj_data_3<
     's,
     Time: 'static + Copy + Ord,
     T: DataTrait,
@@ -193,6 +205,7 @@ pub fn visit_type_data_3<
     S3: DataTrait,
 >(
     obj_store: &'s ObjStore<Time>,
+    index_path: &IndexPath,
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
     (child1, child2, child3): (&str, &str, &str),
@@ -207,11 +220,11 @@ pub fn visit_type_data_3<
 
         match primary_data {
             DataStore::Individual(primary) => {
-                let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
-                let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
-                let child3_reader = IndividualDataReader::<Time, S3>::new(obj_store, &child3);
+                if let Some(primary) = primary.values.get(index_path) {
+                    let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
+                    let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
+                    let child3_reader = IndividualDataReader::<Time, S3>::new(obj_store, &child3);
 
-                for (index_path, primary) in primary.iter() {
                     query(
                         &primary.history,
                         time_query,
@@ -229,7 +242,9 @@ pub fn visit_type_data_3<
                 }
             }
             DataStore::Batched(primary) => {
-                for (index_path_prefix, primary) in primary.iter() {
+                let (index_path_prefix, index_path_suffix) =
+                    index_path.clone().replace_last_with_placeholder();
+                if let Some(primary) = primary.batches_over_time.get(&index_path_prefix) {
                     let child1_store = obj_store.get::<S1>(&child1);
                     let child2_store = obj_store.get::<S2>(&child2);
                     let child3_store = obj_store.get::<S3>(&child3);
@@ -238,21 +253,21 @@ pub fn visit_type_data_3<
                         &primary.history,
                         time_query,
                         |time, (log_id, primary_batch)| {
-                            let child1_reader =
-                                BatchedDataReader::new(child1_store, index_path_prefix, time);
-                            let child2_reader =
-                                BatchedDataReader::new(child2_store, index_path_prefix, time);
-                            let child3_reader =
-                                BatchedDataReader::new(child3_store, index_path_prefix, time);
+                            if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
+                                let child1_reader =
+                                    BatchedDataReader::new(child1_store, &index_path_prefix, time);
+                                let child2_reader =
+                                    BatchedDataReader::new(child2_store, &index_path_prefix, time);
+                                let child3_reader =
+                                    BatchedDataReader::new(child3_store, &index_path_prefix, time);
 
-                            for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(&index_path_suffix),
                                     log_id,
                                     primary_value,
-                                    child1_reader.latest_at(index_path_suffix),
-                                    child2_reader.latest_at(index_path_suffix),
-                                    child3_reader.latest_at(index_path_suffix),
+                                    child1_reader.latest_at(&index_path_suffix),
+                                    child2_reader.latest_at(&index_path_suffix),
+                                    child3_reader.latest_at(&index_path_suffix),
                                 );
                             }
                         },

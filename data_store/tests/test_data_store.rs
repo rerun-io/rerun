@@ -15,7 +15,7 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
     time_query: &TimeQuery<Time>,
 ) -> Vec<Point3<'store>> {
     let mut points = vec![];
-    visit_data_and_1_child(
+    visit_type_data_1(
         store,
         &FieldName::from("pos"),
         time_query,
@@ -167,7 +167,7 @@ fn test_batches() -> data_store::Result<()> {
         let obj_store = store.get(&obj_type_path()).unwrap();
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
-        visit_data_and_1_child(
+        visit_type_data_1(
             obj_store,
             &FieldName::new("pos"),
             &time_query,
@@ -373,7 +373,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         let obj_store = store.get(&obj_type_path()).unwrap();
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
-        visit_data_and_1_child(
+        visit_type_data_1(
             obj_store,
             &FieldName::new("pos"),
             &time_query,
@@ -564,7 +564,7 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         let obj_store = store.get(&obj_type_path()).unwrap();
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
-        visit_data_and_1_child(
+        visit_type_data_1(
             obj_store,
             &FieldName::new("pos"),
             &time_query,

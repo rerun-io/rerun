@@ -33,7 +33,7 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
     let data_store = obj_store.get::<[f32; 3]>(&FieldName::new("pos")).unwrap();
 
     let mut points = vec![];
-    visit_data_and_1_child(
+    visit_type_data_1(
         obj_store,
         time_query,
         data_store,
