@@ -30,13 +30,11 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
 
     let obj_store = store.get(&obj_type_path).unwrap();
 
-    let data_store = obj_store.get::<[f32; 3]>(&FieldName::new("pos")).unwrap();
-
     let mut points = vec![];
     visit_type_data_1(
         obj_store,
+        &FieldName::new("pos"),
         time_query,
-        data_store,
         ("radius",),
         |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
             points.push(Point3 {
