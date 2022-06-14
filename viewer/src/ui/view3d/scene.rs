@@ -4,7 +4,7 @@ use egui::{util::hash, NumExt as _};
 use glam::{vec3, Mat4, Quat, Vec3};
 use itertools::Itertools as _;
 
-use log_types::{Box3, Mesh3D, ObjPath};
+use log_types::{Box3, Mesh3D, ObjPath, ObjPathHash};
 
 use crate::{
     math::line_segment_distance_sq_to_point, misc::mesh_loader::CpuMesh, misc::ViewerContext,
@@ -13,14 +13,14 @@ use crate::{
 use super::camera::Camera;
 
 pub struct Point {
-    pub obj_path: ObjPath, // TODO: maybe just the hash is enough?
+    pub obj_path_hash: ObjPathHash,
     pub pos: [f32; 3],
     pub radius: f32,
     pub color: [u8; 4],
 }
 
 pub struct LineSegments {
-    pub obj_path: ObjPath, // TODO: maybe just the hash is enough?
+    pub obj_path_hash: ObjPathHash,
     pub segments: Vec<[[f32; 3]; 2]>,
     pub radius: f32,
     pub color: [u8; 4],
@@ -33,7 +33,7 @@ pub enum MeshSourceData {
 }
 
 pub struct MeshSource {
-    pub obj_path: ObjPath, // TODO: maybe just the hash is enough?
+    pub obj_path_hash: ObjPathHash,
     pub mesh_id: u64,
     pub world_from_mesh: glam::Mat4,
     pub cpu_mesh: Arc<CpuMesh>,
@@ -109,7 +109,7 @@ impl Scene {
                 let radius = boost_size_on_hover(props, radius);
 
                 scene.points.push(Point {
-                    obj_path: props.obj_path.clone(),
+                    obj_path_hash: *props.obj_path.hash(),
                     pos: *pos,
                     radius,
                     color: object_color(context, props),
@@ -162,7 +162,7 @@ impl Scene {
                     .collect();
 
                 scene.line_segments.push(LineSegments {
-                    obj_path: props.obj_path.clone(),
+                    obj_path_hash: *props.obj_path.hash(),
                     segments,
                     radius: line_radius,
                     color,
@@ -194,7 +194,7 @@ impl Scene {
                 let color = object_color(context, props);
 
                 scene.line_segments.push(LineSegments {
-                    obj_path: props.obj_path.clone(),
+                    obj_path_hash: *props.obj_path.hash(),
                     segments: line_segments.clone(),
                     radius: line_radius,
                     color,
@@ -214,7 +214,7 @@ impl Scene {
                 ) {
                     // TODO: props.color
                     scene.meshes.push(MeshSource {
-                        obj_path: props.obj_path.clone(),
+                        obj_path_hash: *props.obj_path.hash(),
                         mesh_id,
                         world_from_mesh: glam::Mat4::IDENTITY,
                         cpu_mesh,
@@ -255,7 +255,7 @@ impl Scene {
                         &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
                     ) {
                         scene.meshes.push(MeshSource {
-                            obj_path: props.obj_path.clone(),
+                            obj_path_hash: *props.obj_path.hash(),
                             mesh_id,
                             world_from_mesh,
                             cpu_mesh,
@@ -324,7 +324,7 @@ impl Scene {
             ];
 
             self.line_segments.push(LineSegments {
-                obj_path: obj_path.clone(),
+                obj_path_hash: *obj_path.hash(),
                 segments,
                 radius: line_radius,
                 color,
@@ -376,7 +376,7 @@ impl Scene {
         ];
 
         self.line_segments.push(LineSegments {
-            obj_path: obj_path.clone(),
+            obj_path_hash: *obj_path.hash(),
             segments,
             radius: line_radius,
             color,
@@ -388,7 +388,7 @@ impl Scene {
         pointer_pos: egui::Pos2,
         rect: &egui::Rect,
         camera: &Camera,
-    ) -> Option<(ObjPath, glam::Vec3)> {
+    ) -> Option<(ObjPathHash, glam::Vec3)> {
         crate::profile_function!();
 
         let screen_from_world = camera.screen_from_world(rect);
@@ -411,7 +411,7 @@ impl Scene {
         let mut closest_t = f32::INFINITY;
         // in points
         let mut closest_side_dist_sq = max_side_dist_sq;
-        let mut closest_obj_path = None;
+        let mut closest_obj_path_hash = None;
 
         {
             crate::profile_scope!("points");
@@ -427,7 +427,7 @@ impl Scene {
                     if t < closest_t || dist_sq < closest_side_dist_sq {
                         closest_t = t;
                         closest_side_dist_sq = dist_sq;
-                        closest_obj_path = Some(point.obj_path.clone());
+                        closest_obj_path_hash = Some(point.obj_path_hash);
                     }
                 }
             }
@@ -452,7 +452,7 @@ impl Scene {
                         if t < closest_t || dist_sq < closest_side_dist_sq {
                             closest_t = t;
                             closest_side_dist_sq = dist_sq;
-                            closest_obj_path = Some(line_segments.obj_path.clone());
+                            closest_obj_path_hash = Some(line_segments.obj_path_hash);
                         }
                     }
                 }
@@ -469,15 +469,15 @@ impl Scene {
                     if t < closest_t || dist_sq < closest_side_dist_sq {
                         closest_t = t;
                         closest_side_dist_sq = dist_sq;
-                        closest_obj_path = Some(mesh.obj_path.clone());
+                        closest_obj_path_hash = Some(mesh.obj_path_hash);
                     }
                 }
             }
         }
 
-        if let Some(closest_obj_path) = closest_obj_path {
+        if let Some(closest_obj_path_hash) = closest_obj_path_hash {
             let closest_point = ray_in_world.point_along(closest_t);
-            Some((closest_obj_path, closest_point))
+            Some((closest_obj_path_hash, closest_point))
         } else {
             None
         }

@@ -1,17 +1,27 @@
 use nohash_hasher::IntMap;
 
-use log_types::{Data, DataMsg, DataPath, DataVec, IndexKey, TimeSource, TimeType};
+use log_types::{
+    Data, DataMsg, DataPath, DataVec, IndexKey, ObjPath, ObjPathHash, TimeSource, TimeType,
+};
 
 use crate::{Batch, TypePathDataStore};
 
 #[derive(Default)]
-pub struct LogDataStore(IntMap<TimeSource, (TimeType, TypePathDataStore<i64>)>);
+pub struct LogDataStore {
+    store_from_time_source: IntMap<TimeSource, (TimeType, TypePathDataStore<i64>)>,
+    obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
+}
 
 impl LogDataStore {
     pub fn get(&self, time_source: &TimeSource) -> Option<(TimeType, &TypePathDataStore<i64>)> {
-        self.0
+        self.store_from_time_source
             .get(time_source)
             .map(|(time_type, store)| (*time_type, store))
+    }
+
+    #[inline]
+    pub fn obj_path_from_hash(&self, obj_path_hash: &ObjPathHash) -> Option<&ObjPath> {
+        self.obj_path_from_hash.get(obj_path_hash)
     }
 
     pub fn entry(
@@ -19,7 +29,7 @@ impl LogDataStore {
         time_source: &TimeSource,
         time_type: TimeType,
     ) -> &mut TypePathDataStore<i64> {
-        match self.0.entry(*time_source) {
+        match self.store_from_time_source.entry(*time_source) {
             std::collections::hash_map::Entry::Vacant(entry) => {
                 &mut entry.insert((time_type, TypePathDataStore::default())).1
             }
@@ -33,6 +43,8 @@ impl LogDataStore {
     }
 
     pub fn insert(&mut self, data_msg: &DataMsg) -> crate::Result<()> {
+        self.register_obj_path(data_msg);
+
         let mut batcher = Batcher::default();
 
         for (time_source, time_value) in &data_msg.time_point.0 {
@@ -47,10 +59,10 @@ impl LogDataStore {
 
             match data_msg.data.clone() {
                 Data::Batch { indices, data } => {
-                    let (obj_type_path, index_path) = op.into_type_path_and_index_path();
+                    let (obj_type_path, index_path_prefix) = op.into_type_path_and_index_path();
                     log_types::data_vec_map!(data, |vec| {
                         let batch = batcher.batch(indices, vec);
-                        store.insert_batch(obj_type_path, index_path, fname, time, id, batch)
+                        store.insert_batch(obj_type_path, index_path_prefix, fname, time, id, batch)
                     })
                 }
 
@@ -78,6 +90,27 @@ impl LogDataStore {
         }
 
         Ok(())
+    }
+
+    fn register_obj_path(&mut self, data_msg: &DataMsg) {
+        let obj_path = data_msg.data_path.obj_path();
+
+        if let Data::Batch { indices, .. } = &data_msg.data {
+            for index_path_suffix in indices {
+                crate::profile_scope!("Register batch obj paths");
+                let (obj_type_path, index_path_prefix) =
+                    obj_path.clone().into_type_path_and_index_path();
+                // TODO: speed this up. A lot. Please.
+                let mut index_path = index_path_prefix.clone();
+                index_path.replace_last_placeholder_with(index_path_suffix.clone().into());
+                let obj_path = ObjPath::new(obj_type_path.clone(), index_path);
+                self.obj_path_from_hash.insert(*obj_path.hash(), obj_path);
+            }
+        } else {
+            self.obj_path_from_hash
+                .entry(*obj_path.hash())
+                .or_insert_with(|| obj_path.clone());
+        }
     }
 }
 

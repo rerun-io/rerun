@@ -391,8 +391,16 @@ pub(crate) fn combined_view_3d(
     let hovered = response
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &camera));
-    state.hovered_point = hovered.clone().map(|x| x.1);
-    state.hovered_obj_path = hovered.map(|x| x.0);
+    if let Some((obj_path_hash, point)) = hovered {
+        state.hovered_obj_path = log_db
+            .data_store
+            .obj_path_from_hash(&obj_path_hash)
+            .cloned();
+        state.hovered_point = Some(point);
+    } else {
+        state.hovered_obj_path = None;
+        state.hovered_point = None;
+    }
 
     let dark_mode = ui.visuals().dark_mode;
 

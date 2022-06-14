@@ -73,6 +73,8 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         log_id: LogId,
         batch: Batch<T>,
     ) -> Result<()> {
+        crate::profile_function!();
+
         let parent_obj_path = ObjPath::new(obj_type_path.clone(), index_path_prefix.clone());
 
         self.objects.entry(obj_type_path).or_default().insert_batch(
@@ -85,10 +87,12 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         )
     }
 
+    #[inline]
     pub fn get(&self, obj_type_path: &ObjTypePath) -> Option<&ObjStore<Time>> {
         self.objects.get(obj_type_path)
     }
 
+    #[inline]
     pub fn get_field<T: DataTrait>(
         &self,
         obj_type_path: &ObjTypePath,
@@ -98,6 +102,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
             .and_then(|obj_store| obj_store.get(field_name))
     }
 
+    #[inline]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&ObjTypePath, &ObjStore<Time>)> {
         self.objects.iter()
     }
