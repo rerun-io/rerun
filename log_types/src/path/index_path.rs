@@ -6,14 +6,17 @@ use crate::{hash::Hash128, path::Index};
 #[derive(Clone, Eq)]
 pub struct IndexKey {
     hash: Hash128,
-    index: Index,
+    // boxed to keep size of self small.
+    index: Box<Index>,
 }
 
 impl IndexKey {
     #[inline]
     pub fn new(index: Index) -> Self {
-        let hash = Hash128::hash(&index);
-        Self { index, hash }
+        Self {
+            hash: Hash128::hash(&index),
+            index: Box::new(index),
+        }
     }
 
     #[inline]
@@ -106,7 +109,7 @@ impl IndexPath {
     pub fn push(&mut self, index: impl Into<IndexKey>) {
         let index = index.into();
 
-        self.components.push(index.index);
+        self.components.push(*index.index);
         self.hashes[0] = self.hashes[0].rotate_left(5);
         self.hashes[1] = self.hashes[1].rotate_left(5);
         self.hashes[0] ^= index.hash.first64();
