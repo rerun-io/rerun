@@ -3,7 +3,7 @@ use crate::{
     ObjPath,
 };
 
-use super::obj_path::ObjPathCompRef;
+use super::obj_path::ObjPathComponentRef;
 
 /// A path to a specific piece of data (e.g. a single `f32`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -64,9 +64,9 @@ impl From<&ObjPath> for ObjPathBuilder {
         Self::new(
             path.iter()
                 .map(|comp| match comp {
-                    ObjPathCompRef::String(name) => ObjPathComp::String(*name),
-                    ObjPathCompRef::IndexPlaceholder => ObjPathComp::Index(Index::Placeholder),
-                    ObjPathCompRef::Index(index) => ObjPathComp::Index(index.clone()),
+                    ObjPathComponentRef::String(name) => ObjPathComp::String(*name),
+                    ObjPathComponentRef::IndexPlaceholder => ObjPathComp::Index(Index::Placeholder),
+                    ObjPathComponentRef::Index(index) => ObjPathComp::Index(index.clone()),
                 })
                 .collect(),
         )

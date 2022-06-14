@@ -1,6 +1,6 @@
 use crate::{
     hash::Hash128,
-    path::{Index, IndexPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp},
+    path::{obj_path_impl::ObjPathImpl, IndexPath, ObjPathBuilder, ObjTypePath},
 };
 
 /// `camera / "left" / points / #42`
@@ -9,46 +9,30 @@ pub struct ObjPath {
     /// precomputed hash
     hash: Hash128,
 
-    /// `camera / * / points / *`
-    obj_type_path: ObjTypePath,
-
-    /// "left" / #42
-    index_path: IndexPath,
+    // boxed to keep down the size of [`ObjPath`].
+    // We mostly use the hash for lookups and comparisons anyway!
+    path: Box<ObjPathImpl>,
 }
 
 impl ObjPath {
     #[inline]
     pub fn root() -> Self {
-        Self::new(ObjTypePath::root(), IndexPath::default())
+        Self::from(ObjPathImpl::root())
     }
 
+    #[inline]
     pub fn new(obj_type_path: ObjTypePath, index_path: IndexPath) -> Self {
-        assert_eq!(
-            obj_type_path.num_indices(),
-            index_path.len(),
-            "Bad object path: mismatched indices. Type path: {}, index path: {:?}",
-            obj_type_path,
-            index_path
-        );
-
-        let hash = Hash128::hash((&obj_type_path, &index_path));
-        Self {
-            obj_type_path,
-            index_path,
-            hash,
-        }
+        Self::from(ObjPathImpl::new(obj_type_path, index_path))
     }
 
+    #[inline]
     pub fn iter(&self) -> Iter<'_> {
-        Iter {
-            obj_type_path: self.obj_type_path.iter(),
-            index_path: self.index_path.iter(),
-        }
+        self.path.iter()
     }
 
     #[inline]
     pub fn is_root(&self) -> bool {
-        self.obj_type_path.is_root()
+        self.path.is_root()
     }
 
     /// Precomputed 64-bit hash.
@@ -59,37 +43,53 @@ impl ObjPath {
 
     #[inline]
     pub fn obj_type_path(&self) -> &ObjTypePath {
-        &self.obj_type_path
+        self.path.obj_type_path()
     }
 
     #[inline]
     pub fn index_path(&self) -> &IndexPath {
-        &self.index_path
+        self.path.index_path()
     }
 
     #[inline]
     pub fn into_type_path_and_index_path(self) -> (ObjTypePath, IndexPath) {
-        (self.obj_type_path, self.index_path)
+        self.path.into_type_path_and_index_path()
     }
 
     #[must_use]
     pub fn parent(&self) -> Self {
-        let mut obj_type_path = self.obj_type_path.as_slice().to_vec();
-        let mut index_path = self.index_path.as_slice().to_vec();
-
-        if matches!(obj_type_path.pop(), Some(TypePathComp::Index)) {
-            index_path.pop();
-        }
-
-        Self::new(ObjTypePath::new(obj_type_path), IndexPath::new(index_path))
+        let parent = self.path.parent();
+        Self::from(parent)
     }
 
     /// Replace last [`Index::Placeholder`] with the given key.
     #[must_use]
     pub fn replace_last_placeholder_with(self, key: crate::IndexKey) -> Self {
-        let (type_path, mut index_path) = self.into_type_path_and_index_path();
-        index_path.replace_last_placeholder_with(key);
-        Self::new(type_path, index_path)
+        Self::from(self.path.replace_last_placeholder_with(key))
+    }
+}
+
+impl From<ObjPathImpl> for ObjPath {
+    #[inline]
+    fn from(path: ObjPathImpl) -> Self {
+        Self {
+            hash: Hash128::hash(&path),
+            path: Box::new(path),
+        }
+    }
+}
+
+impl From<ObjPathBuilder> for ObjPath {
+    #[inline]
+    fn from(path: ObjPathBuilder) -> Self {
+        Self::from(ObjPathImpl::from(path))
+    }
+}
+
+impl From<&ObjPathBuilder> for ObjPath {
+    #[inline]
+    fn from(path: &ObjPathBuilder) -> Self {
+        Self::from(ObjPathImpl::from(path))
     }
 }
 
@@ -100,33 +100,13 @@ impl From<&str> for ObjPath {
     }
 }
 
-impl From<&ObjPathBuilder> for ObjPath {
-    #[inline]
-    fn from(path: &ObjPathBuilder) -> Self {
-        let mut obj_type_path = vec![];
-        let mut index_path = vec![];
-        for comp in path.iter() {
-            match comp {
-                ObjPathComp::String(name) => {
-                    obj_type_path.push(TypePathComp::String(*name));
-                }
-                ObjPathComp::Index(index) => {
-                    obj_type_path.push(TypePathComp::Index);
-                    index_path.push(index.clone());
-                }
-            }
-        }
-        ObjPath::new(ObjTypePath::new(obj_type_path), IndexPath::new(index_path))
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 #[cfg(feature = "serde")]
 impl serde::Serialize for ObjPath {
     #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        (&self.obj_type_path, &self.index_path).serialize(serializer)
+        self.path.serialize(serializer)
     }
 }
 
@@ -134,8 +114,7 @@ impl serde::Serialize for ObjPath {
 impl<'de> serde::Deserialize<'de> for ObjPath {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let (obj_type_path, index_path) = <(ObjTypePath, IndexPath)>::deserialize(deserializer)?;
-        Ok(Self::new(obj_type_path, index_path))
+        ObjPathImpl::deserialize(deserializer).map(Self::from)
     }
 }
 
@@ -157,117 +136,29 @@ impl std::hash::Hash for ObjPath {
 
 impl nohash_hasher::IsEnabled for ObjPath {}
 
-impl From<ObjPathBuilder> for ObjPath {
-    fn from(obj_path: ObjPathBuilder) -> Self {
-        let mut obj_type_path = Vec::default();
-        let mut index_path = IndexPath::default();
-        for comp in obj_path {
-            match comp {
-                ObjPathComp::String(name) => {
-                    obj_type_path.push(TypePathComp::String(name));
-                }
-                ObjPathComp::Index(Index::Placeholder) => {
-                    obj_type_path.push(TypePathComp::Index);
-                    index_path.push(Index::Placeholder);
-                }
-                ObjPathComp::Index(index) => {
-                    obj_type_path.push(TypePathComp::Index);
-                    index_path.push(index);
-                }
-            }
-        }
-        ObjPath::new(ObjTypePath::new(obj_type_path), index_path)
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 impl std::cmp::Ord for ObjPath {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        use std::cmp::Ordering;
-
-        let mut lhs = self.iter();
-        let mut rhs = other.iter();
-
-        loop {
-            match (lhs.next(), rhs.next()) {
-                (None, None) => return Ordering::Equal,
-                (None, Some(_)) => return Ordering::Less,
-                (Some(_), None) => return Ordering::Greater,
-                (Some(lhs), Some(rhs)) => match lhs.cmp(&rhs) {
-                    Ordering::Equal => {}
-                    ordering => return ordering,
-                },
-            }
-        }
+        self.path.cmp(&other.path)
     }
 }
 
 impl std::cmp::PartialOrd for ObjPath {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
+        Some(self.path.cmp(&other.path))
     }
 }
 
 // ----------------------------------------------------------------------------
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum ObjPathCompRef<'a> {
-    /// Struct member. Each member can have a different type.
-    String(&'a rr_string_interner::InternedString),
-
-    /// Array/table/map member. Each member must be of the same type (homogenous).
-    Index(&'a Index),
-
-    IndexPlaceholder,
-}
-
-impl<'a> std::fmt::Display for ObjPathCompRef<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::String(name) => name.fmt(f),
-            Self::Index(index) => index.fmt(f),
-            Self::IndexPlaceholder => '_'.fmt(f),
-        }
-    }
-}
-
-pub struct Iter<'a> {
-    obj_type_path: crate::path::obj_type_path::Iter<'a>,
-    index_path: crate::path::index_path::Iter<'a>,
-}
-
-impl<'a> Iterator for Iter<'a> {
-    type Item = ObjPathCompRef<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.obj_type_path.next()? {
-            TypePathComp::String(name) => Some(ObjPathCompRef::String(name)),
-            TypePathComp::Index => match self.index_path.next() {
-                Some(index) => Some(ObjPathCompRef::Index(index)),
-                None => Some(ObjPathCompRef::IndexPlaceholder),
-            },
-        }
-    }
-}
+pub use super::obj_path_impl::Iter;
+pub use super::obj_path_impl::ObjPathComponentRef;
 
 // ----------------------------------------------------------------------------
 
 impl std::fmt::Display for ObjPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use std::fmt::Write as _;
-
-        let mut any = false;
-        for comp in self.iter() {
-            f.write_char('/')?;
-            comp.fmt(f)?;
-            any |= true;
-        }
-
-        if any {
-            Ok(())
-        } else {
-            f.write_char('/')
-        }
+        self.path.fmt(f)
     }
 }
