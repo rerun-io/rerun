@@ -1,5 +1,5 @@
 use crate::{
-    hash::Hash128,
+    hash::Hash64,
     path::{ObjPathBuilder, ObjPathComp, TypePathComp},
 };
 
@@ -8,8 +8,9 @@ use crate::{
 /// `camera / * / points / *`
 #[derive(Clone, Eq)]
 pub struct ObjTypePath {
-    hash: Hash128,
-    components: Vec<TypePathComp>,
+    // 64 bit is enough, because we will have at most a few thousand unique type paths - never a billion.
+    hash: Hash64,
+    components: Vec<TypePathComp>, // TODO: box?
 }
 
 impl ObjTypePath {
@@ -19,7 +20,7 @@ impl ObjTypePath {
     }
 
     pub fn new(components: Vec<TypePathComp>) -> Self {
-        let hash = Hash128::hash(&components);
+        let hash = Hash64::hash(&components);
         Self { components, hash }
     }
 
@@ -40,7 +41,7 @@ impl ObjTypePath {
 
     pub fn push(&mut self, comp: TypePathComp) {
         self.components.push(comp);
-        self.hash = Hash128::hash(&self.components);
+        self.hash = Hash64::hash(&self.components);
     }
 
     pub fn num_indices(&self) -> usize {
