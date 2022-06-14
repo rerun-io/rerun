@@ -56,8 +56,8 @@ impl LogDataStore {
 
                 Data::I32(data) => store.insert_individual(op, fname, time, id, data),
                 Data::F32(data) => store.insert_individual(op, fname, time, id, data),
-
                 Data::Color(data) => store.insert_individual(op, fname, time, id, data),
+                Data::String(data) => store.insert_individual(op, fname, time, id, data),
 
                 Data::Vec2(data) => store.insert_individual(op, fname, time, id, data),
                 Data::BBox2D(data) => store.insert_individual(op, fname, time, id, data),

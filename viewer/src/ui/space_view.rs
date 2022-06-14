@@ -373,6 +373,7 @@ pub(crate) fn ui_data(
             );
             response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a))
         }
+        Data::String(string) => ui.label(format!("{string:?}")),
 
         Data::Vec2([x, y]) => ui.label(format!("[{x:.1}, {y:.1}]")),
         Data::LineSegments2D(linesegments) => {

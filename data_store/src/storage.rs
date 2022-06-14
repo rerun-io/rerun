@@ -267,6 +267,7 @@ impl<Time: 'static + Copy + Ord> DataStoreTypeErased<Time> {
         match self.data_type {
             DataType::I32 => handle_type!(I32, i32),
             DataType::F32 => handle_type!(F32, f32),
+            DataType::String => handle_type!(String, String),
             DataType::Color => handle_type!(Color, data_types::Color),
             DataType::Vec2 => handle_type!(Vec2, data_types::Vec2),
             DataType::BBox2D => handle_type!(BBox2D, log_types::BBox2D),

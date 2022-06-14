@@ -202,13 +202,11 @@ fn test_index_path_key() {
     assert_eq!(key1.components.len(), 1);
     assert_eq!(key2.components.len(), 2);
 
-    let (key0_again, seq0) = key1.clone().replace_last_with_placeholder();
-    assert_eq!(key0_again.components.len(), 0);
-    assert_eq!(key0_again, key0);
+    let (key1_prefix, seq0) = key1.clone().replace_last_with_placeholder();
+    assert_eq!(key1_prefix.components.len(), 1);
     assert_eq!(seq0, IndexKey::new(Index::Sequence(0)));
 
-    let (key1_again, seq1) = key2.replace_last_with_placeholder();
-    assert_eq!(key1_again.components.len(), 1);
-    assert_eq!(key1_again, key1);
+    let (key2_prefix, seq1) = key2.replace_last_with_placeholder();
+    assert_eq!(key2_prefix.components.len(), 2);
     assert_eq!(seq1, IndexKey::new(Index::Sequence(1)));
 }

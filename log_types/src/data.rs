@@ -8,8 +8,8 @@ pub enum DataType {
     // 1D:
     I32,
     F32,
-
     Color,
+    String,
 
     // ----------------------------
     // 2D:
@@ -63,6 +63,13 @@ pub mod data_types {
     impl DataTrait for f32 {
         fn data_typ() -> DataType {
             DataType::F32
+        }
+    }
+
+    // TODO: consider using `Arc<str>` or similar instead, for faster cloning.
+    impl DataTrait for String {
+        fn data_typ() -> DataType {
+            DataType::String
         }
     }
 
@@ -163,8 +170,8 @@ pub enum Data {
     // 1D:
     I32(i32),
     F32(f32),
-
     Color(data_types::Color),
+    String(String),
 
     // ----------------------------
     // 2D:
@@ -201,6 +208,7 @@ impl Data {
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
             Self::Color(_) => DataType::Color,
+            Self::String(_) => DataType::String,
 
             Self::Vec2(_) => DataType::Vec2,
             Self::BBox2D(_) => DataType::BBox2D,
@@ -240,6 +248,7 @@ pub enum DataVec {
     I32(Vec<i32>),
     F32(Vec<f32>),
     Color(Vec<data_types::Color>),
+    String(Vec<String>),
 
     Vec2(Vec<data_types::Vec2>),
     BBox2D(Vec<BBox2D>),
@@ -261,6 +270,7 @@ pub enum DataVec {
 /// Do the same thing with all members of a [`DataVec`].
 ///
 /// ```
+/// # use log_types::{DataVec, data_vec_map};
 /// # let data_vec: DataVec = DataVec::F32(vec![]);
 /// let length = data_vec_map!(data_vec, |vec| vec.len());
 /// ```
@@ -271,6 +281,7 @@ macro_rules! data_vec_map(
             DataVec::I32($vec) => $action,
             DataVec::F32($vec) => $action,
             DataVec::Color($vec) => $action,
+            DataVec::String($vec) => $action,
             DataVec::Vec2($vec) => $action,
             DataVec::BBox2D($vec) => $action,
             DataVec::LineSegments2D($vec) => $action,
@@ -294,6 +305,7 @@ impl DataVec {
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
             Self::Color(_) => DataType::Color,
+            Self::String(_) => DataType::String,
 
             Self::Vec2(_) => DataType::Vec2,
             Self::BBox2D(_) => DataType::BBox2D,
@@ -326,6 +338,7 @@ impl DataVec {
             Self::I32(vec) => vec.last().cloned().map(Data::I32),
             Self::F32(vec) => vec.last().cloned().map(Data::F32),
             Self::Color(vec) => vec.last().cloned().map(Data::Color),
+            Self::String(vec) => vec.last().cloned().map(Data::String),
 
             Self::Vec2(vec) => vec.last().cloned().map(Data::Vec2),
             Self::BBox2D(vec) => vec.last().cloned().map(Data::BBox2D),

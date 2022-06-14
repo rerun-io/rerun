@@ -14,13 +14,11 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
     store: &'store ObjStore<Time>,
     time_query: &TimeQuery<Time>,
 ) -> Vec<Point3<'store>> {
-    let data_store = store.get::<[f32; 3]>(&FieldName::from("pos")).unwrap();
-
     let mut points = vec![];
     visit_data_and_1_child(
         store,
+        &FieldName::from("pos"),
         time_query,
-        data_store,
         ("radius",),
         |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
             points.push(Point3 {
@@ -39,6 +37,10 @@ fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
 
 fn id() -> LogId {
     LogId::random()
+}
+
+fn s(s: &str) -> String {
+    s.into()
 }
 
 #[test]
@@ -149,7 +151,7 @@ fn test_singular() -> data_store::Result<()> {
 #[test]
 fn test_batches() -> data_store::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPath {
-        IndexPath::new(vec![Index::String(cam.into())])
+        IndexPath::new(vec![Index::String(cam.into()), Index::Placeholder])
     }
 
     fn obj_type_path() -> ObjTypePath {
@@ -161,17 +163,17 @@ fn test_batches() -> data_store::Result<()> {
         ])
     }
 
-    fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
+    fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<String>)> {
         let obj_store = store.get(&obj_type_path()).unwrap();
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
         visit_data_and_1_child(
             obj_store,
+            &FieldName::new("pos"),
             &time_query,
-            obj_store.get::<i32>(&FieldName::new("pos")).unwrap(),
             ("label",),
-            |_object_path, _log_id, prim, sibling| {
-                values.push((*prim, sibling.copied()));
+            |_object_path, _log_id, prim: &i32, sibling: Option<&String>| {
+                values.push((*prim, sibling.cloned()));
             },
         );
         values.sort();
@@ -228,7 +230,7 @@ fn test_batches() -> data_store::Result<()> {
         "label".into(),
         Time(4),
         id(),
-        batch([(index(1), "one"), (index(2), "two")]),
+        batch([(index(1), s("one")), (index(2), s("two"))]),
     )?;
     store.insert_batch(
         obj_type_path(),
@@ -237,11 +239,11 @@ fn test_batches() -> data_store::Result<()> {
         Time(5),
         id(),
         batch([
-            (index(0), "r0"),
-            (index(1), "r1"),
-            (index(2), "r2"),
-            (index(3), "r3"),
-            (index(4), "r4"), // has no point yet
+            (index(0), s("r0")),
+            (index(1), s("r1")),
+            (index(2), s("r2")),
+            (index(3), s("r3")),
+            (index(4), s("r4")), // has no point yet
         ]),
     )?;
     store.insert_batch(
@@ -263,7 +265,7 @@ fn test_batches() -> data_store::Result<()> {
         Time(7),
         id(),
         batch([
-            (index(3), "r3_new"),
+            (index(3), s("r3_new")),
             // omitted = replaced
         ]),
     )?;
@@ -300,7 +302,7 @@ fn test_batches() -> data_store::Result<()> {
     assert_eq!(
         values(&store, 4),
         vec![
-            (22, Some("two")),
+            (22, Some(s("two"))),
             (33, None),
             (1_000, None),
             (1_001, None),
@@ -311,30 +313,30 @@ fn test_batches() -> data_store::Result<()> {
     assert_eq!(
         values(&store, 5),
         vec![
-            (22, Some("two")),
+            (22, Some(s("two"))),
             (33, None),
-            (1_000, Some("r0")),
-            (1_001, Some("r1")),
-            (1_002, Some("r2")),
-            (1_003, Some("r3")),
+            (1_000, Some(s("r0"))),
+            (1_001, Some(s("r1"))),
+            (1_002, Some(s("r2"))),
+            (1_003, Some(s("r3"))),
         ]
     );
     assert_eq!(
         values(&store, 6),
         vec![
-            (22, Some("two")),
+            (22, Some(s("two"))),
             (33, None),
-            (1_003, Some("r3")),
-            (1_004, Some("r4")),
+            (1_003, Some(s("r3"))),
+            (1_004, Some(s("r4"))),
             (1_005, None),
         ]
     );
     assert_eq!(
         values(&store, 7),
         vec![
-            (22, Some("two")),
+            (22, Some(s("two"))),
             (33, None),
-            (1_003, Some("r3_new")),
+            (1_003, Some(s("r3_new"))),
             (1_004, None),
             (1_005, None),
         ]
@@ -346,7 +348,7 @@ fn test_batches() -> data_store::Result<()> {
 #[test]
 fn test_batched_and_individual() -> data_store::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPath {
-        IndexPath::new(vec![Index::String(cam.into())])
+        IndexPath::new(vec![Index::String(cam.into()), Index::Placeholder])
     }
 
     fn obj_type_path() -> ObjTypePath {
@@ -367,17 +369,17 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         .into()
     }
 
-    fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
+    fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<String>)> {
         let obj_store = store.get(&obj_type_path()).unwrap();
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
         visit_data_and_1_child(
             obj_store,
+            &FieldName::new("pos"),
             &time_query,
-            obj_store.get::<i32>(&FieldName::new("pos")).unwrap(),
             ("label",),
             |_object_path, _log_id, prim, sibling| {
-                values.push((*prim, sibling.copied()));
+                values.push((*prim, sibling.cloned()));
             },
         );
         values.sort();
@@ -428,14 +430,14 @@ fn test_batched_and_individual() -> data_store::Result<()> {
             (index(3), 33_i32),
         ]),
     )?;
-    store.insert_individual(obj_path("left", 1), "label".into(), Time(4), id(), "one")?;
-    store.insert_individual(obj_path("left", 2), "label".into(), Time(4), id(), "two")?;
+    store.insert_individual(obj_path("left", 1), "label".into(), Time(4), id(), s("one"))?;
+    store.insert_individual(obj_path("left", 2), "label".into(), Time(4), id(), s("two"))?;
     for (index, value) in [
-        (0, "r0"),
-        (1, "r1"),
-        (2, "r2"),
-        (3, "r3"),
-        (4, "r4"), // has no point yet
+        (0, s("r0")),
+        (1, s("r1")),
+        (2, s("r2")),
+        (3, s("r3")),
+        (4, s("r4")), // has no point yet
     ] {
         store.insert_individual(
             obj_path("right", index),
@@ -457,7 +459,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
             (index(5), 1_005_i32),
         ]),
     )?;
-    store.insert_individual(obj_path("right", 5), "label".into(), Time(7), id(), "r5")?;
+    store.insert_individual(obj_path("right", 5), "label".into(), Time(7), id(), s("r5"))?;
 
     assert_eq!(values(&store, 0), vec![]);
     assert_eq!(
@@ -491,7 +493,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
     assert_eq!(
         values(&store, 4),
         vec![
-            (22, Some("two")),
+            (22, Some(s("two"))),
             (33, None),
             (1_000, None),
             (1_001, None),
@@ -502,32 +504,32 @@ fn test_batched_and_individual() -> data_store::Result<()> {
     assert_eq!(
         values(&store, 5),
         vec![
-            (22, Some("two")),
+            (22, Some(s("two"))),
             (33, None),
-            (1_000, Some("r0")),
-            (1_001, Some("r1")),
-            (1_002, Some("r2")),
-            (1_003, Some("r3")),
+            (1_000, Some(s("r0"))),
+            (1_001, Some(s("r1"))),
+            (1_002, Some(s("r2"))),
+            (1_003, Some(s("r3"))),
         ]
     );
     assert_eq!(
         values(&store, 6),
         vec![
-            (22, Some("two")),
+            (22, Some(s("two"))),
             (33, None),
-            (1_003, Some("r3")),
-            (1_004, Some("r4")),
+            (1_003, Some(s("r3"))),
+            (1_004, Some(s("r4"))),
             (1_005, None),
         ]
     );
     assert_eq!(
         values(&store, 7),
         vec![
-            (22, Some("two")),
+            (22, Some(s("two"))),
             (33, None),
-            (1_003, Some("r3")),
-            (1_004, Some("r4")),
-            (1_005, Some("r5")),
+            (1_003, Some(s("r3"))),
+            (1_004, Some(s("r4"))),
+            (1_005, Some(s("r5"))),
         ]
     );
 
@@ -537,7 +539,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
 #[test]
 fn test_individual_and_batched() -> data_store::Result<()> {
     fn index_path_prefix(cam: &str) -> IndexPath {
-        IndexPath::new(vec![Index::String(cam.into())])
+        IndexPath::new(vec![Index::String(cam.into()), Index::Placeholder])
     }
 
     fn obj_type_path() -> ObjTypePath {
@@ -558,17 +560,17 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         .into()
     }
 
-    fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<&str>)> {
+    fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<String>)> {
         let obj_store = store.get(&obj_type_path()).unwrap();
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
         visit_data_and_1_child(
             obj_store,
+            &FieldName::new("pos"),
             &time_query,
-            obj_store.get::<i32>(&FieldName::new("pos")).unwrap(),
             ("label",),
             |_object_path, _log_id, prim, sibling| {
-                values.push((*prim, sibling.copied()));
+                values.push((*prim, sibling.cloned()));
             },
         );
         values.sort();
@@ -589,7 +591,7 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         "label".into(),
         Time(3),
         id(),
-        batch([(index(1), "one"), (index(2), "two")]),
+        batch([(index(1), s("one")), (index(2), s("two"))]),
     )?;
     store.insert_individual(obj_path("left", 2), "pos".into(), Time(4), id(), 2_i32)?;
     store.insert_individual(obj_path("left", 3), "pos".into(), Time(4), id(), 3_i32)?;
@@ -599,20 +601,30 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         "label".into(),
         Time(5),
         id(),
-        batch([(index(2), "two"), (index(3), "three")]),
+        batch([(index(2), s("two")), (index(3), s("three"))]),
     )?;
 
     assert_eq!(values(&store, 0), vec![]);
     assert_eq!(values(&store, 1), vec![(0, None)]);
     assert_eq!(values(&store, 2), vec![(0, None), (1, None)]);
-    assert_eq!(values(&store, 3), vec![(0, None), (1, Some("one"))]);
+    assert_eq!(values(&store, 3), vec![(0, None), (1, Some(s("one")))]);
     assert_eq!(
         values(&store, 4),
-        vec![(0, None), (1, Some("one")), (2, Some("two")), (3, None)]
+        vec![
+            (0, None),
+            (1, Some(s("one"))),
+            (2, Some(s("two"))),
+            (3, None)
+        ]
     );
     assert_eq!(
         values(&store, 5),
-        vec![(0, None), (1, None), (2, Some("two")), (3, Some("three"))]
+        vec![
+            (0, None),
+            (1, None),
+            (2, Some(s("two"))),
+            (3, Some(s("three")))
+        ]
     );
 
     Ok(())

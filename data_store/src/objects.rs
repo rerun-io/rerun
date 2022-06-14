@@ -69,29 +69,27 @@ impl<'s> Image<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = obj_store.get::<log_types::Image>(&FieldName::from("image")) {
-            visit_data_and_2_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 image: &log_types::Image,
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>| {
-                    out.image.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: Image { image },
-                    });
-                },
-            );
-        }
+        visit_data_and_2_children(
+            obj_store,
+            &FieldName::from("image"),
+            time_query,
+            ("space", "color"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             image: &log_types::Image,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>| {
+                out.image.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: Image { image },
+                });
+            },
+        );
     }
 }
 
@@ -109,33 +107,31 @@ impl<'s> Point2D<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = obj_store.get::<[f32; 2]>(&FieldName::from("pos")) {
-            visit_data_and_3_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color", "radius"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 pos: &[f32; 2],
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>,
-                 radius: Option<&f32>| {
-                    out.point2d.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: Point2D {
-                            pos,
-                            radius: radius.copied(),
-                        },
-                    });
-                },
-            );
-        }
+        visit_data_and_3_children(
+            obj_store,
+            &FieldName::from("pos"),
+            time_query,
+            ("space", "color", "radius"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             pos: &[f32; 2],
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>,
+             radius: Option<&f32>| {
+                out.point2d.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: Point2D {
+                        pos,
+                        radius: radius.copied(),
+                    },
+                });
+            },
+        );
     }
 }
 
@@ -153,33 +149,31 @@ impl<'s> Point3D<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = obj_store.get::<[f32; 3]>(&FieldName::from("pos")) {
-            visit_data_and_3_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color", "radius"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 pos: &[f32; 3],
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>,
-                 radius: Option<&f32>| {
-                    out.point3d.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: Point3D {
-                            pos,
-                            radius: radius.copied(),
-                        },
-                    });
-                },
-            );
-        }
+        visit_data_and_3_children(
+            obj_store,
+            &FieldName::from("pos"),
+            time_query,
+            ("space", "color", "radius"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             pos: &[f32; 3],
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>,
+             radius: Option<&f32>| {
+                out.point3d.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: Point3D {
+                        pos,
+                        radius: radius.copied(),
+                    },
+                });
+            },
+        );
     }
 }
 
@@ -197,33 +191,31 @@ impl<'s> BBox2D<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = obj_store.get::<log_types::BBox2D>(&FieldName::from("bbox")) {
-            visit_data_and_3_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color", "stroke_width"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 bbox: &log_types::BBox2D,
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>,
-                 stroke_width: Option<&f32>| {
-                    out.bbox2d.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: BBox2D {
-                            bbox,
-                            stroke_width: stroke_width.copied(),
-                        },
-                    });
-                },
-            );
-        }
+        visit_data_and_3_children(
+            obj_store,
+            &FieldName::from("bbox"),
+            time_query,
+            ("space", "color", "stroke_width"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             bbox: &log_types::BBox2D,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>,
+             stroke_width: Option<&f32>| {
+                out.bbox2d.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: BBox2D {
+                        bbox,
+                        stroke_width: stroke_width.copied(),
+                    },
+                });
+            },
+        );
     }
 }
 
@@ -241,33 +233,31 @@ impl<'s> Box3D<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = obj_store.get::<log_types::Box3>(&FieldName::from("obb")) {
-            visit_data_and_3_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color", "stroke_width"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 obb: &log_types::Box3,
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>,
-                 stroke_width: Option<&f32>| {
-                    out.box3d.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: Box3D {
-                            obb,
-                            stroke_width: stroke_width.copied(),
-                        },
-                    });
-                },
-            );
-        }
+        visit_data_and_3_children(
+            obj_store,
+            &FieldName::from("obb"),
+            time_query,
+            ("space", "color", "stroke_width"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             obb: &log_types::Box3,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>,
+             stroke_width: Option<&f32>| {
+                out.box3d.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: Box3D {
+                        obb,
+                        stroke_width: stroke_width.copied(),
+                    },
+                });
+            },
+        );
     }
 }
 
@@ -285,33 +275,31 @@ impl<'s> Path3D<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = obj_store.get::<Vec<[f32; 3]>>(&FieldName::from("points")) {
-            visit_data_and_3_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color", "stroke_width"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 points: &Vec<[f32; 3]>,
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>,
-                 stroke_width: Option<&f32>| {
-                    out.path3d.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: Path3D {
-                            points,
-                            stroke_width: stroke_width.copied(),
-                        },
-                    });
-                },
-            );
-        }
+        visit_data_and_3_children(
+            obj_store,
+            &FieldName::from("points"),
+            time_query,
+            ("space", "color", "stroke_width"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             points: &Vec<[f32; 3]>,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>,
+             stroke_width: Option<&f32>| {
+                out.path3d.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: Path3D {
+                        points,
+                        stroke_width: stroke_width.copied(),
+                    },
+                });
+            },
+        );
     }
 }
 
@@ -329,35 +317,31 @@ impl<'s> LineSegments2D<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) =
-            obj_store.get::<Vec<[[f32; 2]; 2]>>(&FieldName::from("line_segments"))
-        {
-            visit_data_and_3_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color", "stroke_width"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 line_segments: &Vec<[[f32; 2]; 2]>,
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>,
-                 stroke_width: Option<&f32>| {
-                    out.line_segments2d.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: LineSegments2D {
-                            line_segments,
-                            stroke_width: stroke_width.copied(),
-                        },
-                    });
-                },
-            );
-        }
+        visit_data_and_3_children(
+            obj_store,
+            &FieldName::from("line_segments"),
+            time_query,
+            ("space", "color", "stroke_width"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             line_segments: &Vec<[[f32; 2]; 2]>,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>,
+             stroke_width: Option<&f32>| {
+                out.line_segments2d.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: LineSegments2D {
+                        line_segments,
+                        stroke_width: stroke_width.copied(),
+                    },
+                });
+            },
+        );
     }
 }
 
@@ -375,35 +359,31 @@ impl<'s> LineSegments3D<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) =
-            obj_store.get::<Vec<[[f32; 3]; 2]>>(&FieldName::from("line_segments"))
-        {
-            visit_data_and_3_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color", "stroke_width"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 line_segments: &Vec<[[f32; 3]; 2]>,
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>,
-                 stroke_width: Option<&f32>| {
-                    out.line_segments3d.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: LineSegments3D {
-                            line_segments,
-                            stroke_width: stroke_width.copied(),
-                        },
-                    });
-                },
-            );
-        }
+        visit_data_and_3_children(
+            obj_store,
+            &FieldName::from("line_segments"),
+            time_query,
+            ("space", "color", "stroke_width"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             line_segments: &Vec<[[f32; 3]; 2]>,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>,
+             stroke_width: Option<&f32>| {
+                out.line_segments3d.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: LineSegments3D {
+                        line_segments,
+                        stroke_width: stroke_width.copied(),
+                    },
+                });
+            },
+        );
     }
 }
 
@@ -420,29 +400,27 @@ impl<'s> Mesh3D<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = obj_store.get::<log_types::Mesh3D>(&FieldName::from("mesh")) {
-            visit_data_and_2_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 mesh: &log_types::Mesh3D,
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>| {
-                    out.mesh3d.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: Mesh3D { mesh },
-                    });
-                },
-            );
-        }
+        visit_data_and_2_children(
+            obj_store,
+            &FieldName::from("mesh"),
+            time_query,
+            ("space", "color"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             mesh: &log_types::Mesh3D,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>| {
+                out.mesh3d.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: Mesh3D { mesh },
+                });
+            },
+        );
     }
 }
 
@@ -460,29 +438,27 @@ impl<'s> Camera<'s> {
     ) {
         crate::profile_function!();
 
-        if let Some(primary_data) = obj_store.get::<log_types::Camera>(&FieldName::from("camera")) {
-            visit_data_and_2_children(
-                obj_store,
-                time_query,
-                primary_data,
-                ("space", "color"),
-                |obj_path: &ObjPath,
-                 log_id: &LogId,
-                 camera: &log_types::Camera,
-                 space: Option<&ObjPath>,
-                 color: Option<&[u8; 4]>| {
-                    out.camera.0.push(Object {
-                        props: ObjectProps {
-                            log_id,
-                            space,
-                            color: color.copied(),
-                            obj_path,
-                        },
-                        data: Camera { camera },
-                    });
-                },
-            );
-        }
+        visit_data_and_2_children(
+            obj_store,
+            &FieldName::from("camera"),
+            time_query,
+            ("space", "color"),
+            |obj_path: &ObjPath,
+             log_id: &LogId,
+             camera: &log_types::Camera,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>| {
+                out.camera.0.push(Object {
+                    props: ObjectProps {
+                        log_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                    },
+                    data: Camera { camera },
+                });
+            },
+        );
     }
 }
 

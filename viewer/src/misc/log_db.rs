@@ -200,6 +200,7 @@ impl DataColumns {
                 DataType::I32 => ("integer", "s"),
                 DataType::F32 => ("float", "s"),
                 DataType::Color => ("color", "s"),
+                DataType::String => ("string", "s"),
 
                 DataType::Vec2 => ("2D vector", "s"),
                 DataType::BBox2D => ("2D bounding box", "es"),
