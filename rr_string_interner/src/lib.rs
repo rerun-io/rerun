@@ -182,7 +182,7 @@ macro_rules! declare_new_type {
         $vis:vis struct $StructName:ident;
     ) => {
         // ($StructName: ident) => {
-        #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+        #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
         #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
         pub struct $StructName($crate::InternedString);
 
@@ -251,6 +251,18 @@ macro_rules! declare_new_type {
         impl std::fmt::Display for $StructName {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 self.as_str().fmt(f)
+            }
+        }
+
+        impl<'a> PartialEq<&'a str> for $StructName {
+            fn eq(&self, other: &&'a str) -> bool {
+                self.as_str() == *other
+            }
+        }
+
+        impl<'a> PartialEq<$StructName> for &'a str {
+            fn eq(&self, other: &$StructName) -> bool {
+                *self == other.as_str()
             }
         }
     };

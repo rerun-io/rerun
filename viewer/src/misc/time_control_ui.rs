@@ -20,7 +20,7 @@ impl TimeControl {
                         .selectable_label(source == self.source(), source.as_str())
                         .clicked()
                     {
-                        self.set_source(source.clone());
+                        self.set_source(*source);
                     }
                 }
             });

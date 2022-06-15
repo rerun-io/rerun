@@ -1,6 +1,8 @@
+use std::sync::mpsc::Receiver;
+
 use log_types::LogMsg;
 
-pub fn run_native_viewer(rx: std::sync::mpsc::Receiver<LogMsg>) {
+pub fn run_native_viewer(rx: Receiver<LogMsg>) {
     let native_options = eframe::NativeOptions {
         depth_buffer: 24,
         multisampling: 8,
@@ -20,9 +22,9 @@ pub fn run_native_viewer(rx: std::sync::mpsc::Receiver<LogMsg>) {
 }
 
 fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
-    rx: std::sync::mpsc::Receiver<T>,
+    rx: Receiver<T>,
     ctx: egui::Context,
-) -> std::sync::mpsc::Receiver<T> {
+) -> Receiver<T> {
     let (tx, new_rx) = std::sync::mpsc::channel();
     std::thread::Builder::new()
         .name("ui_waker".to_owned())

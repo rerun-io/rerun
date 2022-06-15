@@ -122,25 +122,19 @@ impl InstancedSperesGeom {
     fn update_aabb(&mut self) {
         crate::profile_function!();
 
-        let mut min = vec3(std::f32::INFINITY, std::f32::INFINITY, std::f32::INFINITY);
-        let mut max = vec3(
-            std::f32::NEG_INFINITY,
-            std::f32::NEG_INFINITY,
-            std::f32::NEG_INFINITY,
-        );
+        let mut min = glam::Vec3A::splat(std::f32::INFINITY);
+        let mut max = glam::Vec3A::splat(std::f32::NEG_INFINITY);
 
         for pos in &self.instances.translations_and_scale {
-            let radius = pos.w;
-
-            min.x = min.x.min(pos.x - radius);
-            min.y = min.y.min(pos.y - radius);
-            min.z = min.z.min(pos.z - radius);
-
-            max.x = max.x.max(pos.x + radius);
-            max.y = max.y.max(pos.y + radius);
-            max.z = max.z.max(pos.z + radius);
+            let radius = glam::Vec3A::splat(pos.w);
+            let pos = glam::Vec3A::from_slice(&pos.as_array());
+            min = min.min(pos - radius);
+            max = max.max(pos + radius);
         }
-        self.aabb = AxisAlignedBoundingBox::new_with_positions(&[min, max]);
+        self.aabb = AxisAlignedBoundingBox::new_with_positions(&[
+            vec3(min.x, min.y, min.z),
+            vec3(max.x, max.y, max.z),
+        ]);
     }
 
     fn vertex_shader_source(&self, fragment_shader_source: &str) -> ThreeDResult<String> {

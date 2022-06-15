@@ -24,8 +24,8 @@ impl RemoteViewerApp {
 
         let connection = comms::Connection::viewer_to_server(
             self.url.clone(),
-            move |log_msg: log_types::LogMsg| {
-                if tx.send(log_msg).is_ok() {
+            move |data_msg: log_types::LogMsg| {
+                if tx.send(data_msg).is_ok() {
                     egui_ctx.request_repaint(); // Wake up UI thread
                     std::ops::ControlFlow::Continue(())
                 } else {

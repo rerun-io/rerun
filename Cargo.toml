@@ -4,6 +4,7 @@ members = [
     "comms",
     "data_store",
     "log_types",
+    "nyud",
     "objectron",
     "rr_string_interner",
     "viewer",

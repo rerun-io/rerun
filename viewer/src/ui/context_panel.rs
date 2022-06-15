@@ -1,5 +1,6 @@
+use data_store::ObjPath;
 use itertools::Itertools;
-use log_types::{Data, DataPath, LogMsg};
+use log_types::{Data, DataMsg, DataPath, LogId};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
@@ -8,6 +9,7 @@ use crate::{LogDb, Preview, Selection, ViewerContext};
 pub(crate) struct ContextPanel {}
 
 impl ContextPanel {
+    #[allow(clippy::unused_self)]
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
         crate::profile_function!();
 
@@ -21,7 +23,7 @@ impl ContextPanel {
 
         ui.separator();
 
-        match &context.selection {
+        match &context.selection.clone() {
             Selection::None => {
                 ui.weak("(nothing)");
             }
@@ -29,7 +31,7 @@ impl ContextPanel {
                 // ui.label(format!("Selected log_id: {:?}", log_id));
                 ui.label("Selected a specific log message");
 
-                let msg = if let Some(msg) = log_db.get_msg(log_id) {
+                let msg = if let Some(msg) = log_db.get_data_msg(log_id) {
                     msg
                 } else {
                     tracing::warn!("Unknown log_id selected. Resetting selection");
@@ -37,119 +39,130 @@ impl ContextPanel {
                     return;
                 };
 
-                show_detailed_log_msg(context, ui, msg);
+                show_detailed_data_msg(context, ui, msg);
                 ui.separator();
-                self.view_log_msg_siblings(log_db, context, ui, msg);
+                view_object(log_db, context, ui, &msg.data_path.obj_path);
             }
-            Selection::ObjectPath(data_path) => {
-                ui.label(format!("Selected object: {}", data_path));
+            Selection::ObjTypePath(obj_type_path) => {
+                ui.label(format!("Selected object type path: {}", obj_type_path));
+            }
+            Selection::ObjPath(obj_path) => {
+                ui.label(format!("Selected object: {}", obj_path));
+                ui.horizontal(|ui| {
+                    ui.label("Type path:");
+                    context.type_path_button(ui, obj_path.obj_type_path());
+                });
+                ui.separator();
+                view_object(log_db, context, ui, obj_path);
+            }
+            Selection::DataPath(data_path) => {
+                ui.label(format!("Selected data path: {}", data_path));
+                ui.horizontal(|ui| {
+                    ui.label("Object path:");
+                    context.obj_path_button(ui, &data_path.obj_path);
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Type path:");
+                    context.type_path_button(ui, data_path.obj_path.obj_type_path());
+                });
 
                 ui.separator();
 
-                let mut messages = context
-                    .time_control
-                    .selected_messages_for_object(log_db, data_path);
-                messages.sort_by_key(|msg| &msg.time_point);
-
-                if context.time_control.is_time_filter_active() {
-                    ui.label(format!("Viewing {} selected message(s):", messages.len()));
-                } else {
-                    ui.label("Viewing latest message:");
-                }
-
-                if messages.is_empty() {
-                    // nothing to see here
-                } else if messages.len() == 1 {
-                    // probably viewing the latest message of this data path
-                    show_detailed_log_msg(context, ui, messages[0]);
-                } else {
-                    crate::log_table_view::message_table(log_db, context, ui, &messages);
-                }
+                view_data(log_db, context, ui, data_path);
             }
             Selection::Space(space) => {
                 let space = space.clone();
                 ui.label(format!("Selected space: {}", space));
-                ui.small("Showing latest versions of each object.")
-                    .on_hover_text("Latest by the current time, that is");
-                egui::ScrollArea::horizontal().show(ui, |ui| {
-                    let mut messages = context.time_control.selected_messages(log_db);
-                    messages.retain(|msg| msg.space.as_ref() == Some(&space));
-
-                    messages.sort_by_key(|msg| &msg.time_point);
-                    crate::log_table_view::message_table(log_db, context, ui, &messages);
-                });
+                // I really don't know what we should show here.
             }
         }
     }
+}
 
-    #[allow(clippy::unused_self)]
-    fn view_log_msg_siblings(
-        &mut self,
-        log_db: &LogDb,
-        context: &mut ViewerContext,
-        ui: &mut egui::Ui,
-        msg: &LogMsg,
-    ) {
-        crate::profile_function!();
-        let messages = context.time_control.selected_messages(log_db);
+pub(crate) fn view_object(
+    log_db: &LogDb,
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
+    obj_path: &ObjPath,
+) -> Option<()> {
+    let (_, store) = log_db.data_store.get(context.time_control.source())?;
+    let time_query = context.time_control.time_query()?;
+    let obj_store = store.get(obj_path.obj_type_path())?;
 
-        let parent_path = msg.data_path.parent();
+    egui::Grid::new("object")
+        .striped(true)
+        .num_columns(2)
+        .show(ui, |ui| {
+            for (field_name, data_store) in obj_store.iter() {
+                ui.label(field_name.to_string());
+                let (_times, ids, data_vec) =
+                    data_store.query_object(obj_path.index_path().clone(), &time_query);
 
-        let mut sibling_messages: Vec<&LogMsg> = messages
-            .iter()
-            .copied()
-            .filter(|other_msg| other_msg.data_path.starts_with(&parent_path))
-            .collect();
+                if data_vec.len() == 1 {
+                    let data = data_vec.last().unwrap();
+                    let id = &ids[0];
+                    crate::space_view::ui_data(context, ui, id, &data, Preview::Medium);
+                } else {
+                    ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
+                }
 
-        sibling_messages.sort_by_key(|msg| &msg.time_point);
+                ui.end_row();
+            }
+        });
 
-        ui.label(format!("{}:", parent_path));
+    Some(())
+}
 
-        use egui_extras::Size;
-        egui_extras::TableBuilder::new(ui)
-            .striped(true)
-            .cell_layout(egui::Layout::left_to_right().with_cross_align(egui::Align::Center))
-            .resizable(true)
-            .column(Size::initial(120.0).at_least(100.0)) // relative path
-            .column(Size::remainder().at_least(180.0)) // data
-            .header(20.0, |mut header| {
-                header.col(|ui| {
-                    ui.heading("Relative path");
-                });
-                header.col(|ui| {
-                    ui.heading("Data");
-                });
-            })
-            .body(|body| {
-                const ROW_HEIGHT: f32 = 24.0;
-                body.rows(ROW_HEIGHT, sibling_messages.len(), |index, mut row| {
-                    let msg = sibling_messages[index];
+fn view_data(
+    log_db: &LogDb,
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
+    data_path: &DataPath,
+) -> Option<()> {
+    let obj_path = data_path.obj_path();
+    let field_name = data_path.field_name();
 
-                    row.col(|ui| {
-                        let relative_path =
-                            DataPath::new(msg.data_path.as_slice()[parent_path.len()..].to_vec());
-                        context.data_path_button_to(ui, relative_path.to_string(), &msg.data_path);
-                    });
-                    row.col(|ui| {
-                        crate::space_view::ui_data(
-                            context,
-                            ui,
-                            &msg.id,
-                            &msg.data,
-                            Preview::Specific(ROW_HEIGHT),
-                        );
-                    });
-                });
-            });
+    let (_, store) = log_db.data_store.get(context.time_control.source())?;
+    let time_query = context.time_control.time_query()?;
+    let obj_store = store.get(obj_path.obj_type_path())?;
+    let data_store = obj_store.get_field(field_name)?;
+
+    let (_times, ids, data_vec) =
+        data_store.query_object(obj_path.index_path().clone(), &time_query);
+
+    if data_vec.len() == 1 {
+        let data = data_vec.last().unwrap();
+        let id = &ids[0];
+        show_detailed_data(context, ui, id, &data);
+    } else {
+        ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
+    }
+
+    Some(())
+}
+
+pub(crate) fn show_detailed_data(
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
+    log_id: &LogId,
+    data: &Data,
+) {
+    if let Data::Image(image) = data {
+        show_image(context, ui, log_id, image);
+    } else {
+        crate::space_view::ui_data(context, ui, log_id, data, Preview::Medium);
     }
 }
 
-pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &LogMsg) {
-    let LogMsg {
+pub(crate) fn show_detailed_data_msg(
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
+    msg: &DataMsg,
+) {
+    let DataMsg {
         id,
         time_point,
         data_path,
-        space,
         data,
     } = msg;
 
@@ -162,15 +175,12 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
             ui.monospace("data_path:");
             context.data_path_button(ui, data_path);
             ui.end_row();
+            ui.monospace("object type path:");
+            context.type_path_button(ui, data_path.obj_path.obj_type_path());
+            ui.end_row();
 
             ui.monospace("time_point:");
             crate::space_view::ui_time_point(context, ui, time_point);
-            ui.end_row();
-
-            ui.monospace("space:");
-            if let Some(space) = space {
-                context.space_button(ui, space);
-            }
             ui.end_row();
 
             if !is_image {
@@ -181,17 +191,17 @@ pub(crate) fn show_detailed_log_msg(context: &mut ViewerContext, ui: &mut egui::
         });
 
     if let Data::Image(image) = &msg.data {
-        show_image(context, ui, msg, image);
+        show_image(context, ui, id, image);
     }
 }
 
 fn show_image(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    msg: &LogMsg,
+    log_id: &LogId,
     image: &log_types::Image,
 ) {
-    let (dynamic_image, egui_image) = context.image_cache.get_pair(&msg.id, image);
+    let (dynamic_image, egui_image) = context.image_cache.get_pair(log_id, image);
     let max_size = ui.available_size().min(egui_image.size_vec2());
     let response = egui_image.show_max_size(ui, max_size);
 

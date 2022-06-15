@@ -6,10 +6,13 @@
 pub mod encoding;
 
 mod data;
+pub mod hash;
+pub mod objects;
 mod path;
 mod time;
 
 pub use data::*;
+pub use objects::ObjectType;
 pub use path::*;
 pub use time::{Duration, Time};
 
@@ -47,46 +50,92 @@ impl std::hash::Hash for LogId {
 
 impl LogId {
     #[inline]
-    fn random() -> Self {
+    pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())
     }
 }
 
+// ----------------------------------------------------------------------------
+
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct LogMsg {
+#[allow(clippy::large_enum_variant)]
+pub enum LogMsg {
+    /// Log type-into to a [`ObjTypePath`].
+    TypeMsg(TypeMsg),
+    /// Log some data to a [`DataPath`].
+    DataMsg(DataMsg),
+}
+
+impl LogMsg {
+    pub fn id(&self) -> LogId {
+        match self {
+            Self::TypeMsg(msg) => msg.id,
+            Self::DataMsg(msg) => msg.id,
+        }
+    }
+}
+
+impl_into_enum!(TypeMsg, LogMsg, TypeMsg);
+impl_into_enum!(DataMsg, LogMsg, DataMsg);
+
+// ----------------------------------------------------------------------------
+
+#[must_use]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TypeMsg {
     /// A unique id per [`LogMsg`].
+    pub id: LogId,
+
+    /// The [`ObjTypePath`] target.
+    pub type_path: ObjTypePath,
+
+    /// The type of object at this object type path.
+    pub object_type: ObjectType,
+}
+
+impl TypeMsg {
+    pub fn object_type(type_path: ObjTypePath, object_type: ObjectType) -> Self {
+        Self {
+            id: LogId::random(),
+            type_path,
+            object_type,
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+#[must_use]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct DataMsg {
+    /// A unique id per [`DataMsg`].
     pub id: LogId,
 
     /// Time information (when it was logged, when it was received, …)
     pub time_point: TimePoint,
 
-    /// What this is.
+    /// What the data is targeting.
     pub data_path: DataPath,
 
     /// The value of this.
     pub data: Data,
-
-    /// Where ("camera", "world") this thing is in.
-    pub space: Option<DataPath>,
-}
-
-impl LogMsg {
-    #[inline]
-    pub fn space(mut self, space: &DataPath) -> Self {
-        self.space = Some(space.clone());
-        self
-    }
 }
 
 #[inline]
-pub fn log_msg(time_point: &TimePoint, data_path: DataPath, data: impl Into<Data>) -> LogMsg {
-    LogMsg {
+pub fn data_msg(
+    time_point: &TimePoint,
+    obj_path: impl Into<ObjPath>,
+    field_name: impl Into<FieldName>,
+    data: impl Into<Data>,
+) -> DataMsg {
+    DataMsg {
         time_point: time_point.clone(),
-        data_path,
+        data_path: DataPath::new(obj_path.into(), field_name.into()),
         data: data.into(),
-        space: None,
         id: LogId::random(),
     }
 }
@@ -113,10 +162,23 @@ impl Default for TimeSource {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(pub BTreeMap<TimeSource, TimeValue>);
 
+/// The type of a [`TimeValue`].
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub enum TimeType {
+    /// Normal wall time.
+    Time,
+
+    /// Used e.g. for frames in a film.
+    Sequence,
+}
+
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeValue {
+    /// Normal wall time.
     Time(Time),
+
+    /// Used e.g. for frames in a film.
     Sequence(i64),
 }
 
@@ -136,6 +198,21 @@ impl TimeValue {
         match self {
             Self::Time(time) => Self::Time(time + Duration::from_nanos(offset as _)),
             Self::Sequence(seq) => Self::Sequence(seq.saturating_add(offset as _)),
+        }
+    }
+
+    pub fn typ(&self) -> TimeType {
+        match self {
+            Self::Time(_) => TimeType::Time,
+            Self::Sequence(_) => TimeType::Sequence,
+        }
+    }
+
+    /// Either nanos since epoch, or a sequence number.
+    pub fn as_i64(&self) -> i64 {
+        match self {
+            Self::Time(time) => time.nanos_since_epoch(),
+            Self::Sequence(seq) => *seq,
         }
     }
 }

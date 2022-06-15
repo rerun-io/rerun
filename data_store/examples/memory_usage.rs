@@ -45,7 +45,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
 }
 
 use data_store::*;
-use log_types::TimeValue;
+use log_types::{IndexKey, LogId, TimeValue};
 
 impl TrackingAllocator {
     fn used_bytes(&self) -> usize {
@@ -53,14 +53,14 @@ impl TrackingAllocator {
     }
 }
 
-fn data_path(camera: u64, index: u64, field: &str) -> DataPath {
-    DataPath::new(vec![
-        DataPathComponent::String("camera".into()),
-        DataPathComponent::Index(Index::Sequence(camera)),
-        DataPathComponent::String("point".into()),
-        DataPathComponent::Index(Index::Sequence(index)),
-        DataPathComponent::String(field.into()),
+fn obj_path(camera: u64, index: u64) -> ObjPath {
+    ObjPathBuilder::new(vec![
+        ObjPathComp::String("camera".into()),
+        ObjPathComp::Index(Index::Sequence(camera)),
+        ObjPathComp::String("point".into()),
+        ObjPathComp::Index(Index::Sequence(index)),
     ])
+    .into()
 }
 
 const BYTES_PER_POINT: usize = 16 + 24; // IndexPathKey + [f32; 3]
@@ -78,13 +78,12 @@ fn tracking_points() {
     let mut store = TypePathDataStore::default();
     for frame in 0..NUM_FRAMES {
         for offset in 0..OVERLAP {
-            let (type_path, index_path) =
-                into_type_path(data_path(0, (frame + offset) as _, "pos"));
             store
                 .insert_individual::<[f32; 3]>(
-                    type_path,
-                    index_path,
+                    obj_path(0, (frame + offset) as _),
+                    "pos".into(),
                     TimeValue::Sequence(frame as _),
+                    LogId::random(),
                     [1.0, 2.0, 3.0],
                 )
                 .unwrap();
@@ -113,13 +112,12 @@ fn big_clouds() {
     while frame < NUM_FRAMES {
         for camera in 0..NUM_CAMERAS {
             for point in 0..NUM_POINTS_PER_CAMERA {
-                let (type_path, index_path) =
-                    into_type_path(data_path(camera as _, point as _, "pos"));
                 store
                     .insert_individual::<[f32; 3]>(
-                        type_path,
-                        index_path,
+                        obj_path(camera as _, point as _),
+                        "pos".into(),
                         TimeValue::Sequence(frame as _),
+                        LogId::random(),
                         [1.0, 2.0, 3.0],
                     )
                     .unwrap();
@@ -157,13 +155,15 @@ fn big_clouds_batched() {
                     })
                     .collect(),
             );
-            let (type_path, index_path) = into_type_path(data_path(camera as _, 0, "pos"));
-            let (index_path_prefix, _) = index_path.split_last();
+            let (obj_type_path, index_path) =
+                obj_path(camera as _, 0).into_type_path_and_index_path();
+            let (index_path_prefix, _) = index_path.replace_last_with_placeholder();
             store
                 .insert_batch::<[f32; 3]>(
-                    type_path,
-                    index_path_prefix,
+                    &ObjPath::new(obj_type_path, index_path_prefix),
+                    "pos".into(),
                     TimeValue::Sequence(frame as _),
+                    LogId::random(),
                     batch,
                 )
                 .unwrap();

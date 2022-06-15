@@ -43,6 +43,25 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "Debug 'nyud'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--package=nyud"
+                ],
+                "filter": {
+                    "name": "nyud",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "nyud/dataset/cafe.zip"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "Debug 'prototype' tests",
             "type": "lldb",
             "request": "launch",

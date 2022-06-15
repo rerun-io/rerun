@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 use log_types::*;
 
 use crate::{LogDb, Preview, ViewerContext};
@@ -17,7 +17,7 @@ impl LogTableView {
 
         let messages = {
             crate::profile_scope!("Collecting messages");
-            log_db.chronological_messages().collect_vec()
+            log_db.chronological_data_messages().collect_vec()
         };
 
         egui::ScrollArea::horizontal()
@@ -32,7 +32,7 @@ pub(crate) fn message_table(
     log_db: &LogDb,
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    messages: &[&LogMsg],
+    messages: &[&DataMsg],
 ) {
     crate::profile_function!();
 
@@ -59,9 +59,6 @@ pub(crate) fn message_table(
                 ui.heading("Path");
             });
             header.col(|ui| {
-                ui.heading("Space");
-            });
-            header.col(|ui| {
                 ui.heading("Data");
             });
         })
@@ -84,7 +81,7 @@ pub(crate) fn message_table(
         });
 }
 
-fn row_height(msg: &LogMsg) -> f32 {
+fn row_height(msg: &DataMsg) -> f32 {
     if matches!(&msg.data, log_types::Data::Image(_)) {
         48.0
     } else {
@@ -96,14 +93,13 @@ fn table_row(
     log_db: &LogDb,
     context: &mut ViewerContext,
     row: &mut egui_extras::TableRow<'_, '_>,
-    msg: &LogMsg,
+    msg: &DataMsg,
     row_height: f32,
 ) {
-    let LogMsg {
+    let DataMsg {
         id,
         time_point,
         data_path,
-        space,
         data,
     } = msg;
 
@@ -116,11 +112,6 @@ fn table_row(
     }
     row.col(|ui| {
         context.data_path_button(ui, data_path);
-    });
-    row.col(|ui| {
-        if let Some(space) = space {
-            context.space_button(ui, space);
-        }
     });
     row.col(|ui| {
         crate::space_view::ui_data(context, ui, id, data, Preview::Specific(row_height));

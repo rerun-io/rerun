@@ -11,43 +11,79 @@ use itertools::Itertools as _;
 use log_types::*;
 use protos::{ArCamera, ArPlaneAnchor};
 
+struct Logger<'a>(&'a Sender<LogMsg>);
+
+impl<'a> Logger<'a> {
+    fn log(&self, msg: impl Into<LogMsg>) {
+        self.0.send(msg.into()).ok();
+    }
+}
+
 pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
-    let frame_times = log_geometry_pbdata(path, tx)?;
-    configure_world_space(tx);
-    log_annotation_pbdata(path, &frame_times, tx)?;
+    let logger = Logger(tx);
+
+    logger.log(TypeMsg::object_type(
+        ObjTypePath::from("world"),
+        ObjectType::Space,
+    ));
+    logger.log(TypeMsg::object_type(
+        ObjTypePath::from("camera"),
+        ObjectType::Camera,
+    ));
+    logger.log(TypeMsg::object_type(
+        ObjTypePath::from("video"),
+        ObjectType::Image,
+    ));
+    logger.log(TypeMsg::object_type(
+        ObjTypePath::from("rgb"),
+        ObjectType::Image,
+    ));
+    logger.log(TypeMsg::object_type(
+        ObjTypePath::from("points") / TypePathComp::Index,
+        ObjectType::Point3D,
+    ));
+    logger.log(TypeMsg::object_type(
+        ObjTypePath::from("objects") / TypePathComp::Index / "bbox2d",
+        ObjectType::LineSegments2D,
+    ));
+    logger.log(TypeMsg::object_type(
+        ObjTypePath::from("objects") / TypePathComp::Index / "bbox3d",
+        ObjectType::Box3D,
+    ));
+
+    let frame_times = log_geometry_pbdata(path, &logger)?;
+    configure_world_space(&logger);
+    log_annotation_pbdata(path, &frame_times, &logger)?;
 
     Ok(())
 }
 
-fn configure_world_space(tx: &Sender<LogMsg>) {
-    let world_space = DataPath::from("world");
+fn configure_world_space(logger: &Logger<'_>) {
+    let world_space = ObjPath::from("world");
     // TODO: what time point should we use?
     let time_point = time_point([
         ("frame", TimeValue::Sequence(0)),
         ("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0))),
     ]);
-    tx.send(
-        log_msg(
-            &time_point,
-            &world_space / "up",
-            Data::Vec3([0.0, 1.0, 0.0]),
-        )
-        .space(&world_space), // TODO: this seems redundant
-    )
-    .ok();
+    logger.log(data_msg(
+        &time_point,
+        world_space,
+        "up",
+        Data::Vec3([0.0, 1.0, 0.0]),
+    ));
 }
 
 fn log_annotation_pbdata(
     path: &Path,
     frame_times: &[Time],
-    tx: &Sender<LogMsg>,
+    logger: &Logger<'_>,
 ) -> anyhow::Result<()> {
     use prost::Message as _;
 
     let file = std::fs::read(path.join("annotation.pbdata"))?;
     let sequence = protos::Sequence::decode(file.as_slice())?;
-    let world_space = DataPath::from("world");
-    let image_space = DataPath::from("image");
+    let world_space = ObjPath::from("world");
+    let image_space = ObjPath::from("image");
 
     for object in &sequence.objects {
         // TODO: what time point should we use?
@@ -56,7 +92,7 @@ fn log_annotation_pbdata(
             ("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0))),
         ]);
 
-        let data_path = DataPath::from("objects") / Index::Integer(object.id as _);
+        let data_path = ObjPathBuilder::from("objects") / Index::Integer(object.id as _);
 
         // dbg!(&object.category); // Most cups have "chair" as the category
 
@@ -70,20 +106,24 @@ fn log_annotation_pbdata(
                 translation: translation.to_array(),
                 half_size: half_size.to_array(),
             };
-            tx.send(
-                log_msg(&time_point, &data_path / "bbox3d", Data::Box3(box3)).space(&world_space),
-            )
-            .ok();
+            let obj_path = &data_path / "bbox3d";
+            logger.log(data_msg(&time_point, &obj_path, "obb", box3));
+            logger.log(data_msg(
+                &time_point,
+                obj_path,
+                "space",
+                world_space.clone(),
+            ));
         } else {
             tracing::error!("Unsupported type: {}", object.r#type);
         }
 
-        tx.send(log_msg(
+        logger.log(data_msg(
             &time_point,
-            &data_path / "color",
+            &data_path / "bbox3d",
+            "color",
             Data::Color([130, 160, 250, 255]),
-        ))
-        .ok();
+        ));
     }
 
     for frame_annotation in sequence.frame_annotations.iter() {
@@ -97,15 +137,15 @@ fn log_annotation_pbdata(
 
         for object_annotation in &frame_annotation.annotations {
             let data_path =
-                DataPath::from("objects") / Index::Integer(object_annotation.object_id as _);
+                ObjPathBuilder::from("objects") / Index::Integer(object_annotation.object_id as _);
 
             // always zero?
-            // tx.send(log_msg(
+            // logger.log(data_msg(
             //     &time_point,
             //     &data_path / "visibility",
             //     object_annotation.visibility,
             // ))
-            // .ok();
+            // ;
 
             let mut keypoint_ids = vec![];
             let mut keypoints_2d = vec![];
@@ -138,23 +178,41 @@ fn log_annotation_pbdata(
                     [keypoints_2d[4], keypoints_2d[8]],
                 ];
 
-                tx.send(
-                    log_msg(
-                        &time_point,
-                        &data_path / "bbox2d",
-                        Data::LineSegments2D(line_segments),
-                    )
-                    .space(&image_space),
-                )
-                .ok();
+                let obj_path = &data_path / "bbox2d";
+                logger.log(data_msg(
+                    &time_point,
+                    &obj_path,
+                    "line_segments",
+                    Data::LineSegments2D(line_segments),
+                ));
+                logger.log(data_msg(
+                    &time_point,
+                    &obj_path,
+                    "space",
+                    image_space.clone(),
+                ));
+
+                logger.log(data_msg(
+                    &time_point,
+                    obj_path,
+                    "color",
+                    Data::Color([130, 160, 250, 255]),
+                ));
             } else {
                 for (id, pos2) in keypoint_ids.into_iter().zip(keypoints_2d) {
                     let point_path = &data_path / "points" / Index::Integer(id as _);
-                    tx.send(
-                        log_msg(&time_point, &point_path / "pos2d", Data::Pos2(pos2))
-                            .space(&image_space),
-                    )
-                    .ok();
+                    logger.log(data_msg(
+                        &time_point,
+                        &point_path,
+                        "pos2d",
+                        Data::Vec2(pos2),
+                    ));
+                    logger.log(data_msg(
+                        &time_point,
+                        point_path,
+                        "space",
+                        image_space.clone(),
+                    ));
                 }
             }
         }
@@ -163,7 +221,7 @@ fn log_annotation_pbdata(
     Ok(())
 }
 
-fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<Time>> {
+fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<Time>> {
     let file = std::fs::File::open(path.join("geometry.pbdata"))?;
     let mut reader = std::io::BufReader::with_capacity(1024, file);
 
@@ -172,7 +230,7 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<T
 
     let mut frame_idx = 0;
 
-    let world_space = DataPath::from("world");
+    let world_space = ObjPath::from("world");
 
     let mut frame_times = vec![];
 
@@ -194,16 +252,16 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<T
         log_image(
             &path.join("video").join(format!("{frame_idx}.jpg")),
             &time_point,
-            tx,
+            logger,
         )?;
 
         if let Some(ar_camera) = &ar_frame.camera {
             log_ar_camera(
                 &time_point,
-                DataPath::from("camera"),
+                ObjPathBuilder::from("camera"),
                 &world_space,
                 ar_camera,
-                tx,
+                logger,
             );
         }
 
@@ -213,10 +271,10 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<T
                 // TODO: we shouldn't need to explicitly group planes and points like this! (we do it so we can toggle their visibility all at once).
                 log_plane_anchor(
                     &time_point,
-                    &DataPath::from("planes"),
+                    &ObjPathBuilder::from("planes"),
                     &world_space,
                     plane_anchor,
-                    tx,
+                    logger,
                 );
             }
         }
@@ -224,7 +282,7 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<T
         if let Some(raw_feature_points) = &ar_frame.raw_feature_points {
             if let Some(count) = raw_feature_points.count {
                 // TODO: we shouldn't need to explicitly group planes and points like this! (we do it so we can toggle their visibility all at once).
-                let points_path = DataPath::from("points");
+                let points_path = ObjPathBuilder::from("points");
 
                 for i in 0..count as usize {
                     let point = &raw_feature_points.point[i];
@@ -233,18 +291,25 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<T
                     if let (Some(x), Some(y), Some(z)) = (point.x, point.y, point.z) {
                         let point_path = &points_path / Index::Integer(identifier as _);
 
-                        tx.send(
-                            log_msg(&time_point, &point_path / "pos", Data::Pos3([x, y, z]))
-                                .space(&world_space),
-                        )
-                        .ok();
-                        // TODO: log once for the parent ("points")
-                        tx.send(log_msg(
+                        logger.log(data_msg(
                             &time_point,
-                            &point_path / "color",
+                            &point_path,
+                            "pos",
+                            Data::Vec3([x, y, z]),
+                        ));
+                        logger.log(data_msg(
+                            &time_point,
+                            &point_path,
+                            "space",
+                            world_space.clone(),
+                        ));
+                        // TODO: log once for the parent ("points")
+                        logger.log(data_msg(
+                            &time_point,
+                            &point_path,
+                            "color",
                             Data::Color([255; 4]),
-                        ))
-                        .ok();
+                        ));
                     }
                 }
 
@@ -259,8 +324,8 @@ fn log_geometry_pbdata(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<Vec<T
     Ok(frame_times)
 }
 
-fn log_image(path: &PathBuf, time_point: &TimePoint, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
-    let image_space = DataPath::from("image");
+fn log_image(path: &PathBuf, time_point: &TimePoint, logger: &Logger<'_>) -> anyhow::Result<()> {
+    let image_space = ObjPath::from("image");
 
     let data = std::fs::read(path)?;
 
@@ -272,20 +337,19 @@ fn log_image(path: &PathBuf, time_point: &TimePoint, tx: &Sender<LogMsg>) -> any
         data,
     };
 
-    let data_path = DataPath::from("video");
-
-    tx.send(log_msg(time_point, data_path, Data::Image(image)).space(&image_space))
-        .ok();
+    let obj_path = ObjPathBuilder::from("video");
+    logger.log(data_msg(time_point, obj_path.clone(), "image", image));
+    logger.log(data_msg(time_point, obj_path, "space", image_space));
 
     Ok(())
 }
 
 fn log_ar_camera(
     time_point: &TimePoint,
-    data_path: DataPath,
-    world_space: &DataPath,
+    data_path: ObjPathBuilder,
+    world_space: &ObjPath,
     ar_camera: &ArCamera,
-    tx: &Sender<LogMsg>,
+    logger: &Logger<'_>,
 ) {
     let world_from_cam = glam::Mat4::from_cols_slice(&ar_camera.transform).transpose();
     let (scale, rot, translation) = world_from_cam.to_scale_rotation_translation();
@@ -307,16 +371,21 @@ fn log_ar_camera(
         resolution: Some([w, h]),
     };
 
-    tx.send(log_msg(time_point, data_path, Data::Camera(camera)).space(world_space))
-        .ok();
+    logger.log(data_msg(time_point, &data_path, "camera", camera));
+    logger.log(data_msg(
+        time_point,
+        data_path,
+        "space",
+        world_space.clone(),
+    ));
 }
 
 fn log_plane_anchor(
     time_point: &TimePoint,
-    root_path: &DataPath,
-    world_space: &DataPath,
+    root_path: &ObjPathBuilder,
+    world_space: &ObjPath,
     plane_anchor: &ArPlaneAnchor,
-    tx: &Sender<LogMsg>,
+    logger: &Logger<'_>,
 ) {
     let transform = glam::Mat4::from_cols_slice(&plane_anchor.transform).transpose();
 
@@ -344,14 +413,12 @@ fn log_plane_anchor(
             .map(|(a, b, c)| [a as u32, b as u32, c as u32])
             .collect();
         let mesh = RawMesh3D { positions, indices };
-        tx.send(
-            log_msg(
-                time_point,
-                &plane_path / "mesh",
-                Data::Mesh3D(Mesh3D::Raw(mesh)),
-            )
-            .space(world_space),
-        )
-        .ok();
+        logger.log(data_msg(time_point, &plane_path, "mesh", Mesh3D::Raw(mesh)));
+        logger.log(data_msg(
+            time_point,
+            &plane_path,
+            "space",
+            world_space.clone(),
+        ));
     }
 }

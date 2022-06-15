@@ -1,7 +1,7 @@
 //! rerun viewer.
 
 mod app;
-pub(crate) mod math;
+pub mod math;
 mod misc;
 mod remote_viewer_app;
 mod ui;

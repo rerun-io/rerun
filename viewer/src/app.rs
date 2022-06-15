@@ -67,8 +67,8 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         if let Some(rx) = &mut self.rx {
-            while let Ok(log_msg) = rx.try_recv() {
-                self.log_db.add(log_msg);
+            while let Ok(data_msg) = rx.try_recv() {
+                self.log_db.add(data_msg);
             }
         }
 
@@ -301,7 +301,7 @@ fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
         crate::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::create(path).context("Failed to create file")?;
-        log_types::encoding::encode(log_db.chronological_messages(), file)
+        log_types::encoding::encode(log_db.chronological_log_messages(), file)
     }
 
     match save_to_file_impl(log_db, path) {

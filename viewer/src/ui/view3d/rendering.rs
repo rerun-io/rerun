@@ -27,17 +27,17 @@ impl RenderingContext {
         let skybox_light =
             three_d::Skybox::new(&three_d, &load_skybox_texture(skybox_light)).unwrap();
 
-        let intensity = 1.0;
+        let ambient_light_intensity = 5.0;
         let ambient_dark = three_d::AmbientLight::new_with_environment(
             &three_d,
-            intensity,
+            ambient_light_intensity,
             three_d::Color::WHITE,
             skybox_dark.texture(),
         )
         .unwrap();
         let ambient_light = three_d::AmbientLight::new_with_environment(
             &three_d,
-            intensity,
+            ambient_light_intensity,
             three_d::Color::WHITE,
             skybox_light.texture(),
         )
@@ -184,7 +184,7 @@ fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances 
 
     for line_segments in line_segments {
         let LineSegments {
-            log_id: _,
+            obj_path_hash: _,
             segments,
             radius,
             color,
@@ -264,8 +264,8 @@ pub fn paint_with_three_d(
     } else {
         &rendering.ambient_light
     };
-    let directional0 = DirectionalLight::new(three_d, 2.0, Color::WHITE, &vec3(-1.0, -1.0, -1.0))?;
-    let directional1 = DirectionalLight::new(three_d, 2.0, Color::WHITE, &vec3(1.0, 1.0, 1.0))?;
+    let directional0 = DirectionalLight::new(three_d, 5.0, Color::WHITE, &vec3(-1.0, -1.0, -1.0))?;
+    let directional1 = DirectionalLight::new(three_d, 5.0, Color::WHITE, &vec3(1.0, 1.0, 1.0))?;
     let lights: &[&dyn Light] = &[ambient, &directional0, &directional1];
 
     // -------------------
@@ -347,14 +347,7 @@ pub fn paint_with_three_d(
     Ok(())
 }
 
-/// TODO: don't use `Color32` here, it is unnecessary to premultiply alpha only to again unmultiply it here!
-fn color_to_three_d(color: egui::Color32) -> three_d::Color {
+fn color_to_three_d([r, g, b, a]: [u8; 4]) -> three_d::Color {
     // TODO: figure out why three_d colors are messed up. Are they in linear space and in bytes!?!?!
-    let [r, g, b, a] = egui::Rgba::from(color).to_rgba_unmultiplied();
-    three_d::Color::new(
-        (r * 255.0).round() as _,
-        (g * 255.0).round() as _,
-        (b * 255.0).round() as _,
-        (a * 255.0).round() as _,
-    )
+    three_d::Color::new(r, g, b, a)
 }

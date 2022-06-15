@@ -1,10 +1,12 @@
-use futures_util::{SinkExt, StreamExt};
-use log_types::LogMsg;
-use parking_lot::Mutex;
 use std::sync::Arc;
 use std::{net::SocketAddr, time::Duration};
+
+use futures_util::{SinkExt, StreamExt};
+use parking_lot::Mutex;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Error};
+
+use log_types::LogMsg;
 
 // ----------------------------------------------------------------------------
 
@@ -131,10 +133,10 @@ async fn handle_connection(
                     }
                 }
             }
-            log_msg = log_rx.recv() => {
-                let log_msg = log_msg.unwrap();
+            data_msg = log_rx.recv() => {
+                let data_msg = data_msg.unwrap();
 
-                ws_sender.send(tungstenite::Message::Binary(log_msg.to_vec())).await?;
+                ws_sender.send(tungstenite::Message::Binary(data_msg.to_vec())).await?;
             }
             _ = interval.tick() => {
                 // ws_sender.send(Message::Text("tick".to_owned())).await?;

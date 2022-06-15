@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use data_store::TimeQuery;
 use egui::NumExt as _;
 use log_types::*;
 
-use crate::log_db::MessageFilter;
 use crate::misc::TimePoints;
 
 use super::time_axis::TimeRange;
@@ -167,7 +167,7 @@ impl TimeControl {
 
         let state = self
             .states
-            .entry(self.time_source.clone())
+            .entry(self.time_source)
             .or_insert_with(|| TimeState::new(full_range.min));
 
         let loop_range = if self.looped && active_selection_type == Some(TimeSelectionType::Loop) {
@@ -270,7 +270,7 @@ impl TimeControl {
                 }
             } else {
                 self.states
-                    .insert(self.time_source.clone(), TimeState::new(min(axis)));
+                    .insert(self.time_source, TimeState::new(min(axis)));
             }
         }
         self.playing = true;
@@ -320,7 +320,7 @@ impl TimeControl {
             }
         }
         if let Some(source) = time_points.0.keys().next() {
-            self.time_source = source.clone();
+            self.time_source = *source;
         } else {
             self.time_source = Default::default();
         }
@@ -409,7 +409,7 @@ impl TimeControl {
         }
 
         self.states
-            .entry(self.time_source.clone())
+            .entry(self.time_source)
             .or_insert_with(|| TimeState::new(time))
             .time = time;
     }
@@ -424,7 +424,7 @@ impl TimeControl {
     /// The range of time we are currently zoomed in on.
     pub fn set_time_view(&mut self, view: TimeView) {
         self.states
-            .entry(self.time_source.clone())
+            .entry(self.time_source)
             .or_insert_with(|| TimeState::new(view.min))
             .view = Some(view);
     }
@@ -442,58 +442,40 @@ impl TimeControl {
 
     pub fn set_time_selection(&mut self, selection: TimeRange) {
         self.states
-            .entry(self.time_source.clone())
+            .entry(self.time_source)
             .or_insert_with(|| TimeState::new(selection.min))
             .selection = Some(selection);
     }
 
-    /// Return the messages that should be visible at this time.
+    /// Return the data that should be visible at this time.
     ///
     /// This is either based on a time selection, or it is the latest message at the current time.
-    ///
-    /// Returns them in arbitrary order.
-    pub fn selected_messages<'db>(&self, log_db: &'db crate::log_db::LogDb) -> Vec<&'db LogMsg> {
-        self.selected_messages_filtered(log_db, &MessageFilter::All)
-    }
-
-    /// Return the messages that should be visible at this time.
-    ///
-    /// This is either based on a time selection, or it is the latest message at the current time.
-    ///
-    /// Returns them in arbitrary order.
-    pub fn selected_messages_for_object<'db>(
+    pub fn selected_objects<'db>(
         &self,
         log_db: &'db crate::log_db::LogDb,
-        data_path: &DataPath,
-    ) -> Vec<&'db LogMsg> {
-        self.selected_messages_filtered(log_db, &MessageFilter::ObjectPath(data_path.clone()))
-    }
-
-    /// Return the messages that should be visible at this time.
-    ///
-    /// This is either based on a time selection, or it is the latest message at the current time.
-    ///
-    /// Returns them in arbitrary order.
-    pub fn selected_messages_filtered<'db>(
-        &self,
-        log_db: &'db crate::log_db::LogDb,
-        filter: &MessageFilter,
-    ) -> Vec<&'db LogMsg> {
+    ) -> data_store::Objects<'db> {
         crate::profile_function!();
 
-        let state = if let Some(state) = self.states.get(&self.time_source) {
-            state
-        } else {
-            return Default::default();
-        };
-
-        if self.is_time_filter_active() {
-            if let Some(range) = state.selection {
-                return log_db.messages_in_range(self.source(), range, filter);
+        let mut objects = data_store::Objects::default();
+        if let Some(time_query) = self.time_query() {
+            if let Some((_, store)) = log_db.data_store.get(self.source()) {
+                for (obj_type_path, object_type) in &log_db.object_types {
+                    objects.query_object(store, &time_query, obj_type_path, *object_type);
+                }
             }
         }
+        objects
+    }
 
-        log_db.latest_of_each_object(self.source(), state.time, filter)
+    pub fn time_query(&self) -> Option<TimeQuery<i64>> {
+        if self.is_time_filter_active() {
+            if let Some(state) = self.states.get(&self.time_source) {
+                if let Some(range) = state.selection {
+                    return Some(TimeQuery::Range(range.min.as_i64()..=range.max.as_i64()));
+                }
+            }
+        }
+        Some(TimeQuery::LatestAt(self.time()?.as_i64()))
     }
 }
 
