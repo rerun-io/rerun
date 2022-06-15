@@ -23,6 +23,11 @@ impl IndexKey {
     pub fn index(&self) -> &Index {
         &self.index
     }
+
+    #[inline]
+    pub fn hash64(&self) -> u64 {
+        self.hash.hash64()
+    }
 }
 
 // ----------------------------------------------------------------------------

@@ -1,4 +1,5 @@
-use nohash_hasher::IntMap;
+use itertools::Itertools;
+use nohash_hasher::{IntMap, IntSet};
 
 use log_types::{
     Data, DataMsg, DataPath, DataVec, IndexKey, LoggedData, ObjPath, ObjPathHash, TimeSource,
@@ -11,6 +12,8 @@ use crate::{Batch, TypePathDataStore};
 pub struct LogDataStore {
     store_from_time_source: IntMap<TimeSource, (TimeType, TypePathDataStore<i64>)>,
     obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
+    /// To avoid doing double-work filling in [`Self::obj_path_from_hash`].
+    regiestered_batch_paths: IntMap<ObjPathHash, IntSet<u64>>,
 }
 
 impl LogDataStore {
@@ -44,12 +47,12 @@ impl LogDataStore {
     }
 
     pub fn insert(&mut self, data_msg: &DataMsg) -> crate::Result<()> {
-        self.register_obj_path(data_msg);
+        crate::profile_function!();
 
         let mut batcher = Batcher::default();
+        let mut hashed_batch_indices = None;
 
         for (time_source, time_value) in &data_msg.time_point.0 {
-            let store = self.entry(time_source, time_value.typ());
             let time = time_value.as_i64();
             let id = data_msg.id;
 
@@ -58,19 +61,36 @@ impl LogDataStore {
                 field_name: fname,
             } = data_msg.data_path.clone();
 
-            match data_msg.data.clone() {
+            match &data_msg.data {
                 LoggedData::Single(data) => {
-                    log_types::data_map!(data, |data| store
+                    self.obj_path_from_hash
+                        .entry(*op.hash())
+                        .or_insert_with(|| op.clone());
+
+                    let store = self.entry(time_source, time_value.typ());
+                    log_types::data_map!(data.clone(), |data| store
                         .insert_individual(op, fname, time, id, data))
                 }
                 LoggedData::Batch { indices, data } => {
+                    let indices = hashed_batch_indices.get_or_insert_with(|| {
+                        crate::profile_scope!("hash_indices");
+                        indices
+                            .iter()
+                            .map(|index| IndexKey::new(index.clone()))
+                            .collect_vec()
+                    });
+
+                    self.register_batch_obj_paths(data_msg, &indices);
+
+                    let store = self.entry(time_source, time_value.typ());
                     log_types::data_vec_map!(data, |vec| {
                         let batch = batcher.batch(indices, vec);
                         store.insert_batch(&op, fname, time, id, batch)
                     })
                 }
                 LoggedData::BatchSplat(data) => {
-                    log_types::data_map!(data, |data| store
+                    let store = self.entry(time_source, time_value.typ());
+                    log_types::data_map!(data.clone(), |data| store
                         .insert_batch_splat(op, fname, time, id, data))
                 }
             }?;
@@ -79,41 +99,37 @@ impl LogDataStore {
         Ok(())
     }
 
-    fn register_obj_path(&mut self, data_msg: &DataMsg) {
+    #[inline(never)]
+    fn register_batch_obj_paths(&mut self, data_msg: &DataMsg, indices: &[log_types::IndexKey]) {
+        crate::profile_function!();
         let obj_path = data_msg.data_path.obj_path();
 
-        match &data_msg.data {
-            LoggedData::Single(_) => {
-                self.obj_path_from_hash
-                    .entry(*obj_path.hash())
-                    .or_insert_with(|| obj_path.clone());
-            }
-            LoggedData::Batch { indices, .. } => {
-                for index_path_suffix in indices {
-                    crate::profile_scope!("Register batch obj paths");
-                    let (obj_type_path, index_path_prefix) =
-                        obj_path.clone().into_type_path_and_index_path();
-                    // TODO: speed this up. A lot. Please.
-                    let mut index_path = index_path_prefix.clone();
-                    index_path.replace_last_placeholder_with(index_path_suffix.clone().into());
-                    let obj_path = ObjPath::new(obj_type_path.clone(), index_path);
-                    self.obj_path_from_hash.insert(*obj_path.hash(), obj_path);
-                }
-            }
-            LoggedData::BatchSplat(_) => {
-                // We don't have a way to know which indices might be used, but that fine.
-                // BatchSplat may not be used on primary fields (e.g. `pos`) anyway,
-                // so all indices that will actually be used will be handled by the primary fields.
+        let registered_suffixes = self
+            .regiestered_batch_paths
+            .entry(*data_msg.data_path.obj_path.hash())
+            .or_default();
+
+        for index_path_suffix in indices {
+            if registered_suffixes.insert(index_path_suffix.hash64()) {
+                // TODO: speed this up. A lot. Please.
+                let (obj_type_path, index_path_prefix) =
+                    obj_path.clone().into_type_path_and_index_path();
+                let mut index_path = index_path_prefix.clone();
+                index_path.replace_last_placeholder_with(index_path_suffix.clone());
+                let obj_path = ObjPath::new(obj_type_path.clone(), index_path);
+                self.obj_path_from_hash.insert(*obj_path.hash(), obj_path);
             }
         }
     }
 }
 
-fn batch<T>(indices: Vec<log_types::Index>, data: Vec<T>) -> Batch<T> {
+#[inline(never)]
+fn create_batch<T: Clone>(indices: &[log_types::IndexKey], data: &[T]) -> Batch<T> {
+    crate::profile_function!(std::any::type_name::<T>());
     assert_eq!(indices.len(), data.len()); // TODO: return Result instead
     std::sync::Arc::new(
         itertools::izip!(indices, data)
-            .map(|(index, value)| (IndexKey::new(index), value))
+            .map(|(index, value)| (index.clone(), value.clone()))
             .collect(),
     )
 }
@@ -125,11 +141,15 @@ struct Batcher {
 }
 
 impl Batcher {
-    pub fn batch<T: 'static>(&mut self, indices: Vec<log_types::Index>, data: Vec<T>) -> Batch<T> {
+    pub fn batch<T: 'static + Clone>(
+        &mut self,
+        indices: &[log_types::IndexKey],
+        data: &[T],
+    ) -> Batch<T> {
         if let Some(batch) = &self.batch {
             batch.downcast_ref::<Batch<T>>().unwrap().clone()
         } else {
-            let batch = batch(indices, data);
+            let batch = create_batch(indices, data);
             self.batch = Some(Box::new(batch.clone()));
             batch
         }

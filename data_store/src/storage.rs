@@ -44,6 +44,7 @@ impl<Time> Default for TypePathDataStore<Time> {
 }
 
 impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
+    #[inline(never)]
     pub fn insert_individual<T: DataTrait>(
         &mut self,
         obj_path: ObjPath,
@@ -61,6 +62,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
     }
 
     /// `parent_obj_path.index_path` should have `Index::Placeholder` in the last position.
+    #[inline(never)]
     pub fn insert_batch<T: DataTrait>(
         &mut self,
         parent_obj_path: &ObjPath,
@@ -69,7 +71,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         log_id: LogId,
         batch: Batch<T>,
     ) -> Result<()> {
-        crate::profile_function!();
+        crate::profile_function!(std::any::type_name::<T>());
         assert!(parent_obj_path.index_path().has_placeholder_last());
 
         self.objects
@@ -88,6 +90,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
     /// Use the same value for all indices of a batch.
     ///
     /// `parent_obj_path.index_path` should have `Index::Placeholder` in the last position.
+    #[inline(never)]
     pub fn insert_batch_splat<T: DataTrait>(
         &mut self,
         parent_obj_path: ObjPath,
@@ -179,18 +182,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         log_id: LogId,
         batch: Batch<T>,
     ) -> Result<()> {
-        for index_path_suffix in batch.keys() {
-            if !self
-                .obj_paths_from_batch_suffix
-                .contains_key(index_path_suffix)
-            {
-                let obj_path = parent_obj_path
-                    .clone()
-                    .replace_last_placeholder_with(index_path_suffix.clone());
-                self.obj_paths_from_batch_suffix
-                    .insert(index_path_suffix.clone(), obj_path);
-            }
-        }
+        self.register_batch_obj_paths(&batch, parent_obj_path);
 
         if let Some(store) = self
             .fields
@@ -221,6 +213,26 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
             store.insert_batch_splat(index_path_prefix, time, log_id, value)
         } else {
             Err(Error::WrongType)
+        }
+    }
+
+    #[inline(never)]
+    fn register_batch_obj_paths<T: DataTrait>(
+        &mut self,
+        batch: &Batch<T>,
+        parent_obj_path: &ObjPath,
+    ) {
+        for index_path_suffix in batch.keys() {
+            if !self
+                .obj_paths_from_batch_suffix
+                .contains_key(index_path_suffix)
+            {
+                let obj_path = parent_obj_path
+                    .clone()
+                    .replace_last_placeholder_with(index_path_suffix.clone());
+                self.obj_paths_from_batch_suffix
+                    .insert(index_path_suffix.clone(), obj_path);
+            }
         }
     }
 

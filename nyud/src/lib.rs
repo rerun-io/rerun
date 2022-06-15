@@ -58,7 +58,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
     let mut file_contents = vec![];
 
     let mut num_depth_images = 0;
-    const MAX_DEPTH_IMAGES: usize = 8; // They are so slow
+    const MAX_DEPTH_IMAGES: usize = 32;
 
     let obj_path = ObjPathBuilder::from("points") / Index::Placeholder;
 
@@ -180,6 +180,8 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                         data: DataVec::Vec3(positions),
                     },
                 ));
+
+                tracing::info!("{} points in point cloud", indices.len());
             }
         }
     }
