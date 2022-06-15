@@ -361,6 +361,13 @@ pub(crate) fn ui_logged_data(
     match data {
         LoggedData::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
         LoggedData::Single(data) => ui_data(context, ui, id, data, preview),
+        LoggedData::BatchSplat(data) => {
+            ui.horizontal(|ui| {
+                ui.label("Batch Splat:");
+                ui_data(context, ui, id, data, preview)
+            })
+            .response
+        }
     }
 }
 

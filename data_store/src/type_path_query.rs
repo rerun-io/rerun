@@ -45,6 +45,9 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                     );
                 }
             }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
+            }
         }
     }
 
@@ -104,6 +107,9 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }
@@ -177,6 +183,9 @@ pub fn visit_type_data_2<
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }
@@ -258,6 +267,9 @@ pub fn visit_type_data_3<
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }

@@ -59,15 +59,19 @@ impl LogDataStore {
             } = data_msg.data_path.clone();
 
             match data_msg.data.clone() {
+                LoggedData::Single(data) => {
+                    log_types::data_map!(data, |data| store
+                        .insert_individual(op, fname, time, id, data))
+                }
                 LoggedData::Batch { indices, data } => {
                     log_types::data_vec_map!(data, |vec| {
                         let batch = batcher.batch(indices, vec);
                         store.insert_batch(&op, fname, time, id, batch)
                     })
                 }
-                LoggedData::Single(data) => {
+                LoggedData::BatchSplat(data) => {
                     log_types::data_map!(data, |data| store
-                        .insert_individual(op, fname, time, id, data))
+                        .insert_batch_splat(op, fname, time, id, data))
                 }
             }?;
         }
@@ -79,6 +83,11 @@ impl LogDataStore {
         let obj_path = data_msg.data_path.obj_path();
 
         match &data_msg.data {
+            LoggedData::Single(_) => {
+                self.obj_path_from_hash
+                    .entry(*obj_path.hash())
+                    .or_insert_with(|| obj_path.clone());
+            }
             LoggedData::Batch { indices, .. } => {
                 for index_path_suffix in indices {
                     crate::profile_scope!("Register batch obj paths");
@@ -91,10 +100,10 @@ impl LogDataStore {
                     self.obj_path_from_hash.insert(*obj_path.hash(), obj_path);
                 }
             }
-            LoggedData::Single(_) => {
-                self.obj_path_from_hash
-                    .entry(*obj_path.hash())
-                    .or_insert_with(|| obj_path.clone());
+            LoggedData::BatchSplat(_) => {
+                // We don't have a way to know which indices might be used, but that fine.
+                // BatchSplat may not be used on primary fields (e.g. `pos`) anyway,
+                // so all indices that will actually be used will be handled by the primary fields.
             }
         }
     }

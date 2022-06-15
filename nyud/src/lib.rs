@@ -60,6 +60,29 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
     let mut num_depth_images = 0;
     const MAX_DEPTH_IMAGES: usize = 8; // They are so slow
 
+    let obj_path = ObjPathBuilder::from("points") / Index::Placeholder;
+
+    {
+        // TODO: better way to do "forever and always"
+        let time_point =
+            time_point([("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0)))]);
+
+        logger.log(data_msg(
+            &time_point,
+            &obj_path,
+            "space",
+            LoggedData::BatchSplat(Data::Space(ObjPath::from("world"))),
+        ));
+
+        // TODO: base color on depth?
+        logger.log(data_msg(
+            &time_point,
+            &obj_path,
+            "color",
+            LoggedData::BatchSplat(Data::Color([255_u8; 4])),
+        ));
+    }
+
     for i in 0..archive.len() {
         let file = archive.by_index_raw(i).unwrap();
         let file_name = file.name().to_owned();
@@ -77,7 +100,6 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
             let file_name_parts = file_name.split('-').collect_vec();
             let time = file_name_parts[file_name_parts.len() - 2];
             let time = Time::from_seconds_since_epoch(time.parse().unwrap());
-
             let time_point = time_point([("time", TimeValue::Time(time))]);
 
             if file_name.ends_with(".ppm") {
@@ -131,8 +153,8 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                 ]);
                 let world_from_pixel = intrinsics.inverse();
 
-                let mut indices = vec![];
-                let mut positions = vec![];
+                let mut indices = Vec::with_capacity((w * h) as usize);
+                let mut positions = Vec::with_capacity((w * h) as usize);
 
                 for y in 0..h {
                     for x in 0..w {
@@ -149,8 +171,6 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     }
                 }
 
-                let obj_path = ObjPathBuilder::from("points") / Index::Placeholder;
-
                 logger.log(data_msg(
                     &time_point,
                     &obj_path,
@@ -158,29 +178,6 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     LoggedData::Batch {
                         indices: indices.clone(),
                         data: DataVec::Vec3(positions),
-                    },
-                ));
-
-                let spaces = vec![ObjPath::from("world"); indices.len()];
-                logger.log(data_msg(
-                    &time_point,
-                    &obj_path,
-                    "space",
-                    LoggedData::Batch {
-                        indices: indices.clone(),
-                        data: DataVec::Space(spaces),
-                    },
-                ));
-
-                // TODO: base color on depth?
-                let colors = vec![[255_u8; 4]; indices.len()];
-                logger.log(data_msg(
-                    &time_point,
-                    &obj_path,
-                    "color",
-                    LoggedData::Batch {
-                        indices,
-                        data: DataVec::Color(colors),
                     },
                 ));
             }

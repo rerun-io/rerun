@@ -152,13 +152,21 @@ pub enum LoggedData {
     ///
     /// The index replaces the last index in [`DataMsg.data_path`], which should be [`Index::Placeholder]`.
     Batch { indices: Vec<Index>, data: DataVec },
+
+    /// Log the same value for all objects sharing the same index prefix (i.e. ignoring the last index).
+    ///
+    /// The last index in [`DataMsg.data_path`] should be [`Index::Placeholder]`.
+    ///
+    /// You can only use this for optional fields such as `color`, `space` etc.
+    /// You can NOT use it for primary fields such as `pos`.
+    BatchSplat(Data),
 }
 
 impl LoggedData {
     #[inline]
     pub fn data_type(&self) -> DataType {
         match self {
-            Self::Single(data) => data.data_type(),
+            Self::Single(data) | Self::BatchSplat(data) => data.data_type(),
             Self::Batch { data, .. } => data.data_type(),
         }
     }
