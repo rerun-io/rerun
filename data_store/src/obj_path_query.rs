@@ -39,7 +39,7 @@ pub fn visit_obj_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                         |_time, (log_id, primary_batch)| {
                             if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 visit(
-                                    obj_store.obj_path_or_die(&index_path_suffix),
+                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
                                     log_id,
                                     primary_value,
                                 );
@@ -105,7 +105,7 @@ pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTr
                                     BatchedDataReader::new(child1_store, &index_path_prefix, time);
 
                                 visit(
-                                    obj_store.obj_path_or_die(&index_path_suffix),
+                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
                                     log_id,
                                     primary_value,
                                     child1_reader.latest_at(&index_path_suffix),
@@ -184,7 +184,7 @@ pub fn visit_obj_data_2<
                                     BatchedDataReader::new(child2_store, &index_path_prefix, time);
 
                                 visit(
-                                    obj_store.obj_path_or_die(&index_path_suffix),
+                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
                                     log_id,
                                     primary_value,
                                     child1_reader.latest_at(&index_path_suffix),
@@ -271,7 +271,7 @@ pub fn visit_obj_data_3<
                                     BatchedDataReader::new(child3_store, &index_path_prefix, time);
 
                                 visit(
-                                    obj_store.obj_path_or_die(&index_path_suffix),
+                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
                                     log_id,
                                     primary_value,
                                     child1_reader.latest_at(&index_path_suffix),

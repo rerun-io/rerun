@@ -57,8 +57,9 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
 
     let mut file_contents = vec![];
 
-    let mut num_depth_images = 0;
-    const MAX_DEPTH_IMAGES: usize = 32;
+    // logging depth images is slow (atm), so we don't log every frame
+    let mut depth_images_counter = 0;
+    const DEPTH_IMAGE_INTERVAL: usize = 16;
 
     let obj_path = ObjPathBuilder::from("points") / Index::Placeholder;
 
@@ -121,9 +122,9 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                 ));
             }
 
-            if file_name.ends_with(".pgm") && num_depth_images < MAX_DEPTH_IMAGES {
-                num_depth_images += 1;
-
+            let is_depth_image = file_name.ends_with(".pgm");
+            depth_images_counter += is_depth_image as usize;
+            if depth_images_counter % DEPTH_IMAGE_INTERVAL == 1 {
                 let depth_image = image::load_from_memory(&file_contents)
                     .unwrap()
                     .into_luma16();

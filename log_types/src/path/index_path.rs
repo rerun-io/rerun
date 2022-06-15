@@ -2,19 +2,57 @@ use crate::{hash::Hash128, path::Index};
 
 // ----------------------------------------------------------------------------
 
-/// Like `Index` but also includes a precomputed hash.
+/// A 128 bit hash of [`Index`] and [`IndexKey`] with negligible chance of collision.
+#[derive(Copy, Clone, Eq)]
+pub struct IndexHash(Hash128);
+
+impl IndexHash {
+    #[inline]
+    pub fn hash64(&self) -> u64 {
+        self.0.hash64()
+    }
+}
+
+impl std::hash::Hash for IndexHash {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.0.hash64());
+    }
+}
+
+impl std::cmp::PartialEq for IndexHash {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl nohash_hasher::IsEnabled for IndexHash {}
+
+impl std::fmt::Debug for IndexHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!(
+            "IndexHash({:016X}{:016X})",
+            self.0.first64(),
+            self.0.second64()
+        ))
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Like [`Index`] but also includes a precomputed hash.
 #[derive(Clone, Eq)]
 pub struct IndexKey {
-    hash: Hash128,
-    // boxed to keep size of self small.
-    index: Box<Index>,
+    hash: IndexHash,
+    index: Box<Index>, // boxing this improves runtime performance, but hurts create insert. TODO: use just hash in more places?
 }
 
 impl IndexKey {
     #[inline]
     pub fn new(index: Index) -> Self {
         Self {
-            hash: Hash128::hash(&index),
+            hash: IndexHash(Hash128::hash(&index)),
             index: Box::new(index),
         }
     }
@@ -22,6 +60,11 @@ impl IndexKey {
     #[inline]
     pub fn index(&self) -> &Index {
         &self.index
+    }
+
+    #[inline]
+    pub fn hash(&self) -> &IndexHash {
+        &self.hash
     }
 
     #[inline]
@@ -117,14 +160,14 @@ impl IndexPath {
         self.components.push(*index.index);
         self.hashes[0] = self.hashes[0].rotate_left(5);
         self.hashes[1] = self.hashes[1].rotate_left(5);
-        self.hashes[0] ^= index.hash.first64();
-        self.hashes[1] ^= index.hash.second64();
+        self.hashes[0] ^= index.hash.0.first64();
+        self.hashes[1] ^= index.hash.0.second64();
     }
 
     pub fn pop(&mut self) -> Option<IndexKey> {
         let index = IndexKey::new(self.components.pop()?);
-        self.hashes[0] ^= index.hash.first64();
-        self.hashes[1] ^= index.hash.second64();
+        self.hashes[0] ^= index.hash.0.first64();
+        self.hashes[1] ^= index.hash.0.second64();
         self.hashes[0] = self.hashes[0].rotate_right(5);
         self.hashes[1] = self.hashes[1].rotate_right(5);
         Some(index)

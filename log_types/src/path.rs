@@ -6,7 +6,7 @@ pub(crate) mod obj_path_impl;
 mod obj_type_path;
 
 pub use data_path::DataPath;
-pub use index_path::{IndexKey, IndexPath};
+pub use index_path::{IndexHash, IndexKey, IndexPath};
 pub use obj_path::{ObjPath, ObjPathHash};
 pub use obj_path_builder::ObjPathBuilder;
 pub use obj_type_path::ObjTypePath;

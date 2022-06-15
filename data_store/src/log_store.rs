@@ -80,7 +80,7 @@ impl LogDataStore {
                             .collect_vec()
                     });
 
-                    self.register_batch_obj_paths(data_msg, &indices);
+                    self.register_batch_obj_paths(data_msg, indices);
 
                     let store = self.entry(time_source, time_value.typ());
                     log_types::data_vec_map!(data, |vec| {

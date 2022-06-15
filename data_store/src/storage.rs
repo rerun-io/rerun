@@ -5,7 +5,8 @@ use ahash::AHashMap;
 use nohash_hasher::IntMap;
 
 use log_types::{
-    data_types, DataTrait, DataType, DataVec, FieldName, IndexKey, IndexPath, LogId, ObjPath,
+    data_types, DataTrait, DataType, DataVec, FieldName, IndexHash, IndexKey, IndexPath, LogId,
+    ObjPath,
 };
 
 use crate::{ObjTypePath, TimeQuery};
@@ -139,7 +140,7 @@ pub struct ObjStore<Time> {
     fields: AHashMap<FieldName, DataStoreTypeErased<Time>>,
 
     /// For each index suffix we know, what is the full object path?
-    obj_paths_from_batch_suffix: nohash_hasher::IntMap<IndexKey, ObjPath>,
+    obj_paths_from_batch_suffix: nohash_hasher::IntMap<IndexHash, ObjPath>,
 }
 
 impl<Time> Default for ObjStore<Time> {
@@ -225,13 +226,13 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         for index_path_suffix in batch.keys() {
             if !self
                 .obj_paths_from_batch_suffix
-                .contains_key(index_path_suffix)
+                .contains_key(index_path_suffix.hash())
             {
                 let obj_path = parent_obj_path
                     .clone()
                     .replace_last_placeholder_with(index_path_suffix.clone());
                 self.obj_paths_from_batch_suffix
-                    .insert(index_path_suffix.clone(), obj_path);
+                    .insert(*index_path_suffix.hash(), obj_path);
             }
         }
     }
@@ -250,7 +251,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         self.fields.iter()
     }
 
-    pub(crate) fn obj_path_or_die(&self, index_path_suffix: &IndexKey) -> &ObjPath {
+    pub(crate) fn obj_path_or_die(&self, index_path_suffix: &IndexHash) -> &ObjPath {
         self.obj_paths_from_batch_suffix
             .get(index_path_suffix)
             .unwrap()

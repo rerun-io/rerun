@@ -36,7 +36,7 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                         |_time, (log_id, primary_batch)| {
                             for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
                                     log_id,
                                     primary_value,
                                 );
@@ -98,7 +98,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
 
                             for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
                                     log_id,
                                     primary_value,
                                     child1_reader.latest_at(index_path_suffix),
@@ -173,7 +173,7 @@ pub fn visit_type_data_2<
 
                             for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
                                     log_id,
                                     primary_value,
                                     child1_reader.latest_at(index_path_suffix),
@@ -256,7 +256,7 @@ pub fn visit_type_data_3<
 
                             for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
                                     log_id,
                                     primary_value,
                                     child1_reader.latest_at(index_path_suffix),

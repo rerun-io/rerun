@@ -5,7 +5,7 @@ use crate::{
 
 // ----------------------------------------------------------------------------
 
-/// A 128 bit hash with negligible chance of collision.
+/// A 128 bit hash of [`ObjPath`] with negligible chance of collision.
 #[derive(Copy, Clone, Eq)]
 pub struct ObjPathHash(Hash128);
 
