@@ -1,7 +1,8 @@
 use nohash_hasher::IntMap;
 
 use log_types::{
-    Data, DataMsg, DataPath, DataVec, IndexKey, ObjPath, ObjPathHash, TimeSource, TimeType,
+    Data, DataMsg, DataPath, DataVec, IndexKey, LoggedData, ObjPath, ObjPathHash, TimeSource,
+    TimeType,
 };
 
 use crate::{Batch, TypePathDataStore};
@@ -58,33 +59,16 @@ impl LogDataStore {
             } = data_msg.data_path.clone();
 
             match data_msg.data.clone() {
-                Data::Batch { indices, data } => {
+                LoggedData::Batch { indices, data } => {
                     log_types::data_vec_map!(data, |vec| {
                         let batch = batcher.batch(indices, vec);
                         store.insert_batch(&op, fname, time, id, batch)
                     })
                 }
-
-                Data::I32(data) => store.insert_individual(op, fname, time, id, data),
-                Data::F32(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Color(data) => store.insert_individual(op, fname, time, id, data),
-                Data::String(data) => store.insert_individual(op, fname, time, id, data),
-
-                Data::Vec2(data) => store.insert_individual(op, fname, time, id, data),
-                Data::BBox2D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::LineSegments2D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Image(data) => store.insert_individual(op, fname, time, id, data),
-
-                Data::Vec3(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Box3(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Path3D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::LineSegments3D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Mesh3D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Camera(data) => store.insert_individual(op, fname, time, id, data),
-
-                Data::Vecf32(data) => store.insert_individual(op, fname, time, id, data),
-
-                Data::Space(data) => store.insert_individual(op, fname, time, id, data),
+                LoggedData::Single(data) => {
+                    log_types::data_map!(data, |data| store
+                        .insert_individual(op, fname, time, id, data))
+                }
             }?;
         }
 
@@ -94,21 +78,24 @@ impl LogDataStore {
     fn register_obj_path(&mut self, data_msg: &DataMsg) {
         let obj_path = data_msg.data_path.obj_path();
 
-        if let Data::Batch { indices, .. } = &data_msg.data {
-            for index_path_suffix in indices {
-                crate::profile_scope!("Register batch obj paths");
-                let (obj_type_path, index_path_prefix) =
-                    obj_path.clone().into_type_path_and_index_path();
-                // TODO: speed this up. A lot. Please.
-                let mut index_path = index_path_prefix.clone();
-                index_path.replace_last_placeholder_with(index_path_suffix.clone().into());
-                let obj_path = ObjPath::new(obj_type_path.clone(), index_path);
-                self.obj_path_from_hash.insert(*obj_path.hash(), obj_path);
+        match &data_msg.data {
+            LoggedData::Batch { indices, .. } => {
+                for index_path_suffix in indices {
+                    crate::profile_scope!("Register batch obj paths");
+                    let (obj_type_path, index_path_prefix) =
+                        obj_path.clone().into_type_path_and_index_path();
+                    // TODO: speed this up. A lot. Please.
+                    let mut index_path = index_path_prefix.clone();
+                    index_path.replace_last_placeholder_with(index_path_suffix.clone().into());
+                    let obj_path = ObjPath::new(obj_type_path.clone(), index_path);
+                    self.obj_path_from_hash.insert(*obj_path.hash(), obj_path);
+                }
             }
-        } else {
-            self.obj_path_from_hash
-                .entry(*obj_path.hash())
-                .or_insert_with(|| obj_path.clone());
+            LoggedData::Single(_) => {
+                self.obj_path_from_hash
+                    .entry(*obj_path.hash())
+                    .or_insert_with(|| obj_path.clone());
+            }
         }
     }
 }

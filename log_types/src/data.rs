@@ -1,4 +1,4 @@
-use crate::{impl_into_enum, Index, ObjPath};
+use crate::{impl_into_enum, ObjPath};
 
 // ----------------------------------------------------------------------------
 
@@ -160,13 +160,6 @@ pub mod data_types {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Data {
-    Batch {
-        indices: Vec<Index>,
-        data: DataVec,
-    },
-
-    // ----------------------------
-
     // 1D:
     I32(i32),
     F32(f32),
@@ -201,10 +194,8 @@ pub enum Data {
 
 impl Data {
     #[inline]
-    pub fn typ(&self) -> DataType {
+    pub fn data_type(&self) -> DataType {
         match self {
-            Self::Batch { data, .. } => data.data_type(),
-
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
             Self::Color(_) => DataType::Color,
@@ -266,6 +257,37 @@ pub enum DataVec {
 
     Space(Vec<ObjPath>),
 }
+
+/// Do the same thing with all members of a [`Data`].
+///
+/// ```
+/// # use log_types::{Data, data_map};
+/// # let data: Data = Data::F32(0.0);
+/// data_map!(data, |data| dbg!(data));
+/// ```
+#[macro_export]
+macro_rules! data_map(
+    ($data: expr, |$value: pat_param| $action: expr) => ({
+        match $data {
+            Data::I32($value) => $action,
+            Data::F32($value) => $action,
+            Data::Color($value) => $action,
+            Data::String($value) => $action,
+            Data::Vec2($value) => $action,
+            Data::BBox2D($value) => $action,
+            Data::LineSegments2D($value) => $action,
+            Data::Image($value) => $action,
+            Data::Vec3($value) => $action,
+            Data::Box3($value) => $action,
+            Data::Path3D($value) => $action,
+            Data::LineSegments3D($value) => $action,
+            Data::Mesh3D($value) => $action,
+            Data::Camera($value) => $action,
+            Data::Vecf32($value) => $action,
+            Data::Space($value) => $action,
+        }
+    });
+);
 
 /// Do the same thing with all members of a [`DataVec`].
 ///

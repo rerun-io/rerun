@@ -1,6 +1,7 @@
-use data_store::ObjPath;
 use itertools::Itertools;
-use log_types::{Data, DataMsg, DataPath, LogId};
+
+use data_store::ObjPath;
+use log_types::{Data, DataMsg, DataPath, LogId, LoggedData};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
@@ -166,7 +167,7 @@ pub(crate) fn show_detailed_data_msg(
         data,
     } = msg;
 
-    let is_image = matches!(msg.data, Data::Image(_));
+    let is_image = matches!(msg.data, LoggedData::Single(Data::Image(_)));
 
     egui::Grid::new("fields")
         .striped(true)
@@ -185,12 +186,12 @@ pub(crate) fn show_detailed_data_msg(
 
             if !is_image {
                 ui.monospace("data:");
-                crate::space_view::ui_data(context, ui, id, data, Preview::Medium);
+                crate::space_view::ui_logged_data(context, ui, id, data, Preview::Medium);
                 ui.end_row();
             }
         });
 
-    if let Data::Image(image) = &msg.data {
+    if let LoggedData::Single(Data::Image(image)) = &msg.data {
         show_image(context, ui, id, image);
     }
 }

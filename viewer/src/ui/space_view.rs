@@ -330,7 +330,7 @@ pub(crate) fn show_log_msg(
             ui.end_row();
 
             ui.monospace("data:");
-            ui_data(context, ui, id, data, preview);
+            ui_logged_data(context, ui, id, data, preview);
             ui.end_row();
         });
 }
@@ -351,6 +351,19 @@ pub(crate) fn ui_time_point(
     });
 }
 
+pub(crate) fn ui_logged_data(
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
+    id: &LogId,
+    data: &LoggedData,
+    preview: Preview,
+) -> egui::Response {
+    match data {
+        LoggedData::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
+        LoggedData::Single(data) => ui_data(context, ui, id, data, preview),
+    }
+}
+
 pub(crate) fn ui_data(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
@@ -359,8 +372,6 @@ pub(crate) fn ui_data(
     preview: Preview,
 ) -> egui::Response {
     match data {
-        Data::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
-
         Data::I32(value) => ui.label(value.to_string()),
         Data::F32(value) => ui.label(value.to_string()),
         Data::Color([r, g, b, a]) => {

@@ -155,7 +155,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     &time_point,
                     &obj_path,
                     "pos",
-                    Data::Batch {
+                    LoggedData::Batch {
                         indices: indices.clone(),
                         data: DataVec::Vec3(positions),
                     },
@@ -166,7 +166,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     &time_point,
                     &obj_path,
                     "space",
-                    Data::Batch {
+                    LoggedData::Batch {
                         indices: indices.clone(),
                         data: DataVec::Space(spaces),
                     },
@@ -178,7 +178,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                     &time_point,
                     &obj_path,
                     "color",
-                    Data::Batch {
+                    LoggedData::Batch {
                         indices,
                         data: DataVec::Color(colors),
                     },

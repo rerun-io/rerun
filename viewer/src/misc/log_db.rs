@@ -189,7 +189,7 @@ impl DataColumns {
             .insert(msg.id);
 
         self.per_type
-            .entry(msg.data.typ())
+            .entry(msg.data.data_type())
             .or_default()
             .insert(msg.id);
     }
