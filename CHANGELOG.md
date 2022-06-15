@@ -2,8 +2,7 @@
 
 A crude and incomplete time-line of user-facing things added, removed and changed. Newest on top.
 
-* 2022-05-30: Rename `ObjectPath` to `DataPath`.
-* 2022-05-22: Remove `PersistId/TempId` and replace with `ObjectPathComponent::Index`.
+* 2022-06-15: Add support for batch logging ([#13](https://github.com/rerun-io/rerun/pull/13)).
 * 2022-05-12: Click on a point to center camera on that point in the 3D view.
 * 2022-05-12: Use WSAD and QE to move camera in 3D view.
 * 2022-05-09: Step forward/back in time with arrow keys.

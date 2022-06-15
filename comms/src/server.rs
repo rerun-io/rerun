@@ -61,8 +61,8 @@ fn to_broadcast_stream(
     let (tx, _) = tokio::sync::broadcast::channel(1024);
     let tx1 = tx.clone();
     tokio::task::spawn_blocking(move || {
-        while let Ok(data_msg) = log_rx.recv() {
-            let bytes = crate::encode_log_msg(&data_msg);
+        while let Ok(log_msg) = log_rx.recv() {
+            let bytes = crate::encode_log_msg(&log_msg);
             let bytes: Arc<[u8]> = bytes.into();
             history.lock().push(bytes.clone());
 

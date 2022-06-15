@@ -28,11 +28,11 @@ pub fn default_server_url() -> String {
 
 const PREFIX: [u8; 4] = *b"RR00";
 
-pub fn encode_log_msg(data_msg: &LogMsg) -> Vec<u8> {
+pub fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
     use bincode::Options as _;
     let mut bytes = PREFIX.to_vec();
     bincode::DefaultOptions::new()
-        .serialize_into(&mut bytes, data_msg)
+        .serialize_into(&mut bytes, log_msg)
         .unwrap();
     bytes
 }

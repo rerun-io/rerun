@@ -29,15 +29,6 @@ impl DataPath {
     pub fn field_name(&self) -> &FieldName {
         &self.field_name
     }
-
-    /// Another field on the same object
-    #[must_use]
-    pub fn sibling(&self, field_name: impl Into<FieldName>) -> Self {
-        Self {
-            obj_path: self.obj_path.clone(),
-            field_name: field_name.into(),
-        }
-    }
 }
 
 impl std::fmt::Display for DataPath {

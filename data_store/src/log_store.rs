@@ -114,7 +114,7 @@ impl LogDataStore {
 }
 
 fn batch<T>(indices: Vec<log_types::Index>, data: Vec<T>) -> Batch<T> {
-    assert_eq!(indices.len(), data.len()); // TODO: runtime assert
+    assert_eq!(indices.len(), data.len()); // TODO: return Result instead
     std::sync::Arc::new(
         itertools::izip!(indices, data)
             .map(|(index, value)| (IndexKey::new(index), value))

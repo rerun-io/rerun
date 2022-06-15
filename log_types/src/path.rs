@@ -77,7 +77,7 @@ pub enum Index {
     String(String),
 
     /// Used as the last index when logging a batch of data.
-    Placeholder, // TODO: `ObjPathComp::IndexPlaceholder` instead?
+    Placeholder,
 }
 
 impl std::fmt::Display for Index {

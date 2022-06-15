@@ -41,14 +41,6 @@ impl ObjPathBuilder {
         Self::new(self.components[0..self.components.len() - 1].to_vec())
     }
 
-    #[must_use]
-    pub fn sibling(&self, last_comp: impl Into<ObjPathComp>) -> Self {
-        let mut path = self.components.clone();
-        path.pop(); // TODO: handle root?
-        path.push(last_comp.into());
-        Self::new(path)
-    }
-
     pub fn push(&mut self, component: ObjPathComp) {
         // TODO(emilk): optimize DataPath construction.
         // This is quite slow, but we only do this in rare circumstances, so it is ok for now.

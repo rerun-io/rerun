@@ -24,7 +24,7 @@ impl Connection {
                 }
                 WsEvent::Message(message) => match message {
                     WsMessage::Binary(binary) => match decode_log_msg(&binary) {
-                        Ok(data_msg) => on_log_msg(data_msg),
+                        Ok(log_msg) => on_log_msg(log_msg),
                         Err(err) => {
                             tracing::error!("Failed to parse message: {:?}", err);
                             ControlFlow::Break(())
