@@ -7,11 +7,13 @@ pub mod encoding;
 
 mod data;
 pub mod hash;
+mod index;
 pub mod objects;
 mod path;
 mod time;
 
 pub use data::*;
+pub use index::*;
 pub use objects::ObjectType;
 pub use path::*;
 pub use time::{Duration, Time};

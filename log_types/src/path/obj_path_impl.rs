@@ -1,4 +1,7 @@
-use crate::path::{Index, IndexPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp};
+use crate::{
+    path::{IndexPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp},
+    Index,
+};
 
 /// `camera / "left" / points / #42`
 ///

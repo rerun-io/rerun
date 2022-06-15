@@ -263,7 +263,7 @@ pub enum DataVec {
 /// ```
 /// # use log_types::{Data, data_map};
 /// # let data: Data = Data::F32(0.0);
-/// data_map!(data, |data| dbg!(data));
+/// data_map!(data, |data| { dbg!(data); });
 /// ```
 #[macro_export]
 macro_rules! data_map(

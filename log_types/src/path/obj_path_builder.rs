@@ -1,7 +1,4 @@
-use crate::{
-    path::{Index, ObjPathComp},
-    ObjPath,
-};
+use crate::{path::ObjPathComp, Index, ObjPath};
 
 use super::obj_path::ObjPathComponentRef;
 
