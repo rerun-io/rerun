@@ -45,7 +45,8 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
 }
 
 use data_store::*;
-use log_types::{IndexKey, LogId, TimeValue};
+use itertools::Itertools;
+use log_types::{I LogId, TimeValue};
 
 impl TrackingAllocator {
     fn used_bytes(&self) -> usize {
@@ -142,16 +143,18 @@ fn big_clouds_batched() {
     const NUM_FRAMES: usize = 100;
     const NUM_POINTS_PER_CAMERA: usize = 1_000;
 
+    let indices = (0..NUM_POINTS_PER_CAMERA)
+        .map(|i| Index::Sequence(i as _))
+        .collect_vec();
+    let point: [f32; 3] = [1.0, 2.0, 3.0];
+    let positions = vec![point; NUM_POINTS_PER_CAMERA];
+
     let mut store = TypePathDataStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {
         for camera in 0..NUM_CAMERAS {
-            let batch =
-                std::sync::Arc::new(Batch::from_iterator((0..NUM_POINTS_PER_CAMERA).map(|i| {
-                    let point: [f32; 3] = [1.0, 2.0, 3.0];
-                    (IndexKey::new(Index::Sequence(i as _)), point)
-                })));
+            let batch = std::sync::Arc::new(Batch::new(&indices, &positions));
             let (obj_type_path, index_path) =
                 obj_path(camera as _, 0).into_type_path_and_index_path();
             let (index_path_prefix, _) = index_path.replace_last_with_placeholder();

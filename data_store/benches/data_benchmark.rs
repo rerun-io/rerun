@@ -8,7 +8,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use data_store::TypePathDataStore;
 use data_store::*;
 use itertools::Itertools;
-use log_types::{FieldName, IndexKey, LogId};
+use log_types::{FieldName, LogId};
 
 const NUM_FRAMES: i64 = 1_000; // this can have a big impact on performance
 const NUM_POINTS_PER_CAMERA: u64 = 1_000;
@@ -74,7 +74,7 @@ fn generate_data(individual_pos: bool, individual_radius: bool) -> TypePathDataS
     let type_path = type_path();
 
     let indices = (0..NUM_POINTS_PER_CAMERA)
-        .map(|pi| IndexKey::new(Index::Sequence(pi)))
+        .map(|pi| Index::Sequence(pi))
         .collect_vec();
     let positions = vec![[1.0_f32; 3]; NUM_POINTS_PER_CAMERA as usize];
     let radii = vec![1.0_f32; NUM_POINTS_PER_CAMERA as usize];
@@ -155,11 +155,6 @@ fn create_batch_thoughput(c: &mut Criterion) {
     let mut group = c.benchmark_group("create-batch-throughput");
     group.throughput(criterion::Throughput::Elements(NUM as _));
 
-    group.bench_function("IndexKey::new", |b| {
-        b.iter(|| indices.iter().cloned().map(IndexKey::new).collect_vec());
-    });
-
-    let indices = indices.iter().cloned().map(IndexKey::new).collect_vec();
     group.bench_function("Batch::new", |b| {
         b.iter(|| Batch::new(&indices, &positions));
     });
@@ -171,7 +166,7 @@ fn insert_batch_thoughput(c: &mut Criterion) {
     const NUM_FRAMES: usize = 100;
     const NUM_POINTS: usize = 10_000;
     let indices = (0..NUM_POINTS)
-        .map(|pi| IndexKey::new(Index::Sequence(pi as _)))
+        .map(|pi| Index::Sequence(pi as _))
         .collect_vec();
     let positions = vec![[1.0_f32; 3]; NUM_POINTS];
     let batch = std::sync::Arc::new(Batch::new(&indices, &positions));

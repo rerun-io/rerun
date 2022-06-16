@@ -1,9 +1,7 @@
-use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
 
 use log_types::{
-    Data, DataMsg, DataPath, DataVec, IndexKey, LoggedData, ObjPath, ObjPathHash, TimeSource,
-    TimeType,
+    Data, DataMsg, DataPath, DataVec, LoggedData, ObjPath, ObjPathHash, TimeSource, TimeType,
 };
 
 use crate::{ArcBatch, Batch, TypePathDataStore};
@@ -50,7 +48,6 @@ impl LogDataStore {
         crate::profile_function!();
 
         let mut batcher = Batcher::default();
-        let mut hashed_batch_indices = None;
 
         for (time_source, time_value) in &data_msg.time_point.0 {
             let time = time_value.as_i64();
@@ -72,19 +69,10 @@ impl LogDataStore {
                         .insert_individual(op, fname, time, id, data))
                 }
                 LoggedData::Batch { indices, data } => {
-                    let indices = hashed_batch_indices.get_or_insert_with(|| {
-                        crate::profile_scope!("hash_indices");
-                        indices
-                            .iter()
-                            .map(|index| IndexKey::new(index.clone()))
-                            .collect_vec()
-                    });
-
-                    self.register_batch_obj_paths(data_msg, indices);
-
-                    let store = self.entry(time_source, time_value.typ());
                     log_types::data_vec_map!(data, |vec| {
                         let batch = batcher.batch(indices, vec);
+                        self.register_batch_obj_paths(data_msg, batch.indices());
+                        let store = self.entry(time_source, time_value.typ());
                         store.insert_batch(&op, fname, time, id, batch)
                     })
                 }
@@ -100,7 +88,11 @@ impl LogDataStore {
     }
 
     #[inline(never)]
-    fn register_batch_obj_paths(&mut self, data_msg: &DataMsg, indices: &[log_types::IndexKey]) {
+    fn register_batch_obj_paths(
+        &mut self,
+        data_msg: &DataMsg,
+        indices: std::slice::Iter<'_, log_types::IndexKey>,
+    ) {
         crate::profile_function!();
         let obj_path = data_msg.data_path.obj_path();
 
@@ -132,7 +124,7 @@ struct Batcher {
 impl Batcher {
     pub fn batch<T: 'static + Clone>(
         &mut self,
-        indices: &[log_types::IndexKey],
+        indices: &[log_types::Index],
         data: &[T],
     ) -> ArcBatch<T> {
         if let Some(batch) = &self.batch {

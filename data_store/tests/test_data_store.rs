@@ -1,5 +1,6 @@
 use data_store::*;
-use log_types::{FieldName, IndexKey, LogId};
+use itertools::Itertools;
+use log_types::{FieldName, LogId};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Time(i64);
@@ -30,8 +31,10 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
     points
 }
 
-fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> ArcBatch<T> {
-    std::sync::Arc::new(Batch::from_iterator(batch.into_iter()))
+fn batch<T: Clone, const N: usize>(batch: [(Index, T); N]) -> ArcBatch<T> {
+    let indices = batch.iter().map(|(index, _)| index.clone()).collect_vec();
+    let values = batch.iter().map(|(_, value)| value.clone()).collect_vec();
+    std::sync::Arc::new(Batch::new(&indices, &values))
 }
 
 fn id() -> LogId {
@@ -185,8 +188,8 @@ fn test_batches() -> data_store::Result<()> {
         values
     }
 
-    fn index(seq: u64) -> IndexKey {
-        IndexKey::new(Index::Sequence(seq))
+    fn index(seq: u64) -> Index {
+        Index::Sequence(seq)
     }
 
     let mut store = TypePathDataStore::default();
@@ -389,8 +392,8 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         values
     }
 
-    fn index(seq: u64) -> IndexKey {
-        IndexKey::new(Index::Sequence(seq))
+    fn index(seq: u64) -> Index {
+        Index::Sequence(seq)
     }
 
     let mut store = TypePathDataStore::default();
@@ -581,8 +584,8 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         values
     }
 
-    fn index(seq: u64) -> IndexKey {
-        IndexKey::new(Index::Sequence(seq))
+    fn index(seq: u64) -> Index {
+        Index::Sequence(seq)
     }
 
     let mut store = TypePathDataStore::default();

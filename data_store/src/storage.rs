@@ -24,47 +24,44 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 // ----------------------------------------------------------------------------
 
-/// Can be shared between different timelines.
+/// Can be shared between different timelines with [`ArcBatch`].
 ///
 /// The [`IndexKey`] is the last path of the [`IndexPath`].
 pub struct Batch<T> {
     map: IntMap<IndexHash, T>,
-    indices: Vec<IndexKey>,
+    hashed_indices: Vec<IndexKey>,
 }
 
 impl<T: Clone> Batch<T> {
     #[inline(never)]
-    pub fn new(indices: &[log_types::IndexKey], data: &[T]) -> Self {
+    pub fn new(indices: &[log_types::Index], data: &[T]) -> Self {
         crate::profile_function!(std::any::type_name::<T>());
         assert_eq!(indices.len(), data.len()); // TODO: return Result instead
+        let mut hashed_indices = Vec::with_capacity(indices.len());
         let map = itertools::izip!(indices, data)
-            .map(|(index, value)| (*index.hash(), value.clone()))
+            .map(|(index, value)| {
+                let index_key = IndexKey::new(index.clone());
+                let index_hash = *index_key.hash();
+                hashed_indices.push(index_key);
+                (index_hash, value.clone())
+            })
             .collect();
-        let indices = indices.to_vec();
-        Self { map, indices }
+        Self {
+            map,
+            hashed_indices,
+        }
     }
 }
 
 impl<T> Batch<T> {
-    #[inline(never)]
-    pub fn from_iterator(iter: impl Iterator<Item = (IndexKey, T)>) -> Self {
-        let mut map = IntMap::default();
-        let mut indices = vec![];
-        for (index, value) in iter {
-            map.insert(*index.hash(), value);
-            indices.push(index);
-        }
-        Self { map, indices }
-    }
-
     #[inline]
     pub fn get(&self, index: &IndexHash) -> Option<&T> {
         self.map.get(index)
     }
 
     #[inline]
-    pub fn keys(&self) -> impl ExactSizeIterator<Item = &IndexKey> {
-        self.indices.iter()
+    pub fn indices(&self) -> std::slice::Iter<'_, IndexKey> {
+        self.hashed_indices.iter()
     }
 
     #[inline]
@@ -269,7 +266,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         batch: &Batch<T>,
         parent_obj_path: &ObjPath,
     ) {
-        for index_path_suffix in batch.keys() {
+        for index_path_suffix in batch.indices() {
             if !self
                 .obj_paths_from_batch_suffix
                 .contains_key(index_path_suffix.hash())
