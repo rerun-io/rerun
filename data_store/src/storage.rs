@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{hash_map::Entry, BTreeMap};
 use std::sync::Arc;
 
 use ahash::AHashMap;
@@ -225,7 +225,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         log_id: LogId,
         batch: ArcBatch<T>,
     ) -> Result<()> {
-        self.register_batch_obj_paths(&batch, parent_obj_path);
+        self.store_batch_obj_paths(&batch, parent_obj_path);
 
         if let Some(store) = self
             .fields
@@ -260,18 +260,14 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
     }
 
     #[inline(never)]
-    fn register_batch_obj_paths<T: DataTrait>(
-        &mut self,
-        batch: &Batch<T>,
-        parent_obj_path: &ObjPath,
-    ) {
+    fn store_batch_obj_paths<T: DataTrait>(&mut self, batch: &Batch<T>, parent_obj_path: &ObjPath) {
+        crate::profile_function!();
         for (index_hash, index) in batch.indices() {
-            if !self.obj_paths_from_batch_suffix.contains_key(index_hash) {
+            if let Entry::Vacant(entry) = self.obj_paths_from_batch_suffix.entry(*index_hash) {
                 let obj_path = parent_obj_path
                     .clone()
                     .replace_last_placeholder_with(index.clone());
-                self.obj_paths_from_batch_suffix
-                    .insert(*index_hash, obj_path);
+                entry.insert(obj_path);
             }
         }
     }
