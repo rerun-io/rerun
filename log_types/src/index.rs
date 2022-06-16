@@ -59,6 +59,8 @@ crate::impl_into_enum!(String, Index, String);
 pub struct IndexHash(Hash128);
 
 impl IndexHash {
+    pub const PLACEHOLDER: IndexHash = Self(Hash128::ZERO);
+
     #[inline]
     pub fn hash(index: &Index) -> Self {
         if index.is_placeholder() {

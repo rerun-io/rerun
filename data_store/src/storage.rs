@@ -877,10 +877,14 @@ impl<'store, Time: Copy + Ord, T: DataTrait> BatchedDataReader<'store, Time, T> 
     }
 }
 
-pub(crate) fn index_path_split(index_path: IndexPath) -> (IndexPathHash, IndexHash) {
-    let (index_path_prefix, index_path_suffix) = index_path.replace_last_with_placeholder();
-    (
-        IndexPathHash::from_path(&index_path_prefix),
-        *index_path_suffix.hash(),
-    )
+fn index_path_split(index_path: IndexPath) -> (IndexPathHash, IndexHash) {
+    if index_path.is_empty() {
+        (IndexPathHash::default(), IndexHash::PLACEHOLDER) // whatever: it won't be used
+    } else {
+        let (index_path_prefix, index_path_suffix) = index_path.replace_last_with_placeholder();
+        (
+            IndexPathHash::from_path(&index_path_prefix),
+            *index_path_suffix.hash(),
+        )
+    }
 }
