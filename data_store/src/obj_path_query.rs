@@ -1,6 +1,6 @@
 //! Queries of the type "read these fields, from the object at this [`ObjPath`], over this time interval"
 
-use log_types::{DataTrait, FieldName, IndexPath, LogId, ObjPath};
+use log_types::{DataTrait, FieldName, IndexPath, IndexPathHash, LogId, ObjPath};
 
 use crate::{storage::*, TimeQuery};
 
@@ -19,7 +19,8 @@ pub fn visit_obj_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
     if let Some(primary_data) = obj_store.get::<T>(field_name) {
         match primary_data {
             DataStore::Individual(primary) => {
-                if let Some(primary) = primary.values.get(index_path) {
+                let index_path = IndexPathHash::from_path(index_path);
+                if let Some(primary) = primary.values.get(&index_path) {
                     query(
                         &primary.history,
                         time_query,
@@ -32,6 +33,9 @@ pub fn visit_obj_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
             DataStore::Batched(primary) => {
                 let (index_path_prefix, index_path_suffix) =
                     index_path.clone().replace_last_with_placeholder();
+                let index_path_prefix = IndexPathHash::from_path(&index_path_prefix);
+                let index_path_suffix = index_path_suffix.hash();
+
                 if let Some(primary) = primary.batches_over_time.get(&index_path_prefix) {
                     query(
                         &primary.history,
@@ -47,6 +51,9 @@ pub fn visit_obj_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }
@@ -70,7 +77,10 @@ pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTr
 
         match primary_data {
             DataStore::Individual(primary) => {
-                if let Some(primary) = primary.values.get(index_path) {
+                let index_path = IndexPathHash::from_path(index_path);
+
+                if let Some(primary) = primary.values.get(&index_path) {
+                    let index_path_split = &primary.index_path_split;
                     let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
 
                     query(
@@ -81,7 +91,7 @@ pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTr
                                 &primary.obj_path,
                                 log_id,
                                 primary_value,
-                                child1_reader.latest_at(index_path, time),
+                                child1_reader.latest_at(&index_path, index_path_split, time),
                             );
                         },
                     );
@@ -90,6 +100,9 @@ pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTr
             DataStore::Batched(primary) => {
                 let (index_path_prefix, index_path_suffix) =
                     index_path.clone().replace_last_with_placeholder();
+                let index_path_prefix = IndexPathHash::from_path(&index_path_prefix);
+                let index_path_suffix = index_path_suffix.hash();
+
                 if let Some(primary) = primary.batches_over_time.get(&index_path_prefix) {
                     let child1_store = obj_store.get::<S1>(&child1);
 
@@ -111,6 +124,9 @@ pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTr
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }
@@ -141,7 +157,10 @@ pub fn visit_obj_data_2<
 
         match primary_data {
             DataStore::Individual(primary) => {
-                if let Some(primary) = primary.values.get(index_path) {
+                let index_path = IndexPathHash::from_path(index_path);
+
+                if let Some(primary) = primary.values.get(&index_path) {
+                    let index_path_split = &primary.index_path_split;
                     let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
                     let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
 
@@ -153,8 +172,8 @@ pub fn visit_obj_data_2<
                                 &primary.obj_path,
                                 log_id,
                                 primary_value,
-                                child1_reader.latest_at(index_path, time),
-                                child2_reader.latest_at(index_path, time),
+                                child1_reader.latest_at(&index_path, index_path_split, time),
+                                child2_reader.latest_at(&index_path, index_path_split, time),
                             );
                         },
                     );
@@ -163,6 +182,9 @@ pub fn visit_obj_data_2<
             DataStore::Batched(primary) => {
                 let (index_path_prefix, index_path_suffix) =
                     index_path.clone().replace_last_with_placeholder();
+                let index_path_prefix = IndexPathHash::from_path(&index_path_prefix);
+                let index_path_suffix = index_path_suffix.hash();
+
                 if let Some(primary) = primary.batches_over_time.get(&index_path_prefix) {
                     let child1_store = obj_store.get::<S1>(&child1);
                     let child2_store = obj_store.get::<S2>(&child2);
@@ -188,6 +210,9 @@ pub fn visit_obj_data_2<
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }
@@ -220,7 +245,10 @@ pub fn visit_obj_data_3<
 
         match primary_data {
             DataStore::Individual(primary) => {
-                if let Some(primary) = primary.values.get(index_path) {
+                let index_path = IndexPathHash::from_path(index_path);
+
+                if let Some(primary) = primary.values.get(&index_path) {
+                    let index_path_split = &primary.index_path_split;
                     let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
                     let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
                     let child3_reader = IndividualDataReader::<Time, S3>::new(obj_store, &child3);
@@ -233,9 +261,9 @@ pub fn visit_obj_data_3<
                                 &primary.obj_path,
                                 log_id,
                                 primary_value,
-                                child1_reader.latest_at(index_path, time),
-                                child2_reader.latest_at(index_path, time),
-                                child3_reader.latest_at(index_path, time),
+                                child1_reader.latest_at(&index_path, index_path_split, time),
+                                child2_reader.latest_at(&index_path, index_path_split, time),
+                                child3_reader.latest_at(&index_path, index_path_split, time),
                             );
                         },
                     );
@@ -244,6 +272,9 @@ pub fn visit_obj_data_3<
             DataStore::Batched(primary) => {
                 let (index_path_prefix, index_path_suffix) =
                     index_path.clone().replace_last_with_placeholder();
+                let index_path_prefix = IndexPathHash::from_path(&index_path_prefix);
+                let index_path_suffix = index_path_suffix.hash();
+
                 if let Some(primary) = primary.batches_over_time.get(&index_path_prefix) {
                     let child1_store = obj_store.get::<S1>(&child1);
                     let child2_store = obj_store.get::<S2>(&child2);
@@ -273,6 +304,9 @@ pub fn visit_obj_data_3<
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }

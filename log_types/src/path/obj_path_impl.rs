@@ -1,8 +1,11 @@
-use crate::path::{Index, IndexPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp};
+use crate::{
+    path::{IndexPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp},
+    Index,
+};
 
 /// `camera / "left" / points / #42`
 ///
-/// Wrapped by [`ObjPath`] together with a hash.
+/// Wrapped by [`crate::ObjPath`] together with a hash.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub(crate) struct ObjPathImpl {
@@ -76,7 +79,7 @@ impl ObjPathImpl {
 
     /// Replace last [`Index::Placeholder`] with the given key.
     #[must_use]
-    pub fn replace_last_placeholder_with(self, key: crate::IndexKey) -> Self {
+    pub fn replace_last_placeholder_with(self, key: Index) -> Self {
         let (type_path, mut index_path) = self.into_type_path_and_index_path();
         index_path.replace_last_placeholder_with(key);
         Self::new(type_path, index_path)

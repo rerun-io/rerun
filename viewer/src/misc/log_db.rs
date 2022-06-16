@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use itertools::Itertools as _;
+use nohash_hasher::IntMap;
 
 use log_types::*;
 use rr_string_interner::InternedString;
@@ -11,8 +12,8 @@ use crate::misc::TimePoints;
 pub(crate) struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<LogId>,
-    log_messages: nohash_hasher::IntMap<LogId, LogMsg>,
-    pub object_types: ahash::AHashMap<ObjTypePath, ObjectType>,
+    log_messages: IntMap<LogId, LogMsg>,
+    pub object_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
     pub data_store: data_store::LogDataStore,
@@ -189,7 +190,7 @@ impl DataColumns {
             .insert(msg.id);
 
         self.per_type
-            .entry(msg.data.typ())
+            .entry(msg.data.data_type())
             .or_default()
             .insert(msg.id);
     }

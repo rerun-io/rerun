@@ -6,12 +6,14 @@ pub(crate) mod obj_path_impl;
 mod obj_type_path;
 
 pub use data_path::DataPath;
-pub use index_path::{IndexKey, IndexPath};
+pub use index_path::{IndexPath, IndexPathHash};
 pub use obj_path::{ObjPath, ObjPathHash};
 pub use obj_path_builder::ObjPathBuilder;
 pub use obj_type_path::ObjTypePath;
 
 use rr_string_interner::InternedString;
+
+use crate::Index;
 
 rr_string_interner::declare_new_type!(
     /// The name of a object field, e.g. "pos" or "color".
@@ -54,46 +56,6 @@ impl From<&str> for ObjPathComp {
         Self::String(comp.into())
     }
 }
-
-// ----------------------------------------------------------------------------
-
-/// The key of a table.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Index {
-    /// For arrays, assumed to be dense (0, 1, 2, …).
-    Sequence(u64),
-
-    /// X,Y pixel coordinates, from top left.
-    Pixel([u64; 2]),
-
-    /// Any integer, e.g. a hash or an arbitrary identifier.
-    Integer(i128),
-
-    /// UUID/GUID
-    Uuid(uuid::Uuid),
-
-    /// Anything goes.
-    String(String),
-
-    /// Used as the last index when logging a batch of data.
-    Placeholder,
-}
-
-impl std::fmt::Display for Index {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Sequence(seq) => format!("#{seq}").fmt(f),
-            Self::Pixel([x, y]) => format!("[{x}, {y}]").fmt(f),
-            Self::Integer(value) => value.fmt(f),
-            Self::Uuid(value) => value.fmt(f),
-            Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
-            Self::Placeholder => '_'.fmt(f),                    // put it in quotes
-        }
-    }
-}
-
-crate::impl_into_enum!(String, Index, String);
 
 // ----------------------------------------------------------------------------
 

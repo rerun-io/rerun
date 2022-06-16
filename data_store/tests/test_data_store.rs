@@ -1,5 +1,6 @@
 use data_store::*;
-use log_types::{FieldName, IndexKey, LogId};
+use itertools::Itertools;
+use log_types::{FieldName, LogId};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Time(i64);
@@ -30,9 +31,10 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
     points
 }
 
-fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
-    let batch: nohash_hasher::IntMap<IndexKey, T> = batch.into_iter().collect();
-    std::sync::Arc::new(batch)
+fn batch<T: Clone, const N: usize>(batch: &[(Index, T); N]) -> ArcBatch<T> {
+    let indices = batch.iter().map(|(index, _)| index.clone()).collect_vec();
+    let values = batch.iter().map(|(_, value)| value.clone()).collect_vec();
+    std::sync::Arc::new(Batch::new(&indices, &values))
 }
 
 fn id() -> LogId {
@@ -186,8 +188,8 @@ fn test_batches() -> data_store::Result<()> {
         values
     }
 
-    fn index(seq: u64) -> IndexKey {
-        IndexKey::new(Index::Sequence(seq))
+    fn index(seq: u64) -> Index {
+        Index::Sequence(seq)
     }
 
     let mut store = TypePathDataStore::default();
@@ -197,7 +199,7 @@ fn test_batches() -> data_store::Result<()> {
         "pos".into(),
         Time(1),
         id(),
-        batch([
+        batch(&[
             (index(0), 0_i32),
             (index(1), 1_i32),
             (index(2), 2_i32),
@@ -209,7 +211,7 @@ fn test_batches() -> data_store::Result<()> {
         "pos".into(),
         Time(2),
         id(),
-        batch([
+        batch(&[
             (index(0), 1_000_i32),
             (index(1), 1_001_i32),
             (index(2), 1_002_i32),
@@ -221,7 +223,7 @@ fn test_batches() -> data_store::Result<()> {
         "pos".into(),
         Time(3),
         id(),
-        batch([
+        batch(&[
             // 0, 1 omitted = dropped
             (index(2), 22_i32),
             (index(3), 33_i32),
@@ -232,14 +234,14 @@ fn test_batches() -> data_store::Result<()> {
         "label".into(),
         Time(4),
         id(),
-        batch([(index(1), s("one")), (index(2), s("two"))]),
+        batch(&[(index(1), s("one")), (index(2), s("two"))]),
     )?;
     store.insert_batch(
         &obj_path_batch("right"),
         "label".into(),
         Time(5),
         id(),
-        batch([
+        batch(&[
             (index(0), s("r0")),
             (index(1), s("r1")),
             (index(2), s("r2")),
@@ -252,7 +254,7 @@ fn test_batches() -> data_store::Result<()> {
         "pos".into(),
         Time(6),
         id(),
-        batch([
+        batch(&[
             (index(3), 1_003_i32),
             (index(4), 1_004_i32),
             (index(5), 1_005_i32),
@@ -263,7 +265,7 @@ fn test_batches() -> data_store::Result<()> {
         "label".into(),
         Time(7),
         id(),
-        batch([
+        batch(&[
             (index(3), s("r3_new")),
             // omitted = replaced
         ]),
@@ -390,8 +392,8 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         values
     }
 
-    fn index(seq: u64) -> IndexKey {
-        IndexKey::new(Index::Sequence(seq))
+    fn index(seq: u64) -> Index {
+        Index::Sequence(seq)
     }
 
     let mut store = TypePathDataStore::default();
@@ -401,7 +403,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         "pos".into(),
         Time(1),
         id(),
-        batch([
+        batch(&[
             (index(0), 0_i32),
             (index(1), 1_i32),
             (index(2), 2_i32),
@@ -413,7 +415,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         "pos".into(),
         Time(2),
         id(),
-        batch([
+        batch(&[
             (index(0), 1_000_i32),
             (index(1), 1_001_i32),
             (index(2), 1_002_i32),
@@ -425,7 +427,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         "pos".into(),
         Time(3),
         id(),
-        batch([
+        batch(&[
             // 0, 1 omitted = dropped
             (index(2), 22_i32),
             (index(3), 33_i32),
@@ -453,7 +455,7 @@ fn test_batched_and_individual() -> data_store::Result<()> {
         "pos".into(),
         Time(6),
         id(),
-        batch([
+        batch(&[
             (index(3), 1_003_i32),
             (index(4), 1_004_i32),
             (index(5), 1_005_i32),
@@ -582,8 +584,8 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         values
     }
 
-    fn index(seq: u64) -> IndexKey {
-        IndexKey::new(Index::Sequence(seq))
+    fn index(seq: u64) -> Index {
+        Index::Sequence(seq)
     }
 
     let mut store = TypePathDataStore::default();
@@ -595,7 +597,7 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         "label".into(),
         Time(3),
         id(),
-        batch([(index(1), s("one")), (index(2), s("two"))]),
+        batch(&[(index(1), s("one")), (index(2), s("two"))]),
     )?;
     store.insert_individual(obj_path("left", 2), "pos".into(), Time(4), id(), 2_i32)?;
     store.insert_individual(obj_path("left", 3), "pos".into(), Time(4), id(), 3_i32)?;
@@ -604,7 +606,7 @@ fn test_individual_and_batched() -> data_store::Result<()> {
         "label".into(),
         Time(5),
         id(),
-        batch([(index(2), s("two")), (index(3), s("three"))]),
+        batch(&[(index(2), s("two")), (index(3), s("three"))]),
     )?;
 
     assert_eq!(values(&store, 0), vec![]);

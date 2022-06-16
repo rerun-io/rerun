@@ -7,11 +7,13 @@ pub mod encoding;
 
 mod data;
 pub mod hash;
+mod index;
 pub mod objects;
 mod path;
 mod time;
 
 pub use data::*;
+pub use index::*;
 pub use objects::ObjectType;
 pub use path::*;
 pub use time::{Duration, Time};
@@ -122,7 +124,7 @@ pub struct DataMsg {
     pub data_path: DataPath,
 
     /// The value of this.
-    pub data: Data,
+    pub data: LoggedData,
 }
 
 #[inline]
@@ -130,7 +132,7 @@ pub fn data_msg(
     time_point: &TimePoint,
     obj_path: impl Into<ObjPath>,
     field_name: impl Into<FieldName>,
-    data: impl Into<Data>,
+    data: impl Into<LoggedData>,
 ) -> DataMsg {
     DataMsg {
         time_point: time_point.clone(),
@@ -139,6 +141,67 @@ pub fn data_msg(
         id: LogId::random(),
     }
 }
+
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum LoggedData {
+    /// A single data value
+    Single(Data),
+
+    /// Log multiple values at once.
+    ///
+    /// The index replaces the last index in [`DataMsg.data_path`], which should be [`Index::Placeholder]`.
+    Batch { indices: Vec<Index>, data: DataVec },
+
+    /// Log the same value for all objects sharing the same index prefix (i.e. ignoring the last index).
+    ///
+    /// The last index in [`DataMsg.data_path`] should be [`Index::Placeholder]`.
+    ///
+    /// You can only use this for optional fields such as `color`, `space` etc.
+    /// You can NOT use it for primary fields such as `pos`.
+    BatchSplat(Data),
+}
+
+impl LoggedData {
+    #[inline]
+    pub fn data_type(&self) -> DataType {
+        match self {
+            Self::Single(data) | Self::BatchSplat(data) => data.data_type(),
+            Self::Batch { data, .. } => data.data_type(),
+        }
+    }
+}
+
+impl From<Data> for LoggedData {
+    #[inline]
+    fn from(data: Data) -> Self {
+        Self::Single(data)
+    }
+}
+
+#[macro_export]
+macro_rules! impl_into_logged_data {
+    ($from_ty: ty, $data_enum_variant: ident) => {
+        impl From<$from_ty> for LoggedData {
+            #[inline]
+            fn from(value: $from_ty) -> Self {
+                Self::Single(Data::$data_enum_variant(value))
+            }
+        }
+    };
+}
+
+impl_into_logged_data!(i32, I32);
+impl_into_logged_data!(f32, F32);
+impl_into_logged_data!(BBox2D, BBox2D);
+impl_into_logged_data!(Image, Image);
+impl_into_logged_data!(Box3, Box3);
+impl_into_logged_data!(Mesh3D, Mesh3D);
+impl_into_logged_data!(Camera, Camera);
+impl_into_logged_data!(Vec<f32>, Vecf32);
+impl_into_logged_data!(ObjPath, Space);
 
 // ----------------------------------------------------------------------------
 

@@ -1,89 +1,69 @@
-use crate::{hash::Hash128, path::Index};
+use crate::{Index, IndexHash};
 
 // ----------------------------------------------------------------------------
 
-/// Like `Index` but also includes a precomputed hash.
-#[derive(Clone, Eq)]
-pub struct IndexKey {
-    hash: Hash128,
-    // boxed to keep size of self small.
-    index: Box<Index>,
-}
+/// A 128 bit hash of a [`IndexPath`] with negligible risk of collision.
+#[derive(Clone, Copy, Default, Eq)]
+pub struct IndexPathHash([u64; 2]);
 
-impl IndexKey {
-    #[inline]
-    pub fn new(index: Index) -> Self {
-        Self {
-            hash: Hash128::hash(&index),
-            index: Box::new(index),
+impl IndexPathHash {
+    pub fn from_path(path: &IndexPath) -> Self {
+        let mut hash = Self::default();
+        for index in &path.components {
+            hash.push(&index.hash());
         }
+        hash
     }
 
-    #[inline]
-    pub fn index(&self) -> &Index {
-        &self.index
+    pub fn push(&mut self, index_hash: &IndexHash) {
+        self.0[0] = self.0[0].rotate_left(5);
+        self.0[1] = self.0[1].rotate_left(5);
+        self.0[0] ^= index_hash.first64();
+        self.0[1] ^= index_hash.second64();
     }
-}
 
-// ----------------------------------------------------------------------------
-
-impl std::cmp::PartialOrd for IndexKey {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.index.partial_cmp(&other.index)
-    }
-}
-
-impl std::cmp::Ord for IndexKey {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.index.cmp(&other.index)
+    pub fn replace_last_placeholder_with(&mut self, index_hash: &IndexHash) {
+        // `Index::Placeholder` has zero as hash, so we can easily replace it:
+        assert!(!index_hash.is_placeholder());
+        self.0[0] ^= index_hash.first64();
+        self.0[1] ^= index_hash.second64();
     }
 }
 
-impl std::cmp::PartialEq for IndexKey {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash // much faster, and low chance of collision
-    }
-}
-
-impl std::hash::Hash for IndexKey {
+impl std::hash::Hash for IndexPathHash {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.hash.hash(state);
+        state.write_u64(self.0[0]);
     }
 }
 
-impl nohash_hasher::IsEnabled for IndexKey {}
-
-impl From<Index> for IndexKey {
+impl PartialEq for IndexPathHash {
     #[inline]
-    fn from(index: Index) -> Self {
-        IndexKey::new(index)
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 
-impl std::fmt::Debug for IndexKey {
+impl nohash_hasher::IsEnabled for IndexPathHash {}
+
+impl std::fmt::Debug for IndexPathHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.index.fmt(f)
+        f.write_str(&format!("Hash128({:016X}{:016X})", self.0[0], self.0[1]))
     }
 }
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Default, Eq)]
+#[derive(Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct IndexPath {
     components: Vec<Index>,
-    hashes: [u64; 2], // 128 bit to avoid collisions
 }
 
 impl IndexPath {
     #[inline]
     pub fn new(components: Vec<Index>) -> Self {
-        let mut slf = Self::default();
-        for index in components {
-            slf.push(index);
-        }
-        slf
+        Self { components }
     }
 
     #[inline]
@@ -106,37 +86,26 @@ impl IndexPath {
         self.components.iter()
     }
 
-    pub fn push(&mut self, index: impl Into<IndexKey>) {
-        let index = index.into();
-
-        self.components.push(*index.index);
-        self.hashes[0] = self.hashes[0].rotate_left(5);
-        self.hashes[1] = self.hashes[1].rotate_left(5);
-        self.hashes[0] ^= index.hash.first64();
-        self.hashes[1] ^= index.hash.second64();
+    pub fn push(&mut self, index: Index) {
+        self.components.push(index);
     }
 
-    pub fn pop(&mut self) -> Option<IndexKey> {
-        let index = IndexKey::new(self.components.pop()?);
-        self.hashes[0] ^= index.hash.first64();
-        self.hashes[1] ^= index.hash.second64();
-        self.hashes[0] = self.hashes[0].rotate_right(5);
-        self.hashes[1] = self.hashes[1].rotate_right(5);
-        Some(index)
+    pub fn pop(&mut self) -> Option<Index> {
+        self.components.pop()
     }
 
     /// Replace last component with [`Index::Placeholder`], and return what was there.
-    pub fn replace_last_with_placeholder(mut self) -> (IndexPath, IndexKey) {
+    pub fn replace_last_with_placeholder(mut self) -> (IndexPath, Index) {
         let index = self.pop().unwrap();
-        assert_ne!(index, IndexKey::new(Index::Placeholder));
+        assert_ne!(index, Index::Placeholder);
         self.push(Index::Placeholder);
         (self, index)
     }
 
     /// Replace last [`Index::Placeholder`] with the given key.
-    pub fn replace_last_placeholder_with(&mut self, key: IndexKey) {
+    pub fn replace_last_placeholder_with(&mut self, key: Index) {
         let index = self.pop().unwrap();
-        assert_eq!(index, IndexKey::new(Index::Placeholder));
+        assert_eq!(index, Index::Placeholder);
         self.push(key);
     }
 
@@ -147,38 +116,6 @@ impl IndexPath {
 }
 
 pub type Iter<'a> = std::slice::Iter<'a, Index>;
-
-#[cfg(feature = "serde")]
-impl serde::Serialize for IndexPath {
-    #[inline]
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.as_slice().serialize(serializer)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for IndexPath {
-    #[inline]
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        <Vec<Index>>::deserialize(deserializer).map(IndexPath::new)
-    }
-}
-
-impl std::cmp::PartialEq for IndexPath {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.hashes == other.hashes // much faster, and low chance of collision
-    }
-}
-
-impl std::hash::Hash for IndexPath {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hashes[0]);
-    }
-}
-
-impl nohash_hasher::IsEnabled for IndexPath {}
 
 impl std::fmt::Debug for IndexPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -204,9 +141,9 @@ fn test_index_path_key() {
 
     let (key1_prefix, seq0) = key1.replace_last_with_placeholder();
     assert_eq!(key1_prefix.components.len(), 1);
-    assert_eq!(seq0, IndexKey::new(Index::Sequence(0)));
+    assert_eq!(seq0, Index::Sequence(0));
 
     let (key2_prefix, seq1) = key2.replace_last_with_placeholder();
     assert_eq!(key2_prefix.components.len(), 2);
-    assert_eq!(seq1, IndexKey::new(Index::Sequence(1)));
+    assert_eq!(seq1, Index::Sequence(1));
 }

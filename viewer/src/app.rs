@@ -67,8 +67,9 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         if let Some(rx) = &mut self.rx {
-            while let Ok(data_msg) = rx.try_recv() {
-                self.log_db.add(data_msg);
+            crate::profile_scope!("receive_messages");
+            while let Ok(msg) = rx.try_recv() {
+                self.log_db.add(msg);
             }
         }
 

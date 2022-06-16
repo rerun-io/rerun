@@ -348,6 +348,5 @@ pub fn paint_with_three_d(
 }
 
 fn color_to_three_d([r, g, b, a]: [u8; 4]) -> three_d::Color {
-    // TODO: figure out why three_d colors are messed up. Are they in linear space and in bytes!?!?!
-    three_d::Color::new(r, g, b, a)
+    three_d::Color { r, g, b, a }
 }

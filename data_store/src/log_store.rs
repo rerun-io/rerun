@@ -1,15 +1,18 @@
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use log_types::{
-    Data, DataMsg, DataPath, DataVec, IndexKey, ObjPath, ObjPathHash, TimeSource, TimeType,
+    Data, DataMsg, DataPath, DataVec, Index, IndexHash, LoggedData, ObjPath, ObjPathHash,
+    TimeSource, TimeType,
 };
 
-use crate::{Batch, TypePathDataStore};
+use crate::{ArcBatch, Batch, TypePathDataStore};
 
 #[derive(Default)]
 pub struct LogDataStore {
     store_from_time_source: IntMap<TimeSource, (TimeType, TypePathDataStore<i64>)>,
     obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
+    /// To avoid doing double-work filling in [`Self::obj_path_from_hash`].
+    regiestered_batch_paths: IntMap<ObjPathHash, IntSet<IndexHash>>,
 }
 
 impl LogDataStore {
@@ -43,12 +46,11 @@ impl LogDataStore {
     }
 
     pub fn insert(&mut self, data_msg: &DataMsg) -> crate::Result<()> {
-        self.register_obj_path(data_msg);
+        crate::profile_function!();
 
         let mut batcher = Batcher::default();
 
         for (time_source, time_value) in &data_msg.time_point.0 {
-            let store = self.entry(time_source, time_value.typ());
             let time = time_value.as_i64();
             let id = data_msg.id;
 
@@ -57,69 +59,61 @@ impl LogDataStore {
                 field_name: fname,
             } = data_msg.data_path.clone();
 
-            match data_msg.data.clone() {
-                Data::Batch { indices, data } => {
+            match &data_msg.data {
+                LoggedData::Single(data) => {
+                    self.obj_path_from_hash
+                        .entry(*op.hash())
+                        .or_insert_with(|| op.clone());
+
+                    let store = self.entry(time_source, time_value.typ());
+                    log_types::data_map!(data.clone(), |data| store
+                        .insert_individual(op, fname, time, id, data))
+                }
+                LoggedData::Batch { indices, data } => {
                     log_types::data_vec_map!(data, |vec| {
                         let batch = batcher.batch(indices, vec);
+                        self.register_batch_obj_paths(data_msg, batch.indices());
+                        let store = self.entry(time_source, time_value.typ());
                         store.insert_batch(&op, fname, time, id, batch)
                     })
                 }
-
-                Data::I32(data) => store.insert_individual(op, fname, time, id, data),
-                Data::F32(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Color(data) => store.insert_individual(op, fname, time, id, data),
-                Data::String(data) => store.insert_individual(op, fname, time, id, data),
-
-                Data::Vec2(data) => store.insert_individual(op, fname, time, id, data),
-                Data::BBox2D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::LineSegments2D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Image(data) => store.insert_individual(op, fname, time, id, data),
-
-                Data::Vec3(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Box3(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Path3D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::LineSegments3D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Mesh3D(data) => store.insert_individual(op, fname, time, id, data),
-                Data::Camera(data) => store.insert_individual(op, fname, time, id, data),
-
-                Data::Vecf32(data) => store.insert_individual(op, fname, time, id, data),
-
-                Data::Space(data) => store.insert_individual(op, fname, time, id, data),
+                LoggedData::BatchSplat(data) => {
+                    let store = self.entry(time_source, time_value.typ());
+                    log_types::data_map!(data.clone(), |data| store
+                        .insert_batch_splat(op, fname, time, id, data))
+                }
             }?;
         }
 
         Ok(())
     }
 
-    fn register_obj_path(&mut self, data_msg: &DataMsg) {
+    #[inline(never)]
+    fn register_batch_obj_paths(
+        &mut self,
+        data_msg: &DataMsg,
+        indices: std::slice::Iter<'_, (IndexHash, Index)>,
+    ) {
+        crate::profile_function!();
         let obj_path = data_msg.data_path.obj_path();
 
-        if let Data::Batch { indices, .. } = &data_msg.data {
-            for index_path_suffix in indices {
-                crate::profile_scope!("Register batch obj paths");
+        let registered_suffixes = self
+            .regiestered_batch_paths
+            .entry(*data_msg.data_path.obj_path.hash())
+            .or_default();
+
+        for (index_hash, index) in indices {
+            if registered_suffixes.insert(*index_hash) {
+                // TODO: speed this up. A lot. Please.
                 let (obj_type_path, index_path_prefix) =
                     obj_path.clone().into_type_path_and_index_path();
-                // TODO: speed this up. A lot. Please.
                 let mut index_path = index_path_prefix.clone();
-                index_path.replace_last_placeholder_with(index_path_suffix.clone().into());
+                index_path.replace_last_placeholder_with(index.clone());
                 let obj_path = ObjPath::new(obj_type_path.clone(), index_path);
                 self.obj_path_from_hash.insert(*obj_path.hash(), obj_path);
             }
-        } else {
-            self.obj_path_from_hash
-                .entry(*obj_path.hash())
-                .or_insert_with(|| obj_path.clone());
         }
     }
-}
-
-fn batch<T>(indices: Vec<log_types::Index>, data: Vec<T>) -> Batch<T> {
-    assert_eq!(indices.len(), data.len()); // TODO: return Result instead
-    std::sync::Arc::new(
-        itertools::izip!(indices, data)
-            .map(|(index, value)| (IndexKey::new(index), value))
-            .collect(),
-    )
 }
 
 /// Converts data to a batch ONCE, then reuses that batch for other time sources
@@ -129,11 +123,15 @@ struct Batcher {
 }
 
 impl Batcher {
-    pub fn batch<T: 'static>(&mut self, indices: Vec<log_types::Index>, data: Vec<T>) -> Batch<T> {
+    pub fn batch<T: 'static + Clone>(
+        &mut self,
+        indices: &[log_types::Index],
+        data: &[T],
+    ) -> ArcBatch<T> {
         if let Some(batch) = &self.batch {
-            batch.downcast_ref::<Batch<T>>().unwrap().clone()
+            batch.downcast_ref::<ArcBatch<T>>().unwrap().clone()
         } else {
-            let batch = batch(indices, data);
+            let batch = std::sync::Arc::new(Batch::new(indices, data));
             self.batch = Some(Box::new(batch.clone()));
             batch
         }

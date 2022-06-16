@@ -82,7 +82,7 @@ pub(crate) fn message_table(
 }
 
 fn row_height(msg: &DataMsg) -> f32 {
-    if matches!(&msg.data, log_types::Data::Image(_)) {
+    if matches!(msg.data.data_type(), DataType::Image) {
         48.0
     } else {
         18.0
@@ -114,6 +114,6 @@ fn table_row(
         context.data_path_button(ui, data_path);
     });
     row.col(|ui| {
-        crate::space_view::ui_data(context, ui, id, data, Preview::Specific(row_height));
+        crate::space_view::ui_logged_data(context, ui, id, data, Preview::Specific(row_height));
     });
 }

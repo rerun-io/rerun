@@ -1,4 +1,4 @@
-//! Queries of the type "read these fields, from all objects of this [`ObjTypePath`], over this time interval"
+//! Queries of the type "read these fields, from all objects of this [`log_types::ObjTypePath`], over this time interval"
 
 use log_types::{DataTrait, FieldName, LogId, ObjPath};
 
@@ -45,6 +45,9 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                     );
                 }
             }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
+            }
         }
     }
 
@@ -68,6 +71,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
                 let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
 
                 for (index_path, primary) in primary.iter() {
+                    let index_path_split = &primary.index_path_split;
                     query(
                         &primary.history,
                         time_query,
@@ -76,7 +80,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
                                 &primary.obj_path,
                                 log_id,
                                 primary_value,
-                                child1_reader.latest_at(index_path, time),
+                                child1_reader.latest_at(index_path, index_path_split, time),
                             );
                         },
                     );
@@ -104,6 +108,9 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }
@@ -136,6 +143,7 @@ pub fn visit_type_data_2<
                 let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
 
                 for (index_path, primary) in primary.iter() {
+                    let index_path_split = &primary.index_path_split;
                     query(
                         &primary.history,
                         time_query,
@@ -144,8 +152,8 @@ pub fn visit_type_data_2<
                                 &primary.obj_path,
                                 log_id,
                                 primary_value,
-                                child1_reader.latest_at(index_path, time),
-                                child2_reader.latest_at(index_path, time),
+                                child1_reader.latest_at(index_path, index_path_split, time),
+                                child2_reader.latest_at(index_path, index_path_split, time),
                             );
                         },
                     );
@@ -177,6 +185,9 @@ pub fn visit_type_data_2<
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }
@@ -212,6 +223,7 @@ pub fn visit_type_data_3<
                 let child3_reader = IndividualDataReader::<Time, S3>::new(obj_store, &child3);
 
                 for (index_path, primary) in primary.iter() {
+                    let index_path_split = &primary.index_path_split;
                     query(
                         &primary.history,
                         time_query,
@@ -220,9 +232,9 @@ pub fn visit_type_data_3<
                                 &primary.obj_path,
                                 log_id,
                                 primary_value,
-                                child1_reader.latest_at(index_path, time),
-                                child2_reader.latest_at(index_path, time),
-                                child3_reader.latest_at(index_path, time),
+                                child1_reader.latest_at(index_path, index_path_split, time),
+                                child2_reader.latest_at(index_path, index_path_split, time),
+                                child3_reader.latest_at(index_path, index_path_split, time),
                             );
                         },
                     );
@@ -258,6 +270,9 @@ pub fn visit_type_data_3<
                         },
                     );
                 }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
             }
         }
     }

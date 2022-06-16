@@ -1,11 +1,12 @@
 use crate::{
     hash::Hash128,
     path::{obj_path_impl::ObjPathImpl, IndexPath, ObjPathBuilder, ObjTypePath},
+    Index,
 };
 
 // ----------------------------------------------------------------------------
 
-/// A 128 bit hash with negligible chance of collision.
+/// A 128 bit hash of [`ObjPath`] with negligible chance of collision.
 #[derive(Copy, Clone, Eq)]
 pub struct ObjPathHash(Hash128);
 
@@ -110,7 +111,7 @@ impl ObjPath {
 
     /// Replace last [`Index::Placeholder`] with the given key.
     #[must_use]
-    pub fn replace_last_placeholder_with(self, key: crate::IndexKey) -> Self {
+    pub fn replace_last_placeholder_with(self, key: Index) -> Self {
         Self::from(self.path.replace_last_placeholder_with(key))
     }
 }
