@@ -115,7 +115,7 @@ impl LogDataStore {
                 let (obj_type_path, index_path_prefix) =
                     obj_path.clone().into_type_path_and_index_path();
                 let mut index_path = index_path_prefix.clone();
-                index_path.replace_last_placeholder_with(index_path_suffix.clone());
+                index_path.replace_last_placeholder_with(index_path_suffix.index().clone());
                 let obj_path = ObjPath::new(obj_type_path.clone(), index_path);
                 self.obj_path_from_hash.insert(*obj_path.hash(), obj_path);
             }

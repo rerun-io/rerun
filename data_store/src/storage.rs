@@ -276,7 +276,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
             {
                 let obj_path = parent_obj_path
                     .clone()
-                    .replace_last_placeholder_with(index_path_suffix.clone());
+                    .replace_last_placeholder_with(index_path_suffix.index().clone());
                 self.obj_paths_from_batch_suffix
                     .insert(*index_path_suffix.hash(), obj_path);
             }
@@ -655,7 +655,7 @@ impl<Time: Copy + Ord, T: Clone> BatchedDataHistory<Time, T> {
                     &batch_history.history,
                     time_query,
                     |time, (log_id, batch)| {
-                        if let Some(value) = batch.get(index_path_suffix) {
+                        if let Some(value) = batch.get(&index_path_suffix) {
                             times.push(*time);
                             ids.push(*log_id);
                             values.push(value.clone()); // TODO: return references instead
@@ -884,7 +884,7 @@ fn index_path_split(index_path: IndexPath) -> (IndexPathHash, IndexHash) {
         let (index_path_prefix, index_path_suffix) = index_path.replace_last_with_placeholder();
         (
             IndexPathHash::from_path(&index_path_prefix),
-            *index_path_suffix.hash(),
+            index_path_suffix.hash(),
         )
     }
 }

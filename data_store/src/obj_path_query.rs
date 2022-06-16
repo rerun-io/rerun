@@ -41,9 +41,9 @@ pub fn visit_obj_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                         &primary.history,
                         time_query,
                         |_time, (log_id, primary_batch)| {
-                            if let Some(primary_value) = primary_batch.get(index_path_suffix) {
+                            if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(&index_path_suffix),
                                     log_id,
                                     primary_value,
                                 );
@@ -110,15 +110,15 @@ pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTr
                         &primary.history,
                         time_query,
                         |time, (log_id, primary_batch)| {
-                            if let Some(primary_value) = primary_batch.get(index_path_suffix) {
+                            if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 let child1_reader =
                                     BatchedDataReader::new(child1_store, &index_path_prefix, time);
 
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(&index_path_suffix),
                                     log_id,
                                     primary_value,
-                                    child1_reader.latest_at(index_path_suffix),
+                                    child1_reader.latest_at(&index_path_suffix),
                                 );
                             }
                         },
@@ -193,18 +193,18 @@ pub fn visit_obj_data_2<
                         &primary.history,
                         time_query,
                         |time, (log_id, primary_batch)| {
-                            if let Some(primary_value) = primary_batch.get(index_path_suffix) {
+                            if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 let child1_reader =
                                     BatchedDataReader::new(child1_store, &index_path_prefix, time);
                                 let child2_reader =
                                     BatchedDataReader::new(child2_store, &index_path_prefix, time);
 
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(&index_path_suffix),
                                     log_id,
                                     primary_value,
-                                    child1_reader.latest_at(index_path_suffix),
-                                    child2_reader.latest_at(index_path_suffix),
+                                    child1_reader.latest_at(&index_path_suffix),
+                                    child2_reader.latest_at(&index_path_suffix),
                                 );
                             }
                         },
@@ -284,7 +284,7 @@ pub fn visit_obj_data_3<
                         &primary.history,
                         time_query,
                         |time, (log_id, primary_batch)| {
-                            if let Some(primary_value) = primary_batch.get(index_path_suffix) {
+                            if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 let child1_reader =
                                     BatchedDataReader::new(child1_store, &index_path_prefix, time);
                                 let child2_reader =
@@ -293,12 +293,12 @@ pub fn visit_obj_data_3<
                                     BatchedDataReader::new(child3_store, &index_path_prefix, time);
 
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    obj_store.obj_path_or_die(&index_path_suffix),
                                     log_id,
                                     primary_value,
-                                    child1_reader.latest_at(index_path_suffix),
-                                    child2_reader.latest_at(index_path_suffix),
-                                    child3_reader.latest_at(index_path_suffix),
+                                    child1_reader.latest_at(&index_path_suffix),
+                                    child2_reader.latest_at(&index_path_suffix),
+                                    child3_reader.latest_at(&index_path_suffix),
                                 );
                             }
                         },

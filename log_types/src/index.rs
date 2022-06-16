@@ -152,11 +152,6 @@ impl IndexKey {
     }
 
     #[inline]
-    pub(crate) fn into_hash_and_index(self) -> (IndexHash, Index) {
-        (self.hash, self.index)
-    }
-
-    #[inline]
     pub fn is_placeholder(&self) -> bool {
         self.index.is_placeholder()
     }

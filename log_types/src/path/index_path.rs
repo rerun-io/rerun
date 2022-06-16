@@ -1,4 +1,4 @@
-use crate::{Index, IndexHash, IndexKey};
+use crate::{Index, IndexHash};
 
 // ----------------------------------------------------------------------------
 
@@ -54,20 +54,16 @@ impl std::fmt::Debug for IndexPathHash {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Default, Eq)]
+#[derive(Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct IndexPath {
     components: Vec<Index>,
-    hashes: [u64; 2], // 128 bit to avoid collisions
 }
 
 impl IndexPath {
     #[inline]
     pub fn new(components: Vec<Index>) -> Self {
-        let mut slf = Self::default();
-        for index in components {
-            slf.push(index);
-        }
-        slf
+        Self { components }
     }
 
     #[inline]
@@ -90,38 +86,26 @@ impl IndexPath {
         self.components.iter()
     }
 
-    pub fn push(&mut self, index: impl Into<IndexKey>) {
-        let index = index.into();
-        let (hash, index) = index.into_hash_and_index();
-
+    pub fn push(&mut self, index: Index) {
         self.components.push(index);
-        self.hashes[0] = self.hashes[0].rotate_left(5);
-        self.hashes[1] = self.hashes[1].rotate_left(5);
-        self.hashes[0] ^= hash.first64();
-        self.hashes[1] ^= hash.second64();
     }
 
-    pub fn pop(&mut self) -> Option<IndexKey> {
-        let index = IndexKey::new(self.components.pop()?);
-        self.hashes[0] ^= index.hash().first64();
-        self.hashes[1] ^= index.hash().second64();
-        self.hashes[0] = self.hashes[0].rotate_right(5);
-        self.hashes[1] = self.hashes[1].rotate_right(5);
-        Some(index)
+    pub fn pop(&mut self) -> Option<Index> {
+        self.components.pop()
     }
 
     /// Replace last component with [`Index::Placeholder`], and return what was there.
-    pub fn replace_last_with_placeholder(mut self) -> (IndexPath, IndexKey) {
+    pub fn replace_last_with_placeholder(mut self) -> (IndexPath, Index) {
         let index = self.pop().unwrap();
-        assert_ne!(index, IndexKey::new(Index::Placeholder));
+        assert_ne!(index, Index::Placeholder);
         self.push(Index::Placeholder);
         (self, index)
     }
 
     /// Replace last [`Index::Placeholder`] with the given key.
-    pub fn replace_last_placeholder_with(&mut self, key: IndexKey) {
+    pub fn replace_last_placeholder_with(&mut self, key: Index) {
         let index = self.pop().unwrap();
-        assert_eq!(index, IndexKey::new(Index::Placeholder));
+        assert_eq!(index, Index::Placeholder);
         self.push(key);
     }
 
@@ -132,38 +116,6 @@ impl IndexPath {
 }
 
 pub type Iter<'a> = std::slice::Iter<'a, Index>;
-
-#[cfg(feature = "serde")]
-impl serde::Serialize for IndexPath {
-    #[inline]
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.as_slice().serialize(serializer)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for IndexPath {
-    #[inline]
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        <Vec<Index>>::deserialize(deserializer).map(IndexPath::new)
-    }
-}
-
-impl std::cmp::PartialEq for IndexPath {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.hashes == other.hashes // much faster, and low chance of collision
-    }
-}
-
-impl std::hash::Hash for IndexPath {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hashes[0]);
-    }
-}
-
-impl nohash_hasher::IsEnabled for IndexPath {}
 
 impl std::fmt::Debug for IndexPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -189,9 +141,9 @@ fn test_index_path_key() {
 
     let (key1_prefix, seq0) = key1.replace_last_with_placeholder();
     assert_eq!(key1_prefix.components.len(), 1);
-    assert_eq!(seq0, IndexKey::new(Index::Sequence(0)));
+    assert_eq!(seq0, Index::Sequence(0));
 
     let (key2_prefix, seq1) = key2.replace_last_with_placeholder();
     assert_eq!(key2_prefix.components.len(), 2);
-    assert_eq!(seq1, IndexKey::new(Index::Sequence(1)));
+    assert_eq!(seq1, Index::Sequence(1));
 }
