@@ -84,7 +84,7 @@ pub type ArcBatch<T> = Arc<Batch<T>>;
 
 /// We have one of these per each time source.
 pub struct TypePathDataStore<Time> {
-    objects: AHashMap<ObjTypePath, ObjStore<Time>>,
+    objects: IntMap<ObjTypePath, ObjStore<Time>>,
 }
 
 impl<Time> Default for TypePathDataStore<Time> {
