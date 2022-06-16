@@ -36,7 +36,7 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                         |_time, (log_id, primary_batch)| {
                             for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
+                                    obj_store.obj_path_or_die(index_path_suffix),
                                     log_id,
                                     primary_value,
                                 );
@@ -71,6 +71,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
                 let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
 
                 for (index_path, primary) in primary.iter() {
+                    let index_path_split = &primary.index_path_split;
                     query(
                         &primary.history,
                         time_query,
@@ -79,7 +80,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
                                 &primary.obj_path,
                                 log_id,
                                 primary_value,
-                                child1_reader.latest_at(index_path, time),
+                                child1_reader.latest_at(index_path, index_path_split, time),
                             );
                         },
                     );
@@ -98,7 +99,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
 
                             for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
+                                    obj_store.obj_path_or_die(index_path_suffix),
                                     log_id,
                                     primary_value,
                                     child1_reader.latest_at(index_path_suffix),
@@ -142,6 +143,7 @@ pub fn visit_type_data_2<
                 let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
 
                 for (index_path, primary) in primary.iter() {
+                    let index_path_split = &primary.index_path_split;
                     query(
                         &primary.history,
                         time_query,
@@ -150,8 +152,8 @@ pub fn visit_type_data_2<
                                 &primary.obj_path,
                                 log_id,
                                 primary_value,
-                                child1_reader.latest_at(index_path, time),
-                                child2_reader.latest_at(index_path, time),
+                                child1_reader.latest_at(index_path, index_path_split, time),
+                                child2_reader.latest_at(index_path, index_path_split, time),
                             );
                         },
                     );
@@ -173,7 +175,7 @@ pub fn visit_type_data_2<
 
                             for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
+                                    obj_store.obj_path_or_die(index_path_suffix),
                                     log_id,
                                     primary_value,
                                     child1_reader.latest_at(index_path_suffix),
@@ -221,6 +223,7 @@ pub fn visit_type_data_3<
                 let child3_reader = IndividualDataReader::<Time, S3>::new(obj_store, &child3);
 
                 for (index_path, primary) in primary.iter() {
+                    let index_path_split = &primary.index_path_split;
                     query(
                         &primary.history,
                         time_query,
@@ -229,9 +232,9 @@ pub fn visit_type_data_3<
                                 &primary.obj_path,
                                 log_id,
                                 primary_value,
-                                child1_reader.latest_at(index_path, time),
-                                child2_reader.latest_at(index_path, time),
-                                child3_reader.latest_at(index_path, time),
+                                child1_reader.latest_at(index_path, index_path_split, time),
+                                child2_reader.latest_at(index_path, index_path_split, time),
+                                child3_reader.latest_at(index_path, index_path_split, time),
                             );
                         },
                     );
@@ -256,7 +259,7 @@ pub fn visit_type_data_3<
 
                             for (index_path_suffix, primary_value) in primary_batch.iter() {
                                 visit(
-                                    obj_store.obj_path_or_die(index_path_suffix.hash()),
+                                    obj_store.obj_path_or_die(index_path_suffix),
                                     log_id,
                                     primary_value,
                                     child1_reader.latest_at(index_path_suffix),

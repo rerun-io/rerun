@@ -25,6 +25,18 @@ pub enum Index {
     Placeholder,
 }
 
+impl Index {
+    #[inline]
+    pub fn is_placeholder(&self) -> bool {
+        matches!(self, Self::Placeholder)
+    }
+
+    #[inline]
+    pub fn hash(&self) -> IndexHash {
+        IndexHash::hash(self)
+    }
+}
+
 impl std::fmt::Display for Index {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -49,7 +61,17 @@ pub struct IndexHash(Hash128);
 impl IndexHash {
     #[inline]
     pub fn hash(index: &Index) -> Self {
-        Self(Hash128::hash(index))
+        if index.is_placeholder() {
+            Self(Hash128::ZERO)
+        } else {
+            Self(Hash128::hash(index))
+        }
+    }
+
+    /// Is this equal to `IndexHash::hash(&Index::Placeholder)` ?
+    #[inline]
+    pub fn is_placeholder(&self) -> bool {
+        self.0 == Hash128::ZERO
     }
 
     #[inline]
@@ -127,8 +149,14 @@ impl IndexKey {
         self.hash.hash64()
     }
 
+    #[inline]
     pub(crate) fn into_hash_and_index(self) -> (IndexHash, Index) {
         (self.hash, *self.index)
+    }
+
+    #[inline]
+    pub fn is_placeholder(&self) -> bool {
+        self.index.is_placeholder()
     }
 }
 

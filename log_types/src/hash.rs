@@ -49,6 +49,8 @@ impl std::fmt::Debug for Hash64 {
 pub struct Hash128([u64; 2]);
 
 impl Hash128 {
+    pub const ZERO: Hash128 = Hash128([0; 2]);
+
     pub fn hash(value: impl std::hash::Hash + Copy) -> Self {
         Self(double_hash(value))
     }

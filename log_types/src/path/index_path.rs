@@ -1,4 +1,56 @@
-use crate::{Index, IndexKey};
+use crate::{Index, IndexHash, IndexKey};
+
+// ----------------------------------------------------------------------------
+
+/// A 128 bit hash of a [`IndexPath`] with negligible risk of collision.
+#[derive(Clone, Copy, Default, Eq)]
+pub struct IndexPathHash([u64; 2]);
+
+impl IndexPathHash {
+    pub fn from_path(path: &IndexPath) -> Self {
+        let mut hash = Self::default();
+        for index in &path.components {
+            hash.push(&index.hash());
+        }
+        hash
+    }
+
+    pub fn push(&mut self, index_hash: &IndexHash) {
+        self.0[0] = self.0[0].rotate_left(5);
+        self.0[1] = self.0[1].rotate_left(5);
+        self.0[0] ^= index_hash.first64();
+        self.0[1] ^= index_hash.second64();
+    }
+
+    pub fn replace_last_placeholder_with(&mut self, index_hash: &IndexHash) {
+        // `Index::Placeholder` has zero as hash, so we can easily replace it:
+        assert!(!index_hash.is_placeholder());
+        self.0[0] ^= index_hash.first64();
+        self.0[1] ^= index_hash.second64();
+    }
+}
+
+impl std::hash::Hash for IndexPathHash {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.0[0]);
+    }
+}
+
+impl PartialEq for IndexPathHash {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl nohash_hasher::IsEnabled for IndexPathHash {}
+
+impl std::fmt::Debug for IndexPathHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("Hash128({:016X}{:016X})", self.0[0], self.0[1]))
+    }
+}
 
 // ----------------------------------------------------------------------------
 
