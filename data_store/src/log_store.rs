@@ -1,7 +1,8 @@
 use nohash_hasher::{IntMap, IntSet};
 
 use log_types::{
-    Data, DataMsg, DataPath, DataVec, LoggedData, ObjPath, ObjPathHash, TimeSource, TimeType,
+    Data, DataMsg, DataPath, DataVec, Index, IndexHash, LoggedData, ObjPath, ObjPathHash,
+    TimeSource, TimeType,
 };
 
 use crate::{ArcBatch, Batch, TypePathDataStore};
@@ -11,7 +12,7 @@ pub struct LogDataStore {
     store_from_time_source: IntMap<TimeSource, (TimeType, TypePathDataStore<i64>)>,
     obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
     /// To avoid doing double-work filling in [`Self::obj_path_from_hash`].
-    regiestered_batch_paths: IntMap<ObjPathHash, IntSet<u64>>,
+    regiestered_batch_paths: IntMap<ObjPathHash, IntSet<IndexHash>>,
 }
 
 impl LogDataStore {
@@ -91,7 +92,7 @@ impl LogDataStore {
     fn register_batch_obj_paths(
         &mut self,
         data_msg: &DataMsg,
-        indices: std::slice::Iter<'_, log_types::IndexKey>,
+        indices: std::slice::Iter<'_, (IndexHash, Index)>,
     ) {
         crate::profile_function!();
         let obj_path = data_msg.data_path.obj_path();
@@ -101,13 +102,13 @@ impl LogDataStore {
             .entry(*data_msg.data_path.obj_path.hash())
             .or_default();
 
-        for index_path_suffix in indices {
-            if registered_suffixes.insert(index_path_suffix.hash64()) {
+        for (index_hash, index) in indices {
+            if registered_suffixes.insert(*index_hash) {
                 // TODO: speed this up. A lot. Please.
                 let (obj_type_path, index_path_prefix) =
                     obj_path.clone().into_type_path_and_index_path();
                 let mut index_path = index_path_prefix.clone();
-                index_path.replace_last_placeholder_with(index_path_suffix.index().clone());
+                index_path.replace_last_placeholder_with(index.clone());
                 let obj_path = ObjPath::new(obj_type_path.clone(), index_path);
                 self.obj_path_from_hash.insert(*obj_path.hash(), obj_path);
             }

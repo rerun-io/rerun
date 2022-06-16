@@ -5,7 +5,7 @@ use ahash::AHashMap;
 use nohash_hasher::IntMap;
 
 use log_types::{
-    data_types, DataTrait, DataType, DataVec, FieldName, IndexHash, IndexKey, IndexPath,
+    data_types, DataTrait, DataType, DataVec, FieldName, Index, IndexHash, IndexPath,
     IndexPathHash, LogId, ObjPath,
 };
 
@@ -26,10 +26,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Can be shared between different timelines with [`ArcBatch`].
 ///
-/// The [`IndexKey`] is the last path of the [`IndexPath`].
+/// Each [`Index`] is the last path of the [`IndexPath`].
 pub struct Batch<T> {
     map: IntMap<IndexHash, T>,
-    hashed_indices: Vec<IndexKey>,
+    hashed_indices: Vec<(IndexHash, Index)>,
 }
 
 impl<T: Clone> Batch<T> {
@@ -40,9 +40,8 @@ impl<T: Clone> Batch<T> {
         let mut hashed_indices = Vec::with_capacity(indices.len());
         let map = itertools::izip!(indices, data)
             .map(|(index, value)| {
-                let index_key = IndexKey::new(index.clone());
-                let index_hash = *index_key.hash();
-                hashed_indices.push(index_key);
+                let index_hash = IndexHash::hash(index);
+                hashed_indices.push((index_hash, index.clone()));
                 (index_hash, value.clone())
             })
             .collect();
@@ -60,7 +59,7 @@ impl<T> Batch<T> {
     }
 
     #[inline]
-    pub fn indices(&self) -> std::slice::Iter<'_, IndexKey> {
+    pub fn indices(&self) -> std::slice::Iter<'_, (IndexHash, Index)> {
         self.hashed_indices.iter()
     }
 
@@ -266,16 +265,13 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         batch: &Batch<T>,
         parent_obj_path: &ObjPath,
     ) {
-        for index_path_suffix in batch.indices() {
-            if !self
-                .obj_paths_from_batch_suffix
-                .contains_key(index_path_suffix.hash())
-            {
+        for (index_hash, index) in batch.indices() {
+            if !self.obj_paths_from_batch_suffix.contains_key(index_hash) {
                 let obj_path = parent_obj_path
                     .clone()
-                    .replace_last_placeholder_with(index_path_suffix.index().clone());
+                    .replace_last_placeholder_with(index.clone());
                 self.obj_paths_from_batch_suffix
-                    .insert(*index_path_suffix.hash(), obj_path);
+                    .insert(*index_hash, obj_path);
             }
         }
     }

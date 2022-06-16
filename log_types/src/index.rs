@@ -54,7 +54,7 @@ crate::impl_into_enum!(String, Index, String);
 
 // ----------------------------------------------------------------------------
 
-/// A 128 bit hash of [`Index`] and [`IndexKey`] with negligible chance of collision.
+/// A 128 bit hash of [`Index`] with negligible chance of collision.
 #[derive(Copy, Clone, Eq)]
 pub struct IndexHash(Hash128);
 
@@ -115,85 +115,5 @@ impl std::fmt::Debug for IndexHash {
             self.0.first64(),
             self.0.second64()
         ))
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// Like [`Index`] but also includes a precomputed hash.
-#[derive(Clone, Eq)]
-pub struct IndexKey {
-    hash: IndexHash,
-    index: Index,
-}
-
-impl IndexKey {
-    #[inline]
-    pub fn new(index: Index) -> Self {
-        Self {
-            hash: IndexHash::hash(&index),
-            index,
-        }
-    }
-
-    #[inline]
-    pub fn index(&self) -> &Index {
-        &self.index
-    }
-
-    #[inline]
-    pub fn hash(&self) -> &IndexHash {
-        &self.hash
-    }
-
-    #[inline]
-    pub fn hash64(&self) -> u64 {
-        self.hash.hash64()
-    }
-
-    #[inline]
-    pub fn is_placeholder(&self) -> bool {
-        self.index.is_placeholder()
-    }
-}
-
-impl std::cmp::PartialOrd for IndexKey {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.index.partial_cmp(&other.index)
-    }
-}
-
-impl std::cmp::Ord for IndexKey {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.index.cmp(&other.index)
-    }
-}
-
-impl std::cmp::PartialEq for IndexKey {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash // much faster, and low chance of collision
-    }
-}
-
-impl std::hash::Hash for IndexKey {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.hash.hash(state);
-    }
-}
-
-impl nohash_hasher::IsEnabled for IndexKey {}
-
-impl From<Index> for IndexKey {
-    #[inline]
-    fn from(index: Index) -> Self {
-        IndexKey::new(index)
-    }
-}
-
-impl std::fmt::Debug for IndexKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.index.fmt(f)
     }
 }

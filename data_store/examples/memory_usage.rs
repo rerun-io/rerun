@@ -46,7 +46,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
 
 use data_store::*;
 use itertools::Itertools;
-use log_types::{I LogId, TimeValue};
+use log_types::{LogId, TimeValue};
 
 impl TrackingAllocator {
     fn used_bytes(&self) -> usize {
