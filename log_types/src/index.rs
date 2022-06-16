@@ -122,7 +122,7 @@ impl std::fmt::Debug for IndexHash {
 #[derive(Clone, Eq)]
 pub struct IndexKey {
     hash: IndexHash,
-    index: Box<Index>, // boxing this improves runtime performance, but hurts create insert. TODO: use just hash in more places?
+    index: Index,
 }
 
 impl IndexKey {
@@ -130,7 +130,7 @@ impl IndexKey {
     pub fn new(index: Index) -> Self {
         Self {
             hash: IndexHash::hash(&index),
-            index: Box::new(index),
+            index,
         }
     }
 
@@ -151,7 +151,7 @@ impl IndexKey {
 
     #[inline]
     pub(crate) fn into_hash_and_index(self) -> (IndexHash, Index) {
-        (self.hash, *self.index)
+        (self.hash, self.index)
     }
 
     #[inline]
