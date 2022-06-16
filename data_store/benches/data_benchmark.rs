@@ -87,14 +87,10 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 index_path_prefix.push(Index::String(camera.into()));
                 index_path_prefix.push(Index::Placeholder);
 
-                let batch = Arc::new(
-                    (0..NUM_POINTS_PER_CAMERA)
-                        .map(|pi| {
-                            let pos: [f32; 3] = [1.0, 2.0, 3.0];
-                            (IndexKey::new(Index::Sequence(pi)), pos)
-                        })
-                        .collect(),
-                );
+                let batch = Arc::new(Batch::from_iterator((0..NUM_POINTS_PER_CAMERA).map(|pi| {
+                    let pos: [f32; 3] = [1.0, 2.0, 3.0];
+                    (IndexKey::new(Index::Sequence(pi)), pos)
+                })));
 
                 data_store
                     .insert_batch(
@@ -130,11 +126,10 @@ fn generate_date(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                 index_path_prefix.push(Index::String(camera.into()));
                 index_path_prefix.push(Index::Placeholder);
 
-                let batch = Arc::new(
+                let batch = Arc::new(Batch::from_iterator(
                     (0..NUM_POINTS_PER_CAMERA)
-                        .map(|pi| (IndexKey::new(Index::Sequence(pi)), 1.0_f32))
-                        .collect(),
-                );
+                        .map(|pi| (IndexKey::new(Index::Sequence(pi)), 1.0_f32)),
+                ));
 
                 data_store
                     .insert_batch(

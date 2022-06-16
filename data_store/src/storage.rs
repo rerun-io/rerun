@@ -27,7 +27,51 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Can be shared between different timelines.
 ///
 /// The [`IndexKey`] is the last path of the [`IndexPath`].
-pub type Batch<T> = Arc<IntMap<IndexKey, T>>;
+pub struct Batch<T> {
+    map: IntMap<IndexKey, T>,
+}
+
+impl<T: Clone> Batch<T> {
+    #[inline(never)]
+    pub fn new(indices: &[log_types::IndexKey], data: &[T]) -> Self {
+        crate::profile_function!(std::any::type_name::<T>());
+        assert_eq!(indices.len(), data.len()); // TODO: return Result instead
+        let map = itertools::izip!(indices, data)
+            .map(|(index, value)| (index.clone(), value.clone()))
+            .collect();
+        Self { map }
+    }
+}
+
+impl<T> Batch<T> {
+    #[inline(never)]
+    pub fn from_iterator(iter: impl Iterator<Item = (IndexKey, T)>) -> Self {
+        let map = iter.collect();
+        Self { map }
+    }
+
+    #[inline]
+    pub fn get(&self, index: &IndexKey) -> Option<&T> {
+        self.map.get(index)
+    }
+
+    #[inline]
+    pub fn keys(&self) -> impl ExactSizeIterator<Item = &IndexKey> {
+        self.map.keys()
+    }
+
+    #[inline]
+    pub fn values(&self) -> impl ExactSizeIterator<Item = &T> {
+        self.map.values()
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexKey, &T)> {
+        self.map.iter()
+    }
+}
+
+pub type ArcBatch<T> = Arc<Batch<T>>;
 
 // ----------------------------------------------------------------------------
 
@@ -70,7 +114,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         field_name: FieldName,
         time: Time,
         log_id: LogId,
-        batch: Batch<T>,
+        batch: ArcBatch<T>,
     ) -> Result<()> {
         crate::profile_function!(std::any::type_name::<T>());
         assert!(parent_obj_path.index_path().has_placeholder_last());
@@ -181,7 +225,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         time: Time,
         parent_obj_path: &ObjPath,
         log_id: LogId,
-        batch: Batch<T>,
+        batch: ArcBatch<T>,
     ) -> Result<()> {
         self.register_batch_obj_paths(&batch, parent_obj_path);
 
@@ -404,7 +448,7 @@ impl<Time: Copy + Ord, T: DataTrait> DataStore<Time, T> {
         index_path_prefix: IndexPath,
         time: Time,
         log_id: LogId,
-        batch: Batch<T>,
+        batch: ArcBatch<T>,
     ) -> Result<()> {
         match self {
             Self::Batched(batched) => {
@@ -525,7 +569,7 @@ pub struct BatchedDataHistory<Time, T> {
 }
 
 pub struct BatchHistory<Time, T> {
-    pub(crate) history: BTreeMap<Time, (LogId, Batch<T>)>,
+    pub(crate) history: BTreeMap<Time, (LogId, ArcBatch<T>)>,
 }
 
 impl<Time: Copy + Ord, T> Default for BatchedDataHistory<Time, T> {
@@ -545,7 +589,13 @@ impl<Time: Copy + Ord, T> Default for BatchHistory<Time, T> {
 }
 
 impl<Time: Copy + Ord, T> BatchedDataHistory<Time, T> {
-    fn insert(&mut self, index_path_prefix: IndexPath, time: Time, log_id: LogId, batch: Batch<T>) {
+    fn insert(
+        &mut self,
+        index_path_prefix: IndexPath,
+        time: Time,
+        log_id: LogId,
+        batch: ArcBatch<T>,
+    ) {
         let batch_history = self.batches_over_time.entry(index_path_prefix).or_default();
         batch_history.history.insert(time, (log_id, batch));
     }
@@ -751,7 +801,7 @@ impl<'store, Time: 'static + Copy + Ord, T: DataTrait> IndividualDataReader<'sto
 pub(crate) enum BatchedDataReader<'store, Time, T> {
     None,
     Individual(IndexPath, Time, &'store IndividualDataHistory<Time, T>),
-    Batched(&'store IntMap<IndexKey, T>),
+    Batched(&'store Batch<T>),
     BatchSplat(&'store T),
 }
 

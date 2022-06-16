@@ -6,7 +6,7 @@ use log_types::{
     TimeType,
 };
 
-use crate::{Batch, TypePathDataStore};
+use crate::{ArcBatch, Batch, TypePathDataStore};
 
 #[derive(Default)]
 pub struct LogDataStore {
@@ -123,17 +123,6 @@ impl LogDataStore {
     }
 }
 
-#[inline(never)]
-fn create_batch<T: Clone>(indices: &[log_types::IndexKey], data: &[T]) -> Batch<T> {
-    crate::profile_function!(std::any::type_name::<T>());
-    assert_eq!(indices.len(), data.len()); // TODO: return Result instead
-    std::sync::Arc::new(
-        itertools::izip!(indices, data)
-            .map(|(index, value)| (index.clone(), value.clone()))
-            .collect(),
-    )
-}
-
 /// Converts data to a batch ONCE, then reuses that batch for other time sources
 #[derive(Default)]
 struct Batcher {
@@ -145,11 +134,11 @@ impl Batcher {
         &mut self,
         indices: &[log_types::IndexKey],
         data: &[T],
-    ) -> Batch<T> {
+    ) -> ArcBatch<T> {
         if let Some(batch) = &self.batch {
-            batch.downcast_ref::<Batch<T>>().unwrap().clone()
+            batch.downcast_ref::<ArcBatch<T>>().unwrap().clone()
         } else {
-            let batch = create_batch(indices, data);
+            let batch = std::sync::Arc::new(Batch::new(indices, data));
             self.batch = Some(Box::new(batch.clone()));
             batch
         }

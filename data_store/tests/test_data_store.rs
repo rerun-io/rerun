@@ -30,9 +30,8 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
     points
 }
 
-fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> Batch<T> {
-    let batch: nohash_hasher::IntMap<IndexKey, T> = batch.into_iter().collect();
-    std::sync::Arc::new(batch)
+fn batch<T, const N: usize>(batch: [(IndexKey, T); N]) -> ArcBatch<T> {
+    std::sync::Arc::new(Batch::from_iterator(batch.into_iter()))
 }
 
 fn id() -> LogId {

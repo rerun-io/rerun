@@ -147,14 +147,11 @@ fn big_clouds_batched() {
     let mut num_points = 0;
     while frame < NUM_FRAMES {
         for camera in 0..NUM_CAMERAS {
-            let batch = std::sync::Arc::new(
-                (0..NUM_POINTS_PER_CAMERA)
-                    .map(|i| {
-                        let point: [f32; 3] = [1.0, 2.0, 3.0];
-                        (IndexKey::new(Index::Sequence(i as _)), point)
-                    })
-                    .collect(),
-            );
+            let batch =
+                std::sync::Arc::new(Batch::from_iterator((0..NUM_POINTS_PER_CAMERA).map(|i| {
+                    let point: [f32; 3] = [1.0, 2.0, 3.0];
+                    (IndexKey::new(Index::Sequence(i as _)), point)
+                })));
             let (obj_type_path, index_path) =
                 obj_path(camera as _, 0).into_type_path_and_index_path();
             let (index_path_prefix, _) = index_path.replace_last_with_placeholder();
