@@ -3633,6 +3633,7 @@ dependencies = [
  "glam",
  "glow",
  "image",
+ "instant",
  "itertools",
  "log",
  "log-once",

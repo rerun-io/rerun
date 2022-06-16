@@ -17,6 +17,10 @@ struct Args {
     #[cfg(feature = "web")]
     #[clap(long)]
     open: bool,
+
+    /// Start with the puffin profiler running.
+    #[clap(long)]
+    profile: bool,
 }
 
 #[cfg(not(feature = "web"))]
@@ -30,6 +34,11 @@ fn main() {
         !args.dirs.is_empty(),
         "Requires at least one file directory"
     );
+
+    let mut profiler = viewer::Profiler::default();
+    if args.profile {
+        profiler.start();
+    }
 
     let (rerun_tx, rerun_rx) = std::sync::mpsc::channel();
 

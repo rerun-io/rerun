@@ -57,9 +57,9 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
 
     let mut file_contents = vec![];
 
-    // logging depth images is slow (atm), so we don't log every frame
+    // logging depth images is slow, so we don't log every frame
     let mut depth_images_counter = 0;
-    const DEPTH_IMAGE_INTERVAL: usize = 16;
+    const DEPTH_IMAGE_INTERVAL: usize = 8;
 
     let obj_path = ObjPathBuilder::from("points") / Index::Placeholder;
 
@@ -181,8 +181,6 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
                         data: DataVec::Vec3(positions),
                     },
                 ));
-
-                tracing::info!("{} points in point cloud", indices.len());
             }
         }
     }

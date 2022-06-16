@@ -40,9 +40,10 @@ clap = { version = "3.1.6", features = ["derive"] }
 glam = { version = "0.20", features = ["mint"] }
 glow = "0.11"
 image = { version = "0.23", default-features = false, features = ["png"] }
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
-log = "0.4"  # TODO: tracing specific crate instead
-log-once = "0.3" # TODO: tracing specific crate instead
+log = "0.4"  # TODO: tracing-specific crate instead
+log-once = "0.3" # TODO: tracing-specific crate instead
 macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
 nohash-hasher = "0.2"
@@ -68,7 +69,6 @@ puffin = { version = "0.13", optional = true }
 puffin_http = { version = "0.10", optional = true }
 tracing-subscriber = "0.3"
 tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
-# TODO: consider using mimalloc
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

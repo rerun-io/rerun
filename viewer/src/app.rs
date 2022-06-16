@@ -68,8 +68,13 @@ impl eframe::App for App {
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         if let Some(rx) = &mut self.rx {
             crate::profile_scope!("receive_messages");
+            let start = instant::Instant::now();
             while let Ok(msg) = rx.try_recv() {
                 self.log_db.add(msg);
+                if start.elapsed() > instant::Duration::from_millis(10) {
+                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                    break;
+                }
             }
         }
 

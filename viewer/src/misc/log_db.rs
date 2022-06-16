@@ -21,6 +21,7 @@ pub(crate) struct LogDb {
 
 impl LogDb {
     pub fn add(&mut self, msg: LogMsg) {
+        crate::profile_function!();
         match &msg {
             LogMsg::TypeMsg(type_msg) => self.add_type_msg(type_msg),
             LogMsg::DataMsg(data_msg) => self.add_data_msg(data_msg),
@@ -52,6 +53,8 @@ impl LogDb {
     }
 
     fn add_data_msg(&mut self, msg: &DataMsg) {
+        crate::profile_function!();
+
         let obj_type_path = &msg.data_path.obj_path.obj_type_path();
         if let Some(object_type) = self.object_types.get(obj_type_path) {
             let valid_members = object_type.members();
