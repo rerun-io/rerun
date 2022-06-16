@@ -74,7 +74,7 @@ fn generate_data(individual_pos: bool, individual_radius: bool) -> TypePathDataS
     let type_path = type_path();
 
     let indices = (0..NUM_POINTS_PER_CAMERA)
-        .map(|pi| Index::Sequence(pi))
+        .map(Index::Sequence)
         .collect_vec();
     let positions = vec![[1.0_f32; 3]; NUM_POINTS_PER_CAMERA as usize];
     let radii = vec![1.0_f32; NUM_POINTS_PER_CAMERA as usize];

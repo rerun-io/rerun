@@ -1,4 +1,4 @@
-//! Queries of the type "read these fields, from all objects of this [`ObjTypePath`], over this time interval"
+//! Queries of the type "read these fields, from all objects of this [`log_types::ObjTypePath`], over this time interval"
 
 use log_types::{DataTrait, FieldName, LogId, ObjPath};
 

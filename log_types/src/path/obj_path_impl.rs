@@ -5,7 +5,7 @@ use crate::{
 
 /// `camera / "left" / points / #42`
 ///
-/// Wrapped by [`ObjPath`] together with a hash.
+/// Wrapped by [`crate::ObjPath`] together with a hash.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub(crate) struct ObjPathImpl {
