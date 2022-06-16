@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use egui::{util::hash, NumExt as _};
+use egui::util::hash;
 use glam::{vec3, Mat4, Quat, Vec3};
 use itertools::Itertools as _;
 
@@ -85,8 +85,13 @@ impl Scene {
             [r, g, b, a]
         };
 
-        let line_radius_in_points = (0.0005 * viewport_size.length()).at_least(1.5);
-        let point_radius_in_points = 2.5 * line_radius_in_points;
+        let viewport_area = viewport_size.x * viewport_size.y;
+
+        let line_radius_in_points = (0.0005 * viewport_size.length()).clamp(1.5, 5.0);
+
+        // More points -> smaller points
+        let point_radius_in_points =
+            (0.3 * (viewport_area / (objects.point3d.len() + 1) as f32).sqrt()).clamp(0.1, 5.0);
 
         // Size of a pixel (in meters), when projected out one meter:
         let point_size_at_one_meter = camera.fov_y / viewport_size.y;
@@ -293,7 +298,7 @@ impl Scene {
                 * Mat4::from_mat3(intrinsis.inverse());
 
             // At what distance do we end the frustum?
-            let d = scene_bbox.size().length() * 0.25;
+            let d = scene_bbox.size().length() * 0.3;
 
             let corners = [
                 world_from_pixel
