@@ -2,8 +2,8 @@ var cacheName = 'rerun-viewer-pwa';
 var filesToCache = [
   './',
   './index.html',
-  './viewer.js',
-  './viewer_bg.wasm',
+  './re_viewer.js',
+  './re_viewer_bg.wasm',
 ];
 
 /* Start the service worker and cache all of the app's content */

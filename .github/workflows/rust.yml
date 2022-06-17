@@ -57,7 +57,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: check
-          args: -p viewer --all-features --lib --target wasm32-unknown-unknown
+          args: -p re_viewer --all-features --lib --target wasm32-unknown-unknown
 
   test:
     name: Test Suite
@@ -144,4 +144,4 @@ jobs:
           override: true
       - run: rustup target add wasm32-unknown-unknown
       - run: cargo install wasm-bindgen-cli
-      - run: ./viewer/wasm_bindgen_check.sh
+      - run: ./crates/re_viewer/wasm_bindgen_check.sh

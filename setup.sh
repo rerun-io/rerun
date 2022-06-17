@@ -12,5 +12,5 @@ fi
 # Needed to compile and check the code:
 rustup install 1.60.0
 cargo install cargo-deny
-./viewer/setup_web.sh
-./viewer/build_web.sh
+./crates/re_viewer/setup_web.sh
+./crates/re_viewer/build_web.sh

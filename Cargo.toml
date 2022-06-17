@@ -1,14 +1,15 @@
 [workspace]
 resolver = "2"
 members = [
-    "comms",
-    "data_store",
-    "log_types",
-    "nyud",
-    "objectron",
-    "rr_string_interner",
-    "viewer",
-    "web_server",
+    "crates/re_comms",
+    "crates/re_data_store",
+    "crates/re_log_types",
+    "crates/re_string_interner",
+    "crates/re_viewer",
+    "crates/re_web_server",
+
+    "examples/nyud",
+    "examples/objectron",
 ]
 
 

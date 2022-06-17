@@ -1,0 +1,29 @@
+[package]
+name = "re_data_store"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.60"
+license = "MIT OR Apache-2.0"
+publish = false
+
+
+[dependencies]
+re_log_types = { path = "../re_log_types" }
+
+ahash = "0.7"
+itertools = "0.10"
+nohash-hasher = "0.2"
+tracing = "0.1"
+
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+puffin = { version = "0.13", optional = true }
+
+[dev-dependencies]
+criterion = "0.3"
+mimalloc = "0.1"
+
+
+[[bench]]
+name = "data_benchmark"
+harness = false

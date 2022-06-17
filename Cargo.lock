@@ -569,23 +569,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "comms"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bincode",
- "ewebsock",
- "futures-channel",
- "futures-util",
- "log_types",
- "parking_lot 0.12.0",
- "tokio",
- "tokio-tungstenite",
- "tracing",
- "tungstenite",
-]
-
-[[package]]
 name = "concurrent-queue"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -873,20 +856,6 @@ dependencies = [
  "darling_core",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "data_store"
-version = "0.1.0"
-dependencies = [
- "ahash 0.7.6",
- "criterion",
- "itertools",
- "log_types",
- "mimalloc",
- "nohash-hasher",
- "puffin",
- "tracing",
 ]
 
 [[package]]
@@ -1959,22 +1928,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "log_types"
-version = "0.1.0"
-dependencies = [
- "ahash 0.7.6",
- "anyhow",
- "chrono",
- "nohash-hasher",
- "rmp-serde",
- "rr_string_interner",
- "ruzstd",
- "serde",
- "uuid",
- "zstd",
-]
-
-[[package]]
 name = "macaw"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2297,17 +2250,17 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "clap 3.1.17",
- "comms",
  "glam",
  "image",
  "itertools",
- "log_types",
  "mimalloc",
+ "re_comms",
+ "re_log_types",
+ "re_viewer",
+ "re_web_server",
  "tokio",
  "tracing",
  "tracing-subscriber",
- "viewer",
- "web_server",
  "webbrowser",
  "zip",
 ]
@@ -2347,18 +2300,18 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap 3.1.17",
- "comms",
  "glam",
  "image",
  "itertools",
- "log_types",
  "mimalloc",
  "prost",
+ "re_comms",
+ "re_log_types",
+ "re_viewer",
+ "re_web_server",
  "tokio",
  "tracing",
  "tracing-subscriber",
- "viewer",
- "web_server",
  "webbrowser",
 ]
 
@@ -2740,6 +2693,120 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_comms"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "ewebsock",
+ "futures-channel",
+ "futures-util",
+ "parking_lot 0.12.0",
+ "re_log_types",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+ "tungstenite",
+]
+
+[[package]]
+name = "re_data_store"
+version = "0.1.0"
+dependencies = [
+ "ahash 0.7.6",
+ "criterion",
+ "itertools",
+ "mimalloc",
+ "nohash-hasher",
+ "puffin",
+ "re_log_types",
+ "tracing",
+]
+
+[[package]]
+name = "re_log_types"
+version = "0.1.0"
+dependencies = [
+ "ahash 0.7.6",
+ "anyhow",
+ "chrono",
+ "nohash-hasher",
+ "re_string_interner",
+ "rmp-serde",
+ "ruzstd",
+ "serde",
+ "uuid",
+ "zstd",
+]
+
+[[package]]
+name = "re_string_interner"
+version = "0.1.0"
+dependencies = [
+ "ahash 0.7.6",
+ "nohash-hasher",
+ "once_cell",
+ "parking_lot 0.12.0",
+ "serde",
+]
+
+[[package]]
+name = "re_viewer"
+version = "0.1.0"
+dependencies = [
+ "ahash 0.7.6",
+ "anyhow",
+ "arboard",
+ "bytemuck",
+ "cgmath",
+ "clap 3.1.17",
+ "console_error_panic_hook",
+ "eframe",
+ "egui",
+ "egui_extras",
+ "egui_glow",
+ "glam",
+ "glow",
+ "image",
+ "instant",
+ "itertools",
+ "log",
+ "log-once",
+ "macaw",
+ "mimalloc",
+ "mint",
+ "nohash-hasher",
+ "puffin",
+ "puffin_http",
+ "rand",
+ "re_comms",
+ "re_data_store",
+ "re_log_types",
+ "re_string_interner",
+ "rfd",
+ "serde",
+ "serde_json",
+ "three-d",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-wasm",
+ "vec1",
+]
+
+[[package]]
+name = "re_web_server"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "glob",
+ "hyper",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2860,17 +2927,6 @@ checksum = "1b861ecaade43ac97886a512b360d01d66be9f41f3c61088b42cedf92e03d678"
 dependencies = [
  "base64 0.13.0",
  "bitflags",
- "serde",
-]
-
-[[package]]
-name = "rr_string_interner"
-version = "0.1.0"
-dependencies = [
- "ahash 0.7.6",
- "nohash-hasher",
- "once_cell",
- "parking_lot 0.12.0",
  "serde",
 ]
 
@@ -3614,50 +3670,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
-name = "viewer"
-version = "0.1.0"
-dependencies = [
- "ahash 0.7.6",
- "anyhow",
- "arboard",
- "bytemuck",
- "cgmath",
- "clap 3.1.17",
- "comms",
- "console_error_panic_hook",
- "data_store",
- "eframe",
- "egui",
- "egui_extras",
- "egui_glow",
- "glam",
- "glow",
- "image",
- "instant",
- "itertools",
- "log",
- "log-once",
- "log_types",
- "macaw",
- "mimalloc",
- "mint",
- "nohash-hasher",
- "puffin",
- "puffin_http",
- "rand",
- "rfd",
- "rr_string_interner",
- "serde",
- "serde_json",
- "three-d",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "tracing-wasm",
- "vec1",
-]
-
-[[package]]
 name = "waker-fn"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3864,18 +3876,6 @@ checksum = "7b17e741662c70c8bd24ac5c5b18de314a2c26c32bf8346ee1e6f53de919c283"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "web_server"
-version = "0.1.0"
-dependencies = [
- "futures-util",
- "glob",
- "hyper",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
