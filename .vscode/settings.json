@@ -1,5 +1,10 @@
 {
-    "files.insertFinalNewline": true,
     "editor.formatOnSave": true,
+    "editor.semanticTokenColorCustomizations": {
+        "rules": {
+            "*.unsafe:rust": "#eb5046"
+        }
+    },
+    "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true
 }
