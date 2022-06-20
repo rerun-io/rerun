@@ -94,10 +94,6 @@ impl State3D {
 
         // interact with orbit camera:
         {
-            if self.cam_interpolation.is_none() {
-                orbit_camera.set_up(space_specs.up);
-            }
-
             let mut did_interact = false;
 
             if response.dragged_by(egui::PointerButton::Primary) {
@@ -106,6 +102,11 @@ impl State3D {
             } else if response.dragged_by(egui::PointerButton::Secondary) {
                 orbit_camera.translate(response.drag_delta());
                 did_interact = true;
+            } else if response.dragged_by(egui::PointerButton::Middle) {
+                if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
+                    orbit_camera.roll(&response.rect, pointer_pos, response.drag_delta());
+                    did_interact = true;
+                }
             }
 
             if response.hovered() {
@@ -239,6 +240,8 @@ fn show_settings_ui(
         crate::misc::help_hover_button(ui).on_hover_text(
             "Drag to rotate.\n\
             Drag with secondary mouse button to pan.\n\
+            Drag with middle mouse button to roll camera.\n\
+            {}\
             Scroll to zoom.\n\
             \n\
             While hovering the 3D view, navigate camera with WSAD and QE.\n\
@@ -431,7 +434,7 @@ fn default_camera(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) ->
     let camera_pos = center + radius * cam_dir;
 
     let look_up = if space_spects.up == Vec3::ZERO {
-        Vec3::Z
+        Vec3::Z // TODO: make sure this isn't colinear with `center - camera_pos`.
     } else {
         space_spects.up
     };
@@ -442,7 +445,7 @@ fn default_camera(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) ->
         world_from_view_rot: Quat::from_affine3(
             &Affine3A::look_at_rh(camera_pos, center, look_up).inverse(),
         ),
-        fov_y: 65.0_f32.to_radians(), // TODO: base on viewport size?
+        fov_y: camera::DEFAULT_FOV_Y,
         up: space_spects.up,
         velocity: Vec3::ZERO,
     }

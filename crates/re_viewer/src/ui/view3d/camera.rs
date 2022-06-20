@@ -2,6 +2,8 @@ use egui::{lerp, NumExt as _, Rect};
 use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
+pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
+
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub struct Camera {
     pub world_from_view: IsoTransform,
@@ -16,7 +18,7 @@ impl Camera {
         let fov_y = if let (Some(intrinsis), Some([_w, h])) = (cam.intrinsics, cam.resolution) {
             2.0 * (0.5 * h / intrinsis[1][1]).atan()
         } else {
-            65.0_f32.to_radians()
+            DEFAULT_FOV_Y
         };
 
         Self {
@@ -134,30 +136,32 @@ impl OrbitCamera {
         }
     }
 
-    fn set_dir(&mut self, fwd: Vec3) {
-        if self.up == Vec3::ZERO {
-            self.world_from_view_rot = Quat::from_rotation_arc(-Vec3::Z, fwd);
-        } else {
-            let pitch = self
-                .pitch()
-                .unwrap()
-                .clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
+    fn set_fwd(&mut self, fwd: Vec3) {
+        if let Some(pitch) = self.pitch() {
+            let pitch = pitch.clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
 
             let fwd = project_onto(fwd, self.up).normalize(); // Remove pitch
             let right = fwd.cross(self.up).normalize();
             let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
             let fwd = fwd.normalize(); // Prevent drift
 
-            self.world_from_view_rot =
+            let world_from_view_rot =
                 Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
+
+            if world_from_view_rot.is_finite() {
+                self.world_from_view_rot = world_from_view_rot;
+            }
+        } else {
+            self.world_from_view_rot = Quat::from_rotation_arc(-Vec3::Z, fwd);
         }
     }
 
+    #[allow(unused)]
     pub fn set_up(&mut self, up: Vec3) {
         self.up = up.normalize_or_zero();
 
         if self.up != Vec3::ZERO {
-            self.set_dir(self.fwd()); // this will clamp the rotation
+            self.set_fwd(self.fwd()); // this will clamp the rotation
         }
     }
 
@@ -223,6 +227,17 @@ impl OrbitCamera {
             self.world_from_view_rot =
                 Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
         }
+    }
+
+    /// Rotate around forward axis
+    pub fn roll(&mut self, rect: &egui::Rect, pointer_pos: egui::Pos2, delta: egui::Vec2) {
+        // steering-wheel model
+        let rel = pointer_pos - rect.center();
+        let delta_angle = delta.rot90().dot(rel) / rel.length_sq();
+        let rot_delta = Quat::from_rotation_z(delta_angle);
+        self.world_from_view_rot *= rot_delta;
+
+        self.up = Vec3::ZERO; // forget about this until user resets camera
     }
 
     /// Translate based on a certain number of pixel delta.
