@@ -35,6 +35,10 @@ pub(crate) struct State3D {
     /// Estimate of the the bounding box of all data. Accumulated.
     #[serde(skip)]
     scene_bbox: macaw::BoundingBox,
+
+    // options:
+    spin: bool,
+    show_axes: bool,
 }
 
 impl Default for State3D {
@@ -45,6 +49,8 @@ impl Default for State3D {
             hovered_obj_path: Default::default(),
             hovered_point: Default::default(),
             scene_bbox: macaw::BoundingBox::nothing(),
+            spin: false,
+            show_axes: false,
         }
     }
 }
@@ -72,6 +78,14 @@ impl State3D {
         if let Some(tracking_camera) = tracking_camera {
             orbit_camera.copy_from_camera(&tracking_camera);
             self.cam_interpolation = None;
+        }
+
+        if self.spin {
+            orbit_camera.rotate(egui::vec2(
+                -response.ctx.input().stable_dt.at_most(0.1) * 150.0,
+                0.0,
+            ));
+            response.ctx.request_repaint();
         }
 
         if let Some(cam_interpolation) = &mut self.cam_interpolation {
@@ -186,7 +200,7 @@ impl CameraInterpolation {
 fn show_settings_ui(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    state_3d: &mut State3D,
+    state: &mut State3D,
     space: Option<&ObjPath>,
     space_specs: &SpaceSpecs,
 ) {
@@ -228,14 +242,19 @@ fn show_settings_ui(
             .on_hover_text("You can also double-click the 3D view")
             .clicked()
         {
-            state_3d.orbit_camera = Some(default_camera(&state_3d.scene_bbox, space_specs));
-            state_3d.cam_interpolation = None;
+            state.orbit_camera = Some(default_camera(&state.scene_bbox, space_specs));
+            state.cam_interpolation = None;
             // TODO: reset tracking camera too
         }
 
         // TODO: only show if there is a camera om scene.
         ui.toggle_value(&mut context.options.show_camera_mesh_in_3d, "📷")
             .on_hover_text("Show camera mesh");
+
+        ui.toggle_value(&mut state.spin, "Spin")
+            .on_hover_text("Spin camera");
+        ui.toggle_value(&mut state.show_axes, "Axes")
+            .on_hover_text("Show X-Y-Z axes");
 
         crate::misc::help_hover_button(ui).on_hover_text(
             "Drag to rotate.\n\
@@ -407,12 +426,14 @@ pub(crate) fn combined_view_3d(
     }
 
     let dark_mode = ui.visuals().dark_mode;
+    let show_axes = state.show_axes;
 
     let callback = egui::PaintCallback {
         rect,
         callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
             with_three_d_context(painter.gl(), |rendering| {
-                paint_with_three_d(rendering, &camera, &info, &scene, dark_mode).unwrap();
+                paint_with_three_d(rendering, &camera, &info, &scene, dark_mode, show_axes)
+                    .unwrap();
             });
         })),
     };

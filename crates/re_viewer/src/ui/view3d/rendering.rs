@@ -221,6 +221,7 @@ pub fn paint_with_three_d(
     info: &egui::PaintCallbackInfo,
     scene: &Scene,
     dark_mode: bool,
+    show_axes: bool, // TODO: less bool arguments
 ) -> three_d::ThreeDResult<()> {
     crate::profile_function!();
     use three_d::*;
@@ -313,9 +314,10 @@ pub fn paint_with_three_d(
         objects.push(&rendering.skybox_light);
     }
 
-    // TODO: option to show/hide these axes
-    // let axes = three_d::Axes::new(three_d, 0.05, 1.0).unwrap();
-    // objects.push(&axes);
+    let axes = three_d::Axes::new(three_d, 0.01, 1.0).unwrap();
+    if show_axes {
+        objects.push(&axes);
+    }
 
     for &mesh_id in mesh_instances.keys() {
         if let Some(gpu_mesh) = rendering.gpu_mesh_cache.get(mesh_id) {
