@@ -1,5 +1,4 @@
 .DS_Store
 **/target
-/.vscode
 /media
 /objectron/dataset
