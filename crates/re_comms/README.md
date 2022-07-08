@@ -1,1 +1,1 @@
-Library for communication between server and viewer
+WebSocket communication library (encoding, decoding, client, server) between server and viewer.

@@ -1,3 +1,11 @@
+//! The server is a pub-sub architecture.
+//!
+//! Each incoming log message is stored, and sent to any connected client.
+//! Each connecting client is first sent the history of stored log messages.
+//!
+//! In the future thing will be changed to a protocol where the clients can query
+//! for specific data based on e.g. time.
+
 use std::sync::Arc;
 use std::{net::SocketAddr, time::Duration};
 
