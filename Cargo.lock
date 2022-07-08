@@ -2723,6 +2723,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_sdk_comms"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "re_log_types",
+ "tracing",
+]
+
+[[package]]
 name = "re_string_interner"
 version = "0.1.0"
 dependencies = [
