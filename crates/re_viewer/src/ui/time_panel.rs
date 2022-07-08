@@ -202,7 +202,7 @@ impl TimePanel {
                 format!("{}/", last) // show we have children with a /
             }
         } else {
-            "/".to_string()
+            "/".to_owned()
         };
 
         let collapsing_response = egui::CollapsingHeader::new(text)
@@ -523,7 +523,7 @@ fn show_log_ids_tooltip(
     ctx: &egui::Context,
     log_ids: &[LogId],
 ) {
-    egui::containers::popup::show_tooltip_at_pointer(ctx, Id::new("data_tooltip"), |ui| {
+    show_tooltip_at_pointer(ctx, Id::new("data_tooltip"), |ui| {
         // TODO: show as a table?
         if log_ids.len() == 1 {
             let log_id = log_ids[0];
@@ -794,22 +794,22 @@ fn time_selection_ui(
                         && !hovering_right
                         && (min_x <= pointer_pos.x && pointer_pos.x <= max_x);
 
-                    let drag_stated =
+                    let drag_started =
                         ui.input().pointer.any_pressed() && ui.input().pointer.primary_down();
 
                     if hovering_left {
                         ui.output().cursor_icon = CursorIcon::ResizeWest;
-                        if drag_stated {
+                        if drag_started {
                             ui.memory().set_dragged_id(left_edge_id);
                         }
                     } else if hovering_right {
                         ui.output().cursor_icon = CursorIcon::ResizeEast;
-                        if drag_stated {
+                        if drag_started {
                             ui.memory().set_dragged_id(right_edge_id);
                         }
                     } else if hovering_move {
                         ui.output().cursor_icon = CursorIcon::Move;
-                        if drag_stated {
+                        if drag_started {
                             ui.memory().set_dragged_id(move_id);
                         }
                     }

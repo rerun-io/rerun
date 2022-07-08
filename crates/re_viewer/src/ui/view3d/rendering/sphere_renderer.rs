@@ -281,7 +281,7 @@ impl Geometry for InstancedSperesGeom {
                         program.use_vertex_attribute(
                             attribute_name,
                             self.vertex_buffers.get(attribute_name).ok_or_else(|| {
-                                CoreError::MissingMeshBuffer(attribute_name.to_string())
+                                CoreError::MissingMeshBuffer(attribute_name.to_owned())
                             })?,
                         )?;
                     }
@@ -308,7 +308,7 @@ impl Geometry for InstancedSperesGeom {
                     program.draw_arrays_instanced(
                         material.render_states(),
                         camera.viewport(),
-                        self.vertex_buffers.get("position").unwrap().vertex_count() as u32,
+                        self.vertex_buffers.get("position").unwrap().vertex_count(),
                         self.instances.count(),
                     )
                 }
@@ -330,7 +330,7 @@ impl SphereInstances {
         if let Some(colors) = &self.colors {
             if colors.len() != self.translations_and_scale.len() {
                 return Err(CoreError::InvalidBufferLength(
-                    "colors".to_string(),
+                    "colors".to_owned(),
                     self.translations_and_scale.len(),
                     colors.len(),
                 )
@@ -355,24 +355,24 @@ fn vertex_buffers_from_mesh(
 
     let mut buffers = HashMap::new();
     buffers.insert(
-        "position".to_string(),
+        "position".to_owned(),
         VertexBuffer::new_with_data(context, &cpu_mesh.positions.to_f32())?,
     );
     if let Some(ref normals) = cpu_mesh.normals {
         buffers.insert(
-            "normal".to_string(),
+            "normal".to_owned(),
             VertexBuffer::new_with_data(context, normals)?,
         );
     };
     if let Some(ref tangents) = cpu_mesh.tangents {
         buffers.insert(
-            "tangent".to_string(),
+            "tangent".to_owned(),
             VertexBuffer::new_with_data(context, tangents)?,
         );
     };
     if let Some(ref uvs) = cpu_mesh.uvs {
         buffers.insert(
-            "uv_coordinates".to_string(),
+            "uv_coordinates".to_owned(),
             VertexBuffer::new_with_data(
                 context,
                 &uvs.iter()
@@ -383,7 +383,7 @@ fn vertex_buffers_from_mesh(
     };
     if let Some(ref colors) = cpu_mesh.colors {
         buffers.insert(
-            "color".to_string(),
+            "color".to_owned(),
             VertexBuffer::new_with_data(context, colors)?,
         );
     };

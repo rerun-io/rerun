@@ -160,7 +160,7 @@ impl TimeRange {
                 Some(TimeValue::Time(re_log_types::Time::lerp(min..=max, t)))
             }
             (TimeValue::Sequence(min), TimeValue::Sequence(max)) => {
-                Some(TimeValue::Sequence(lerp_i64(min as _..=max as _, t) as _))
+                Some(TimeValue::Sequence(lerp_i64(min..=max, t)))
             }
             _ => None,
         }

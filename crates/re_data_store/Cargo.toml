@@ -2,7 +2,7 @@
 name = "re_data_store"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.62"
 license = "MIT OR Apache-2.0"
 publish = false
 

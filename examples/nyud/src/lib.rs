@@ -35,7 +35,9 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     ));
 
     configure_world_space(&logger);
-    log_dataset_zip(path, &logger)
+    log_dataset_zip(path, &logger);
+
+    Ok(())
 }
 
 fn configure_world_space(logger: &Logger<'_>) {
@@ -49,7 +51,7 @@ fn configure_world_space(logger: &Logger<'_>) {
     ));
 }
 
-fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
+fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
     let file = std::fs::File::open(path).unwrap();
     let mut archive = zip::ZipArchive::new(file).unwrap();
     let dir = select_first_dir(&mut archive);
@@ -186,7 +188,6 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) -> anyhow::Result<()> {
     }
 
     tracing::info!("Done!");
-    Ok(())
 }
 
 fn select_first_dir<R: std::io::Read + std::io::Seek>(archive: &mut zip::ZipArchive<R>) -> String {

@@ -115,12 +115,14 @@ fn preview_files_being_dropped(ctx: &egui::Context) {
 
     // Preview hovering files:
     if !ctx.input().raw.hovered_files.is_empty() {
+        use std::fmt::Write as _;
+
         let mut text = "Drop to load:\n".to_owned();
         for file in &ctx.input().raw.hovered_files {
             if let Some(path) = &file.path {
-                text += &format!("\n{}", path.display());
+                write!(text, "\n{}", path.display()).ok();
             } else if !file.mime.is_empty() {
-                text += &format!("\n{}", file.mime);
+                write!(text, "\n{}", file.mime).ok();
             }
         }
 

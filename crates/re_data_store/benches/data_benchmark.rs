@@ -80,7 +80,7 @@ fn generate_data(individual_pos: bool, individual_radius: bool) -> TypePathDataS
     let radii = vec![1.0_f32; NUM_POINTS_PER_CAMERA as usize];
 
     for frame in 0..NUM_FRAMES {
-        let time_value = Time(frame as _);
+        let time_value = Time(frame);
         for camera in ["left", "right"] {
             if individual_pos {
                 for point in 0..NUM_POINTS_PER_CAMERA {
@@ -241,7 +241,7 @@ fn insert_individual_thoughput(c: &mut Criterion) {
 
 fn query_throughput(c: &mut Criterion) {
     let mut group = c.benchmark_group("query-points-throughput");
-    group.throughput(criterion::Throughput::Elements(TOTAL_POINTS as _));
+    group.throughput(criterion::Throughput::Elements(TOTAL_POINTS));
 
     let data_store = generate_data(false, false);
     group.bench_function("batched_pos_batched_radius", |b| {

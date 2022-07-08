@@ -20,7 +20,7 @@ impl CpuMesh {
         // TODO: load CpuMesh in background thread.
         match mesh {
             Mesh3D::Encoded(encoded_mesh) => Self::load_encoded_mesh(name, encoded_mesh),
-            Mesh3D::Raw(raw_mesh) => Self::load_raw_mesh(name, raw_mesh),
+            Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh)),
         }
     }
 
@@ -74,7 +74,7 @@ impl CpuMesh {
         Ok(slf)
     }
 
-    fn load_raw_mesh(name: String, raw_mesh: &RawMesh3D) -> anyhow::Result<Self> {
+    fn load_raw_mesh(name: String, raw_mesh: &RawMesh3D) -> Self {
         crate::profile_function!();
         let RawMesh3D { positions, indices } = raw_mesh;
         let positions = positions
@@ -82,7 +82,7 @@ impl CpuMesh {
             .map(|&[x, y, z]| three_d::vec3(x, y, z))
             .collect();
 
-        let material_name = "material_name".to_string(); // whatever
+        let material_name = "material_name".to_owned(); // whatever
 
         let mut mesh = three_d::CpuMesh {
             name: name.clone(),
@@ -103,12 +103,12 @@ impl CpuMesh {
             ..Default::default()
         };
 
-        Ok(Self {
+        Self {
             name,
             meshes,
             materials: vec![material],
             bbox,
-        })
+        }
     }
 
     pub fn name(&self) -> &str {
