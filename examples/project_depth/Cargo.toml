@@ -1,0 +1,29 @@
+[package]
+name = "project_depth"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.62"
+license = "MIT OR Apache-2.0"
+publish = false
+
+
+[features]
+default = []
+
+
+[dependencies]
+re_log_types = { path = "../../crates/re_log_types" }
+re_viewer = { path = "../../crates/re_viewer" }
+
+anyhow = "1"
+bytemuck = "1.9"
+clap = "3.1"
+glam = "0.20"
+image = { version = "0.23", default-features = false, features = ["pnm"] }
+itertools = "0.10"
+macaw = "0.17"
+mimalloc = "0.1.29"
+ordered-float = "3"
+rand = { version = "0.8", features = ["std", "std_rng"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
