@@ -74,9 +74,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let pub_sub_url = re_comms::default_server_url();
+    let pub_sub_url = re_ws_comms::default_server_url();
 
-    let server = re_comms::Server::new(re_comms::DEFAULT_SERVER_PORT).await?;
+    let server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
     let server_handle = tokio::spawn(server.listen(rerun_rx));
 
     let web_port = 9090;

@@ -36,7 +36,7 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
         }
     }
     if url.is_empty() {
-        re_comms::default_server_url()
+        re_ws_comms::default_server_url()
     } else {
         url
     }

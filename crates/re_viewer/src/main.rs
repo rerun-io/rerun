@@ -50,9 +50,9 @@ async fn main() {
         );
     } else {
         let mut url = args.url_or_path;
-        // let url = re_comms::default_server_url();
+        // let url = re_ws_comms::default_server_url();
         if !url.contains("://") {
-            url = format!("{}://{url}", re_comms::PROTOCOL);
+            url = format!("{}://{url}", re_ws_comms::PROTOCOL);
         }
         eframe::run_native(
             "rerun viewer",

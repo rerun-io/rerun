@@ -4,7 +4,7 @@ use crate::App;
 #[derive(Default)]
 pub struct RemoteViewerApp {
     url: String,
-    app: Option<(re_comms::Connection, App)>,
+    app: Option<(re_ws_comms::Connection, App)>,
 }
 
 impl RemoteViewerApp {
@@ -22,7 +22,7 @@ impl RemoteViewerApp {
     fn connect(&mut self, egui_ctx: egui::Context, storage: Option<&dyn eframe::Storage>) {
         let (tx, rx) = std::sync::mpsc::channel();
 
-        let connection = re_comms::Connection::viewer_to_server(
+        let connection = re_ws_comms::Connection::viewer_to_server(
             self.url.clone(),
             move |data_msg: re_log_types::LogMsg| {
                 if tx.send(data_msg).is_ok() {

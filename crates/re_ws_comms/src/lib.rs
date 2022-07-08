@@ -14,7 +14,7 @@ use re_log_types::LogMsg;
 
 pub type Result<T> = anyhow::Result<T>;
 
-pub const DEFAULT_SERVER_PORT: u16 = 9876;
+pub const DEFAULT_WS_SERVER_PORT: u16 = 9876;
 
 #[cfg(feature = "tls")]
 pub const PROTOCOL: &str = "wss";
@@ -23,7 +23,7 @@ pub const PROTOCOL: &str = "wss";
 pub const PROTOCOL: &str = "ws";
 
 pub fn default_server_url() -> String {
-    format!("{PROTOCOL}://127.0.0.1:{DEFAULT_SERVER_PORT}")
+    format!("{PROTOCOL}://127.0.0.1:{DEFAULT_WS_SERVER_PORT}")
 }
 
 const PREFIX: [u8; 4] = *b"RR00";

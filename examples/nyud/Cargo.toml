@@ -9,7 +9,7 @@ publish = false
 
 [features]
 default = []
-web = ["re_comms", "re_web_server", "tokio", "webbrowser"]
+web = ["re_ws_comms", "re_web_server", "tokio", "webbrowser"]
 
 
 [dependencies]
@@ -28,7 +28,7 @@ tracing-subscriber = "0.3"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
 # Optional:
-re_comms = { path = "../../crates/re_comms", optional = true, features = ["server"] }
+re_ws_comms = { path = "../../crates/re_ws_comms", optional = true, features = ["server"] }
 re_web_server = { path = "../../crates/re_web_server", optional = true }
 tokio = { version = "1.0.0", optional = true, default-features = false, features = [
     "io-std",
