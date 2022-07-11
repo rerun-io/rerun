@@ -2855,6 +2855,7 @@ dependencies = [
  "numpy",
  "once_cell",
  "pyo3",
+ "pyo3-build-config",
  "re_log_types",
  "re_sdk_comms",
  "tracing",
