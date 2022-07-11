@@ -2,24 +2,26 @@
 
 #[cfg(feature = "client")]
 mod client;
-use std::net::SocketAddr;
 
 #[cfg(feature = "client")]
 pub use client::Client;
 
 #[cfg(feature = "server")]
 mod server;
-// #[cfg(feature = "server")]
-// pub use server::Server;
+
+#[cfg(feature = "server")]
+pub use server::serve;
 
 use re_log_types::LogMsg;
 
 pub type Result<T> = anyhow::Result<T>;
 
+pub const PROTOCOL_VERSION: u16 = 0;
+
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 
-pub fn default_server_addr() -> SocketAddr {
-    SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
+pub fn default_server_addr() -> std::net::SocketAddr {
+    std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
 }
 
 const PREFIX: [u8; 4] = *b"RR00";

@@ -13,14 +13,20 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["puffin"]
+
+## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin"]
+
+## Run a HTTP server that listens to incoming log messages from a Rerun SDK.
+server = ["dep:re_sdk_comms"]
 
 
 [dependencies]
-re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 re_data_store = { path = "../re_data_store", features = ["puffin"] }
 re_log_types = { path = "../re_log_types", features = ["save", "load"] }
+re_sdk_comms = { path = "../re_sdk_comms", optional=true, features = ["server"] }
 re_string_interner = { path = "../re_string_interner" }
+re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 # We use bleeding edge egui, from 2022-06-09
 eframe      = { git = "https://github.com/emilk/egui", rev = "317436c0570dde617fb408d6c9a973c5dd0a2fc4", features = ["persistence"] }

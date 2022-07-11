@@ -1,0 +1,19 @@
+[package]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+name = "re_sdk_python" # name of the rust crate
+publish = false
+rust-version = "1.62"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+name = "rerun_sdk" # name of the Python library
+
+[dependencies]
+re_log_types = { path = "../re_log_types" }
+re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
+
+once_cell = "1.12"
+pyo3 = {version = "0.16.5", features = ["extension-module"]}
+tracing-subscriber = "0.3"

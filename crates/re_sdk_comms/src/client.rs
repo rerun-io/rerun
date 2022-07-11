@@ -28,8 +28,18 @@ impl Client {
 
         if self.stream.is_none() {
             match TcpStream::connect(&self.addrs[..]) {
-                Ok(stream) => {
-                    self.stream = Some(stream);
+                Ok(mut stream) => {
+                    if let Err(err) = stream.write(&crate::PROTOCOL_VERSION.to_le_bytes()) {
+                        tracing::warn!(
+                            "Failed to send to Rerun server at {:?}: {err:?}",
+                            self.addrs
+                        );
+                    } else {
+                        stream
+                            .set_nonblocking(true)
+                            .expect("set_nonblocking call failed");
+                        self.stream = Some(stream);
+                    }
                 }
                 Err(err) => {
                     tracing::warn!(
@@ -42,6 +52,17 @@ impl Client {
 
         if let Some(stream) = &mut self.stream {
             let msg = crate::encode_log_msg(log_msg);
+
+            tracing::info!("Sending a LogMsg of size {}…", msg.len());
+            if let Err(err) = stream.write(&(msg.len() as u32).to_le_bytes()) {
+                tracing::warn!(
+                    "Failed to send to Rerun server at {:?}: {err:?}",
+                    self.addrs
+                );
+                self.stream = None;
+                return;
+            }
+
             if let Err(err) = stream.write(&msg) {
                 tracing::warn!(
                     "Failed to send to Rerun server at {:?}: {err:?}",
