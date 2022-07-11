@@ -11,6 +11,7 @@ Run this is in the workspace root:
 ```
 python3 -m venv env
 source env/bin/activate
+pip install -r crates/re_sdk_python/requirements.txt
 python3 -m pip install maturin
 ```
 

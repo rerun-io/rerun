@@ -11,7 +11,7 @@ impl Time {
     pub fn now() -> Self {
         let nanos_since_epoch = std::time::SystemTime::UNIX_EPOCH
             .elapsed()
-            .unwrap()
+            .expect("Expected system clock to be set to after 1970")
             .as_nanos() as _;
         Self(nanos_since_epoch)
     }

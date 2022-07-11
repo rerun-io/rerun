@@ -82,12 +82,10 @@ fn run_client(mut stream: std::net::TcpStream, tx: &Sender<LogMsg>) -> anyhow::R
         stream.read_exact(&mut packet_size)?;
         let packet_size = u32::from_le_bytes(packet_size);
 
-        tracing::debug!("Receiving log message of size {packet_size}…");
-
         packet.resize(packet_size as usize, 0_u8);
         stream.read_exact(&mut packet)?;
 
-        tracing::debug!("Received log message of size {packet_size}.");
+        tracing::trace!("Received log message of size {packet_size}.");
 
         let msg = crate::decode_log_msg(&packet)?;
 

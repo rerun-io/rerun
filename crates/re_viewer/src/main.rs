@@ -58,16 +58,7 @@ async fn main() {
         match re_sdk_comms::serve(&bind_addr) {
             Ok(rx) => {
                 tracing::info!("Hosting SDK server on {bind_addr}");
-                eframe::run_native(
-                    "rerun viewer",
-                    native_options,
-                    Box::new(move |cc| {
-                        re_viewer::customize_egui(&cc.egui_ctx);
-                        let mut app = re_viewer::App::from_receiver(cc.storage, rx);
-                        app.set_profiler(profiler);
-                        Box::new(app)
-                    }),
-                );
+                re_viewer::run_native_viewer(rx);
             }
             Err(err) => {
                 panic!("Failed to host: {err}");
