@@ -6,6 +6,9 @@ publish = false
 rust-version = "1.62"
 version = "0.1.0"
 
+[package.metadata.maturin]
+python-source = "python"
+
 
 [lib]
 crate-type = ["cdylib"]
