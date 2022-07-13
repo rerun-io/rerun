@@ -11,14 +11,21 @@ Run this is in the workspace root:
 ```
 python3 -m venv env
 source env/bin/activate
-pip install -r crates/re_sdk_python/requirements.txt
-python3 -m pip install maturin
+python3 -m pip install -r crates/re_sdk_python/requirements.txt
 ```
 
 The Python bindings is using https://github.com/PyO3/pyo3
 
 
 ## Testing
+First start up a viewer with a server that the logger can connect to:
+
+```sh
+(cd crates/re_viewer && RUST_LOG=debug cargo r --features server -- --host)
+```
+
+Then run the test logging:
+
 Debug build:
 ``` sh
 (cd crates/re_sdk_python && maturin develop) && RUST_LOG=debug python3 test.py
