@@ -123,12 +123,12 @@ impl CpuMesh {
         crate::profile_function!();
 
         let mut materials = Vec::new();
-        for m in self.materials.iter() {
+        for m in &self.materials {
             materials.push(PhysicalMaterial::new(three_d, m).map_err(to_anyhow)?);
         }
 
         let mut models = Vec::new();
-        for m in self.meshes.iter() {
+        for m in &self.meshes {
             let material = materials
                 .iter()
                 .find(|material| Some(&material.name) == m.material_name.as_ref())

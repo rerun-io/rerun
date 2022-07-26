@@ -126,7 +126,7 @@ fn log_annotation_pbdata(
         ));
     }
 
-    for frame_annotation in sequence.frame_annotations.iter() {
+    for frame_annotation in &sequence.frame_annotations {
         let frame_idx = frame_annotation.frame_id as _;
         // let time = Time::from_seconds_since_epoch(frame_annotation.timestamp); // this is always zero :(
         let time = frame_times[frame_idx as usize];
