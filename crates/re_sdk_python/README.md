@@ -28,10 +28,10 @@ Then run the test logging:
 
 Debug build:
 ``` sh
-maturin develop -m crates/re_sdk_python/Cargo.toml && RUST_LOG=debug python3 test.py
+maturin develop -m crates/re_sdk_python/Cargo.toml && RUST_LOG=debug python3 crates/re_sdk_python/test.py
 ```
 
 Release build:
 ``` sh
-maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug python3 test.py
+maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug python3 crates/re_sdk_python/test.py
 ```
