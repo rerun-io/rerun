@@ -53,7 +53,7 @@ impl Client {
         if let Some(stream) = &mut self.stream {
             let msg = crate::encode_log_msg(log_msg);
 
-            tracing::info!("Sending a LogMsg of size {}…", msg.len());
+            tracing::trace!("Sending a LogMsg of size {}…", msg.len());
             if let Err(err) = stream.write(&(msg.len() as u32).to_le_bytes()) {
                 tracing::warn!(
                     "Failed to send to Rerun server at {:?}: {err:?}",
