@@ -6,10 +6,15 @@ use std::ops::RangeInclusive;
 pub struct Time(i64);
 
 impl Time {
-    // #[inline]
-    // pub fn now() -> Self {
-    //     Self(nanos_since_epoch())
-    // }
+    #[cfg(not(target_arch = "wasm32"))]
+    #[inline]
+    pub fn now() -> Self {
+        let nanos_since_epoch = std::time::SystemTime::UNIX_EPOCH
+            .elapsed()
+            .expect("Expected system clock to be set to after 1970")
+            .as_nanos() as _;
+        Self(nanos_since_epoch)
+    }
 
     #[inline]
     pub fn nanos_since_epoch(&self) -> i64 {

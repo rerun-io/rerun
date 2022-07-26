@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     "crates/re_data_store",
     "crates/re_log_types",
+    "crates/re_sdk_comms",
+    "crates/re_sdk_python",
     "crates/re_string_interner",
     "crates/re_viewer",
     "crates/re_web_server",

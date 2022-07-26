@@ -15,6 +15,7 @@ impl Connection {
         url: String,
         on_log_msg: impl Fn(LogMsg) -> ControlFlow<()> + Send + 'static,
     ) -> Result<Self> {
+        tracing::info!("Connecting to {url:?}…");
         let sender = ewebsock::ws_connect(
             url,
             Box::new(move |event: WsEvent| match event {

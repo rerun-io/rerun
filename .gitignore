@@ -1,4 +1,10 @@
 .DS_Store
+
+# Rust compile target directory:
 **/target
+
+# python virtual environment:
+/env
+
 /media
 /objectron/dataset

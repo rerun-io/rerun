@@ -164,6 +164,12 @@ fn test_encode_decode() {
             "snake",
             1337.0,
         )),
+        LogMsg::from(data_msg(
+            &time_point,
+            ObjPathBuilder::from("badger") / "mushroom",
+            "pos",
+            Data::Vec3([1.0, 2.5, 3.0]),
+        )),
     ];
 
     let mut file = vec![];

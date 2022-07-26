@@ -487,6 +487,7 @@ fn with_three_d_context<R>(
     }
 
     #[allow(unsafe_code)]
+    // SAFETY: we should have a valid glow context here, and we _should_ be in the correct thread.
     unsafe {
         use glow::HasContext as _;
         gl.enable(glow::DEPTH_TEST);

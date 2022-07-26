@@ -13,14 +13,14 @@ pub(crate) struct State2D {
 
     /// Estimate of the the bounding box of all data. Accumulated.
     #[serde(skip)]
-    scene_bbox: epaint::Rect,
+    scene_bbox_accum: epaint::Rect,
 }
 
 impl Default for State2D {
     fn default() -> Self {
         Self {
             hovered_obj: Default::default(),
-            scene_bbox: epaint::Rect::NOTHING,
+            scene_bbox_accum: epaint::Rect::NOTHING,
         }
     }
 }
@@ -28,8 +28,8 @@ impl Default for State2D {
 impl State2D {
     /// Size of the 2D bounding box, if any.
     pub fn size(&self) -> Option<egui::Vec2> {
-        if self.scene_bbox.is_positive() {
-            Some(self.scene_bbox.size())
+        if self.scene_bbox_accum.is_positive() {
+            Some(self.scene_bbox_accum.size())
         } else {
             None
         }
@@ -46,14 +46,26 @@ pub(crate) fn combined_view_2d(
 ) {
     crate::profile_function!();
 
-    state.scene_bbox = state.scene_bbox.union(crate::misc::calc_bbox_2d(objects));
+    state.scene_bbox_accum = state
+        .scene_bbox_accum
+        .union(crate::misc::calc_bbox_2d(objects));
+    let scene_bbox = if state.scene_bbox_accum.is_positive() {
+        state.scene_bbox_accum
+    } else {
+        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
+    };
 
     let desired_size = {
         let max_size = ui.available_size();
-        let mut desired_size = state.scene_bbox.size();
+        let mut desired_size = scene_bbox.size();
         desired_size *= max_size.x / desired_size.x; // fill full width
         desired_size *= (max_size.y / desired_size.y).at_most(1.0); // shrink so we don't fill more than full height
-        desired_size
+
+        if desired_size.is_finite() {
+            desired_size
+        } else {
+            max_size
+        }
     };
 
     let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::click());
@@ -72,11 +84,11 @@ pub(crate) fn combined_view_2d(
 
     // ------------------------------------------------------------------------
 
-    let to_screen = egui::emath::RectTransform::from_to(state.scene_bbox, response.rect);
+    let to_screen = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
 
     // Paint background in case there is no image covering it all:
     let mut shapes = vec![Shape::rect_filled(
-        to_screen.transform_rect(state.scene_bbox),
+        to_screen.transform_rect(scene_bbox),
         3.0,
         ui.visuals().extreme_bg_color,
     )];
