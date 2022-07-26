@@ -5,16 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug 'viewer' recording.rrd",
+            "name": "Debug 're_viewer' recording.rrd",
             "type": "lldb",
             "request": "launch",
             "cargo": {
                 "args": [
                     "build",
-                    "--package=viewer"
+                    "--package=re_viewer"
                 ],
                 "filter": {
-                    "name": "viewer",
+                    "name": "re_viewer",
                     "kind": "bin"
                 }
             },
@@ -59,24 +59,6 @@
             "args": [
                 "nyud/dataset/cafe.zip"
             ],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "name": "Debug 'prototype' tests",
-            "type": "lldb",
-            "request": "launch",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--package=prototype"
-                ],
-                "filter": {
-                    "name": "prototype",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
             "cwd": "${workspaceFolder}"
         },
     ]
