@@ -145,3 +145,70 @@ jobs:
       - run: rustup target add wasm32-unknown-unknown
       - run: ./crates/re_viewer/setup_web.sh
       - run: ./crates/re_viewer/wasm_bindgen_check.sh
+
+  maturin-linux:
+    name: Maturin Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: messense/maturin-action@v1
+        with:
+          manylinux: auto
+          maturin-version: "0.12.20"
+          command: build
+          args: -m crates/re_sdk_python/Cargo.toml --release -o dist
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  maturin-windows:
+    name: Maturin Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: messense/maturin-action@v1
+        with:
+          maturin-version: "0.12.20"
+          command: build
+          args: -m crates/re_sdk_python/Cargo.toml --release --no-sdist -o dist
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  maturin-macos:
+    name: Maturin MacOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: messense/maturin-action@v1
+        with:
+          maturin-version: "0.12.20"
+          command: build
+          args: -m crates/re_sdk_python/Cargo.toml --release --no-sdist -o dist --universal2
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  maturin-release:
+    name: Maturin Release
+    runs-on: ubuntu-latest
+    if: "startsWith(github.ref, 'refs/tags/')"
+    needs: [maturin-macos, maturin-windows, maturin-linux]
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: wheels
+      - name: Publish to PyPI
+        uses: messense/maturin-action@v1
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        with:
+          maturin-version: "0.12.20"
+          command: upload
+          args: -m crates/re_sdk_python/Cargo.toml --skip-existing *

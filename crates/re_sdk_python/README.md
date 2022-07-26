@@ -28,10 +28,10 @@ Then run the test logging:
 
 Debug build:
 ``` sh
-(cd crates/re_sdk_python && maturin develop) && RUST_LOG=debug python3 test.py
+maturin develop -m crates/re_sdk_python/Cargo.toml && RUST_LOG=debug python3 test.py
 ```
 
 Release build:
 ``` sh
-(cd crates/re_sdk_python && maturin develop) --release && RUST_LOG=debug python3 test.py
+maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug python3 test.py
 ```
