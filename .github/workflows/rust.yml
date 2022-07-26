@@ -143,5 +143,5 @@ jobs:
           toolchain: 1.62.0
           override: true
       - run: rustup target add wasm32-unknown-unknown
-      - run: cargo install wasm-bindgen-cli
+      - run: ./crates/re_viewer/setup_web.sh
       - run: ./crates/re_viewer/wasm_bindgen_check.sh
