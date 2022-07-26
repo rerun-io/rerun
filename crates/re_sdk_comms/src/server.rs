@@ -19,10 +19,6 @@ pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<Receiver<LogM
             for stream in listener.incoming() {
                 match stream {
                     Ok(stream) => {
-                        stream
-                            .set_nonblocking(true)
-                            .expect("set_nonblocking call failed");
-
                         let tx = tx.clone();
                         handle_client(stream, tx);
                     }
@@ -44,7 +40,7 @@ fn handle_client(stream: std::net::TcpStream, tx: Sender<LogMsg>) {
             tracing::info!("New SDK client connected: {:?}", stream.peer_addr());
 
             if let Err(err) = run_client(stream, &tx) {
-                tracing::warn!("{err:?}");
+                tracing::warn!("Closing connection to client: {err:?}");
             }
         })
         .expect("Failed to spawn thread");
