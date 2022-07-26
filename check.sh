@@ -2,6 +2,8 @@
 # This scripts runs various CI-like checks in a convenient way.
 set -eux
 
+cargo install cargo-cranky # Uses lints defined in Cranky.toml. See https://github.com/ericseppanen/cargo-cranky
+
 RUSTFLAGS="-D warnings"
 RUSTDOCFLAGS="-D warnings" # https://github.com/emilk/egui/pull/1454
 
@@ -9,7 +11,7 @@ cargo build --all-features
 cargo check --workspace --all-targets --all-features
 cargo check -p re_viewer --all-features --lib --target wasm32-unknown-unknown
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features --  -D warnings -W clippy::all
+cargo cranky --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-targets --all-features
 cargo test --workspace --doc --all-features
 
