@@ -324,9 +324,9 @@ checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
 name = "bytemuck"
-version = "1.9.1"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdead85bdec19c194affaeeb670c0e41fe23de31459efd1c174d049269cf02cc"
+checksum = "a5377c8865e74a160d21f29c2d40669f53286db6eab59b88540cbb12ffc8b835"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -2839,6 +2839,8 @@ dependencies = [
 name = "re_sdk_python"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
+ "itertools",
  "nohash-hasher",
  "numpy",
  "once_cell",
