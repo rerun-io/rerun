@@ -18,6 +18,18 @@ The Python bindings is using https://github.com/PyO3/pyo3
 
 
 ## Testing
+Debug build:
+``` sh
+maturin develop -m crates/re_sdk_python/Cargo.toml && RUST_LOG=debug python3 crates/re_sdk_python/test.py
+```
+
+Release build:
+``` sh
+maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug python3 crates/re_sdk_python/test.py
+```
+
+
+### Using a remote viewer
 First start up a viewer with a server that the logger can connect to:
 
 ```sh
@@ -28,13 +40,9 @@ Then run the test logging:
 
 Debug build:
 ``` sh
-maturin develop -m crates/re_sdk_python/Cargo.toml && RUST_LOG=debug python3 crates/re_sdk_python/test.py
+maturin develop -m crates/re_sdk_python/Cargo.toml && RUST_LOG=debug python3 crates/re_sdk_python/test.py --connect
 ```
 
-Release build:
-``` sh
-maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug python3 crates/re_sdk_python/test.py
-```
 
 # TODO
 * [ ] Add type annotations and use MyPy
