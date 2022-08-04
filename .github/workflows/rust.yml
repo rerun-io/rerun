@@ -149,12 +149,13 @@ jobs:
   linux-wheels:
     name: Build Linux Wheels
     runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux1_x86_64
     steps:
-      - uses: actions/checkout@v1
-      - run: curl https://sh.rustup.rs -sSf | sh -s -- -y
-      - run: source $HOME/.cargo/env
-      - run: rustup default 1.62.0
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.62.0
+          override: true
       - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
       - run: python3 -m pip install -r crates/re_sdk_python/requirements.txt
       - name: Build wheels
@@ -164,23 +165,24 @@ jobs:
           name: linux-wheels
           path: dist
 
-  maturin-linux:
-    name: Maturin Linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
-      - uses: messense/maturin-action@v1
-        with:
-          manylinux: auto
-          maturin-version: "0.12.20"
-          command: build
-          args: -m crates/re_sdk_python/Cargo.toml --release -o dist
-      - name: Upload wheels
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheels
-          path: dist
+  # REMOVE?
+  # maturin-linux:
+  #   name: Maturin Linux
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+  #     - uses: messense/maturin-action@v1
+  #       with:
+  #         manylinux: auto
+  #         maturin-version: "0.12.20"
+  #         command: build
+  #         args: -m crates/re_sdk_python/Cargo.toml --release -o dist
+  #     - name: Upload wheels
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         name: wheels
+  #         path: dist
 
   # maturin-windows:
   #   name: Maturin Windows
