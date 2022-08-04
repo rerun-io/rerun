@@ -16,8 +16,9 @@ name = "rerun_sdk" # name of the Python library
 
 
 [features]
+default = ["extension-module", "re_viewer"]
+
 extension-module = ["pyo3/extension-module"]
-default = ["extension-module"]
 
 
 [dependencies]
