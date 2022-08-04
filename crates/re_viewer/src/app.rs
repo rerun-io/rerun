@@ -248,7 +248,7 @@ impl AppState {
         egui_ctx.debug_painter().add(Shape::mesh(mesh));
     }
 
-    fn file_menu(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame, _log_db: &mut LogDb) {
+    fn file_menu(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame, _log_db: &mut LogDb) {
         // TODO: support saving data on web
         #[cfg(not(target_arch = "wasm32"))]
         if ui.button("Save…").on_hover_text("Save all data").clicked() {
@@ -297,8 +297,9 @@ impl AppState {
             }
         });
 
+        #[cfg(not(target_arch = "wasm32"))]
         if ui.button("Quit").clicked() {
-            frame.quit();
+            _frame.quit();
         }
     }
 }
