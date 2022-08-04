@@ -8,12 +8,12 @@ RUSTFLAGS="-D warnings"
 RUSTDOCFLAGS="-D warnings" # https://github.com/emilk/egui/pull/1454
 
 cargo build --all-features
-cargo check --workspace --all-targets --all-features
+cargo check --all-targets --all-features
 cargo check -p re_viewer --all-features --lib --target wasm32-unknown-unknown
 cargo fmt --all -- --check
-cargo cranky --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-targets --all-features
-cargo test --workspace --doc --all-features
+cargo cranky --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+cargo test --doc --all-features
 
 cargo doc --lib --no-deps --all-features
 cargo doc --document-private-items --no-deps --all-features

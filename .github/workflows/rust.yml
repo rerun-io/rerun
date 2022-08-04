@@ -107,7 +107,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: cranky
-          args: --workspace --all-targets --all-features --  -D warnings
+          args: --all-targets --all-features --  -D warnings
 
   cargo-deny:
     name: cargo deny
