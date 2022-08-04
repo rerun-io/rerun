@@ -4,8 +4,10 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use re_log_types::LogMsg;
 
-/// ```
+/// ``` no_run
+/// # use re_sdk_comms::serve;
 /// let log_msg_rx = serve("127.0.0.1:80")?;
+/// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<Receiver<LogMsg>> {
     let listener = std::net::TcpListener::bind(addr)?;

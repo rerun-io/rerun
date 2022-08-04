@@ -69,7 +69,7 @@ jobs:
           profile: minimal
           toolchain: 1.62.0
           override: true
-      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
+      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -85,7 +85,7 @@ jobs:
           profile: minimal
           toolchain: 1.62.0
           override: true
-      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
+      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
       - run: rustup component add rustfmt
       - uses: actions-rs/cargo@v1
         with:
@@ -107,7 +107,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: cranky
-          args: --workspace --all-targets --all-features --  -D warnings
+          args: --all-targets --all-features --  -D warnings
 
   cargo-deny:
     name: cargo deny
@@ -146,17 +146,21 @@ jobs:
       - run: ./crates/re_viewer/setup_web.sh
       - run: ./crates/re_viewer/wasm_bindgen_check.sh
 
-  maturin-linux:
-    name: Maturin Linux
+  # NOTE: we don't use messense/maturin-action here because we need extra steps to install eframe dependencies
+  linux-wheels:
+    name: Build Linux Wheels
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: messense/maturin-action@v1
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
-          manylinux: auto
-          maturin-version: "0.12.20"
-          command: build
-          args: -m crates/re_sdk_python/Cargo.toml --release -o dist
+          profile: minimal
+          toolchain: 1.62.0
+          override: true
+      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+      - run: python3 -m pip install -r crates/re_sdk_python/requirements.txt
+      - name: Build wheels
+        run: maturin build -m crates/re_sdk_python/Cargo.toml --release -o dist
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
@@ -199,7 +203,7 @@ jobs:
     name: Maturin Release
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [maturin-macos, maturin-windows, maturin-linux]
+    needs: [maturin-macos, maturin-windows, linux-wheels]
     steps:
       - uses: actions/download-artifact@v2
         with:
