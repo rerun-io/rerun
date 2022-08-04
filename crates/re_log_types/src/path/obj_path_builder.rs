@@ -1,4 +1,4 @@
-use crate::{path::ObjPathComp, Index, ObjPath};
+use crate::{path::ObjPathComp, Index, ObjPath, ObjTypePath};
 
 use super::obj_path::ObjPathComponentRef;
 
@@ -44,6 +44,15 @@ impl ObjPathBuilder {
         let mut components = std::mem::take(&mut self.components);
         components.push(component);
         *self = Self::new(components);
+    }
+
+    pub fn obj_type_path(&self) -> ObjTypePath {
+        ObjTypePath::new(
+            self.components
+                .iter()
+                .map(|c| c.clone().to_type_path_comp())
+                .collect(),
+        )
     }
 }
 

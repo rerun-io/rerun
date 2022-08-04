@@ -1,2 +1,3 @@
 maturin
+numpy
 opencv-python

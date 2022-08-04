@@ -1,7 +1,7 @@
+use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
-use re_log_types::{
-    Data, DataMsg, DataPath, LogId, LogMsg, ObjPath, ObjectType, TimePoint, TimeValue,
-};
+
+use re_log_types::*;
 
 use crate::sdk::Sdk;
 
@@ -12,10 +12,11 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     tracing_subscriber::fmt::init();
 
     m.add_function(wrap_pyfunction!(info, m)?)?;
-    m.add_function(wrap_pyfunction!(log_point, m)?)?;
     m.add_function(wrap_pyfunction!(connect_remote, m)?)?;
     m.add_function(wrap_pyfunction!(buffer, m)?)?;
     m.add_function(wrap_pyfunction!(show_and_quit, m)?)?;
+    m.add_function(wrap_pyfunction!(log_point2d, m)?)?;
+    m.add_function(wrap_pyfunction!(log_points, m)?)?;
     m.add_function(wrap_pyfunction!(log_image, m)?)?;
     Ok(())
 }
@@ -58,7 +59,7 @@ fn show_and_quit() {
 }
 
 #[pyfunction]
-fn log_point(name: &str, x: f32, y: f32) {
+fn log_point2d(name: &str, x: f32, y: f32) {
     let mut sdk = Sdk::global();
 
     let obj_path = ObjPath::from(name); // TODO(emilk): pass in proper obj path somehow
@@ -72,8 +73,117 @@ fn log_point(name: &str, x: f32, y: f32) {
         data_path,
         data: re_log_types::LoggedData::Single(data),
     };
-    let log_msg = LogMsg::DataMsg(data_msg);
-    sdk.send(&log_msg);
+    sdk.send(LogMsg::DataMsg(data_msg));
+}
+
+/// positions: Nx2 or Nx3 array
+/// * `colors.len() == 0`: no colors
+/// * `colors.len() == 1`: same color for all points
+/// * `colors.len() == positions.len()`: a color per point
+#[pyfunction]
+fn log_points(
+    name: &str,
+    positions: numpy::PyReadonlyArray2<'_, f64>,
+    colors: Vec<[u8; 4]>,
+) -> PyResult<()> {
+    if positions.is_empty() {
+        return Ok(());
+    }
+
+    let (num_pos, dim) = match positions.shape() {
+        [n, 2] => (*n, 2),
+        [n, 3] => (*n, 3),
+        shape => {
+            return Err(PyTypeError::new_err(format!(
+                "Expected Nx2 or Nx3 positions array; got {shape:?}"
+            )));
+        }
+    };
+
+    let mut sdk = Sdk::global();
+
+    let root_path = ObjPathBuilder::from(name); // TODO(emilk): pass in proper obj path somehow
+    let point_path = ObjPath::from(&root_path / ObjPathComp::Index(Index::Placeholder));
+
+    let mut type_path = root_path.obj_type_path();
+    type_path.push(TypePathComp::Index);
+
+    sdk.register_type(
+        &type_path,
+        if dim == 2 {
+            ObjectType::Point2D
+        } else {
+            ObjectType::Point3D
+        },
+    );
+
+    let indices: Vec<_> = (0..num_pos).map(|i| Index::Sequence(i as _)).collect();
+
+    let time_point = time_point();
+
+    match colors.len() {
+        0 => {}
+        1 => {
+            sdk.send(LogMsg::DataMsg(DataMsg {
+                id: LogId::random(),
+                time_point: time_point.clone(),
+                data_path: DataPath::new(point_path.clone(), "color".into()),
+                data: re_log_types::LoggedData::BatchSplat(Data::Color(colors[0])),
+            }));
+        }
+        n if n == num_pos => {
+            sdk.send(LogMsg::DataMsg(DataMsg {
+                id: LogId::random(),
+                time_point: time_point.clone(),
+                data_path: DataPath::new(point_path.clone(), "color".into()),
+                data: re_log_types::LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::Color(colors),
+                },
+            }));
+        }
+        _ => {
+            return Err(PyTypeError::new_err(format!("Got {} positions and {} colors. The number of colors must be zero, one, or the same as the number of positions.", positions.len(), colors.len())));
+        }
+    }
+
+    // TODO(emilk): handle both f32 and f64
+    // TODO(emilk): handle non-contigious arrays
+    let pos_data = match dim {
+        2 => {
+            let data: Vec<[f32; 2]> = positions
+                .as_slice()
+                .unwrap()
+                .chunks(2)
+                .into_iter()
+                .map(|chunk| [chunk[0] as f32, chunk[1] as f32])
+                .collect();
+            DataVec::Vec2(data)
+        }
+        3 => {
+            let data: Vec<[f32; 3]> = positions
+                .as_slice()
+                .unwrap()
+                .chunks(3)
+                .into_iter()
+                .map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32])
+                .collect();
+            DataVec::Vec3(data)
+        }
+        _ => unreachable!(),
+    };
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        id: LogId::random(),
+        time_point,
+        data_path: DataPath::new(point_path, "pos".into()),
+        data: re_log_types::LoggedData::Batch {
+            indices,
+            data: pos_data,
+        },
+    }));
+
+    Ok(())
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -95,7 +205,7 @@ fn log_image(name: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>) -> PyResult<()>
         data: re_log_types::LoggedData::Single(data),
     };
     let log_msg = LogMsg::DataMsg(data_msg);
-    sdk.send(&log_msg);
+    sdk.send(log_msg);
 
     Ok(())
 }
@@ -117,7 +227,7 @@ fn to_rerun_image(img: &numpy::PyReadonlyArrayDyn<'_, u8>) -> PyResult<re_log_ty
         2 => [shape[1], shape[0], 1],
         3 => [shape[1], shape[0], shape[2]],
         _ => {
-            return Err(pyo3::exceptions::PyTypeError::new_err(format!(
+            return Err(PyTypeError::new_err(format!(
                 "Expected image of dim 2 or 3. Got image of shape {shape:?}"
             )));
         }
@@ -127,7 +237,7 @@ fn to_rerun_image(img: &numpy::PyReadonlyArrayDyn<'_, u8>) -> PyResult<re_log_ty
     let data = img.to_owned_array().into_raw_vec();
 
     if data.len() != w * h * depth {
-        return Err(pyo3::exceptions::PyTypeError::new_err(format!(
+        return Err(PyTypeError::new_err(format!(
             "Got image of shape {shape:?} (product = {}), but data length is {}",
             w * h * depth,
             data.len()
@@ -139,7 +249,7 @@ fn to_rerun_image(img: &numpy::PyReadonlyArrayDyn<'_, u8>) -> PyResult<re_log_ty
         3 => re_log_types::ImageFormat::Rgb8,
         4 => re_log_types::ImageFormat::Rgba8,
         _ => {
-            return Err(pyo3::exceptions::PyTypeError::new_err(format!(
+            return Err(PyTypeError::new_err(format!(
                 "Expected depth to be one of 1,3,4. Got image of shape {shape:?}",
             )));
         }
