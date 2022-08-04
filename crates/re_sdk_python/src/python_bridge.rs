@@ -15,8 +15,13 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(info, m)?)?;
     m.add_function(wrap_pyfunction!(connect_remote, m)?)?;
-    m.add_function(wrap_pyfunction!(buffer, m)?)?;
-    m.add_function(wrap_pyfunction!(show_and_quit, m)?)?;
+
+    #[cfg(feature = "re_viewer")]
+    {
+        m.add_function(wrap_pyfunction!(buffer, m)?)?;
+        m.add_function(wrap_pyfunction!(show_and_quit, m)?)?;
+    }
+
     m.add_function(wrap_pyfunction!(log_point2d, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
     m.add_function(wrap_pyfunction!(log_image, m)?)?;
