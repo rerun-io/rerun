@@ -326,7 +326,7 @@ pub fn paint_with_three_d(
 
     for &mesh_id in mesh_instances.keys() {
         if let Some(gpu_mesh) = rendering.gpu_mesh_cache.get(mesh_id) {
-            for obj in &gpu_mesh.models {
+            for obj in &gpu_mesh.meshes {
                 if obj.instance_count() > 0 {
                     objects.push(obj);
                 }

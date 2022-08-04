@@ -11,7 +11,7 @@ pub struct CpuMesh {
 
 pub struct GpuMesh {
     pub name: String,
-    pub models: Vec<Gm<InstancedMesh, PhysicalMaterial>>,
+    pub meshes: Vec<Gm<InstancedMesh, PhysicalMaterial>>,
     // pub materials: Vec<PhysicalMaterial>,
 }
 
@@ -37,24 +37,23 @@ impl CpuMesh {
         loaded.insert(path, bytes.to_vec());
 
         let three_d::CpuModel {
-            mut geometries,
+            geometries: mut meshes,
             materials,
         } = loaded
             .deserialize(path)
-            .map_err(|err| anyhow!("{}", err))
             .with_context(|| format!("loading {format:?}"))?;
 
-        for mesh in &mut geometries {
+        for mesh in &mut meshes {
             if mesh.tangents.is_none() {
                 mesh.compute_tangents().ok();
             }
         }
 
-        let bbox = bbox(&geometries);
+        let bbox = bbox(&meshes);
 
         Ok(Self {
             name,
-            meshes: geometries,
+            meshes,
             materials,
             bbox,
         })
@@ -74,7 +73,6 @@ impl CpuMesh {
         let root_transform = three_d::Mat4::from_cols(c0.into(), c1.into(), c2.into(), c3.into());
         for mesh in &mut slf.meshes {
             mesh.transform(&root_transform)
-                .map_err(|err| anyhow!("{}", err))
                 .context("Bad object transform")?;
         }
 
@@ -134,7 +132,7 @@ impl CpuMesh {
             materials.push(PhysicalMaterial::new(three_d, m).map_err(|err| anyhow!("{}", err))?);
         }
 
-        let mut models = Vec::new();
+        let mut meshes = Vec::new();
         for mesh in &self.meshes {
             let material = materials
                 .iter()
@@ -142,17 +140,17 @@ impl CpuMesh {
                 .context("missing material")?
                 .clone();
 
-            let m = Gm::new(
+            let gm = Gm::new(
                 InstancedMesh::new(three_d, &Default::default(), mesh)
                     .map_err(|err| anyhow!("{}", err))?,
                 material,
             );
-            models.push(m);
+            meshes.push(gm);
         }
 
         Ok(GpuMesh {
             name: self.name.clone(),
-            models,
+            meshes,
             // materials,
         })
     }
