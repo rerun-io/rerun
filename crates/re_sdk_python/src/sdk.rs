@@ -26,17 +26,20 @@ impl Sdk {
         }
     }
 
-    /// Keep log data local and show it late.
+    #[cfg(feature = "re_viewer")]
+    #[allow(unused)] // only used with "re_viewer" feature
     pub fn configure_buffered(&mut self) {
         if !matches!(&self.sender, &Sender::Buffered(_)) {
             self.sender = Sender::Buffered(Default::default());
         }
     }
 
+    #[cfg(feature = "re_viewer")]
     pub fn is_buffered(&self) -> bool {
         matches!(&self.sender, &Sender::Buffered(_))
     }
 
+    #[cfg(feature = "re_viewer")]
     pub fn drain_log_messages(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
@@ -68,6 +71,7 @@ impl Sdk {
 
 enum Sender {
     Remote(re_sdk_comms::Client),
+    #[allow(unused)] // only used with `#[cfg(feature = "re_viewer")]`
     Buffered(Vec<LogMsg>),
 }
 
