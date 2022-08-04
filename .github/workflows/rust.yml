@@ -151,16 +151,15 @@ jobs:
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux1_x86_64
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v1
       - name: Build wheels
-        run: |
-          curl https://sh.rustup.rs -sSf | sh -s -- -y
-          source $HOME/.cargo/env
-          rustup default 1.62.0
-          sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
-          python3 -m pip install -r crates/re_sdk_python/requirements.txt
-          maturin build -m crates/re_sdk_python/Cargo.toml --release -o dist
-      - uses: actions/upload-artifact@v2
+      - run: curl https://sh.rustup.rs -sSf | sh -s -- -y
+      - run: source $HOME/.cargo/env
+      - run: rustup default 1.62.0
+      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+      - run: python3 -m pip install -r crates/re_sdk_python/requirements.txt
+      - run: maturin build -m crates/re_sdk_python/Cargo.toml --release -o dist
+      - uses: actions/upload-artifact@v1
         with:
           name: linux-wheels
           path: dist
