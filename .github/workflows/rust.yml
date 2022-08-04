@@ -161,9 +161,10 @@ jobs:
       - run: python3 -m pip install -r crates/re_sdk_python/requirements.txt
       - name: Build wheels
         run: maturin build -m crates/re_sdk_python/Cargo.toml --release -o dist
-      - uses: actions/upload-artifact@v1
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
         with:
-          name: linux-wheels
+          name: wheels
           path: dist
 
   maturin-windows:
@@ -202,7 +203,7 @@ jobs:
     name: Maturin Release
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [maturin-macos, maturin-windows, maturin-linux]
+    needs: [maturin-macos, maturin-windows, linux-wheels]
     steps:
       - uses: actions/download-artifact@v2
         with:
