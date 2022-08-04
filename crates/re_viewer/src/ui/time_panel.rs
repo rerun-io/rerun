@@ -243,7 +243,10 @@ impl TimePanel {
             let mut props = context.individual_object_properties.get(&obj_path);
             let property_rect =
                 Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response.rect.y_range());
-            let mut ui = ui.child_ui(property_rect, egui::Layout::left_to_right());
+            let mut ui = ui.child_ui(
+                property_rect,
+                egui::Layout::left_to_right(egui::Align::Center),
+            );
             ui.set_enabled(are_all_ancestors_visible);
             ui.toggle_value(&mut props.visible, "👁")
                 .on_hover_text("Toggle visibility");
@@ -361,7 +364,7 @@ fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
             .time_control
             .time_source_selector_ui(&log_db.time_points, ui);
 
-        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             crate::misc::help_hover_button(ui).on_hover_text(
                 "Drag main area to pan.\n\
             Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\

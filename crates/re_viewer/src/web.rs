@@ -25,15 +25,15 @@ pub fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::J
             let app = crate::RemoteViewerApp::new(cc.egui_ctx.clone(), cc.storage.as_deref(), url);
             Box::new(app)
         }),
-    )
+    )?;
+
+    Ok(())
 }
 
 fn get_url(info: &eframe::IntegrationInfo) -> String {
     let mut url = String::new();
-    if let Some(web_info) = &info.web_info {
-        if let Some(param) = web_info.location.query_map.get("url") {
-            url = param.clone();
-        }
+    if let Some(param) = info.web_info.location.query_map.get("url") {
+        url = param.clone();
     }
     if url.is_empty() {
         re_ws_comms::default_server_url()

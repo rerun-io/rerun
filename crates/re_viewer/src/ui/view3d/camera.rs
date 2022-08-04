@@ -187,18 +187,13 @@ impl OrbitCamera {
 
         self.velocity = egui::lerp(
             self.velocity..=world_movement,
-            exponential_smooth_factor(0.90, 0.2, dt),
+            egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
         );
         self.center += self.velocity * dt;
 
         drop(input); // avoid deadlock on request_repaint
         if local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed {
             ctx.request_repaint();
-        }
-
-        // TODO: use emath::exponential_smooth_factor
-        fn exponential_smooth_factor(fraction: f32, in_how_many_seconds: f32, dt: f32) -> f32 {
-            1.0 - (1.0 - fraction).powf(dt / in_how_many_seconds)
         }
     }
 
