@@ -24,6 +24,8 @@ default = ["extension-module"]
 re_log_types = { path = "../re_log_types" }
 re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
 
+bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+itertools = "0.10"
 nohash-hasher = "0.2"
 numpy = "0.16"
 once_cell = "1.12"
