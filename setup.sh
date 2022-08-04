@@ -11,6 +11,7 @@ fi
 
 # Needed to compile and check the code:
 rustup install 1.62.0
-cargo install cargo-deny
+cargo install cargo-cranky # Uses lints defined in Cranky.toml. See https://github.com/ericseppanen/cargo-cranky
+cargo install cargo-deny # https://github.com/EmbarkStudios/cargo-deny
 ./crates/re_viewer/setup_web.sh
 ./crates/re_viewer/build_web.sh

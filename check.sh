@@ -2,8 +2,6 @@
 # This scripts runs various CI-like checks in a convenient way.
 set -eux
 
-cargo install cargo-cranky # Uses lints defined in Cranky.toml. See https://github.com/ericseppanen/cargo-cranky
-
 RUSTFLAGS="-D warnings"
 RUSTDOCFLAGS="-D warnings" # https://github.com/emilk/egui/pull/1454
 
