@@ -2848,6 +2848,7 @@ dependencies = [
  "pyo3-build-config",
  "re_log_types",
  "re_sdk_comms",
+ "re_viewer",
  "tracing",
  "tracing-subscriber",
 ]
