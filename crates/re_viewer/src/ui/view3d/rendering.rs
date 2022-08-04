@@ -15,17 +15,15 @@ pub struct RenderingContext {
 
     /// So we don't need to re-allocate them.
     points_cache: sphere_renderer::InstancedSpheres<three_d::PhysicalMaterial>,
-    lines_cache: three_d::InstancedModel<LineMaterial>,
+    lines_cache: three_d::Gm<three_d::InstancedMesh, LineMaterial>,
 }
 
 impl RenderingContext {
     pub fn new(gl: &std::sync::Arc<glow::Context>) -> three_d::ThreeDResult<Self> {
         let three_d = three_d::Context::from_gl_context(gl.clone())?;
 
-        let skybox_dark =
-            three_d::Skybox::new(&three_d, &load_skybox_texture(skybox_dark)).unwrap();
-        let skybox_light =
-            three_d::Skybox::new(&three_d, &load_skybox_texture(skybox_light)).unwrap();
+        let skybox_dark = load_skybox_texture(&three_d, skybox_dark).unwrap();
+        let skybox_light = load_skybox_texture(&three_d, skybox_light).unwrap();
 
         let ambient_light_intensity = 5.0;
         let ambient_dark = three_d::AmbientLight::new_with_environment(
@@ -51,13 +49,15 @@ impl RenderingContext {
         )
         .unwrap();
 
-        let lines_cache = three_d::InstancedModel::new_with_material(
-            &three_d,
-            &Default::default(),
-            &three_d::CpuMesh::cylinder(10),
+        let lines_cache = three_d::Gm::new(
+            three_d::InstancedMesh::new(
+                &three_d,
+                &Default::default(),
+                &three_d::CpuMesh::cylinder(10),
+            )
+            .unwrap(),
             Default::default(),
-        )
-        .unwrap();
+        );
 
         Ok(Self {
             three_d,
@@ -72,7 +72,10 @@ impl RenderingContext {
     }
 }
 
-fn load_skybox_texture(color_from_dir: fn(glam::Vec3) -> [u8; 3]) -> three_d::CpuTextureCube {
+fn load_skybox_texture(
+    three_d: &three_d::Context,
+    color_from_dir: fn(glam::Vec3) -> [u8; 3],
+) -> three_d::ThreeDResult<three_d::Skybox> {
     crate::profile_function!();
 
     let resolution = 64;
@@ -89,14 +92,7 @@ fn load_skybox_texture(color_from_dir: fn(glam::Vec3) -> [u8; 3]) -> three_d::Cp
     let e = generate_skybox_side(resolution, color_from_dir, Z, X, -Y);
     let f = generate_skybox_side(resolution, color_from_dir, -Z, -X, -Y);
 
-    let data = three_d::TextureCubeData::RgbU8(a, b, c, d, e, f);
-
-    three_d::CpuTextureCube {
-        data,
-        width: resolution as _,
-        height: resolution as _,
-        ..Default::default()
-    }
+    three_d::Skybox::new(three_d, &a, &b, &c, &d, &e, &f)
 }
 
 fn generate_skybox_side(
@@ -105,8 +101,8 @@ fn generate_skybox_side(
     center_dir: glam::Vec3,
     x_dir: glam::Vec3,
     y_dir: glam::Vec3,
-) -> Vec<[u8; 3]> {
-    (0..resolution)
+) -> three_d::CpuTexture {
+    let data: Vec<[u8; 3]> = (0..resolution)
         .flat_map(|y| {
             let ty = egui::remap_clamp(y as f32, 0.0..=(resolution as f32 - 1.0), -1.0..=1.0);
             (0..resolution).map(move |x| {
@@ -116,7 +112,16 @@ fn generate_skybox_side(
                 color_from_dir(dir)
             })
         })
-        .collect()
+        .collect();
+
+    three_d::CpuTexture {
+        data: three_d::TextureData::RgbU8(data),
+        width: resolution as _,
+        height: resolution as _,
+        wrap_s: three_d::Wrapping::ClampToEdge,
+        wrap_t: three_d::Wrapping::ClampToEdge,
+        ..Default::default()
+    }
 }
 
 /// Color from view direction
@@ -321,7 +326,7 @@ pub fn paint_with_three_d(
 
     for &mesh_id in mesh_instances.keys() {
         if let Some(gpu_mesh) = rendering.gpu_mesh_cache.get(mesh_id) {
-            for obj in &gpu_mesh.models {
+            for obj in &gpu_mesh.meshes {
                 if obj.instance_count() > 0 {
                     objects.push(obj);
                 }

@@ -1361,16 +1361,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gif"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3a7187e78088aead22ceedeee99779455b23fc231fe13ec443f99bb71694e5b"
-dependencies = [
- "color_quant",
- "weezl",
-]
-
-[[package]]
 name = "gio-sys"
 version = "0.15.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1730,13 +1720,11 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "color_quant",
- "gif",
  "jpeg-decoder",
  "num-iter",
  "num-rational",
  "num-traits",
  "png",
- "scoped_threadpool",
  "tiff",
 ]
 
@@ -2911,6 +2899,7 @@ dependencies = [
  "serde",
  "serde_json",
  "three-d",
+ "three-d-asset",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3132,12 +3121,6 @@ name = "scoped-tls"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
-
-[[package]]
-name = "scoped_threadpool"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d51f5df5af43ab3f1360b429fa5e0152ac5ce8c0bd6485cae490332e96846a8"
 
 [[package]]
 name = "scopeguard"
@@ -3453,20 +3436,34 @@ dependencies = [
 
 [[package]]
 name = "three-d"
-version = "0.12.0"
-source = "git+https://github.com/asny/three-d?rev=43f210668197e8b1dc50ea9f074d2b8426ecb0f2#43f210668197e8b1dc50ea9f074d2b8426ecb0f2"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cc0ef660c02244f00fc2d1759e67d30a3c282541458490de641f0e832c8d3c9"
 dependencies = [
  "cgmath",
  "gloo-timers",
  "glow",
- "gltf",
  "half",
- "image",
  "js-sys",
  "serde",
  "thiserror",
+ "three-d-asset",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "three-d-asset"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af1886553d8b51093705b6d1a02ec2c41ac78260f68b40682d94d9976960d689"
+dependencies = [
+ "cgmath",
+ "gltf",
+ "half",
+ "image",
+ "thiserror",
  "wavefront_obj",
  "web-sys",
 ]
@@ -3711,7 +3708,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "static_assertions",
 ]
 

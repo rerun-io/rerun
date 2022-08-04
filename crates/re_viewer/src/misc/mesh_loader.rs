@@ -11,7 +11,7 @@ pub struct CpuMesh {
 
 pub struct GpuMesh {
     pub name: String,
-    pub models: Vec<InstancedModel<PhysicalMaterial>>,
+    pub meshes: Vec<Gm<InstancedMesh, PhysicalMaterial>>,
     // pub materials: Vec<PhysicalMaterial>,
 }
 
@@ -26,16 +26,22 @@ impl CpuMesh {
 
     pub fn load_raw(name: String, format: MeshFormat, bytes: &[u8]) -> anyhow::Result<Self> {
         crate::profile_function!();
-        let path = "mesh";
-        let mut loaded = three_d::io::Loaded::new();
-        loaded.insert_bytes(path, bytes.to_vec());
 
-        let (mut meshes, materials) = match format {
-            MeshFormat::Glb | MeshFormat::Gltf => loaded.gltf(path),
-            MeshFormat::Obj => loaded.obj(path),
-        }
-        .map_err(to_anyhow)
-        .with_context(|| format!("loading {format:?}"))?;
+        let path = match format {
+            MeshFormat::Glb => "mesh.glb",
+            MeshFormat::Gltf => "mesh.gltf",
+            MeshFormat::Obj => "mesh.obj",
+        };
+
+        let mut loaded = three_d_asset::io::RawAssets::new();
+        loaded.insert(path, bytes.to_vec());
+
+        let three_d::CpuModel {
+            geometries: mut meshes,
+            materials,
+        } = loaded
+            .deserialize(path)
+            .with_context(|| format!("loading {format:?}"))?;
 
         for mesh in &mut meshes {
             if mesh.tangents.is_none() {
@@ -67,7 +73,6 @@ impl CpuMesh {
         let root_transform = three_d::Mat4::from_cols(c0.into(), c1.into(), c2.into(), c3.into());
         for mesh in &mut slf.meshes {
             mesh.transform(&root_transform)
-                .map_err(to_anyhow)
                 .context("Bad object transform")?;
         }
 
@@ -86,8 +91,8 @@ impl CpuMesh {
 
         let mut mesh = three_d::CpuMesh {
             name: name.clone(),
-            positions: three_d::Positions::F32(positions),
-            indices: Some(three_d::Indices::U32(
+            positions: three_d_asset::Positions::F32(positions),
+            indices: Some(three_d_asset::Indices::U32(
                 indices.iter().flat_map(|triangle| *triangle).collect(),
             )),
             material_name: Some(material_name.clone()),
@@ -124,33 +129,31 @@ impl CpuMesh {
 
         let mut materials = Vec::new();
         for m in &self.materials {
-            materials.push(PhysicalMaterial::new(three_d, m).map_err(to_anyhow)?);
+            materials.push(PhysicalMaterial::new(three_d, m).map_err(|err| anyhow!("{}", err))?);
         }
 
-        let mut models = Vec::new();
-        for m in &self.meshes {
+        let mut meshes = Vec::new();
+        for mesh in &self.meshes {
             let material = materials
                 .iter()
-                .find(|material| Some(&material.name) == m.material_name.as_ref())
+                .find(|material| Some(&material.name) == mesh.material_name.as_ref())
                 .context("missing material")?
                 .clone();
 
-            let m = InstancedModel::new_with_material(three_d, &Default::default(), m, material)
-                .map_err(to_anyhow)?;
-            models.push(m);
+            let gm = Gm::new(
+                InstancedMesh::new(three_d, &Default::default(), mesh)
+                    .map_err(|err| anyhow!("{}", err))?,
+                material,
+            );
+            meshes.push(gm);
         }
 
         Ok(GpuMesh {
             name: self.name.clone(),
-            models,
+            meshes,
             // materials,
         })
     }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn to_anyhow(err: Box<dyn std::error::Error>) -> anyhow::Error {
-    anyhow!("{}", err)
 }
 
 fn bbox(meshes: &[three_d::CpuMesh]) -> macaw::BoundingBox {
@@ -159,12 +162,13 @@ fn bbox(meshes: &[three_d::CpuMesh]) -> macaw::BoundingBox {
         match &mesh.positions {
             three_d::Positions::F32(positions) => {
                 for pos in positions {
-                    bbox.extend(glam::Vec3::from(pos.as_array()));
+                    bbox.extend(glam::vec3(pos.x, pos.y, pos.z));
                 }
             }
             three_d::Positions::F64(positions) => {
                 for pos in positions {
-                    bbox.extend(glam::Vec3::from(pos.cast::<f32>().unwrap().as_array()));
+                    let pos = pos.cast::<f32>().unwrap();
+                    bbox.extend(glam::vec3(pos.x, pos.y, pos.z));
                 }
             }
         }
