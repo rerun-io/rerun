@@ -86,7 +86,7 @@ fn log_point2d(name: &str, x: f32, y: f32) {
 fn log_points_rs(
     name: &str,
     positions: numpy::PyReadonlyArray2<'_, f64>,
-    colors: Vec<[u8; 4]>,
+    colors: numpy::PyReadonlyArray2<'_, u8>,
 ) -> PyResult<()> {
     if positions.is_empty() {
         return Ok(());
@@ -123,29 +123,52 @@ fn log_points_rs(
 
     let time_point = time_point();
 
-    match colors.len() {
-        0 => {}
-        1 => {
-            sdk.send(LogMsg::DataMsg(DataMsg {
-                id: LogId::random(),
-                time_point: time_point.clone(),
-                data_path: DataPath::new(point_path.clone(), "color".into()),
-                data: re_log_types::LoggedData::BatchSplat(Data::Color(colors[0])),
-            }));
-        }
-        n if n == num_pos => {
-            sdk.send(LogMsg::DataMsg(DataMsg {
-                id: LogId::random(),
-                time_point: time_point.clone(),
-                data_path: DataPath::new(point_path.clone(), "color".into()),
-                data: re_log_types::LoggedData::Batch {
-                    indices: indices.clone(),
-                    data: DataVec::Color(colors),
-                },
-            }));
-        }
-        _ => {
-            return Err(PyTypeError::new_err(format!("Got {} positions and {} colors. The number of colors must be zero, one, or the same as the number of positions.", positions.len(), colors.len())));
+    if !colors.is_empty() {
+        let num_colors = match colors.shape() {
+            [num_colors, 4] => *num_colors,
+            shape => {
+                return Err(PyTypeError::new_err(format!(
+                    "Expected Nx4 color array; got {shape:?}"
+                )));
+            }
+        };
+
+        match num_colors {
+            0 => {}
+            1 => {
+                let slice = colors.as_slice().unwrap(); // TODO: Handle non-contiguous arrays
+                assert_eq!(slice.len(), 4);
+                let color = [slice[0], slice[1], slice[2], slice[3]];
+
+                sdk.send(LogMsg::DataMsg(DataMsg {
+                    id: LogId::random(),
+                    time_point: time_point.clone(),
+                    data_path: DataPath::new(point_path.clone(), "color".into()),
+                    data: re_log_types::LoggedData::BatchSplat(Data::Color(color)),
+                }));
+            }
+            n if n == num_pos => {
+                let colors: Vec<[u8; 4]> = colors
+                    .as_slice()
+                    .unwrap()
+                    .chunks(4)
+                    .into_iter()
+                    .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3]])
+                    .collect();
+
+                sdk.send(LogMsg::DataMsg(DataMsg {
+                    id: LogId::random(),
+                    time_point: time_point.clone(),
+                    data_path: DataPath::new(point_path.clone(), "color".into()),
+                    data: re_log_types::LoggedData::Batch {
+                        indices: indices.clone(),
+                        data: DataVec::Color(colors),
+                    },
+                }));
+            }
+            _ => {
+                return Err(PyTypeError::new_err(format!("Got {} positions and {} colors. The number of colors must be zero, one, or the same as the number of positions.", positions.len(), colors.len())));
+            }
         }
     }
 
