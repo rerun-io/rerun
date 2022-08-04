@@ -35,3 +35,6 @@ Release build:
 ``` sh
 maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug python3 crates/re_sdk_python/test.py
 ```
+
+# TODO
+* [ ] Add type annotations and use MyPy

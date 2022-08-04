@@ -36,7 +36,7 @@ if True:
         z = i / 64.0
         pos3.append([x, y, z])
     pos3 = np.array(pos3)
-    colors = np.array([[200, 0, 100, 200]], dtype='uint8')
+    colors = np.array([[200, 0, 100, 200]])
     rerun.log_points(f"point3d", pos3, colors)
 
 if buffer:

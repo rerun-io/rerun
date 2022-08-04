@@ -1,3 +1,5 @@
+#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pufunction] need to be by value
+
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -16,7 +18,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(buffer, m)?)?;
     m.add_function(wrap_pyfunction!(show_and_quit, m)?)?;
     m.add_function(wrap_pyfunction!(log_point2d, m)?)?;
-    m.add_function(wrap_pyfunction!(log_points, m)?)?;
+    m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
     m.add_function(wrap_pyfunction!(log_image, m)?)?;
     Ok(())
 }
@@ -81,7 +83,7 @@ fn log_point2d(name: &str, x: f32, y: f32) {
 /// * `colors.len() == 1`: same color for all points
 /// * `colors.len() == positions.len()`: a color per point
 #[pyfunction]
-fn log_points(
+fn log_points_rs(
     name: &str,
     positions: numpy::PyReadonlyArray2<'_, f64>,
     colors: Vec<[u8; 4]>,
@@ -147,7 +149,6 @@ fn log_points(
         }
     }
 
-    // TODO(emilk): handle both f32 and f64
     // TODO(emilk): handle non-contigious arrays
     let pos_data = match dim {
         2 => {
