@@ -40,7 +40,7 @@ pub(crate) fn message_table(
 
     egui_extras::TableBuilder::new(ui)
         .striped(true)
-        .cell_layout(egui::Layout::left_to_right().with_cross_align(egui::Align::Center))
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .resizable(true)
         .columns(
             Size::initial(200.0).at_least(100.0),
