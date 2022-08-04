@@ -13,13 +13,48 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(info, m)?)?;
     m.add_function(wrap_pyfunction!(log_point, m)?)?;
+    m.add_function(wrap_pyfunction!(connect_remote, m)?)?;
+    m.add_function(wrap_pyfunction!(buffer, m)?)?;
+    m.add_function(wrap_pyfunction!(show_and_quit, m)?)?;
     m.add_function(wrap_pyfunction!(log_image, m)?)?;
     Ok(())
 }
 
 #[pyfunction]
 fn info() -> String {
-    "Rerun Python SDK".to_owned()
+    "Rerun Python SDK 0.1".to_owned()
+}
+
+#[pyfunction]
+fn connect_remote() {
+    Sdk::global().configure_remote();
+}
+
+/// Call this first to tell Rerun to buffer the log data so it can be shown
+/// later with `show()`.
+#[cfg(feature = "re_viewer")]
+#[pyfunction]
+fn buffer() {
+    Sdk::global().configure_buffered();
+}
+
+/// Show the buffered log data.
+#[cfg(feature = "re_viewer")]
+#[pyfunction]
+fn show_and_quit() {
+    let mut sdk = Sdk::global();
+    if sdk.is_buffered() {
+        let log_messages = sdk.drain_log_messages();
+        drop(sdk);
+        let (tx, rx) = std::sync::mpsc::channel();
+        for log_msg in log_messages {
+            tx.send(log_msg).ok();
+        }
+        // TODO: don't quit! Solve https://github.com/emilk/egui/issues/1223
+        re_viewer::run_native_viewer(rx);
+    } else {
+        tracing::error!("Can't show the log messages of Rerurn: it was configured to send the data to a server!");
+    }
 }
 
 #[pyfunction]

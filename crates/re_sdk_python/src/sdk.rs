@@ -3,7 +3,7 @@ use re_log_types::{LogId, LogMsg, ObjTypePath, ObjectType, TypeMsg};
 #[derive(Default)]
 pub struct Sdk {
     // TODO(emilk): also support sending over `mpsc::Sender`.
-    sender: re_sdk_comms::Client,
+    sender: Sender,
 
     // TODO(emilk): just store `ObjTypePathHash`
     registered_types: nohash_hasher::IntMap<ObjTypePath, ObjectType>,
@@ -19,6 +19,31 @@ impl Sdk {
         mutex.lock().unwrap()
     }
 
+    /// Send log data to a remote server.
+    pub fn configure_remote(&mut self) {
+        if !matches!(&self.sender, &Sender::Remote(_)) {
+            self.sender = Sender::Remote(Default::default());
+        }
+    }
+
+    /// Keep log data local and show it late.
+    pub fn configure_buffered(&mut self) {
+        if !matches!(&self.sender, &Sender::Buffered(_)) {
+            self.sender = Sender::Buffered(Default::default());
+        }
+    }
+
+    pub fn is_buffered(&self) -> bool {
+        matches!(&self.sender, &Sender::Buffered(_))
+    }
+
+    pub fn drain_log_messages(&mut self) -> Vec<LogMsg> {
+        match &mut self.sender {
+            Sender::Remote(_) => vec![],
+            Sender::Buffered(log_messages) => std::mem::take(log_messages),
+        }
+    }
+
     pub fn register_type(&mut self, obj_type_path: &ObjTypePath, typ: ObjectType) {
         if let Some(prev_type) = self.registered_types.get(obj_type_path) {
             if *prev_type != typ {
@@ -28,17 +53,35 @@ impl Sdk {
         } else {
             self.registered_types.insert(obj_type_path.clone(), typ);
 
-            self.send(&LogMsg::TypeMsg(TypeMsg {
+            self.send(LogMsg::TypeMsg(TypeMsg {
                 id: LogId::random(),
                 type_path: obj_type_path.clone(),
                 object_type: typ,
             }));
         }
     }
+
+    pub fn send(&mut self, log_msg: LogMsg) {
+        self.sender.send(log_msg);
+    }
 }
 
-impl Sdk {
-    pub fn send(&mut self, log_msg: &LogMsg) {
-        self.sender.send(log_msg);
+enum Sender {
+    Remote(re_sdk_comms::Client),
+    Buffered(Vec<LogMsg>),
+}
+
+impl Default for Sender {
+    fn default() -> Self {
+        Sender::Remote(Default::default())
+    }
+}
+
+impl Sender {
+    pub fn send(&mut self, msg: LogMsg) {
+        match self {
+            Self::Remote(client) => client.send(&msg),
+            Self::Buffered(buffer) => buffer.push(msg),
+        }
     }
 }
