@@ -495,7 +495,7 @@ pub enum TensorData {
 
     /// A JPEG image.
     ///
-    /// This can only represent tensors with [`DataType::U8`]
+    /// This can only represent tensors with [`TensorDataType::U8`]
     /// of dimensions `[h, w, 3]` (RGB) or `[h, w]` (grayscale).
     Jpeg(Vec<u8>),
 }
