@@ -38,7 +38,7 @@
                 }
             },
             "args": [
-                "objectron/dataset/bike/batch-11/48"
+                "examples/objectron/dataset/bike/batch-11/48"
             ],
             "cwd": "${workspaceFolder}"
         },
