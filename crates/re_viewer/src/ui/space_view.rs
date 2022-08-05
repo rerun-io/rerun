@@ -198,7 +198,7 @@ fn layout_spaces(available_rect: Rect, spaces: &[SpaceInfo]) -> Vec<Rect> {
     let groups = group_by_path_prefix(spaces);
     assert!(groups.len() > 1);
 
-    // TODO: if there are a lot of groups (>3) we likely want to put them in a grid instead of doing a linear split (like we do below)
+    // TODO(emilk): if there are a lot of groups (>3) we likely want to put them in a grid instead of doing a linear split (like we do below)
 
     if available_rect.width() > desired_aspect_ratio * available_rect.height() {
         // left-to-right

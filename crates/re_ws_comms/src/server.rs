@@ -115,7 +115,7 @@ async fn handle_connection(
     let mut interval = tokio::time::interval(Duration::from_millis(1000));
 
     // Re-sending packet history - this is not water tight, but better than nothing.
-    // TODO: water-proof resending of history + streaming of new stuff, without anything missed.
+    // TODO(emilk): water-proof resending of history + streaming of new stuff, without anything missed.
     let history = history.lock().to_vec();
     for packet in history {
         ws_sender

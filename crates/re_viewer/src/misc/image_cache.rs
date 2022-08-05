@@ -14,7 +14,7 @@ impl ImageCache {
         self.images
             .entry(*log_id)
             .or_insert_with(|| rr_image_to_image_pair(format!("{log_id:?}"), rr_image))
-        // TODO: better debug name
+        // TODO(emilk): better debug name
     }
 
     pub fn get(&mut self, log_id: &LogId, image: &Image) -> &RetainedImage {
@@ -146,7 +146,7 @@ fn dynamic_image_to_egui_color_image(dynamic_image: &DynamicImage) -> ColorImage
 //             RetainedImage::from_color_image("image", color_image)
 //         }
 //         Err(err) => {
-//             tracing::warn!("Bad image: {err}"); // TODO: path, log id, SOMETHING!
+//             tracing::warn!("Bad image: {err}"); // TODO(emilk): path, log id, SOMETHING!
 //             let color_image = egui::ColorImage {
 //                 size: [1, 1],
 //                 pixels: vec![Color32::from_rgb(255, 0, 255)],

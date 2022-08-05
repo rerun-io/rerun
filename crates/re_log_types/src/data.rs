@@ -66,7 +66,7 @@ pub mod data_types {
         }
     }
 
-    // TODO: consider using `Arc<str>` or similar instead, for faster cloning.
+    // TODO(emilk): consider using `Arc<str>` or similar instead, for faster cloning.
     impl DataTrait for String {
         fn data_typ() -> DataType {
             DataType::String
@@ -494,7 +494,7 @@ pub enum ImageFormat {
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Image {
-    // TODO: pub pos: [f32; 2], or a transform matrix
+    // TODO(emilk): pub pos: [f32; 2], or a transform matrix
     /// Must always be set and correct, even for [`ImageFormat::Jpeg`].
     pub size: [u32; 2],
     pub format: ImageFormat,

@@ -32,6 +32,8 @@ cargo doc --document-private-items --no-deps --all-features
 
 ./crates/re_viewer/wasm_bindgen_check.sh
 
+./scripts/lint.py
+
 cargo deny check
 
 # ----------------

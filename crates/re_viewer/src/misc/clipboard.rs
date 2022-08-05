@@ -34,7 +34,7 @@ impl Clipboard {
                 height,
                 bytes: rgba_unmultiplied.into(),
             };
-            // TODO: show a quick popup in gui instead of logging
+            // TODO(emilk): show a quick popup in gui instead of logging
             if let Err(err) = clipboard.set_image(image_data) {
                 tracing::error!("Failed to copy image to clipboard: {}", err);
             } else {

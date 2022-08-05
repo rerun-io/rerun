@@ -156,7 +156,7 @@ impl State3D {
                 target_camera: Some(target),
             });
         } else {
-            // self.orbit_camera = TODO
+            // self.orbit_camera = todo!()
         }
     }
 
@@ -172,7 +172,7 @@ impl State3D {
                 target_camera: None,
             });
         } else {
-            // self.orbit_camera = TODO
+            // self.orbit_camera = todo!()
         }
     }
 }
@@ -244,10 +244,10 @@ fn show_settings_ui(
         {
             state.orbit_camera = Some(default_camera(&state.scene_bbox, space_specs));
             state.cam_interpolation = None;
-            // TODO: reset tracking camera too
+            // TODO(emilk): reset tracking camera too
         }
 
-        // TODO: only show if there is a camera om scene.
+        // TODO(emilk): only show if there is a camera om scene.
         ui.toggle_value(&mut context.options.show_camera_mesh_in_3d, "📷")
             .on_hover_text("Show camera mesh");
 
@@ -331,7 +331,7 @@ fn click_object(
     {
         if let Some((_, data_store)) = log_db.data_store.get(context.time_control.source()) {
             if let Some(obj_store) = data_store.get(obj_path.obj_type_path()) {
-                // TODO: use the time of what we clicked instead!
+                // TODO(emilk): use the time of what we clicked instead!
                 if let Some(time_query) = context.time_control.time_query() {
                     let mut objects = re_data_store::Objects::default();
                     re_data_store::objects::Camera::query_obj_path(
@@ -373,7 +373,7 @@ pub(crate) fn combined_view_3d(
 
     let space_specs = SpaceSpecs::from_objects(space, objects);
 
-    // TODO: show settings on top of 3D view.
+    // TODO(emilk): show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
     show_settings_ui(context, ui, state, space, &space_specs);
 
@@ -455,7 +455,7 @@ fn default_camera(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) ->
     let camera_pos = center + radius * cam_dir;
 
     let look_up = if space_spects.up == Vec3::ZERO {
-        Vec3::Z // TODO: make sure this isn't colinear with `center - camera_pos`.
+        Vec3::Z // TODO(emilk): make sure this isn't colinear with `center - camera_pos`.
     } else {
         space_spects.up
     };

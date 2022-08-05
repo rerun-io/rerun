@@ -437,7 +437,7 @@ impl<'s> Mesh3D<'s> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Camera<'s> {
-    // TODO: break up in parts
+    // TODO(emilk): break up in parts
     pub camera: &'s re_log_types::Camera,
 }
 
@@ -665,7 +665,7 @@ impl<'s> Objects<'s> {
         let mut partitioned = partitioner.finish();
 
         for part in partitioned.values_mut() {
-            part.space = self.space.clone(); // TODO: probably only extract the relevant space
+            part.space = self.space.clone(); // TODO(emilk): probably only extract the relevant space
         }
 
         partitioned
@@ -673,7 +673,7 @@ impl<'s> Objects<'s> {
 }
 
 /// Partitioned on space.
-pub type ObjectsBySpace<'s> = ahash::AHashMap<Option<&'s ObjPath>, Objects<'s>>; // TODO: nohash_hasher
+pub type ObjectsBySpace<'s> = ahash::AHashMap<Option<&'s ObjPath>, Objects<'s>>; // TODO(emilk): nohash_hasher
 
 #[derive(Default)]
 struct SpacePartitioner<'s> {

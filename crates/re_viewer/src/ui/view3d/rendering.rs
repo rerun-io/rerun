@@ -226,7 +226,7 @@ pub fn paint_with_three_d(
     info: &egui::PaintCallbackInfo,
     scene: &Scene,
     dark_mode: bool,
-    show_axes: bool, // TODO: less bool arguments
+    show_axes: bool, // TODO(emilk): less bool arguments
 ) -> three_d::ThreeDResult<()> {
     crate::profile_function!();
     use three_d::*;
@@ -260,7 +260,7 @@ pub fn paint_with_three_d(
         mint::Vector3::from(up).into(),
         radians(camera.fov_y),
         camera.near(),
-        1000.0, // TODO: infinity (https://github.com/rustgd/cgmath/pull/547)
+        1000.0, // TODO(emilk): infinity (https://github.com/rustgd/cgmath/pull/547)
     )?;
 
     // -------------------

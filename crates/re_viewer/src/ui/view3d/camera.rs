@@ -29,7 +29,7 @@ impl Camera {
 
     #[allow(clippy::unused_self)]
     pub fn near(&self) -> f32 {
-        0.01 // TODO
+        0.01 // TODO(emilk)
     }
 
     /// Screen coordinates are in points.
@@ -199,7 +199,7 @@ impl OrbitCamera {
 
     /// Rotate based on a certain number of pixel delta.
     pub fn rotate(&mut self, delta: egui::Vec2) {
-        let sensitivity = 0.004; // radians-per-point  TODO: take fov_y and canvas size into account
+        let sensitivity = 0.004; // radians-per-point  TODO(emilk): take fov_y and canvas size into account
         let delta = sensitivity * delta;
 
         if self.up == Vec3::ZERO {
@@ -237,10 +237,10 @@ impl OrbitCamera {
 
     /// Translate based on a certain number of pixel delta.
     pub fn translate(&mut self, delta: egui::Vec2) {
-        let delta = delta * self.radius * 0.001; // TODO: take fov and screen size into account?
+        let delta = delta * self.radius * 0.001; // TODO(emilk): take fov and screen size into account?
 
         let up = self.world_from_view_rot * Vec3::Y;
-        let right = self.world_from_view_rot * -Vec3::X; // TODO: why do we need a negation here? O.o
+        let right = self.world_from_view_rot * -Vec3::X; // TODO(emilk): why do we need a negation here? O.o
 
         let translate = delta.x * right + delta.y * up;
 

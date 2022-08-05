@@ -48,7 +48,7 @@ impl ViewerContext {
             prop: ObjectProps,
             tree: &ObjectTree,
         ) {
-            // TODO: we need to speed up and simplify this a lot.
+            // TODO(emilk): we need to speed up and simplify this a lot.
             let obj_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
             let prop = prop.with_child(&context.individual_object_properties.get(&obj_path));
             context.projected_object_properties.set(obj_path, prop);
@@ -85,7 +85,7 @@ impl ViewerContext {
         text: impl Into<egui::WidgetText>,
         type_path: &ObjTypePath,
     ) -> egui::Response {
-        // TODO: common hover-effect of all buttons for the same type_path!
+        // TODO(emilk): common hover-effect of all buttons for the same type_path!
         let response = ui.selectable_label(self.selection.is_type_path(type_path), text);
         if response.clicked() {
             self.selection = Selection::ObjTypePath(type_path.clone());
@@ -105,7 +105,7 @@ impl ViewerContext {
         text: impl Into<egui::WidgetText>,
         obj_path: &ObjPath,
     ) -> egui::Response {
-        // TODO: common hover-effect of all buttons for the same obj_path!
+        // TODO(emilk): common hover-effect of all buttons for the same obj_path!
         let response = ui.selectable_label(self.selection.is_obj_path(obj_path), text);
         if response.clicked() {
             self.selection = Selection::ObjPath(obj_path.clone());
@@ -125,7 +125,7 @@ impl ViewerContext {
         text: impl Into<egui::WidgetText>,
         data_path: &DataPath,
     ) -> egui::Response {
-        // TODO: common hover-effect of all buttons for the same data_path!
+        // TODO(emilk): common hover-effect of all buttons for the same data_path!
         let response = ui.selectable_label(self.selection.is_data_path(data_path), text);
         if response.clicked() {
             self.selection = Selection::DataPath(data_path.clone());
@@ -135,7 +135,7 @@ impl ViewerContext {
 
     /// Button to select the current space.
     pub fn space_button(&mut self, ui: &mut egui::Ui, space: &ObjPath) -> egui::Response {
-        // TODO: common hover-effect of all buttons for the same space!
+        // TODO(emilk): common hover-effect of all buttons for the same space!
         let response = ui.selectable_label(self.selection.is_space(space), space.to_string());
         if response.clicked() {
             self.selection = Selection::Space(space.clone());
@@ -160,7 +160,7 @@ impl ViewerContext {
     }
 
     pub fn random_color(&mut self, props: &re_data_store::ObjectProps<'_>) -> [u8; 3] {
-        // TODO: ignore "temporary" indices when calculating the hash.
+        // TODO(emilk): ignore "temporary" indices when calculating the hash.
         let hash = props.obj_path.hash64();
 
         let color = *self
