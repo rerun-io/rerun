@@ -6,12 +6,10 @@ Note: The rust crate is called `re_sdk_python`, while the Python library is call
 
 ## Setup
 
-Run this is in the workspace root:
+Run this is in the workspace root to setup the python virtual environment:
 
-```
-python3 -m venv env
-source env/bin/activate
-python3 -m pip install -r crates/re_sdk_python/requirements.txt
+```sh
+source crates/re_sdk_python/setup_env.sh
 ```
 
 The Python bindings is using https://github.com/PyO3/pyo3

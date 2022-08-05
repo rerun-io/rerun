@@ -7,5 +7,5 @@ Setup:
 
 Run:
 ``` sh
-cargo run --release -p nyud -- dataset/cafe.zip
+cargo run --release -p nyud -- examples/nyud/dataset/cafe.zip
 ```
