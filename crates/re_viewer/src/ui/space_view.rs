@@ -401,8 +401,8 @@ pub(crate) fn ui_data(
             "BBox2D(min: [{:.1} {:.1}], max: [{:.1} {:.1}])",
             bbox.min[0], bbox.min[1], bbox.max[0], bbox.max[1]
         )),
-        Data::Image(image) => {
-            let egui_image = context.image_cache.get(id, image);
+        Data::Tensor(tensor) => {
+            let egui_image = context.image_cache.get(id, tensor);
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {
                     Preview::Small => 32.0,
@@ -416,7 +416,21 @@ pub(crate) fn ui_data(
                         egui_image.show(ui);
                     });
 
-                ui.label(format!("{}x{}", image.size[0], image.size[1]));
+                if tensor.shape.len() == 2 {
+                    ui.label(format!(
+                        "Tensor shape: {:?} (height={}, width={})",
+                        tensor.shape, tensor.shape[0], tensor.shape[1]
+                    ));
+                } else if tensor.shape.len() == 3 {
+                    ui.label(format!(
+                        "Tensor shape: {:?} (height={}, width={}, depth={})",
+                        tensor.shape, tensor.shape[0], tensor.shape[1], tensor.shape[2]
+                    ));
+                } else {
+                    ui.label(format!("Tensor shape: {:?}", tensor.shape));
+                }
+
+                ui.label(format!("Tensor dtype: {:?}", tensor.dtype));
             })
             .response
         }

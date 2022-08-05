@@ -111,7 +111,7 @@ pub(crate) fn combined_view_2d(
     };
 
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
-        let re_data_store::Image { image } = obj;
+        let re_data_store::Image { tensor } = obj;
         let paint_props = paint_properties(
             context,
             &state.hovered_obj,
@@ -120,13 +120,17 @@ pub(crate) fn combined_view_2d(
             &None,
         );
 
+        if tensor.shape.len() < 2 {
+            continue; // not an image. don't know how to display this!
+        }
+
         let texture_id = context
             .image_cache
-            .get(props.log_id, image)
+            .get(props.log_id, tensor)
             .texture_id(ui.ctx());
         let screen_rect = to_screen.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
-            vec2(image.size[0] as _, image.size[1] as _),
+            vec2(tensor.shape[1] as _, tensor.shape[0] as _),
         ));
         let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
 

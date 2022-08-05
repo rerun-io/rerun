@@ -211,7 +211,7 @@ impl DataColumns {
                 DataType::Vec2 => ("2D vector", "s"),
                 DataType::BBox2D => ("2D bounding box", "es"),
                 DataType::LineSegments2D => ("2D line segment list", "s"),
-                DataType::Image => ("image", "s"),
+                DataType::Tensor => ("tensor", "s"),
 
                 DataType::Vec3 => ("3D vector", "s"),
                 DataType::Box3 => ("3D box", "es"),

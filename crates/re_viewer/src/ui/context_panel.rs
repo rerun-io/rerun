@@ -148,8 +148,8 @@ pub(crate) fn show_detailed_data(
     log_id: &LogId,
     data: &Data,
 ) {
-    if let Data::Image(image) = data {
-        show_image(context, ui, log_id, image);
+    if let Data::Tensor(tensor) = data {
+        show_tensor(context, ui, log_id, tensor);
     } else {
         crate::space_view::ui_data(context, ui, log_id, data, Preview::Medium);
     }
@@ -167,7 +167,7 @@ pub(crate) fn show_detailed_data_msg(
         data,
     } = msg;
 
-    let is_image = matches!(msg.data, LoggedData::Single(Data::Image(_)));
+    let is_image = matches!(msg.data, LoggedData::Single(Data::Tensor(_)));
 
     egui::Grid::new("fields")
         .striped(true)
@@ -191,18 +191,18 @@ pub(crate) fn show_detailed_data_msg(
             }
         });
 
-    if let LoggedData::Single(Data::Image(image)) = &msg.data {
-        show_image(context, ui, id, image);
+    if let LoggedData::Single(Data::Tensor(tensor)) = &msg.data {
+        show_tensor(context, ui, id, tensor);
     }
 }
 
-fn show_image(
+fn show_tensor(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
     log_id: &LogId,
-    image: &re_log_types::Image,
+    tensor: &re_log_types::Tensor,
 ) {
-    let (dynamic_image, egui_image) = context.image_cache.get_pair(log_id, image);
+    let (dynamic_image, egui_image) = context.image_cache.get_pair(log_id, tensor);
     let max_size = ui.available_size().min(egui_image.size_vec2());
     let response = egui_image.show_max_size(ui, max_size);
 
@@ -220,7 +220,7 @@ fn show_image(
 
     // TODO(emilk): support copying and saving images on web
     #[cfg(not(target_arch = "wasm32"))]
-    ui.horizontal(|ui| image_options(ui, image, dynamic_image));
+    ui.horizontal(|ui| image_options(ui, tensor, dynamic_image));
 
     // TODO(emilk): support histograms of non-RGB images too
     if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_image {
@@ -415,10 +415,12 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
 #[cfg(not(target_arch = "wasm32"))]
 fn image_options(
     ui: &mut egui::Ui,
-    rr_image: &re_log_types::Image,
+    tensor: &re_log_types::Tensor,
     dynamic_image: &image::DynamicImage,
 ) {
     // TODO(emilk): support copying images on web
+
+    use re_log_types::TensorData;
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Click to copy image").clicked() {
         let rgba = dynamic_image.to_rgba8();
@@ -433,14 +435,14 @@ fn image_options(
     // TODO(emilk): support saving images on web
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Save image…").clicked() {
-        use re_log_types::ImageFormat;
-        match rr_image.format {
-            ImageFormat::Jpeg => {
+        match &tensor.data {
+            TensorData::Dense(_) => {
                 if let Some(path) = rfd::FileDialog::new()
-                    .set_file_name("image.jpg")
+                    .set_file_name("image.png")
                     .save_file()
                 {
-                    match write_binary(&path, &rr_image.data) {
+                    match dynamic_image.save(&path) {
+                        // TODO(emilk): show a popup instead of logging result
                         Ok(()) => {
                             tracing::info!("Image saved to {:?}", path);
                         }
@@ -450,16 +452,12 @@ fn image_options(
                     }
                 }
             }
-            ImageFormat::Luminance8
-            | ImageFormat::Luminance16
-            | ImageFormat::Rgb8
-            | ImageFormat::Rgba8 => {
+            TensorData::Jpeg(bytes) => {
                 if let Some(path) = rfd::FileDialog::new()
-                    .set_file_name("image.png")
+                    .set_file_name("image.jpg")
                     .save_file()
                 {
-                    match dynamic_image.save(&path) {
-                        // TODO(emilk): show a popup instead of logging result
+                    match write_binary(&path, bytes) {
                         Ok(()) => {
                             tracing::info!("Image saved to {:?}", path);
                         }

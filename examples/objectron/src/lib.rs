@@ -327,14 +327,16 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
 fn log_image(path: &PathBuf, time_point: &TimePoint, logger: &Logger<'_>) -> anyhow::Result<()> {
     let image_space = ObjPath::from("image");
 
-    let data = std::fs::read(path)?;
+    let jpeg_bytes = std::fs::read(path)?;
 
-    let (w, h) = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&data))?.dimensions();
+    let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
+    assert_eq!(jpeg.color_type(), image::ColorType::Rgb8); // TODO(emilk): support gray-scale jpeg aswell
+    let (w, h) = jpeg.dimensions();
 
-    let image = re_log_types::Image {
-        format: re_log_types::ImageFormat::Jpeg,
-        size: [w, h],
-        data,
+    let image = re_log_types::Tensor {
+        shape: vec![h as _, w as _, 3],
+        dtype: TensorDataType::U8,
+        data: TensorData::Jpeg(jpeg_bytes),
     };
 
     let obj_path = ObjPathBuilder::from("video");

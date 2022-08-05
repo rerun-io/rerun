@@ -10,15 +10,15 @@ pub struct ImageCache {
 }
 
 impl ImageCache {
-    pub fn get_pair(&mut self, log_id: &LogId, rr_image: &Image) -> &(DynamicImage, RetainedImage) {
+    pub fn get_pair(&mut self, log_id: &LogId, tensor: &Tensor) -> &(DynamicImage, RetainedImage) {
         self.images
             .entry(*log_id)
-            .or_insert_with(|| rr_image_to_image_pair(format!("{log_id:?}"), rr_image))
+            .or_insert_with(|| tensor_to_image_pair(format!("{log_id:?}"), tensor))
         // TODO(emilk): better debug name
     }
 
-    pub fn get(&mut self, log_id: &LogId, image: &Image) -> &RetainedImage {
-        &self.get_pair(log_id, image).1
+    pub fn get(&mut self, log_id: &LogId, tensor: &Tensor) -> &RetainedImage {
+        &self.get_pair(log_id, tensor).1
     }
 
     // pub fn get_dynamic_image(&mut self, log_id: &LogId, image: &Image) -> &DynamicImage {
@@ -26,9 +26,9 @@ impl ImageCache {
     // }
 }
 
-fn rr_image_to_image_pair(debug_name: String, rr_image: &Image) -> (DynamicImage, RetainedImage) {
+fn tensor_to_image_pair(debug_name: String, tensor: &Tensor) -> (DynamicImage, RetainedImage) {
     crate::profile_function!();
-    let dynamic_image = match rr_image_to_dynamic_image(rr_image) {
+    let dynamic_image = match tensor_to_dynamic_image(tensor) {
         Ok(dynamic_image) => dynamic_image,
         Err(err) => {
             tracing::warn!("Bad image {debug_name:?}: {err}");
@@ -40,50 +40,73 @@ fn rr_image_to_image_pair(debug_name: String, rr_image: &Image) -> (DynamicImage
     (dynamic_image, retrained_iamge)
 }
 
-fn rr_image_to_dynamic_image(rr_image: &Image) -> anyhow::Result<DynamicImage> {
+fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
     crate::profile_function!();
     use anyhow::Context as _;
 
-    let [w, h] = rr_image.size;
+    let shape = &tensor.shape;
+
+    anyhow::ensure!(
+        shape.len() == 2 || shape.len() == 3,
+        "Expected a 2D or 3D tensor, got {shape:?}",
+    );
+
+    let [height, width] = [
+        u32::try_from(shape[0]).context("tensor too large")?,
+        u32::try_from(shape[1]).context("tensor tool large")?,
+    ];
+    let depth = if shape.len() == 2 { 1 } else { shape[2] };
+
+    anyhow::ensure!(
+        depth == 1 || depth == 3 || depth == 4,
+        "Expected depth of 1,3,4 (gray, RGB, RGBA), found {depth:?}. Tensor shape: {shape:?}"
+    );
 
     type Gray16Image = image::ImageBuffer<image::Luma<u16>, Vec<u16>>;
 
-    match rr_image.format {
-        re_log_types::ImageFormat::Luminance8 => {
-            image::GrayImage::from_raw(w, h, rr_image.data.clone())
-                .context("Bad Luminance8")
-                .map(DynamicImage::ImageLuma8)
+    match &tensor.data {
+        TensorData::Dense(bytes) => {
+            if depth == 1 && tensor.dtype == TensorDataType::U8 {
+                // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
+                image::GrayImage::from_raw(width, height, bytes.clone())
+                    .context("Bad Luminance8")
+                    .map(DynamicImage::ImageLuma8)
+            } else if depth == 1 && tensor.dtype == TensorDataType::U16 {
+                // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
+                Gray16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
+                    .context("Bad Luminance16")
+                    .map(DynamicImage::ImageLuma16)
+            } else if depth == 3 && tensor.dtype == TensorDataType::U8 {
+                image::RgbImage::from_raw(width, height, bytes.clone())
+                    .context("Bad Rgb8")
+                    .map(DynamicImage::ImageRgb8)
+            } else if depth == 4 && tensor.dtype == TensorDataType::U8 {
+                image::RgbaImage::from_raw(width, height, bytes.clone())
+                    .context("Bad Rgba8")
+                    .map(DynamicImage::ImageRgba8)
+            } else {
+                anyhow::bail!(
+                    "Don't know how to turn a tensor of shape={:?} and dtype={:?} into an image",
+                    shape,
+                    tensor.dtype
+                )
+            }
         }
-        re_log_types::ImageFormat::Luminance16 => {
-            Gray16Image::from_raw(w, h, bytemuck::cast_slice(&rr_image.data).to_vec())
-                .context("Bad Luminance16")
-                .map(DynamicImage::ImageLuma16)
-        }
 
-        re_log_types::ImageFormat::Rgb8 => image::RgbImage::from_raw(w, h, rr_image.data.clone())
-            .context("Bad Rgb8")
-            .map(DynamicImage::ImageRgb8),
-
-        re_log_types::ImageFormat::Rgba8 => image::RgbaImage::from_raw(w, h, rr_image.data.clone())
-            .context("Bad Rgba8")
-            .map(DynamicImage::ImageRgba8),
-
-        re_log_types::ImageFormat::Jpeg => {
+        TensorData::Jpeg(bytes) => {
             crate::profile_scope!("Decode JPEG");
             use image::io::Reader as ImageReader;
-            let mut reader = ImageReader::new(std::io::Cursor::new(&rr_image.data));
+            let mut reader = ImageReader::new(std::io::Cursor::new(bytes));
             reader.set_format(image::ImageFormat::Jpeg);
+            // TODO: handle grayscale JPEG:s (depth == 1)
             let img = reader.decode()?.into_rgb8();
 
-            let size = [img.width(), img.height()];
-            if size != rr_image.size {
-                tracing::warn!(
-                    "Declared image size ({}x{}) does not match jpeg size ({}x{})",
-                    rr_image.size[0],
-                    rr_image.size[1],
-                    size[0],
-                    size[1],
-                );
+            if depth != 3 || img.width() != width || img.height() != height {
+                anyhow::bail!(
+                    "Rensor shape ({shape:?}) did not match jpeg dimensions ({}x{})",
+                    img.width(),
+                    img.height()
+                )
             }
 
             Ok(DynamicImage::ImageRgb8(img))
@@ -125,87 +148,3 @@ fn dynamic_image_to_egui_color_image(dynamic_image: &DynamicImage) -> ColorImage
         _ => dynamic_image_to_egui_color_image(&DynamicImage::ImageRgba8(dynamic_image.to_rgba8())),
     }
 }
-
-// fn rr_image_to_retained_image(rr_image: &Image) -> RetainedImage {
-//     crate::profile_function!();
-//     match rr_image_to_rgba_unultiplied(rr_image) {
-//         Ok((size, rgba)) => {
-//             let pixels = rgba
-//                 .chunks(4)
-//                 .map(|chunk| {
-//                     let [r, g, b, a] = [chunk[0], chunk[1], chunk[2], chunk[3]];
-//                     if a == 255 {
-//                         Color32::from_rgb(r, g, b) // common-case optimization; inlined
-//                     } else {
-//                         Color32::from_rgba_unmultiplied(r, g, b, a)
-//                     }
-//                 })
-//                 .collect();
-//             let size = [size[0] as _, size[1] as _];
-//             let color_image = egui::ColorImage { size, pixels };
-//             RetainedImage::from_color_image("image", color_image)
-//         }
-//         Err(err) => {
-//             tracing::warn!("Bad image: {err}"); // TODO(emilk): path, log id, SOMETHING!
-//             let color_image = egui::ColorImage {
-//                 size: [1, 1],
-//                 pixels: vec![Color32::from_rgb(255, 0, 255)],
-//             };
-//             RetainedImage::from_color_image("image", color_image)
-//         }
-//     }
-// }
-
-// pub fn rr_image_to_rgba_unultiplied(
-//     rr_image: &re_log_types::Image,
-// ) -> anyhow::Result<([u32; 2], Vec<u8>)> {
-//     crate::profile_function!();
-//     match rr_image.format {
-//         re_log_types::ImageFormat::Luminance8 => {
-//             let rgba: Vec<u8> = rr_image
-//                 .data
-//                 .iter()
-//                 .flat_map(|&l| [l, l, l, 255])
-//                 .collect();
-//             sanity_check_size(rr_image.size, &rgba)?;
-//             Ok((rr_image.size, rgba))
-//         }
-//         re_log_types::ImageFormat::Rgba8 => {
-//             let rgba = rr_image.data.clone();
-//             sanity_check_size(rr_image.size, &rgba)?;
-//             Ok((rr_image.size, rgba))
-//         }
-//         re_log_types::ImageFormat::Jpeg => {
-//             crate::profile_scope!("Decode JPEG");
-//             use image::io::Reader as ImageReader;
-//             let mut reader = ImageReader::new(std::io::Cursor::new(&rr_image.data));
-//             reader.set_format(image::ImageFormat::Jpeg);
-//             let img = reader.decode()?.into_rgba8();
-//             let rgba = img.to_vec();
-//             let size = [img.width(), img.height()];
-
-//             if size != rr_image.size {
-//                 tracing::warn!(
-//                     "Declared image size ({}x{}) does not match jpeg size ({}x{})",
-//                     rr_image.size[0],
-//                     rr_image.size[1],
-//                     size[0],
-//                     size[1],
-//                 );
-//             }
-
-//             sanity_check_size(size, &rgba)?;
-//             Ok((size, rgba))
-//         }
-//     }
-// }
-
-// fn sanity_check_size([w, h]: [u32; 2], rgba: &[u8]) -> anyhow::Result<()> {
-//     anyhow::ensure!(
-//         (w as usize) * (h as usize) * 4 == rgba.len(),
-//         "Image had a size of {w}x{h} (={}), but had {} pixels",
-//         w * h,
-//         rgba.len() / 4
-//     );
-//     Ok(())
-// }
