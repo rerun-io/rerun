@@ -24,7 +24,10 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(log_point2d, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
-    m.add_function(wrap_pyfunction!(log_image, m)?)?;
+
+    m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
+    m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
+    m.add_function(wrap_pyfunction!(log_tensor_f32, m)?)?;
     Ok(())
 }
 
@@ -216,19 +219,26 @@ fn log_points_rs(
 
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_image(name: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>) -> PyResult<()> {
-    match img.shape() {
-        // NOTE: opencv/numpy uses "height x width" convention
-        [_, _] | [_, _, 1 | 3 | 4] => {}
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Expected image of dimension of 2 or 3 with a depth of 1 (gray), 3 (RGB) or 4 (RGBA). Got image of shape {:?}", img.shape()
-            )));
-        }
-    };
+fn log_tensor_u8(name: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>) {
+    log_tensor(name, img);
+}
 
-    // ----------------
+#[allow(clippy::needless_pass_by_value)]
+#[pyfunction]
+fn log_tensor_u16(name: &str, img: numpy::PyReadonlyArrayDyn<'_, u16>) {
+    log_tensor(name, img);
+}
 
+#[allow(clippy::needless_pass_by_value)]
+#[pyfunction]
+fn log_tensor_f32(name: &str, img: numpy::PyReadonlyArrayDyn<'_, f32>) {
+    log_tensor(name, img);
+}
+
+fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
+    name: &str,
+    img: numpy::PyReadonlyArrayDyn<'_, T>,
+) {
     let mut sdk = Sdk::global();
 
     let obj_path = ObjPath::from(name); // TODO(emilk): pass in proper obj path somehow
@@ -243,8 +253,6 @@ fn log_image(name: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>) -> PyResult<()>
     };
     let log_msg = LogMsg::DataMsg(data_msg);
     sdk.send(log_msg);
-
-    Ok(())
 }
 
 fn time_point() -> TimePoint {
@@ -256,10 +264,15 @@ fn time_point() -> TimePoint {
     time_point
 }
 
-fn to_rerun_tensor(img: &numpy::PyReadonlyArrayDyn<'_, u8>) -> re_log_types::Tensor {
+fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
+    img: &numpy::PyReadonlyArrayDyn<'_, T>,
+) -> re_log_types::Tensor {
     re_log_types::Tensor {
         shape: img.shape().iter().map(|&d| d as u64).collect(),
-        dtype: TensorDataType::U8,
-        data: TensorData::Dense(img.to_owned_array().into_raw_vec()),
+        dtype: T::DTYPE,
+        // TODO(emilk): avoid double-allocating here
+        data: TensorData::Dense(bytemuck::allocation::pod_collect_to_vec(
+            &img.to_owned_array().into_raw_vec(),
+        )),
     }
 }

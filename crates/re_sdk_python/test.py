@@ -15,10 +15,14 @@ def log(args):
 
     print(rerun.info())
 
+    if True:
+        image = cv2.imread('crates/re_viewer/data/logo_dark_mode.png',
+                           cv2.IMREAD_UNCHANGED)
+        rerun.log_image("logo", image)
+
     if False:
-        img = cv2.imread('crates/re_viewer/data/logo_dark_mode.png',
-                         cv2.IMREAD_UNCHANGED)
-        rerun.log_image("logo", img)
+        depth_img = cv2.imread('depth_image.pgm', cv2.IMREAD_UNCHANGED)
+        rerun.log_image("depth", depth_img)
 
     if False:
         for i in range(64):
@@ -28,7 +32,7 @@ def log(args):
             y = r * math.sin(angle) + 16.0
             rerun.log_point2d(f"point2d_{i}", x, y)
 
-    if True:
+    if False:
         pos3 = []
         for i in range(1000):
             angle = 6.28 * i / 64

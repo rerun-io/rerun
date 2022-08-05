@@ -486,6 +486,19 @@ pub enum TensorDataType {
     F32,
 }
 
+pub trait TensorDataTypeTrait: Copy + Clone + Send + Sync {
+    const DTYPE: TensorDataType;
+}
+impl TensorDataTypeTrait for u8 {
+    const DTYPE: TensorDataType = TensorDataType::U8;
+}
+impl TensorDataTypeTrait for u16 {
+    const DTYPE: TensorDataType = TensorDataType::U16;
+}
+impl TensorDataTypeTrait for f32 {
+    const DTYPE: TensorDataType = TensorDataType::F32;
+}
+
 /// The data types supported by a [`Tensor`].
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
