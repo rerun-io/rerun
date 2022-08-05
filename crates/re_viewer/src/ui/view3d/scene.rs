@@ -13,14 +13,14 @@ use crate::{
 use super::camera::Camera;
 
 pub struct Point {
-    pub obj_path_hash: ObjPathHash,
+    pub obj_path_hash: Option<ObjPathHash>,
     pub pos: [f32; 3],
     pub radius: f32,
     pub color: [u8; 4],
 }
 
 pub struct LineSegments {
-    pub obj_path_hash: ObjPathHash,
+    pub obj_path_hash: Option<ObjPathHash>,
     pub segments: Vec<[[f32; 3]; 2]>,
     pub radius: f32,
     pub color: [u8; 4],
@@ -33,7 +33,7 @@ pub enum MeshSourceData {
 }
 
 pub struct MeshSource {
-    pub obj_path_hash: ObjPathHash,
+    pub obj_path_hash: Option<ObjPathHash>,
     pub mesh_id: u64,
     pub world_from_mesh: glam::Mat4,
     pub cpu_mesh: Arc<CpuMesh>,
@@ -114,7 +114,7 @@ impl Scene {
                 let radius = boost_size_on_hover(props, radius);
 
                 scene.points.push(Point {
-                    obj_path_hash: *props.obj_path.hash(),
+                    obj_path_hash: Some(*props.obj_path.hash()),
                     pos: *pos,
                     radius,
                     color: object_color(context, props),
@@ -167,7 +167,7 @@ impl Scene {
                     .collect();
 
                 scene.line_segments.push(LineSegments {
-                    obj_path_hash: *props.obj_path.hash(),
+                    obj_path_hash: Some(*props.obj_path.hash()),
                     segments,
                     radius: line_radius,
                     color,
@@ -199,7 +199,7 @@ impl Scene {
                 let color = object_color(context, props);
 
                 scene.line_segments.push(LineSegments {
-                    obj_path_hash: *props.obj_path.hash(),
+                    obj_path_hash: Some(*props.obj_path.hash()),
                     segments: line_segments.clone(),
                     radius: line_radius,
                     color,
@@ -219,7 +219,7 @@ impl Scene {
                 ) {
                     // TODO(emilk): props.color
                     scene.meshes.push(MeshSource {
-                        obj_path_hash: *props.obj_path.hash(),
+                        obj_path_hash: Some(*props.obj_path.hash()),
                         mesh_id,
                         world_from_mesh: glam::Mat4::IDENTITY,
                         cpu_mesh,
@@ -260,7 +260,7 @@ impl Scene {
                         &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
                     ) {
                         scene.meshes.push(MeshSource {
-                            obj_path_hash: *props.obj_path.hash(),
+                            obj_path_hash: Some(*props.obj_path.hash()),
                             mesh_id,
                             world_from_mesh,
                             cpu_mesh,
@@ -329,7 +329,7 @@ impl Scene {
             ];
 
             self.line_segments.push(LineSegments {
-                obj_path_hash: *obj_path.hash(),
+                obj_path_hash: Some(*obj_path.hash()),
                 segments,
                 radius: line_radius,
                 color,
@@ -381,7 +381,7 @@ impl Scene {
         ];
 
         self.line_segments.push(LineSegments {
-            obj_path_hash: *obj_path.hash(),
+            obj_path_hash: Some(*obj_path.hash()),
             segments,
             radius: line_radius,
             color,
@@ -412,8 +412,7 @@ impl Scene {
         // in points
         let max_side_dist_sq = 5.0 * 5.0; // TODO(emilk): interaction radius from egui
 
-        // meters along the ray
-        let mut closest_t = f32::INFINITY;
+        let mut closest_z = f32::INFINITY;
         // in points
         let mut closest_side_dist_sq = max_side_dist_sq;
         let mut closest_obj_path_hash = None;
@@ -421,18 +420,20 @@ impl Scene {
         {
             crate::profile_scope!("points");
             for point in points {
-                // TODO(emilk): take radius into account
-                let screen_pos = screen_from_world.project_point3(point.pos.into());
-                if screen_pos.z < 0.0 {
-                    continue; // TODO(emilk): don't we expect negative Z!? RHS etc
-                }
-                let dist_sq = egui::pos2(screen_pos.x, screen_pos.y).distance_sq(pointer_pos);
-                if dist_sq < max_side_dist_sq {
-                    let t = screen_pos.z.abs();
-                    if t < closest_t || dist_sq < closest_side_dist_sq {
-                        closest_t = t;
-                        closest_side_dist_sq = dist_sq;
-                        closest_obj_path_hash = Some(point.obj_path_hash);
+                if let Some(obj_path_hash) = point.obj_path_hash {
+                    // TODO(emilk): take point radius into account
+                    let screen_pos = screen_from_world.project_point3(point.pos.into());
+                    if screen_pos.z < 0.0 {
+                        continue; // TODO(emilk): don't we expect negative Z!? RHS etc
+                    }
+                    let dist_sq = egui::pos2(screen_pos.x, screen_pos.y).distance_sq(pointer_pos);
+                    if dist_sq < max_side_dist_sq {
+                        let t = screen_pos.z.abs();
+                        if t < closest_z || dist_sq < closest_side_dist_sq {
+                            closest_z = t;
+                            closest_side_dist_sq = dist_sq;
+                            closest_obj_path_hash = Some(obj_path_hash);
+                        }
                     }
                 }
             }
@@ -441,23 +442,25 @@ impl Scene {
         {
             crate::profile_scope!("line_segments");
             for line_segments in line_segments {
-                // TODO(emilk): take radius into account
-                use egui::pos2;
+                if let Some(obj_path_hash) = line_segments.obj_path_hash {
+                    // TODO(emilk): take line segment radius into account
+                    use egui::pos2;
 
-                for [a, b] in &line_segments.segments {
-                    let a = screen_from_world.project_point3((*a).into());
-                    let b = screen_from_world.project_point3((*b).into());
-                    let dist_sq = line_segment_distance_sq_to_point(
-                        [pos2(a.x, a.y), pos2(b.x, b.y)],
-                        pointer_pos,
-                    );
+                    for [a, b] in &line_segments.segments {
+                        let a = screen_from_world.project_point3((*a).into());
+                        let b = screen_from_world.project_point3((*b).into());
+                        let dist_sq = line_segment_distance_sq_to_point(
+                            [pos2(a.x, a.y), pos2(b.x, b.y)],
+                            pointer_pos,
+                        );
 
-                    if dist_sq < max_side_dist_sq {
-                        let t = a.z.abs(); // not very accurate
-                        if t < closest_t || dist_sq < closest_side_dist_sq {
-                            closest_t = t;
-                            closest_side_dist_sq = dist_sq;
-                            closest_obj_path_hash = Some(line_segments.obj_path_hash);
+                        if dist_sq < max_side_dist_sq {
+                            let t = a.z.abs(); // not very accurate
+                            if t < closest_z || dist_sq < closest_side_dist_sq {
+                                closest_z = t;
+                                closest_side_dist_sq = dist_sq;
+                                closest_obj_path_hash = Some(obj_path_hash);
+                            }
                         }
                     }
                 }
@@ -467,21 +470,28 @@ impl Scene {
         {
             crate::profile_scope!("meshes");
             for mesh in meshes {
-                let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
-                let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.cpu_mesh.bbox());
-                if t < f32::INFINITY {
-                    let dist_sq = 0.0;
-                    if t < closest_t || dist_sq < closest_side_dist_sq {
-                        closest_t = t;
-                        closest_side_dist_sq = dist_sq;
-                        closest_obj_path_hash = Some(mesh.obj_path_hash);
+                if let Some(obj_path_hash) = mesh.obj_path_hash {
+                    let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
+                    let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.cpu_mesh.bbox());
+
+                    if t < f32::INFINITY {
+                        let dist_sq = 0.0;
+                        if t < closest_z || dist_sq < closest_side_dist_sq {
+                            closest_z = t; // TODO(emilk): I think this is wrong
+                            closest_side_dist_sq = dist_sq;
+                            closest_obj_path_hash = Some(obj_path_hash);
+                        }
                     }
                 }
             }
         }
 
         if let Some(closest_obj_path_hash) = closest_obj_path_hash {
-            let closest_point = ray_in_world.point_along(closest_t);
+            let closest_point = world_from_screen.project_point3(Vec3::new(
+                pointer_pos.x,
+                pointer_pos.y,
+                closest_z,
+            ));
             Some((closest_obj_path_hash, closest_point))
         } else {
             None
