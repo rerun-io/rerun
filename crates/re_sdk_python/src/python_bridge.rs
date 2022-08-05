@@ -19,7 +19,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[cfg(feature = "re_viewer")]
     {
         m.add_function(wrap_pyfunction!(buffer, m)?)?;
-        m.add_function(wrap_pyfunction!(show_and_quit, m)?)?;
+        m.add_function(wrap_pyfunction!(show, m)?)?;
     }
 
     m.add_function(wrap_pyfunction!(log_point2d, m)?)?;
@@ -49,7 +49,7 @@ fn buffer() {
 /// Show the buffered log data.
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
-fn show_and_quit() {
+fn show() {
     let mut sdk = Sdk::global();
     if sdk.is_buffered() {
         let log_messages = sdk.drain_log_messages();
@@ -58,7 +58,6 @@ fn show_and_quit() {
         for log_msg in log_messages {
             tx.send(log_msg).ok();
         }
-        // TODO: don't quit! Solve https://github.com/emilk/egui/issues/1223
         re_viewer::run_native_viewer(rx);
     } else {
         tracing::error!("Can't show the log messages of Rerurn: it was configured to send the data to a server!");

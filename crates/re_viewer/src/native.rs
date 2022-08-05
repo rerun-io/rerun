@@ -2,7 +2,7 @@ use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
 
-pub fn run_native_viewer(rx: Receiver<LogMsg>) -> ! {
+pub fn run_native_viewer(rx: Receiver<LogMsg>) {
     let native_options = eframe::NativeOptions {
         depth_buffer: 24,
         multisampling: 8,

@@ -44,7 +44,7 @@ def log(args):
     if args.connect:
         time.sleep(1.0)  # HACK: give rerun time to send it all
     else:
-        rerun.show_and_quit()
+        rerun.show()
 
 
 if __name__ == '__main__':
