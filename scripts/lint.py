@@ -18,18 +18,22 @@ def lint_file(filepath, args):
 
     num_errors = 0
 
-    todo_pattern = re.compile(r'TODO:')  # NOLINT
+    todo_pattern = re.compile(r'TODO[^(]')  # NOLINT
+    fixme_pattern = re.compile(r'FIXME')  # NOLINT
 
     for line_nr, line in enumerate(lines_in):
         if 'NOLINT' in line:
             continue
 
-        line_nr = line_nr+1
+        if fixme_pattern.search(line):
+            num_errors = + 1
+            print(
+                f'{filepath}:{line_nr+1}: we prefer TODO over FIXME')  # NOLINT
 
         if todo_pattern.search(line):
             num_errors = + 1
             print(
-                f'{filepath}:{line_nr}: TODO:s should contain the name of who wrote them, i.e. TODO(name):')  # NOLINT
+                f'{filepath}:{line_nr+1}: TODO:s should contain the name of who wrote them, i.e. TODO(name):')  # NOLINT
 
     return num_errors
 

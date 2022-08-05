@@ -29,7 +29,7 @@ impl Camera {
 
     #[allow(clippy::unused_self)]
     pub fn near(&self) -> f32 {
-        0.01 // TODO
+        0.01 // TODO(emilk)
     }
 
     /// Screen coordinates are in points.

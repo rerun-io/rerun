@@ -207,7 +207,7 @@ impl TimePanel {
 
         let collapsing_response = egui::CollapsingHeader::new(text)
             .id_source(&path)
-            .default_open(path.is_empty()) //  || (path.len() == 1 && tree.children.len() < 3)) TODO when data path has been simplified
+            .default_open(path.is_empty()) //  || (path.len() == 1 && tree.children.len() < 3)) TODO(emilk) when data path has been simplified
             .show(ui, |ui| {
                 self.show_children(log_db, context, time_area_painter, path, tree, ui);
             });
@@ -399,7 +399,7 @@ fn show_data_over_time(
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
     let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f32::INFINITY);
-    let max_stretch_length_in_time = 1.0 / points_per_time as f64; // TODO
+    let max_stretch_length_in_time = 1.0 / points_per_time as f64; // TODO(emilk)
 
     let pointer_pos = ui.input().pointer.hover_pos();
 
