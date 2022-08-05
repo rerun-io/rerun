@@ -98,7 +98,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
             use image::io::Reader as ImageReader;
             let mut reader = ImageReader::new(std::io::Cursor::new(bytes));
             reader.set_format(image::ImageFormat::Jpeg);
-            // TODO: handle grayscale JPEG:s (depth == 1)
+            // TODO(emilk): handle grayscale JPEG:s (depth == 1)
             let img = reader.decode()?.into_rgb8();
 
             if depth != 3 || img.width() != width || img.height() != height {
