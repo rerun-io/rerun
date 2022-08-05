@@ -82,7 +82,7 @@ pub(crate) fn message_table(
 }
 
 fn row_height(msg: &DataMsg) -> f32 {
-    if matches!(msg.data.data_type(), DataType::Image) {
+    if matches!(msg.data.data_type(), DataType::Tensor) {
         48.0
     } else {
         18.0

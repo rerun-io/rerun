@@ -108,14 +108,14 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
             if file_name.ends_with(".ppm") {
                 let image = image::load_from_memory(&file_contents).unwrap().into_rgb8();
 
-                let image = re_log_types::Image {
-                    size: [image.width(), image.height()],
-                    format: re_log_types::ImageFormat::Rgb8,
-                    data: image.to_vec(),
+                let tensor = re_log_types::Tensor {
+                    shape: vec![image.height() as _, image.width() as _, 3],
+                    dtype: re_log_types::TensorDataType::U8,
+                    data: TensorData::Dense(image.to_vec()),
                 };
 
                 let obj_path = ObjPathBuilder::from("rgb");
-                logger.log(data_msg(&time_point, &obj_path, "image", image));
+                logger.log(data_msg(&time_point, &obj_path, "tensor", tensor));
                 logger.log(data_msg(
                     &time_point,
                     obj_path,
@@ -132,13 +132,15 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                     .into_luma16();
 
                 {
-                    let image = re_log_types::Image {
-                        size: [depth_image.width(), depth_image.height()],
-                        format: re_log_types::ImageFormat::Luminance16,
-                        data: bytemuck::cast_slice(depth_image.as_raw()).to_vec(),
+                    let tensor = re_log_types::Tensor {
+                        shape: vec![depth_image.height() as _, depth_image.width() as _],
+                        dtype: re_log_types::TensorDataType::U16,
+                        data: TensorData::Dense(
+                            bytemuck::cast_slice(depth_image.as_raw()).to_vec(),
+                        ),
                     };
                     let obj_path = ObjPathBuilder::from("depth");
-                    logger.log(data_msg(&time_point, &obj_path, "image", image));
+                    logger.log(data_msg(&time_point, &obj_path, "tensor", tensor));
                     logger.log(data_msg(
                         &time_point,
                         obj_path,

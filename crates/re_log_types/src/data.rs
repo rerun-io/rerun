@@ -16,7 +16,6 @@ pub enum DataType {
     Vec2,
     BBox2D,
     LineSegments2D,
-    Image,
 
     // ----------------------------
     // 3D:
@@ -29,7 +28,7 @@ pub enum DataType {
 
     // ----------------------------
     // N-D:
-    Vecf32,
+    Tensor,
 
     // ----------------------------
     Space,
@@ -103,9 +102,9 @@ pub mod data_types {
             DataType::LineSegments2D
         }
     }
-    impl DataTrait for crate::Image {
+    impl DataTrait for crate::Tensor {
         fn data_typ() -> DataType {
-            DataType::Image
+            DataType::Tensor
         }
     }
 
@@ -171,7 +170,6 @@ pub enum Data {
     Vec2(data_types::Vec2),
     BBox2D(BBox2D),
     LineSegments2D(data_types::LineSegments2D),
-    Image(Image),
 
     // ----------------------------
     // 3D:
@@ -184,7 +182,7 @@ pub enum Data {
 
     // ----------------------------
     // N-D:
-    Vecf32(Vec<f32>),
+    Tensor(Tensor),
 
     // ----------------------------
     // Meta:
@@ -204,7 +202,6 @@ impl Data {
             Self::Vec2(_) => DataType::Vec2,
             Self::BBox2D(_) => DataType::BBox2D,
             Self::LineSegments2D(_) => DataType::LineSegments2D,
-            Self::Image(_) => DataType::Image,
 
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
@@ -213,7 +210,7 @@ impl Data {
             Self::Mesh3D(_) => DataType::Mesh3D,
             Self::Camera(_) => DataType::Camera,
 
-            Self::Vecf32(_) => DataType::Vecf32,
+            Self::Tensor(_) => DataType::Tensor,
 
             Self::Space(_) => DataType::Space,
         }
@@ -223,11 +220,10 @@ impl Data {
 impl_into_enum!(i32, Data, I32);
 impl_into_enum!(f32, Data, F32);
 impl_into_enum!(BBox2D, Data, BBox2D);
-impl_into_enum!(Image, Data, Image);
+impl_into_enum!(Tensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(Camera, Data, Camera);
-impl_into_enum!(Vec<f32>, Data, Vecf32);
 impl_into_enum!(ObjPath, Data, Space);
 
 // ----------------------------------------------------------------------------
@@ -244,7 +240,6 @@ pub enum DataVec {
     Vec2(Vec<data_types::Vec2>),
     BBox2D(Vec<BBox2D>),
     LineSegments2D(Vec<data_types::LineSegments2D>),
-    Image(Vec<Image>),
 
     Vec3(Vec<data_types::Vec3>),
     Box3(Vec<Box3>),
@@ -253,7 +248,7 @@ pub enum DataVec {
     Mesh3D(Vec<Mesh3D>),
     Camera(Vec<Camera>),
 
-    Vecf32(Vec<Vec<f32>>),
+    Tensor(Vec<Tensor>),
 
     Space(Vec<ObjPath>),
 }
@@ -276,14 +271,13 @@ macro_rules! data_map(
             Data::Vec2($value) => $action,
             Data::BBox2D($value) => $action,
             Data::LineSegments2D($value) => $action,
-            Data::Image($value) => $action,
             Data::Vec3($value) => $action,
             Data::Box3($value) => $action,
             Data::Path3D($value) => $action,
             Data::LineSegments3D($value) => $action,
             Data::Mesh3D($value) => $action,
             Data::Camera($value) => $action,
-            Data::Vecf32($value) => $action,
+            Data::Tensor($value) => $action,
             Data::Space($value) => $action,
         }
     });
@@ -307,14 +301,13 @@ macro_rules! data_vec_map(
             DataVec::Vec2($vec) => $action,
             DataVec::BBox2D($vec) => $action,
             DataVec::LineSegments2D($vec) => $action,
-            DataVec::Image($vec) => $action,
+            DataVec::Tensor($vec) => $action,
             DataVec::Vec3($vec) => $action,
             DataVec::Box3($vec) => $action,
             DataVec::Path3D($vec) => $action,
             DataVec::LineSegments3D($vec) => $action,
             DataVec::Mesh3D($vec) => $action,
             DataVec::Camera($vec) => $action,
-            DataVec::Vecf32($vec) => $action,
             DataVec::Space($vec) => $action,
         }
     });
@@ -332,7 +325,6 @@ impl DataVec {
             Self::Vec2(_) => DataType::Vec2,
             Self::BBox2D(_) => DataType::BBox2D,
             Self::LineSegments2D(_) => DataType::LineSegments2D,
-            Self::Image(_) => DataType::Image,
 
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
@@ -341,7 +333,7 @@ impl DataVec {
             Self::Mesh3D(_) => DataType::Mesh3D,
             Self::Camera(_) => DataType::Camera,
 
-            Self::Vecf32(_) => DataType::Vecf32,
+            Self::Tensor(_) => DataType::Tensor,
 
             Self::Space(_) => DataType::Space,
         }
@@ -365,7 +357,6 @@ impl DataVec {
             Self::Vec2(vec) => vec.last().cloned().map(Data::Vec2),
             Self::BBox2D(vec) => vec.last().cloned().map(Data::BBox2D),
             Self::LineSegments2D(vec) => vec.last().cloned().map(Data::LineSegments2D),
-            Self::Image(vec) => vec.last().cloned().map(Data::Image),
 
             Self::Vec3(vec) => vec.last().cloned().map(Data::Vec3),
             Self::Box3(vec) => vec.last().cloned().map(Data::Box3),
@@ -374,7 +365,7 @@ impl DataVec {
             Self::Mesh3D(vec) => vec.last().cloned().map(Data::Mesh3D),
             Self::Camera(vec) => vec.last().cloned().map(Data::Camera),
 
-            Self::Vecf32(vec) => vec.last().cloned().map(Data::Vecf32),
+            Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
 
             Self::Space(vec) => vec.last().cloned().map(Data::Space),
         }
@@ -481,31 +472,74 @@ pub enum MeshFormat {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq)]
+/// The data types supported by a [`Tensor`].
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ImageFormat {
-    Luminance8,
-    Luminance16,
-    Rgb8,
-    Rgba8,
-    Jpeg,
+pub enum TensorDataType {
+    /// Commonly used for sRGB(A)
+    U8,
+
+    /// Some depth images and some high-bitrate images
+    U16,
+
+    /// Commonly used for depth images
+    F32,
 }
 
+/// The data types supported by a [`Tensor`].
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Image {
-    // TODO(emilk): pub pos: [f32; 2], or a transform matrix
-    /// Must always be set and correct, even for [`ImageFormat::Jpeg`].
-    pub size: [u32; 2],
-    pub format: ImageFormat,
-    pub data: Vec<u8>,
+pub enum TensorData {
+    /// Densely packed tensor
+    Dense(Vec<u8>),
+
+    /// A JPEG image.
+    ///
+    /// This can only represent tensors with [`DataType::U8`]
+    /// of dimensions `[h, w, 3]` (RGB) or `[h, w]` (grayscale).
+    Jpeg(Vec<u8>),
 }
 
-impl std::fmt::Debug for Image {
+impl std::fmt::Debug for TensorData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Image")
-            .field("size", &self.size)
-            .field("format", &self.format)
-            .finish_non_exhaustive()
+        match self {
+            TensorData::Dense(bytes) => {
+                f.write_fmt(format_args!("TensorData::Dense({} bytes)", bytes.len()))
+            }
+            TensorData::Jpeg(bytes) => {
+                f.write_fmt(format_args!("TensorData::Jpeg({} bytes)", bytes.len()))
+            }
+        }
+    }
+}
+
+/// An N-dimensional colelction of numbers.
+///
+/// Most often used to describe image pixels.
+#[derive(Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct Tensor {
+    /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
+    /// The order martches that of numpy etc, and is ordered so that
+    /// the "tighest wound" dimension is last.
+    ///
+    /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc.
+    pub shape: Vec<u64>,
+
+    /// The per-element data format.
+    /// numpy calls this `dtype`.
+    pub dtype: TensorDataType,
+
+    /// The actual contents of the tensor
+    pub data: TensorData,
+}
+
+impl std::fmt::Debug for Tensor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Tensor")
+            .field("shape", &self.shape)
+            .field("dtype", &self.dtype)
+            .field("data", &self.data)
+            .finish()
     }
 }

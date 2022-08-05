@@ -401,8 +401,16 @@ pub(crate) fn ui_data(
             "BBox2D(min: [{:.1} {:.1}], max: [{:.1} {:.1}])",
             bbox.min[0], bbox.min[1], bbox.max[0], bbox.max[1]
         )),
-        Data::Image(image) => {
-            let egui_image = context.image_cache.get(id, image);
+
+        Data::Vec3([x, y, z]) => ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]")),
+        Data::Box3(_) => ui.label("3D box"),
+        Data::Path3D(_) => ui.label("3D path"),
+        Data::LineSegments3D(segments) => ui.label(format!("{} 3D line segments", segments.len())),
+        Data::Mesh3D(_) => ui.label("3D mesh"),
+        Data::Camera(_) => ui.label("Camera"),
+
+        Data::Tensor(tensor) => {
+            let egui_image = context.image_cache.get(id, tensor);
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {
                     Preview::Small => 32.0,
@@ -416,19 +424,24 @@ pub(crate) fn ui_data(
                         egui_image.show(ui);
                     });
 
-                ui.label(format!("{}x{}", image.size[0], image.size[1]));
+                if tensor.shape.len() == 2 {
+                    ui.label(format!(
+                        "Tensor shape: {:?} (height={}, width={})",
+                        tensor.shape, tensor.shape[0], tensor.shape[1]
+                    ));
+                } else if tensor.shape.len() == 3 {
+                    ui.label(format!(
+                        "Tensor shape: {:?} (height={}, width={}, depth={})",
+                        tensor.shape, tensor.shape[0], tensor.shape[1], tensor.shape[2]
+                    ));
+                } else {
+                    ui.label(format!("Tensor shape: {:?}", tensor.shape));
+                }
+
+                ui.label(format!("Tensor dtype: {:?}", tensor.dtype));
             })
             .response
         }
-
-        Data::Vec3([x, y, z]) => ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]")),
-        Data::Box3(_) => ui.label("3D box"),
-        Data::Path3D(_) => ui.label("3D path"),
-        Data::LineSegments3D(segments) => ui.label(format!("{} 3D line segments", segments.len())),
-        Data::Mesh3D(_) => ui.label("3D mesh"),
-        Data::Camera(_) => ui.label("Camera"),
-
-        Data::Vecf32(data) => ui.label(format!("Vecf32({data:?})")),
 
         Data::Space(space) => {
             // ui.label(space.to_string())

@@ -69,7 +69,7 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Image<'s> {
-    pub image: &'s re_log_types::Image,
+    pub tensor: &'s re_log_types::Tensor,
 }
 
 impl<'s> Image<'s> {
@@ -82,12 +82,12 @@ impl<'s> Image<'s> {
 
         visit_type_data_2(
             obj_store,
-            &FieldName::from("image"),
+            &FieldName::from("tensor"),
             time_query,
             ("space", "color"),
             |obj_path: &ObjPath,
              log_id: &LogId,
-             image: &re_log_types::Image,
+             tensor: &re_log_types::Tensor,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.image.0.push(Object {
@@ -97,7 +97,7 @@ impl<'s> Image<'s> {
                         color: color.copied(),
                         obj_path,
                     },
-                    data: Image { image },
+                    data: Image { tensor },
                 });
             },
         );

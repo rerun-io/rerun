@@ -217,19 +217,28 @@ fn log_points_rs(
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
 fn log_image(name: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>) -> PyResult<()> {
+    match img.shape() {
+        // NOTE: opencv/numpy uses "height x width" convention
+        [_, _] | [_, _, 1 | 3 | 4] => {}
+        _ => {
+            return Err(PyTypeError::new_err(format!(
+                "Expected image of dimension of 2 or 3 with a depth of 1 (gray), 3 (RGB) or 4 (RGBA). Got image of shape {:?}", img.shape()
+            )));
+        }
+    };
+
+    // ----------------
+
     let mut sdk = Sdk::global();
 
     let obj_path = ObjPath::from(name); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
-    let data_path = DataPath::new(obj_path, "image".into());
 
-    let image = to_rerun_image(&img)?;
-
-    let data = Data::Image(image);
+    let data = Data::Tensor(to_rerun_tensor(&img));
     let data_msg = DataMsg {
         id: LogId::random(),
         time_point: time_point(),
-        data_path,
+        data_path: DataPath::new(obj_path, "tensor".into()),
         data: re_log_types::LoggedData::Single(data),
     };
     let log_msg = LogMsg::DataMsg(data_msg);
@@ -247,41 +256,10 @@ fn time_point() -> TimePoint {
     time_point
 }
 
-fn to_rerun_image(img: &numpy::PyReadonlyArrayDyn<'_, u8>) -> PyResult<re_log_types::Image> {
-    let shape = img.shape();
-
-    let [w, h, depth] = match shape.len() {
-        // NOTE: opencv/numpy uses "height x width" convention
-        2 => [shape[1], shape[0], 1],
-        3 => [shape[1], shape[0], shape[2]],
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Expected image of dim 2 or 3. Got image of shape {shape:?}"
-            )));
-        }
-    };
-
-    let size = [w as u32, h as u32];
-    let data = img.to_owned_array().into_raw_vec();
-
-    if data.len() != w * h * depth {
-        return Err(PyTypeError::new_err(format!(
-            "Got image of shape {shape:?} (product = {}), but data length is {}",
-            w * h * depth,
-            data.len()
-        )));
+fn to_rerun_tensor(img: &numpy::PyReadonlyArrayDyn<'_, u8>) -> re_log_types::Tensor {
+    re_log_types::Tensor {
+        shape: img.shape().iter().map(|&d| d as u64).collect(),
+        dtype: TensorDataType::U8,
+        data: TensorData::Dense(img.to_owned_array().into_raw_vec()),
     }
-
-    let format = match depth {
-        1 => re_log_types::ImageFormat::Luminance8,
-        3 => re_log_types::ImageFormat::Rgb8,
-        4 => re_log_types::ImageFormat::Rgba8,
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Expected depth to be one of 1,3,4. Got image of shape {shape:?}",
-            )));
-        }
-    };
-
-    Ok(re_log_types::Image { size, format, data })
 }

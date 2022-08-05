@@ -211,7 +211,6 @@ impl DataColumns {
                 DataType::Vec2 => ("2D vector", "s"),
                 DataType::BBox2D => ("2D bounding box", "es"),
                 DataType::LineSegments2D => ("2D line segment list", "s"),
-                DataType::Image => ("image", "s"),
 
                 DataType::Vec3 => ("3D vector", "s"),
                 DataType::Box3 => ("3D box", "es"),
@@ -220,7 +219,7 @@ impl DataColumns {
                 DataType::Mesh3D => ("mesh", "es"),
                 DataType::Camera => ("camera", "s"),
 
-                DataType::Vecf32 => ("float vector", "s"),
+                DataType::Tensor => ("tensor", "s"),
 
                 DataType::Space => ("space", "s"),
             };
