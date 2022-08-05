@@ -6,24 +6,31 @@ cd "$script_path/../.."
 ./crates/re_viewer/setup_web.sh
 
 OPEN=false
-FAST=false
+OPTIMIZE=false
 
 while test $# -gt 0; do
   case "$1" in
     -h|--help)
-      echo "build_web.sh [--fast] [--open]"
-      echo "  --fast: skip optimization step"
-      echo "  --open: open the result in a browser"
+      echo "build_web.sh [--optimize] [--open]"
+      echo ""
+      echo "  --optimize: Enable optimization step"
+      echo "              Runs wasm-opt."
+      echo "              NOTE: --optimize also removes debug symbols which are otherwise useful for in-browser profiling."
+      echo ""
+      echo "  --open:     Open the result in a browser"
       exit 0
       ;;
-    --fast)
+
+    -O|--optimize)
       shift
-      FAST=true
+      OPTIMIZE=true
       ;;
+
     --open)
       shift
       OPEN=true
       ;;
+
     *)
       break
       ;;
@@ -55,7 +62,7 @@ TARGET_NAME="${CRATE_NAME_SNAKE_CASE}.wasm"
 wasm-bindgen "${TARGET}/wasm32-unknown-unknown/${BUILD}/${TARGET_NAME}" \
   --out-dir docs --no-modules --no-typescript
 
-if [ "${FAST}" = false ]; then
+if [[ "${OPTIMIZE}" = true ]]; then
   echo "Optimizing wasm…"
   # to get wasm-opt:  apt/brew/dnf install binaryen
   wasm-opt docs/${CRATE_NAME}_bg.wasm -O2 --fast-math -o docs/${CRATE_NAME}_bg.wasm # add -g to get debug symbols
