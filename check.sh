@@ -34,4 +34,14 @@ cargo doc --document-private-items --no-deps --all-features
 
 cargo deny check
 
+# ----------------
+# Python SDK:
+
+python3 -m venv env
+source env/bin/activate
+python3 -m pip install -r crates/re_sdk_python/requirements.txt
+maturin build -m crates/re_sdk_python/Cargo.toml
+
+# -----------------
+
 echo "All checks passed!"
