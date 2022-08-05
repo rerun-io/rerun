@@ -82,7 +82,7 @@ impl<'s> Image<'s> {
 
         visit_type_data_2(
             obj_store,
-            &FieldName::from("image"),
+            &FieldName::from("tensor"),
             time_query,
             ("space", "color"),
             |obj_path: &ObjPath,

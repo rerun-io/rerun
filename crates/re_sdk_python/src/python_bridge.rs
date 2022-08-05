@@ -233,13 +233,12 @@ fn log_image(name: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>) -> PyResult<()>
 
     let obj_path = ObjPath::from(name); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
-    let data_path = DataPath::new(obj_path, "image".into());
 
     let data = Data::Tensor(to_rerun_tensor(&img));
     let data_msg = DataMsg {
         id: LogId::random(),
         time_point: time_point(),
-        data_path,
+        data_path: DataPath::new(obj_path, "tensor".into()),
         data: re_log_types::LoggedData::Single(data),
     };
     let log_msg = LogMsg::DataMsg(data_msg);

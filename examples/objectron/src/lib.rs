@@ -333,14 +333,14 @@ fn log_image(path: &PathBuf, time_point: &TimePoint, logger: &Logger<'_>) -> any
     assert_eq!(jpeg.color_type(), image::ColorType::Rgb8); // TODO(emilk): support gray-scale jpeg aswell
     let (w, h) = jpeg.dimensions();
 
-    let image = re_log_types::Tensor {
+    let tensor = re_log_types::Tensor {
         shape: vec![h as _, w as _, 3],
         dtype: TensorDataType::U8,
         data: TensorData::Jpeg(jpeg_bytes),
     };
 
     let obj_path = ObjPathBuilder::from("video");
-    logger.log(data_msg(time_point, obj_path.clone(), "image", image));
+    logger.log(data_msg(time_point, obj_path.clone(), "tensor", tensor));
     logger.log(data_msg(time_point, obj_path, "space", image_space));
 
     Ok(())

@@ -23,7 +23,7 @@ impl ObjectType {
         match self {
             Self::Space => &["up"],
 
-            Self::Image => &["space", "color", "image"],
+            Self::Image => &["space", "color", "tensor"],
             Self::Point2D => &["space", "color", "pos", "radius"],
             Self::BBox2D => &["space", "color", "bbox", "stroke_width"],
             Self::LineSegments2D => &["space", "color", "line_segments", "stroke_width"],
