@@ -401,6 +401,14 @@ pub(crate) fn ui_data(
             "BBox2D(min: [{:.1} {:.1}], max: [{:.1} {:.1}])",
             bbox.min[0], bbox.min[1], bbox.max[0], bbox.max[1]
         )),
+
+        Data::Vec3([x, y, z]) => ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]")),
+        Data::Box3(_) => ui.label("3D box"),
+        Data::Path3D(_) => ui.label("3D path"),
+        Data::LineSegments3D(segments) => ui.label(format!("{} 3D line segments", segments.len())),
+        Data::Mesh3D(_) => ui.label("3D mesh"),
+        Data::Camera(_) => ui.label("Camera"),
+
         Data::Tensor(tensor) => {
             let egui_image = context.image_cache.get(id, tensor);
             ui.horizontal_centered(|ui| {
@@ -434,15 +442,6 @@ pub(crate) fn ui_data(
             })
             .response
         }
-
-        Data::Vec3([x, y, z]) => ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]")),
-        Data::Box3(_) => ui.label("3D box"),
-        Data::Path3D(_) => ui.label("3D path"),
-        Data::LineSegments3D(segments) => ui.label(format!("{} 3D line segments", segments.len())),
-        Data::Mesh3D(_) => ui.label("3D mesh"),
-        Data::Camera(_) => ui.label("Camera"),
-
-        Data::Vecf32(data) => ui.label(format!("Vecf32({data:?})")),
 
         Data::Space(space) => {
             // ui.label(space.to_string())

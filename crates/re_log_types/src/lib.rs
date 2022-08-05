@@ -200,7 +200,6 @@ impl_into_logged_data!(Tensor, Tensor);
 impl_into_logged_data!(Box3, Box3);
 impl_into_logged_data!(Mesh3D, Mesh3D);
 impl_into_logged_data!(Camera, Camera);
-impl_into_logged_data!(Vec<f32>, Vecf32);
 impl_into_logged_data!(ObjPath, Space);
 
 // ----------------------------------------------------------------------------

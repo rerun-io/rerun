@@ -103,7 +103,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
 
             if depth != 3 || img.width() != width || img.height() != height {
                 anyhow::bail!(
-                    "Rensor shape ({shape:?}) did not match jpeg dimensions ({}x{})",
+                    "Tensor shape ({shape:?}) did not match jpeg dimensions ({}x{})",
                     img.width(),
                     img.height()
                 )

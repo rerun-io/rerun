@@ -16,7 +16,6 @@ pub enum DataType {
     Vec2,
     BBox2D,
     LineSegments2D,
-    Tensor,
 
     // ----------------------------
     // 3D:
@@ -29,7 +28,7 @@ pub enum DataType {
 
     // ----------------------------
     // N-D:
-    Vecf32,
+    Tensor,
 
     // ----------------------------
     Space,
@@ -171,7 +170,6 @@ pub enum Data {
     Vec2(data_types::Vec2),
     BBox2D(BBox2D),
     LineSegments2D(data_types::LineSegments2D),
-    Tensor(Tensor),
 
     // ----------------------------
     // 3D:
@@ -184,7 +182,7 @@ pub enum Data {
 
     // ----------------------------
     // N-D:
-    Vecf32(Vec<f32>),
+    Tensor(Tensor),
 
     // ----------------------------
     // Meta:
@@ -204,7 +202,6 @@ impl Data {
             Self::Vec2(_) => DataType::Vec2,
             Self::BBox2D(_) => DataType::BBox2D,
             Self::LineSegments2D(_) => DataType::LineSegments2D,
-            Self::Tensor(_) => DataType::Tensor,
 
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
@@ -213,7 +210,7 @@ impl Data {
             Self::Mesh3D(_) => DataType::Mesh3D,
             Self::Camera(_) => DataType::Camera,
 
-            Self::Vecf32(_) => DataType::Vecf32,
+            Self::Tensor(_) => DataType::Tensor,
 
             Self::Space(_) => DataType::Space,
         }
@@ -227,7 +224,6 @@ impl_into_enum!(Tensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(Camera, Data, Camera);
-impl_into_enum!(Vec<f32>, Data, Vecf32);
 impl_into_enum!(ObjPath, Data, Space);
 
 // ----------------------------------------------------------------------------
@@ -244,7 +240,6 @@ pub enum DataVec {
     Vec2(Vec<data_types::Vec2>),
     BBox2D(Vec<BBox2D>),
     LineSegments2D(Vec<data_types::LineSegments2D>),
-    Tensor(Vec<Tensor>),
 
     Vec3(Vec<data_types::Vec3>),
     Box3(Vec<Box3>),
@@ -253,7 +248,7 @@ pub enum DataVec {
     Mesh3D(Vec<Mesh3D>),
     Camera(Vec<Camera>),
 
-    Vecf32(Vec<Vec<f32>>),
+    Tensor(Vec<Tensor>),
 
     Space(Vec<ObjPath>),
 }
@@ -276,14 +271,13 @@ macro_rules! data_map(
             Data::Vec2($value) => $action,
             Data::BBox2D($value) => $action,
             Data::LineSegments2D($value) => $action,
-            Data::Tensor($value) => $action,
             Data::Vec3($value) => $action,
             Data::Box3($value) => $action,
             Data::Path3D($value) => $action,
             Data::LineSegments3D($value) => $action,
             Data::Mesh3D($value) => $action,
             Data::Camera($value) => $action,
-            Data::Vecf32($value) => $action,
+            Data::Tensor($value) => $action,
             Data::Space($value) => $action,
         }
     });
@@ -314,7 +308,6 @@ macro_rules! data_vec_map(
             DataVec::LineSegments3D($vec) => $action,
             DataVec::Mesh3D($vec) => $action,
             DataVec::Camera($vec) => $action,
-            DataVec::Vecf32($vec) => $action,
             DataVec::Space($vec) => $action,
         }
     });
@@ -332,7 +325,6 @@ impl DataVec {
             Self::Vec2(_) => DataType::Vec2,
             Self::BBox2D(_) => DataType::BBox2D,
             Self::LineSegments2D(_) => DataType::LineSegments2D,
-            Self::Tensor(_) => DataType::Tensor,
 
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
@@ -341,7 +333,7 @@ impl DataVec {
             Self::Mesh3D(_) => DataType::Mesh3D,
             Self::Camera(_) => DataType::Camera,
 
-            Self::Vecf32(_) => DataType::Vecf32,
+            Self::Tensor(_) => DataType::Tensor,
 
             Self::Space(_) => DataType::Space,
         }
@@ -365,7 +357,6 @@ impl DataVec {
             Self::Vec2(vec) => vec.last().cloned().map(Data::Vec2),
             Self::BBox2D(vec) => vec.last().cloned().map(Data::BBox2D),
             Self::LineSegments2D(vec) => vec.last().cloned().map(Data::LineSegments2D),
-            Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
 
             Self::Vec3(vec) => vec.last().cloned().map(Data::Vec3),
             Self::Box3(vec) => vec.last().cloned().map(Data::Box3),
@@ -374,7 +365,7 @@ impl DataVec {
             Self::Mesh3D(vec) => vec.last().cloned().map(Data::Mesh3D),
             Self::Camera(vec) => vec.last().cloned().map(Data::Camera),
 
-            Self::Vecf32(vec) => vec.last().cloned().map(Data::Vecf32),
+            Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
 
             Self::Space(vec) => vec.last().cloned().map(Data::Space),
         }

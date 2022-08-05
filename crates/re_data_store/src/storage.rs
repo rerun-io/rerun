@@ -381,14 +381,13 @@ impl<Time: 'static + Copy + Ord> DataStoreTypeErased<Time> {
             DataType::Vec2 => handle_type!(Vec2, data_types::Vec2),
             DataType::BBox2D => handle_type!(BBox2D, re_log_types::BBox2D),
             DataType::LineSegments2D => handle_type!(LineSegments2D, data_types::LineSegments2D),
-            DataType::Tensor => handle_type!(Tensor, re_log_types::Tensor),
             DataType::Vec3 => handle_type!(Vec3, data_types::Vec3),
             DataType::Box3 => handle_type!(Box3, re_log_types::Box3),
             DataType::Path3D => handle_type!(Path3D, data_types::Path3D),
             DataType::LineSegments3D => handle_type!(LineSegments3D, data_types::LineSegments3D),
             DataType::Mesh3D => handle_type!(Mesh3D, re_log_types::Mesh3D),
             DataType::Camera => handle_type!(Camera, re_log_types::Camera),
-            DataType::Vecf32 => handle_type!(Vecf32, Vec<f32>),
+            DataType::Tensor => handle_type!(Tensor, re_log_types::Tensor),
             DataType::Space => handle_type!(Space, ObjPath),
         }
     }
