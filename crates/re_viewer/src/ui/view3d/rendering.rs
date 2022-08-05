@@ -155,6 +155,11 @@ fn default_material() -> three_d::PhysicalMaterial {
             NormalDistributionFunction::TrowbridgeReitzGGX,
             GeometryFunction::SmithSchlickGGX,
         ),
+        is_transparent: true,
+        render_states: RenderStates {
+            blend: Blend::TRANSPARENCY,
+            ..Default::default()
+        },
         ..Default::default()
     }
 }
@@ -248,6 +253,7 @@ pub fn paint_with_three_d(
         width: clip_rect.width_px.round() as _,
         height: clip_rect.height_px.round() as _,
     });
+    three_d.set_blend(three_d::Blend::TRANSPARENCY);
 
     let position = camera.world_from_view.translation();
     let target = camera.world_from_view.transform_point3(-glam::Vec3::Z);

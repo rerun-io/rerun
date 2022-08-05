@@ -39,6 +39,8 @@ pub(crate) struct State3D {
     // options:
     spin: bool,
     show_axes: bool,
+
+    last_cam_interact_time: f64,
 }
 
 impl Default for State3D {
@@ -51,6 +53,7 @@ impl Default for State3D {
             scene_bbox: macaw::BoundingBox::nothing(),
             spin: false,
             show_axes: false,
+            last_cam_interact_time: f64::NEG_INFINITY,
         }
     }
 }
@@ -62,7 +65,7 @@ impl State3D {
         tracking_camera: Option<Camera>,
         response: &egui::Response,
         space_specs: &SpaceSpecs,
-    ) -> Camera {
+    ) -> &mut OrbitCamera {
         if response.double_clicked() {
             // Reset camera
             if tracking_camera.is_some() {
@@ -106,43 +109,7 @@ impl State3D {
             }
         }
 
-        // interact with orbit camera:
-        {
-            let mut did_interact = false;
-
-            if response.dragged_by(egui::PointerButton::Primary) {
-                orbit_camera.rotate(response.drag_delta());
-                did_interact = true;
-            } else if response.dragged_by(egui::PointerButton::Secondary) {
-                orbit_camera.translate(response.drag_delta());
-                did_interact = true;
-            } else if response.dragged_by(egui::PointerButton::Middle) {
-                if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
-                    orbit_camera.roll(&response.rect, pointer_pos, response.drag_delta());
-                    did_interact = true;
-                }
-            }
-
-            if response.hovered() {
-                orbit_camera.keyboard_navigation(&response.ctx);
-                let input = response.ctx.input();
-
-                let factor = input.zoom_delta() * (input.scroll_delta.y / 200.0).exp();
-                if factor != 1.0 {
-                    orbit_camera.radius /= factor;
-                    did_interact = true;
-                }
-            }
-
-            if did_interact {
-                self.cam_interpolation = None;
-                if tracking_camera.is_some() {
-                    context.selection = Selection::None;
-                }
-            }
-        }
-
-        orbit_camera.to_camera()
+        orbit_camera
     }
 
     fn interpolate_to_camera(&mut self, target: Camera) {
@@ -172,7 +139,7 @@ impl State3D {
                 target_camera: None,
             });
         } else {
-            // self.orbit_camera = todo!()
+            self.orbit_camera = Some(target);
         }
     }
 }
@@ -380,7 +347,18 @@ pub(crate) fn combined_view_3d(
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     let tracking_camera = tracking_camera(log_db, context, objects);
-    let camera = state.update_camera(context, tracking_camera, &response, &space_specs);
+    let orbit_camera = state.update_camera(context, tracking_camera, &response, &space_specs);
+
+    let did_interact_wth_camera = orbit_camera.interact(&response);
+    let orbit_camera = *orbit_camera;
+    let camera = orbit_camera.to_camera();
+    if did_interact_wth_camera {
+        state.last_cam_interact_time = ui.input().time;
+        state.cam_interpolation = None;
+        if tracking_camera.is_some() {
+            context.selection = Selection::None;
+        }
+    }
 
     let mut hovered_obj_path = state.hovered_obj_path.clone();
     if ui.input().pointer.any_click() {
@@ -402,7 +380,7 @@ pub(crate) fn combined_view_3d(
         );
     }
 
-    let scene = Scene::from_objects(
+    let mut scene = Scene::from_objects(
         context,
         &state.scene_bbox,
         rect.size(),
@@ -410,6 +388,22 @@ pub(crate) fn combined_view_3d(
         hovered_obj_path.as_ref(),
         objects,
     );
+
+    let camera_center_alpha = egui::remap_clamp(
+        ui.input().time - state.last_cam_interact_time,
+        0.0..=0.4,
+        0.7..=0.0,
+    ) as f32;
+    if camera_center_alpha > 0.0 {
+        // Show center of orbit camera when interacting with camera (it's quite helpful).
+        scene.points.push(Point {
+            obj_path_hash: None,
+            pos: orbit_camera.center.to_array(),
+            radius: orbit_camera.radius * 0.01,
+            color: [255, 0, 255, (camera_center_alpha * 255.0) as u8],
+        });
+        ui.ctx().request_repaint(); // let it fade out
+    }
 
     let hovered = response
         .hover_pos()

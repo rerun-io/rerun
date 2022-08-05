@@ -165,8 +165,39 @@ impl OrbitCamera {
         }
     }
 
+    /// Returns `true` if any change
+    pub fn interact(&mut self, response: &egui::Response) -> bool {
+        let mut did_interact = false;
+
+        if response.dragged_by(egui::PointerButton::Primary) {
+            self.rotate(response.drag_delta());
+            did_interact = true;
+        } else if response.dragged_by(egui::PointerButton::Secondary) {
+            self.translate(response.drag_delta());
+            did_interact = true;
+        } else if response.dragged_by(egui::PointerButton::Middle) {
+            if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
+                self.roll(&response.rect, pointer_pos, response.drag_delta());
+                did_interact = true;
+            }
+        }
+
+        if response.hovered() {
+            self.keyboard_navigation(&response.ctx);
+            let input = response.ctx.input();
+
+            let factor = input.zoom_delta() * (input.scroll_delta.y / 200.0).exp();
+            if factor != 1.0 {
+                self.radius /= factor;
+                did_interact = true;
+            }
+        }
+
+        did_interact
+    }
+
     /// Listen to WSAD and QE to move camera
-    pub fn keyboard_navigation(&mut self, ctx: &egui::Context) {
+    fn keyboard_navigation(&mut self, ctx: &egui::Context) {
         let input = ctx.input();
         let dt = input.stable_dt.at_most(0.1);
 
@@ -225,7 +256,7 @@ impl OrbitCamera {
     }
 
     /// Rotate around forward axis
-    pub fn roll(&mut self, rect: &egui::Rect, pointer_pos: egui::Pos2, delta: egui::Vec2) {
+    fn roll(&mut self, rect: &egui::Rect, pointer_pos: egui::Pos2, delta: egui::Vec2) {
         // steering-wheel model
         let rel = pointer_pos - rect.center();
         let delta_angle = delta.rot90().dot(rel) / rel.length_sq();
@@ -236,7 +267,7 @@ impl OrbitCamera {
     }
 
     /// Translate based on a certain number of pixel delta.
-    pub fn translate(&mut self, delta: egui::Vec2) {
+    fn translate(&mut self, delta: egui::Vec2) {
         let delta = delta * self.radius * 0.001; // TODO(emilk): take fov and screen size into account?
 
         let up = self.world_from_view_rot * Vec3::Y;
