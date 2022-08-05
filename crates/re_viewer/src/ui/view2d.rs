@@ -97,7 +97,7 @@ pub(crate) fn combined_view_2d(
 
     let total_num_images = objects.image.len();
 
-    let hover_radius = 5.0; // TODO: from egui?
+    let hover_radius = 5.0; // TODO(emilk): from egui?
 
     let mut closest_dist = hover_radius;
     let mut closest_obj_path = None;

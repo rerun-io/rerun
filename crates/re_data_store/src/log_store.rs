@@ -104,7 +104,7 @@ impl LogDataStore {
 
         for (index_hash, index) in indices {
             if registered_suffixes.insert(*index_hash) {
-                // TODO: speed this up. A lot. Please.
+                // TODO(emilk): speed this up. A lot. Please.
                 let (obj_type_path, index_path_prefix) =
                     obj_path.clone().into_type_path_and_index_path();
                 let mut index_path = index_path_prefix.clone();

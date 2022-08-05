@@ -140,7 +140,7 @@ fn log_points_rs(
         match num_colors {
             0 => {}
             1 => {
-                let slice = colors.as_slice().unwrap(); // TODO: Handle non-contiguous arrays
+                let slice = colors.as_slice().unwrap(); // TODO(emilk): Handle non-contiguous arrays
                 assert_eq!(slice.len(), 4);
                 let color = [slice[0], slice[1], slice[2], slice[3]];
 

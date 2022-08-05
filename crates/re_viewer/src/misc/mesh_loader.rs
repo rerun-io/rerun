@@ -17,7 +17,7 @@ pub struct GpuMesh {
 
 impl CpuMesh {
     pub fn load(name: String, mesh: &Mesh3D) -> anyhow::Result<Self> {
-        // TODO: load CpuMesh in background thread.
+        // TODO(emilk): load CpuMesh in background thread.
         match mesh {
             Mesh3D::Encoded(encoded_mesh) => Self::load_encoded_mesh(name, encoded_mesh),
             Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh)),

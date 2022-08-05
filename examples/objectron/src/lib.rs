@@ -60,7 +60,7 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
 
 fn configure_world_space(logger: &Logger<'_>) {
     let world_space = ObjPath::from("world");
-    // TODO: what time point should we use?
+    // TODO(emilk): what time point should we use?
     let time_point = time_point([
         ("frame", TimeValue::Sequence(0)),
         ("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0))),
@@ -86,7 +86,7 @@ fn log_annotation_pbdata(
     let image_space = ObjPath::from("image");
 
     for object in &sequence.objects {
-        // TODO: what time point should we use?
+        // TODO(emilk): what time point should we use?
         let time_point = time_point([
             ("frame", TimeValue::Sequence(0)),
             ("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0))),
@@ -152,10 +152,10 @@ fn log_annotation_pbdata(
 
             for keypoint in &object_annotation.keypoints {
                 if let Some(point_2d) = &keypoint.point_2d {
-                    let pos2 = [point_2d.x * 1440.0, point_2d.y * 1920.0]; // TODO: remove hack
+                    let pos2 = [point_2d.x * 1440.0, point_2d.y * 1920.0]; // TODO(emilk): remove hack
                     keypoint_ids.push(keypoint.id);
                     keypoints_2d.push(pos2);
-                    // TODO: log depth too
+                    // TODO(emilk): log depth too
                 }
             }
 
@@ -268,7 +268,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
         if false {
             // The planes are almost always really bad, and sometimes very far away.
             for plane_anchor in &ar_frame.plane_anchor {
-                // TODO: we shouldn't need to explicitly group planes and points like this! (we do it so we can toggle their visibility all at once).
+                // TODO(emilk): we shouldn't need to explicitly group planes and points like this! (we do it so we can toggle their visibility all at once).
                 log_plane_anchor(
                     &time_point,
                     &ObjPathBuilder::from("planes"),
@@ -281,7 +281,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
 
         if let Some(raw_feature_points) = &ar_frame.raw_feature_points {
             if let Some(count) = raw_feature_points.count {
-                // TODO: we shouldn't need to explicitly group planes and points like this! (we do it so we can toggle their visibility all at once).
+                // TODO(emilk): we shouldn't need to explicitly group planes and points like this! (we do it so we can toggle their visibility all at once).
                 let points_path = ObjPathBuilder::from("points");
 
                 for i in 0..count as usize {
@@ -303,7 +303,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
                             "space",
                             world_space.clone(),
                         ));
-                        // TODO: log once for the parent ("points")
+                        // TODO(emilk): log once for the parent ("points")
                         logger.log(data_msg(
                             &time_point,
                             &point_path,
@@ -313,7 +313,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
                     }
                 }
 
-                // TODO: project the points onto 2D image plane and log,
+                // TODO(emilk): project the points onto 2D image plane and log,
                 // or log a transform between world and image space
             }
         }

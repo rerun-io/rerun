@@ -51,7 +51,7 @@ pub fn random_rgb(seed: u64) -> [u8; 3] {
 
     let mut small_rng = SmallRng::seed_from_u64(seed);
 
-    // TODO: OKLab
+    // TODO(emilk): OKLab
     let hsva = egui::color::Hsva {
         h: small_rng.gen(),
         s: small_rng.gen_range(0.35..=0.55_f32).sqrt(),
@@ -149,7 +149,7 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
     for (_, obj) in objects.mesh3d.iter() {
         match &obj.mesh {
             re_log_types::Mesh3D::Encoded(_) => {
-                // TODO: how to we get the bbox of an encoded mesh here?
+                // TODO(emilk): how to we get the bbox of an encoded mesh here?
             }
             re_log_types::Mesh3D::Raw(mesh) => {
                 for &pos in &mesh.positions {

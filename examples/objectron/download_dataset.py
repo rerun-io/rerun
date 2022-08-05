@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# TODO: translate to build.rs instead?
+# TODO(emilk): translate to build.rs instead?
 
 import requests
 import os

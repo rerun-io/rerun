@@ -10,7 +10,7 @@ use crate::{
 pub struct ObjTypePath {
     // 64 bit is enough, because we will have at most a few thousand unique type paths - never a billion.
     hash: Hash64,
-    components: Vec<TypePathComp>, // TODO: box?
+    components: Vec<TypePathComp>, // TODO(emilk): box?
 }
 
 impl ObjTypePath {

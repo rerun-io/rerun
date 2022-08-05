@@ -56,7 +56,7 @@ struct TimeState {
     fps: f32,
     /// How close we are to flipping over to the next sequence number (0-1).
     sequence_t: f32,
-    /// TODO: move into a `FractionalTimeValue` and use that for `Self::time`
+    /// TODO(emilk): move into a `FractionalTimeValue` and use that for `Self::time`
 
     /// Selected time range, if any.
     #[serde(default)]
@@ -68,14 +68,14 @@ struct TimeState {
     /// In this case, the view will expand while new data is added.
     /// Only when the user actually zooms or pans will this be set.
     #[serde(default)]
-    view: Option<TimeView>, // TODO: use f64 for TimeValue::Sequence too, or navigation in the time panel gets weird
+    view: Option<TimeView>, // TODO(emilk): use f64 for TimeValue::Sequence too, or navigation in the time panel gets weird
 }
 
 impl TimeState {
     fn new(time: TimeValue) -> Self {
         Self {
             time,
-            fps: 30.0, // TODO: estimate based on data
+            fps: 30.0, // TODO(emilk): estimate based on data
             sequence_t: 0.0,
             selection: Default::default(),
             view: None,

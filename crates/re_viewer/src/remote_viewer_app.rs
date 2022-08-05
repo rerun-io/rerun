@@ -34,7 +34,7 @@ impl RemoteViewerApp {
                 }
             },
         )
-        .unwrap(); // TODO: handle error
+        .unwrap(); // TODO(emilk): handle error
 
         let app = crate::App::from_receiver(storage, rx);
 

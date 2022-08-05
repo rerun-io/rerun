@@ -36,7 +36,7 @@ impl<T: Clone> Batch<T> {
     #[inline(never)]
     pub fn new(indices: &[re_log_types::Index], data: &[T]) -> Self {
         crate::profile_function!(std::any::type_name::<T>());
-        assert_eq!(indices.len(), data.len()); // TODO: return Result instead
+        assert_eq!(indices.len(), data.len()); // TODO(emilk): return Result instead
         let mut hashed_indices = Vec::with_capacity(indices.len());
         let map = itertools::izip!(indices, data)
             .map(|(index, value)| {
@@ -553,7 +553,7 @@ impl<Time: Copy + Ord, T: Clone> IndividualDataHistory<Time, T> {
             query(&history.history, time_query, |time, (log_id, value)| {
                 times.push(*time);
                 ids.push(*log_id);
-                values.push(value.clone()); // TODO: return references instead
+                values.push(value.clone()); // TODO(emilk): return references instead
             });
         }
         (times, ids, values)
@@ -629,7 +629,7 @@ impl<Time: Copy + Ord, T: Clone> BatchedDataHistory<Time, T> {
                         for value in batch.values() {
                             times.push(*time);
                             ids.push(*log_id);
-                            values.push(value.clone()); // TODO: return references instead
+                            values.push(value.clone()); // TODO(emilk): return references instead
                         }
                     },
                 );
@@ -647,7 +647,7 @@ impl<Time: Copy + Ord, T: Clone> BatchedDataHistory<Time, T> {
                         if let Some(value) = batch.get(&index_path_suffix) {
                             times.push(*time);
                             ids.push(*log_id);
-                            values.push(value.clone()); // TODO: return references instead
+                            values.push(value.clone()); // TODO(emilk): return references instead
                         }
                     },
                 );
@@ -701,7 +701,7 @@ impl<Time: Copy + Ord, T: Clone> BatchSplatDataHistory<Time, T> {
                 query(history, time_query, |time, (log_id, value)| {
                     times.push(*time);
                     ids.push(*log_id);
-                    values.push(value.clone()); // TODO: return references instead
+                    values.push(value.clone()); // TODO(emilk): return references instead
                 });
             }
         } else {
@@ -712,7 +712,7 @@ impl<Time: Copy + Ord, T: Clone> BatchSplatDataHistory<Time, T> {
                 query(history, time_query, |time, (log_id, value)| {
                     times.push(*time);
                     ids.push(*log_id);
-                    values.push(value.clone()); // TODO: return references instead
+                    values.push(value.clone()); // TODO(emilk): return references instead
                 });
             }
         }

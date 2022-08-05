@@ -63,7 +63,7 @@ pub(crate) fn message_table(
             });
         })
         .body(|body| {
-            // for MANY messages, `heterogeneous_rows` is too slow. TODO: how many?
+            // for MANY messages, `heterogeneous_rows` is too slow. TODO(emilk): how many?
             if messages.len() < 10_000_000 {
                 body.heterogeneous_rows(
                     messages.iter().copied().map(row_height),

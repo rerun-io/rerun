@@ -150,7 +150,7 @@ impl TimePanel {
                 self.tree_ui(log_db, context, &lower_time_area_painter, ui);
             });
 
-        // TODO: fix problem of the fade covering the hlines. Need Shape Z values! https://github.com/emilk/egui/issues/1516
+        // TODO(emilk): fix problem of the fade covering the hlines. Need Shape Z values! https://github.com/emilk/egui/issues/1516
         if true {
             fade_sides(ui, time_area);
         }
@@ -190,7 +190,7 @@ impl TimePanel {
     ) {
         use egui::*;
 
-        // TODO: ignore rows that have no data for the current time source?
+        // TODO(emilk): ignore rows that have no data for the current time source?
 
         let obj_path = ObjPath::from(&ObjPathBuilder::new(path.clone()));
 
@@ -473,7 +473,7 @@ fn show_data_over_time(
     let mut stretch: Option<Stretch<'_>> = None;
 
     for (time, log_ids) in source {
-        // TODO: avoid this lookup by pre-partitioning on time source
+        // TODO(emilk): avoid this lookup by pre-partitioning on time source
         if let Some(time) = time.0.get(&time_source).copied() {
             let selected = selected_time_range.map_or(true, |range| range.contains(time));
 
@@ -527,7 +527,7 @@ fn show_log_ids_tooltip(
     log_ids: &[LogId],
 ) {
     show_tooltip_at_pointer(ctx, Id::new("data_tooltip"), |ui| {
-        // TODO: show as a table?
+        // TODO(emilk): show as a table?
         if log_ids.len() == 1 {
             let log_id = log_ids[0];
             if let Some(msg) = log_db.get_data_msg(&log_id) {
@@ -711,7 +711,7 @@ fn time_selection_ui(
         time_control.selection_active = false;
     }
 
-    // TODO: click to toggle on/off
+    // TODO(emilk): click to toggle on/off
     // when off, you cannot modify, just drag out a new one.
 
     let selection_color = time_control.selection_type.color(ui.visuals());
@@ -1490,7 +1490,7 @@ fn paint_ticks(
     let medium_text_color = text_color_from_spacing(medium_spacing_time);
     let small_text_color = text_color_from_spacing(small_spacing_time);
 
-    let mut current_time = min_time / small_spacing_time * small_spacing_time; // TODO: start at visible_rect.left()
+    let mut current_time = min_time / small_spacing_time * small_spacing_time; // TODO(emilk): start at visible_rect.left()
     while current_time <= max_time {
         let line_x = x_from_time(current_time);
 
@@ -1507,7 +1507,7 @@ fn paint_ticks(
             };
 
             let top = if current_time % 1_000_000_000 == 0 {
-                // TODO: for sequences (non-nanoseconds)
+                // TODO(emilk): for sequences (non-nanoseconds)
                 canvas.top() // full second
             } else {
                 lerp(canvas.y_range(), 0.75)

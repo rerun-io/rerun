@@ -157,7 +157,7 @@ struct AppState {
     #[serde(skip)]
     profiler: crate::Profiler,
 
-    // TODO: use an image cache
+    // TODO(emilk): use an image cache
     #[serde(skip)]
     static_image_cache: StaticImageCache,
 }
@@ -249,7 +249,7 @@ impl AppState {
     }
 
     fn file_menu(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame, _log_db: &mut LogDb) {
-        // TODO: support saving data on web
+        // TODO(emilk): support saving data on web
         #[cfg(not(target_arch = "wasm32"))]
         if ui.button("Save…").on_hover_text("Save all data").clicked() {
             if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
@@ -314,7 +314,7 @@ fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
     }
 
     match save_to_file_impl(log_db, path) {
-        // TODO: show a popup instead of logging result
+        // TODO(emilk): show a popup instead of logging result
         Ok(()) => {
             tracing::info!("Data saved to {:?}", path);
         }

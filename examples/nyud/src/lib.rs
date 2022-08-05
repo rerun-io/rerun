@@ -41,7 +41,7 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
 }
 
 fn configure_world_space(logger: &Logger<'_>) {
-    // TODO: what time point should we use?
+    // TODO(emilk): what time point should we use?
     let time_point = time_point([("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0)))]);
     logger.log(data_msg(
         &time_point,
@@ -66,7 +66,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
     let obj_path = ObjPathBuilder::from("points") / Index::Placeholder;
 
     {
-        // TODO: better way to do "forever and always"
+        // TODO(emilk): better way to do "forever and always"
         let time_point =
             time_point([("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0)))]);
 
@@ -77,7 +77,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
             LoggedData::BatchSplat(Data::Space(ObjPath::from("world"))),
         ));
 
-        // TODO: base color on depth?
+        // TODO(emilk): base color on depth?
         logger.log(data_msg(
             &time_point,
             &obj_path,
@@ -166,7 +166,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                             continue; // unreliable!
                         }
 
-                        let depth = depth as f32 * 3e-5; // TODO: unit of the depth data = what?
+                        let depth = depth as f32 * 3e-5; // TODO(emilk): unit of the depth data = what?
                         let pos = world_from_pixel * glam::Vec3::new(x as f32, y as f32, depth);
 
                         indices.push(Index::Pixel([x as _, y as _]));

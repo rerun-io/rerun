@@ -57,7 +57,7 @@ impl Scene {
     ) -> Self {
         crate::profile_function!();
 
-        // HACK because three-d handles colors wrong. TODO: fix three-d
+        // HACK because three-d handles colors wrong. TODO(emilk): fix three-d
         let gamma_lut = (0..=255)
             .map(|c| ((c as f32 / 255.0).powf(2.2) * 255.0).round() as u8)
             .collect_vec();
@@ -217,7 +217,7 @@ impl Scene {
                     "mesh.to_string()", // TODO(emilk): &type_path.to_string(),
                     &MeshSourceData::Mesh3D(mesh.clone()),
                 ) {
-                    // TODO: props.color
+                    // TODO(emilk): props.color
                     scene.meshes.push(MeshSource {
                         obj_path_hash: *props.obj_path.hash(),
                         mesh_id,
@@ -245,7 +245,7 @@ impl Scene {
 
                     let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
                     let scale_based_on_distance =
-                        dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO: fade instead!
+                        dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
                     let scale = scale_based_on_scene_size.min(scale_based_on_distance);
                     let scale = boost_size_on_hover(props, scale);
                     let scale = Vec3::splat(scale);
@@ -292,7 +292,7 @@ impl Scene {
             let world_from_cam = Mat4::from_rotation_translation(rotation, translation);
             let intrinsis = glam::Mat3::from_cols_array_2d(&intrinsis);
 
-            // TODO: verify and clarify the coordinate systems! RHS, origin is what corner of image, etc.
+            // TODO(emilk): verify and clarify the coordinate systems! RHS, origin is what corner of image, etc.
             let world_from_pixel = world_from_cam
                 * Mat4::from_diagonal([1.0, 1.0, -1.0, 1.0].into()) // negative Z, because we use RHS
                 * Mat4::from_mat3(intrinsis.inverse());
@@ -410,7 +410,7 @@ impl Scene {
         } = self;
 
         // in points
-        let max_side_dist_sq = 5.0 * 5.0; // TODO: interaction radius from egui
+        let max_side_dist_sq = 5.0 * 5.0; // TODO(emilk): interaction radius from egui
 
         // meters along the ray
         let mut closest_t = f32::INFINITY;
@@ -421,10 +421,10 @@ impl Scene {
         {
             crate::profile_scope!("points");
             for point in points {
-                // TODO: take radius into account
+                // TODO(emilk): take radius into account
                 let screen_pos = screen_from_world.project_point3(point.pos.into());
                 if screen_pos.z < 0.0 {
-                    continue; // TODO: don't we expect negative Z!? RHS etc
+                    continue; // TODO(emilk): don't we expect negative Z!? RHS etc
                 }
                 let dist_sq = egui::pos2(screen_pos.x, screen_pos.y).distance_sq(pointer_pos);
                 if dist_sq < max_side_dist_sq {
@@ -441,7 +441,7 @@ impl Scene {
         {
             crate::profile_scope!("line_segments");
             for line_segments in line_segments {
-                // TODO: take radius into account
+                // TODO(emilk): take radius into account
                 use egui::pos2;
 
                 for [a, b] in &line_segments.segments {

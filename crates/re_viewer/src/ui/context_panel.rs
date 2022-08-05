@@ -218,11 +218,11 @@ fn show_image(
             }
         });
 
-    // TODO: support copying and saving images on web
+    // TODO(emilk): support copying and saving images on web
     #[cfg(not(target_arch = "wasm32"))]
     ui.horizontal(|ui| image_options(ui, image, dynamic_image));
 
-    // TODO: support histograms of non-RGB images too
+    // TODO(emilk): support histograms of non-RGB images too
     if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_image {
         ui.collapsing("Histogram", |ui| {
             histogram_ui(ui, rgb_image);
@@ -360,7 +360,7 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
 
     let mut histograms = [[0_u64; 256]; 3];
     {
-        // TODO: this is slow, so cache the results!
+        // TODO(emilk): this is slow, so cache the results!
         crate::profile_scope!("build");
         for pixel in rgb_image.pixels() {
             for c in 0..3 {
@@ -418,7 +418,7 @@ fn image_options(
     rr_image: &re_log_types::Image,
     dynamic_image: &image::DynamicImage,
 ) {
-    // TODO: support copying images on web
+    // TODO(emilk): support copying images on web
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Click to copy image").clicked() {
         let rgba = dynamic_image.to_rgba8();
@@ -430,7 +430,7 @@ fn image_options(
         });
     }
 
-    // TODO: support saving images on web
+    // TODO(emilk): support saving images on web
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Save image…").clicked() {
         use re_log_types::ImageFormat;
@@ -459,7 +459,7 @@ fn image_options(
                     .save_file()
                 {
                     match dynamic_image.save(&path) {
-                        // TODO: show a popup instead of logging result
+                        // TODO(emilk): show a popup instead of logging result
                         Ok(()) => {
                             tracing::info!("Image saved to {:?}", path);
                         }
