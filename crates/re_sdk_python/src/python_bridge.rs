@@ -267,12 +267,13 @@ fn time_point() -> TimePoint {
 fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     img: &numpy::PyReadonlyArrayDyn<'_, T>,
 ) -> re_log_types::Tensor {
+    let vec = img.to_owned_array().into_raw_vec();
+    let vec = bytemuck::allocation::try_cast_vec(vec)
+        .unwrap_or_else(|(_err, vec)| bytemuck::allocation::pod_collect_to_vec(&vec));
+
     re_log_types::Tensor {
         shape: img.shape().iter().map(|&d| d as u64).collect(),
         dtype: T::DTYPE,
-        // TODO(emilk): avoid double-allocating here
-        data: TensorData::Dense(bytemuck::allocation::pod_collect_to_vec(
-            &img.to_owned_array().into_raw_vec(),
-        )),
+        data: TensorData::Dense(vec),
     }
 }
