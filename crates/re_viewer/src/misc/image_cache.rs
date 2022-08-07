@@ -84,6 +84,44 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
                 image::RgbaImage::from_raw(width, height, bytes.clone())
                     .context("Bad Rgba8")
                     .map(DynamicImage::ImageRgba8)
+            } else if depth == 1 && tensor.dtype == TensorDataType::F32 {
+                // Maybe a depth map?
+                if let TensorData::Dense(bytes) = &tensor.data {
+                    if let Ok(floats) = bytemuck::try_cast_slice(bytes) {
+                        // Convert to u16 so we can put them in an image.
+                        // TODO(emilk): Eventually we want a renderer that can show f32 images natively.
+                        // One big downside of the approach below is that if we have two dept images
+                        // in the same range, they cannot be visually compared with each other,
+                        // because their individual max-depths will be scaled to 65535.
+
+                        let mut min = f32::INFINITY;
+                        let mut max = f32::NEG_INFINITY;
+                        for &float in floats {
+                            min = min.min(float);
+                            max = max.max(float);
+                        }
+
+                        if min < max && min.is_finite() && max.is_finite() {
+                            let ints = floats
+                                .iter()
+                                .map(|&float| {
+                                    let int = egui::remap(float, min..=max, 0.0..=65535.0);
+                                    int as u16
+                                })
+                                .collect();
+
+                            return Gray16Image::from_raw(width, height, ints)
+                                .context("Bad Luminance16")
+                                .map(DynamicImage::ImageLuma16);
+                        }
+                    }
+                }
+
+                anyhow::bail!(
+                    "Don't know how to turn a tensor of shape={:?} and dtype={:?} into an image",
+                    shape,
+                    tensor.dtype
+                )
             } else {
                 anyhow::bail!(
                     "Don't know how to turn a tensor of shape={:?} and dtype={:?} into an image",
