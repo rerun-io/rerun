@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use re_data_store::ObjPath;
+use re_data_store::{ObjPath, ObjTypePath};
 use re_log_types::{Data, DataMsg, DataPath, LogId, LoggedData};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
@@ -53,6 +53,10 @@ impl ContextPanel {
                     ui.label("Type path:");
                     context.type_path_button(ui, obj_path.obj_type_path());
                 });
+                ui.horizontal(|ui| {
+                    ui.label("Object type:");
+                    ui.label(obj_type_name(log_db, obj_path.obj_type_path()));
+                });
                 ui.separator();
                 view_object(log_db, context, ui, obj_path);
             }
@@ -65,6 +69,10 @@ impl ContextPanel {
                 ui.horizontal(|ui| {
                     ui.label("Type path:");
                     context.type_path_button(ui, data_path.obj_path.obj_type_path());
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Object type:");
+                    ui.label(obj_type_name(log_db, data_path.obj_path.obj_type_path()));
                 });
 
                 ui.separator();
@@ -95,7 +103,12 @@ pub(crate) fn view_object(
         .num_columns(2)
         .show(ui, |ui| {
             for (field_name, data_store) in obj_store.iter() {
-                ui.label(field_name.to_string());
+                context.data_path_button_to(
+                    ui,
+                    field_name.to_string(),
+                    &DataPath::new(obj_path.clone(), *field_name),
+                );
+
                 let (_times, ids, data_vec) =
                     data_store.query_object(obj_path.index_path().clone(), &time_query);
 
@@ -475,4 +488,12 @@ fn image_options(
 fn write_binary(path: &std::path::PathBuf, data: &[u8]) -> anyhow::Result<()> {
     use std::io::Write as _;
     Ok(std::fs::File::create(path)?.write_all(data)?)
+}
+
+fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
+    if let Some(typ) = log_db.object_types.get(obj_type_path) {
+        format!("{typ:?}")
+    } else {
+        "<UNKNOWN>".to_owned()
+    }
 }

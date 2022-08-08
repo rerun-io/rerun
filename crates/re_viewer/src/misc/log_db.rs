@@ -26,6 +26,7 @@ impl LogDb {
             LogMsg::TypeMsg(type_msg) => self.add_type_msg(type_msg),
             LogMsg::DataMsg(data_msg) => self.add_data_msg(data_msg),
         }
+        self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
     }
 
@@ -78,7 +79,6 @@ impl LogDb {
             tracing::warn!("Failed to add data to data_store: {:?}", err);
         }
 
-        self.chronological_message_ids.push(msg.id);
         self.time_points.insert(&msg.time_point);
 
         self.data_tree.add_data_msg(msg);
@@ -89,21 +89,12 @@ impl LogDb {
     }
 
     /// In the order they arrived
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn chronological_log_messages(&self) -> impl Iterator<Item = &LogMsg> {
         self.chronological_message_ids
             .iter()
             .filter_map(|id| self.get_log_msg(id))
     }
 
-    /// In the order they arrived
-    pub fn chronological_data_messages(&self) -> impl Iterator<Item = &DataMsg> {
-        self.chronological_message_ids
-            .iter()
-            .filter_map(|id| self.get_data_msg(id))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn get_log_msg(&self, id: &LogId) -> Option<&LogMsg> {
         self.log_messages.get(id)
     }

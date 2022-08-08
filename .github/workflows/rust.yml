@@ -181,9 +181,9 @@ jobs:
       - uses: actions/checkout@v3
       - uses: messense/maturin-action@v1
         with:
-          maturin-version: "0.12.20"
+          maturin-version: "0.13.1"
           command: build
-          args: -m crates/re_sdk_python/Cargo.toml --release --no-sdist -o dist
+          args: -m crates/re_sdk_python/Cargo.toml --release -o dist
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
@@ -197,9 +197,9 @@ jobs:
       - uses: actions/checkout@v3
       - uses: messense/maturin-action@v1
         with:
-          maturin-version: "0.12.20"
+          maturin-version: "0.13.1"
           command: build
-          args: -m crates/re_sdk_python/Cargo.toml --release --no-sdist -o dist --universal2
+          args: -m crates/re_sdk_python/Cargo.toml --release -o dist --universal2
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
@@ -220,6 +220,6 @@ jobs:
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
-          maturin-version: "0.12.20"
+          maturin-version: "0.13.1"
           command: upload
           args: -m crates/re_sdk_python/Cargo.toml --skip-existing *
