@@ -17,7 +17,7 @@ impl LogTableView {
 
         let messages = {
             crate::profile_scope!("Collecting messages");
-            log_db.chronological_data_messages().collect_vec()
+            log_db.chronological_log_messages().collect_vec()
         };
 
         egui::ScrollArea::horizontal()
@@ -32,7 +32,7 @@ pub(crate) fn message_table(
     log_db: &LogDb,
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    messages: &[&DataMsg],
+    messages: &[&LogMsg],
 ) {
     crate::profile_function!();
 
@@ -46,10 +46,13 @@ pub(crate) fn message_table(
             Size::initial(200.0).at_least(100.0),
             log_db.time_points.0.len(),
         )
+        .column(Size::initial(300.0).at_least(60.0)) // message type
         .column(Size::initial(300.0).at_least(120.0)) // path
-        .column(Size::initial(200.0).at_least(100.0)) // space
-        .column(Size::remainder().at_least(180.0)) // data
+        .column(Size::remainder().at_least(180.0)) // payload
         .header(20.0, |mut header| {
+            header.col(|ui| {
+                ui.heading("Message Type");
+            });
             for time_source in log_db.time_points.0.keys() {
                 header.col(|ui| {
                     ui.heading(time_source.as_str());
@@ -59,7 +62,7 @@ pub(crate) fn message_table(
                 ui.heading("Path");
             });
             header.col(|ui| {
-                ui.heading("Data");
+                ui.heading("Payload");
             });
         })
         .body(|body| {
@@ -81,11 +84,16 @@ pub(crate) fn message_table(
         });
 }
 
-fn row_height(msg: &DataMsg) -> f32 {
-    if matches!(msg.data.data_type(), DataType::Tensor) {
-        48.0
-    } else {
-        18.0
+fn row_height(msg: &LogMsg) -> f32 {
+    match msg {
+        LogMsg::TypeMsg(_) => 18.0,
+        LogMsg::DataMsg(msg) => {
+            if matches!(msg.data.data_type(), DataType::Tensor) {
+                48.0
+            } else {
+                18.0
+            }
+        }
     }
 }
 
@@ -93,27 +101,62 @@ fn table_row(
     log_db: &LogDb,
     context: &mut ViewerContext,
     row: &mut egui_extras::TableRow<'_, '_>,
-    msg: &DataMsg,
+    msg: &LogMsg,
     row_height: f32,
 ) {
-    let DataMsg {
-        id,
-        time_point,
-        data_path,
-        data,
-    } = msg;
+    match msg {
+        LogMsg::TypeMsg(msg) => {
+            let TypeMsg {
+                id: _,
+                type_path,
+                object_type,
+            } = msg;
 
-    for time_source in log_db.time_points.0.keys() {
-        row.col(|ui| {
-            if let Some(value) = time_point.0.get(time_source) {
-                context.time_button(ui, time_source, *value);
+            row.col(|ui| {
+                ui.monospace("TypeMsg");
+            });
+            for _ in log_db.time_points.0.keys() {
+                row.col(|ui| {
+                    ui.label("-");
+                });
             }
-        });
+            row.col(|ui| {
+                context.type_path_button(ui, type_path);
+            });
+            row.col(|ui| {
+                ui.monospace(format!("{object_type:?}"));
+            });
+        }
+        LogMsg::DataMsg(msg) => {
+            let DataMsg {
+                id,
+                time_point,
+                data_path,
+                data,
+            } = msg;
+
+            row.col(|ui| {
+                ui.monospace("DataMsg");
+            });
+            for time_source in log_db.time_points.0.keys() {
+                row.col(|ui| {
+                    if let Some(value) = time_point.0.get(time_source) {
+                        context.time_button(ui, time_source, *value);
+                    }
+                });
+            }
+            row.col(|ui| {
+                context.data_path_button(ui, data_path);
+            });
+            row.col(|ui| {
+                crate::space_view::ui_logged_data(
+                    context,
+                    ui,
+                    id,
+                    data,
+                    Preview::Specific(row_height),
+                );
+            });
+        }
     }
-    row.col(|ui| {
-        context.data_path_button(ui, data_path);
-    });
-    row.col(|ui| {
-        crate::space_view::ui_logged_data(context, ui, id, data, Preview::Specific(row_height));
-    });
 }
