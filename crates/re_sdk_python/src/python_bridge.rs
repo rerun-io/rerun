@@ -23,6 +23,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     m.add_function(wrap_pyfunction!(log_f32, m)?)?;
+    m.add_function(wrap_pyfunction!(log_bbox, m)?)?;
     m.add_function(wrap_pyfunction!(log_point2d, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
 
@@ -81,21 +82,49 @@ fn log_f32(obj_path: &str, field_name: &str, value: f32) {
 }
 
 #[pyfunction]
+fn log_bbox(obj_path: &str, left_top: [f32; 2], width_height: [f32; 2], label: Option<String>) {
+    let [x, y] = left_top;
+    let [w, h] = width_height;
+    let min = [x, y];
+    let max = [x + w, y + h];
+
+    let mut sdk = Sdk::global();
+
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
+
+    let time_point = time_point();
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        id: LogId::random(),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "bbox".into()),
+        data: re_log_types::LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
+    }));
+
+    if let Some(label) = label {
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            id: LogId::random(),
+            time_point,
+            data_path: DataPath::new(obj_path, "label".into()),
+            data: re_log_types::LoggedData::Single(Data::String(label)),
+        }));
+    }
+}
+
+#[pyfunction]
 fn log_point2d(obj_path: &str, x: f32, y: f32) {
     let mut sdk = Sdk::global();
 
     let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Point2D);
-    let data_path = DataPath::new(obj_path, "pos".into());
 
-    let data = Data::Vec2([x, y]);
-    let data_msg = DataMsg {
+    sdk.send(LogMsg::DataMsg(DataMsg {
         id: LogId::random(),
         time_point: time_point(),
-        data_path,
-        data: re_log_types::LoggedData::Single(data),
-    };
-    sdk.send(LogMsg::DataMsg(data_msg));
+        data_path: DataPath::new(obj_path, "pos".into()),
+        data: re_log_types::LoggedData::Single(Data::Vec2([x, y])),
+    }));
 }
 
 /// positions: Nx2 or Nx3 array
@@ -257,15 +286,12 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
-    let data = Data::Tensor(to_rerun_tensor(&img));
-    let data_msg = DataMsg {
+    sdk.send(LogMsg::DataMsg(DataMsg {
         id: LogId::random(),
         time_point: time_point(),
         data_path: DataPath::new(obj_path, "tensor".into()),
-        data: re_log_types::LoggedData::Single(data),
-    };
-    let log_msg = LogMsg::DataMsg(data_msg);
-    sdk.send(log_msg);
+        data: re_log_types::LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
+    }));
 }
 
 fn time_point() -> TimePoint {

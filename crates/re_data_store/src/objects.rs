@@ -203,6 +203,7 @@ impl<'s> Point3D<'s> {
 pub struct BBox2D<'s> {
     pub bbox: &'s re_log_types::BBox2D,
     pub stroke_width: Option<f32>,
+    pub label: Option<&'s str>,
 }
 
 impl<'s> BBox2D<'s> {
@@ -213,17 +214,18 @@ impl<'s> BBox2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("bbox"),
             time_query,
-            ("space", "color", "stroke_width"),
+            ("space", "color", "stroke_width", "label"),
             |obj_path: &ObjPath,
              log_id: &LogId,
              bbox: &re_log_types::BBox2D,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
-             stroke_width: Option<&f32>| {
+             stroke_width: Option<&f32>,
+             label: Option<&String>| {
                 out.bbox2d.0.push(Object {
                     props: ObjectProps {
                         log_id,
@@ -234,6 +236,7 @@ impl<'s> BBox2D<'s> {
                     data: BBox2D {
                         bbox,
                         stroke_width: stroke_width.copied(),
+                        label: label.map(|s| s.as_str()),
                     },
                 });
             },

@@ -24,6 +24,11 @@ def log(args):
         depth_img = cv2.imread('depth_image.pgm', cv2.IMREAD_UNCHANGED)
         rerun.log_depth_image("depth", depth_img, meter=1000)
 
+    if True:
+        x, y = 200.0, 50.0
+        w, h = 320, 240
+        rerun.log_bbox("bbox", [x, y], [w, h], "Label")
+
     if False:
         for i in range(64):
             angle = 6.28 * i / 64

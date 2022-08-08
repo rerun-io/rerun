@@ -155,7 +155,11 @@ pub(crate) fn combined_view_2d(
     }
 
     for (props, obj) in objects.bbox2d.iter() {
-        let re_data_store::BBox2D { bbox, stroke_width } = obj;
+        let re_data_store::BBox2D {
+            bbox,
+            stroke_width,
+            label,
+        } = obj;
         let paint_props = paint_properties(
             context,
             &state.hovered_obj,
@@ -177,6 +181,27 @@ pub(crate) fn combined_view_2d(
             rounding,
             paint_props.fg_stroke,
         ));
+
+        if let Some(label) = label {
+            let shrunken_screen_rect = screen_rect.shrink(4.0);
+            let font_id = TextStyle::Body.resolve(ui.style());
+            let galley = ui.fonts().layout(
+                (*label).to_owned(),
+                font_id,
+                paint_props.fg_stroke.color,
+                shrunken_screen_rect.width(),
+            );
+            let text_rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
+                shrunken_screen_rect.center_top(),
+                galley.size(),
+            ));
+            shapes.push(Shape::rect_filled(
+                text_rect.expand2(vec2(6.0, 2.0)),
+                3.0,
+                paint_props.bg_stroke.color,
+            ));
+            shapes.push(Shape::galley(text_rect.min, galley));
+        }
 
         if let Some(pointer_pos) = pointer_pos {
             check_hovering(
@@ -287,7 +312,7 @@ fn paint_properties(
     default_color: DefaultColor,
     stroke_width: &Option<f32>,
 ) -> ObjectPaintProperties {
-    let bg_color = Color32::from_black_alpha(128);
+    let bg_color = Color32::from_black_alpha(196);
     let color = props.color.map_or_else(
         || match default_color {
             DefaultColor::White => Color32::WHITE,

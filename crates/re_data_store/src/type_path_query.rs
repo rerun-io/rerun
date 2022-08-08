@@ -279,3 +279,104 @@ pub fn visit_type_data_3<
 
     Some(())
 }
+
+pub fn visit_type_data_4<
+    's,
+    Time: 'static + Copy + Ord,
+    T: DataTrait,
+    S1: DataTrait,
+    S2: DataTrait,
+    S3: DataTrait,
+    S4: DataTrait,
+>(
+    obj_store: &'s ObjStore<Time>,
+    field_name: &FieldName,
+    time_query: &TimeQuery<Time>,
+    (child1, child2, child3, child4): (&str, &str, &str, &str),
+    mut visit: impl FnMut(
+        &'s ObjPath,
+        &'s LogId,
+        &'s T,
+        Option<&'s S1>,
+        Option<&'s S2>,
+        Option<&'s S3>,
+        Option<&'s S4>,
+    ),
+) -> Option<()> {
+    crate::profile_function!();
+
+    if let Some(primary_data) = obj_store.get::<T>(field_name) {
+        let child1 = FieldName::from(child1);
+        let child2 = FieldName::from(child2);
+        let child3 = FieldName::from(child3);
+        let child4 = FieldName::from(child4);
+
+        match primary_data {
+            DataStore::Individual(primary) => {
+                let child1_reader = IndividualDataReader::<Time, S1>::new(obj_store, &child1);
+                let child2_reader = IndividualDataReader::<Time, S2>::new(obj_store, &child2);
+                let child3_reader = IndividualDataReader::<Time, S3>::new(obj_store, &child3);
+                let child4_reader = IndividualDataReader::<Time, S4>::new(obj_store, &child4);
+
+                for (index_path, primary) in primary.iter() {
+                    let index_path_split = &primary.index_path_split;
+                    query(
+                        &primary.history,
+                        time_query,
+                        |time, (log_id, primary_value)| {
+                            visit(
+                                &primary.obj_path,
+                                log_id,
+                                primary_value,
+                                child1_reader.latest_at(index_path, index_path_split, time),
+                                child2_reader.latest_at(index_path, index_path_split, time),
+                                child3_reader.latest_at(index_path, index_path_split, time),
+                                child4_reader.latest_at(index_path, index_path_split, time),
+                            );
+                        },
+                    );
+                }
+            }
+            DataStore::Batched(primary) => {
+                for (index_path_prefix, primary) in primary.iter() {
+                    let child1_store = obj_store.get::<S1>(&child1);
+                    let child2_store = obj_store.get::<S2>(&child2);
+                    let child3_store = obj_store.get::<S3>(&child3);
+                    let child4_store = obj_store.get::<S4>(&child4);
+
+                    query(
+                        &primary.history,
+                        time_query,
+                        |time, (log_id, primary_batch)| {
+                            let child1_reader =
+                                BatchedDataReader::new(child1_store, index_path_prefix, time);
+                            let child2_reader =
+                                BatchedDataReader::new(child2_store, index_path_prefix, time);
+                            let child3_reader =
+                                BatchedDataReader::new(child3_store, index_path_prefix, time);
+                            let child4_reader =
+                                BatchedDataReader::new(child4_store, index_path_prefix, time);
+
+                            for (index_path_suffix, primary_value) in primary_batch.iter() {
+                                visit(
+                                    obj_store.obj_path_or_die(index_path_suffix),
+                                    log_id,
+                                    primary_value,
+                                    child1_reader.latest_at(index_path_suffix),
+                                    child2_reader.latest_at(index_path_suffix),
+                                    child3_reader.latest_at(index_path_suffix),
+                                    child4_reader.latest_at(index_path_suffix),
+                                );
+                            }
+                        },
+                    );
+                }
+            }
+            DataStore::BatchSplat(_) => {
+                tracing::error!("Used BatchSplat for a primary field {field_name:?}");
+            }
+        }
+    }
+
+    Some(())
+}
