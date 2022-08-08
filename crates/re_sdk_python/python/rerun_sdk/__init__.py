@@ -33,7 +33,21 @@ def log_image(name, image):
         depth = image.shape[2]
         if depth not in (1, 3, 4):
             raise TypeError(
-                f"Expected image depth of  of 1 (gray), 3 (RGB) or 4 (RGBA), got array of shape {image.shape}")
+                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}")
+
+    log_tensor(name, image)
+
+
+def log_depth_image(name, image, meter=None):
+    """
+    meter: How long is a meter in the given dtype?
+           For instance: with uint16, perhaps meter=1000 which would mean
+           you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
+    """
+    # Catch some errors early:
+    if len(image.shape) != 2:
+        raise TypeError(
+            f"Expected 2D depth image, got array of shape {image.shape}")
 
     log_tensor(name, image)
 

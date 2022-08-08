@@ -183,7 +183,7 @@ jobs:
         with:
           maturin-version: "0.13.1"
           command: build
-          args: -m crates/re_sdk_python/Cargo.toml --release --no-sdist -o dist
+          args: -m crates/re_sdk_python/Cargo.toml --release -o dist
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
@@ -199,7 +199,7 @@ jobs:
         with:
           maturin-version: "0.13.1"
           command: build
-          args: -m crates/re_sdk_python/Cargo.toml --release --no-sdist -o dist --universal2
+          args: -m crates/re_sdk_python/Cargo.toml --release -o dist --universal2
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
