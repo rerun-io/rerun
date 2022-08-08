@@ -70,6 +70,13 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
 #[derive(Copy, Clone, Debug)]
 pub struct Image<'s> {
     pub tensor: &'s re_log_types::Tensor,
+
+    /// If this is a depth map, how long is a meter?
+    ///
+    /// For instance, with a `u16` dtype one might have
+    /// `meter == 1000.0` for millimeter precision
+    /// up to a ~65m range.
+    pub meter: Option<f32>,
 }
 
 impl<'s> Image<'s> {
@@ -80,16 +87,17 @@ impl<'s> Image<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_2(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("tensor"),
             time_query,
-            ("space", "color"),
+            ("space", "color", "meter"),
             |obj_path: &ObjPath,
              log_id: &LogId,
              tensor: &re_log_types::Tensor,
              space: Option<&ObjPath>,
-             color: Option<&[u8; 4]>| {
+             color: Option<&[u8; 4]>,
+             meter: Option<&f32>| {
                 out.image.0.push(Object {
                     props: ObjectProps {
                         log_id,
@@ -97,7 +105,10 @@ impl<'s> Image<'s> {
                         color: color.copied(),
                         obj_path,
                     },
-                    data: Image { tensor },
+                    data: Image {
+                        tensor,
+                        meter: meter.copied(),
+                    },
                 });
             },
         );

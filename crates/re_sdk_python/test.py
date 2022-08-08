@@ -22,8 +22,7 @@ def log(args):
 
     if True:
         depth_img = cv2.imread('depth_image.pgm', cv2.IMREAD_UNCHANGED)
-        depth_img = depth_img.astype('float32')  # for test
-        rerun.log_depth_image("depth", depth_img)
+        rerun.log_depth_image("depth", depth_img, meter=1000)
 
     if False:
         for i in range(64):

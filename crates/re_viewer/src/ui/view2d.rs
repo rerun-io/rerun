@@ -111,7 +111,7 @@ pub(crate) fn combined_view_2d(
     };
 
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
-        let re_data_store::Image { tensor } = obj;
+        let re_data_store::Image { tensor, .. } = obj;
         let paint_props = paint_properties(
             context,
             &state.hovered_obj,

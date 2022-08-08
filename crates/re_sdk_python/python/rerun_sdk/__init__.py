@@ -6,7 +6,7 @@ from .rerun_sdk import *
 print("rerun_sdk initialized")
 
 
-def log_points(name, positions, colors):
+def log_points(obj_path, positions, colors):
     if colors is not None:
         # Rust expects colors in 0-255 uint8
         if colors.dtype in ['float32', 'float64']:
@@ -21,10 +21,10 @@ def log_points(name, positions, colors):
 
     positions.astype('float32')
 
-    log_points_rs(name, positions, colors)
+    log_points_rs(obj_path, positions, colors)
 
 
-def log_image(name, image):
+def log_image(obj_path, image):
     # Catch some errors early:
     if len(image.shape) < 2 or 3 < len(image.shape):
         raise TypeError(f"Expected image, got array of shape {image.shape}")
@@ -35,10 +35,10 @@ def log_image(name, image):
             raise TypeError(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}")
 
-    log_tensor(name, image)
+    log_tensor(obj_path, image)
 
 
-def log_depth_image(name, image, meter=None):
+def log_depth_image(obj_path, image, meter=None):
     """
     meter: How long is a meter in the given dtype?
            For instance: with uint16, perhaps meter=1000 which would mean
@@ -49,17 +49,20 @@ def log_depth_image(name, image, meter=None):
         raise TypeError(
             f"Expected 2D depth image, got array of shape {image.shape}")
 
-    log_tensor(name, image)
+    log_tensor(obj_path, image)
+
+    if meter != None:
+        log_f32(obj_path, "meter", meter)
 
 
-def log_tensor(name, image):
+def log_tensor(obj_path, image):
     if image.dtype == 'uint8':
-        log_tensor_u8(name, image)
+        log_tensor_u8(obj_path, image)
     elif image.dtype == 'uint16':
-        log_tensor_u16(name, image)
+        log_tensor_u16(obj_path, image)
     elif image.dtype == 'float32':
-        log_tensor_f32(name, image)
+        log_tensor_f32(obj_path, image)
     elif image.dtype == 'float64':
-        log_tensor_f32(name, image.astype('float32'))
+        log_tensor_f32(obj_path, image.astype('float32'))
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")

@@ -22,6 +22,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         m.add_function(wrap_pyfunction!(show, m)?)?;
     }
 
+    m.add_function(wrap_pyfunction!(log_f32, m)?)?;
     m.add_function(wrap_pyfunction!(log_point2d, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
 
@@ -68,10 +69,22 @@ fn show() {
 }
 
 #[pyfunction]
-fn log_point2d(name: &str, x: f32, y: f32) {
+fn log_f32(obj_path: &str, field_name: &str, value: f32) {
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let mut sdk = Sdk::global();
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        id: LogId::random(),
+        time_point: time_point(),
+        data_path: DataPath::new(obj_path, field_name.into()),
+        data: re_log_types::LoggedData::Single(Data::F32(value)),
+    }));
+}
+
+#[pyfunction]
+fn log_point2d(obj_path: &str, x: f32, y: f32) {
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(name); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Point2D);
     let data_path = DataPath::new(obj_path, "pos".into());
 
@@ -91,7 +104,7 @@ fn log_point2d(name: &str, x: f32, y: f32) {
 /// * `colors.len() == positions.len()`: a color per point
 #[pyfunction]
 fn log_points_rs(
-    name: &str,
+    obj_path: &str,
     positions: numpy::PyReadonlyArray2<'_, f64>,
     colors: numpy::PyReadonlyArray2<'_, u8>,
 ) -> PyResult<()> {
@@ -111,7 +124,7 @@ fn log_points_rs(
 
     let mut sdk = Sdk::global();
 
-    let root_path = ObjPathBuilder::from(name); // TODO(emilk): pass in proper obj path somehow
+    let root_path = ObjPathBuilder::from(obj_path); // TODO(emilk): pass in proper obj path somehow
     let point_path = ObjPath::from(&root_path / ObjPathComp::Index(Index::Placeholder));
 
     let mut type_path = root_path.obj_type_path();
@@ -219,29 +232,29 @@ fn log_points_rs(
 
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_tensor_u8(name: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>) {
-    log_tensor(name, img);
+fn log_tensor_u8(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>) {
+    log_tensor(obj_path, img);
 }
 
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_tensor_u16(name: &str, img: numpy::PyReadonlyArrayDyn<'_, u16>) {
-    log_tensor(name, img);
+fn log_tensor_u16(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, u16>) {
+    log_tensor(obj_path, img);
 }
 
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_tensor_f32(name: &str, img: numpy::PyReadonlyArrayDyn<'_, f32>) {
-    log_tensor(name, img);
+fn log_tensor_f32(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, f32>) {
+    log_tensor(obj_path, img);
 }
 
 fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
-    name: &str,
+    obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, T>,
 ) {
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(name); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
     let data = Data::Tensor(to_rerun_tensor(&img));
