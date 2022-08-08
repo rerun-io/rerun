@@ -89,14 +89,12 @@ impl LogDb {
     }
 
     /// In the order they arrived
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn chronological_log_messages(&self) -> impl Iterator<Item = &LogMsg> {
         self.chronological_message_ids
             .iter()
             .filter_map(|id| self.get_log_msg(id))
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn get_log_msg(&self, id: &LogId) -> Option<&LogMsg> {
         self.log_messages.get(id)
     }
