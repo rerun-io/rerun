@@ -53,9 +53,7 @@ def log(args):
 
         rerun.log_points(f"point3d", positions, colors)
 
-    if args.connect:
-        time.sleep(1.0)  # HACK: give rerun time to send it all
-    else:
+    if not args.connect:
         rerun.show()
 
 

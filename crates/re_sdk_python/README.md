@@ -28,10 +28,10 @@ maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug p
 
 
 ### Using a remote viewer
-First start up a viewer with a server that the logger can connect to:
+First start up a viewer with a server that the SDK can connect to:
 
 ```sh
-RUST_LOG=debug cargo run -p rerun -- --host
+RUST_LOG=debug cargo run -p rerun
 ```
 
 Then run the test logging:

@@ -1,4 +1,7 @@
-use std::net::{SocketAddr, TcpStream};
+use std::{
+    io::Write,
+    net::{SocketAddr, TcpStream},
+};
 
 use re_log_types::LogMsg;
 
@@ -29,15 +32,21 @@ impl Client {
         if self.stream.is_none() {
             match TcpStream::connect(&self.addrs[..]) {
                 Ok(mut stream) => {
+                    // `set_nonblocking(true)` will make the messages not all arrive, which is bad.
+                    // stream
+                    //     .set_nonblocking(true)
+                    //     .expect("set_nonblocking call failed");
+
+                    // stream
+                    //     .set_nodelay(true)
+                    //     .expect("Couldn't disable Nagle's algorithm");
+
                     if let Err(err) = stream.write(&crate::PROTOCOL_VERSION.to_le_bytes()) {
                         tracing::warn!(
                             "Failed to send to Rerun server at {:?}: {err:?}",
                             self.addrs
                         );
                     } else {
-                        stream
-                            .set_nonblocking(true)
-                            .expect("set_nonblocking call failed");
                         self.stream = Some(stream);
                     }
                 }
@@ -71,5 +80,15 @@ impl Client {
                 self.stream = None;
             }
         }
+    }
+
+    /// Wait until all logged data have been sent.
+    pub fn flush(&mut self) {
+        if let Some(stream) = &mut self.stream {
+            if let Err(err) = stream.flush() {
+                tracing::warn!("Failed to flush: {:?}", err);
+            }
+        }
+        tracing::trace!("TCP stream flushed.");
     }
 }

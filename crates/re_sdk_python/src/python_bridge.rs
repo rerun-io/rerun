@@ -15,6 +15,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(info, m)?)?;
     m.add_function(wrap_pyfunction!(connect_remote, m)?)?;
+    m.add_function(wrap_pyfunction!(flush, m)?)?;
 
     #[cfg(feature = "re_viewer")]
     {
@@ -41,6 +42,12 @@ fn info() -> String {
 #[pyfunction]
 fn connect_remote() {
     Sdk::global().configure_remote();
+}
+
+/// Wait until all logged data have been sent to the remove server (if any).
+#[pyfunction]
+fn flush() {
+    Sdk::global().flush();
 }
 
 /// Call this first to tell Rerun to buffer the log data so it can be shown

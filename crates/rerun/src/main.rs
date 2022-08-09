@@ -15,12 +15,9 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[clap(author, version, about, long_about = None)]
 struct Args {
     /// Either a path to a `.rrd` file, or a websocket url to a Rerun Server.
+    ///
+    /// If none is given, a server will be hosted which the Rerun SDK can connect to.
     url_or_path: Option<String>,
-
-    /// Host a Rerun Server that the SDK can connect to.
-    #[cfg(feature = "server")]
-    #[clap(long)]
-    host: bool,
 
     /// When using `--host`, what port do we listen on?
     #[cfg(feature = "server")]
@@ -52,19 +49,7 @@ async fn main() {
         ..Default::default()
     };
 
-    #[cfg(feature = "server")]
-    if args.host {
-        let bind_addr = format!("127.0.0.1:{}", args.port);
-        match re_sdk_comms::serve(&bind_addr) {
-            Ok(rx) => {
-                tracing::info!("Hosting SDK server on {bind_addr}");
-                re_viewer::run_native_viewer(rx);
-            }
-            Err(err) => {
-                panic!("Failed to host: {err}");
-            }
-        }
-    } else if let Some(url_or_path) = &args.url_or_path {
+    if let Some(url_or_path) = &args.url_or_path {
         let path = std::path::Path::new(url_or_path).to_path_buf();
         if path.exists() || url_or_path.ends_with(".rrd") {
             eframe::run_native(
@@ -95,9 +80,22 @@ async fn main() {
                 }),
             );
         }
-    } else if cfg!(feature = "server") {
-        panic!("No --host, nor url or .rrd path given");
     } else {
+        #[cfg(feature = "server")]
+        {
+            let bind_addr = format!("127.0.0.1:{}", args.port);
+            match re_sdk_comms::serve(&bind_addr) {
+                Ok(rx) => {
+                    tracing::info!("Hosting SDK server on {bind_addr}");
+                    re_viewer::run_native_viewer(rx);
+                }
+                Err(err) => {
+                    panic!("Failed to host: {err}");
+                }
+            }
+        }
+
+        #[cfg(not(feature = "server"))]
         panic!("No url or .rrd path given");
     }
 }

@@ -5,8 +5,8 @@ This can act either as a server, a viewer, or both, depending on which options y
 `cargo run --release -p rerun -- --help`
 
 ## Hosting an SDK server
-This will host an SDK server inline in the viewer, that SDK:s can connect to:
+This will host an SDK server that SDK:s can connect to:
 
 ```sh
-RUST_LOG=debug cargo run -p rerun -- --host
+RUST_LOG=debug cargo run -p rerun
 ```
