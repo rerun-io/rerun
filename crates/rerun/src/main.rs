@@ -4,7 +4,7 @@ compile_error!("Feature 'puffin' must be enabled when compiling the viewer binar
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-/// The Rerun Viewer
+/// The Rerun Viewer and Server
 ///
 /// Features:
 ///
@@ -14,9 +14,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Start with the puffin profiler running.
-    #[clap(long)]
-    profile: bool,
+    /// Either a path to a `.rrd` file, or a websocket url to a Rerun Server.
+    url_or_path: Option<String>,
 
     /// Host a Rerun Server that the SDK can connect to.
     #[cfg(feature = "server")]
@@ -28,8 +27,9 @@ struct Args {
     #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
     port: u16,
 
-    /// Either a path to a `.rrd` file, or an url to a websocket server.
-    url_or_path: Option<String>,
+    /// Start with the puffin profiler running.
+    #[clap(long)]
+    profile: bool,
 }
 
 #[tokio::main]
@@ -64,9 +64,7 @@ async fn main() {
                 panic!("Failed to host: {err}");
             }
         }
-    }
-
-    if let Some(url_or_path) = &args.url_or_path {
+    } else if let Some(url_or_path) = &args.url_or_path {
         let path = std::path::Path::new(url_or_path).to_path_buf();
         if path.exists() || url_or_path.ends_with(".rrd") {
             eframe::run_native(
@@ -97,9 +95,7 @@ async fn main() {
                 }),
             );
         }
-    }
-
-    if cfg!(feature = "server") {
+    } else if cfg!(feature = "server") {
         panic!("No --host, nor url or .rrd path given");
     } else {
         panic!("No url or .rrd path given");

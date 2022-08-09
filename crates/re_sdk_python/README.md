@@ -31,7 +31,7 @@ maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug p
 First start up a viewer with a server that the logger can connect to:
 
 ```sh
-(cd crates/re_viewer && RUST_LOG=debug cargo r --features server -- --host)
+RUST_LOG=debug cargo run -p rerun -- --host
 ```
 
 Then run the test logging:
