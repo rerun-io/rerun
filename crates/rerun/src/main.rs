@@ -1,6 +1,3 @@
-#[cfg(not(feature = "puffin"))]
-compile_error!("Feature 'puffin' must be enabled when compiling the viewer binary");
-
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 

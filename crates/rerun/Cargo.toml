@@ -8,17 +8,14 @@ publish = false
 
 
 [features]
-default = ["puffin", "server"]
-
-## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
-puffin = ["dep:puffin", "re_viewer/puffin"]
+default = ["server"]
 
 ## Run a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["dep:re_sdk_comms"]
 
 
 [dependencies]
-re_viewer = { path = "../re_viewer" }
+re_viewer = { path = "../re_viewer", features = ["puffin"] }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 # We use bleeding edge egui, from 2022-08-05
@@ -31,8 +28,9 @@ egui_glow   = { git = "https://github.com/emilk/egui", rev = "66c601f775ef751f72
 # egui_extras = { path = "../../../egui/egui_extras", features = ["tracing"] }
 # egui_glow   = { path = "../../../egui/egui_glow" }
 
+puffin = { version = "0.13" }
+
 ## Optional dependencies
-puffin = { version = "0.13", optional = true }
 puffin_http = { version = "0.10", optional = true }
 re_sdk_comms = { path = "../re_sdk_comms", optional=true, features = ["server"] }
 tracing = "0.1"
