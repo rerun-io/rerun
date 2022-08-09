@@ -57,8 +57,7 @@ impl Sdk {
     pub fn register_type(&mut self, obj_type_path: &ObjTypePath, typ: ObjectType) {
         if let Some(prev_type) = self.registered_types.get(obj_type_path) {
             if *prev_type != typ {
-                tracing::warn!("Registering different types to the same object type path: {}. First you uses {:?}, then {:?}",
-                               obj_type_path, prev_type, typ);
+                tracing::warn!("Registering different types to the same object type path: {obj_type_path:?}. First you used {prev_type:?}, then {typ:?}");
             }
         } else {
             self.registered_types.insert(obj_type_path.clone(), typ);

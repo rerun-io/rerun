@@ -34,6 +34,9 @@ Now you can install `rerun_sdk` in any Python3 environment using:
 pip3 install PATH_TO_RERUN_REPOSITORY/target/wheels/*.whl
 ```
 
+### Using the Rerun Python SDK
+See [`crates/re_sdk_python/USAGE.md`](crates/re_sdk_python/USAGE.md).
+
 
 # Development
-Take a look at `CONTRIBUTING.md`.
+Take a look at [`CONTRIBUTING.md`](CONTRIBUTING.md).
