@@ -486,6 +486,17 @@ pub enum TensorDataType {
     F32,
 }
 
+impl TensorDataType {
+    /// Number of bytes used by the type
+    fn size(&self) -> u64 {
+        match self {
+            Self::U8 => 1,
+            Self::U16 => 2,
+            Self::F32 => 4,
+        }
+    }
+}
+
 pub trait TensorDataTypeTrait: Copy + Clone + Send + Sync {
     const DTYPE: TensorDataType;
 }
@@ -499,10 +510,34 @@ impl TensorDataTypeTrait for f32 {
     const DTYPE: TensorDataType = TensorDataType::F32;
 }
 
+/// The data that can be stored in a [`Tensor`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum TensorElement {
+    /// Commonly used for sRGB(A)
+    U8(u8),
+
+    /// Some depth images and some high-bitrate images
+    U16(u16),
+
+    /// Commonly used for depth images
+    F32(f32),
+}
+
+impl TensorElement {
+    pub fn to_f64(&self) -> f64 {
+        match self {
+            Self::U8(value) => *value as _,
+            Self::U16(value) => *value as _,
+            Self::F32(value) => *value as _,
+        }
+    }
+}
+
 /// The data types supported by a [`Tensor`].
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum TensorData {
+pub enum TensorDataStore {
     /// Densely packed tensor
     Dense(Vec<u8>),
 
@@ -513,13 +548,13 @@ pub enum TensorData {
     Jpeg(Vec<u8>),
 }
 
-impl std::fmt::Debug for TensorData {
+impl std::fmt::Debug for TensorDataStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TensorData::Dense(bytes) => {
+            TensorDataStore::Dense(bytes) => {
                 f.write_fmt(format_args!("TensorData::Dense({} bytes)", bytes.len()))
             }
-            TensorData::Jpeg(bytes) => {
+            TensorDataStore::Jpeg(bytes) => {
                 f.write_fmt(format_args!("TensorData::Jpeg({} bytes)", bytes.len()))
             }
         }
@@ -544,7 +579,7 @@ pub struct Tensor {
     pub dtype: TensorDataType,
 
     /// The actual contents of the tensor
-    pub data: TensorData,
+    pub data: TensorDataStore,
 }
 
 impl std::fmt::Debug for Tensor {
@@ -554,5 +589,45 @@ impl std::fmt::Debug for Tensor {
             .field("dtype", &self.dtype)
             .field("data", &self.data)
             .finish()
+    }
+}
+
+impl Tensor {
+    /// The index must be the same length as the dimension.
+    ///
+    /// `None` if out of bounds, or if [`Self::data`] is not [`TensorDataStore::Dense`].
+    ///
+    /// Example: `tensor.get(&[y, x])` to sample a depth image.
+    /// NOTE: we use numpy ordering of the arguments! Most significant first!
+    pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
+        if index.len() != self.shape.len() {
+            return None;
+        }
+
+        match &self.data {
+            TensorDataStore::Dense(dense) => {
+                let mut stride = self.dtype.size();
+                let mut offset = 0;
+                for (size, index) in self.shape.iter().zip(index).rev() {
+                    if size <= index {
+                        return None;
+                    }
+                    offset += index * stride;
+                    stride *= size;
+                }
+                debug_assert_eq!(stride, dense.len() as u64);
+
+                let begin = offset as usize;
+                let end = (offset + self.dtype.size()) as usize;
+                let data = &dense[begin..end];
+
+                Some(match self.dtype {
+                    TensorDataType::U8 => TensorElement::U8(*bytemuck::from_bytes(data)),
+                    TensorDataType::U16 => TensorElement::U16(*bytemuck::from_bytes(data)),
+                    TensorDataType::F32 => TensorElement::F32(*bytemuck::from_bytes(data)),
+                })
+            }
+            TensorDataStore::Jpeg(_) => None, // Too expensive to unpack here.
+        }
     }
 }

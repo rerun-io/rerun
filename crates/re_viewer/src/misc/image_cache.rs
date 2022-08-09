@@ -65,7 +65,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
     type Gray16Image = image::ImageBuffer<image::Luma<u16>, Vec<u16>>;
 
     match &tensor.data {
-        TensorData::Dense(bytes) => {
+        TensorDataStore::Dense(bytes) => {
             if depth == 1 && tensor.dtype == TensorDataType::U8 {
                 // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
                 image::GrayImage::from_raw(width, height, bytes.clone())
@@ -86,7 +86,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
                     .map(DynamicImage::ImageRgba8)
             } else if depth == 1 && tensor.dtype == TensorDataType::F32 {
                 // Maybe a depth map?
-                if let TensorData::Dense(bytes) = &tensor.data {
+                if let TensorDataStore::Dense(bytes) = &tensor.data {
                     if let Ok(floats) = bytemuck::try_cast_slice(bytes) {
                         // Convert to u16 so we can put them in an image.
                         // TODO(emilk): Eventually we want a renderer that can show f32 images natively.
@@ -131,7 +131,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
             }
         }
 
-        TensorData::Jpeg(bytes) => {
+        TensorDataStore::Jpeg(bytes) => {
             crate::profile_scope!("Decode JPEG");
             use image::io::Reader as ImageReader;
             let mut reader = ImageReader::new(std::io::Cursor::new(bytes));

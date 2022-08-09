@@ -375,7 +375,13 @@ pub(crate) fn combined_view_3d(
             egui::Id::new("3d_tooltip"),
             |ui| {
                 context.obj_path_button(ui, obj_path);
-                crate::ui::context_panel::view_object(log_db, context, ui, obj_path);
+                crate::ui::context_panel::view_object(
+                    log_db,
+                    context,
+                    ui,
+                    obj_path,
+                    crate::ui::Preview::Medium,
+                );
             },
         );
     }

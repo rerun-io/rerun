@@ -313,6 +313,6 @@ fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     re_log_types::Tensor {
         shape: img.shape().iter().map(|&d| d as u64).collect(),
         dtype: T::DTYPE,
-        data: TensorData::Dense(vec),
+        data: TensorDataStore::Dense(vec),
     }
 }

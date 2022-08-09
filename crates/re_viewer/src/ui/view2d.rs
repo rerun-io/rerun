@@ -68,7 +68,7 @@ pub(crate) fn combined_view_2d(
         }
     };
 
-    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::click());
+    let (mut response, painter) = ui.allocate_painter(desired_size, egui::Sense::click());
 
     // ------------------------------------------------------------------------
 
@@ -78,7 +78,13 @@ pub(crate) fn combined_view_2d(
         }
         egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
             context.obj_path_button(ui, obj_path);
-            crate::ui::context_panel::view_object(log_db, context, ui, obj_path);
+            crate::ui::context_panel::view_object(
+                log_db,
+                context,
+                ui,
+                obj_path,
+                crate::ui::Preview::Small,
+            );
         });
     }
 
@@ -111,7 +117,7 @@ pub(crate) fn combined_view_2d(
     };
 
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
-        let re_data_store::Image { tensor, .. } = obj;
+        let re_data_store::Image { tensor, meter } = obj;
         let paint_props = paint_properties(
             context,
             &state.hovered_obj,
@@ -151,6 +157,24 @@ pub(crate) fn combined_view_2d(
             let dist = screen_rect.distance_sq_to_pos(pointer_pos).sqrt();
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
             check_hovering(props.obj_path, dist);
+
+            if screen_rect.contains(pointer_pos) {
+                response = response
+                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
+                    .on_hover_ui_at_pointer(|ui| {
+                        let (dynamic_image, _) = context.image_cache.get_pair(props.log_id, tensor);
+                        ui.horizontal(|ui| {
+                            crate::ui::context_panel::show_zoomed_image_region(
+                                ui,
+                                tensor,
+                                dynamic_image,
+                                screen_rect,
+                                pointer_pos,
+                                *meter,
+                            );
+                        });
+                    });
+            }
         }
     }
 

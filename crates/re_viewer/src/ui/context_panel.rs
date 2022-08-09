@@ -42,7 +42,13 @@ impl ContextPanel {
 
                 show_detailed_data_msg(context, ui, msg);
                 ui.separator();
-                view_object(log_db, context, ui, &msg.data_path.obj_path);
+                view_object(
+                    log_db,
+                    context,
+                    ui,
+                    &msg.data_path.obj_path,
+                    Preview::Medium,
+                );
             }
             Selection::ObjTypePath(obj_type_path) => {
                 ui.label(format!("Selected object type path: {}", obj_type_path));
@@ -58,7 +64,7 @@ impl ContextPanel {
                     ui.label(obj_type_name(log_db, obj_path.obj_type_path()));
                 });
                 ui.separator();
-                view_object(log_db, context, ui, obj_path);
+                view_object(log_db, context, ui, obj_path, Preview::Medium);
             }
             Selection::DataPath(data_path) => {
                 ui.label(format!("Selected data path: {}", data_path));
@@ -93,6 +99,7 @@ pub(crate) fn view_object(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
     obj_path: &ObjPath,
+    preview: Preview,
 ) -> Option<()> {
     let (_, store) = log_db.data_store.get(context.time_control.source())?;
     let time_query = context.time_control.time_query()?;
@@ -115,7 +122,7 @@ pub(crate) fn view_object(
                 if data_vec.len() == 1 {
                     let data = data_vec.last().unwrap();
                     let id = &ids[0];
-                    crate::space_view::ui_data(context, ui, id, &data, Preview::Medium);
+                    crate::space_view::ui_data(context, ui, id, &data, preview);
                 } else {
                     ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
                 }
@@ -226,7 +233,14 @@ fn show_tensor(
         .on_hover_ui_at_pointer(|ui| {
             if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
                 ui.horizontal(|ui| {
-                    show_zoomed_image_region(ui, dynamic_image, image_rect, pointer_pos);
+                    show_zoomed_image_region(
+                        ui,
+                        tensor,
+                        dynamic_image,
+                        image_rect,
+                        pointer_pos,
+                        None,
+                    );
                 });
             }
         });
@@ -243,11 +257,14 @@ fn show_tensor(
     }
 }
 
-fn show_zoomed_image_region(
+/// meter: iff this is a depth map, how long is one meter?
+pub fn show_zoomed_image_region(
     ui: &mut egui::Ui,
+    tensor: &re_log_types::Tensor,
     dynamic_image: &image::DynamicImage,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
+    meter: Option<f32>,
 ) {
     use egui::*;
     use image::GenericImageView as _;
@@ -318,42 +335,55 @@ fn show_zoomed_image_region(
                 Vec2::splat(64.0),
             );
 
-            use image::DynamicImage;
-
-            let text = match dynamic_image {
-                DynamicImage::ImageLuma8(_) => {
-                    format!("L: {}", r)
+            if let Some(meter) = meter {
+                // This is a depth map
+                if let Some(raw_value) = tensor.get(&[y, x]) {
+                    let raw_value = raw_value.to_f64();
+                    let meters = raw_value / meter as f64;
+                    if meters < 1.0 {
+                        ui.monospace(format!("{:.1} mm", meters * 1e3));
+                    } else {
+                        ui.monospace(format!("{meters:.3} m"));
+                    }
+                    ui.monospace(format!("(raw value: {raw_value})"));
                 }
+            } else {
+                use image::DynamicImage;
 
-                DynamicImage::ImageLuma16(image) => {
-                    let l = image.get_pixel(x, y)[0];
-                    format!("L: {} ({:.5})", l, l as f32 / 65535.0)
-                }
+                let text = match dynamic_image {
+                    DynamicImage::ImageLuma8(_) => {
+                        format!("L: {}", r)
+                    }
 
-                DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
-                    format!("L: {}\nA: {}", r, a)
-                }
+                    DynamicImage::ImageLuma16(image) => {
+                        let l = image.get_pixel(x as _, y as _)[0];
+                        format!("L: {} ({:.5})", l, l as f32 / 65535.0)
+                    }
 
-                DynamicImage::ImageRgb8(_)
-                | DynamicImage::ImageBgr8(_)
-                | DynamicImage::ImageRgb16(_) => {
-                    format!(
-                        "R: {}\nG: {}\nB: {}\n\n#{:02X}{:02X}{:02X}",
-                        r, g, b, r, g, b
-                    )
-                }
+                    DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
+                        format!("L: {}\nA: {}", r, a)
+                    }
 
-                DynamicImage::ImageRgba8(_)
-                | DynamicImage::ImageBgra8(_)
-                | DynamicImage::ImageRgba16(_) => {
-                    format!(
-                        "R: {}\nG: {}\nB: {}\nA: {}\n\n#{:02X}{:02X}{:02X}{:02X}",
-                        r, g, b, a, r, g, b, a
-                    )
-                }
-            };
+                    DynamicImage::ImageRgb8(_)
+                    | DynamicImage::ImageBgr8(_)
+                    | DynamicImage::ImageRgb16(_) => {
+                        format!(
+                            "R: {}\nG: {}\nB: {}\n\n#{:02X}{:02X}{:02X}",
+                            r, g, b, r, g, b
+                        )
+                    }
 
-            ui.label(text);
+                    DynamicImage::ImageRgba8(_)
+                    | DynamicImage::ImageBgra8(_)
+                    | DynamicImage::ImageRgba16(_) => {
+                        format!(
+                            "R: {}\nG: {}\nB: {}\nA: {}\n\n#{:02X}{:02X}{:02X}{:02X}",
+                            r, g, b, a, r, g, b, a
+                        )
+                    }
+                };
+                ui.label(text);
+            }
         });
     }
 }
@@ -433,7 +463,7 @@ fn image_options(
 ) {
     // TODO(emilk): support copying images on web
 
-    use re_log_types::TensorData;
+    use re_log_types::TensorDataStore;
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Click to copy image").clicked() {
         let rgba = dynamic_image.to_rgba8();
@@ -449,7 +479,7 @@ fn image_options(
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Save image…").clicked() {
         match &tensor.data {
-            TensorData::Dense(_) => {
+            TensorDataStore::Dense(_) => {
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("image.png")
                     .save_file()
@@ -465,7 +495,7 @@ fn image_options(
                     }
                 }
             }
-            TensorData::Jpeg(bytes) => {
+            TensorDataStore::Jpeg(bytes) => {
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("image.jpg")
                     .save_file()

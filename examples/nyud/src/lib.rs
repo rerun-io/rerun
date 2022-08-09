@@ -111,7 +111,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                 let tensor = re_log_types::Tensor {
                     shape: vec![image.height() as _, image.width() as _, 3],
                     dtype: re_log_types::TensorDataType::U8,
-                    data: TensorData::Dense(image.to_vec()),
+                    data: TensorDataStore::Dense(image.to_vec()),
                 };
 
                 let obj_path = ObjPathBuilder::from("rgb");
@@ -135,7 +135,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                     let tensor = re_log_types::Tensor {
                         shape: vec![depth_image.height() as _, depth_image.width() as _],
                         dtype: re_log_types::TensorDataType::U16,
-                        data: TensorData::Dense(
+                        data: TensorDataStore::Dense(
                             bytemuck::cast_slice(depth_image.as_raw()).to_vec(),
                         ),
                     };

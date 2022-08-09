@@ -22,7 +22,7 @@ def log(args):
 
     if True:
         depth_img = cv2.imread('depth_image.pgm', cv2.IMREAD_UNCHANGED)
-        rerun.log_depth_image("depth", depth_img, meter=1000)
+        rerun.log_depth_image("depth", depth_img, meter=10_000)
 
     if True:
         x, y = 200.0, 50.0
