@@ -1,10 +1,7 @@
-#[cfg(not(feature = "puffin"))]
-compile_error!("Feature 'puffin' must be enabled when compiling the viewer binary");
-
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-/// The Rerun Viewer
+/// The Rerun Viewer and Server
 ///
 /// Features:
 ///
@@ -14,22 +11,19 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Start with the puffin profiler running.
-    #[clap(long)]
-    profile: bool,
-
-    /// Host a Rerun Server that the SDK can connect to.
-    #[cfg(feature = "server")]
-    #[clap(long)]
-    host: bool,
+    /// Either a path to a `.rrd` file, or a websocket url to a Rerun Server.
+    ///
+    /// If none is given, a server will be hosted which the Rerun SDK can connect to.
+    url_or_path: Option<String>,
 
     /// When using `--host`, what port do we listen on?
     #[cfg(feature = "server")]
     #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
     port: u16,
 
-    /// Either a path to a `.rrd` file, or an url to a websocket server.
-    url_or_path: Option<String>,
+    /// Start with the puffin profiler running.
+    #[clap(long)]
+    profile: bool,
 }
 
 #[tokio::main]
@@ -51,20 +45,6 @@ async fn main() {
         initial_window_size: Some([1600.0, 1200.0].into()),
         ..Default::default()
     };
-
-    #[cfg(feature = "server")]
-    if args.host {
-        let bind_addr = format!("127.0.0.1:{}", args.port);
-        match re_sdk_comms::serve(&bind_addr) {
-            Ok(rx) => {
-                tracing::info!("Hosting SDK server on {bind_addr}");
-                re_viewer::run_native_viewer(rx);
-            }
-            Err(err) => {
-                panic!("Failed to host: {err}");
-            }
-        }
-    }
 
     if let Some(url_or_path) = &args.url_or_path {
         let path = std::path::Path::new(url_or_path).to_path_buf();
@@ -97,11 +77,22 @@ async fn main() {
                 }),
             );
         }
-    }
-
-    if cfg!(feature = "server") {
-        panic!("No --host, nor url or .rrd path given");
     } else {
+        #[cfg(feature = "server")]
+        {
+            let bind_addr = format!("127.0.0.1:{}", args.port);
+            match re_sdk_comms::serve(&bind_addr) {
+                Ok(rx) => {
+                    tracing::info!("Hosting SDK server on {bind_addr}");
+                    re_viewer::run_native_viewer(rx);
+                }
+                Err(err) => {
+                    panic!("Failed to host: {err}");
+                }
+            }
+        }
+
+        #[cfg(not(feature = "server"))]
         panic!("No url or .rrd path given");
     }
 }

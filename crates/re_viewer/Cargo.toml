@@ -17,14 +17,10 @@ default = ["puffin"]
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin"]
 
-## Run a HTTP server that listens to incoming log messages from a Rerun SDK.
-server = ["dep:re_sdk_comms"]
-
 
 [dependencies]
 re_data_store = { path = "../re_data_store", features = ["puffin"] }
 re_log_types = { path = "../re_log_types", features = ["save", "load"] }
-re_sdk_comms = { path = "../re_sdk_comms", optional=true, features = ["server"] }
 re_string_interner = { path = "../re_string_interner" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
@@ -42,7 +38,6 @@ ahash = "0.7"
 anyhow = "1.0"
 bytemuck = "1.7"
 cgmath = { version = "0.18", features = ["mint"] }
-clap = { version = "3.1.6", features = ["derive"] }
 glam = { version = "0.20", features = ["mint"] }
 glow = "0.11"
 image = { version = "0.23", default-features = false, features = ["png"] }
@@ -71,11 +66,8 @@ vec1 = "1.8"
 arboard = { version = "2.1", default-features = false, features = [
     "image-data",
 ] }
-mimalloc = "0.1.29"
 puffin = { version = "0.13", optional = true }
 puffin_http = { version = "0.10", optional = true }
-tracing-subscriber = "0.3"
-tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

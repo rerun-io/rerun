@@ -39,6 +39,13 @@ impl Sdk {
         matches!(&self.sender, &Sender::Buffered(_))
     }
 
+    /// Wait until all logged data have been sent to the remove server (if any).
+    pub fn flush(&mut self) {
+        if let Sender::Remote(remote) = &mut self.sender {
+            remote.flush();
+        }
+    }
+
     #[cfg(feature = "re_viewer")]
     pub fn drain_log_messages(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
@@ -71,6 +78,7 @@ impl Sdk {
 
 enum Sender {
     Remote(re_sdk_comms::Client),
+
     #[allow(unused)] // only used with `#[cfg(feature = "re_viewer")]`
     Buffered(Vec<LogMsg>),
 }

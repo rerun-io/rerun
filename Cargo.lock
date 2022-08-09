@@ -2874,7 +2874,6 @@ dependencies = [
  "arboard",
  "bytemuck",
  "cgmath",
- "clap 3.1.17",
  "console_error_panic_hook",
  "eframe",
  "egui",
@@ -2888,7 +2887,6 @@ dependencies = [
  "log",
  "log-once",
  "macaw",
- "mimalloc",
  "mint",
  "nohash-hasher",
  "puffin",
@@ -2896,7 +2894,6 @@ dependencies = [
  "rand",
  "re_data_store",
  "re_log_types",
- "re_sdk_comms",
  "re_string_interner",
  "re_ws_comms",
  "rfd",
@@ -2904,9 +2901,7 @@ dependencies = [
  "serde_json",
  "three-d",
  "three-d-asset",
- "tokio",
  "tracing",
- "tracing-subscriber",
  "tracing-wasm",
  "vec1",
 ]
@@ -2990,6 +2985,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "rerun"
+version = "0.1.0"
+dependencies = [
+ "clap 3.1.17",
+ "eframe",
+ "egui",
+ "egui_extras",
+ "egui_glow",
+ "mimalloc",
+ "puffin",
+ "puffin_http",
+ "re_sdk_comms",
+ "re_viewer",
+ "re_ws_comms",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

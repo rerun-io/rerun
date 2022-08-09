@@ -11,6 +11,18 @@ Install Rust: https://rustup.rs/
 ./setup.sh
 ```
 
+## Installation
+After running the setup above, you can install the rerun viewer with:
+
+```sh
+cargo install --path crates/rerun --all-features
+```
+
+You should now be able to run `rerun --help`.
+
+
+# Development
+
 ## Structure
 The main crates are found in the `crates/` folder, with examples in the `examples/` folder.
 
@@ -19,15 +31,12 @@ Read about individual examples for details on how to run them.
 To learn about the viewer, run:
 
 ```
-cargo run --release -p re_viewer -- --help
+cargo run --release -p rerun -- --help
 ```
-
 
 ### Other
 You can view higher log levels with `export RUST_LOG=debug` or `export RUST_LOG=trace`.
 
-
-# Workflow
 
 ## Linting
 We use [cargo cranky](https://github.com/ericseppanen/cargo-cranky) to specify our clippy lints in `Cranky.toml`. Usage: `cargo cranky`.
