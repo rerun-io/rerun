@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Setup required to build rerun
+
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path"
@@ -11,7 +13,7 @@ fi
 
 # Needed to compile and check the code:
 rustup install 1.62.0
-cargo install cargo-cranky # Uses lints defined in Cranky.toml. See https://github.com/ericseppanen/cargo-cranky
-cargo install cargo-deny # https://github.com/EmbarkStudios/cargo-deny
 ./crates/re_viewer/setup_web.sh
-./crates/re_viewer/build_web.sh
+./crates/re_viewer/build_web.sh # We bake the wasm into some binaries, so we need to build the WASM at least once!
+
+echo "setup.sh completed!"

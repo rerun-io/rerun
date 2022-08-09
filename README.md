@@ -4,48 +4,36 @@
 
 This repository contains the Rerun log SDK, server, and viewer.
 
-## Setup
-Install Rust: https://rustup.rs/
+# For our users
+We don't have any pre-built binaries yet, so you need to build Rerun from source. There is some setup involved, but most of it should be pretty painless.
 
-``` sh
-./setup.sh
-```
+First up, you need to install the Rust toolchain: https://rustup.rs/
 
-## Installation
-After running the setup above, you can install the rerun viewer with:
+Then, setup the rest of the required tools by running `./setup.sh`.
+
+## Installing the Rerun viewer
+After running the setup above, you can build and install the rerun viewer with:
 
 ```sh
-cargo install --path crates/rerun --all-features
+cargo install --path ./crates/rerun/ --all-features
 ```
 
-You should now be able to run `rerun --help`.
+You should now be able to run `rerun --help` in any terminal.
+
+## Installing the Rerun Python SDK
+
+First build it:
+```
+source crates/re_sdk_python/setup_env.sh
+maturin build -m ./crates/re_sdk_python/Cargo.toml --release
+```
+
+Now you can install `rerun_sdk` in any Python3 environment using:
+
+```
+pip3 install PATH_TO_RERUN_REPOSITORY/target/wheels/*.whl
+```
 
 
 # Development
-
-## Structure
-The main crates are found in the `crates/` folder, with examples in the `examples/` folder.
-
-Read about individual examples for details on how to run them.
-
-To learn about the viewer, run:
-
-```
-cargo run --release -p rerun -- --help
-```
-
-### Other
-You can view higher log levels with `export RUST_LOG=debug` or `export RUST_LOG=trace`.
-
-
-## Linting
-We use [cargo cranky](https://github.com/ericseppanen/cargo-cranky) to specify our clippy lints in `Cranky.toml`. Usage: `cargo cranky`.
-
-We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`.
-
-Configure your editor to run `cargo fmt` on save. Also configure it to strip trailing whitespace, an to end each file with a newline. Settings for VSCode can be found in the `.vscode` folder and should be applied automatically. If you are using another editor, consider adding good setting to this repository!
-
-To check everything in one go, run `./check.sh`. `check.sh` should ideally check approximately the same things as our CI.
-
-### Optional
-You can use [bacon](https://github.com/Canop/bacon) to automatically check your code on each save. For instance, running just `bacon` will re-run `cargo cranky` each time you change a rust file. See `bacon.toml` for more.
+Take a look at `CONTRIBUTING.md`.
