@@ -17,7 +17,7 @@ re_log_types = { path = "../../crates/re_log_types" }
 re_viewer = { path = "../../crates/re_viewer" }
 
 anyhow = "1"
-clap = "3.1"
+clap = { version = "3.1.6", features = ["derive"] }
 glam = "0.20" # to convert rotation matrices to quaternions
 image = { version = "0.23", default-features = false, features = ["jpeg"] }
 itertools = "0.10"
