@@ -186,7 +186,16 @@ impl AppState {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if !WATERMARK {
                         let logo = self.static_image_cache.rerun_logo(ui.visuals());
-                        logo.show_max_size(ui, [500.0, 16.0].into());
+                        let response = ui
+                            .add(egui::ImageButton::new(
+                                logo.texture_id(egui_ctx),
+                                logo.size_vec2() * 16.0 / logo.size_vec2().y,
+                            ))
+                            .on_hover_text("https://rerun.io");
+                        if response.clicked() {
+                            ui.output().open_url =
+                                Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
+                        }
                     }
                     egui::warn_if_debug_build(ui);
                 });
