@@ -54,9 +54,10 @@ struct TimeState {
 
     /// Frames Per Second, when playing sequences (they are often video recordings).
     fps: f32,
+
+    // TODO(emilk): move into a `FractionalTimeValue` and use that for `Self::time`
     /// How close we are to flipping over to the next sequence number (0-1).
     sequence_t: f32,
-    /// TODO(emilk): move into a `FractionalTimeValue` and use that for `Self::time`
 
     /// Selected time range, if any.
     #[serde(default)]
@@ -108,7 +109,7 @@ impl Default for TimeControl {
             time_source: Default::default(),
             states: Default::default(),
             playing: true,
-            looped: true,
+            looped: false,
             speed: 1.0,
             selection_active: false,
             selection_type: TimeSelectionType::default(),
@@ -232,6 +233,13 @@ impl TimeControl {
             state.time = state.time.max(loop_range.min);
         }
 
+        if state.time >= loop_range.max && !self.looped {
+            // Don't pause or rewind, just stop moving time forward
+            // until we receive more data!
+            // This is important for "live view".
+            return;
+        }
+
         match &mut state.time {
             TimeValue::Sequence(seq) => {
                 state.sequence_t += state.fps * dt;
@@ -243,13 +251,8 @@ impl TimeControl {
             }
         }
 
-        if state.time > loop_range.max {
-            if self.looped {
-                state.time = loop_range.min;
-            } else {
-                state.time = loop_range.max;
-                self.playing = false;
-            }
+        if state.time > loop_range.max && self.looped {
+            state.time = loop_range.min;
         }
     }
 
