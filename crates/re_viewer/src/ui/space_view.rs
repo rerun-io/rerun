@@ -431,21 +431,17 @@ pub(crate) fn ui_data(
                         egui_image.show(ui);
                     });
 
-                if tensor.shape.len() == 2 {
-                    ui.label(format!(
-                        "Tensor shape: {:?} (height={}, width={})",
-                        tensor.shape, tensor.shape[0], tensor.shape[1]
-                    ));
-                } else if tensor.shape.len() == 3 {
-                    ui.label(format!(
-                        "Tensor shape: {:?} (height={}, width={}, depth={})",
-                        tensor.shape, tensor.shape[0], tensor.shape[1], tensor.shape[2]
-                    ));
-                } else {
-                    ui.label(format!("Tensor shape: {:?}", tensor.shape));
-                }
+                ui.vertical(|ui| {
+                    ui.label(format!("dtype: {:?}", tensor.dtype));
 
-                ui.label(format!("Tensor dtype: {:?}", tensor.dtype));
+                    if tensor.shape.len() == 2 {
+                        ui.label(format!("shape: {:?} (height, width)", tensor.shape));
+                    } else if tensor.shape.len() == 3 {
+                        ui.label(format!("shape: {:?} (height, width, depth)", tensor.shape));
+                    } else {
+                        ui.label(format!("shape: {:?}", tensor.shape));
+                    }
+                });
             })
             .response
         }

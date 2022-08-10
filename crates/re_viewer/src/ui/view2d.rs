@@ -158,7 +158,9 @@ pub(crate) fn combined_view_2d(
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
             check_hovering(props.obj_path, dist);
 
-            if screen_rect.contains(pointer_pos) {
+            if Some(props.obj_path) == state.hovered_obj.as_ref()
+                && screen_rect.contains(pointer_pos)
+            {
                 response = response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
@@ -206,6 +208,12 @@ pub(crate) fn combined_view_2d(
             paint_props.fg_stroke,
         ));
 
+        let mut hover_dist = f32::INFINITY;
+
+        if let Some(pointer_pos) = pointer_pos {
+            hover_dist = screen_rect.signed_distance_to_pos(pointer_pos).abs();
+        }
+
         if let Some(label) = label {
             let shrunken_screen_rect = screen_rect.shrink(4.0);
             let font_id = TextStyle::Body.resolve(ui.style());
@@ -219,20 +227,19 @@ pub(crate) fn combined_view_2d(
                 shrunken_screen_rect.center_top(),
                 galley.size(),
             ));
+            let bg_rect = text_rect.expand2(vec2(6.0, 2.0));
             shapes.push(Shape::rect_filled(
-                text_rect.expand2(vec2(6.0, 2.0)),
+                bg_rect,
                 3.0,
                 paint_props.bg_stroke.color,
             ));
             shapes.push(Shape::galley(text_rect.min, galley));
+            if let Some(pointer_pos) = pointer_pos {
+                hover_dist = hover_dist.min(bg_rect.signed_distance_to_pos(pointer_pos));
+            }
         }
 
-        if let Some(pointer_pos) = pointer_pos {
-            check_hovering(
-                props.obj_path,
-                screen_rect.signed_distance_to_pos(pointer_pos).abs(),
-            );
-        }
+        check_hovering(props.obj_path, hover_dist);
     }
 
     for (props, obj) in objects.line_segments2d.iter() {
