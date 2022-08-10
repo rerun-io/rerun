@@ -59,6 +59,13 @@ impl SpaceView {
     pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
         crate::profile_function!();
 
+        if log_db.is_empty() {
+            ui.centered_and_justified(|ui| {
+                ui.heading("No data");
+            });
+            return;
+        }
+
         let objects = context
             .time_control
             .selected_objects(log_db)

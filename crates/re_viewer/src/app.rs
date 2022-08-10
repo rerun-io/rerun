@@ -78,7 +78,18 @@ impl eframe::App for App {
             }
         }
 
-        self.state.show(egui_ctx, frame, &mut self.log_db);
+        self.state.context.on_frame_start(&self.log_db);
+        self.state.top_panel(egui_ctx, frame, &mut self.log_db);
+
+        if self.log_db.is_empty() && self.rx.is_some() {
+            egui::CentralPanel::default().show(egui_ctx, |ui| {
+                ui.centered_and_justified(|ui| {
+                    ui.heading("Waiting for data…"); // TODO(emilk): show what ip/port we are listening to
+                });
+            });
+        } else {
+            self.state.show(egui_ctx, &mut self.log_db);
+        }
 
         self.handle_dropping_files(egui_ctx);
     }
@@ -163,10 +174,13 @@ struct AppState {
 }
 
 impl AppState {
-    fn show(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame, log_db: &mut LogDb) {
+    fn top_panel(
+        &mut self,
+        egui_ctx: &egui::Context,
+        frame: &mut eframe::Frame,
+        log_db: &mut LogDb,
+    ) {
         crate::profile_function!();
-
-        self.context.on_frame_start(log_db);
 
         egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
@@ -180,8 +194,10 @@ impl AppState {
 
                 ui.separator();
 
-                ui.selectable_value(&mut self.view_index, 0, "Spaces");
-                ui.selectable_value(&mut self.view_index, 1, "Table");
+                if !log_db.is_empty() {
+                    ui.selectable_value(&mut self.view_index, 0, "Spaces");
+                    ui.selectable_value(&mut self.view_index, 1, "Table");
+                }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if !WATERMARK {
@@ -201,6 +217,10 @@ impl AppState {
                 });
             });
         });
+    }
+
+    fn show(&mut self, egui_ctx: &egui::Context, log_db: &mut LogDb) {
+        crate::profile_function!();
 
         let Self {
             context,
@@ -260,14 +280,22 @@ impl AppState {
     fn file_menu(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame, _log_db: &mut LogDb) {
         // TODO(emilk): support saving data on web
         #[cfg(not(target_arch = "wasm32"))]
-        if ui.button("Save…").on_hover_text("Save all data").clicked() {
+        if ui
+            .add_enabled(!_log_db.is_empty(), egui::Button::new("Save…"))
+            .on_hover_text("Save all data to a Rerun data file (.rrd)")
+            .clicked()
+        {
             if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
                 save_to_file(_log_db, &path);
             }
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        if ui.button("Load").on_hover_text("Save all data").clicked() {
+        if ui
+            .button("Load")
+            .on_hover_text("Load a Rerun data file (.rrd)")
+            .clicked()
+        {
             if let Some(path) = rfd::FileDialog::new()
                 .add_filter("rerun data file", &["rrd"])
                 .pick_file()

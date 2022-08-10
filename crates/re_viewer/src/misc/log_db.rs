@@ -20,6 +20,10 @@ pub(crate) struct LogDb {
 }
 
 impl LogDb {
+    pub fn is_empty(&self) -> bool {
+        self.log_messages.is_empty()
+    }
+
     pub fn add(&mut self, msg: LogMsg) {
         crate::profile_function!();
         match &msg {
