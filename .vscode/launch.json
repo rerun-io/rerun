@@ -5,16 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug 're_viewer' recording.rrd",
+            "name": "Debug 'rerun' recording.rrd",
             "type": "lldb",
             "request": "launch",
             "cargo": {
                 "args": [
                     "build",
-                    "--package=re_viewer"
+                    "--package=rerun"
                 ],
                 "filter": {
-                    "name": "re_viewer",
+                    "name": "rerun",
                     "kind": "bin"
                 }
             },
