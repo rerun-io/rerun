@@ -51,16 +51,24 @@ pub fn random_rgb(seed: u64) -> [u8; 3] {
 
     let mut small_rng = SmallRng::seed_from_u64(seed);
 
-    // TODO(emilk): OKLab
-    let hsva = egui::color::Hsva {
-        h: small_rng.gen(),
-        s: small_rng.gen_range(0.35..=0.55_f32).sqrt(),
-        v: small_rng.gen_range(0.55..=0.80_f32).cbrt(),
-        a: 1.0,
-    };
+    loop {
+        // TODO(emilk): OKLab
+        let hsva = egui::color::Hsva {
+            h: small_rng.gen(),
+            s: small_rng.gen_range(0.35..=0.55_f32).sqrt(),
+            v: small_rng.gen_range(0.55..=0.80_f32).cbrt(),
+            a: 1.0,
+        };
 
-    let color = egui::Color32::from(hsva);
-    [color.r(), color.g(), color.b()]
+        let rgba = egui::Rgba::from(hsva);
+
+        let intensity = 0.2126 * rgba.r() + 0.7152 * rgba.g() + 0.0722 * rgba.b();
+
+        if intensity > 0.7 {
+            let color = egui::Color32::from(rgba);
+            return [color.r(), color.g(), color.b()];
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
