@@ -28,7 +28,7 @@ source crates/re_sdk_python/setup_env.sh
 maturin build -m ./crates/re_sdk_python/Cargo.toml --release
 ```
 
-Now you can install `rerun` in any Python3 environment using:
+Now you can install `rerun_sdk` in any Python3 environment using:
 
 ```
 pip3 install PATH_TO_RERUN_REPOSITORY/target/wheels/*.whl

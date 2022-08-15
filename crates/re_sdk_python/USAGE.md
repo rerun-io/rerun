@@ -1,4 +1,4 @@
-# Using the `rerun` Python Library
+# Using the `rerun_sdk` Python Library
 
 Install instructions can be found at <https://github.com/rerun-io/rerun#readme>.
 
@@ -13,7 +13,7 @@ Rerun assumes you are using `numpy` for any large chunks of data.
 The first argument to each log function is the object name. This needs to be unique for each thing you log. You can not log an image with the same name as a point cloud!
 
 ```python
-import rerun
+import rerun_sdk as rerun
 
 # Logging an image is easy:
 rerun.log_image("rgb_image", image)

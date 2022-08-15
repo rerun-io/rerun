@@ -2,7 +2,7 @@ The Rerun Python Log SDK.
 
 Goal: an ergonomic Python library for logging rich data, over TCP, to a rerun server.
 
-Note: The rust crate is called `re_sdk_python`, while the Python library is called `rerun`.
+Note: The rust crate is called `re_sdk_python`, while the Python library is called `rerun_sdk`.
 
 ## Setup
 

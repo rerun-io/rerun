@@ -4,7 +4,7 @@ import math
 import numpy as np
 import time
 
-import rerun
+import rerun_sdk as rerun
 
 
 def log(args):

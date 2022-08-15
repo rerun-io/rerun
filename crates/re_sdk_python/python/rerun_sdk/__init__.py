@@ -1,9 +1,9 @@
-# The Rerun Python SDK, which is a wrapper around a Rust crate.
+# The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
 import numpy as np
 
-from .rerun import *
+from .rerun_sdk import *
 
-print("rerun initialized")
+print("rerun_sdk initialized")
 
 
 def log_points(obj_path, positions, colors):
