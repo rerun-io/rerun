@@ -171,7 +171,7 @@ impl ViewerContext {
     }
 }
 
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Options {
     pub show_camera_mesh_in_3d: bool,
 }

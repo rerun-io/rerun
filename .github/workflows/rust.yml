@@ -18,7 +18,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.62.0
+          toolchain: 1.63.0
           override: true
       - run: sudo apt-get update && sudo apt-get install libgtk-3-dev
       - uses: actions-rs/cargo@v1
@@ -34,7 +34,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.62.0
+          toolchain: 1.63.0
           override: true
       - run: sudo apt-get update && sudo apt-get install libgtk-3-dev
       - uses: actions-rs/cargo@v1
@@ -50,7 +50,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.62.0
+          toolchain: 1.63.0
           override: true
       - run: sudo apt-get update && sudo apt-get install libgtk-3-dev
       - run: rustup target add wasm32-unknown-unknown
@@ -67,7 +67,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.62.0
+          toolchain: 1.63.0
           override: true
       - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
       - uses: actions-rs/cargo@v1
@@ -83,7 +83,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.62.0
+          toolchain: 1.63.0
           override: true
       - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
       - run: rustup component add rustfmt
@@ -100,7 +100,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.62.0
+          toolchain: 1.63.0
           override: true
       - run: sudo apt-get update && sudo apt-get install libgtk-3-dev
       - run: cargo install cargo-cranky
@@ -117,7 +117,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.62.0
+          toolchain: 1.63.0
           override: true
       - run: cargo install cargo-deny
       - run: cargo deny check
@@ -147,7 +147,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.62.0
+          toolchain: 1.63.0
           override: true
       - run: rustup target add wasm32-unknown-unknown
       - run: ./crates/re_viewer/setup_web.sh
@@ -162,7 +162,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.62.0
+          toolchain: 1.63.0
           override: true
       - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
       - run: python3 -m pip install -r crates/re_sdk_python/requirements.txt

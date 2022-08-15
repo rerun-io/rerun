@@ -85,7 +85,7 @@ impl_into_enum!(DataMsg, LogMsg, DataMsg);
 // ----------------------------------------------------------------------------
 
 #[must_use]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TypeMsg {
     /// A unique id per [`LogMsg`].
