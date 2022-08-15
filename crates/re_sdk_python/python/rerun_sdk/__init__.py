@@ -6,7 +6,18 @@ from .rerun_sdk import *
 print("rerun_sdk initialized")
 
 
-def log_points(obj_path, positions, colors):
+def log_points(obj_path, positions, colors=None, space=None):
+    """
+    Log 2D or 3D points, with optional colors.
+
+    positions: Nx2 or Nx3 array
+
+    `colors.shape[0] == 1`: same color for all points
+    `colors.shape[0] == positions.shape[0]`: a color per point
+
+    If no `space` is given, the space name "2D" or "3D" will be used,
+    depending on the dimensionality of the data.
+    """
     if colors is not None:
         # Rust expects colors in 0-255 uint8
         if colors.dtype in ['float32', 'float64']:
@@ -21,10 +32,15 @@ def log_points(obj_path, positions, colors):
 
     positions.astype('float32')
 
-    log_points_rs(obj_path, positions, colors)
+    log_points_rs(obj_path, positions, colors, space)
 
 
-def log_image(obj_path, image):
+def log_image(obj_path, image, space=None):
+    """
+    Log an image with 1, 3 or 4 channels (gray, RGB or RGBA).
+
+    If no `space` is given, the space name "2D" will be used.
+    """
     # Catch some errors early:
     if len(image.shape) < 2 or 3 < len(image.shape):
         raise TypeError(f"Expected image, got array of shape {image.shape}")
@@ -35,34 +51,39 @@ def log_image(obj_path, image):
             raise TypeError(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}")
 
-    log_tensor(obj_path, image)
+    log_tensor(obj_path, image, space)
 
 
-def log_depth_image(obj_path, image, meter=None):
+def log_depth_image(obj_path, image, meter=None, space=None):
     """
     meter: How long is a meter in the given dtype?
            For instance: with uint16, perhaps meter=1000 which would mean
            you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
+
+    If no `space` is given, the space name "2D" will be used.
     """
     # Catch some errors early:
     if len(image.shape) != 2:
         raise TypeError(
             f"Expected 2D depth image, got array of shape {image.shape}")
 
-    log_tensor(obj_path, image)
+    log_tensor(obj_path, image, space)
 
     if meter != None:
         log_f32(obj_path, "meter", meter)
 
 
-def log_tensor(obj_path, image):
+def log_tensor(obj_path, image, space=None):
+    """
+    If no `space` is given, the space name "2D" will be used.
+    """
     if image.dtype == 'uint8':
-        log_tensor_u8(obj_path, image)
+        log_tensor_u8(obj_path, image, space)
     elif image.dtype == 'uint16':
-        log_tensor_u16(obj_path, image)
+        log_tensor_u16(obj_path, image, space)
     elif image.dtype == 'float32':
-        log_tensor_f32(obj_path, image)
+        log_tensor_f32(obj_path, image, space)
     elif image.dtype == 'float64':
-        log_tensor_f32(obj_path, image.astype('float32'))
+        log_tensor_f32(obj_path, image.astype('float32'), space)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")

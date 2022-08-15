@@ -57,6 +57,13 @@ impl From<&str> for ObjPathComp {
     }
 }
 
+impl From<String> for ObjPathComp {
+    #[inline]
+    fn from(comp: String) -> Self {
+        Self::String(comp.into())
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

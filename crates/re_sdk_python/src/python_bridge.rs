@@ -60,6 +60,11 @@ fn buffer() {
 }
 
 /// Show the buffered log data.
+///
+/// NOTE: currently this only works _once_.
+/// Calling this function more than once is undefined behavior.
+/// We will try to fix this in the future.
+/// Blocked on <https://github.com/emilk/egui/issues/1918>.
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
 fn show() {
@@ -73,7 +78,9 @@ fn show() {
         }
         re_viewer::run_native_viewer(rx);
     } else {
-        tracing::error!("Can't show the log messages of Rerurn: it was configured to send the data to a server!");
+        tracing::error!(
+            "Can't show the log messages of Rerun: it was configured to send the data to a server!"
+        );
     }
 }
 
@@ -89,8 +96,18 @@ fn log_f32(obj_path: &str, field_name: &str, value: f32) {
     }));
 }
 
+/// Log a 2D bounding box.
+///
+/// Optionally give it a label.
+/// If no `space` is given, the space name "2D" will be used.
 #[pyfunction]
-fn log_bbox(obj_path: &str, left_top: [f32; 2], width_height: [f32; 2], label: Option<String>) {
+fn log_bbox(
+    obj_path: &str,
+    left_top: [f32; 2],
+    width_height: [f32; 2],
+    label: Option<String>,
+    space: Option<String>,
+) {
     let [x, y] = left_top;
     let [w, h] = width_height;
     let min = [x, y];
@@ -113,25 +130,46 @@ fn log_bbox(obj_path: &str, left_top: [f32; 2], width_height: [f32; 2], label: O
     if let Some(label) = label {
         sdk.send(LogMsg::DataMsg(DataMsg {
             id: LogId::random(),
-            time_point,
-            data_path: DataPath::new(obj_path, "label".into()),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "label".into()),
             data: re_log_types::LoggedData::Single(Data::String(label)),
         }));
     }
+
+    let space = space.unwrap_or_else(|| "2D".to_owned());
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        id: LogId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: re_log_types::LoggedData::Single(Data::Space(space.into())),
+    }));
 }
 
+/// Log a single 2D point.
+///
+/// If no `space` is given, the space name "2D" will be used.
 #[pyfunction]
-fn log_point2d(obj_path: &str, x: f32, y: f32) {
+fn log_point2d(obj_path: &str, x: f32, y: f32, space: Option<String>) {
     let mut sdk = Sdk::global();
 
     let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Point2D);
 
+    let time_point = time_point();
+
     sdk.send(LogMsg::DataMsg(DataMsg {
         id: LogId::random(),
-        time_point: time_point(),
-        data_path: DataPath::new(obj_path, "pos".into()),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "pos".into()),
         data: re_log_types::LoggedData::Single(Data::Vec2([x, y])),
+    }));
+
+    let space = space.unwrap_or_else(|| "2D".to_owned());
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        id: LogId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: re_log_types::LoggedData::Single(Data::Space(space.into())),
     }));
 }
 
@@ -139,11 +177,15 @@ fn log_point2d(obj_path: &str, x: f32, y: f32) {
 /// * `colors.len() == 0`: no colors
 /// * `colors.len() == 1`: same color for all points
 /// * `colors.len() == positions.len()`: a color per point
+///
+/// If no `space` is given, the space name "2D" or "3D" will be used,
+/// depending on the dimensionality of the data.
 #[pyfunction]
 fn log_points_rs(
     obj_path: &str,
     positions: numpy::PyReadonlyArray2<'_, f64>,
     colors: numpy::PyReadonlyArray2<'_, u8>,
+    space: Option<String>,
 ) -> PyResult<()> {
     if positions.is_empty() {
         return Ok(());
@@ -256,49 +298,72 @@ fn log_points_rs(
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         id: LogId::random(),
-        time_point,
-        data_path: DataPath::new(point_path, "pos".into()),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(point_path.clone(), "pos".into()),
         data: re_log_types::LoggedData::Batch {
             indices,
             data: pos_data,
         },
     }));
 
+    let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        id: LogId::random(),
+        time_point,
+        data_path: DataPath::new(point_path, "space".into()),
+        data: re_log_types::LoggedData::BatchSplat(Data::Space(space.into())),
+    }));
+
     Ok(())
 }
 
+/// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_tensor_u8(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>) {
-    log_tensor(obj_path, img);
+fn log_tensor_u8(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>, space: Option<String>) {
+    log_tensor(obj_path, img, space);
 }
 
+/// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_tensor_u16(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, u16>) {
-    log_tensor(obj_path, img);
+fn log_tensor_u16(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, u16>, space: Option<String>) {
+    log_tensor(obj_path, img, space);
 }
 
+/// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_tensor_f32(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, f32>) {
-    log_tensor(obj_path, img);
+fn log_tensor_f32(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, f32>, space: Option<String>) {
+    log_tensor(obj_path, img, space);
 }
 
+/// If no `space` is given, the space name "2D" will be used.
 fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, T>,
+    space: Option<String>,
 ) {
     let mut sdk = Sdk::global();
 
     let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
+    let time_point = time_point();
+
     sdk.send(LogMsg::DataMsg(DataMsg {
         id: LogId::random(),
-        time_point: time_point(),
-        data_path: DataPath::new(obj_path, "tensor".into()),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "tensor".into()),
         data: re_log_types::LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
+    }));
+
+    let space = space.unwrap_or_else(|| "2D".to_owned());
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        id: LogId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: re_log_types::LoggedData::Single(Data::Space(space.into())),
     }));
 }
 

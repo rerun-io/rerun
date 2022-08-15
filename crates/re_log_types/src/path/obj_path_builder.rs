@@ -78,6 +78,13 @@ impl From<&str> for ObjPathBuilder {
     }
 }
 
+impl From<String> for ObjPathBuilder {
+    #[inline]
+    fn from(component: String) -> Self {
+        Self::new(vec![component.into()])
+    }
+}
+
 impl From<ObjPathComp> for ObjPathBuilder {
     #[inline]
     fn from(component: ObjPathComp) -> Self {

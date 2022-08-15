@@ -147,6 +147,13 @@ impl From<&str> for ObjPath {
     }
 }
 
+impl From<String> for ObjPath {
+    #[inline]
+    fn from(component: String) -> Self {
+        Self::from(&ObjPathBuilder::from(component))
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[cfg(feature = "serde")]

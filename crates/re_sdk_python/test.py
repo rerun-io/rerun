@@ -9,16 +9,18 @@ import rerun_sdk as rerun
 
 def log(args):
     if args.connect:
+        # Send logging data to separate `rerun` process.
         rerun.connect_remote()
     else:
+        # Buffer the logging data so we can later show it with `rerun.show`
         rerun.buffer()
 
     print(rerun.info())
 
-    if False:
+    if True:
         image = cv2.imread('crates/re_viewer/data/logo_dark_mode.png',
                            cv2.IMREAD_UNCHANGED)
-        rerun.log_image("logo", image)
+        rerun.log_image("logo", image, space="rgb")
 
     if True:
         depth_img = cv2.imread('depth_image.pgm', cv2.IMREAD_UNCHANGED)
@@ -29,7 +31,7 @@ def log(args):
         w, h = 320, 240
         rerun.log_bbox("bbox", [x, y], [w, h], "Label")
 
-    if False:
+    if True:
         for i in range(64):
             angle = 6.28 * i / 64
             r = 20.0
@@ -37,7 +39,7 @@ def log(args):
             y = r * math.sin(angle) + 16.0
             rerun.log_point2d(f"point2d_{i}", x, y)
 
-    if False:
+    if True:
         positions = []
         for i in range(1000):
             angle = 6.28 * i / 64
@@ -59,7 +61,7 @@ def log(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Logs rich data using the Rerurn SDK.')
+        description='Logs rich data using the Rerun SDK.')
     parser.add_argument('--connect', dest='connect', action='store_true',
                         help='Connect to an external viewer')
     args = parser.parse_args()
