@@ -21,8 +21,7 @@ def log_points(obj_path, positions, colors=None, space=None):
     if colors is not None:
         # Rust expects colors in 0-255 uint8
         if colors.dtype in ['float32', 'float64']:
-            max = np.amax(colors)
-            if max < 1.1:
+            if np.amax(colors) < 1.1:
                 # TODO(emilk): gamma curve correction for RGB, and just *255 for alpgha
                 raise TypeError(
                     "Expected color values in 0-255 gamma range, but got color values in 0-1 range")
@@ -69,7 +68,7 @@ def log_depth_image(obj_path, image, meter=None, space=None):
 
     log_tensor(obj_path, image, space)
 
-    if meter != None:
+    if meter is not None:
         log_f32(obj_path, "meter", meter)
 
 

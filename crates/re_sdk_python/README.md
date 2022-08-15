@@ -15,15 +15,20 @@ source crates/re_sdk_python/setup_env.sh
 The Python bindings is using https://github.com/PyO3/pyo3
 
 
-## Testing
+## Building and running
 Debug build:
-``` sh
-maturin develop -m crates/re_sdk_python/Cargo.toml && RUST_LOG=debug python3 crates/re_sdk_python/test.py
+```sh
+maturin develop -m crates/re_sdk_python/Cargo.toml
 ```
 
 Release build:
-``` sh
-maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug python3 crates/re_sdk_python/test.py
+```sh
+maturin develop -m crates/re_sdk_python/Cargo.toml --release
+```
+
+Running the example code:
+```sh
+python3 crates/re_sdk_python/example.py
 ```
 
 
@@ -31,14 +36,15 @@ maturin develop -m crates/re_sdk_python/Cargo.toml --release && RUST_LOG=debug p
 First start up a viewer with a server that the SDK can connect to:
 
 ```sh
-RUST_LOG=debug cargo run -p rerun
+cargo run -p rerun
 ```
 
-Then run the test logging:
+Then build and run the test logging:
 
 Debug build:
-``` sh
-maturin develop -m crates/re_sdk_python/Cargo.toml && RUST_LOG=debug python3 crates/re_sdk_python/test.py --connect
+```sh
+maturin develop -m crates/re_sdk_python/Cargo.toml --release
+python3 crates/re_sdk_python/example.py --connect
 ```
 
 
