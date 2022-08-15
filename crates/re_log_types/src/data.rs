@@ -473,7 +473,7 @@ pub enum MeshFormat {
 // ----------------------------------------------------------------------------
 
 /// The data types supported by a [`Tensor`].
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorDataType {
     /// Commonly used for sRGB(A)
@@ -535,6 +535,10 @@ impl TensorElement {
 }
 
 /// The data types supported by a [`Tensor`].
+///
+/// NOTE: `PartialEq` takes into account _how_ the data is stored,
+/// which can be surprising! As of 2022-08-15, `PartialEq` is only used by tests.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorDataStore {

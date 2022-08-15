@@ -1,4 +1,5 @@
 #![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pufunction] need to be by value
+#![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;

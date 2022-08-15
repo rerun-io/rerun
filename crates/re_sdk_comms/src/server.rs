@@ -49,6 +49,8 @@ fn handle_client(stream: std::net::TcpStream, tx: Sender<LogMsg>) {
 }
 
 fn run_client(mut stream: std::net::TcpStream, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
+    #![allow(clippy::read_zero_byte_vec)] // false positive: https://github.com/rust-lang/rust-clippy/issues/9274
+
     use std::io::Read as _;
 
     let mut client_version = [0_u8; 2];
