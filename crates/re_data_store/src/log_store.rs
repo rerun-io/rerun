@@ -9,8 +9,13 @@ use crate::{ArcBatch, Batch, TypePathDataStore};
 
 #[derive(Default)]
 pub struct LogDataStore {
+    /// We store a copy of the data for each time source.
     store_from_time_source: IntMap<TimeSource, (TimeType, TypePathDataStore<i64>)>,
+
+    /// We store hashes instead of full paths,
+    /// so we need this to get back the full path.
     obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
+
     /// To avoid doing double-work filling in [`Self::obj_path_from_hash`].
     regiestered_batch_paths: IntMap<ObjPathHash, IntSet<IndexHash>>,
 }

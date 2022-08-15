@@ -17,11 +17,19 @@ pub(crate) struct LogDb {
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
     pub data_store: re_data_store::LogDataStore,
+
+    /// All known spaces
+    spaces: IntMap<ObjPathHash, ObjPath>,
 }
 
 impl LogDb {
     pub fn is_empty(&self) -> bool {
         self.log_messages.is_empty()
+    }
+
+    /// All known spacves, in undefined order.
+    pub fn spaces(&self) -> impl ExactSizeIterator<Item = &ObjPath> {
+        self.spaces.values()
     }
 
     pub fn add(&mut self, msg: LogMsg) {
@@ -86,6 +94,33 @@ impl LogDb {
         self.time_points.insert(&msg.time_point);
 
         self.data_tree.add_data_msg(msg);
+
+        self.register_spaces(msg);
+    }
+
+    fn register_spaces(&mut self, msg: &DataMsg) {
+        let mut register_space = |space: &ObjPath| {
+            self.spaces
+                .entry(*space.hash())
+                .or_insert_with(|| space.clone());
+        };
+
+        // This is a bit hacky, an I don't like it,
+        // but we want a single place to find all the spaces, ignoring time.
+        match &msg.data {
+            LoggedData::Single(Data::Space(space)) | LoggedData::BatchSplat(Data::Space(space)) => {
+                register_space(space);
+            }
+            LoggedData::Batch {
+                data: DataVec::Space(spaces),
+                ..
+            } => {
+                for space in spaces {
+                    register_space(space);
+                }
+            }
+            _ => {}
+        }
     }
 
     pub fn len(&self) -> usize {
