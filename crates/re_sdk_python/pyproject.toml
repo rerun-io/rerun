@@ -9,5 +9,5 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = ["opencv-python"]
-name = "rerun"
+name = "rerun_sdk"
 requires-python = ">=3.7"

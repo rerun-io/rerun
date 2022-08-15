@@ -12,7 +12,7 @@ python-source = "python"
 
 [lib]
 crate-type = ["cdylib"]
-name = "rerun" # name of the Python library
+name = "rerun_sdk" # name of the Python library
 
 
 [features]

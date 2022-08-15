@@ -8,9 +8,9 @@ use re_log_types::*;
 
 use crate::sdk::Sdk;
 
-/// The python module is called "rerun".
+/// The python module is called "rerun_sdk".
 #[pymodule]
-fn rerun(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // Log to stdout (if you run with `RUST_LOG=debug`).
     tracing_subscriber::fmt::init();
 
