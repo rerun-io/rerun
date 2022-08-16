@@ -3,30 +3,33 @@ use std::{
     net::{SocketAddr, TcpStream},
 };
 
-use re_log_types::LogMsg;
-
 /// Connect to a rerun server and send log messages.
-pub struct Client {
+pub struct TcpClient {
     addrs: Vec<SocketAddr>,
     stream: Option<TcpStream>,
 }
 
-impl Default for Client {
+impl Default for TcpClient {
     fn default() -> Self {
-        Self {
-            addrs: vec![crate::default_server_addr()],
-            stream: None,
-        }
+        Self::new(crate::default_server_addr())
     }
 }
 
-impl Client {
+impl TcpClient {
+    pub fn new(addr: SocketAddr) -> Self {
+        Self {
+            addrs: vec![addr],
+            stream: None,
+        }
+    }
+
     pub fn set_addr(&mut self, addr: SocketAddr) {
         self.addrs = vec![addr];
         self.stream = None;
     }
 
-    pub fn send(&mut self, log_msg: &LogMsg) {
+    /// blocks until it is sent
+    pub fn send(&mut self, packet: &[u8]) {
         use std::io::Write as _;
 
         if self.stream.is_none() {
@@ -60,10 +63,8 @@ impl Client {
         }
 
         if let Some(stream) = &mut self.stream {
-            let msg = crate::encode_log_msg(log_msg);
-
-            tracing::trace!("Sending a LogMsg of size {}…", msg.len());
-            if let Err(err) = stream.write(&(msg.len() as u32).to_le_bytes()) {
+            tracing::trace!("Sending a packet of size {}…", packet.len());
+            if let Err(err) = stream.write(&(packet.len() as u32).to_le_bytes()) {
                 tracing::warn!(
                     "Failed to send to Rerun server at {:?}: {err:?}",
                     self.addrs
@@ -72,7 +73,7 @@ impl Client {
                 return;
             }
 
-            if let Err(err) = stream.write(&msg) {
+            if let Err(err) = stream.write(packet) {
                 tracing::warn!(
                     "Failed to send to Rerun server at {:?}: {err:?}",
                     self.addrs

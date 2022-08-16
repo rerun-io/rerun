@@ -1,7 +1,16 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
+import atexit
 import numpy as np
 
 from .rerun_sdk import *
+
+
+def rerun_shutdown():
+    print("Shutting down rerun_sdk…")
+    flush()
+
+
+atexit.register(rerun_shutdown)
 
 print("rerun_sdk initialized")
 

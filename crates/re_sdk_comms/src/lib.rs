@@ -1,10 +1,13 @@
 //! Communications between server and viewer
 
 #[cfg(feature = "client")]
-mod client;
+pub(crate) mod tcp_client;
 
 #[cfg(feature = "client")]
-pub use client::Client;
+mod buffered_client;
+
+#[cfg(feature = "client")]
+pub use buffered_client::Client;
 
 #[cfg(feature = "server")]
 mod server;

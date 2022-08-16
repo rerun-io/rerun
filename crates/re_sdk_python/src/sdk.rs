@@ -22,6 +22,7 @@ impl Sdk {
     /// Send log data to a remote server.
     pub fn configure_remote(&mut self) {
         if !matches!(&self.sender, &Sender::Remote(_)) {
+            tracing::debug!("Connecting to remote…");
             self.sender = Sender::Remote(Default::default());
         }
     }
@@ -30,6 +31,7 @@ impl Sdk {
     #[allow(unused)] // only used with "re_viewer" feature
     pub fn configure_buffered(&mut self) {
         if !matches!(&self.sender, &Sender::Buffered(_)) {
+            tracing::debug!("Switching to buffered.");
             self.sender = Sender::Buffered(Default::default());
         }
     }
@@ -41,8 +43,9 @@ impl Sdk {
 
     /// Wait until all logged data have been sent to the remove server (if any).
     pub fn flush(&mut self) {
-        if let Sender::Remote(remote) = &mut self.sender {
-            remote.flush();
+        if let Sender::Remote(sender) = &mut self.sender {
+            tracing::debug!("Flushing remote connection…");
+            *sender = Default::default(); // TODO(emilk): flush without resetting everything
         }
     }
 
@@ -91,7 +94,7 @@ impl Default for Sender {
 impl Sender {
     pub fn send(&mut self, msg: LogMsg) {
         match self {
-            Self::Remote(client) => client.send(&msg),
+            Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
         }
     }
