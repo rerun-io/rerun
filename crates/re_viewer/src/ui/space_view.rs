@@ -1,8 +1,8 @@
 use std::ops::RangeInclusive;
 
 use egui::{Rect, Vec2};
+use itertools::Itertools as _;
 
-use itertools::Itertools;
 use re_data_store::ObjectsBySpace;
 use re_log_types::*;
 
@@ -71,11 +71,22 @@ impl SpaceView {
             .selected_objects(log_db)
             .partition_on_space();
 
+        // `objects` contain all spaces that exist in this time,
+        // but we want to show all spaces that could ever exist.
+        // Othewise we get a lot of flicker of spaces as we play back data.
+        let mut all_spaces = log_db.spaces().map(Some).collect_vec();
+        if objects.contains_key(&None) {
+            // Some objects lack a space, so they end up in the `None` space.
+            // TODO(emilk): figure this out beforehand somehow.
+            all_spaces.push(None);
+        }
+        all_spaces.sort_unstable();
+        let all_spaces = all_spaces;
+
         if false {
-            use itertools::Itertools as _;
             ui.label(format!(
                 "Spaces: {}",
-                objects.keys().sorted().map(|s| space_name(*s)).format(" ")
+                all_spaces.iter().map(|&s| space_name(s)).format(" ")
             ));
         }
 
@@ -85,7 +96,7 @@ impl SpaceView {
 
         match self.selected.clone() {
             SelectedSpace::All => {
-                self.show_all(log_db, &objects, context, ui);
+                self.show_all(log_db, &all_spaces, &objects, context, ui);
             }
             SelectedSpace::Specific(selected_space) => {
                 ui.horizontal(|ui| {
@@ -104,13 +115,13 @@ impl SpaceView {
     fn show_all(
         &mut self,
         log_db: &LogDb,
+        all_spaces: &[Option<&ObjPath>],
         objects: &ObjectsBySpace<'_>,
         context: &mut ViewerContext,
         ui: &mut egui::Ui,
     ) {
-        let space_infos = objects
-            .keys()
-            .sorted()
+        let space_infos = all_spaces
+            .iter()
             .map(|opt_space_path| {
                 let size = self
                     .state_2d

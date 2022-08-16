@@ -41,9 +41,7 @@ cargo deny check
 # ----------------
 # Python SDK:
 
-python3 -m venv env
-source env/bin/activate
-python3 -m pip install -r crates/re_sdk_python/requirements.txt
+source crates/re_sdk_python/setup_env.sh
 maturin build -m crates/re_sdk_python/Cargo.toml
 
 # -----------------

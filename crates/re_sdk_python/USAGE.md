@@ -15,25 +15,10 @@ The first argument to each log function is the object name. This needs to be uni
 ```python
 import rerun_sdk as rerun
 
-# Logging an image is easy:
 rerun.log_image("rgb_image", image)
-
-# If you are using e.g. `dtype=uin16`, this says that the resolution is 0.1 mm (1m / 10000).
-# If you are using `dtype=f64` and you are already using SI units, use `meter=1`.
-rerun.log_depth_image("depth_image", depth_image, meter=10_000)
-
-# Log a rectangle (2D bounding box).
-# `label` is an optional text that will be shown in the box.
-x, y = 200.0, 50.0
-w, h = 320, 240
-rerun.log_bbox("object", [x, y], [w, h], label="Blue car at 20m")
-
-# Points are logged as an array of positions (2D vs 3D), together with optional colors.
-# The positions need to have `shape=[N, 2]` (2D) or `shape=[N, 3]` (3D).
-# The colors should be shaped `[N, 4]` (RGBA).
-# If you you pass in exactly one color (`shape=[1, 4]`), the same color will be used for all points.
-rerun.log_points(f"point_cloud", positions, colors)
 ```
+
+See more in [`example.py`](./example.py).
 
 ## Inline viewer
 If you prefer, you can open the viewer directly from Python (blocking the Python process).

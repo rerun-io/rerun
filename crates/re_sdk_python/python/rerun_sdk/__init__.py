@@ -1,9 +1,42 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
+import atexit
 import numpy as np
 
-from .rerun_sdk import *
+from . import rerun_sdk as rerun_rs
 
-print("rerun_sdk initialized")
+
+def rerun_shutdown():
+    rerun_rs.flush()
+
+
+atexit.register(rerun_shutdown)
+
+
+def connect(addr=None):
+    """ Connect to a remote rerun viewer on the given ip:port. """
+    return rerun_rs.connect(addr)
+
+
+def disconnect():
+    return rerun_rs.disconnect()
+
+
+def info():
+    return rerun_rs.info()
+
+
+def log_bbox(
+    obj_path,
+    left_top,
+    width_height,
+    label=None,
+    space=None,
+):
+    rerun_rs.log_bbox(obj_path,
+                      left_top,
+                      width_height,
+                      label,
+                      space)
 
 
 def log_points(obj_path, positions, colors=None, space=None):
@@ -21,8 +54,7 @@ def log_points(obj_path, positions, colors=None, space=None):
     if colors is not None:
         # Rust expects colors in 0-255 uint8
         if colors.dtype in ['float32', 'float64']:
-            max = np.amax(colors)
-            if max < 1.1:
+            if np.amax(colors) < 1.1:
                 # TODO(emilk): gamma curve correction for RGB, and just *255 for alpgha
                 raise TypeError(
                     "Expected color values in 0-255 gamma range, but got color values in 0-1 range")
@@ -32,7 +64,7 @@ def log_points(obj_path, positions, colors=None, space=None):
 
     positions.astype('float32')
 
-    log_points_rs(obj_path, positions, colors, space)
+    rerun_rs.log_points_rs(obj_path, positions, colors, space)
 
 
 def log_image(obj_path, image, space=None):
@@ -69,8 +101,8 @@ def log_depth_image(obj_path, image, meter=None, space=None):
 
     log_tensor(obj_path, image, space)
 
-    if meter != None:
-        log_f32(obj_path, "meter", meter)
+    if meter is not None:
+        rerun_rs.log_f32(obj_path, "meter", meter)
 
 
 def log_tensor(obj_path, image, space=None):
@@ -78,12 +110,12 @@ def log_tensor(obj_path, image, space=None):
     If no `space` is given, the space name "2D" will be used.
     """
     if image.dtype == 'uint8':
-        log_tensor_u8(obj_path, image, space)
+        rerun_rs.log_tensor_u8(obj_path, image, space)
     elif image.dtype == 'uint16':
-        log_tensor_u16(obj_path, image, space)
+        rerun_rs.log_tensor_u16(obj_path, image, space)
     elif image.dtype == 'float32':
-        log_tensor_f32(obj_path, image, space)
+        rerun_rs.log_tensor_f32(obj_path, image, space)
     elif image.dtype == 'float64':
-        log_tensor_f32(obj_path, image.astype('float32'), space)
+        rerun_rs.log_tensor_f32(obj_path, image.astype('float32'), space)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")

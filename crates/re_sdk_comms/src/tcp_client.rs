@@ -3,82 +3,89 @@ use std::{
     net::{SocketAddr, TcpStream},
 };
 
-use re_log_types::LogMsg;
-
 /// Connect to a rerun server and send log messages.
-pub struct Client {
+pub struct TcpClient {
     addrs: Vec<SocketAddr>,
     stream: Option<TcpStream>,
 }
 
-impl Default for Client {
+impl Default for TcpClient {
     fn default() -> Self {
-        Self {
-            addrs: vec![crate::default_server_addr()],
-            stream: None,
-        }
+        Self::new(crate::default_server_addr())
     }
 }
 
-impl Client {
-    pub fn set_addr(&mut self, addr: SocketAddr) {
-        self.addrs = vec![addr];
-        self.stream = None;
+impl TcpClient {
+    pub fn new(addr: SocketAddr) -> Self {
+        Self {
+            addrs: vec![addr],
+            stream: None,
+        }
     }
 
-    pub fn send(&mut self, log_msg: &LogMsg) {
-        use std::io::Write as _;
+    pub fn set_addr(&mut self, addr: SocketAddr) {
+        let addrs = vec![addr];
+        if addrs != self.addrs {
+            self.addrs = addrs;
+            self.stream = None;
+        }
+    }
 
-        if self.stream.is_none() {
+    /// return `false` on failure. Does nothing if already connected.
+    pub fn connect(&mut self) -> anyhow::Result<()> {
+        if self.stream.is_some() {
+            Ok(())
+        } else {
+            tracing::debug!("Connecting to {:?}…", self.addrs);
             match TcpStream::connect(&self.addrs[..]) {
                 Ok(mut stream) => {
-                    // `set_nonblocking(true)` will make the messages not all arrive, which is bad.
-                    // stream
-                    //     .set_nonblocking(true)
-                    //     .expect("set_nonblocking call failed");
-
-                    // stream
-                    //     .set_nodelay(true)
-                    //     .expect("Couldn't disable Nagle's algorithm");
-
                     if let Err(err) = stream.write(&crate::PROTOCOL_VERSION.to_le_bytes()) {
-                        tracing::warn!(
+                        anyhow::bail!(
                             "Failed to send to Rerun server at {:?}: {err:?}",
                             self.addrs
                         );
                     } else {
                         self.stream = Some(stream);
+                        Ok(())
                     }
                 }
                 Err(err) => {
-                    tracing::warn!(
+                    anyhow::bail!(
                         "Failed to connect to Rerun server at {:?}: {err:?}",
                         self.addrs
                     );
                 }
             }
         }
+    }
+
+    /// blocks until it is sent
+    pub fn send(&mut self, packet: &[u8]) -> anyhow::Result<()> {
+        use std::io::Write as _;
+
+        self.connect()?;
 
         if let Some(stream) = &mut self.stream {
-            let msg = crate::encode_log_msg(log_msg);
-
-            tracing::trace!("Sending a LogMsg of size {}…", msg.len());
-            if let Err(err) = stream.write(&(msg.len() as u32).to_le_bytes()) {
-                tracing::warn!(
+            tracing::trace!("Sending a packet of size {}…", packet.len());
+            if let Err(err) = stream.write(&(packet.len() as u32).to_le_bytes()) {
+                self.stream = None;
+                anyhow::bail!(
                     "Failed to send to Rerun server at {:?}: {err:?}",
                     self.addrs
                 );
-                self.stream = None;
-                return;
             }
 
-            if let Err(err) = stream.write(&msg) {
-                tracing::warn!(
+            if let Err(err) = stream.write(packet) {
+                self.stream = None;
+                anyhow::bail!(
                     "Failed to send to Rerun server at {:?}: {err:?}",
                     self.addrs
                 );
-                self.stream = None;
             }
+
+            Ok(())
+        } else {
+            unreachable!("self.connect should have ensured this");
         }
     }
 
