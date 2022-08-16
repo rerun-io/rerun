@@ -49,7 +49,7 @@ fn main() {
     });
 
     tracing::debug!("Starting viewer…");
-    re_viewer::run_native_viewer(rerun_rx);
+    re_viewer::run_native_viewer_with_rx(rerun_rx);
     handle.join().ok();
 }
 

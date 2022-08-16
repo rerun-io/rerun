@@ -18,7 +18,7 @@ pub use remote_viewer_app::RemoteViewerApp;
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
 #[cfg(not(target_arch = "wasm32"))]
-pub use native::run_native_viewer;
+pub use native::*;
 
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub use misc::profiler::Profiler;
@@ -55,6 +55,6 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
-pub fn customize_egui(_ctx: &egui::Context) {
+pub(crate) fn customize_egui(_ctx: &egui::Context) {
     // perhaps we want to use a different font, or change the theme
 }

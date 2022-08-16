@@ -2,11 +2,13 @@ use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
 
-pub fn run_native_viewer(rx: Receiver<LogMsg>) {
+pub fn run_native_app(app_creator: eframe::AppCreator) {
     let native_options = eframe::NativeOptions {
         depth_buffer: 24,
         multisampling: 8,
         initial_window_size: Some([1600.0, 1200.0].into()),
+        follow_system_theme: false,
+        default_theme: eframe::Theme::Dark,
         ..Default::default()
     };
 
@@ -15,10 +17,16 @@ pub fn run_native_viewer(rx: Receiver<LogMsg>) {
         native_options,
         Box::new(move |cc| {
             crate::customize_egui(&cc.egui_ctx);
-            let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            Box::new(crate::App::from_receiver(cc.storage, rx))
+            app_creator(cc)
         }),
     );
+}
+
+pub fn run_native_viewer_with_rx(rx: Receiver<LogMsg>) {
+    run_native_app(Box::new(move |cc| {
+        let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
+        Box::new(crate::App::from_receiver(cc.storage, rx))
+    }));
 }
 
 fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(

@@ -25,7 +25,7 @@ re_string_interner = { path = "../re_string_interner" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 # We use bleeding edge egui, from 2022-08-15
-eframe      = { git = "https://github.com/emilk/egui", rev = "48e7f219a3aaa43084d042590b2871c01415e642", features = ["persistence"] }
+eframe      = { git = "https://github.com/emilk/egui", rev = "48e7f219a3aaa43084d042590b2871c01415e642", default-features = false, features = ["default_fonts", "glow", "persistence"] }
 egui        = { git = "https://github.com/emilk/egui", rev = "48e7f219a3aaa43084d042590b2871c01415e642", features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { git = "https://github.com/emilk/egui", rev = "48e7f219a3aaa43084d042590b2871c01415e642", features = ["tracing"] }
 egui_glow   = { git = "https://github.com/emilk/egui", rev = "48e7f219a3aaa43084d042590b2871c01415e642" }

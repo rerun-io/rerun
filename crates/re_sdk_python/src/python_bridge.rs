@@ -92,7 +92,7 @@ fn show() {
             for log_msg in log_messages {
                 tx.send(log_msg).ok();
             }
-            re_viewer::run_native_viewer(rx);
+            re_viewer::run_native_viewer_with_rx(rx);
         }
     }
 }
