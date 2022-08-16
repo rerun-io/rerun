@@ -30,9 +30,6 @@ enum PacketMsg {
 pub struct Client {
     msg_tx: Sender<MsgMsg>,
     flushed_rx: Receiver<FlushedMsg>,
-    // For prematurely aborting.
-    encode_quit_tx: Sender<QuitMsg>,
-    send_quit_tx: Sender<QuitMsg>,
 }
 
 impl Default for Client {
@@ -57,7 +54,7 @@ impl Client {
                 msg_encode(&msg_rx, &encode_quit_rx, &packet_tx);
                 tracing::debug!("Shutting down msg encoder thread");
             })
-            .expect("Failed to spanw thread");
+            .expect("Failed to spawn thread");
 
         std::thread::Builder::new()
             .name("tcp_sender".into())
@@ -65,14 +62,16 @@ impl Client {
                 tcp_sender(addr, &packet_rx, &send_quit_rx, &flushed_tx);
                 tracing::debug!("Shutting down TCP sender thread");
             })
-            .expect("Failed to spanw thread");
+            .expect("Failed to spawn thread");
 
-        Self {
-            msg_tx,
-            flushed_rx,
-            encode_quit_tx,
-            send_quit_tx,
-        }
+        ctrlc::set_handler(move || {
+            tracing::debug!("Ctrl-C detected - Aborting before everything has been sent");
+            encode_quit_tx.send(QuitMsg).ok();
+            send_quit_tx.send(QuitMsg).ok();
+        })
+        .expect("Error setting Ctrl-C handler");
+
+        Self { msg_tx, flushed_rx }
     }
 
     pub fn set_addr(&mut self, addr: SocketAddr) {
@@ -101,8 +100,8 @@ impl Client {
                 tracing::debug!("Flush complete.");
             }
             Err(_) => {
-                // This should really never happen
-                tracing::error!("Failed to flush pipeline");
+                // This can happen on Ctrl-C
+                tracing::warn!("Failed to flush pipeline - not all messages were sent (Ctrl-C).");
             }
         }
     }
