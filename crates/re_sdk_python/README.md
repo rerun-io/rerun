@@ -16,12 +16,7 @@ The Python bindings is using https://github.com/PyO3/pyo3
 
 
 ## Building and running
-Debug build:
-```sh
-maturin develop -m crates/re_sdk_python/Cargo.toml
-```
-
-Release build:
+Build:
 ```sh
 maturin develop -m crates/re_sdk_python/Cargo.toml --release
 ```
@@ -48,5 +43,20 @@ python3 crates/re_sdk_python/example.py --connect
 ```
 
 
-# TODO
-* [ ] Add type annotations and use MyPy
+## Installing the Rerun Python SDK
+
+First build it:
+```
+source crates/re_sdk_python/setup_env.sh
+maturin build -m ./crates/re_sdk_python/Cargo.toml --release
+```
+
+Now you can install `rerun_sdk` in any Python3 environment using:
+
+```
+pip3 install PATH_TO_RERUN_REPOSITORY/target/wheels/*.whl
+```
+
+
+## Troubleshooting
+You can run with `RUST_LOG=debug` to get more output out of the rerun SDK.
