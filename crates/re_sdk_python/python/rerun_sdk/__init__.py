@@ -2,17 +2,36 @@
 import atexit
 import numpy as np
 
-from .rerun_sdk import *
+from . import rerun_sdk as rerun_rs
 
 
 def rerun_shutdown():
-    print("Shutting down rerun_sdk…")
-    flush()
+    rerun_rs.flush()
 
 
 atexit.register(rerun_shutdown)
 
-print("rerun_sdk initialized")
+
+def connect_remote():
+    return rerun_rs.connect_remote()
+
+
+def info():
+    return rerun_rs.info()
+
+
+def log_bbox(
+    obj_path,
+    left_top,
+    width_height,
+    label=None,
+    space=None,
+):
+    rerun_rs.log_bbox(obj_path,
+                      left_top,
+                      width_height,
+                      label,
+                      space)
 
 
 def log_points(obj_path, positions, colors=None, space=None):
@@ -40,7 +59,7 @@ def log_points(obj_path, positions, colors=None, space=None):
 
     positions.astype('float32')
 
-    log_points_rs(obj_path, positions, colors, space)
+    rerun_rs.log_points_rs(obj_path, positions, colors, space)
 
 
 def log_image(obj_path, image, space=None):
@@ -78,7 +97,7 @@ def log_depth_image(obj_path, image, meter=None, space=None):
     log_tensor(obj_path, image, space)
 
     if meter is not None:
-        log_f32(obj_path, "meter", meter)
+        rerun_rs.log_f32(obj_path, "meter", meter)
 
 
 def log_tensor(obj_path, image, space=None):
@@ -86,12 +105,12 @@ def log_tensor(obj_path, image, space=None):
     If no `space` is given, the space name "2D" will be used.
     """
     if image.dtype == 'uint8':
-        log_tensor_u8(obj_path, image, space)
+        rerun_rs.log_tensor_u8(obj_path, image, space)
     elif image.dtype == 'uint16':
-        log_tensor_u16(obj_path, image, space)
+        rerun_rs.log_tensor_u16(obj_path, image, space)
     elif image.dtype == 'float32':
-        log_tensor_f32(obj_path, image, space)
+        rerun_rs.log_tensor_f32(obj_path, image, space)
     elif image.dtype == 'float64':
-        log_tensor_f32(obj_path, image.astype('float32'), space)
+        rerun_rs.log_tensor_f32(obj_path, image.astype('float32'), space)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")

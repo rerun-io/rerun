@@ -44,8 +44,7 @@ impl Sdk {
     /// Wait until all logged data have been sent to the remove server (if any).
     pub fn flush(&mut self) {
         if let Sender::Remote(sender) = &mut self.sender {
-            tracing::debug!("Flushing remote connection…");
-            *sender = Default::default(); // TODO(emilk): flush without resetting everything
+            sender.flush();
         }
     }
 
