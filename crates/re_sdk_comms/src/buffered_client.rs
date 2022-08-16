@@ -26,7 +26,7 @@ enum PacketMsg {
 /// Send [`LogMsg`]es to a server.
 ///
 /// The messages are encoded and sent on separate threads
-/// so that calling [`BufferedClient::send`] is non-blocking.
+/// so that calling [`Client::send`] is non-blocking.
 pub struct Client {
     msg_tx: Sender<MsgMsg>,
     flushed_rx: Receiver<FlushedMsg>,

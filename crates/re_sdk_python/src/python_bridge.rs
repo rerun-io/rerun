@@ -59,8 +59,8 @@ fn flush() {
 
 /// Disconnect from remote server (if any).
 ///
-/// Subsequent log messages will be buffered and either sent on the next call to [`connect`],
-/// or shown with [`show`].
+/// Subsequent log messages will be buffered and either sent on the next call to `connect`,
+/// or shown with `show`.
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
 fn disconnect() {
