@@ -84,14 +84,15 @@ if __name__ == '__main__':
         description='Logs rich data using the Rerun SDK.')
     parser.add_argument('--connect', dest='connect', action='store_true',
                         help='Connect to an external viewer')
+    parser.add_argument('--addr', type=str, default=None,
+                        help='Connect to this ip:port')
     args = parser.parse_args()
 
     if args.connect:
         # Send logging data to separate `rerun` process.
-        rerun.connect_remote()
-    else:
-        # Buffer the logging data so we can later show it with `rerun.show`
-        rerun.buffer()
+        # You can ommit the argument to connect to the default address,
+        # which is `127.0.0.1:9876`.
+        rerun.connect(args.addr)
 
     print(rerun.info())
 

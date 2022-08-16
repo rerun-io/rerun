@@ -50,7 +50,7 @@ impl Client {
                     let packet_msg = match msg_msg {
                         MsgMsg::LogMsg(log_msg) => {
                             let packet = crate::encode_log_msg(&log_msg);
-                            tracing::debug!("Encoded message of size {}", packet.len());
+                            tracing::trace!("Encoded message of size {}", packet.len());
                             PacketMsg::Packet(packet)
                         }
                         MsgMsg::SetAddr(new_addr) => PacketMsg::SetAddr(new_addr),

@@ -15,12 +15,12 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     tracing_subscriber::fmt::init();
 
     m.add_function(wrap_pyfunction!(info, m)?)?;
-    m.add_function(wrap_pyfunction!(connect_remote, m)?)?;
+    m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
 
     #[cfg(feature = "re_viewer")]
     {
-        m.add_function(wrap_pyfunction!(buffer, m)?)?;
+        m.add_function(wrap_pyfunction!(disconnect, m)?)?;
         m.add_function(wrap_pyfunction!(show, m)?)?;
     }
 
@@ -41,8 +41,14 @@ fn info() -> String {
 }
 
 #[pyfunction]
-fn connect_remote() {
-    Sdk::global().configure_remote();
+fn connect(addr: Option<String>) -> PyResult<()> {
+    let addr = if let Some(addr) = addr {
+        addr.parse()?
+    } else {
+        re_sdk_comms::default_server_addr()
+    };
+    Sdk::global().connect(addr);
+    Ok(())
 }
 
 /// Wait until all logged data have been sent to the remove server (if any).
@@ -51,12 +57,14 @@ fn flush() {
     Sdk::global().flush();
 }
 
-/// Call this first to tell Rerun to buffer the log data so it can be shown
-/// later with `show()`.
+/// Disconnect from remote server (if any).
+///
+/// Subsequent log messages will be buffered and either sent on the next call to [`connect`],
+/// or shown with [`show`].
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
-fn buffer() {
-    Sdk::global().configure_buffered();
+fn disconnect() {
+    Sdk::global().disconnect();
 }
 
 /// Show the buffered log data.
@@ -69,18 +77,23 @@ fn buffer() {
 #[pyfunction]
 fn show() {
     let mut sdk = Sdk::global();
-    if sdk.is_buffered() {
-        let log_messages = sdk.drain_log_messages();
-        drop(sdk);
-        let (tx, rx) = std::sync::mpsc::channel();
-        for log_msg in log_messages {
-            tx.send(log_msg).ok();
-        }
-        re_viewer::run_native_viewer(rx);
-    } else {
+    if sdk.is_connected() {
         tracing::error!(
             "Can't show the log messages of Rerun: it was configured to send the data to a server!"
         );
+    } else {
+        let log_messages = sdk.drain_log_messages_buffer();
+        drop(sdk);
+
+        if log_messages.is_empty() {
+            tracing::info!("Nothing logged, so nothing to show");
+        } else {
+            let (tx, rx) = std::sync::mpsc::channel();
+            for log_msg in log_messages {
+                tx.send(log_msg).ok();
+            }
+            re_viewer::run_native_viewer(rx);
+        }
     }
 }
 

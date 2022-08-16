@@ -12,8 +12,13 @@ def rerun_shutdown():
 atexit.register(rerun_shutdown)
 
 
-def connect_remote():
-    return rerun_rs.connect_remote()
+def connect(addr=None):
+    """ Connect to a remote rerun viewer on the given ip:port. """
+    return rerun_rs.connect(addr)
+
+
+def disconnect():
+    return rerun_rs.disconnect()
 
 
 def info():

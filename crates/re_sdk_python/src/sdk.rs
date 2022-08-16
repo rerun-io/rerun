@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use re_log_types::{LogId, LogMsg, ObjTypePath, ObjectType, TypeMsg};
 
 #[derive(Default)]
@@ -20,16 +22,25 @@ impl Sdk {
     }
 
     /// Send log data to a remote server.
-    pub fn configure_remote(&mut self) {
-        if !matches!(&self.sender, &Sender::Remote(_)) {
-            tracing::debug!("Connecting to remote…");
-            self.sender = Sender::Remote(Default::default());
+    pub fn connect(&mut self, addr: SocketAddr) {
+        match &mut self.sender {
+            Sender::Remote(remote) => {
+                remote.set_addr(addr);
+            }
+            Sender::Buffered(messages) => {
+                tracing::debug!("Connecting to remote…");
+                let mut client = re_sdk_comms::Client::new(addr);
+                for msg in messages.drain(..) {
+                    client.send(msg);
+                }
+                self.sender = Sender::Remote(client);
+            }
         }
     }
 
     #[cfg(feature = "re_viewer")]
     #[allow(unused)] // only used with "re_viewer" feature
-    pub fn configure_buffered(&mut self) {
+    pub fn disconnect(&mut self) {
         if !matches!(&self.sender, &Sender::Buffered(_)) {
             tracing::debug!("Switching to buffered.");
             self.sender = Sender::Buffered(Default::default());
@@ -37,8 +48,8 @@ impl Sdk {
     }
 
     #[cfg(feature = "re_viewer")]
-    pub fn is_buffered(&self) -> bool {
-        matches!(&self.sender, &Sender::Buffered(_))
+    pub fn is_connected(&self) -> bool {
+        matches!(&self.sender, &Sender::Remote(_))
     }
 
     /// Wait until all logged data have been sent to the remove server (if any).
@@ -49,7 +60,7 @@ impl Sdk {
     }
 
     #[cfg(feature = "re_viewer")]
-    pub fn drain_log_messages(&mut self) -> Vec<LogMsg> {
+    pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
             Sender::Buffered(log_messages) => std::mem::take(log_messages),
@@ -86,7 +97,7 @@ enum Sender {
 
 impl Default for Sender {
     fn default() -> Self {
-        Sender::Remote(Default::default())
+        Sender::Buffered(vec![])
     }
 }
 
