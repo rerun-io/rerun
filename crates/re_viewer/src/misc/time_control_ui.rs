@@ -13,11 +13,11 @@ impl TimeControl {
         self.select_a_valid_time_source(time_source_axes);
 
         egui::ComboBox::from_id_source("time_source")
-            .selected_text(self.source().as_str())
+            .selected_text(self.source().name().as_str())
             .show_ui(ui, |ui| {
                 for source in time_source_axes.0.keys() {
                     if ui
-                        .selectable_label(source == self.source(), source.as_str())
+                        .selectable_label(source == self.source(), source.name().as_str())
                         .clicked()
                     {
                         self.set_source(*source);

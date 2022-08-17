@@ -42,7 +42,7 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
 
 fn configure_world_space(logger: &Logger<'_>) {
     // TODO(emilk): what time point should we use?
-    let time_point = time_point([("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0)))]);
+    let time_point = time_point([("time", Time::from_seconds_since_epoch(0.0).into())]);
     logger.log(data_msg(
         &time_point,
         ObjPath::from("world"),
@@ -67,8 +67,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
 
     {
         // TODO(emilk): better way to do "forever and always"
-        let time_point =
-            time_point([("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0)))]);
+        let time_point = time_point([("time", Time::from_seconds_since_epoch(0.0).into())]);
 
         logger.log(data_msg(
             &time_point,
@@ -103,7 +102,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
             let file_name_parts = file_name.split('-').collect_vec();
             let time = file_name_parts[file_name_parts.len() - 2];
             let time = Time::from_seconds_since_epoch(time.parse().unwrap());
-            let time_point = time_point([("time", TimeValue::Time(time))]);
+            let time_point = time_point([("time", time.into())]);
 
             if file_name.ends_with(".ppm") {
                 let image = image::load_from_memory(&file_contents).unwrap().into_rgb8();

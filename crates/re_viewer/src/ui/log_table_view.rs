@@ -55,7 +55,7 @@ pub(crate) fn message_table(
             });
             for time_source in log_db.time_points.0.keys() {
                 header.col(|ui| {
-                    ui.heading(time_source.as_str());
+                    ui.heading(time_source.name().as_str());
                 });
             }
             header.col(|ui| {

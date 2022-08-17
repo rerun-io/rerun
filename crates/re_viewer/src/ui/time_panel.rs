@@ -1117,7 +1117,7 @@ impl Default for TimeRangesUi {
         Self {
             x_range: 0.0..=1.0,
             time_view: TimeView {
-                min: TimeValue::Sequence(0),
+                min: TimeValue::sequence(0),
                 time_spanned: 1.0,
             },
             segments: vec![],

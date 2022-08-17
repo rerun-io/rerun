@@ -25,16 +25,16 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use egui::emath;
 
-use re_log_types::{TimePoint, TimeValue};
+use re_log_types::{TimePoint, TimeSource, TimeValue};
 
 /// An aggregate of `TimePoint`:s.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct TimePoints(pub BTreeMap<re_log_types::TimeSource, BTreeSet<TimeValue>>);
+pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeValue>>);
 
 impl TimePoints {
     pub fn insert(&mut self, time_point: &TimePoint) {
-        for (time_key, value) in &time_point.0 {
-            self.0.entry(*time_key).or_default().insert(*value);
+        for (time_source, value) in &time_point.0 {
+            self.0.entry(*time_source).or_default().insert(*value);
         }
     }
 }
