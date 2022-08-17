@@ -24,6 +24,10 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         m.add_function(wrap_pyfunction!(show, m)?)?;
     }
 
+    m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
+    m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
+    m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
+
     m.add_function(wrap_pyfunction!(log_bbox, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
 
@@ -95,6 +99,33 @@ fn show() {
     }
 }
 
+/// Set the current time globally. Used for all subsequent logging,
+/// until the next call to `set_time_sequence`.
+///
+/// For instance: `set_time_sequence("frame_nr", frame_nr)`.
+///
+/// You can remove a time source again using `set_time_sequence("frame_nr", None)`.
+#[pyfunction]
+fn set_time_sequence(time_source: &str, sequence: Option<i64>) {
+    Sdk::global().set_time(time_source.into(), sequence.map(TimeValue::Sequence));
+}
+
+#[pyfunction]
+fn set_time_seconds(time_source: &str, seconds: Option<f64>) {
+    Sdk::global().set_time(
+        time_source.into(),
+        seconds.map(|secs| TimeValue::Time(Time::from_seconds_since_epoch(secs))),
+    );
+}
+
+#[pyfunction]
+fn set_time_nanos(time_source: &str, ns: Option<i64>) {
+    Sdk::global().set_time(
+        time_source.into(),
+        ns.map(|ns| TimeValue::Time(Time::from_ns_since_epoch(ns))),
+    );
+}
+
 /// Log a 2D bounding box.
 ///
 /// Optionally give it a label.
@@ -117,7 +148,7 @@ fn log_bbox(
     let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
-    let time_point = time_point();
+    let time_point = sdk.now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         id: LogId::random(),
@@ -191,7 +222,7 @@ fn log_points_rs(
 
     let indices: Vec<_> = (0..num_pos).map(|i| Index::Sequence(i as _)).collect();
 
-    let time_point = time_point();
+    let time_point = sdk.now();
 
     if !colors.is_empty() {
         let num_colors = match colors.shape() {
@@ -336,7 +367,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
-    let time_point = time_point();
+    let time_point = sdk.now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         id: LogId::random(),
@@ -361,14 +392,6 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
             data: LoggedData::Single(Data::F32(meter)),
         }));
     }
-}
-
-fn time_point() -> TimePoint {
-    let mut time_point = TimePoint::default();
-    time_point
-        .0
-        .insert("log_time".into(), TimeValue::Time(Time::now()));
-    time_point
 }
 
 fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(

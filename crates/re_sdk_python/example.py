@@ -45,6 +45,10 @@ def log(args):
     depth_images = [generate_depth_image(i) for i in range(NUM_FRAMES)]
 
     for frame_nr in range(NUM_FRAMES):
+        # This will assign logged objects a "time source" called `frame_nr`.
+        # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
+        rerun.set_time_sequence("frame_nr", frame_nr)
+
         # The depth image is in millimeters, so we set meter=1000
         depth_image = depth_images[frame_nr]
         rerun.log_depth_image("depth", depth_image, meter=1000)

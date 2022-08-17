@@ -1,6 +1,8 @@
 use std::net::SocketAddr;
 
-use re_log_types::{LogId, LogMsg, ObjTypePath, ObjectType, TypeMsg};
+use re_log_types::{
+    LogId, LogMsg, ObjTypePath, ObjectType, Time, TimePoint, TimeSource, TimeValue, TypeMsg,
+};
 
 #[derive(Default)]
 pub struct Sdk {
@@ -9,6 +11,9 @@ pub struct Sdk {
 
     // TODO(emilk): just store `ObjTypePathHash`
     registered_types: nohash_hasher::IntMap<ObjTypePath, ObjectType>,
+
+    /// The current time, which can be set by users.
+    time_point: TimePoint,
 }
 
 impl Sdk {
@@ -85,6 +90,22 @@ impl Sdk {
 
     pub fn send(&mut self, log_msg: LogMsg) {
         self.sender.send(log_msg);
+    }
+
+    pub fn now(&self) -> TimePoint {
+        let mut time_point = self.time_point.clone();
+        time_point
+            .0
+            .insert("log_time".into(), TimeValue::Time(Time::now()));
+        time_point
+    }
+
+    pub fn set_time(&mut self, time_source: TimeSource, time_value: Option<TimeValue>) {
+        if let Some(time_value) = time_value {
+            self.time_point.0.insert(time_source, time_value);
+        } else {
+            self.time_point.0.remove(&time_source);
+        }
     }
 }
 

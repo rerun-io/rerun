@@ -12,6 +12,11 @@ def rerun_shutdown():
 atexit.register(rerun_shutdown)
 
 
+# TODO(emilk): remove the forwarded calls below and just import them from the rust library
+# (which already has documentation etc).
+# I couldn't figure out how to get Python to do this, because Python imports confuses me.
+
+
 def connect(addr=None):
     """ Connect to a remote rerun viewer on the given ip:port. """
     return rerun_rs.connect(addr)
@@ -27,6 +32,52 @@ def info():
 
 def show():
     return rerun_rs.show()
+
+
+def set_time_sequence(time_source, sequence):
+    """
+    Set the current time globally. Used for all subsequent logging,
+    until the next call to `set_time_sequence`.
+
+    For instance: `set_time_sequence("frame_nr", frame_nr)`.
+
+    You can remove a time source again using `set_time_sequence("frame_nr", None)`.
+    """
+    return rerun_rs.set_time_sequence(time_source, sequence)
+
+
+def set_time_seconds(time_source, seconds):
+    """
+    Set the current time globally. Used for all subsequent logging,
+    until the next call to `set_time_seconds`.
+
+    For instance: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
+
+    You can remove a time source again using `set_time_seconds("capture_time", None)`.
+
+    The argument should be in seconds, and should be measured either from the
+    unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
+
+    The rerun_sdk has a built-in time which is `log_time`, and is logged as seconds since unix epoch.
+    """
+    return rerun_rs.set_time_seconds(time_source, seconds)
+
+
+def set_time_nanos(time_source, nanos):
+    """
+    Set the current time globally. Used for all subsequent logging,
+    until the next call to `set_time_nanos`.
+
+    For instance: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
+
+    You can remove a time source again using `set_time_nanos("capture_time", None)`.
+
+    The argument should be in nanoseconds, and should be measured either from the
+    unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
+
+    The rerun_sdk has a built-in time which is `log_time`, and is logged as nanos since unix epoch.
+    """
+    return rerun_rs.set_time_nanos(time_source, nanos)
 
 
 def log_bbox(
