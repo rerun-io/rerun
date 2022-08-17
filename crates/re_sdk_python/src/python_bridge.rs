@@ -107,14 +107,14 @@ fn show() {
 /// You can remove a time source again using `set_time_sequence("frame_nr", None)`.
 #[pyfunction]
 fn set_time_sequence(time_source: &str, sequence: Option<i64>) {
-    Sdk::global().set_time(time_source.into(), sequence.map(TimeValue::Sequence));
+    Sdk::global().set_time(time_source.into(), sequence.map(TimeValue::sequence));
 }
 
 #[pyfunction]
 fn set_time_seconds(time_source: &str, seconds: Option<f64>) {
     Sdk::global().set_time(
         time_source.into(),
-        seconds.map(|secs| TimeValue::Time(Time::from_seconds_since_epoch(secs))),
+        seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
     );
 }
 
@@ -122,7 +122,7 @@ fn set_time_seconds(time_source: &str, seconds: Option<f64>) {
 fn set_time_nanos(time_source: &str, ns: Option<i64>) {
     Sdk::global().set_time(
         time_source.into(),
-        ns.map(|ns| TimeValue::Time(Time::from_ns_since_epoch(ns))),
+        ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
     );
 }
 

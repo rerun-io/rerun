@@ -62,8 +62,8 @@ fn configure_world_space(logger: &Logger<'_>) {
     let world_space = ObjPath::from("world");
     // TODO(emilk): what time point should we use?
     let time_point = time_point([
-        ("frame", TimeValue::Sequence(0)),
-        ("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0))),
+        ("frame", TimeValue::sequence(0)),
+        ("time", TimeValue::time(Time::from_seconds_since_epoch(0.0))),
     ]);
     logger.log(data_msg(
         &time_point,
@@ -88,8 +88,8 @@ fn log_annotation_pbdata(
     for object in &sequence.objects {
         // TODO(emilk): what time point should we use?
         let time_point = time_point([
-            ("frame", TimeValue::Sequence(0)),
-            ("time", TimeValue::Time(Time::from_seconds_since_epoch(0.0))),
+            ("frame", TimeValue::sequence(0)),
+            ("time", TimeValue::time(Time::from_seconds_since_epoch(0.0))),
         ]);
 
         let data_path = ObjPathBuilder::from("objects") / Index::Integer(object.id as _);
@@ -131,8 +131,8 @@ fn log_annotation_pbdata(
         // let time = Time::from_seconds_since_epoch(frame_annotation.timestamp); // this is always zero :(
         let time = frame_times[frame_idx as usize];
         let time_point = time_point([
-            ("frame", TimeValue::Sequence(frame_idx)),
-            ("time", TimeValue::Time(time)),
+            ("frame", TimeValue::sequence(frame_idx)),
+            ("time", TimeValue::time(time)),
         ]);
 
         for object_annotation in &frame_annotation.annotations {
@@ -245,8 +245,8 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
         let time = Time::from_seconds_since_epoch(ar_frame.timestamp.unwrap());
         frame_times.push(time);
         let time_point = time_point([
-            ("frame", TimeValue::Sequence(frame_idx)),
-            ("time", TimeValue::Time(time)),
+            ("frame", TimeValue::sequence(frame_idx)),
+            ("time", TimeValue::time(time)),
         ]);
 
         log_image(

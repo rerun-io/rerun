@@ -94,9 +94,7 @@ impl Sdk {
 
     pub fn now(&self) -> TimePoint {
         let mut time_point = self.time_point.clone();
-        time_point
-            .0
-            .insert("log_time".into(), TimeValue::Time(Time::now()));
+        time_point.0.insert("log_time".into(), Time::now().into());
         time_point
     }
 

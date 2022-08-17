@@ -245,6 +245,16 @@ pub enum TimeValue {
 }
 
 impl TimeValue {
+    #[inline]
+    pub fn time(time: Time) -> Self {
+        Self::Time(time)
+    }
+
+    #[inline]
+    pub fn sequence(seq: i64) -> Self {
+        Self::Sequence(seq)
+    }
+
     /// Offset by arbitrary value.
     /// Nanos for time.
     #[must_use]
