@@ -38,7 +38,7 @@ impl TimePoints {
             self.0
                 .entry(*time_source)
                 .or_default()
-                .insert(value.to_int());
+                .insert(value.as_int());
         }
     }
 }

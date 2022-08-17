@@ -141,7 +141,7 @@ fn table_row(
             for time_source in log_db.time_points.0.keys() {
                 row.col(|ui| {
                     if let Some(value) = time_point.0.get(time_source) {
-                        context.time_button(ui, time_source, value.to_int());
+                        context.time_button(ui, time_source, value.as_int());
                     }
                 });
             }

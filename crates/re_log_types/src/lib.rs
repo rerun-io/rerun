@@ -313,17 +313,17 @@ pub struct TimeInt(i64);
 
 impl TimeInt {
     #[inline]
-    pub fn to_i64(&self) -> i64 {
+    pub fn as_i64(&self) -> i64 {
         self.0
     }
 
     #[inline]
-    pub fn to_f32(&self) -> f32 {
+    pub fn as_f32(&self) -> f32 {
         self.0 as _
     }
 
     #[inline]
-    pub fn to_f64(&self) -> f64 {
+    pub fn as_f64(&self) -> f64 {
         self.0 as _
     }
 
@@ -356,13 +356,13 @@ impl From<Time> for TimeInt {
 
 impl From<TimeInt> for Time {
     fn from(int: TimeInt) -> Self {
-        Time::from_ns_since_epoch(int.to_i64())
+        Time::from_ns_since_epoch(int.as_i64())
     }
 }
 
 impl From<TimeInt> for Duration {
     fn from(int: TimeInt) -> Self {
-        Duration::from_nanos(int.to_i64())
+        Duration::from_nanos(int.as_i64())
     }
 }
 
@@ -453,7 +453,7 @@ impl TimeValue {
 
     /// Either nanos since epoch, or a sequence number.
     #[inline]
-    pub fn to_int(&self) -> TimeInt {
+    pub fn as_int(&self) -> TimeInt {
         match *self {
             Self::Time(time) => time.into(),
             Self::Sequence(seq) => seq.into(),

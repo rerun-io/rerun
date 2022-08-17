@@ -56,7 +56,7 @@ impl LogDataStore {
         let mut batcher = Batcher::default();
 
         for (time_source, time_value) in &data_msg.time_point.0 {
-            let time_i64 = time_value.to_int().to_i64();
+            let time_i64 = time_value.as_int().as_i64();
             let id = data_msg.id;
 
             let DataPath {

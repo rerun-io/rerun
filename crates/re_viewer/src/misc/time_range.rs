@@ -37,13 +37,13 @@ impl TimeRange {
         if self.min == self.max {
             0.5
         } else {
-            (value - self.min).to_f32() / (self.max - self.min).to_f32()
+            (value - self.min).as_f32() / (self.max - self.min).as_f32()
         }
     }
 
     pub fn lerp(&self, t: f32) -> TimeInt {
         let t = t as f64;
-        let (min, max) = (self.min.to_f64(), self.max.to_f64());
+        let (min, max) = (self.min.as_f64(), self.max.as_f64());
         TimeInt::from((min + t * (max - min)).round() as i64)
     }
 

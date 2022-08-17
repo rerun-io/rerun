@@ -23,7 +23,7 @@ impl TimeSourceAxis {
         let time_abs_diff = |a: TimeInt, b: TimeInt| -> f64 {
             let abs_diff = (a - b).abs();
             match time_type {
-                TimeType::Sequence => abs_diff.to_f64(),
+                TimeType::Sequence => abs_diff.as_f64(),
                 TimeType::Time => Duration::from(abs_diff).as_secs_f64(),
             }
         };

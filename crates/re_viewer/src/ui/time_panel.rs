@@ -482,13 +482,13 @@ fn show_data_over_time(
     for (time, log_ids) in source {
         // TODO(emilk): avoid this lookup by pre-partitioning on time source
         if let Some(time) = time.0.get(&time_source).copied() {
-            let time = time.to_int();
+            let time = time.as_int();
 
             let selected = selected_time_range.map_or(true, |range| range.contains(time));
 
             if let Some(current_stretch) = &mut stretch {
                 if current_stretch.selected == selected
-                    && (time - current_stretch.start_time).to_f64() < max_stretch_length_in_time
+                    && (time - current_stretch.start_time).as_f64() < max_stretch_length_in_time
                 {
                     // extend:
                     current_stretch.stop_time = time;
@@ -673,7 +673,7 @@ fn initial_time_selection(time_ranges_ui: &TimeRangesUi, time_type: TimeType) ->
                     TimeType::Sequence => {
                         return Some(TimeRange::new(
                             range.min,
-                            range.min + TimeInt::from((range.max - range.min).to_i64() / 2),
+                            range.min + TimeInt::from((range.max - range.min).as_i64() / 2),
                         ));
                     }
                 }
@@ -857,8 +857,8 @@ fn time_selection_ui(
                     let low_length = selected_range.max - time_low;
                     let high_length = selected_range.max - time_high;
                     let best_length = TimeInt::from(best_in_range_f64(
-                        low_length.to_f64(),
-                        high_length.to_f64(),
+                        low_length.as_f64(),
+                        high_length.as_f64(),
                     ) as i64);
 
                     selected_range.min = selected_range.max - best_length;
@@ -881,8 +881,8 @@ fn time_selection_ui(
                     let low_length = time_low - selected_range.min;
                     let high_length = time_high - selected_range.min;
                     let best_length = TimeInt::from(best_in_range_f64(
-                        low_length.to_f64(),
-                        high_length.to_f64(),
+                        low_length.as_f64(),
+                        high_length.as_f64(),
                     ) as i64);
 
                     selected_range.max = selected_range.min + best_length;
@@ -911,8 +911,8 @@ fn time_selection_ui(
                     let mut new_range = TimeRange::new(min_time, max_time);
 
                     if egui::emath::almost_equal(
-                        selected_range.length().to_f32(),
-                        new_range.length().to_f32(),
+                        selected_range.length().as_f32(),
+                        new_range.length().as_f32(),
                         1e-5,
                     ) {
                         // Avoid numerical inaccuracies: maintain length if very close
@@ -952,7 +952,7 @@ fn time_selection_ui(
 pub fn format_duration(time_typ: TimeType, duration: TimeInt) -> String {
     match time_typ {
         TimeType::Time => Duration::from(duration).to_string(),
-        TimeType::Sequence => duration.to_i64().to_string(),
+        TimeType::Sequence => duration.as_i64().to_string(),
     }
 }
 
@@ -1092,7 +1092,7 @@ fn view_everything(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceA
     };
 
     let min = time_source_axis.min();
-    let time_spanned = time_source_axis.sum_time_lengths().to_f64() * factor as f64;
+    let time_spanned = time_source_axis.sum_time_lengths().as_f64() * factor as f64;
 
     // Leave some room on the margins:
     let time_margin = time_spanned * (SIDE_MARGIN / width.at_least(64.0)) as f64;
@@ -1165,7 +1165,7 @@ impl TimeRangesUi {
         let ranges = segments
             .iter()
             .map(|range| {
-                let range_width = range.length().to_f32() * points_per_time;
+                let range_width = range.length().as_f32() * points_per_time;
                 let right = left + range_width;
                 let x_range = left..=right;
                 left = right + gap_width;
@@ -1252,7 +1252,7 @@ impl TimeRangesUi {
 
         if needle_time <= last_time {
             // extrapolate:
-            return Some(last_x - self.points_per_time * (last_time - needle_time).to_f32());
+            return Some(last_x - self.points_per_time * (last_time - needle_time).as_f32());
         }
 
         for segment in &self.segments {
@@ -1269,7 +1269,7 @@ impl TimeRangesUi {
         }
 
         // extrapolate:
-        Some(last_x + self.points_per_time * (needle_time - last_time).to_f32())
+        Some(last_x + self.points_per_time * (needle_time - last_time).as_f32())
     }
 
     fn time_from_x(&self, needle_x: f32) -> Option<TimeInt> {
@@ -1332,7 +1332,7 @@ impl TimeRangesUi {
     fn points_per_time(&self) -> Option<f32> {
         for segment in &self.segments {
             let dx = *segment.x.end() - *segment.x.start();
-            let dt = segment.time.length().to_f32();
+            let dt = segment.time.length().as_f32();
             if dx > 0.0 && dt > 0.0 {
                 return Some(dx / dt);
             }
@@ -1350,7 +1350,7 @@ fn paint_time_range_ticks(
 ) {
     let font_id = egui::TextStyle::Body.resolve(ui.style());
 
-    let (min, max) = (range.min.to_i64(), range.max.to_i64());
+    let (min, max) = (range.min.as_i64(), range.max.as_i64());
 
     let shapes = match time_type {
         TimeType::Time => {

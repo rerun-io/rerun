@@ -525,7 +525,7 @@ pub enum TensorElement {
 }
 
 impl TensorElement {
-    pub fn to_f64(&self) -> f64 {
+    pub fn as_f64(&self) -> f64 {
         match self {
             Self::U8(value) => *value as _,
             Self::U16(value) => *value as _,
