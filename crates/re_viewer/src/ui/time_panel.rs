@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     log_db::ObjectTree, misc::time_axis::TimeSourceAxis, misc::time_control::TimeSelectionType,
-    time_axis::TimeRange, LogDb, TimeControl, TimeView, ViewerContext,
+    LogDb, TimeControl, TimeRange, TimeView, ViewerContext,
 };
 
 use egui::*;
@@ -112,6 +112,7 @@ impl TimePanel {
             time_selection_rect.top()..=time_line_rect.bottom(),
             // time_line_rect.y_range(),
             time_line_rect.top()..=time_area.bottom(),
+            context.time_control.time_type(),
         );
         time_selection_ui(
             &self.time_ranges_ui,
@@ -373,11 +374,17 @@ fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
             );
 
             if let Some(range) = context.time_control.time_range() {
+                let time_type = context.time_control.time_type();
+
                 ui.vertical_centered(|ui| {
                     if range.min == range.max {
-                        ui.monospace(range.min.to_string());
+                        ui.monospace(TimeValue::new(time_type, range.min).to_string());
                     } else {
-                        ui.monospace(format!("{} - {}", range.min, range.max));
+                        ui.monospace(format!(
+                            "{} - {}",
+                            TimeValue::new(time_type, range.min),
+                            TimeValue::new(time_type, range.max)
+                        ));
                     }
                 });
             }
@@ -420,8 +427,8 @@ fn show_data_over_time(
 
     struct Stretch<'a> {
         start_x: f32,
-        start_time: TimeValue,
-        stop_time: TimeValue,
+        start_time: TimeInt,
+        stop_time: TimeInt,
         selected: bool,
         log_ids: Vec<&'a BTreeSet<LogId>>,
     }
@@ -475,14 +482,13 @@ fn show_data_over_time(
     for (time, log_ids) in source {
         // TODO(emilk): avoid this lookup by pre-partitioning on time source
         if let Some(time) = time.0.get(&time_source).copied() {
+            let time = time.as_int();
+
             let selected = selected_time_range.map_or(true, |range| range.contains(time));
 
             if let Some(current_stretch) = &mut stretch {
                 if current_stretch.selected == selected
-                    && TimeRange::new(current_stretch.start_time, time)
-                        .span()
-                        .unwrap_or_default()
-                        < max_stretch_length_in_time
+                    && (time - current_stretch.start_time).as_f64() < max_stretch_length_in_time
                 {
                     // extend:
                     current_stretch.stop_time = time;
@@ -552,7 +558,7 @@ fn initialize_time_ranges_ui(
 ) -> TimeRangesUi {
     crate::profile_function!();
     if let Some(time_points) = log_db.time_points.0.get(context.time_control.source()) {
-        let time_source_axis = TimeSourceAxis::new(time_points);
+        let time_source_axis = TimeSourceAxis::new(context.time_control.time_type(), time_points);
         let time_view = context.time_control.time_view();
         let time_view =
             time_view.unwrap_or_else(|| view_everything(&time_x_range, &time_source_axis));
@@ -569,6 +575,7 @@ fn paint_time_ranges_and_ticks(
     time_area_painter: &egui::Painter,
     line_y_range: RangeInclusive<f32>,
     segment_y_range: RangeInclusive<f32>,
+    time_type: TimeType,
 ) {
     for segment in &time_ranges_ui.segments {
         let bg_stroke = ui.visuals().widgets.noninteractive.bg_stroke;
@@ -576,7 +583,7 @@ fn paint_time_ranges_and_ticks(
         time_area_painter.rect_filled(rect, 1.0, bg_stroke.color.linear_multiply(0.5));
 
         let rect = Rect::from_x_y_ranges(segment.x.clone(), line_y_range.clone());
-        paint_time_range_ticks(ui, time_area_painter, &rect, &segment.time);
+        paint_time_range_ticks(ui, time_area_painter, &rect, time_type, &segment.time);
     }
 
     if false {
@@ -647,7 +654,7 @@ fn interact_with_time_area(
     parent_scroll_delta
 }
 
-fn initial_time_selection(time_ranges_ui: &TimeRangesUi) -> Option<TimeRange> {
+fn initial_time_selection(time_ranges_ui: &TimeRangesUi, time_type: TimeType) -> Option<TimeRange> {
     let ranges = &time_ranges_ui.segments;
 
     // Try to find a long duration first, then fall back to shorter
@@ -655,24 +662,19 @@ fn initial_time_selection(time_ranges_ui: &TimeRangesUi) -> Option<TimeRange> {
         for segment in ranges {
             let range = &segment.tight_time;
             if range.min < range.max {
-                match range.min {
-                    TimeValue::Time(min) => {
-                        if let TimeValue::Time(max) = range.max {
-                            if (max - min).as_secs_f32() > min_duration {
-                                return Some(TimeRange::new(
-                                    range.min,
-                                    TimeValue::Time(min + Duration::from_secs(1.0)),
-                                ));
-                            }
+                match time_type {
+                    TimeType::Time => {
+                        let seconds = Duration::from(range.max - range.min).as_secs_f64();
+                        if seconds > min_duration {
+                            let one_sec = TimeInt::from(Duration::from_secs(1.0));
+                            return Some(TimeRange::new(range.min, range.min + one_sec));
                         }
                     }
-                    TimeValue::Sequence(min) => {
-                        if let TimeValue::Sequence(max) = range.max {
-                            return Some(TimeRange::new(
-                                range.min,
-                                TimeValue::Sequence(min + (max - min) / 2),
-                            ));
-                        }
+                    TimeType::Sequence => {
+                        return Some(TimeRange::new(
+                            range.min,
+                            range.min + TimeInt::from((range.max - range.min).as_i64() / 2),
+                        ));
                     }
                 }
             }
@@ -698,11 +700,11 @@ fn time_selection_ui(
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
     rect: &Rect,
-) -> Option<()> {
+) {
     if time_control.time_selection().is_none() {
         // Helpfully select a time slice so that there always is a selection.
         // This helps new users ("what is that?").
-        if let Some(selection) = initial_time_selection(time_ranges_ui) {
+        if let Some(selection) = initial_time_selection(time_ranges_ui, time_control.time_type()) {
             time_control.set_time_selection(selection);
         }
     }
@@ -768,7 +770,8 @@ fn time_selection_ui(
             time_area_painter.rect_filled(rect, 1.0, main_color);
 
             if is_active {
-                let range_text = selected_range.format_size();
+                let range_text =
+                    format_duration(time_control.time_type(), selected_range.length().abs());
                 if !range_text.is_empty() {
                     let font_id = egui::TextStyle::Body.resolve(ui.style());
                     let text_color = ui.visuals().strong_text_color();
@@ -851,11 +854,14 @@ fn time_selection_ui(
                     time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
                     time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
                 ) {
-                    let low_span = TimeRange::new(time_low, selected_range.max).span()?;
-                    let high_span = TimeRange::new(time_high, selected_range.max).span()?;
-                    let best_span = best_in_range_f64(low_span, high_span);
+                    let low_length = selected_range.max - time_low;
+                    let high_length = selected_range.max - time_high;
+                    let best_length = TimeInt::from(best_in_range_f64(
+                        low_length.as_f64(),
+                        high_length.as_f64(),
+                    ) as i64);
 
-                    selected_range.min = selected_range.max.add_offset_f64(-best_span);
+                    selected_range.min = selected_range.max - best_length;
 
                     if selected_range.min > selected_range.max {
                         std::mem::swap(&mut selected_range.min, &mut selected_range.max);
@@ -872,11 +878,14 @@ fn time_selection_ui(
                     time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
                     time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
                 ) {
-                    let low_span = TimeRange::new(selected_range.min, time_low).span()?;
-                    let high_span = TimeRange::new(selected_range.min, time_high).span()?;
-                    let best_span = best_in_range_f64(low_span, high_span);
+                    let low_length = time_low - selected_range.min;
+                    let high_length = time_high - selected_range.min;
+                    let best_length = TimeInt::from(best_in_range_f64(
+                        low_length.as_f64(),
+                        high_length.as_f64(),
+                    ) as i64);
 
-                    selected_range.max = selected_range.min.add_offset_f64(best_span);
+                    selected_range.max = selected_range.min + best_length;
 
                     if selected_range.min > selected_range.max {
                         std::mem::swap(&mut selected_range.min, &mut selected_range.max);
@@ -902,12 +911,12 @@ fn time_selection_ui(
                     let mut new_range = TimeRange::new(min_time, max_time);
 
                     if egui::emath::almost_equal(
-                        selected_range.span()? as _,
-                        new_range.span()? as _,
+                        selected_range.length().as_f32(),
+                        new_range.length().as_f32(),
                         1e-5,
                     ) {
                         // Avoid numerical inaccuracies: maintain length if very close
-                        new_range.max = new_range.min.add_offset_f64(selected_range.span()?);
+                        new_range.max = new_range.min + selected_range.length();
                     }
 
                     time_control.set_time_selection(new_range);
@@ -937,8 +946,14 @@ fn time_selection_ui(
             time_control.pause();
         }
     }
+}
 
-    Some(())
+/// Human-readable description of a duration
+pub fn format_duration(time_typ: TimeType, duration: TimeInt) -> String {
+    match time_typ {
+        TimeType::Time => Duration::from(duration).to_string(),
+        TimeType::Sequence => duration.as_i64().to_string(),
+    }
 }
 
 fn time_marker_ui(
@@ -970,7 +985,7 @@ fn time_marker_ui(
     let mut is_anything_being_dragged = ui.memory().is_anything_being_dragged();
 
     // show current time as a line:
-    if let Some(time) = time_control.time() {
+    if let Some(time) = time_control.time_int() {
         if let Some(x) = time_ranges_ui.x_from_time(time) {
             if let Some(pointer_pos) = pointer_pos {
                 let line_rect = Rect::from_x_y_ranges(x..=x, time_line_rect.top()..=bottom_y);
@@ -1077,11 +1092,11 @@ fn view_everything(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceA
     };
 
     let min = time_source_axis.min();
-    let time_spanned = time_source_axis.sum_time_span() * factor as f64;
+    let time_spanned = time_source_axis.sum_time_lengths().as_f64() * factor as f64;
 
     // Leave some room on the margins:
     let time_margin = time_spanned * (SIDE_MARGIN / width.at_least(64.0)) as f64;
-    let min = min.add_offset_f64(-time_margin);
+    let min = min - TimeInt::from(time_margin as i64);
     let time_spanned = time_spanned + 2.0 * time_margin;
 
     TimeView { min, time_spanned }
@@ -1104,6 +1119,7 @@ struct TimeRangesUi {
     x_range: RangeInclusive<f32>,
 
     time_view: TimeView,
+
     /// x ranges matched to time ranges
     segments: Vec<Segment>,
 
@@ -1117,7 +1133,7 @@ impl Default for TimeRangesUi {
         Self {
             x_range: 0.0..=1.0,
             time_view: TimeView {
-                min: TimeValue::sequence(0),
+                min: TimeInt::from(0),
                 time_spanned: 1.0,
             },
             segments: vec![],
@@ -1129,10 +1145,6 @@ impl Default for TimeRangesUi {
 impl TimeRangesUi {
     fn new(x_range: RangeInclusive<f32>, time_view: TimeView, segments: &[TimeRange]) -> Self {
         crate::profile_function!();
-
-        fn span(time_range: &TimeRange) -> f64 {
-            time_range.span().unwrap_or_default()
-        }
 
         //        <------- time_view ------>
         //        <-------- x_range ------->
@@ -1153,7 +1165,7 @@ impl TimeRangesUi {
         let ranges = segments
             .iter()
             .map(|range| {
-                let range_width = span(range) as f32 * points_per_time;
+                let range_width = range.length().as_f32() * points_per_time;
                 let right = left + range_width;
                 let x_range = left..=right;
                 left = right + gap_width;
@@ -1164,11 +1176,8 @@ impl TimeRangesUi {
                 // Also gives zero-width segments some width!
                 let expansion = gap_width / 3.0;
                 let x_range = (*x_range.start() - expansion)..=(*x_range.end() + expansion);
-                let time_expansion = expansion / points_per_time;
-                let range = TimeRange::new(
-                    range.min.add_offset_f32(-time_expansion),
-                    range.max.add_offset_f32(time_expansion),
-                );
+                let time_expansion = TimeInt::from((expansion / points_per_time) as i64);
+                let range = TimeRange::new(range.min - time_expansion, range.max + time_expansion);
                 Segment {
                     x: x_range,
                     time: range,
@@ -1196,7 +1205,7 @@ impl TimeRangesUi {
     }
 
     /// Make sure the time is not between ranges.
-    fn snap_time(&self, value: TimeValue) -> TimeValue {
+    fn snap_time(&self, value: TimeInt) -> TimeInt {
         for segment in &self.segments {
             if value < segment.time.min {
                 return segment.time.min;
@@ -1214,7 +1223,7 @@ impl TimeRangesUi {
         }
 
         // Make sure time doesn't get stuck between non-continuos regions:
-        if let Some(time) = context.time_control.time() {
+        if let Some(time) = context.time_control.time_int() {
             let time = self.snap_time(time);
             context.time_control.set_time(time);
         } else if let Some(selection) = context.time_control.time_selection() {
@@ -1228,35 +1237,30 @@ impl TimeRangesUi {
                 return;
             }
 
-            if let Some(span) = selection.span() {
-                // Keeping max works better when looping
-                context.time_control.set_time_selection(TimeRange::new(
-                    snapped_max.add_offset_f64(-span),
-                    snapped_max,
-                ));
-            }
+            // Keeping max works better when looping
+            context.time_control.set_time_selection(TimeRange::new(
+                snapped_max - selection.length(),
+                snapped_max,
+            ));
         }
     }
 
-    fn x_from_time(&self, needle_time: TimeValue) -> Option<f32> {
+    fn x_from_time(&self, needle_time: TimeInt) -> Option<f32> {
         let first_segment = self.segments.first()?;
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
 
         if needle_time <= last_time {
             // extrapolate:
-            return Some(
-                last_x
-                    - self.points_per_time * TimeRange::new(needle_time, last_time).span()? as f32,
-            );
+            return Some(last_x - self.points_per_time * (last_time - needle_time).as_f32());
         }
 
         for segment in &self.segments {
             if needle_time < segment.time.min {
-                let t = TimeRange::new(last_time, segment.time.min).inverse_lerp(needle_time)?;
+                let t = TimeRange::new(last_time, segment.time.min).inverse_lerp(needle_time);
                 return Some(lerp(last_x..=*segment.x.start(), t));
             } else if needle_time <= segment.time.max {
-                let t = segment.time.inverse_lerp(needle_time)?;
+                let t = segment.time.inverse_lerp(needle_time);
                 return Some(lerp(segment.x.clone(), t));
             } else {
                 last_x = *segment.x.end();
@@ -1265,26 +1269,28 @@ impl TimeRangesUi {
         }
 
         // extrapolate:
-        Some(last_x + self.points_per_time * TimeRange::new(last_time, needle_time).span()? as f32)
+        Some(last_x + self.points_per_time * (needle_time - last_time).as_f32())
     }
 
-    fn time_from_x(&self, needle_x: f32) -> Option<TimeValue> {
+    fn time_from_x(&self, needle_x: f32) -> Option<TimeInt> {
         let first_segment = self.segments.first()?;
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
 
         if needle_x <= last_x {
             // extrapolate:
-            return Some(last_time.add_offset_f32((needle_x - last_x) / self.points_per_time));
+            return Some(
+                last_time + TimeInt::from(((needle_x - last_x) / self.points_per_time) as i64),
+            );
         }
 
         for segment in &self.segments {
             if needle_x < *segment.x.start() {
                 let t = remap(needle_x, last_x..=*segment.x.start(), 0.0..=1.0);
-                return TimeRange::new(last_time, segment.time.min).lerp(t);
+                return Some(TimeRange::new(last_time, segment.time.min).lerp(t));
             } else if needle_x <= *segment.x.end() {
                 let t = remap(needle_x, segment.x.clone(), 0.0..=1.0);
-                return segment.time.lerp(t);
+                return Some(segment.time.lerp(t));
             } else {
                 last_x = *segment.x.end();
                 last_time = segment.time.max;
@@ -1292,7 +1298,7 @@ impl TimeRangesUi {
         }
 
         // extrapolate:
-        Some(last_time.add_offset_f32((needle_x - last_x) / self.points_per_time))
+        Some(last_time + TimeInt::from(((needle_x - last_x) / self.points_per_time).round() as i64))
     }
 
     /// Pan the view, returning the new view.
@@ -1326,10 +1332,9 @@ impl TimeRangesUi {
     fn points_per_time(&self) -> Option<f32> {
         for segment in &self.segments {
             let dx = *segment.x.end() - *segment.x.start();
-            if let Some(dt) = segment.time.span() {
-                if dx > 0.0 && dt >= 0.0 {
-                    return Some(dx / dt as f32);
-                }
+            let dt = segment.time.length().as_f32();
+            if dx > 0.0 && dt > 0.0 {
+                return Some(dx / dt);
             }
         }
         None
@@ -1340,80 +1345,85 @@ fn paint_time_range_ticks(
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
     rect: &Rect,
+    time_type: TimeType,
     range: &TimeRange,
 ) {
     let font_id = egui::TextStyle::Body.resolve(ui.style());
 
-    let shapes = if let (TimeValue::Time(min), TimeValue::Time(max)) = (range.min, range.max) {
-        fn next_grid_tick_magnitude_ns(spacing_ns: i64) -> i64 {
-            if spacing_ns <= 1_000_000_000 {
-                spacing_ns * 10 // up to 10 second ticks
-            } else if spacing_ns == 10_000_000_000 {
-                spacing_ns * 6 // to the whole minute
-            } else if spacing_ns == 60_000_000_000 {
-                spacing_ns * 10 // to ten minutes
-            } else if spacing_ns == 600_000_000_000 {
-                spacing_ns * 6 // to an hour
-            } else if spacing_ns < 24 * 60 * 60 * 1_000_000_000 {
-                spacing_ns * 24 // to a day
-            } else {
-                spacing_ns * 10 // multiple of ten days
-            }
-        }
+    let (min, max) = (range.min.as_i64(), range.max.as_i64());
 
-        fn grid_text_from_ns(ns: i64) -> String {
-            let relative_ns = ns % 1_000_000_000;
-            if relative_ns == 0 {
-                let time = Time::from_ns_since_epoch(ns);
-                if time.is_abolute_date() {
-                    time.format_time("%H:%M:%S")
+    let shapes = match time_type {
+        TimeType::Time => {
+            fn next_grid_tick_magnitude_ns(spacing_ns: i64) -> i64 {
+                if spacing_ns <= 1_000_000_000 {
+                    spacing_ns * 10 // up to 10 second ticks
+                } else if spacing_ns == 10_000_000_000 {
+                    spacing_ns * 6 // to the whole minute
+                } else if spacing_ns == 60_000_000_000 {
+                    spacing_ns * 10 // to ten minutes
+                } else if spacing_ns == 600_000_000_000 {
+                    spacing_ns * 6 // to an hour
+                } else if spacing_ns < 24 * 60 * 60 * 1_000_000_000 {
+                    spacing_ns * 24 // to a day
                 } else {
-                    re_log_types::Duration::from_nanos(ns).to_string()
-                }
-            } else {
-                // show relative to whole second:
-                let ms = relative_ns as f64 * 1e-6;
-                if relative_ns % 1_000_000 == 0 {
-                    format!("{:+.0} ms", ms)
-                } else if relative_ns % 100_000 == 0 {
-                    format!("{:+.1} ms", ms)
-                } else if relative_ns % 10_000 == 0 {
-                    format!("{:+.2} ms", ms)
-                } else {
-                    format!("{:+.3} ms", ms)
+                    spacing_ns * 10 // multiple of ten days
                 }
             }
-        }
 
-        paint_ticks(
-            &ui.fonts(),
-            ui.visuals().dark_mode,
-            &font_id,
-            rect,
-            &ui.clip_rect(),
-            (min.nanos_since_epoch(), max.nanos_since_epoch()),
-            1_000,
-            next_grid_tick_magnitude_ns,
-            grid_text_from_ns,
-        )
-    } else if let (TimeValue::Sequence(min), TimeValue::Sequence(max)) = (range.min, range.max) {
-        fn next_power_of_10(i: i64) -> i64 {
-            i * 10
+            fn grid_text_from_ns(ns: i64) -> String {
+                let relative_ns = ns % 1_000_000_000;
+                if relative_ns == 0 {
+                    let time = Time::from_ns_since_epoch(ns);
+                    if time.is_abolute_date() {
+                        time.format_time("%H:%M:%S")
+                    } else {
+                        re_log_types::Duration::from_nanos(ns).to_string()
+                    }
+                } else {
+                    // show relative to whole second:
+                    let ms = relative_ns as f64 * 1e-6;
+                    if relative_ns % 1_000_000 == 0 {
+                        format!("{:+.0} ms", ms)
+                    } else if relative_ns % 100_000 == 0 {
+                        format!("{:+.1} ms", ms)
+                    } else if relative_ns % 10_000 == 0 {
+                        format!("{:+.2} ms", ms)
+                    } else {
+                        format!("{:+.3} ms", ms)
+                    }
+                }
+            }
+
+            paint_ticks(
+                &ui.fonts(),
+                ui.visuals().dark_mode,
+                &font_id,
+                rect,
+                &ui.clip_rect(),
+                (min, max), // ns
+                1_000,
+                next_grid_tick_magnitude_ns,
+                grid_text_from_ns,
+            )
         }
-        paint_ticks(
-            &ui.fonts(),
-            ui.visuals().dark_mode,
-            &font_id,
-            rect,
-            &ui.clip_rect(),
-            (min, max),
-            1,
-            next_power_of_10,
-            |seq| format!("#{seq}"),
-        )
-    } else {
-        return;
+        TimeType::Sequence => {
+            fn next_power_of_10(i: i64) -> i64 {
+                i * 10
+            }
+            paint_ticks(
+                &ui.fonts(),
+                ui.visuals().dark_mode,
+                &font_id,
+                rect,
+                &ui.clip_rect(),
+                (min, max),
+                1,
+                next_power_of_10,
+                |seq| format!("#{seq}"),
+            )
+        }
     };
+
     time_area_painter.extend(shapes);
 }
 

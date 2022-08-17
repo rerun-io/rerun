@@ -56,7 +56,7 @@ impl LogDataStore {
         let mut batcher = Batcher::default();
 
         for (time_source, time_value) in &data_msg.time_point.0 {
-            let time = time_value.as_i64();
+            let time_i64 = time_value.as_int().as_i64();
             let id = data_msg.id;
 
             let DataPath {
@@ -72,20 +72,20 @@ impl LogDataStore {
 
                     let store = self.entry(time_source, time_value.typ());
                     re_log_types::data_map!(data.clone(), |data| store
-                        .insert_individual(op, fname, time, id, data))
+                        .insert_individual(op, fname, time_i64, id, data))
                 }
                 LoggedData::Batch { indices, data } => {
                     re_log_types::data_vec_map!(data, |vec| {
                         let batch = batcher.batch(indices, vec);
                         self.register_batch_obj_paths(data_msg, batch.indices());
                         let store = self.entry(time_source, time_value.typ());
-                        store.insert_batch(&op, fname, time, id, batch)
+                        store.insert_batch(&op, fname, time_i64, id, batch)
                     })
                 }
                 LoggedData::BatchSplat(data) => {
                     let store = self.entry(time_source, time_value.typ());
                     re_log_types::data_map!(data.clone(), |data| store
-                        .insert_batch_splat(op, fname, time, id, data))
+                        .insert_batch_splat(op, fname, time_i64, id, data))
                 }
             }?;
         }

@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_data_store::{ObjPath, ObjTypePath};
 use re_log_types::{Data, DataMsg, DataPath, LogId, LoggedData};
@@ -338,7 +338,7 @@ pub fn show_zoomed_image_region(
             if let Some(meter) = meter {
                 // This is a depth map
                 if let Some(raw_value) = tensor.get(&[y, x]) {
-                    let raw_value = raw_value.to_f64();
+                    let raw_value = raw_value.as_f64();
                     let meters = raw_value / meter as f64;
                     if meters < 1.0 {
                         ui.monospace(format!("{:.1} mm", meters * 1e3));

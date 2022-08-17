@@ -1,7 +1,10 @@
-use std::{collections::BTreeSet, ops::RangeInclusive};
+use std::collections::BTreeSet;
 
-use itertools::Itertools;
-use re_log_types::TimeValue;
+use itertools::Itertools as _;
+
+use re_log_types::{Duration, TimeInt, TimeType};
+
+use super::TimeRange;
 
 /// A piece-wise linear view of a single time source.
 ///
@@ -13,18 +16,17 @@ pub(crate) struct TimeSourceAxis {
 }
 
 impl TimeSourceAxis {
-    pub fn new(values: &BTreeSet<TimeValue>) -> Self {
+    pub fn new(time_type: TimeType, values: &BTreeSet<TimeInt>) -> Self {
         crate::profile_function!();
 
-        /// in seconds or sequences
-        fn time_diff(a: &TimeValue, b: &TimeValue) -> f64 {
-            match (*a, *b) {
-                (TimeValue::Sequence(a), TimeValue::Sequence(b)) => a.abs_diff(b) as f64,
-                (TimeValue::Sequence(_), TimeValue::Time(_))
-                | (TimeValue::Time(_), TimeValue::Sequence(_)) => f64::INFINITY,
-                (TimeValue::Time(a), TimeValue::Time(b)) => (b - a).as_secs_f64().abs(),
+        // in seconds or sequences
+        let time_abs_diff = |a: TimeInt, b: TimeInt| -> f64 {
+            let abs_diff = (a - b).abs();
+            match time_type {
+                TimeType::Sequence => abs_diff.as_f64(),
+                TimeType::Time => Duration::from(abs_diff).as_secs_f64(),
             }
-        }
+        };
 
         // First determine the threshold for when a gap should be closed.
         // Sometimes, looking at data spanning milliseconds, a single second pause can be an eternity.
@@ -40,7 +42,7 @@ impl TimeSourceAxis {
             values
                 .iter()
                 .tuple_windows()
-                .map(|(a, b)| time_diff(a, b))
+                .map(|(a, b)| time_abs_diff(*a, *b))
                 .filter(|&gap_size| gap_size >= MIN_GAP_SIZE)
                 .filter(|&gap_size| !gap_size.is_nan())
                 .collect_vec()
@@ -65,7 +67,7 @@ impl TimeSourceAxis {
 
         for &new_value in values_it {
             let last_max = &mut ranges.last_mut().max;
-            if time_diff(last_max, &new_value) <= gap_threshold {
+            if time_abs_diff(*last_max, new_value) <= gap_threshold {
                 *last_max = new_value; // join previous range
             } else {
                 ranges.push(TimeRange::point(new_value)); // new range
@@ -75,8 +77,8 @@ impl TimeSourceAxis {
         Self { ranges }
     }
 
-    pub fn sum_time_span(&self) -> f64 {
-        self.ranges.iter().map(|t| t.span().unwrap_or(0.0)).sum()
+    pub fn sum_time_lengths(&self) -> TimeInt {
+        self.ranges.iter().map(|t| t.length()).sum()
     }
 
     // pub fn range(&self) -> TimeRange {
@@ -86,115 +88,11 @@ impl TimeSourceAxis {
     //     }
     // }
 
-    pub fn min(&self) -> TimeValue {
+    pub fn min(&self) -> TimeInt {
         self.ranges.first().min
     }
 
-    // pub fn max(&self) -> TimeValue {
+    // pub fn max(&self) -> TimeInt {
     //     self.ranges.last().max
     // }
-}
-
-#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
-pub(crate) struct TimeRange {
-    pub min: TimeValue,
-    pub max: TimeValue,
-}
-
-impl TimeRange {
-    pub fn new(min: TimeValue, max: TimeValue) -> Self {
-        Self { min, max }
-    }
-
-    pub fn point(value: TimeValue) -> Self {
-        Self {
-            min: value,
-            max: value,
-        }
-    }
-
-    // pub fn add(&mut self, value: TimeValue) {
-    //     self.min = self.min.min(value);
-    //     self.max = self.max.max(value);
-    // }
-
-    /// Inclusive
-    pub fn contains(&self, value: TimeValue) -> bool {
-        self.min <= value && value <= self.max
-    }
-
-    /// Where in the range is this value? Returns 0-1 if within the range.
-    /// Returns <0 if before, >1 if after, and `None` if the unit is wrong.
-    pub fn inverse_lerp(&self, value: TimeValue) -> Option<f32> {
-        fn inverse_lerp_i64(min: i64, value: i64, max: i64) -> f32 {
-            if min == max {
-                0.5
-            } else {
-                value.saturating_sub(min) as f32 / max.saturating_sub(min) as f32
-            }
-        }
-
-        match (self.min, value, self.max) {
-            (TimeValue::Time(min), TimeValue::Time(value), TimeValue::Time(max)) => {
-                Some(inverse_lerp_i64(
-                    min.nanos_since_epoch(),
-                    value.nanos_since_epoch(),
-                    max.nanos_since_epoch(),
-                ))
-            }
-            (TimeValue::Sequence(min), TimeValue::Sequence(value), TimeValue::Sequence(max)) => {
-                Some(inverse_lerp_i64(min, value, max))
-            }
-            _ => None,
-        }
-    }
-
-    pub fn lerp(&self, t: f32) -> Option<TimeValue> {
-        fn lerp_i64(range: RangeInclusive<i64>, t: f32) -> i64 {
-            let (min, max) = (*range.start(), *range.end());
-            min + ((max - min) as f64 * (t as f64)).round() as i64
-        }
-
-        match (self.min, self.max) {
-            (TimeValue::Time(min), TimeValue::Time(max)) => {
-                Some(TimeValue::Time(re_log_types::Time::lerp(min..=max, t)))
-            }
-            (TimeValue::Sequence(min), TimeValue::Sequence(max)) => {
-                Some(TimeValue::Sequence(lerp_i64(min..=max, t)))
-            }
-            _ => None,
-        }
-    }
-
-    /// The amount of time or sequences covered by this range.
-    pub fn span(&self) -> Option<f64> {
-        match (self.min, self.max) {
-            (TimeValue::Time(min), TimeValue::Time(max)) => Some((max - min).as_nanos() as f64),
-            (TimeValue::Sequence(min), TimeValue::Sequence(max)) => Some((max - min) as f64),
-            _ => None,
-        }
-    }
-
-    /// Human-readable description of the time range _size_.
-    pub fn format_size(&self) -> String {
-        match (self.min, self.max) {
-            (TimeValue::Time(min), TimeValue::Time(max)) => (max - min).to_string(),
-            (TimeValue::Sequence(min), TimeValue::Sequence(max)) => {
-                format!("{}", max.abs_diff(min))
-            }
-            _ => Default::default(),
-        }
-    }
-}
-
-impl From<TimeRange> for RangeInclusive<TimeValue> {
-    fn from(range: TimeRange) -> RangeInclusive<TimeValue> {
-        range.min..=range.max
-    }
-}
-
-impl From<&TimeRange> for RangeInclusive<TimeValue> {
-    fn from(range: &TimeRange) -> RangeInclusive<TimeValue> {
-        range.min..=range.max
-    }
 }

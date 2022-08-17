@@ -278,6 +278,8 @@ impl std::hash::Hash for TimeSource {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(pub BTreeMap<TimeSource, TimeValue>);
 
+// ----------------------------------------------------------------------------
+
 /// The type of a [`TimeValue`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -298,6 +300,120 @@ impl TimeType {
     }
 }
 
+// ----------------------------------------------------------------------------
+
+/// Either nanoseconds or sequence numbers.
+///
+/// Must be matched with a [`TimeType`] to know what.
+///
+/// Used both for time points and durations.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TimeInt(i64);
+
+impl TimeInt {
+    #[inline]
+    pub fn as_i64(&self) -> i64 {
+        self.0
+    }
+
+    #[inline]
+    pub fn as_f32(&self) -> f32 {
+        self.0 as _
+    }
+
+    #[inline]
+    pub fn as_f64(&self) -> f64 {
+        self.0 as _
+    }
+
+    #[inline]
+    pub fn abs(&self) -> Self {
+        Self(self.0.saturating_abs())
+    }
+}
+
+impl From<i64> for TimeInt {
+    #[inline]
+    fn from(seq: i64) -> Self {
+        Self(seq)
+    }
+}
+
+impl From<Duration> for TimeInt {
+    #[inline]
+    fn from(duration: Duration) -> Self {
+        Self(duration.as_nanos())
+    }
+}
+
+impl From<Time> for TimeInt {
+    #[inline]
+    fn from(time: Time) -> Self {
+        Self(time.nanos_since_epoch())
+    }
+}
+
+impl From<TimeInt> for Time {
+    fn from(int: TimeInt) -> Self {
+        Time::from_ns_since_epoch(int.as_i64())
+    }
+}
+
+impl From<TimeInt> for Duration {
+    fn from(int: TimeInt) -> Self {
+        Duration::from_nanos(int.as_i64())
+    }
+}
+
+impl std::ops::Neg for TimeInt {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self(self.0.saturating_neg())
+    }
+}
+
+impl std::ops::Add for TimeInt {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0.saturating_add(rhs.0))
+    }
+}
+
+impl std::ops::Sub for TimeInt {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0.saturating_sub(rhs.0))
+    }
+}
+
+impl std::ops::AddAssign for TimeInt {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl std::ops::SubAssign for TimeInt {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl std::iter::Sum for TimeInt {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        let mut sum = TimeInt(0);
+        for item in iter {
+            sum += item;
+        }
+        sum
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeValue {
@@ -310,6 +426,14 @@ pub enum TimeValue {
 
 impl TimeValue {
     #[inline]
+    pub fn new(typ: TimeType, int: TimeInt) -> Self {
+        match typ {
+            TimeType::Time => Self::Time(Time::from_ns_since_epoch(int.0)),
+            TimeType::Sequence => Self::Sequence(int.0),
+        }
+    }
+
+    #[inline]
     pub fn time(time: Time) -> Self {
         Self::Time(time)
     }
@@ -319,24 +443,7 @@ impl TimeValue {
         Self::Sequence(seq)
     }
 
-    /// Offset by arbitrary value.
-    /// Nanos for time.
-    #[must_use]
     #[inline]
-    pub fn add_offset_f32(self, offset: f32) -> Self {
-        self.add_offset_f64(offset as f64)
-    }
-
-    /// Offset by arbitrary value.
-    /// Nanos for time.
-    #[must_use]
-    pub fn add_offset_f64(self, offset: f64) -> Self {
-        match self {
-            Self::Time(time) => Self::Time(time + Duration::from_nanos(offset as _)),
-            Self::Sequence(seq) => Self::Sequence(seq.saturating_add(offset as _)),
-        }
-    }
-
     pub fn typ(&self) -> TimeType {
         match self {
             Self::Time(_) => TimeType::Time,
@@ -345,10 +452,11 @@ impl TimeValue {
     }
 
     /// Either nanos since epoch, or a sequence number.
-    pub fn as_i64(&self) -> i64 {
-        match self {
-            Self::Time(time) => time.nanos_since_epoch(),
-            Self::Sequence(seq) => *seq,
+    #[inline]
+    pub fn as_int(&self) -> TimeInt {
+        match *self {
+            Self::Time(time) => time.into(),
+            Self::Sequence(seq) => seq.into(),
         }
     }
 }

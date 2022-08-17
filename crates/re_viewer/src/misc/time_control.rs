@@ -6,13 +6,13 @@ use re_log_types::*;
 
 use crate::misc::TimePoints;
 
-use super::time_axis::TimeRange;
+use super::TimeRange;
 
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct TimeView {
     /// Where start of the the range.
-    pub min: TimeValue,
+    pub min: TimeInt,
 
     /// How much time the full view covers.
     ///
@@ -50,12 +50,12 @@ impl TimeSelectionType {
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 struct TimeState {
     /// The current time (play marker).
-    time: TimeValue,
+    time: TimeInt,
 
     /// Frames Per Second, when playing sequences (they are often video recordings).
     fps: f32,
 
-    // TODO(emilk): move into a `FractionalTimeValue` and use that for `Self::time`
+    // TODO(emilk): move into a `TimeReal` and use that for `Self::time`
     /// How close we are to flipping over to the next sequence number (0-1).
     sequence_t: f32,
 
@@ -69,11 +69,11 @@ struct TimeState {
     /// In this case, the view will expand while new data is added.
     /// Only when the user actually zooms or pans will this be set.
     #[serde(default)]
-    view: Option<TimeView>, // TODO(emilk): use f64 for TimeValue::Sequence too, or navigation in the time panel gets weird
+    view: Option<TimeView>,
 }
 
 impl TimeState {
-    fn new(time: TimeValue) -> Self {
+    fn new(time: TimeInt) -> Self {
         Self {
             time,
             fps: 30.0, // TODO(emilk): estimate based on data
@@ -185,42 +185,35 @@ impl TimeControl {
             if let Some(time_selection) = state.selection {
                 // Move filter selection
 
-                let span = if let Some(span) = time_selection.span() {
-                    span
-                } else {
-                    state.selection = None;
-                    return;
-                };
+                let length = time_selection.length();
 
                 let mut new_min = time_selection.min;
 
                 if self.looped {
                     // max must be in the range:
-                    new_min = new_min.max(loop_range.min.add_offset_f64(-span));
+                    new_min = new_min.max(loop_range.min - length);
                 }
 
-                match &mut new_min {
-                    TimeValue::Sequence(seq) => {
+                match self.time_source.typ() {
+                    TimeType::Sequence => {
                         state.sequence_t += state.fps * dt;
-                        *seq += state.sequence_t.floor() as i64;
+                        new_min += TimeInt::from(state.sequence_t.floor() as i64);
                         state.sequence_t = state.sequence_t.fract();
                     }
-                    TimeValue::Time(time) => {
-                        *time += Duration::from_secs(dt);
-                    }
+                    TimeType::Time => new_min += TimeInt::from(Duration::from_secs(dt)),
                 }
 
                 if new_min > loop_range.max {
                     if self.looped {
                         // Put max just at start of loop:
-                        new_min = loop_range.min.add_offset_f64(-span);
+                        new_min = loop_range.min - length;
                     } else {
                         new_min = loop_range.max;
                         self.playing = false;
                     }
                 }
 
-                let new_max = new_min.add_offset_f64(span);
+                let new_max = new_min + length;
                 state.selection = Some(TimeRange::new(new_min, new_max));
 
                 return;
@@ -240,15 +233,13 @@ impl TimeControl {
             return;
         }
 
-        match &mut state.time {
-            TimeValue::Sequence(seq) => {
+        match self.time_source.typ() {
+            TimeType::Sequence => {
                 state.sequence_t += state.fps * dt;
-                *seq += state.sequence_t.floor() as i64;
+                state.time += TimeInt::from(state.sequence_t.floor() as i64);
                 state.sequence_t = state.sequence_t.fract();
             }
-            TimeValue::Time(time) => {
-                *time += Duration::from_secs(dt);
-            }
+            TimeType::Time => state.time += TimeInt::from(Duration::from_secs(dt)),
         }
 
         if state.time > loop_range.max && self.looped {
@@ -334,12 +325,17 @@ impl TimeControl {
         &self.time_source
     }
 
+    /// The time type of the currently selected time source
+    pub fn time_type(&self) -> TimeType {
+        self.time_source.typ()
+    }
+
     pub fn set_source(&mut self, time_source: TimeSource) {
         self.time_source = time_source;
     }
 
     /// The current time. Note that this only makes sense if there is no time selection!
-    pub fn time(&self) -> Option<TimeValue> {
+    pub fn time_int(&self) -> Option<TimeInt> {
         if self.is_time_filter_active() {
             return None; // no single time
         }
@@ -383,7 +379,7 @@ impl TimeControl {
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
-    pub fn is_time_selected(&self, time_source: &TimeSource, needle: TimeValue) -> bool {
+    pub fn is_time_selected(&self, time_source: &TimeSource, needle: TimeInt) -> bool {
         if time_source != &self.time_source {
             return false;
         }
@@ -401,12 +397,12 @@ impl TimeControl {
         }
     }
 
-    pub fn set_source_and_time(&mut self, time_source: TimeSource, time: TimeValue) {
+    pub fn set_source_and_time(&mut self, time_source: TimeSource, time: TimeInt) {
         self.time_source = time_source;
         self.set_time(time);
     }
 
-    pub fn set_time(&mut self, time: TimeValue) {
+    pub fn set_time(&mut self, time: TimeInt) {
         if self.is_time_filter_active() {
             self.selection_active = false;
         }
@@ -478,18 +474,18 @@ impl TimeControl {
                 }
             }
         }
-        Some(TimeQuery::LatestAt(self.time()?.as_i64()))
+        Some(TimeQuery::LatestAt(self.time_int()?.as_i64()))
     }
 }
 
-fn min(values: &BTreeSet<TimeValue>) -> TimeValue {
+fn min(values: &BTreeSet<TimeInt>) -> TimeInt {
     *values.iter().next().unwrap()
 }
 
-fn max(values: &BTreeSet<TimeValue>) -> TimeValue {
+fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
     *values.iter().rev().next().unwrap()
 }
 
-fn range(values: &BTreeSet<TimeValue>) -> TimeRange {
+fn range(values: &BTreeSet<TimeInt>) -> TimeRange {
     TimeRange::new(min(values), max(values))
 }
