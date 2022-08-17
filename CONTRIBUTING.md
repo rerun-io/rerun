@@ -31,3 +31,11 @@ You can use [bacon](https://github.com/Canop/bacon) to automatically check your 
 
 ### Other
 You can view higher log levels with `export RUST_LOG=debug` or `export RUST_LOG=trace`.
+
+
+## Style
+We follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/about.html).
+
+We use default `rust fmt`.
+
+We have blank lines before functions, types, `impl` blocks, and docstrings.

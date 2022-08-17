@@ -163,6 +163,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "az"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b7e4c2464d97fe331d41de9d5db0def0a96f4d823b8b32a2efd503578988973"
+
+[[package]]
 name = "base64"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -675,6 +681,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
+
+[[package]]
 name = "crypto-common"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -987,6 +999,19 @@ checksum = "658f19728920138342f68408b7cf7644d90d4784353d8ebc32e7e8663dbe45fa"
 dependencies = [
  "cmake",
  "pkg-config",
+]
+
+[[package]]
+name = "fixed"
+version = "1.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ff8fc11090cf4e92c9f9052e778d3dc869d0fb943cdc5568df3d3b559a58787"
+dependencies = [
+ "az",
+ "bytemuck",
+ "half 2.1.0",
+ "serde",
+ "typenum",
 ]
 
 [[package]]
@@ -1462,6 +1487,15 @@ dependencies = [
  "num-traits",
  "serde",
  "zerocopy",
+]
+
+[[package]]
+name = "half"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad6a9459c9c30b177b925162351f97e7d967c7ea8bab3b8352805327daf45554"
+dependencies = [
+ "crunchy",
 ]
 
 [[package]]
@@ -2718,6 +2752,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "egui_glow",
+ "fixed",
  "glam",
  "glow",
  "image",
@@ -2742,6 +2777,7 @@ dependencies = [
  "three-d-asset",
  "tracing",
  "tracing-wasm",
+ "typenum",
  "vec1",
 ]
 
@@ -2998,7 +3034,7 @@ version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bef2ebfde456fb76bbcf9f59315333decc4fda0b2b44b420243c11e0f5ec1f5"
 dependencies = [
- "half",
+ "half 1.8.2",
  "serde",
 ]
 
@@ -3266,7 +3302,7 @@ dependencies = [
  "cgmath",
  "gloo-timers",
  "glow",
- "half",
+ "half 1.8.2",
  "js-sys",
  "serde",
  "thiserror",
@@ -3284,7 +3320,7 @@ checksum = "af1886553d8b51093705b6d1a02ec2c41ac78260f68b40682d94d9976960d689"
 dependencies = [
  "cgmath",
  "gltf",
- "half",
+ "half 1.8.2",
  "image",
  "thiserror",
  "wavefront_obj",

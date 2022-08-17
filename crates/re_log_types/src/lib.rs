@@ -356,13 +356,13 @@ impl From<Time> for TimeInt {
 
 impl From<TimeInt> for Time {
     fn from(int: TimeInt) -> Self {
-        Time::from_ns_since_epoch(int.as_i64())
+        Self::from_ns_since_epoch(int.as_i64())
     }
 }
 
 impl From<TimeInt> for Duration {
     fn from(int: TimeInt) -> Self {
-        Duration::from_nanos(int.as_i64())
+        Self::from_nanos(int.as_i64())
     }
 }
 

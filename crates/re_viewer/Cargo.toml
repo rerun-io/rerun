@@ -38,6 +38,7 @@ ahash = "0.7"
 anyhow = "1.0"
 bytemuck = "1.7"
 cgmath = { version = "0.18", features = ["mint"] }
+fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] }
 glow = "0.11"
 image = { version = "0.23", default-features = false, features = ["png"] }
@@ -52,6 +53,7 @@ rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+typenum = "1.15"
 three-d = { version = "0.12.2", default-features = false }
 three-d-asset = { version = "0.1.0", default-features = false, features = [
     "gltf",
