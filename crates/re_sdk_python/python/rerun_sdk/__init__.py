@@ -25,6 +25,10 @@ def info():
     return rerun_rs.info()
 
 
+def show():
+    return rerun_rs.show()
+
+
 def log_bbox(
     obj_path,
     left_top,
@@ -83,7 +87,7 @@ def log_image(obj_path, image, space=None):
             raise TypeError(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}")
 
-    log_tensor(obj_path, image, space)
+    log_tensor(obj_path, image, space=space)
 
 
 def log_depth_image(obj_path, image, meter=None, space=None):
@@ -99,23 +103,21 @@ def log_depth_image(obj_path, image, meter=None, space=None):
         raise TypeError(
             f"Expected 2D depth image, got array of shape {image.shape}")
 
-    log_tensor(obj_path, image, space)
-
-    if meter is not None:
-        rerun_rs.log_f32(obj_path, "meter", meter)
+    log_tensor(obj_path, image, meter=meter, space=space)
 
 
-def log_tensor(obj_path, image, space=None):
+def log_tensor(obj_path, image, meter=None, space=None):
     """
     If no `space` is given, the space name "2D" will be used.
     """
     if image.dtype == 'uint8':
-        rerun_rs.log_tensor_u8(obj_path, image, space)
+        rerun_rs.log_tensor_u8(obj_path, image, meter, space)
     elif image.dtype == 'uint16':
-        rerun_rs.log_tensor_u16(obj_path, image, space)
+        rerun_rs.log_tensor_u16(obj_path, image, meter, space)
     elif image.dtype == 'float32':
-        rerun_rs.log_tensor_f32(obj_path, image, space)
+        rerun_rs.log_tensor_f32(obj_path, image, meter, space)
     elif image.dtype == 'float64':
-        rerun_rs.log_tensor_f32(obj_path, image.astype('float32'), space)
+        rerun_rs.log_tensor_f32(
+            obj_path, image.astype('float32'), meter, space)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")

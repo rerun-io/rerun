@@ -4,7 +4,7 @@
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
-use re_log_types::*;
+use re_log_types::{LoggedData, *};
 
 use crate::sdk::Sdk;
 
@@ -24,9 +24,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         m.add_function(wrap_pyfunction!(show, m)?)?;
     }
 
-    m.add_function(wrap_pyfunction!(log_f32, m)?)?;
     m.add_function(wrap_pyfunction!(log_bbox, m)?)?;
-    m.add_function(wrap_pyfunction!(log_point2d, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
@@ -97,18 +95,6 @@ fn show() {
     }
 }
 
-#[pyfunction]
-fn log_f32(obj_path: &str, field_name: &str, value: f32) {
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
-    let mut sdk = Sdk::global();
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        id: LogId::random(),
-        time_point: time_point(),
-        data_path: DataPath::new(obj_path, field_name.into()),
-        data: re_log_types::LoggedData::Single(Data::F32(value)),
-    }));
-}
-
 /// Log a 2D bounding box.
 ///
 /// Optionally give it a label.
@@ -137,7 +123,7 @@ fn log_bbox(
         id: LogId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.clone(), "bbox".into()),
-        data: re_log_types::LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
+        data: LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
     }));
 
     if let Some(label) = label {
@@ -145,7 +131,7 @@ fn log_bbox(
             id: LogId::random(),
             time_point: time_point.clone(),
             data_path: DataPath::new(obj_path.clone(), "label".into()),
-            data: re_log_types::LoggedData::Single(Data::String(label)),
+            data: LoggedData::Single(Data::String(label)),
         }));
     }
 
@@ -154,35 +140,7 @@ fn log_bbox(
         id: LogId::random(),
         time_point,
         data_path: DataPath::new(obj_path, "space".into()),
-        data: re_log_types::LoggedData::Single(Data::Space(space.into())),
-    }));
-}
-
-/// Log a single 2D point.
-///
-/// If no `space` is given, the space name "2D" will be used.
-#[pyfunction]
-fn log_point2d(obj_path: &str, x: f32, y: f32, space: Option<String>) {
-    let mut sdk = Sdk::global();
-
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::Point2D);
-
-    let time_point = time_point();
-
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        id: LogId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "pos".into()),
-        data: re_log_types::LoggedData::Single(Data::Vec2([x, y])),
-    }));
-
-    let space = space.unwrap_or_else(|| "2D".to_owned());
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        id: LogId::random(),
-        time_point,
-        data_path: DataPath::new(obj_path, "space".into()),
-        data: re_log_types::LoggedData::Single(Data::Space(space.into())),
+        data: LoggedData::Single(Data::Space(space.into())),
     }));
 }
 
@@ -256,7 +214,7 @@ fn log_points_rs(
                     id: LogId::random(),
                     time_point: time_point.clone(),
                     data_path: DataPath::new(point_path.clone(), "color".into()),
-                    data: re_log_types::LoggedData::BatchSplat(Data::Color(color)),
+                    data: LoggedData::BatchSplat(Data::Color(color)),
                 }));
             }
             n if n == num_pos => {
@@ -272,7 +230,7 @@ fn log_points_rs(
                     id: LogId::random(),
                     time_point: time_point.clone(),
                     data_path: DataPath::new(point_path.clone(), "color".into()),
-                    data: re_log_types::LoggedData::Batch {
+                    data: LoggedData::Batch {
                         indices: indices.clone(),
                         data: DataVec::Color(colors),
                     },
@@ -313,7 +271,7 @@ fn log_points_rs(
         id: LogId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(point_path.clone(), "pos".into()),
-        data: re_log_types::LoggedData::Batch {
+        data: LoggedData::Batch {
             indices,
             data: pos_data,
         },
@@ -324,7 +282,7 @@ fn log_points_rs(
         id: LogId::random(),
         time_point,
         data_path: DataPath::new(point_path, "space".into()),
-        data: re_log_types::LoggedData::BatchSplat(Data::Space(space.into())),
+        data: LoggedData::BatchSplat(Data::Space(space.into())),
     }));
 
     Ok(())
@@ -333,28 +291,44 @@ fn log_points_rs(
 /// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_tensor_u8(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, u8>, space: Option<String>) {
-    log_tensor(obj_path, img, space);
+fn log_tensor_u8(
+    obj_path: &str,
+    img: numpy::PyReadonlyArrayDyn<'_, u8>,
+    meter: Option<f32>,
+    space: Option<String>,
+) {
+    log_tensor(obj_path, img, meter, space);
 }
 
 /// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_tensor_u16(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, u16>, space: Option<String>) {
-    log_tensor(obj_path, img, space);
+fn log_tensor_u16(
+    obj_path: &str,
+    img: numpy::PyReadonlyArrayDyn<'_, u16>,
+    meter: Option<f32>,
+    space: Option<String>,
+) {
+    log_tensor(obj_path, img, meter, space);
 }
 
 /// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-fn log_tensor_f32(obj_path: &str, img: numpy::PyReadonlyArrayDyn<'_, f32>, space: Option<String>) {
-    log_tensor(obj_path, img, space);
+fn log_tensor_f32(
+    obj_path: &str,
+    img: numpy::PyReadonlyArrayDyn<'_, f32>,
+    meter: Option<f32>,
+    space: Option<String>,
+) {
+    log_tensor(obj_path, img, meter, space);
 }
 
 /// If no `space` is given, the space name "2D" will be used.
 fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, T>,
+    meter: Option<f32>,
     space: Option<String>,
 ) {
     let mut sdk = Sdk::global();
@@ -368,35 +342,43 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
         id: LogId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.clone(), "tensor".into()),
-        data: re_log_types::LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
+        data: LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
     }));
 
     let space = space.unwrap_or_else(|| "2D".to_owned());
     sdk.send(LogMsg::DataMsg(DataMsg {
         id: LogId::random(),
-        time_point,
-        data_path: DataPath::new(obj_path, "space".into()),
-        data: re_log_types::LoggedData::Single(Data::Space(space.into())),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "space".into()),
+        data: LoggedData::Single(Data::Space(space.into())),
     }));
+
+    if let Some(meter) = meter {
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            id: LogId::random(),
+            time_point,
+            data_path: DataPath::new(obj_path, "meter".into()),
+            data: LoggedData::Single(Data::F32(meter)),
+        }));
+    }
 }
 
 fn time_point() -> TimePoint {
     let mut time_point = TimePoint::default();
-    time_point.0.insert(
-        "log_time".into(),
-        TimeValue::Time(re_log_types::Time::now()),
-    );
+    time_point
+        .0
+        .insert("log_time".into(), TimeValue::Time(Time::now()));
     time_point
 }
 
 fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     img: &numpy::PyReadonlyArrayDyn<'_, T>,
-) -> re_log_types::Tensor {
+) -> Tensor {
     let vec = img.to_owned_array().into_raw_vec();
     let vec = bytemuck::allocation::try_cast_vec(vec)
         .unwrap_or_else(|(_err, vec)| bytemuck::allocation::pod_collect_to_vec(&vec));
 
-    re_log_types::Tensor {
+    Tensor {
         shape: img.shape().iter().map(|&d| d as u64).collect(),
         dtype: T::DTYPE,
         data: TensorDataStore::Dense(vec),
