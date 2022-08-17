@@ -10,7 +10,7 @@ pub struct RemoteViewerApp {
 impl RemoteViewerApp {
     /// url to rerun server
     pub fn new(
-        egui_ctx: egui::Context,
+        egui_ctx: &egui::Context,
         storage: Option<&dyn eframe::Storage>,
         url: String,
     ) -> Self {
@@ -19,14 +19,16 @@ impl RemoteViewerApp {
         slf
     }
 
-    fn connect(&mut self, egui_ctx: egui::Context, storage: Option<&dyn eframe::Storage>) {
+    fn connect(&mut self, egui_ctx: &egui::Context, storage: Option<&dyn eframe::Storage>) {
         let (tx, rx) = std::sync::mpsc::channel();
+
+        let egui_ctx_clone = egui_ctx.clone();
 
         let connection = re_ws_comms::Connection::viewer_to_server(
             self.url.clone(),
             move |data_msg: re_log_types::LogMsg| {
                 if tx.send(data_msg).is_ok() {
-                    egui_ctx.request_repaint(); // Wake up UI thread
+                    egui_ctx_clone.request_repaint(); // Wake up UI thread
                     std::ops::ControlFlow::Continue(())
                 } else {
                     tracing::info!("Failed to send log message to viewer - closing");
@@ -36,7 +38,7 @@ impl RemoteViewerApp {
         )
         .unwrap(); // TODO(emilk): handle error
 
-        let app = crate::App::from_receiver(storage, rx);
+        let app = crate::App::from_receiver(egui_ctx, storage, rx);
 
         self.app = Some((connection, app));
     }
@@ -68,7 +70,7 @@ impl eframe::App for RemoteViewerApp {
                             app.save(storage);
                         }
                     }
-                    self.connect(ctx.clone(), frame.storage());
+                    self.connect(ctx, frame.storage());
                 }
             });
         });

@@ -25,7 +25,7 @@ pub fn run_native_app(app_creator: eframe::AppCreator) {
 pub fn run_native_viewer_with_rx(rx: Receiver<LogMsg>) {
     run_native_app(Box::new(move |cc| {
         let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-        Box::new(crate::App::from_receiver(cc.storage, rx))
+        Box::new(crate::App::from_receiver(&cc.egui_ctx, cc.storage, rx))
     }));
 }
 

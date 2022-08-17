@@ -66,6 +66,7 @@ vec1 = "1.8"
 arboard = { version = "2.1", default-features = false, features = [
     "image-data",
 ] }
+ctrlc = { version = "3.0", features = ["termination"] }
 puffin = { version = "0.13", optional = true }
 puffin_http = { version = "0.10", optional = true }
 

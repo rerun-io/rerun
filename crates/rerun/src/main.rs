@@ -43,7 +43,7 @@ async fn main() {
         let path = std::path::Path::new(url_or_path).to_path_buf();
         if path.exists() || url_or_path.ends_with(".rrd") {
             re_viewer::run_native_app(Box::new(move |cc| {
-                let mut app = re_viewer::App::from_rrd_path(cc.storage, &path);
+                let mut app = re_viewer::App::from_rrd_path(&cc.egui_ctx, cc.storage, &path);
                 app.set_profiler(profiler);
                 Box::new(app)
             }));
@@ -54,7 +54,7 @@ async fn main() {
                 url = format!("{}://{url}", re_ws_comms::PROTOCOL);
             }
             re_viewer::run_native_app(Box::new(move |cc| {
-                let mut app = re_viewer::RemoteViewerApp::new(cc.egui_ctx.clone(), cc.storage, url);
+                let mut app = re_viewer::RemoteViewerApp::new(&cc.egui_ctx, cc.storage, url);
                 app.set_profiler(profiler);
                 Box::new(app)
             }));

@@ -1,3 +1,5 @@
+use std::sync::mpsc::Receiver;
+
 use egui_extras::RetainedImage;
 use re_log_types::*;
 
@@ -8,50 +10,84 @@ const WATERMARK: bool = false; // Nice for recording media material
 // ----------------------------------------------------------------------------
 
 pub struct App {
-    rx: Option<std::sync::mpsc::Receiver<LogMsg>>,
+    rx: Option<Receiver<LogMsg>>,
 
     /// Where the logs are stored.
     log_db: LogDb,
 
     state: AppState,
+
+    /// Set to `true` on Ctrl-C.
+    #[cfg(not(target_arch = "wasm32"))]
+    ctrl_c: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
+        egui_ctx: &egui::Context,
         storage: Option<&dyn eframe::Storage>,
-        rx: std::sync::mpsc::Receiver<LogMsg>,
+        rx: Receiver<LogMsg>,
+    ) -> Self {
+        Self::new(egui_ctx, storage, Some(rx), Default::default())
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn from_log_db(
+        egui_ctx: &egui::Context,
+        storage: Option<&dyn eframe::Storage>,
+        log_db: LogDb,
+    ) -> Self {
+        Self::new(egui_ctx, storage, None, log_db)
+    }
+
+    /// load a `.rrd` data file.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn from_rrd_path(
+        egui_ctx: &egui::Context,
+        storage: Option<&dyn eframe::Storage>,
+        path: &std::path::Path,
+    ) -> Self {
+        let mut log_db = Default::default();
+        load_file_path(path, &mut log_db);
+        Self::from_log_db(egui_ctx, storage, log_db)
+    }
+
+    fn new(
+        _egui_ctx: &egui::Context,
+        storage: Option<&dyn eframe::Storage>,
+        rx: Option<Receiver<LogMsg>>,
+        log_db: LogDb,
     ) -> Self {
         let state = storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
 
-        Self {
-            rx: Some(rx),
-            log_db: Default::default(),
-            state,
+        #[cfg(not(target_arch = "wasm32"))]
+        let ctrl_c = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
+
+            let ctrl_c = ctrl_c.clone();
+            let egui_ctx = _egui_ctx.clone();
+
+            ctrlc::set_handler(move || {
+                tracing::debug!("Ctrl-C detected - Closing viewer.");
+                ctrl_c.store(true, std::sync::atomic::Ordering::SeqCst);
+                egui_ctx.request_repaint(); // so that we notice that we should close
+            })
+            .expect("Error setting Ctrl-C handler");
         }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn from_log_db(storage: Option<&dyn eframe::Storage>, log_db: LogDb) -> Self {
-        let state = storage
-            .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
-            .unwrap_or_default();
 
         Self {
-            rx: None,
+            rx,
             log_db,
             state,
+            #[cfg(not(target_arch = "wasm32"))]
+            ctrl_c,
         }
-    }
-
-    /// load a `.rrd` data file.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_rrd_path(storage: Option<&dyn eframe::Storage>, path: &std::path::Path) -> Self {
-        let mut log_db = Default::default();
-        load_file_path(path, &mut log_db);
-        Self::from_log_db(storage, log_db)
     }
 
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -66,6 +102,12 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.ctrl_c.load(std::sync::atomic::Ordering::SeqCst) {
+            frame.quit();
+            return;
+        }
+
         if let Some(rx) = &mut self.rx {
             crate::profile_scope!("receive_messages");
             let start = instant::Instant::now();
