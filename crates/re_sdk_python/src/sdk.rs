@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
 
 use re_log_types::{
-    LogId, LogMsg, ObjTypePath, ObjectType, Time, TimePoint, TimeSource, TimeValue, TypeMsg,
+    LogId, LogMsg, ObjTypePath, ObjectType, Time, TimePoint, TimeSource, TimeType, TimeValue,
+    TypeMsg,
 };
 
 #[derive(Default)]
@@ -94,7 +95,10 @@ impl Sdk {
 
     pub fn now(&self) -> TimePoint {
         let mut time_point = self.time_point.clone();
-        time_point.0.insert("log_time".into(), Time::now().into());
+        time_point.0.insert(
+            TimeSource::new("log_time", TimeType::Time),
+            Time::now().into(),
+        );
         time_point
     }
 

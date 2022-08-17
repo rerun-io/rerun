@@ -146,7 +146,7 @@ impl TimeControl {
 
     pub fn has_selection(&self) -> bool {
         self.states
-            .get(self.source())
+            .get(&self.time_source)
             .map_or(false, |state| state.selection.is_some())
     }
 
@@ -295,7 +295,7 @@ impl TimeControl {
 
     /// playback fps
     pub fn fps(&self) -> Option<f32> {
-        self.states.get(self.source()).map(|state| state.fps)
+        self.states.get(&self.time_source).map(|state| state.fps)
     }
 
     /// playback fps
@@ -461,7 +461,7 @@ impl TimeControl {
 
         let mut objects = re_data_store::Objects::default();
         if let Some(time_query) = self.time_query() {
-            if let Some((_, store)) = log_db.data_store.get(self.source()) {
+            if let Some((_, store)) = log_db.data_store.get(&self.time_source) {
                 for (obj_type_path, object_type) in &log_db.object_types {
                     objects.query_object(store, &time_query, obj_type_path, *object_type);
                 }

@@ -205,13 +205,67 @@ impl_into_logged_data!(ObjPath, Space);
 // ----------------------------------------------------------------------------
 
 re_string_interner::declare_new_type!(
-    /// The name of a time source. Often something like `"time"` or `"frame"`.
-    pub struct TimeSource;
+    /// The name of a time source. Often something like `"log_time"` or `"frame_nr"`.
+    pub struct TimeSourceName;
 );
+
+impl Default for TimeSourceName {
+    fn default() -> Self {
+        Self::new("")
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// A time frame/space, e.g. `log_time` or `frame_nr`, coupled with the type of time
+/// it keeps.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TimeSource {
+    /// Name of the time source (e.g. "log_time").
+    name: TimeSourceName,
+
+    /// Sequence or time?
+    typ: TimeType,
+}
 
 impl Default for TimeSource {
     fn default() -> Self {
-        Self::new("")
+        Self {
+            name: TimeSourceName::new(""),
+            typ: TimeType::Sequence,
+        }
+    }
+}
+
+impl TimeSource {
+    #[inline]
+    pub fn new(name: impl Into<TimeSourceName>, typ: TimeType) -> Self {
+        Self {
+            name: name.into(),
+            typ,
+        }
+    }
+
+    #[inline]
+    pub fn name(&self) -> &TimeSourceName {
+        &self.name
+    }
+
+    #[inline]
+    pub fn typ(&self) -> TimeType {
+        self.typ
+    }
+}
+
+impl nohash_hasher::IsEnabled for TimeSource {}
+
+// required for [`nohash_hasher`].
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for TimeSource {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.name.hash() | self.typ.hash());
     }
 }
 
@@ -225,13 +279,23 @@ impl Default for TimeSource {
 pub struct TimePoint(pub BTreeMap<TimeSource, TimeValue>);
 
 /// The type of a [`TimeValue`].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
     /// Normal wall time.
     Time,
 
     /// Used e.g. for frames in a film.
     Sequence,
+}
+
+impl TimeType {
+    fn hash(&self) -> u64 {
+        match self {
+            Self::Time => 0,
+            Self::Sequence => 1,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -306,7 +370,7 @@ pub fn time_point(fields: impl IntoIterator<Item = (&'static str, TimeValue)>) -
     TimePoint(
         fields
             .into_iter()
-            .map(|(name, tt)| (TimeSource::from(name), tt))
+            .map(|(name, tt)| (TimeSource::new(name, tt.typ()), tt))
             .collect(),
     )
 }
