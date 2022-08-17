@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_data_store::{ObjPath, ObjTypePath};
 use re_log_types::{Data, DataMsg, DataPath, LogId, LoggedData};

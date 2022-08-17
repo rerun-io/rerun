@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use re_data_store::TypePathDataStore;
 use re_data_store::*;
 use re_log_types::{FieldName, LogId};

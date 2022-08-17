@@ -8,6 +8,7 @@ pub(crate) mod profiler;
 pub(crate) mod time_axis;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
+mod time_range;
 mod viewer_context;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -16,7 +17,7 @@ pub(crate) use clipboard::Clipboard;
 use image_cache::ImageCache;
 pub(crate) use log_db::LogDb;
 pub(crate) use time_control::{TimeControl, TimeView};
-
+pub(crate) use time_range::TimeRange;
 pub(crate) use viewer_context::{Selection, ViewerContext};
 
 // ----------------------------------------------------------------------------
@@ -25,16 +26,19 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use egui::emath;
 
-use re_log_types::{TimePoint, TimeSource, TimeValue};
+use re_log_types::{TimeInt, TimePoint, TimeSource};
 
-/// An aggregate of `TimePoint`:s.
+/// An aggregate of [`TimePoint`]:s.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeValue>>);
+pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
 
 impl TimePoints {
     pub fn insert(&mut self, time_point: &TimePoint) {
         for (time_source, value) in &time_point.0 {
-            self.0.entry(*time_source).or_default().insert(*value);
+            self.0
+                .entry(*time_source)
+                .or_default()
+                .insert(value.to_int());
         }
     }
 }

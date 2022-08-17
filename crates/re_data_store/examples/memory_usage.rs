@@ -46,7 +46,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 }
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use re_data_store::*;
 use re_log_types::{LogId, TimeValue};
 

@@ -5,8 +5,8 @@ use re_log_types::*;
 
 use crate::misc::TimePoints;
 
-use super::time_axis::TimeRange;
 use super::time_control::*;
+use super::TimeRange;
 
 impl TimeControl {
     pub fn time_source_selector_ui(&mut self, time_source_axes: &TimePoints, ui: &mut egui::Ui) {
@@ -25,18 +25,16 @@ impl TimeControl {
                 }
             });
 
-        if let Some(axis) = time_source_axes.0.get(self.source()) {
-            if matches!(min(axis), TimeValue::Sequence(_)) {
-                if let Some(mut fps) = self.fps() {
-                    ui.add(
-                        egui::DragValue::new(&mut fps)
-                            .prefix("FPS: ")
-                            .speed(1)
-                            .clamp_range(0.0..=f32::INFINITY),
-                    )
-                    .on_hover_text("Frames Per Second");
-                    self.set_fps(fps);
-                }
+        if self.time_type() == TimeType::Sequence {
+            if let Some(mut fps) = self.fps() {
+                ui.add(
+                    egui::DragValue::new(&mut fps)
+                        .prefix("FPS: ")
+                        .speed(1)
+                        .clamp_range(0.0..=f32::INFINITY),
+                )
+                .on_hover_text("Frames Per Second");
+                self.set_fps(fps);
             }
         }
     }
@@ -181,15 +179,15 @@ impl TimeControl {
                 self.pause();
 
                 if let Some(time_range) = self.time_filter_range() {
-                    let span = time_range.span().unwrap_or(0.0);
+                    let length = time_range.length();
                     let new_min = if step_back {
                         step_back_time(&time_range.min, time_values)
                     } else {
                         step_fwd_time(&time_range.min, time_values)
                     };
-                    let new_max = new_min.add_offset_f64(span);
+                    let new_max = new_min + length;
                     self.set_time_selection(TimeRange::new(new_min, new_max));
-                } else if let Some(time) = self.time() {
+                } else if let Some(time) = self.time_int() {
                     #[allow(clippy::collapsible_else_if)]
                     let new_time = if let Some(loop_range) = self.loop_range() {
                         if step_back {
@@ -211,15 +209,15 @@ impl TimeControl {
     }
 }
 
-fn min(values: &BTreeSet<TimeValue>) -> TimeValue {
+fn min(values: &BTreeSet<TimeInt>) -> TimeInt {
     *values.iter().next().unwrap()
 }
 
-fn max(values: &BTreeSet<TimeValue>) -> TimeValue {
+fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
     *values.iter().rev().next().unwrap()
 }
 
-fn step_fwd_time(time: &TimeValue, values: &BTreeSet<TimeValue>) -> TimeValue {
+fn step_fwd_time(time: &TimeInt, values: &BTreeSet<TimeInt>) -> TimeInt {
     if let Some(next) = values
         .range((std::ops::Bound::Excluded(time), std::ops::Bound::Unbounded))
         .next()
@@ -231,10 +229,10 @@ fn step_fwd_time(time: &TimeValue, values: &BTreeSet<TimeValue>) -> TimeValue {
 }
 
 fn step_fwd_time_looped(
-    time: &TimeValue,
-    values: &BTreeSet<TimeValue>,
+    time: &TimeInt,
+    values: &BTreeSet<TimeInt>,
     loop_range: &TimeRange,
-) -> TimeValue {
+) -> TimeInt {
     if time < &loop_range.min || &loop_range.max <= time {
         loop_range.min
     } else if let Some(next) = values
@@ -250,7 +248,7 @@ fn step_fwd_time_looped(
     }
 }
 
-fn step_back_time(time: &TimeValue, values: &BTreeSet<TimeValue>) -> TimeValue {
+fn step_back_time(time: &TimeInt, values: &BTreeSet<TimeInt>) -> TimeInt {
     if let Some(previous) = values.range(..time).rev().next() {
         *previous
     } else {
@@ -259,10 +257,10 @@ fn step_back_time(time: &TimeValue, values: &BTreeSet<TimeValue>) -> TimeValue {
 }
 
 fn step_back_time_looped(
-    time: &TimeValue,
-    values: &BTreeSet<TimeValue>,
+    time: &TimeInt,
+    values: &BTreeSet<TimeInt>,
     loop_range: &TimeRange,
-) -> TimeValue {
+) -> TimeInt {
     if time <= &loop_range.min || &loop_range.max < time {
         loop_range.max
     } else if let Some(previous) = values.range(loop_range.min..*time).rev().next() {

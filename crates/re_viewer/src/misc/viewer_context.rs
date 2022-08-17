@@ -1,5 +1,7 @@
 use re_data_store::ObjTypePath;
-use re_log_types::{DataPath, LogId, ObjPath, ObjPathBuilder, ObjPathComp, TimeSource, TimeValue};
+use re_log_types::{
+    DataPath, LogId, ObjPath, ObjPathBuilder, ObjPathComp, TimeInt, TimeSource, TimeValue,
+};
 
 use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 
@@ -147,11 +149,14 @@ impl ViewerContext {
         &mut self,
         ui: &mut egui::Ui,
         time_source: &TimeSource,
-        value: TimeValue,
+        value: TimeInt,
     ) -> egui::Response {
         let is_selected = self.time_control.is_time_selected(time_source, value);
 
-        let response = ui.selectable_label(is_selected, value.to_string());
+        let response = ui.selectable_label(
+            is_selected,
+            TimeValue::new(time_source.typ(), value).to_string(),
+        );
         if response.clicked() {
             self.time_control.set_source_and_time(*time_source, value);
             self.time_control.pause();
