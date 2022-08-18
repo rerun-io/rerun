@@ -1,5 +1,5 @@
 ```sh
-examples/objectron/download_dataset.py
+(cd examples/objectron && ./download_dataset.py)
 cargo run --release -p objectron -- examples/objectron/dataset/camera/batch-5/31
 ```
 

@@ -21,7 +21,7 @@ fn hash(value: impl std::hash::Hash) -> u64 {
 
 #[derive(Copy, Clone, Eq)]
 pub struct InternedString {
-    hash: u64,
+    hash: u64, // TODO(emilk): consider removing the hash from the `InternedString` (benchmark!)
     string: &'static str,
 }
 
