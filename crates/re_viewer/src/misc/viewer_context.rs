@@ -151,7 +151,9 @@ impl ViewerContext {
         time_source: &TimeSource,
         value: TimeInt,
     ) -> egui::Response {
-        let is_selected = self.time_control.is_time_selected(time_source, value);
+        let is_selected = self
+            .time_control
+            .is_time_selected(time_source, value.into());
 
         let response = ui.selectable_label(
             is_selected,

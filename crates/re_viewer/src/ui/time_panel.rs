@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     log_db::ObjectTree, misc::time_axis::TimeSourceAxis, misc::time_control::TimeSelectionType,
-    LogDb, TimeControl, TimeRange, TimeView, ViewerContext,
+    LogDb, TimeControl, TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
 };
 
 use egui::*;
@@ -439,7 +439,7 @@ fn show_data_over_time(
 
     let mut paint_stretch = |stretch: &Stretch<'_>| {
         let stop_x = time_ranges_ui
-            .x_from_time(stretch.stop_time)
+            .x_from_time(stretch.stop_time.into())
             .unwrap_or(stretch.start_x);
 
         let num_messages: usize = stretch.log_ids.iter().map(|l| l.len()).sum();
@@ -483,8 +483,9 @@ fn show_data_over_time(
         // TODO(emilk): avoid this lookup by pre-partitioning on time source
         if let Some(time) = time.0.get(&time_source).copied() {
             let time = time.as_int();
+            let time_real = TimeReal::from(time);
 
-            let selected = selected_time_range.map_or(true, |range| range.contains(time));
+            let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
 
             if let Some(current_stretch) = &mut stretch {
                 if current_stretch.selected == selected
@@ -502,7 +503,7 @@ fn show_data_over_time(
             }
 
             if stretch.is_none() {
-                if let Some(x) = time_ranges_ui.x_from_time(time) {
+                if let Some(x) = time_ranges_ui.x_from_time(time_real) {
                     stretch = Some(Stretch {
                         start_x: x,
                         start_time: time,
@@ -654,7 +655,10 @@ fn interact_with_time_area(
     parent_scroll_delta
 }
 
-fn initial_time_selection(time_ranges_ui: &TimeRangesUi, time_type: TimeType) -> Option<TimeRange> {
+fn initial_time_selection(
+    time_ranges_ui: &TimeRangesUi,
+    time_type: TimeType,
+) -> Option<TimeRangeF> {
     let ranges = &time_ranges_ui.segments;
 
     // Try to find a long duration first, then fall back to shorter
@@ -667,13 +671,14 @@ fn initial_time_selection(time_ranges_ui: &TimeRangesUi, time_type: TimeType) ->
                         let seconds = Duration::from(range.max - range.min).as_secs_f64();
                         if seconds > min_duration {
                             let one_sec = TimeInt::from(Duration::from_secs(1.0));
-                            return Some(TimeRange::new(range.min, range.min + one_sec));
+                            return Some(TimeRangeF::new(range.min, range.min + one_sec));
                         }
                     }
                     TimeType::Sequence => {
-                        return Some(TimeRange::new(
+                        return Some(TimeRangeF::new(
                             range.min,
-                            range.min + TimeInt::from((range.max - range.min).as_i64() / 2),
+                            TimeReal::from(range.min)
+                                + TimeReal::from((range.max - range.min).as_f64() / 2.0),
                         ));
                     }
                 }
@@ -687,7 +692,7 @@ fn initial_time_selection(time_ranges_ui: &TimeRangesUi, time_type: TimeType) ->
         None // not enough to show anything meaningful
     } else {
         let end = (ranges.len() / 2).at_least(1);
-        Some(TimeRange::new(
+        Some(TimeRangeF::new(
             ranges[0].tight_time.min,
             ranges[end].tight_time.max,
         ))
@@ -835,7 +840,7 @@ fn time_selection_ui(
             && ui.input().pointer.primary_down()
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
-                time_control.set_time_selection(TimeRange::point(time));
+                time_control.set_time_selection(TimeRangeF::point(time));
                 did_interact = true;
                 ui.memory().set_dragged_id(right_edge_id);
             }
@@ -856,10 +861,10 @@ fn time_selection_ui(
                 ) {
                     let low_length = selected_range.max - time_low;
                     let high_length = selected_range.max - time_high;
-                    let best_length = TimeInt::from(best_in_range_f64(
+                    let best_length = TimeReal::from(best_in_range_f64(
                         low_length.as_f64(),
                         high_length.as_f64(),
-                    ) as i64);
+                    ));
 
                     selected_range.min = selected_range.max - best_length;
 
@@ -880,10 +885,10 @@ fn time_selection_ui(
                 ) {
                     let low_length = time_low - selected_range.min;
                     let high_length = time_high - selected_range.min;
-                    let best_length = TimeInt::from(best_in_range_f64(
+                    let best_length = TimeReal::from(best_in_range_f64(
                         low_length.as_f64(),
                         high_length.as_f64(),
-                    ) as i64);
+                    ));
 
                     selected_range.max = selected_range.min + best_length;
 
@@ -908,7 +913,7 @@ fn time_selection_ui(
                     let min_time = time_ranges_ui.time_from_x(min_x)?;
                     let max_time = time_ranges_ui.time_from_x(max_x)?;
 
-                    let mut new_range = TimeRange::new(min_time, max_time);
+                    let mut new_range = TimeRangeF::new(min_time, max_time);
 
                     if egui::emath::almost_equal(
                         selected_range.length().as_f32(),
@@ -949,7 +954,7 @@ fn time_selection_ui(
 }
 
 /// Human-readable description of a duration
-pub fn format_duration(time_typ: TimeType, duration: TimeInt) -> String {
+pub fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
     match time_typ {
         TimeType::Time => Duration::from(duration).to_string(),
         TimeType::Sequence => duration.as_i64().to_string(),
@@ -985,7 +990,7 @@ fn time_marker_ui(
     let mut is_anything_being_dragged = ui.memory().is_anything_being_dragged();
 
     // show current time as a line:
-    if let Some(time) = time_control.time_int() {
+    if let Some(time) = time_control.time() {
         if let Some(x) = time_ranges_ui.x_from_time(time) {
             if let Some(pointer_pos) = pointer_pos {
                 let line_rect = Rect::from_x_y_ranges(x..=x, time_line_rect.top()..=bottom_y);
@@ -1096,7 +1101,7 @@ fn view_everything(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceA
 
     // Leave some room on the margins:
     let time_margin = time_spanned * (SIDE_MARGIN / width.at_least(64.0)) as f64;
-    let min = min - TimeInt::from(time_margin as i64);
+    let min = min - TimeReal::from(time_margin);
     let time_spanned = time_spanned + 2.0 * time_margin;
 
     TimeView { min, time_spanned }
@@ -1133,7 +1138,7 @@ impl Default for TimeRangesUi {
         Self {
             x_range: 0.0..=1.0,
             time_view: TimeView {
-                min: TimeInt::from(0),
+                min: TimeReal::from(0),
                 time_spanned: 1.0,
             },
             segments: vec![],
@@ -1176,7 +1181,7 @@ impl TimeRangesUi {
                 // Also gives zero-width segments some width!
                 let expansion = gap_width / 3.0;
                 let x_range = (*x_range.start() - expansion)..=(*x_range.end() + expansion);
-                let time_expansion = TimeInt::from((expansion / points_per_time) as i64);
+                let time_expansion = TimeReal::from(expansion / points_per_time);
                 let range = TimeRange::new(range.min - time_expansion, range.max + time_expansion);
                 Segment {
                     x: x_range,
@@ -1205,10 +1210,10 @@ impl TimeRangesUi {
     }
 
     /// Make sure the time is not between ranges.
-    fn snap_time(&self, value: TimeInt) -> TimeInt {
+    fn snap_time(&self, value: TimeReal) -> TimeReal {
         for segment in &self.segments {
             if value < segment.time.min {
-                return segment.time.min;
+                return segment.time.min.into();
             } else if value <= segment.time.max {
                 return value;
             }
@@ -1223,7 +1228,7 @@ impl TimeRangesUi {
         }
 
         // Make sure time doesn't get stuck between non-continuos regions:
-        if let Some(time) = context.time_control.time_int() {
+        if let Some(time) = context.time_control.time() {
             let time = self.snap_time(time);
             context.time_control.set_time(time);
         } else if let Some(selection) = context.time_control.time_selection() {
@@ -1238,14 +1243,14 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            context.time_control.set_time_selection(TimeRange::new(
+            context.time_control.set_time_selection(TimeRangeF::new(
                 snapped_max - selection.length(),
                 snapped_max,
             ));
         }
     }
 
-    fn x_from_time(&self, needle_time: TimeInt) -> Option<f32> {
+    fn x_from_time(&self, needle_time: TimeReal) -> Option<f32> {
         let first_segment = self.segments.first()?;
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
@@ -1257,10 +1262,10 @@ impl TimeRangesUi {
 
         for segment in &self.segments {
             if needle_time < segment.time.min {
-                let t = TimeRange::new(last_time, segment.time.min).inverse_lerp(needle_time);
+                let t = TimeRangeF::new(last_time, segment.time.min).inverse_lerp(needle_time);
                 return Some(lerp(last_x..=*segment.x.start(), t));
             } else if needle_time <= segment.time.max {
-                let t = segment.time.inverse_lerp(needle_time);
+                let t = TimeRangeF::from(segment.time).inverse_lerp(needle_time);
                 return Some(lerp(segment.x.clone(), t));
             } else {
                 last_x = *segment.x.end();
@@ -1272,25 +1277,23 @@ impl TimeRangesUi {
         Some(last_x + self.points_per_time * (needle_time - last_time).as_f32())
     }
 
-    fn time_from_x(&self, needle_x: f32) -> Option<TimeInt> {
+    fn time_from_x(&self, needle_x: f32) -> Option<TimeReal> {
         let first_segment = self.segments.first()?;
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
 
         if needle_x <= last_x {
             // extrapolate:
-            return Some(
-                last_time + TimeInt::from(((needle_x - last_x) / self.points_per_time) as i64),
-            );
+            return Some(last_time + TimeReal::from((needle_x - last_x) / self.points_per_time));
         }
 
         for segment in &self.segments {
             if needle_x < *segment.x.start() {
                 let t = remap(needle_x, last_x..=*segment.x.start(), 0.0..=1.0);
-                return Some(TimeRange::new(last_time, segment.time.min).lerp(t));
+                return Some(TimeRangeF::new(last_time, segment.time.min).lerp(t));
             } else if needle_x <= *segment.x.end() {
                 let t = remap(needle_x, segment.x.clone(), 0.0..=1.0);
-                return Some(segment.time.lerp(t));
+                return Some(TimeRangeF::from(segment.time).lerp(t));
             } else {
                 last_x = *segment.x.end();
                 last_time = segment.time.max;
@@ -1298,7 +1301,7 @@ impl TimeRangesUi {
         }
 
         // extrapolate:
-        Some(last_time + TimeInt::from(((needle_x - last_x) / self.points_per_time).round() as i64))
+        Some(last_time + TimeReal::from((needle_x - last_x) / self.points_per_time))
     }
 
     /// Pan the view, returning the new view.

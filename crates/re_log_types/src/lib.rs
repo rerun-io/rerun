@@ -356,13 +356,13 @@ impl From<Time> for TimeInt {
 
 impl From<TimeInt> for Time {
     fn from(int: TimeInt) -> Self {
-        Time::from_ns_since_epoch(int.as_i64())
+        Self::from_ns_since_epoch(int.as_i64())
     }
 }
 
 impl From<TimeInt> for Duration {
     fn from(int: TimeInt) -> Self {
-        Duration::from_nanos(int.as_i64())
+        Self::from_nanos(int.as_i64())
     }
 }
 
@@ -426,7 +426,8 @@ pub enum TimeValue {
 
 impl TimeValue {
     #[inline]
-    pub fn new(typ: TimeType, int: TimeInt) -> Self {
+    pub fn new(typ: TimeType, int: impl Into<TimeInt>) -> Self {
+        let int = int.into();
         match typ {
             TimeType::Time => Self::Time(Time::from_ns_since_epoch(int.0)),
             TimeType::Sequence => Self::Sequence(int.0),

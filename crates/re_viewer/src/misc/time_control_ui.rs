@@ -1,12 +1,10 @@
 use std::collections::BTreeSet;
 
 use egui::NumExt as _;
+
 use re_log_types::*;
 
-use crate::misc::TimePoints;
-
-use super::time_control::*;
-use super::TimeRange;
+use super::{time_control::*, TimePoints, TimeRangeF, TimeReal};
 
 impl TimeControl {
     pub fn time_source_selector_ui(&mut self, time_source_axes: &TimePoints, ui: &mut egui::Ui) {
@@ -181,25 +179,26 @@ impl TimeControl {
                 if let Some(time_range) = self.time_filter_range() {
                     let length = time_range.length();
                     let new_min = if step_back {
-                        step_back_time(&time_range.min, time_values)
+                        step_back_time(time_range.min, time_values)
                     } else {
-                        step_fwd_time(&time_range.min, time_values)
+                        step_fwd_time(time_range.min, time_values)
                     };
+                    let new_min = TimeReal::from(new_min);
                     let new_max = new_min + length;
-                    self.set_time_selection(TimeRange::new(new_min, new_max));
-                } else if let Some(time) = self.time_int() {
+                    self.set_time_selection(TimeRangeF::new(new_min, new_max));
+                } else if let Some(time) = self.time() {
                     #[allow(clippy::collapsible_else_if)]
                     let new_time = if let Some(loop_range) = self.loop_range() {
                         if step_back {
-                            step_back_time_looped(&time, time_values, &loop_range)
+                            step_back_time_looped(time, time_values, &loop_range)
                         } else {
-                            step_fwd_time_looped(&time, time_values, &loop_range)
+                            step_fwd_time_looped(time, time_values, &loop_range)
                         }
                     } else {
                         if step_back {
-                            step_back_time(&time, time_values)
+                            step_back_time(time, time_values).into()
                         } else {
-                            step_fwd_time(&time, time_values)
+                            step_fwd_time(time, time_values).into()
                         }
                     };
                     self.set_time(new_time);
@@ -217,9 +216,12 @@ fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
     *values.iter().rev().next().unwrap()
 }
 
-fn step_fwd_time(time: &TimeInt, values: &BTreeSet<TimeInt>) -> TimeInt {
+fn step_fwd_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
     if let Some(next) = values
-        .range((std::ops::Bound::Excluded(time), std::ops::Bound::Unbounded))
+        .range((
+            std::ops::Bound::Excluded(TimeInt::from(time)),
+            std::ops::Bound::Unbounded,
+        ))
         .next()
     {
         *next
@@ -228,44 +230,48 @@ fn step_fwd_time(time: &TimeInt, values: &BTreeSet<TimeInt>) -> TimeInt {
     }
 }
 
-fn step_fwd_time_looped(
-    time: &TimeInt,
-    values: &BTreeSet<TimeInt>,
-    loop_range: &TimeRange,
-) -> TimeInt {
-    if time < &loop_range.min || &loop_range.max <= time {
-        loop_range.min
-    } else if let Some(next) = values
-        .range((
-            std::ops::Bound::Excluded(*time),
-            std::ops::Bound::Included(loop_range.max),
-        ))
-        .next()
-    {
-        *next
-    } else {
-        step_fwd_time(time, values)
-    }
-}
-
-fn step_back_time(time: &TimeInt, values: &BTreeSet<TimeInt>) -> TimeInt {
-    if let Some(previous) = values.range(..time).rev().next() {
+fn step_back_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
+    if let Some(previous) = values.range(..TimeInt::from(time)).rev().next() {
         *previous
     } else {
         max(values)
     }
 }
 
-fn step_back_time_looped(
-    time: &TimeInt,
+fn step_fwd_time_looped(
+    time: TimeReal,
     values: &BTreeSet<TimeInt>,
-    loop_range: &TimeRange,
-) -> TimeInt {
-    if time <= &loop_range.min || &loop_range.max < time {
-        loop_range.max
-    } else if let Some(previous) = values.range(loop_range.min..*time).rev().next() {
-        *previous
+    loop_range: &TimeRangeF,
+) -> TimeReal {
+    if time < loop_range.min || loop_range.max <= time {
+        loop_range.min
+    } else if let Some(next) = values
+        .range((
+            std::ops::Bound::Excluded(TimeInt::from(time)),
+            std::ops::Bound::Included(TimeInt::from(loop_range.max)),
+        ))
+        .next()
+    {
+        TimeReal::from(*next)
     } else {
-        step_back_time(time, values)
+        step_fwd_time(time, values).into()
+    }
+}
+
+fn step_back_time_looped(
+    time: TimeReal,
+    values: &BTreeSet<TimeInt>,
+    loop_range: &TimeRangeF,
+) -> TimeReal {
+    if time <= loop_range.min || loop_range.max < time {
+        loop_range.max
+    } else if let Some(previous) = values
+        .range(TimeInt::from(loop_range.min)..TimeInt::from(time))
+        .rev()
+        .next()
+    {
+        TimeReal::from(*previous)
+    } else {
+        step_back_time(time, values).into()
     }
 }
