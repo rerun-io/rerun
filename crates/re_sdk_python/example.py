@@ -2,8 +2,9 @@
 Shows how to use the rerun SDK.
 """
 
+from dataclasses import dataclass
 import math
-from typing import Sequence
+from typing import List, Sequence, Tuple
 
 import argparse
 import cv2
@@ -12,56 +13,78 @@ import numpy as np
 import rerun_sdk as rerun
 
 
-def car_bbox(frame_nr):
-    """returns a bbox for a car"""
-    (x, y) = (40 + frame_nr * 5, 50)
-    (w, h) = (200, 100)
-    return ((x, y), (w, h))
+class DummyCar:
+    """Class representing a dummy car for generating dummy data to log."""
+
+    def __init__(self, center: Tuple[int, int], size: Tuple[int, int], distance_mm: float):
+        self.center = np.array(center)
+        self.size = np.array(size)
+        self.distance_mm = distance_mm
+
+    @property
+    def min(self) -> np.array:
+        return self.center - self.size / 2
+
+    @property
+    def max(self) -> np.array:
+        return self.center + self.size / 2
+
+    def drive_one_step(self):
+        self.center[0] += 5
+        self.distance_mm -= 1
+
+    def draw_depth(self, depth_image_mm: np.array) -> np.array:
+        cv2.rectangle(depth_image_mm, self.min.astype(int), self.max.astype(int),
+                      self.distance_mm, cv2.FILLED)
+        return depth_image_mm
 
 
-def generate_depth_image(frame_nr):
-    """
-    Return a depth image in millimeter units
-    """
-    ((car_x, car_y), (car_w, car_h)) = car_bbox(frame_nr)
-    car_dist = 4000 - frame_nr
-
-    # Generate some fake data:
-    w = 480
-    h = 270
-
-    depth_image = np.zeros([h, w])
-    for y in range(h):
-        for x in range(w):
-            d = 1000.0 / (0.1 + y/h)
-            if car_x <= x <= car_x + car_w and car_y <= y <= car_y + car_h:
-                d = car_dist
-            depth_image[(y, x)] = d
-
-    return depth_image
+@dataclass
+class SampleFrame:
+    """Holds data for a single frame of data."""
+    frame_idx: int
+    depth_image_mm: np.array
+    car_bbox: Tuple[np.array, np.array]
 
 
-def generate_dummy_data(num_frames: int) -> Sequence[np.array]:
-    """
-    This function generates dummy data to log.
-    """
+def generate_dummy_data(num_frames: int) -> Sequence[SampleFrame]:
+    """This function generates dummy data to log."""
+    # Generate some fake data
+    im_w = 480
+    im_h = 270
 
-    return [generate_depth_image(i) for i in range(num_frames)]
+    # Pre-generate image containing the x and y coordinates per pixel
+    _, yv = np.meshgrid(np.arange(0, im_w), np.arange(0, im_h))
 
-def log(args):
+    # Background image as a simple slanted plane
+    depth_background_mm = 1000.0 / (0.1 + yv/im_h)
+
+    # Generate `num_frames` sample data
+    car = DummyCar(center=(140, 100), size=(200, 100), distance_mm=4000)
+    samples = []  # type: List[SampleFrame]
+    for i in range(num_frames):
+        depth_image_mm = car.draw_depth(depth_background_mm.copy())
+        sample = SampleFrame(frame_idx=i,
+                             depth_image_mm=depth_image_mm,
+                             car_bbox=(car.min, car.size))
+        samples.append(sample)
+        car.drive_one_step()
+
+    return samples
+
+
+def log_dummy_data(args):
     NUM_FRAMES = 40
-    depth_images = generate_dummy_data(num_frames=NUM_FRAMES)
 
-    for frame_nr in range(NUM_FRAMES):
+    for sample in generate_dummy_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a "time source" called `frame_nr`.
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
-        rerun.set_time_sequence("frame_nr", frame_nr)
+        rerun.set_time_sequence("frame_nr", sample.frame_idx)
 
         # The depth image is in millimeters, so we set meter=1000
-        depth_image = depth_images[frame_nr]
-        rerun.log_depth_image("depth", depth_image, meter=1000)
+        rerun.log_depth_image("depth", sample.depth_image_mmmage, meter=1000)
 
-        ((car_x, car_y), (car_w, car_h)) = car_bbox(frame_nr)
+        ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
         rerun.log_bbox("bbox", [car_x, car_y], [car_w, car_h], "A car")
 
     if False:
@@ -108,7 +131,7 @@ if __name__ == '__main__':
 
     print(rerun.info())
 
-    log(args)
+    log_dummy_data(args)
 
     if not args.connect:
         rerun.show()
