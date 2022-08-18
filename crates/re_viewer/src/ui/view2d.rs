@@ -2,7 +2,7 @@ use egui::*;
 
 use re_log_types::*;
 
-use crate::{LogDb, Selection, ViewerContext};
+use crate::{Selection, ViewerContext};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -38,8 +38,7 @@ impl State2D {
 
 /// messages: latest version of each object (of all spaces).
 pub(crate) fn combined_view_2d(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State2D,
     objects: &re_data_store::Objects<'_>,
@@ -78,13 +77,7 @@ pub(crate) fn combined_view_2d(
         }
         egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
             context.obj_path_button(ui, obj_path);
-            crate::ui::context_panel::view_object(
-                log_db,
-                context,
-                ui,
-                obj_path,
-                crate::ui::Preview::Small,
-            );
+            crate::ui::context_panel::view_object(context, ui, obj_path, crate::ui::Preview::Small);
         });
     }
 
@@ -338,7 +331,7 @@ enum DefaultColor {
 }
 
 fn paint_properties(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     hovered: &Option<ObjPath>,
     props: &re_data_store::ObjectProps<'_>,
     default_color: DefaultColor,

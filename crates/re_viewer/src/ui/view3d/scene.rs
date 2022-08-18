@@ -48,7 +48,7 @@ pub struct Scene {
 
 impl Scene {
     pub(crate) fn from_objects(
-        context: &mut ViewerContext,
+        context: &mut ViewerContext<'_>,
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         camera: &Camera,
@@ -69,7 +69,8 @@ impl Scene {
                 radius
             }
         };
-        let object_color = |context: &mut ViewerContext, props: &re_data_store::ObjectProps<'_>| {
+        let object_color = |context: &mut ViewerContext<'_>,
+                            props: &re_data_store::ObjectProps<'_>| {
             let [r, g, b, a] = if Some(props.obj_path) == hovered_obj {
                 [255; 4]
             } else if let Some(color) = props.color {

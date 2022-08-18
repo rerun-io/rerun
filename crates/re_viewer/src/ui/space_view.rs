@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use re_data_store::ObjectsBySpace;
 use re_log_types::*;
 
-use crate::{LogDb, Preview, Selection, ViewerContext};
+use crate::{Preview, Selection, ViewerContext};
 
 // ----------------------------------------------------------------------------
 
@@ -56,10 +56,10 @@ pub(crate) struct SpaceView {
 }
 
 impl SpaceView {
-    pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, context: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        if log_db.is_empty() {
+        if context.log_db.is_empty() {
             ui.centered_and_justified(|ui| {
                 ui.heading("No data");
             });
@@ -67,14 +67,15 @@ impl SpaceView {
         }
 
         let objects = context
-            .time_control()
-            .selected_objects(log_db)
+            .rec_config
+            .time_control
+            .selected_objects(context.log_db)
             .partition_on_space();
 
         // `objects` contain all spaces that exist in this time,
         // but we want to show all spaces that could ever exist.
         // Othewise we get a lot of flicker of spaces as we play back data.
-        let mut all_spaces = log_db.spaces().map(Some).collect_vec();
+        let mut all_spaces = context.log_db.spaces().map(Some).collect_vec();
         if objects.contains_key(&None) {
             // Some objects lack a space, so they end up in the `None` space.
             // TODO(emilk): figure this out beforehand somehow.
@@ -96,7 +97,7 @@ impl SpaceView {
 
         match self.selected.clone() {
             SelectedSpace::All => {
-                self.show_all(log_db, &all_spaces, &objects, context, ui);
+                self.show_all(context, &all_spaces, &objects, ui);
             }
             SelectedSpace::Specific(selected_space) => {
                 ui.horizontal(|ui| {
@@ -107,17 +108,16 @@ impl SpaceView {
                         }
                     }
                 });
-                self.show_space(log_db, &objects, context, selected_space.as_ref(), ui);
+                self.show_space(context, &objects, selected_space.as_ref(), ui);
             }
         }
     }
 
     fn show_all(
         &mut self,
-        log_db: &LogDb,
+        context: &mut ViewerContext<'_>,
         all_spaces: &[Option<&ObjPath>],
         objects: &ObjectsBySpace<'_>,
-        context: &mut ViewerContext,
         ui: &mut egui::Ui,
     ) {
         let space_infos = all_spaces
@@ -148,13 +148,7 @@ impl SpaceView {
                         {
                             self.selected = SelectedSpace::Specific(space_info.space_path.clone());
                         }
-                        self.show_space(
-                            log_db,
-                            objects,
-                            context,
-                            space_info.space_path.as_ref(),
-                            ui,
-                        );
+                        self.show_space(context, objects, space_info.space_path.as_ref(), ui);
                         ui.allocate_space(ui.available_size());
                     });
                 });
@@ -163,9 +157,8 @@ impl SpaceView {
 
     fn show_space(
         &mut self,
-        log_db: &LogDb,
+        context: &mut ViewerContext<'_>,
         objects: &ObjectsBySpace<'_>,
-        context: &mut ViewerContext,
         space: Option<&ObjPath>,
         ui: &mut egui::Ui,
     ) {
@@ -187,12 +180,12 @@ impl SpaceView {
 
         if objects.has_any_3d() {
             let state_3d = self.state_3d.entry(space.cloned()).or_default();
-            crate::view3d::combined_view_3d(log_db, context, ui, state_3d, space, &objects);
+            crate::view3d::combined_view_3d(context, ui, state_3d, space, &objects);
         }
 
         if objects.has_any_2d() {
             let state_2d = self.state_2d.entry(space.cloned()).or_default();
-            crate::view2d::combined_view_2d(log_db, context, ui, state_2d, &objects);
+            crate::view2d::combined_view_2d(context, ui, state_2d, &objects);
         }
     }
 }
@@ -324,7 +317,7 @@ fn weighted_split(
 // ----------------------------------------------------------------------------
 
 pub(crate) fn show_log_msg(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg: &LogMsg,
     preview: Preview,
@@ -365,7 +358,7 @@ pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMs
         });
 }
 
-pub(crate) fn show_type_msg(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &TypeMsg) {
+pub(crate) fn show_type_msg(context: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg: &TypeMsg) {
     ui.horizontal(|ui| {
         context.type_path_button(ui, &msg.type_path);
         ui.label(" = ");
@@ -374,7 +367,7 @@ pub(crate) fn show_type_msg(context: &mut ViewerContext, ui: &mut egui::Ui, msg:
 }
 
 pub(crate) fn show_data_msg(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg: &DataMsg,
     preview: Preview,
@@ -405,7 +398,7 @@ pub(crate) fn show_data_msg(
 }
 
 pub(crate) fn ui_time_point(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     time_point: &TimePoint,
 ) {
@@ -421,7 +414,7 @@ pub(crate) fn ui_time_point(
 }
 
 pub(crate) fn ui_logged_data(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg_id: &MsgId,
     data: &LoggedData,
@@ -441,7 +434,7 @@ pub(crate) fn ui_logged_data(
 }
 
 pub(crate) fn ui_data(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg_id: &MsgId,
     data: &Data,

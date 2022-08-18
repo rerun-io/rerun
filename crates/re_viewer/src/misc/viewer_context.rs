@@ -8,21 +8,21 @@ use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 use super::TimeControl;
 
 /// Common things needed by many parts of the viewer.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub(crate) struct ViewerContext {
+pub(crate) struct ViewerContext<'a> {
     /// Global options for the whole viewer.
-    pub options: Options,
+    pub options: &'a mut Options,
 
     /// Things that need caching.
-    #[serde(skip)]
-    pub cache: Caches,
+    pub cache: &'a mut Caches,
 
-    /// Configuration for the current recording (found in [`LogDb`]).
-    pub rec_config: RecordingConfig,
+    /// The current recording
+    pub log_db: &'a LogDb,
+
+    /// UI config for the current recording (found in [`LogDb`]).
+    pub rec_config: &'a mut RecordingConfig,
 }
 
-impl ViewerContext {
+impl<'a> ViewerContext<'a> {
     pub fn time_control(&mut self) -> &mut TimeControl {
         &mut self.rec_config.time_control
     }
@@ -140,7 +140,7 @@ impl ViewerContext {
 
 // ----------------------------------------------------------------------------
 
-/// Configuration for the current recording (found in [`LogDb`]).
+/// UI config for the current recording (found in [`LogDb`]).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct RecordingConfig {

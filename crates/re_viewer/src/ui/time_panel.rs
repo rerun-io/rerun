@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     log_db::ObjectTree, misc::time_axis::TimeSourceAxis, misc::time_control::TimeSelectionType,
-    LogDb, TimeControl, TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
+    TimeControl, TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
 };
 
 use egui::*;
@@ -46,11 +46,11 @@ impl Default for TimePanel {
 }
 
 impl TimePanel {
-    pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, context: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         // play control and current time
-        top_row_ui(log_db, context, ui);
+        top_row_ui(context, ui);
 
         self.next_col_right = ui.min_rect().left(); // this will expand during the call
 
@@ -67,7 +67,7 @@ impl TimePanel {
             time_x_left..=right
         };
 
-        self.time_ranges_ui = initialize_time_ranges_ui(log_db, context, time_x_range.clone());
+        self.time_ranges_ui = initialize_time_ranges_ui(context, time_x_range.clone());
 
         // includes the time selection and time ticks rows.
         let time_area = Rect::from_x_y_ranges(
@@ -90,8 +90,9 @@ impl TimePanel {
             let response = ui
                 .horizontal(|ui| {
                     context
-                        .time_control()
-                        .play_pause_ui(&log_db.time_points, ui);
+                        .rec_config
+                        .time_control
+                        .play_pause_ui(&context.log_db.time_points, ui);
                 })
                 .response;
 
@@ -146,7 +147,7 @@ impl TimePanel {
             .show(ui, |ui| {
                 crate::profile_scope!("tree_ui");
                 ui.scroll_with_delta(scroll_delta);
-                self.tree_ui(log_db, context, &lower_time_area_painter, ui);
+                self.tree_ui(context, &lower_time_area_painter, ui);
             });
 
         // TODO(emilk): fix problem of the fade covering the hlines. Need Shape Z values! https://github.com/emilk/egui/issues/1516
@@ -162,26 +163,23 @@ impl TimePanel {
 
     fn tree_ui(
         &mut self,
-        log_db: &LogDb,
-        context: &mut ViewerContext,
+        context: &mut ViewerContext<'_>,
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
         let mut path = vec![];
         self.show_children(
-            log_db,
             context,
             time_area_painter,
             &mut path,
-            &log_db.data_tree,
+            &context.log_db.data_tree,
             ui,
         );
     }
 
     fn show_tree(
         &mut self,
-        log_db: &LogDb,
-        context: &mut ViewerContext,
+        context: &mut ViewerContext<'_>,
         time_area_painter: &egui::Painter,
         path: &mut Vec<ObjPathComp>,
         tree: &ObjectTree,
@@ -208,7 +206,7 @@ impl TimePanel {
             .id_source(&path)
             .default_open(path.is_empty()) //  || (path.len() == 1 && tree.children.len() < 3)) TODO(emilk) when data path has been simplified
             .show(ui, |ui| {
-                self.show_children(log_db, context, time_area_painter, path, tree, ui);
+                self.show_children(context, time_area_painter, path, tree, ui);
             });
 
         let is_closed = collapsing_response.body_returned.is_none();
@@ -270,7 +268,6 @@ impl TimePanel {
 
         if ui.is_rect_visible(full_width_rect) && is_closed {
             show_data_over_time(
-                log_db,
                 context,
                 time_area_painter,
                 ui,
@@ -283,8 +280,7 @@ impl TimePanel {
 
     fn show_children(
         &mut self,
-        log_db: &LogDb,
-        context: &mut ViewerContext,
+        context: &mut ViewerContext<'_>,
         time_area_painter: &egui::Painter,
         path: &mut Vec<ObjPathComp>,
         tree: &ObjectTree,
@@ -292,12 +288,12 @@ impl TimePanel {
     ) {
         for (name, child) in &tree.string_children {
             path.push(ObjPathComp::String(*name));
-            self.show_tree(log_db, context, time_area_painter, path, child, ui);
+            self.show_tree(context, time_area_painter, path, child, ui);
             path.pop();
         }
         for (index, child) in &tree.index_children {
             path.push(ObjPathComp::Index(index.clone()));
-            self.show_tree(log_db, context, time_area_painter, path, child, ui);
+            self.show_tree(context, time_area_painter, path, child, ui);
             path.pop();
         }
 
@@ -350,7 +346,6 @@ impl TimePanel {
 
                 if ui.is_rect_visible(full_width_rect) {
                     show_data_over_time(
-                        log_db,
                         context,
                         time_area_painter,
                         ui,
@@ -364,11 +359,12 @@ impl TimePanel {
     }
 }
 
-fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+fn top_row_ui(context: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         context
-            .time_control()
-            .time_source_selector_ui(&log_db.time_points, ui);
+            .rec_config
+            .time_control
+            .time_source_selector_ui(&context.log_db.time_points, ui);
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             crate::misc::help_hover_button(ui).on_hover_text(
@@ -398,8 +394,7 @@ fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
 }
 
 fn show_data_over_time(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
     source: &BTreeMap<TimePoint, BTreeSet<MsgId>>,
@@ -528,21 +523,16 @@ fn show_data_over_time(
     time_area_painter.extend(shapes);
 
     if !hovered_messages.is_empty() {
-        show_msg_ids_tooltip(log_db, context, ui.ctx(), &hovered_messages);
+        show_msg_ids_tooltip(context, ui.ctx(), &hovered_messages);
     }
 }
 
-fn show_msg_ids_tooltip(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
-    ctx: &egui::Context,
-    msg_ids: &[MsgId],
-) {
+fn show_msg_ids_tooltip(context: &mut ViewerContext<'_>, ctx: &egui::Context, msg_ids: &[MsgId]) {
     show_tooltip_at_pointer(ctx, Id::new("data_tooltip"), |ui| {
         // TODO(emilk): show as a table?
         if msg_ids.len() == 1 {
             let msg_id = msg_ids[0];
-            if let Some(msg) = log_db.get_log_msg(&msg_id) {
+            if let Some(msg) = context.log_db.get_log_msg(&msg_id) {
                 ui.push_id(msg_id, |ui| {
                     ui.group(|ui| {
                         crate::space_view::show_log_msg(context, ui, msg, crate::Preview::Small);
@@ -558,12 +548,16 @@ fn show_msg_ids_tooltip(
 // ----------------------------------------------------------------------------
 
 fn initialize_time_ranges_ui(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     time_x_range: RangeInclusive<f32>,
 ) -> TimeRangesUi {
     crate::profile_function!();
-    if let Some(time_points) = log_db.time_points.0.get(context.time_control().source()) {
+    if let Some(time_points) = context
+        .log_db
+        .time_points
+        .0
+        .get(context.time_control().source())
+    {
         let time_source_axis = TimeSourceAxis::new(context.time_control().time_type(), time_points);
         let time_view = context.time_control().time_view();
         let time_view =
@@ -1227,7 +1221,7 @@ impl TimeRangesUi {
     }
 
     // Make sure time doesn't get stuck between non-continuos regions:
-    fn snap_time_control(&self, context: &mut ViewerContext) {
+    fn snap_time_control(&self, context: &mut ViewerContext<'_>) {
         if !context.time_control().is_playing() {
             return;
         }

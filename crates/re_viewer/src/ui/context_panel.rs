@@ -11,7 +11,7 @@ pub(crate) struct ContextPanel {}
 
 impl ContextPanel {
     #[allow(clippy::unused_self)]
-    pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, context: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         ui.horizontal(|ui| {
@@ -32,7 +32,7 @@ impl ContextPanel {
                 // ui.label(format!("Selected msg_id: {:?}", msg_id));
                 ui.label("Selected a specific log message");
 
-                let msg = if let Some(msg) = log_db.get_log_msg(msg_id) {
+                let msg = if let Some(msg) = context.log_db.get_log_msg(msg_id) {
                     msg
                 } else {
                     tracing::warn!("Unknown msg_id selected. Resetting selection");
@@ -50,13 +50,7 @@ impl ContextPanel {
                     LogMsg::DataMsg(msg) => {
                         show_detailed_data_msg(context, ui, msg);
                         ui.separator();
-                        view_object(
-                            log_db,
-                            context,
-                            ui,
-                            &msg.data_path.obj_path,
-                            Preview::Medium,
-                        );
+                        view_object(context, ui, &msg.data_path.obj_path, Preview::Medium);
                     }
                 }
             }
@@ -71,10 +65,10 @@ impl ContextPanel {
                 });
                 ui.horizontal(|ui| {
                     ui.label("Object type:");
-                    ui.label(obj_type_name(log_db, obj_path.obj_type_path()));
+                    ui.label(obj_type_name(context.log_db, obj_path.obj_type_path()));
                 });
                 ui.separator();
-                view_object(log_db, context, ui, obj_path, Preview::Medium);
+                view_object(context, ui, obj_path, Preview::Medium);
             }
             Selection::DataPath(data_path) => {
                 ui.label(format!("Selected data path: {}", data_path));
@@ -88,12 +82,15 @@ impl ContextPanel {
                 });
                 ui.horizontal(|ui| {
                     ui.label("Object type:");
-                    ui.label(obj_type_name(log_db, data_path.obj_path.obj_type_path()));
+                    ui.label(obj_type_name(
+                        context.log_db,
+                        data_path.obj_path.obj_type_path(),
+                    ));
                 });
 
                 ui.separator();
 
-                view_data(log_db, context, ui, data_path);
+                view_data(context, ui, data_path);
             }
             Selection::Space(space) => {
                 let space = space.clone();
@@ -105,13 +102,15 @@ impl ContextPanel {
 }
 
 pub(crate) fn view_object(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     obj_path: &ObjPath,
     preview: Preview,
 ) -> Option<()> {
-    let (_, store) = log_db.data_store.get(context.time_control().source())?;
+    let (_, store) = context
+        .log_db
+        .data_store
+        .get(context.time_control().source())?;
     let time_query = context.time_control().time_query()?;
     let obj_store = store.get(obj_path.obj_type_path())?;
 
@@ -145,15 +144,17 @@ pub(crate) fn view_object(
 }
 
 fn view_data(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     data_path: &DataPath,
 ) -> Option<()> {
     let obj_path = data_path.obj_path();
     let field_name = data_path.field_name();
 
-    let (_, store) = log_db.data_store.get(context.time_control().source())?;
+    let (_, store) = context
+        .log_db
+        .data_store
+        .get(context.time_control().source())?;
     let time_query = context.time_control().time_query()?;
     let obj_store = store.get(obj_path.obj_type_path())?;
     let data_store = obj_store.get_field(field_name)?;
@@ -173,7 +174,7 @@ fn view_data(
 }
 
 pub(crate) fn show_detailed_data(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg_id: &MsgId,
     data: &Data,
@@ -186,7 +187,7 @@ pub(crate) fn show_detailed_data(
 }
 
 pub(crate) fn show_detailed_data_msg(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg: &DataMsg,
 ) {
@@ -227,7 +228,7 @@ pub(crate) fn show_detailed_data_msg(
 }
 
 fn show_tensor(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg_id: &MsgId,
     tensor: &re_log_types::Tensor,

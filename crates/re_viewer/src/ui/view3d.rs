@@ -14,7 +14,6 @@ use glam::Affine3A;
 use macaw::{vec3, Quat, Vec3};
 use re_log_types::ObjPath;
 
-use crate::LogDb;
 use crate::{misc::Selection, ViewerContext};
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -61,7 +60,7 @@ impl Default for State3D {
 impl State3D {
     fn update_camera(
         &mut self,
-        context: &mut ViewerContext,
+        context: &mut ViewerContext<'_>,
         tracking_camera: Option<Camera>,
         response: &egui::Response,
         space_specs: &SpaceSpecs,
@@ -165,7 +164,7 @@ impl CameraInterpolation {
 }
 
 fn show_settings_ui(
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State3D,
     space: Option<&ObjPath>,
@@ -261,7 +260,7 @@ impl SpaceSpecs {
 
 /// If the path to a camera is selected, we follow that camera.
 fn tracking_camera(
-    context: &ViewerContext,
+    context: &ViewerContext<'_>,
     objects: &re_data_store::Objects<'_>,
 ) -> Option<Camera> {
     if let Selection::ObjPath(selected_obj_path) = &context.rec_config.selection {
@@ -283,17 +282,17 @@ fn tracking_camera(
     }
 }
 
-fn click_object(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
-    state: &mut State3D,
-    obj_path: &ObjPath,
-) {
+fn click_object(context: &mut ViewerContext<'_>, state: &mut State3D, obj_path: &ObjPath) {
     context.rec_config.selection = crate::Selection::ObjPath(obj_path.clone());
 
-    if log_db.object_types.get(obj_path.obj_type_path()) == Some(&re_log_types::ObjectType::Camera)
+    if context.log_db.object_types.get(obj_path.obj_type_path())
+        == Some(&re_log_types::ObjectType::Camera)
     {
-        if let Some((_, data_store)) = log_db.data_store.get(context.time_control().source()) {
+        if let Some((_, data_store)) = context
+            .log_db
+            .data_store
+            .get(context.time_control().source())
+        {
             if let Some(obj_store) = data_store.get(obj_path.obj_type_path()) {
                 // TODO(emilk): use the time of what we clicked instead!
                 if let Some(time_query) = context.time_control().time_query() {
@@ -324,8 +323,7 @@ fn click_object(
 }
 
 pub(crate) fn combined_view_3d(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    context: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State3D,
     space: Option<&ObjPath>,
@@ -360,7 +358,7 @@ pub(crate) fn combined_view_3d(
     let mut hovered_obj_path = state.hovered_obj_path.clone();
     if ui.input().pointer.any_click() {
         if let Some(hovered_obj_path) = &hovered_obj_path {
-            click_object(log_db, context, state, hovered_obj_path);
+            click_object(context, state, hovered_obj_path);
         }
     } else if ui.input().pointer.any_down() {
         hovered_obj_path = None;
@@ -373,7 +371,6 @@ pub(crate) fn combined_view_3d(
             |ui| {
                 context.obj_path_button(ui, obj_path);
                 crate::ui::context_panel::view_object(
-                    log_db,
                     context,
                     ui,
                     obj_path,
@@ -412,7 +409,8 @@ pub(crate) fn combined_view_3d(
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &camera));
     if let Some((obj_path_hash, point)) = hovered {
-        state.hovered_obj_path = log_db
+        state.hovered_obj_path = context
+            .log_db
             .data_store
             .obj_path_from_hash(&obj_path_hash)
             .cloned();

@@ -3,7 +3,10 @@ use std::sync::mpsc::Receiver;
 use egui_extras::RetainedImage;
 use re_log_types::*;
 
-use crate::LogDb;
+use crate::{
+    misc::{Caches, Options, RecordingConfig, ViewerContext},
+    LogDb,
+};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -15,6 +18,7 @@ pub struct App {
     /// Where the logs are stored.
     log_db: LogDb,
 
+    /// What is serialized
     state: AppState,
 
     /// Set to `true` on Ctrl-C.
@@ -120,7 +124,7 @@ impl eframe::App for App {
             }
         }
 
-        self.state.context.rec_config.on_frame_start(&self.log_db);
+        self.state.rec_config.on_frame_start(&self.log_db);
         self.state.top_panel(egui_ctx, frame, &mut self.log_db);
 
         if self.log_db.is_empty() && self.rx.is_some() {
@@ -199,7 +203,16 @@ fn preview_files_being_dropped(ctx: &egui::Context) {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 struct AppState {
-    context: crate::ViewerContext,
+    /// Global options for the whole viewer.
+    options: Options,
+
+    /// Things that need caching.
+    #[serde(skip)]
+    cache: Caches,
+
+    /// Configuration for the current recording (found in [`LogDb`]).
+    rec_config: RecordingConfig,
+
     view_index: usize,
     log_table_view: crate::log_table_view::LogTableView,
     space_view: crate::space_view::SpaceView,
@@ -265,7 +278,9 @@ impl AppState {
         crate::profile_function!();
 
         let Self {
-            context,
+            options,
+            cache,
+            rec_config,
             view_index,
             log_table_view,
             space_view,
@@ -276,20 +291,27 @@ impl AppState {
             static_image_cache: _,
         } = self;
 
+        let mut context = ViewerContext {
+            options,
+            cache,
+            log_db,
+            rec_config,
+        };
+
         egui::SidePanel::right("context").show(egui_ctx, |ui| {
-            context_panel.ui(log_db, context, ui);
+            context_panel.ui(&mut context, ui);
         });
 
         egui::TopBottomPanel::bottom("time_panel")
             .resizable(true)
             .default_height(210.0)
             .show(egui_ctx, |ui| {
-                time_panel.ui(log_db, context, ui);
+                time_panel.ui(&mut context, ui);
             });
 
         egui::CentralPanel::default().show(egui_ctx, |ui| match view_index {
-            0 => space_view.ui(log_db, context, ui),
-            1 => log_table_view.ui(log_db, context, ui),
+            0 => space_view.ui(&mut context, ui),
+            1 => log_table_view.ui(&mut context, ui),
             _ => {}
         });
 
