@@ -269,7 +269,7 @@ fn tracking_camera(
         let mut selected_camera = None;
 
         for (props, camera) in objects.camera.iter() {
-            if let Some(msg) = log_db.get_data_msg(props.log_id) {
+            if let Some(msg) = log_db.get_data_msg(props.msg_id) {
                 if &msg.data_path == data_path {
                     if selected_camera.is_some() {
                         return None; // More than one camera

@@ -154,7 +154,7 @@ fn log_bbox(
     let time_point = sdk.now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
-        id: LogId::random(),
+        id: MsgId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.clone(), "bbox".into()),
         data: LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
@@ -162,7 +162,7 @@ fn log_bbox(
 
     if let Some(label) = label {
         sdk.send(LogMsg::DataMsg(DataMsg {
-            id: LogId::random(),
+            id: MsgId::random(),
             time_point: time_point.clone(),
             data_path: DataPath::new(obj_path.clone(), "label".into()),
             data: LoggedData::Single(Data::String(label)),
@@ -171,7 +171,7 @@ fn log_bbox(
 
     let space = space.unwrap_or_else(|| "2D".to_owned());
     sdk.send(LogMsg::DataMsg(DataMsg {
-        id: LogId::random(),
+        id: MsgId::random(),
         time_point,
         data_path: DataPath::new(obj_path, "space".into()),
         data: LoggedData::Single(Data::Space(space.into())),
@@ -245,7 +245,7 @@ fn log_points_rs(
                 let color = [slice[0], slice[1], slice[2], slice[3]];
 
                 sdk.send(LogMsg::DataMsg(DataMsg {
-                    id: LogId::random(),
+                    id: MsgId::random(),
                     time_point: time_point.clone(),
                     data_path: DataPath::new(point_path.clone(), "color".into()),
                     data: LoggedData::BatchSplat(Data::Color(color)),
@@ -261,7 +261,7 @@ fn log_points_rs(
                     .collect();
 
                 sdk.send(LogMsg::DataMsg(DataMsg {
-                    id: LogId::random(),
+                    id: MsgId::random(),
                     time_point: time_point.clone(),
                     data_path: DataPath::new(point_path.clone(), "color".into()),
                     data: LoggedData::Batch {
@@ -302,7 +302,7 @@ fn log_points_rs(
     };
 
     sdk.send(LogMsg::DataMsg(DataMsg {
-        id: LogId::random(),
+        id: MsgId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(point_path.clone(), "pos".into()),
         data: LoggedData::Batch {
@@ -313,7 +313,7 @@ fn log_points_rs(
 
     let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
     sdk.send(LogMsg::DataMsg(DataMsg {
-        id: LogId::random(),
+        id: MsgId::random(),
         time_point,
         data_path: DataPath::new(point_path, "space".into()),
         data: LoggedData::BatchSplat(Data::Space(space.into())),
@@ -373,7 +373,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     let time_point = sdk.now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
-        id: LogId::random(),
+        id: MsgId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.clone(), "tensor".into()),
         data: LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
@@ -381,7 +381,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
 
     let space = space.unwrap_or_else(|| "2D".to_owned());
     sdk.send(LogMsg::DataMsg(DataMsg {
-        id: LogId::random(),
+        id: MsgId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.clone(), "space".into()),
         data: LoggedData::Single(Data::Space(space.into())),
@@ -389,7 +389,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
 
     if let Some(meter) = meter {
         sdk.send(LogMsg::DataMsg(DataMsg {
-            id: LogId::random(),
+            id: MsgId::random(),
             time_point,
             data_path: DataPath::new(obj_path, "meter".into()),
             data: LoggedData::Single(Data::F32(meter)),

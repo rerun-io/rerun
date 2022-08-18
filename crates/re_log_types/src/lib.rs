@@ -37,20 +37,20 @@ macro_rules! impl_into_enum {
 /// A unique id per [`LogMsg`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct LogId(uuid::Uuid);
+pub struct MsgId(uuid::Uuid);
 
-impl nohash_hasher::IsEnabled for LogId {}
+impl nohash_hasher::IsEnabled for MsgId {}
 
 // required for [`nohash_hasher`].
 #[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for LogId {
+impl std::hash::Hash for MsgId {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.0.as_u128() as u64);
     }
 }
 
-impl LogId {
+impl MsgId {
     #[inline]
     pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())
@@ -71,7 +71,7 @@ pub enum LogMsg {
 }
 
 impl LogMsg {
-    pub fn id(&self) -> LogId {
+    pub fn id(&self) -> MsgId {
         match self {
             Self::TypeMsg(msg) => msg.id,
             Self::DataMsg(msg) => msg.id,
@@ -89,7 +89,7 @@ impl_into_enum!(DataMsg, LogMsg, DataMsg);
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TypeMsg {
     /// A unique id per [`LogMsg`].
-    pub id: LogId,
+    pub id: MsgId,
 
     /// The [`ObjTypePath`] target.
     pub type_path: ObjTypePath,
@@ -101,7 +101,7 @@ pub struct TypeMsg {
 impl TypeMsg {
     pub fn object_type(type_path: ObjTypePath, object_type: ObjectType) -> Self {
         Self {
-            id: LogId::random(),
+            id: MsgId::random(),
             type_path,
             object_type,
         }
@@ -115,7 +115,7 @@ impl TypeMsg {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DataMsg {
     /// A unique id per [`DataMsg`].
-    pub id: LogId,
+    pub id: MsgId,
 
     /// Time information (when it was logged, when it was received, …)
     pub time_point: TimePoint,
@@ -138,7 +138,7 @@ pub fn data_msg(
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.into(), field_name.into()),
         data: data.into(),
-        id: LogId::random(),
+        id: MsgId::random(),
     }
 }
 

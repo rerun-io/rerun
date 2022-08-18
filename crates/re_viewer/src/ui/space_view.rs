@@ -372,7 +372,7 @@ pub(crate) fn ui_time_point(
 pub(crate) fn ui_logged_data(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    id: &LogId,
+    id: &MsgId,
     data: &LoggedData,
     preview: Preview,
 ) -> egui::Response {
@@ -392,7 +392,7 @@ pub(crate) fn ui_logged_data(
 pub(crate) fn ui_data(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    id: &LogId,
+    id: &MsgId,
     data: &Data,
     preview: Preview,
 ) -> egui::Response {

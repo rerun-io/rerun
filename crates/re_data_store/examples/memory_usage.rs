@@ -48,7 +48,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
 
 use itertools::Itertools as _;
 use re_data_store::*;
-use re_log_types::{LogId, TimeValue};
+use re_log_types::{MsgId, TimeValue};
 
 impl TrackingAllocator {
     fn used_bytes(&self) -> usize {
@@ -86,7 +86,7 @@ fn tracking_points() {
                     obj_path(0, (frame + offset) as _),
                     "pos".into(),
                     TimeValue::Sequence(frame as _),
-                    LogId::random(),
+                    MsgId::random(),
                     [1.0, 2.0, 3.0],
                 )
                 .unwrap();
@@ -120,7 +120,7 @@ fn big_clouds() {
                         obj_path(camera as _, point as _),
                         "pos".into(),
                         TimeValue::Sequence(frame as _),
-                        LogId::random(),
+                        MsgId::random(),
                         [1.0, 2.0, 3.0],
                     )
                     .unwrap();
@@ -165,7 +165,7 @@ fn big_clouds_batched() {
                     &ObjPath::new(obj_type_path, index_path_prefix),
                     "pos".into(),
                     TimeValue::Sequence(frame as _),
-                    LogId::random(),
+                    MsgId::random(),
                     batch,
                 )
                 .unwrap();

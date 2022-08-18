@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_log_types::{FieldName, LogId, ObjPath};
+use re_log_types::{FieldName, MsgId, ObjPath};
 
 pub use re_log_types::objects::*;
 
@@ -11,7 +11,7 @@ use crate::{
 
 #[derive(Copy, Clone, Debug)]
 pub struct ObjectProps<'s> {
-    pub log_id: &'s LogId,
+    pub msg_id: &'s MsgId,
     pub space: Option<&'s ObjPath>,
     pub color: Option<[u8; 4]>,
 
@@ -93,14 +93,14 @@ impl<'s> Image<'s> {
             time_query,
             ("space", "color", "meter"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              tensor: &re_log_types::Tensor,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              meter: Option<&f32>| {
                 out.image.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -135,14 +135,14 @@ impl<'s> Point2D<'s> {
             time_query,
             ("space", "color", "radius"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              pos: &[f32; 2],
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
                 out.point2d.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -177,14 +177,14 @@ impl<'s> Point3D<'s> {
             time_query,
             ("space", "color", "radius"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              pos: &[f32; 3],
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
                 out.point3d.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -220,7 +220,7 @@ impl<'s> BBox2D<'s> {
             time_query,
             ("space", "color", "stroke_width", "label"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              bbox: &re_log_types::BBox2D,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
@@ -228,7 +228,7 @@ impl<'s> BBox2D<'s> {
              label: Option<&String>| {
                 out.bbox2d.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -264,14 +264,14 @@ impl<'s> Box3D<'s> {
             time_query,
             ("space", "color", "stroke_width"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              obb: &re_log_types::Box3,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
                 out.box3d.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -306,14 +306,14 @@ impl<'s> Path3D<'s> {
             time_query,
             ("space", "color", "stroke_width"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              points: &Vec<[f32; 3]>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
                 out.path3d.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -348,14 +348,14 @@ impl<'s> LineSegments2D<'s> {
             time_query,
             ("space", "color", "stroke_width"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              line_segments: &Vec<[[f32; 2]; 2]>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
                 out.line_segments2d.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -390,14 +390,14 @@ impl<'s> LineSegments3D<'s> {
             time_query,
             ("space", "color", "stroke_width"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              line_segments: &Vec<[[f32; 3]; 2]>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
                 out.line_segments3d.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -431,13 +431,13 @@ impl<'s> Mesh3D<'s> {
             time_query,
             ("space", "color"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              mesh: &re_log_types::Mesh3D,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.mesh3d.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -469,13 +469,13 @@ impl<'s> Camera<'s> {
             time_query,
             ("space", "color"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              camera: &re_log_types::Camera,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.camera.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -501,13 +501,13 @@ impl<'s> Camera<'s> {
             time_query,
             ("space", "color"),
             |obj_path: &ObjPath,
-             log_id: &LogId,
+             msg_id: &MsgId,
              camera: &re_log_types::Camera,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.camera.0.push(Object {
                     props: ObjectProps {
-                        log_id,
+                        msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
@@ -537,7 +537,7 @@ impl<'s> Space<'s> {
             obj_store,
             &FieldName::from("up"),
             time_query,
-            |obj_path: &ObjPath, _log_id: &LogId, up: &[f32; 3]| {
+            |obj_path: &ObjPath, _msg_id: &MsgId, up: &[f32; 3]| {
                 out.space.insert(obj_path, Space { up });
             },
         );

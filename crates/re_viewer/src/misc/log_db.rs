@@ -11,8 +11,8 @@ use crate::misc::TimePoints;
 #[derive(Default)]
 pub(crate) struct LogDb {
     /// Messages in the order they arrived
-    chronological_message_ids: Vec<LogId>,
-    log_messages: IntMap<LogId, LogMsg>,
+    chronological_message_ids: Vec<MsgId>,
+    log_messages: IntMap<MsgId, LogMsg>,
     pub object_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
@@ -134,11 +134,11 @@ impl LogDb {
             .filter_map(|id| self.get_log_msg(id))
     }
 
-    pub fn get_log_msg(&self, id: &LogId) -> Option<&LogMsg> {
+    pub fn get_log_msg(&self, id: &MsgId) -> Option<&LogMsg> {
         self.log_messages.get(id)
     }
 
-    pub fn get_data_msg(&self, id: &LogId) -> Option<&DataMsg> {
+    pub fn get_data_msg(&self, id: &MsgId) -> Option<&DataMsg> {
         match self.log_messages.get(id)? {
             LogMsg::TypeMsg(_) => None,
             LogMsg::DataMsg(msg) => Some(msg),
@@ -160,7 +160,7 @@ pub(crate) struct ObjectTree {
     /// When do we or a child have data?
     ///
     /// Data logged at this exact path or any child path.
-    pub prefix_times: BTreeMap<TimePoint, BTreeSet<LogId>>,
+    pub prefix_times: BTreeMap<TimePoint, BTreeSet<MsgId>>,
 
     /// Data logged at this object path.
     pub fields: BTreeMap<FieldName, DataColumns>,
@@ -211,8 +211,8 @@ impl ObjectTree {
 #[derive(Default)]
 pub(crate) struct DataColumns {
     /// When do we have data?
-    pub times: BTreeMap<TimePoint, BTreeSet<LogId>>,
-    pub per_type: HashMap<DataType, BTreeSet<LogId>>,
+    pub times: BTreeMap<TimePoint, BTreeSet<MsgId>>,
+    pub per_type: HashMap<DataType, BTreeSet<MsgId>>,
 }
 
 impl DataColumns {

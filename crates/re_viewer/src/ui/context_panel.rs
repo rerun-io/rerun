@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_data_store::{ObjPath, ObjTypePath};
-use re_log_types::{Data, DataMsg, DataPath, LogId, LoggedData};
+use re_log_types::{Data, DataMsg, DataPath, LoggedData, MsgId};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
@@ -28,14 +28,14 @@ impl ContextPanel {
             Selection::None => {
                 ui.weak("(nothing)");
             }
-            Selection::LogId(log_id) => {
-                // ui.label(format!("Selected log_id: {:?}", log_id));
+            Selection::MsgId(msg_id) => {
+                // ui.label(format!("Selected msg_id: {:?}", msg_id));
                 ui.label("Selected a specific log message");
 
-                let msg = if let Some(msg) = log_db.get_data_msg(log_id) {
+                let msg = if let Some(msg) = log_db.get_data_msg(msg_id) {
                     msg
                 } else {
-                    tracing::warn!("Unknown log_id selected. Resetting selection");
+                    tracing::warn!("Unknown msg_id selected. Resetting selection");
                     context.selection = Selection::None;
                     return;
                 };
@@ -165,13 +165,13 @@ fn view_data(
 pub(crate) fn show_detailed_data(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    log_id: &LogId,
+    msg_id: &MsgId,
     data: &Data,
 ) {
     if let Data::Tensor(tensor) = data {
-        show_tensor(context, ui, log_id, tensor);
+        show_tensor(context, ui, msg_id, tensor);
     } else {
-        crate::space_view::ui_data(context, ui, log_id, data, Preview::Medium);
+        crate::space_view::ui_data(context, ui, msg_id, data, Preview::Medium);
     }
 }
 
@@ -219,10 +219,10 @@ pub(crate) fn show_detailed_data_msg(
 fn show_tensor(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    log_id: &LogId,
+    msg_id: &MsgId,
     tensor: &re_log_types::Tensor,
 ) {
-    let (dynamic_image, egui_image) = context.cache.image.get_pair(log_id, tensor);
+    let (dynamic_image, egui_image) = context.cache.image.get_pair(msg_id, tensor);
     let max_size = ui.available_size().min(egui_image.size_vec2());
     let response = egui_image.show_max_size(ui, max_size);
 

@@ -1,6 +1,6 @@
 //! Queries of the type "read these fields, from the object at this [`ObjPath`], over this time interval"
 
-use re_log_types::{DataTrait, FieldName, IndexPath, IndexPathHash, LogId, ObjPath};
+use re_log_types::{DataTrait, FieldName, IndexPath, IndexPathHash, MsgId, ObjPath};
 
 use crate::{storage::*, TimeQuery};
 
@@ -12,7 +12,7 @@ pub fn visit_obj_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
     index_path: &IndexPath,
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
-    mut visit: impl FnMut(&'s ObjPath, &'s LogId, &'s T),
+    mut visit: impl FnMut(&'s ObjPath, &'s MsgId, &'s T),
 ) -> Option<()> {
     crate::profile_function!();
 
@@ -24,8 +24,8 @@ pub fn visit_obj_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                     query(
                         &primary.history,
                         time_query,
-                        |_time, (log_id, primary_value)| {
-                            visit(&primary.obj_path, log_id, primary_value);
+                        |_time, (msg_id, primary_value)| {
+                            visit(&primary.obj_path, msg_id, primary_value);
                         },
                     );
                 }
@@ -40,11 +40,11 @@ pub fn visit_obj_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
                     query(
                         &primary.history,
                         time_query,
-                        |_time, (log_id, primary_batch)| {
+                        |_time, (msg_id, primary_batch)| {
                             if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 visit(
                                     obj_store.obj_path_or_die(&index_path_suffix),
-                                    log_id,
+                                    msg_id,
                                     primary_value,
                                 );
                             }
@@ -68,7 +68,7 @@ pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTr
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
     (child1,): (&str,),
-    mut visit: impl FnMut(&'s ObjPath, &'s LogId, &'s T, Option<&'s S1>),
+    mut visit: impl FnMut(&'s ObjPath, &'s MsgId, &'s T, Option<&'s S1>),
 ) -> Option<()> {
     crate::profile_function!();
 
@@ -86,10 +86,10 @@ pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTr
                     query(
                         &primary.history,
                         time_query,
-                        |time, (log_id, primary_value)| {
+                        |time, (msg_id, primary_value)| {
                             visit(
                                 &primary.obj_path,
-                                log_id,
+                                msg_id,
                                 primary_value,
                                 child1_reader.latest_at(&index_path, index_path_split, time),
                             );
@@ -109,14 +109,14 @@ pub fn visit_obj_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataTr
                     query(
                         &primary.history,
                         time_query,
-                        |time, (log_id, primary_batch)| {
+                        |time, (msg_id, primary_batch)| {
                             if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 let child1_reader =
                                     BatchedDataReader::new(child1_store, &index_path_prefix, time);
 
                                 visit(
                                     obj_store.obj_path_or_die(&index_path_suffix),
-                                    log_id,
+                                    msg_id,
                                     primary_value,
                                     child1_reader.latest_at(&index_path_suffix),
                                 );
@@ -147,7 +147,7 @@ pub fn visit_obj_data_2<
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
     (child1, child2): (&str, &str),
-    mut visit: impl FnMut(&'s ObjPath, &'s LogId, &'s T, Option<&'s S1>, Option<&'s S2>),
+    mut visit: impl FnMut(&'s ObjPath, &'s MsgId, &'s T, Option<&'s S1>, Option<&'s S2>),
 ) -> Option<()> {
     crate::profile_function!();
 
@@ -167,10 +167,10 @@ pub fn visit_obj_data_2<
                     query(
                         &primary.history,
                         time_query,
-                        |time, (log_id, primary_value)| {
+                        |time, (msg_id, primary_value)| {
                             visit(
                                 &primary.obj_path,
-                                log_id,
+                                msg_id,
                                 primary_value,
                                 child1_reader.latest_at(&index_path, index_path_split, time),
                                 child2_reader.latest_at(&index_path, index_path_split, time),
@@ -192,7 +192,7 @@ pub fn visit_obj_data_2<
                     query(
                         &primary.history,
                         time_query,
-                        |time, (log_id, primary_batch)| {
+                        |time, (msg_id, primary_batch)| {
                             if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 let child1_reader =
                                     BatchedDataReader::new(child1_store, &index_path_prefix, time);
@@ -201,7 +201,7 @@ pub fn visit_obj_data_2<
 
                                 visit(
                                     obj_store.obj_path_or_die(&index_path_suffix),
-                                    log_id,
+                                    msg_id,
                                     primary_value,
                                     child1_reader.latest_at(&index_path_suffix),
                                     child2_reader.latest_at(&index_path_suffix),
@@ -234,7 +234,7 @@ pub fn visit_obj_data_3<
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
     (child1, child2, child3): (&str, &str, &str),
-    mut visit: impl FnMut(&'s ObjPath, &'s LogId, &'s T, Option<&'s S1>, Option<&'s S2>, Option<&'s S3>),
+    mut visit: impl FnMut(&'s ObjPath, &'s MsgId, &'s T, Option<&'s S1>, Option<&'s S2>, Option<&'s S3>),
 ) -> Option<()> {
     crate::profile_function!();
 
@@ -256,10 +256,10 @@ pub fn visit_obj_data_3<
                     query(
                         &primary.history,
                         time_query,
-                        |time, (log_id, primary_value)| {
+                        |time, (msg_id, primary_value)| {
                             visit(
                                 &primary.obj_path,
-                                log_id,
+                                msg_id,
                                 primary_value,
                                 child1_reader.latest_at(&index_path, index_path_split, time),
                                 child2_reader.latest_at(&index_path, index_path_split, time),
@@ -283,7 +283,7 @@ pub fn visit_obj_data_3<
                     query(
                         &primary.history,
                         time_query,
-                        |time, (log_id, primary_batch)| {
+                        |time, (msg_id, primary_batch)| {
                             if let Some(primary_value) = primary_batch.get(&index_path_suffix) {
                                 let child1_reader =
                                     BatchedDataReader::new(child1_store, &index_path_prefix, time);
@@ -294,7 +294,7 @@ pub fn visit_obj_data_3<
 
                                 visit(
                                     obj_store.obj_path_or_die(&index_path_suffix),
-                                    log_id,
+                                    msg_id,
                                     primary_value,
                                     child1_reader.latest_at(&index_path_suffix),
                                     child2_reader.latest_at(&index_path_suffix),

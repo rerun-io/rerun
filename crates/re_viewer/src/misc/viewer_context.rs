@@ -1,6 +1,6 @@
 use re_data_store::ObjTypePath;
 use re_log_types::{
-    DataPath, LogId, ObjPath, ObjPathBuilder, ObjPathComp, TimeInt, TimeSource, TimeValue,
+    DataPath, MsgId, ObjPath, ObjPathBuilder, ObjPathComp, TimeInt, TimeSource, TimeValue,
 };
 
 use crate::{log_db::LogDb, misc::log_db::ObjectTree};
@@ -205,7 +205,7 @@ impl Default for Options {
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub(crate) enum Selection {
     None,
-    LogId(LogId),
+    MsgId(MsgId),
     ObjTypePath(ObjTypePath),
     ObjPath(ObjPath),
     DataPath(DataPath),

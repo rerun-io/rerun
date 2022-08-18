@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use re_log_types::{
-    LogId, LogMsg, ObjTypePath, ObjectType, Time, TimePoint, TimeSource, TimeType, TimeValue,
+    LogMsg, MsgId, ObjTypePath, ObjectType, Time, TimePoint, TimeSource, TimeType, TimeValue,
     TypeMsg,
 };
 
@@ -82,7 +82,7 @@ impl Sdk {
             self.registered_types.insert(obj_type_path.clone(), typ);
 
             self.send(LogMsg::TypeMsg(TypeMsg {
-                id: LogId::random(),
+                id: MsgId::random(),
                 type_path: obj_type_path.clone(),
                 object_type: typ,
             }));

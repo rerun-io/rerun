@@ -8,7 +8,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools as _;
 use re_data_store::TypePathDataStore;
 use re_data_store::*;
-use re_log_types::{FieldName, LogId};
+use re_log_types::{FieldName, MsgId};
 
 const NUM_FRAMES: i64 = 1_000; // this can have a big impact on performance
 const NUM_POINTS_PER_CAMERA: u64 = 1_000;
@@ -37,7 +37,7 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
         &FieldName::new("pos"),
         time_query,
         ("radius",),
-        |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
+        |_object_path, _msg_id: &MsgId, pos: &[f32; 3], radius: Option<&f32>| {
             points.push(Point3 {
                 pos,
                 radius: radius.copied(),
@@ -89,7 +89,7 @@ fn generate_data(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                             obj_path(camera, point),
                             FieldName::from("pos"),
                             time_value,
-                            LogId::random(),
+                            MsgId::random(),
                             [1.0, 2.0, 3.0],
                         )
                         .unwrap();
@@ -106,7 +106,7 @@ fn generate_data(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                         &ObjPath::new(type_path.clone(), index_path_prefix),
                         FieldName::from("pos"),
                         time_value,
-                        LogId::random(),
+                        MsgId::random(),
                         batch,
                     )
                     .unwrap();
@@ -119,7 +119,7 @@ fn generate_data(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                             obj_path(camera, point),
                             FieldName::from("radius"),
                             time_value,
-                            LogId::random(),
+                            MsgId::random(),
                             1.0_f32,
                         )
                         .unwrap();
@@ -136,7 +136,7 @@ fn generate_data(individual_pos: bool, individual_radius: bool) -> TypePathDataS
                         &ObjPath::new(type_path.clone(), index_path_prefix),
                         FieldName::from("radius"),
                         time_value,
-                        LogId::random(),
+                        MsgId::random(),
                         batch,
                     )
                     .unwrap();
@@ -190,7 +190,7 @@ fn insert_batch_thoughput(c: &mut Criterion) {
                         &ObjPath::new(type_path(), index_path_prefix.clone()),
                         FieldName::from("pos"),
                         time_value,
-                        LogId::random(),
+                        MsgId::random(),
                         batch.clone(),
                     )
                     .unwrap();
@@ -226,7 +226,7 @@ fn insert_individual_thoughput(c: &mut Criterion) {
                             obj_path("left", point as _),
                             FieldName::from("pos"),
                             time_value,
-                            LogId::random(),
+                            MsgId::random(),
                             [1.0, 2.0, 3.0],
                         )
                         .unwrap();

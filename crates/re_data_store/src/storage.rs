@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 
 use re_log_types::{
     data_types, DataTrait, DataType, DataVec, FieldName, Index, IndexHash, IndexPath,
-    IndexPathHash, LogId, ObjPath,
+    IndexPathHash, MsgId, ObjPath,
 };
 
 use crate::{ObjTypePath, TimeQuery};
@@ -98,7 +98,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         obj_path: ObjPath,
         field_name: FieldName,
         time: Time,
-        log_id: LogId,
+        msg_id: MsgId,
         value: T,
     ) -> Result<()> {
         let (obj_type_path, index_path) = obj_path.clone().into_type_path_and_index_path();
@@ -106,7 +106,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         self.objects
             .entry(obj_type_path)
             .or_default()
-            .insert_individual(index_path, field_name, time, obj_path, log_id, value)
+            .insert_individual(index_path, field_name, time, obj_path, msg_id, value)
     }
 
     /// `parent_obj_path.index_path` should have `Index::Placeholder` in the last position.
@@ -116,7 +116,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         parent_obj_path: &ObjPath,
         field_name: FieldName,
         time: Time,
-        log_id: LogId,
+        msg_id: MsgId,
         batch: ArcBatch<T>,
     ) -> Result<()> {
         crate::profile_function!(std::any::type_name::<T>());
@@ -126,7 +126,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         self.objects
             .entry(parent_obj_path.obj_type_path().clone())
             .or_default()
-            .insert_batch(index_path, field_name, time, parent_obj_path, log_id, batch)
+            .insert_batch(index_path, field_name, time, parent_obj_path, msg_id, batch)
     }
 
     /// Use the same value for all indices of a batch.
@@ -138,7 +138,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         parent_obj_path: ObjPath,
         field_name: FieldName,
         time: Time,
-        log_id: LogId,
+        msg_id: MsgId,
         value: T,
     ) -> Result<()> {
         crate::profile_function!();
@@ -149,7 +149,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
         self.objects
             .entry(obj_type_path)
             .or_default()
-            .insert_batch_splat(index_path, field_name, time, log_id, value)
+            .insert_batch_splat(index_path, field_name, time, msg_id, value)
     }
 
     #[inline]
@@ -201,7 +201,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         field_name: FieldName,
         time: Time,
         obj_path: ObjPath,
-        log_id: LogId,
+        msg_id: MsgId,
         value: T,
     ) -> Result<()> {
         if let Some(store) = self
@@ -210,7 +210,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
             .or_insert_with(|| DataStoreTypeErased::new_individual::<T>())
             .write::<T>()
         {
-            store.insert_individual(index_path, time, obj_path, log_id, value)
+            store.insert_individual(index_path, time, obj_path, msg_id, value)
         } else {
             Err(Error::WrongType)
         }
@@ -222,7 +222,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         field_name: FieldName,
         time: Time,
         parent_obj_path: &ObjPath,
-        log_id: LogId,
+        msg_id: MsgId,
         batch: ArcBatch<T>,
     ) -> Result<()> {
         self.store_batch_obj_paths(&batch, parent_obj_path);
@@ -233,7 +233,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
             .or_insert_with(|| DataStoreTypeErased::new_batched::<T>())
             .write::<T>()
         {
-            store.insert_batch(index_path_prefix, time, log_id, batch)
+            store.insert_batch(index_path_prefix, time, msg_id, batch)
         } else {
             Err(Error::WrongType)
         }
@@ -244,7 +244,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         index_path_prefix: IndexPathHash,
         field_name: FieldName,
         time: Time,
-        log_id: LogId,
+        msg_id: MsgId,
         value: T,
     ) -> Result<()> {
         if let Some(store) = self
@@ -253,7 +253,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
             .or_insert_with(|| DataStoreTypeErased::new_batch_splat::<T>())
             .write::<T>()
         {
-            store.insert_batch_splat(index_path_prefix, time, log_id, value)
+            store.insert_batch_splat(index_path_prefix, time, msg_id, value)
         } else {
             Err(Error::WrongType)
         }
@@ -361,7 +361,7 @@ impl<Time: 'static + Copy + Ord> DataStoreTypeErased<Time> {
         &self,
         index_path: IndexPath,
         time_query: &TimeQuery<Time>,
-    ) -> (Vec<Time>, Vec<LogId>, DataVec) {
+    ) -> (Vec<Time>, Vec<MsgId>, DataVec) {
         macro_rules! handle_type(
             ($enum_variant: ident, $typ: ty) => {{
                 if let Some(data_store) = self.read_or_warn::<$typ>() {
@@ -422,12 +422,12 @@ impl<Time: Copy + Ord, T: DataTrait> DataStore<Time, T> {
         index_path: IndexPath,
         time: Time,
         obj_path: ObjPath,
-        log_id: LogId,
+        msg_id: MsgId,
         value: T,
     ) -> Result<()> {
         match self {
             Self::Individual(individual) => {
-                individual.insert(index_path, time, obj_path, log_id, value);
+                individual.insert(index_path, time, obj_path, msg_id, value);
                 Ok(())
             }
             _ => Err(Error::MixingIndividualBatchesOrSplats),
@@ -438,12 +438,12 @@ impl<Time: Copy + Ord, T: DataTrait> DataStore<Time, T> {
         &mut self,
         index_path_prefix: IndexPathHash,
         time: Time,
-        log_id: LogId,
+        msg_id: MsgId,
         batch: ArcBatch<T>,
     ) -> Result<()> {
         match self {
             Self::Batched(batched) => {
-                batched.insert(index_path_prefix, time, log_id, batch);
+                batched.insert(index_path_prefix, time, msg_id, batch);
                 Ok(())
             }
             _ => Err(Error::MixingIndividualBatchesOrSplats),
@@ -454,12 +454,12 @@ impl<Time: Copy + Ord, T: DataTrait> DataStore<Time, T> {
         &mut self,
         index_path_prefix: IndexPathHash,
         time: Time,
-        log_id: LogId,
+        msg_id: MsgId,
         value: T,
     ) -> Result<()> {
         match self {
             Self::BatchSplat(batched) => {
-                batched.insert(index_path_prefix, time, log_id, value);
+                batched.insert(index_path_prefix, time, msg_id, value);
                 Ok(())
             }
             _ => Err(Error::MixingIndividualBatchesOrSplats),
@@ -471,7 +471,7 @@ impl<Time: Copy + Ord, T: DataTrait> DataStore<Time, T> {
         &self,
         index_path: IndexPath,
         time_query: &TimeQuery<Time>,
-    ) -> (Vec<Time>, Vec<LogId>, Vec<T>) {
+    ) -> (Vec<Time>, Vec<MsgId>, Vec<T>) {
         match self {
             Self::Individual(data_history) => {
                 data_history.query_object(&IndexPathHash::from_path(&index_path), time_query)
@@ -498,7 +498,7 @@ pub struct IndividualHistory<Time, T> {
     /// The index path prefix (full path minus the last component) and the last component.
     /// This is used to find the batch of a sibling field if necessary.
     pub(crate) index_path_split: (IndexPathHash, IndexHash),
-    pub(crate) history: BTreeMap<Time, (LogId, T)>,
+    pub(crate) history: BTreeMap<Time, (MsgId, T)>,
 }
 
 impl<Time: Copy + Ord, T> Default for IndividualDataHistory<Time, T> {
@@ -515,7 +515,7 @@ impl<Time: Copy + Ord, T> IndividualDataHistory<Time, T> {
         index_path: IndexPath,
         time: Time,
         obj_path: ObjPath,
-        log_id: LogId,
+        msg_id: MsgId,
         value: T,
     ) {
         self.values
@@ -526,7 +526,7 @@ impl<Time: Copy + Ord, T> IndividualDataHistory<Time, T> {
                 history: Default::default(),
             })
             .history
-            .insert(time, (log_id, value));
+            .insert(time, (msg_id, value));
     }
 
     pub fn iter(
@@ -542,16 +542,16 @@ impl<Time: Copy + Ord, T: Clone> IndividualDataHistory<Time, T> {
         &self,
         index_path: &IndexPathHash,
         time_query: &TimeQuery<Time>,
-    ) -> (Vec<Time>, Vec<LogId>, Vec<T>) {
+    ) -> (Vec<Time>, Vec<MsgId>, Vec<T>) {
         crate::profile_function!();
 
         let mut times = vec![];
         let mut ids = vec![];
         let mut values = vec![];
         if let Some(history) = self.values.get(index_path) {
-            query(&history.history, time_query, |time, (log_id, value)| {
+            query(&history.history, time_query, |time, (msg_id, value)| {
                 times.push(*time);
-                ids.push(*log_id);
+                ids.push(*msg_id);
                 values.push(value.clone()); // TODO(emilk): return references instead
             });
         }
@@ -568,7 +568,7 @@ pub struct BatchedDataHistory<Time, T> {
 }
 
 pub struct BatchHistory<Time, T> {
-    pub(crate) history: BTreeMap<Time, (LogId, ArcBatch<T>)>,
+    pub(crate) history: BTreeMap<Time, (MsgId, ArcBatch<T>)>,
 }
 
 impl<Time: Copy + Ord, T> Default for BatchedDataHistory<Time, T> {
@@ -592,11 +592,11 @@ impl<Time: Copy + Ord, T> BatchedDataHistory<Time, T> {
         &mut self,
         index_path_prefix: IndexPathHash,
         time: Time,
-        log_id: LogId,
+        msg_id: MsgId,
         batch: ArcBatch<T>,
     ) {
         let batch_history = self.batches_over_time.entry(index_path_prefix).or_default();
-        batch_history.history.insert(time, (log_id, batch));
+        batch_history.history.insert(time, (msg_id, batch));
     }
 
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexPathHash, &BatchHistory<Time, T>)> {
@@ -610,7 +610,7 @@ impl<Time: Copy + Ord, T: Clone> BatchedDataHistory<Time, T> {
         &self,
         index_path: IndexPath,
         time_query: &TimeQuery<Time>,
-    ) -> (Vec<Time>, Vec<LogId>, Vec<T>) {
+    ) -> (Vec<Time>, Vec<MsgId>, Vec<T>) {
         crate::profile_function!();
 
         let mut times = vec![];
@@ -624,10 +624,10 @@ impl<Time: Copy + Ord, T: Clone> BatchedDataHistory<Time, T> {
                 query(
                     &batch_history.history,
                     time_query,
-                    |time, (log_id, batch)| {
+                    |time, (msg_id, batch)| {
                         for value in batch.values() {
                             times.push(*time);
-                            ids.push(*log_id);
+                            ids.push(*msg_id);
                             values.push(value.clone()); // TODO(emilk): return references instead
                         }
                     },
@@ -642,10 +642,10 @@ impl<Time: Copy + Ord, T: Clone> BatchedDataHistory<Time, T> {
                 query(
                     &batch_history.history,
                     time_query,
-                    |time, (log_id, batch)| {
+                    |time, (msg_id, batch)| {
                         if let Some(value) = batch.get(&index_path_suffix) {
                             times.push(*time);
-                            ids.push(*log_id);
+                            ids.push(*msg_id);
                             values.push(value.clone()); // TODO(emilk): return references instead
                         }
                     },
@@ -661,7 +661,7 @@ impl<Time: Copy + Ord, T: Clone> BatchedDataHistory<Time, T> {
 
 /// For a specific [`ObjTypePath`].
 pub struct BatchSplatDataHistory<Time, T> {
-    pub(crate) values: IntMap<IndexPathHash, BTreeMap<Time, (LogId, T)>>,
+    pub(crate) values: IntMap<IndexPathHash, BTreeMap<Time, (MsgId, T)>>,
 }
 
 impl<Time: Copy + Ord, T> Default for BatchSplatDataHistory<Time, T> {
@@ -673,11 +673,11 @@ impl<Time: Copy + Ord, T> Default for BatchSplatDataHistory<Time, T> {
 }
 
 impl<Time: Copy + Ord, T> BatchSplatDataHistory<Time, T> {
-    fn insert(&mut self, index_path_prefix: IndexPathHash, time: Time, log_id: LogId, value: T) {
+    fn insert(&mut self, index_path_prefix: IndexPathHash, time: Time, msg_id: MsgId, value: T) {
         self.values
             .entry(index_path_prefix)
             .or_default()
-            .insert(time, (log_id, value));
+            .insert(time, (msg_id, value));
     }
 }
 
@@ -687,7 +687,7 @@ impl<Time: Copy + Ord, T: Clone> BatchSplatDataHistory<Time, T> {
         &self,
         index_path: IndexPath,
         time_query: &TimeQuery<Time>,
-    ) -> (Vec<Time>, Vec<LogId>, Vec<T>) {
+    ) -> (Vec<Time>, Vec<MsgId>, Vec<T>) {
         crate::profile_function!();
 
         let mut times = vec![];
@@ -697,9 +697,9 @@ impl<Time: Copy + Ord, T: Clone> BatchSplatDataHistory<Time, T> {
         if index_path.has_placeholder_last() {
             let index_path = IndexPathHash::from_path(&index_path);
             if let Some(history) = self.values.get(&index_path) {
-                query(history, time_query, |time, (log_id, value)| {
+                query(history, time_query, |time, (msg_id, value)| {
                     times.push(*time);
-                    ids.push(*log_id);
+                    ids.push(*msg_id);
                     values.push(value.clone()); // TODO(emilk): return references instead
                 });
             }
@@ -708,9 +708,9 @@ impl<Time: Copy + Ord, T: Clone> BatchSplatDataHistory<Time, T> {
                 index_path.replace_last_with_placeholder();
             let index_path_prefix = IndexPathHash::from_path(&index_path_prefix);
             if let Some(history) = self.values.get(&index_path_prefix) {
-                query(history, time_query, |time, (log_id, value)| {
+                query(history, time_query, |time, (msg_id, value)| {
                     times.push(*time);
-                    ids.push(*log_id);
+                    ids.push(*msg_id);
                     values.push(value.clone()); // TODO(emilk): return references instead
                 });
             }
@@ -789,17 +789,17 @@ impl<'store, Time: 'static + Copy + Ord, T: DataTrait> IndividualDataReader<'sto
             Self::None => None,
             Self::Individual(history) => {
                 latest_at(&history.values.get(full_index_path)?.history, query_time)
-                    .map(|(_time, (_log_id, value))| value)
+                    .map(|(_time, (_msg_id, value))| value)
             }
             Self::Batched(data) => {
                 let (prefix, suffix) = index_path_split;
-                let (_time, (_log_id, batch)) =
+                let (_time, (_msg_id, batch)) =
                     latest_at(&data.batches_over_time.get(prefix)?.history, query_time)?;
                 batch.get(suffix)
             }
             Self::BatchSplat(data) => {
                 let (prefix, _suffix) = index_path_split;
-                let (_time, (_log_id, value)) = latest_at(data.values.get(prefix)?, query_time)?;
+                let (_time, (_msg_id, value)) = latest_at(data.values.get(prefix)?, query_time)?;
                 Some(value)
             }
         }
@@ -839,12 +839,12 @@ impl<'store, Time: Copy + Ord, T: DataTrait> BatchedDataReader<'store, Time, T> 
             DataStore::Batched(batched) => {
                 let everything_per_time =
                     &batched.batches_over_time.get(index_path_prefix)?.history;
-                let (_time, (_log_id, map)) = latest_at(everything_per_time, query_time)?;
+                let (_time, (_msg_id, map)) = latest_at(everything_per_time, query_time)?;
                 Some(Self::Batched(map))
             }
             DataStore::BatchSplat(batch_splat) => {
                 let splat_per_time = &batch_splat.values.get(index_path_prefix)?;
-                let (_time, (_log_id, value)) = latest_at(splat_per_time, query_time)?;
+                let (_time, (_msg_id, value)) = latest_at(splat_per_time, query_time)?;
                 Some(Self::BatchSplat(value))
             }
         }
@@ -857,7 +857,7 @@ impl<'store, Time: Copy + Ord, T: DataTrait> BatchedDataReader<'store, Time, T> 
                 let mut index_path = *index_path_prefix;
                 index_path.replace_last_placeholder_with(index_path_suffix);
                 latest_at(&history.values.get(&index_path)?.history, query_time)
-                    .map(|(_time, (_log_id, value))| value)
+                    .map(|(_time, (_msg_id, value))| value)
             }
             Self::Batched(data) => data.get(index_path_suffix),
             Self::BatchSplat(value) => Some(value),
