@@ -152,7 +152,7 @@ impl eframe::App for App {
         {
             let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
-            if let Some(log_db) = self.state.top_panel(egui_ctx, frame, log_db) {
+            if let Some(log_db) = top_panel(egui_ctx, frame, log_db, &mut self.state) {
                 self.show_log_db(log_db);
             }
         }
@@ -278,57 +278,6 @@ struct AppState {
 }
 
 impl AppState {
-    /// May return an newly loaded [`LogDb`].
-    #[must_use]
-    fn top_panel(
-        &mut self,
-        egui_ctx: &egui::Context,
-        frame: &mut eframe::Frame,
-        log_db: &LogDb,
-    ) -> Option<LogDb> {
-        crate::profile_function!();
-
-        let mut loaded_log_db = None;
-
-        egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    loaded_log_db = self.file_menu(ui, frame, log_db);
-                });
-
-                ui.separator();
-
-                egui::widgets::global_dark_light_mode_switch(ui);
-
-                ui.separator();
-
-                if !log_db.is_empty() {
-                    ui.selectable_value(&mut self.view_index, 0, "Spaces");
-                    ui.selectable_value(&mut self.view_index, 1, "Table");
-                }
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if !WATERMARK {
-                        let logo = self.static_image_cache.rerun_logo(ui.visuals());
-                        let response = ui
-                            .add(egui::ImageButton::new(
-                                logo.texture_id(egui_ctx),
-                                logo.size_vec2() * 16.0 / logo.size_vec2().y,
-                            ))
-                            .on_hover_text("https://rerun.io");
-                        if response.clicked() {
-                            ui.output().open_url =
-                                Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
-                        }
-                    }
-                    egui::warn_if_debug_build(ui);
-                });
-            });
-        });
-
-        loaded_log_db
-    }
-
     fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb) {
         crate::profile_function!();
 
@@ -396,79 +345,130 @@ impl AppState {
         mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
         egui_ctx.debug_painter().add(Shape::mesh(mesh));
     }
+}
 
-    #[must_use]
-    fn file_menu(
-        &mut self,
-        ui: &mut egui::Ui,
-        _frame: &mut eframe::Frame,
-        _log_db: &LogDb,
-    ) -> Option<LogDb> {
-        // TODO(emilk): support saving data on web
-        #[cfg(not(target_arch = "wasm32"))]
-        if ui
-            .add_enabled(!_log_db.is_empty(), egui::Button::new("Save…"))
-            .on_hover_text("Save all data to a Rerun data file (.rrd)")
-            .clicked()
-        {
-            if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
-                save_to_file(_log_db, &path);
-            }
-        }
+/// May return an newly loaded [`LogDb`].
+#[must_use]
+fn top_panel(
+    egui_ctx: &egui::Context,
+    frame: &mut eframe::Frame,
+    log_db: &LogDb,
+    state: &mut AppState,
+) -> Option<LogDb> {
+    crate::profile_function!();
 
-        let mut loaded_log_db = None;
+    let mut loaded_log_db = None;
 
-        #[cfg(not(target_arch = "wasm32"))]
-        if ui
-            .button("Load")
-            .on_hover_text("Load a Rerun data file (.rrd)")
-            .clicked()
-        {
-            if let Some(path) = rfd::FileDialog::new()
-                .add_filter("rerun data file", &["rrd"])
-                .pick_file()
-            {
-                loaded_log_db = load_file_path(&path);
-            }
-        }
+    egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
+        egui::menu::bar(ui, |ui| {
+            ui.menu_button("File", |ui| {
+                loaded_log_db = file_menu(ui, state, frame, log_db);
+            });
 
-        ui.menu_button("Advanced", |ui| {
-            if ui
-                .button("Reset viewer")
-                .on_hover_text("Reset the viewer to how it looked the first time you ran it.")
-                .clicked()
-            {
-                *self = Default::default();
+            ui.separator();
 
-                // Keep dark/light mode setting:
-                let is_dark_mode = ui.ctx().style().visuals.dark_mode;
-                *ui.ctx().memory() = Default::default();
-                ui.ctx().set_visuals(if is_dark_mode {
-                    egui::Visuals::dark()
-                } else {
-                    egui::Visuals::light()
-                });
+            egui::widgets::global_dark_light_mode_switch(ui);
 
-                ui.close_menu();
+            ui.separator();
+
+            if !log_db.is_empty() {
+                ui.selectable_value(&mut state.view_index, 0, "Spaces");
+                ui.selectable_value(&mut state.view_index, 1, "Table");
             }
 
-            #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
-            if ui
-                .button("Profile viewer")
-                .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
-                .clicked()
-            {
-                self.profiler.start();
-            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if !WATERMARK {
+                    let logo = state.static_image_cache.rerun_logo(ui.visuals());
+                    let response = ui
+                        .add(egui::ImageButton::new(
+                            logo.texture_id(egui_ctx),
+                            logo.size_vec2() * 16.0 / logo.size_vec2().y,
+                        ))
+                        .on_hover_text("https://rerun.io");
+                    if response.clicked() {
+                        ui.output().open_url =
+                            Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
+                    }
+                }
+                egui::warn_if_debug_build(ui);
+            });
         });
+    });
 
-        #[cfg(not(target_arch = "wasm32"))]
-        if ui.button("Quit").clicked() {
-            _frame.quit();
+    loaded_log_db
+}
+
+#[must_use]
+fn file_menu(
+    ui: &mut egui::Ui,
+    state: &mut AppState,
+    _frame: &mut eframe::Frame,
+    _log_db: &LogDb,
+) -> Option<LogDb> {
+    // TODO(emilk): support saving data on web
+    #[cfg(not(target_arch = "wasm32"))]
+    if ui
+        .add_enabled(!_log_db.is_empty(), egui::Button::new("Save…"))
+        .on_hover_text("Save all data to a Rerun data file (.rrd)")
+        .clicked()
+    {
+        if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
+            save_to_file(_log_db, &path);
+        }
+    }
+
+    let mut loaded_log_db = None;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if ui
+        .button("Load")
+        .on_hover_text("Load a Rerun data file (.rrd)")
+        .clicked()
+    {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("rerun data file", &["rrd"])
+            .pick_file()
+        {
+            loaded_log_db = load_file_path(&path);
+        }
+    }
+
+    ui.menu_button("Advanced", |ui| {
+        if ui
+            .button("Reset viewer")
+            .on_hover_text("Reset the viewer to how it looked the first time you ran it.")
+            .clicked()
+        {
+            *state = Default::default();
+
+            // Keep dark/light mode setting:
+            let is_dark_mode = ui.ctx().style().visuals.dark_mode;
+            *ui.ctx().memory() = Default::default();
+            ui.ctx().set_visuals(if is_dark_mode {
+                egui::Visuals::dark()
+            } else {
+                egui::Visuals::light()
+            });
+
+            ui.close_menu();
         }
 
-        loaded_log_db
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        if ui
+            .button("Profile viewer")
+            .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
+            .clicked()
+        {
+            state.profiler.start();
+        }
+    });
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if ui.button("Quit").clicked() {
+        _frame.quit();
     }
+
+    loaded_log_db
 }
 
 #[cfg(not(target_arch = "wasm32"))]
