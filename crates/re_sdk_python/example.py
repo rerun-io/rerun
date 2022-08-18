@@ -3,6 +3,7 @@ Shows how to use the rerun SDK.
 """
 
 import math
+from typing import Sequence
 
 import argparse
 import cv2
@@ -40,9 +41,16 @@ def generate_depth_image(frame_nr):
     return depth_image
 
 
+def generate_dummy_data(num_frames: int) -> Sequence[np.array]:
+    """
+    This function generates dummy data to log.
+    """
+
+    return [generate_depth_image(i) for i in range(num_frames)]
+
 def log(args):
     NUM_FRAMES = 40
-    depth_images = [generate_depth_image(i) for i in range(NUM_FRAMES)]
+    depth_images = generate_dummy_data(num_frames=NUM_FRAMES)
 
     for frame_nr in range(NUM_FRAMES):
         # This will assign logged objects a "time source" called `frame_nr`.
