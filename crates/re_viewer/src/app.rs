@@ -53,8 +53,7 @@ impl App {
         storage: Option<&dyn eframe::Storage>,
         path: &std::path::Path,
     ) -> Self {
-        let mut log_db = Default::default();
-        load_file_path(path, &mut log_db);
+        let log_db = load_file_path(path).unwrap_or_default(); // TODO(emilk): exit on error.
         Self::from_log_db(egui_ctx, storage, log_db)
     }
 
@@ -88,7 +87,7 @@ impl App {
 
         let mut log_dbs = IntMap::default();
         if !log_db.is_empty() {
-            state.selected_recording_id = log_db.recording_id();
+            state.selected_rec_id = log_db.recording_id();
             log_dbs.insert(log_db.recording_id(), log_db);
         }
 
@@ -125,13 +124,10 @@ impl eframe::App for App {
             while let Ok(msg) = rx.try_recv() {
                 if let LogMsg::BeginRecordingMsg(msg) = &msg {
                     tracing::info!("Begginning a new recording: {:?}", msg.info);
-                    self.state.selected_recording_id = msg.info.recording_id;
+                    self.state.selected_rec_id = msg.info.recording_id;
                 }
 
-                let log_db = self
-                    .log_dbs
-                    .entry(self.state.selected_recording_id)
-                    .or_default();
+                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
                 log_db.add(msg);
                 if start.elapsed() > instant::Duration::from_millis(10) {
@@ -144,7 +140,7 @@ impl eframe::App for App {
         {
             // Cleanup
             self.log_dbs.retain(|&recording_id, log_db| {
-                recording_id == self.state.selected_recording_id || !log_db.is_empty()
+                recording_id == self.state.selected_rec_id || !log_db.is_empty()
             });
 
             // Make sure we don't persist old stuff we don't need:
@@ -153,18 +149,21 @@ impl eframe::App for App {
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
-        let log_db = self
-            .log_dbs
-            .entry(self.state.selected_recording_id)
-            .or_default();
+        {
+            let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+
+            if let Some(log_db) = self.state.top_panel(egui_ctx, frame, log_db) {
+                self.show_log_db(log_db);
+            }
+        }
+
+        let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
         self.state
             .recording_configs
-            .entry(self.state.selected_recording_id)
+            .entry(self.state.selected_rec_id)
             .or_default()
             .on_frame_start(log_db);
-
-        self.state.top_panel(egui_ctx, frame, log_db);
 
         if log_db.is_empty() && self.rx.is_some() {
             egui::CentralPanel::default().show(egui_ctx, |ui| {
@@ -181,6 +180,11 @@ impl eframe::App for App {
 }
 
 impl App {
+    fn show_log_db(&mut self, log_db: LogDb) {
+        self.state.selected_rec_id = log_db.recording_id();
+        self.log_dbs.insert(log_db.recording_id(), log_db);
+    }
+
     fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
         preview_files_being_dropped(egui_ctx);
 
@@ -192,20 +196,19 @@ impl App {
                 .show();
         }
         if let Some(file) = egui_ctx.input().raw.dropped_files.first() {
-            let log_db = self
-                .log_dbs
-                .entry(self.state.selected_recording_id)
-                .or_default();
-
             if let Some(bytes) = &file.bytes {
                 let mut bytes: &[u8] = &(*bytes)[..];
-                load_file_contents(&file.name, &mut bytes, log_db);
-                return;
+                if let Some(log_db) = load_file_contents(&file.name, &mut bytes) {
+                    self.show_log_db(log_db);
+                    return;
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &file.path {
-                load_file_path(path, log_db);
+                if let Some(log_db) = load_file_path(path) {
+                    self.show_log_db(log_db);
+                }
             }
         }
     }
@@ -254,7 +257,7 @@ struct AppState {
     #[serde(skip)]
     cache: Caches,
 
-    selected_recording_id: RecordingId,
+    selected_rec_id: RecordingId,
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
@@ -275,18 +278,22 @@ struct AppState {
 }
 
 impl AppState {
+    /// May return an newly loaded [`LogDb`].
+    #[must_use]
     fn top_panel(
         &mut self,
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
-        log_db: &mut LogDb,
-    ) {
+        log_db: &LogDb,
+    ) -> Option<LogDb> {
         crate::profile_function!();
+
+        let mut loaded_log_db = None;
 
         egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    self.file_menu(ui, frame, log_db);
+                    loaded_log_db = self.file_menu(ui, frame, log_db);
                 });
 
                 ui.separator();
@@ -318,15 +325,17 @@ impl AppState {
                 });
             });
         });
+
+        loaded_log_db
     }
 
-    fn show(&mut self, egui_ctx: &egui::Context, log_db: &mut LogDb) {
+    fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb) {
         crate::profile_function!();
 
         let Self {
             options,
             cache,
-            selected_recording_id,
+            selected_rec_id: selected_recording_id,
             recording_configs,
             view_index,
             log_table_view,
@@ -388,7 +397,13 @@ impl AppState {
         egui_ctx.debug_painter().add(Shape::mesh(mesh));
     }
 
-    fn file_menu(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame, _log_db: &mut LogDb) {
+    #[must_use]
+    fn file_menu(
+        &mut self,
+        ui: &mut egui::Ui,
+        _frame: &mut eframe::Frame,
+        _log_db: &LogDb,
+    ) -> Option<LogDb> {
         // TODO(emilk): support saving data on web
         #[cfg(not(target_arch = "wasm32"))]
         if ui
@@ -401,6 +416,8 @@ impl AppState {
             }
         }
 
+        let mut loaded_log_db = None;
+
         #[cfg(not(target_arch = "wasm32"))]
         if ui
             .button("Load")
@@ -411,7 +428,7 @@ impl AppState {
                 .add_filter("rerun data file", &["rrd"])
                 .pick_file()
             {
-                load_file_path(&path, _log_db);
+                loaded_log_db = load_file_path(&path);
             }
         }
 
@@ -449,6 +466,8 @@ impl AppState {
         if ui.button("Quit").clicked() {
             _frame.quit();
         }
+
+        loaded_log_db
     }
 }
 
@@ -495,7 +514,8 @@ fn load_rrd(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn load_file_path(path: &std::path::Path, log_db: &mut LogDb) {
+#[must_use]
+fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
     fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<LogDb> {
         crate::profile_function!();
         use anyhow::Context as _;
@@ -508,7 +528,7 @@ fn load_file_path(path: &std::path::Path, log_db: &mut LogDb) {
     match load_file_path_impl(path) {
         Ok(new_log_db) => {
             tracing::info!("Loaded {path:?}");
-            *log_db = new_log_db;
+            Some(new_log_db)
         }
         Err(err) => {
             let msg = format!("Failed loading {path:?}: {err}");
@@ -517,15 +537,17 @@ fn load_file_path(path: &std::path::Path, log_db: &mut LogDb) {
                 .set_level(rfd::MessageLevel::Error)
                 .set_description(&msg)
                 .show();
+            None
         }
     }
 }
 
-fn load_file_contents(name: &str, read: impl std::io::Read, log_db: &mut LogDb) {
+#[must_use]
+fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
     match load_rrd(read) {
-        Ok(new_log_db) => {
+        Ok(log_db) => {
             tracing::info!("Loaded {name:?}");
-            *log_db = new_log_db;
+            Some(log_db)
         }
         Err(err) => {
             let msg = format!("Failed loading {name:?}: {err}");
@@ -534,6 +556,7 @@ fn load_file_contents(name: &str, read: impl std::io::Read, log_db: &mut LogDb) 
                 .set_level(rfd::MessageLevel::Error)
                 .set_description(&msg)
                 .show();
+            None
         }
     }
 }
