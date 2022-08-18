@@ -149,13 +149,7 @@ impl eframe::App for App {
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
-        {
-            let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
-
-            if let Some(log_db) = top_panel(egui_ctx, frame, log_db, &mut self.state) {
-                self.show_log_db(log_db);
-            }
-        }
+        top_panel(egui_ctx, frame, self);
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
@@ -180,6 +174,10 @@ impl eframe::App for App {
 }
 
 impl App {
+    fn log_db(&mut self) -> &mut LogDb {
+        self.log_dbs.entry(self.state.selected_rec_id).or_default()
+    }
+
     fn show_log_db(&mut self, log_db: LogDb) {
         self.state.selected_rec_id = log_db.recording_id();
         self.log_dbs.insert(log_db.recording_id(), log_db);
@@ -347,22 +345,13 @@ impl AppState {
     }
 }
 
-/// May return an newly loaded [`LogDb`].
-#[must_use]
-fn top_panel(
-    egui_ctx: &egui::Context,
-    frame: &mut eframe::Frame,
-    log_db: &LogDb,
-    state: &mut AppState,
-) -> Option<LogDb> {
+fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App) {
     crate::profile_function!();
-
-    let mut loaded_log_db = None;
 
     egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
         egui::menu::bar(ui, |ui| {
             ui.menu_button("File", |ui| {
-                loaded_log_db = file_menu(ui, state, frame, log_db);
+                file_menu(ui, app, frame);
             });
 
             ui.separator();
@@ -371,14 +360,14 @@ fn top_panel(
 
             ui.separator();
 
-            if !log_db.is_empty() {
-                ui.selectable_value(&mut state.view_index, 0, "Spaces");
-                ui.selectable_value(&mut state.view_index, 1, "Table");
+            if !app.log_db().is_empty() {
+                ui.selectable_value(&mut app.state.view_index, 0, "Spaces");
+                ui.selectable_value(&mut app.state.view_index, 1, "Table");
             }
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if !WATERMARK {
-                    let logo = state.static_image_cache.rerun_logo(ui.visuals());
+                    let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
                     let response = ui
                         .add(egui::ImageButton::new(
                             logo.texture_id(egui_ctx),
@@ -394,30 +383,23 @@ fn top_panel(
             });
         });
     });
-
-    loaded_log_db
 }
 
-#[must_use]
-fn file_menu(
-    ui: &mut egui::Ui,
-    state: &mut AppState,
-    _frame: &mut eframe::Frame,
-    _log_db: &LogDb,
-) -> Option<LogDb> {
+fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
-    if ui
-        .add_enabled(!_log_db.is_empty(), egui::Button::new("Save…"))
-        .on_hover_text("Save all data to a Rerun data file (.rrd)")
-        .clicked()
     {
-        if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
-            save_to_file(_log_db, &path);
+        let log_db = app.log_db();
+        if ui
+            .add_enabled(!log_db.is_empty(), egui::Button::new("Save…"))
+            .on_hover_text("Save all data to a Rerun data file (.rrd)")
+            .clicked()
+        {
+            if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
+                save_to_file(log_db, &path);
+            }
         }
     }
-
-    let mut loaded_log_db = None;
 
     #[cfg(not(target_arch = "wasm32"))]
     if ui
@@ -429,7 +411,9 @@ fn file_menu(
             .add_filter("rerun data file", &["rrd"])
             .pick_file()
         {
-            loaded_log_db = load_file_path(&path);
+            if let Some(log_db) = load_file_path(&path) {
+                app.show_log_db(log_db);
+            }
         }
     }
 
@@ -439,7 +423,7 @@ fn file_menu(
             .on_hover_text("Reset the viewer to how it looked the first time you ran it.")
             .clicked()
         {
-            *state = Default::default();
+            app.state = Default::default();
 
             // Keep dark/light mode setting:
             let is_dark_mode = ui.ctx().style().visuals.dark_mode;
@@ -459,7 +443,7 @@ fn file_menu(
             .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
             .clicked()
         {
-            state.profiler.start();
+            app.state.profiler.start();
         }
     });
 
@@ -467,8 +451,6 @@ fn file_menu(
     if ui.button("Quit").clicked() {
         _frame.quit();
     }
-
-    loaded_log_db
 }
 
 #[cfg(not(target_arch = "wasm32"))]
