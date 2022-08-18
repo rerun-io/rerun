@@ -118,21 +118,25 @@ impl TimePanel {
         );
         time_selection_ui(
             &self.time_ranges_ui,
-            ctx.rec_cfg.time_ctrl,
+            &mut ctx.rec_cfg.time_ctrl,
             ui,
             &time_area_painter,
             &time_selection_rect,
         );
         time_marker_ui(
             &self.time_ranges_ui,
-            ctx.rec_cfg.time_ctrl,
+            &mut ctx.rec_cfg.time_ctrl,
             ui,
             &time_area_painter,
             &time_line_rect,
             time_area.bottom(),
         );
-        let scroll_delta =
-            interact_with_time_area(&self.time_ranges_ui, ctx.rec_cfg.time_ctrl, ui, &time_area);
+        let scroll_delta = interact_with_time_area(
+            &self.time_ranges_ui,
+            &mut ctx.rec_cfg.time_ctrl,
+            ui,
+            &time_area,
+        );
 
         // Don't draw on top of the time ticks
         let lower_time_area_painter = ui.painter().with_clip_rect(Rect::from_x_y_ranges(

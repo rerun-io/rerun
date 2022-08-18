@@ -5,8 +5,6 @@ use re_log_types::{
 
 use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 
-use super::TimeControl;
-
 /// Common things needed by many parts of the viewer.
 pub(crate) struct ViewerContext<'a> {
     /// Global options for the whole viewer.
