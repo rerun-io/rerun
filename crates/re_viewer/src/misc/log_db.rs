@@ -27,6 +27,14 @@ pub(crate) struct LogDb {
 }
 
 impl LogDb {
+    pub fn recording_id(&self) -> RecordingId {
+        if let Some(info) = &self.recording_info {
+            info.recording_id
+        } else {
+            RecordingId::ZERO
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.log_messages.is_empty()
     }
@@ -48,12 +56,6 @@ impl LogDb {
     }
 
     fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
-        tracing::info!("Begginning a new recording: {:?}", msg.info);
-
-        // TODO(emilk): in the near future we want to this to create
-        // a new `LogDb` rather than clearing the existing one,
-        // and then let the user select which recording to view.
-        *self = Default::default();
         self.recording_info = Some(msg.info.clone());
     }
 

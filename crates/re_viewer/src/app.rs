@@ -1,6 +1,7 @@
 use std::sync::mpsc::Receiver;
 
 use egui_extras::RetainedImage;
+use nohash_hasher::IntMap;
 use re_log_types::*;
 
 use crate::{
@@ -16,7 +17,7 @@ pub struct App {
     rx: Option<Receiver<LogMsg>>,
 
     /// Where the logs are stored.
-    log_db: LogDb,
+    log_dbs: IntMap<RecordingId, LogDb>,
 
     /// What is serialized
     state: AppState,
@@ -63,10 +64,6 @@ impl App {
         rx: Option<Receiver<LogMsg>>,
         log_db: LogDb,
     ) -> Self {
-        let state = storage
-            .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
-            .unwrap_or_default();
-
         #[cfg(not(target_arch = "wasm32"))]
         let ctrl_c = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
@@ -85,9 +82,19 @@ impl App {
             .expect("Error setting Ctrl-C handler");
         }
 
+        let mut state: AppState = storage
+            .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
+            .unwrap_or_default();
+
+        let mut log_dbs = IntMap::default();
+        if !log_db.is_empty() {
+            state.selected_recording_id = log_db.recording_id();
+            log_dbs.insert(log_db.recording_id(), log_db);
+        }
+
         Self {
             rx,
-            log_db,
+            log_dbs,
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
@@ -116,7 +123,17 @@ impl eframe::App for App {
             crate::profile_scope!("receive_messages");
             let start = instant::Instant::now();
             while let Ok(msg) = rx.try_recv() {
-                self.log_db.add(msg);
+                if let LogMsg::BeginRecordingMsg(msg) = &msg {
+                    tracing::info!("Begginning a new recording: {:?}", msg.info);
+                    self.state.selected_recording_id = msg.info.recording_id;
+                }
+
+                let log_db = self
+                    .log_dbs
+                    .entry(self.state.selected_recording_id)
+                    .or_default();
+
+                log_db.add(msg);
                 if start.elapsed() > instant::Duration::from_millis(10) {
                     egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                     break;
@@ -124,17 +141,39 @@ impl eframe::App for App {
             }
         }
 
-        self.state.rec_cfg.on_frame_start(&self.log_db);
-        self.state.top_panel(egui_ctx, frame, &mut self.log_db);
+        {
+            // Cleanup
+            self.log_dbs.retain(|&recording_id, log_db| {
+                recording_id == self.state.selected_recording_id || !log_db.is_empty()
+            });
 
-        if self.log_db.is_empty() && self.rx.is_some() {
+            // Make sure we don't persist old stuff we don't need:
+            self.state
+                .recording_configs
+                .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
+        }
+
+        let log_db = self
+            .log_dbs
+            .entry(self.state.selected_recording_id)
+            .or_default();
+
+        self.state
+            .recording_configs
+            .entry(self.state.selected_recording_id)
+            .or_default()
+            .on_frame_start(log_db);
+
+        self.state.top_panel(egui_ctx, frame, log_db);
+
+        if log_db.is_empty() && self.rx.is_some() {
             egui::CentralPanel::default().show(egui_ctx, |ui| {
                 ui.centered_and_justified(|ui| {
                     ui.heading("Waiting for data…"); // TODO(emilk): show what ip/port we are listening to
                 });
             });
         } else {
-            self.state.show(egui_ctx, &mut self.log_db);
+            self.state.show(egui_ctx, log_db);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -153,15 +192,20 @@ impl App {
                 .show();
         }
         if let Some(file) = egui_ctx.input().raw.dropped_files.first() {
+            let log_db = self
+                .log_dbs
+                .entry(self.state.selected_recording_id)
+                .or_default();
+
             if let Some(bytes) = &file.bytes {
                 let mut bytes: &[u8] = &(*bytes)[..];
-                load_file_contents(&file.name, &mut bytes, &mut self.log_db);
+                load_file_contents(&file.name, &mut bytes, log_db);
                 return;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &file.path {
-                load_file_path(path, &mut self.log_db);
+                load_file_path(path, log_db);
             }
         }
     }
@@ -210,8 +254,10 @@ struct AppState {
     #[serde(skip)]
     cache: Caches,
 
+    selected_recording_id: RecordingId,
+
     /// Configuration for the current recording (found in [`LogDb`]).
-    rec_cfg: RecordingConfig,
+    recording_configs: IntMap<RecordingId, RecordingConfig>,
 
     view_index: usize,
     log_table_view: crate::log_table_view::LogTableView,
@@ -280,7 +326,8 @@ impl AppState {
         let Self {
             options,
             cache,
-            rec_cfg,
+            selected_recording_id,
+            recording_configs,
             view_index,
             log_table_view,
             space_view,
@@ -290,6 +337,8 @@ impl AppState {
                 profiler: _,
             static_image_cache: _,
         } = self;
+
+        let rec_cfg = recording_configs.entry(*selected_recording_id).or_default();
 
         let mut ctx = ViewerContext {
             options,
