@@ -69,7 +69,7 @@ impl State3D {
         if response.double_clicked() {
             // Reset camera
             if tracking_camera.is_some() {
-                context.selection = Selection::None;
+                context.rec_config.selection = Selection::None;
             }
             self.interpolate_to_orbit_camera(default_camera(&self.scene_bbox, space_specs));
         }
@@ -264,7 +264,7 @@ fn tracking_camera(
     context: &ViewerContext,
     objects: &re_data_store::Objects<'_>,
 ) -> Option<Camera> {
-    if let Selection::ObjPath(selected_obj_path) = &context.selection {
+    if let Selection::ObjPath(selected_obj_path) = &context.rec_config.selection {
         let mut selected_camera = None;
 
         for (props, camera) in objects.camera.iter() {
@@ -289,14 +289,14 @@ fn click_object(
     state: &mut State3D,
     obj_path: &ObjPath,
 ) {
-    context.selection = crate::Selection::ObjPath(obj_path.clone());
+    context.rec_config.selection = crate::Selection::ObjPath(obj_path.clone());
 
     if log_db.object_types.get(obj_path.obj_type_path()) == Some(&re_log_types::ObjectType::Camera)
     {
-        if let Some((_, data_store)) = log_db.data_store.get(context.time_control.source()) {
+        if let Some((_, data_store)) = log_db.data_store.get(context.time_control().source()) {
             if let Some(obj_store) = data_store.get(obj_path.obj_type_path()) {
                 // TODO(emilk): use the time of what we clicked instead!
-                if let Some(time_query) = context.time_control.time_query() {
+                if let Some(time_query) = context.time_control().time_query() {
                     let mut objects = re_data_store::Objects::default();
                     re_data_store::objects::Camera::query_obj_path(
                         obj_store,
@@ -353,7 +353,7 @@ pub(crate) fn combined_view_3d(
         state.last_cam_interact_time = ui.input().time;
         state.cam_interpolation = None;
         if tracking_camera.is_some() {
-            context.selection = Selection::None;
+            context.rec_config.selection = Selection::None;
         }
     }
 

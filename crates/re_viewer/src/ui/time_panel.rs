@@ -78,7 +78,7 @@ impl TimePanel {
         let time_selection_rect = {
             let response = ui
                 .horizontal(|ui| {
-                    context.time_control.selection_ui(ui);
+                    context.time_control().selection_ui(ui);
                 })
                 .response;
             self.next_col_right = self.next_col_right.max(response.rect.right());
@@ -89,7 +89,9 @@ impl TimePanel {
         let time_line_rect = {
             let response = ui
                 .horizontal(|ui| {
-                    context.time_control.play_pause_ui(&log_db.time_points, ui);
+                    context
+                        .time_control()
+                        .play_pause_ui(&log_db.time_points, ui);
                 })
                 .response;
 
@@ -112,29 +114,25 @@ impl TimePanel {
             time_selection_rect.top()..=time_line_rect.bottom(),
             // time_line_rect.y_range(),
             time_line_rect.top()..=time_area.bottom(),
-            context.time_control.time_type(),
+            context.time_control().time_type(),
         );
         time_selection_ui(
             &self.time_ranges_ui,
-            &mut context.time_control,
+            context.time_control(),
             ui,
             &time_area_painter,
             &time_selection_rect,
         );
         time_marker_ui(
             &self.time_ranges_ui,
-            &mut context.time_control,
+            context.time_control(),
             ui,
             &time_area_painter,
             &time_line_rect,
             time_area.bottom(),
         );
-        let scroll_delta = interact_with_time_area(
-            &self.time_ranges_ui,
-            &mut context.time_control,
-            ui,
-            &time_area,
-        );
+        let scroll_delta =
+            interact_with_time_area(&self.time_ranges_ui, context.time_control(), ui, &time_area);
 
         // Don't draw on top of the time ticks
         let lower_time_area_painter = ui.painter().with_clip_rect(Rect::from_x_y_ranges(
@@ -237,11 +235,15 @@ impl TimePanel {
         {
             let are_all_ancestors_visible = obj_path.is_root()
                 || context
+                    .rec_config
                     .projected_object_properties
                     .get(&obj_path.parent())
                     .visible;
 
-            let mut props = context.individual_object_properties.get(&obj_path);
+            let mut props = context
+                .rec_config
+                .individual_object_properties
+                .get(&obj_path);
             let property_rect =
                 Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response.rect.y_range());
             let mut ui = ui.child_ui(
@@ -251,7 +253,10 @@ impl TimePanel {
             ui.set_enabled(are_all_ancestors_visible);
             ui.toggle_value(&mut props.visible, "👁")
                 .on_hover_text("Toggle visibility");
-            context.individual_object_properties.set(obj_path, props);
+            context
+                .rec_config
+                .individual_object_properties
+                .set(obj_path, props);
         }
 
         // ----------------------------------------------
@@ -362,7 +367,7 @@ impl TimePanel {
 fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         context
-            .time_control
+            .time_control()
             .time_source_selector_ui(&log_db.time_points, ui);
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -373,8 +378,8 @@ fn top_row_ui(log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
             Press spacebar to pause/resume.",
             );
 
-            if let Some(range) = context.time_control.time_range() {
-                let time_type = context.time_control.time_type();
+            if let Some(range) = context.time_control().time_range() {
+                let time_type = context.time_control().time_type();
 
                 ui.vertical_centered(|ui| {
                     if range.min == range.max {
@@ -418,12 +423,12 @@ fn show_data_over_time(
         .text_color()
         .linear_multiply(0.75);
 
-    let selected_time_range = if !context.time_control.selection_active {
+    let selected_time_range = if !context.time_control().selection_active {
         None
     } else {
-        context.time_control.time_selection()
+        context.time_control().time_selection()
     };
-    let time_source = *context.time_control.source();
+    let time_source = *context.time_control().source();
 
     struct Stretch<'a> {
         start_x: f32,
@@ -558,9 +563,9 @@ fn initialize_time_ranges_ui(
     time_x_range: RangeInclusive<f32>,
 ) -> TimeRangesUi {
     crate::profile_function!();
-    if let Some(time_points) = log_db.time_points.0.get(context.time_control.source()) {
-        let time_source_axis = TimeSourceAxis::new(context.time_control.time_type(), time_points);
-        let time_view = context.time_control.time_view();
+    if let Some(time_points) = log_db.time_points.0.get(context.time_control().source()) {
+        let time_source_axis = TimeSourceAxis::new(context.time_control().time_type(), time_points);
+        let time_view = context.time_control().time_view();
         let time_view =
             time_view.unwrap_or_else(|| view_everything(&time_x_range, &time_source_axis));
 
@@ -1223,15 +1228,15 @@ impl TimeRangesUi {
 
     // Make sure time doesn't get stuck between non-continuos regions:
     fn snap_time_control(&self, context: &mut ViewerContext) {
-        if !context.time_control.is_playing() {
+        if !context.time_control().is_playing() {
             return;
         }
 
         // Make sure time doesn't get stuck between non-continuos regions:
-        if let Some(time) = context.time_control.time() {
+        if let Some(time) = context.time_control().time() {
             let time = self.snap_time(time);
-            context.time_control.set_time(time);
-        } else if let Some(selection) = context.time_control.time_selection() {
+            context.time_control().set_time(time);
+        } else if let Some(selection) = context.time_control().time_selection() {
             let snapped_min = self.snap_time(selection.min);
             let snapped_max = self.snap_time(selection.max);
 
@@ -1243,7 +1248,7 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            context.time_control.set_time_selection(TimeRangeF::new(
+            context.time_control().set_time_selection(TimeRangeF::new(
                 snapped_max - selection.length(),
                 snapped_max,
             ));

@@ -17,14 +17,14 @@ impl ContextPanel {
         ui.horizontal(|ui| {
             ui.heading("Selection");
 
-            if context.selection.is_some() && ui.small_button("Deselect").clicked() {
-                context.selection = Selection::None;
+            if context.rec_config.selection.is_some() && ui.small_button("Deselect").clicked() {
+                context.rec_config.selection = Selection::None;
             }
         });
 
         ui.separator();
 
-        match &context.selection.clone() {
+        match &context.rec_config.selection.clone() {
             Selection::None => {
                 ui.weak("(nothing)");
             }
@@ -36,7 +36,7 @@ impl ContextPanel {
                     msg
                 } else {
                     tracing::warn!("Unknown msg_id selected. Resetting selection");
-                    context.selection = Selection::None;
+                    context.rec_config.selection = Selection::None;
                     return;
                 };
 
@@ -111,8 +111,8 @@ pub(crate) fn view_object(
     obj_path: &ObjPath,
     preview: Preview,
 ) -> Option<()> {
-    let (_, store) = log_db.data_store.get(context.time_control.source())?;
-    let time_query = context.time_control.time_query()?;
+    let (_, store) = log_db.data_store.get(context.time_control().source())?;
+    let time_query = context.time_control().time_query()?;
     let obj_store = store.get(obj_path.obj_type_path())?;
 
     egui::Grid::new("object")
@@ -153,8 +153,8 @@ fn view_data(
     let obj_path = data_path.obj_path();
     let field_name = data_path.field_name();
 
-    let (_, store) = log_db.data_store.get(context.time_control.source())?;
-    let time_query = context.time_control.time_query()?;
+    let (_, store) = log_db.data_store.get(context.time_control().source())?;
+    let time_query = context.time_control().time_query()?;
     let obj_store = store.get(obj_path.obj_type_path())?;
     let data_store = obj_store.get_field(field_name)?;
 

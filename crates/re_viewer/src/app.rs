@@ -120,7 +120,7 @@ impl eframe::App for App {
             }
         }
 
-        self.state.context.on_frame_start(&self.log_db);
+        self.state.context.rec_config.on_frame_start(&self.log_db);
         self.state.top_panel(egui_ctx, frame, &mut self.log_db);
 
         if self.log_db.is_empty() && self.rx.is_some() {
@@ -295,7 +295,7 @@ impl AppState {
 
         // move time last, so we get to see the first data first!
         context
-            .time_control
+            .time_control()
             .move_time(egui_ctx, &log_db.time_points);
 
         if WATERMARK {

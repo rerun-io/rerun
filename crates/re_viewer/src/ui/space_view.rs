@@ -67,7 +67,7 @@ impl SpaceView {
         }
 
         let objects = context
-            .time_control
+            .time_control()
             .selected_objects(log_db)
             .partition_on_space();
 
@@ -90,7 +90,7 @@ impl SpaceView {
             ));
         }
 
-        if let Selection::Space(selected_space) = &context.selection {
+        if let Selection::Space(selected_space) = &context.rec_config.selection {
             self.selected = SelectedSpace::Specific(Some(selected_space.clone()));
         }
 
@@ -102,8 +102,8 @@ impl SpaceView {
                 ui.horizontal(|ui| {
                     if ui.button("Show all spaces").clicked() {
                         self.selected = SelectedSpace::All;
-                        if matches!(&context.selection, Selection::Space(_)) {
-                            context.selection = Selection::None;
+                        if matches!(&context.rec_config.selection, Selection::Space(_)) {
+                            context.rec_config.selection = Selection::None;
                         }
                     }
                 });
@@ -179,6 +179,7 @@ impl SpaceView {
 
         let objects = objects.filter(|props| {
             context
+                .rec_config
                 .projected_object_properties
                 .get(props.obj_path)
                 .visible
