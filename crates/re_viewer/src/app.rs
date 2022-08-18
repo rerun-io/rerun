@@ -1,6 +1,7 @@
 use std::sync::mpsc::Receiver;
 
 use egui_extras::RetainedImage;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_log_types::*;
 
@@ -354,6 +355,10 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                 file_menu(ui, app, frame);
             });
 
+            ui.menu_button("Recordings", |ui| {
+                recordings_menu(ui, app);
+            });
+
             ui.separator();
 
             egui::widgets::global_dark_light_mode_switch(ui);
@@ -450,6 +455,33 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Quit").clicked() {
         _frame.quit();
+    }
+}
+
+fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
+    let log_dbs = app
+        .log_dbs
+        .values()
+        .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
+        .collect_vec();
+
+    ui.style_mut().wrap = Some(false);
+    for log_db in log_dbs {
+        let info = if let Some(rec_info) = log_db.recording_info() {
+            format!(
+                "{} - {}",
+                rec_info.recording_source,
+                rec_info.started.format()
+            )
+        } else {
+            "<UNKNOWN>".to_owned()
+        };
+        if ui
+            .selectable_label(app.state.selected_rec_id == log_db.recording_id(), info)
+            .clicked()
+        {
+            app.state.selected_rec_id = log_db.recording_id();
+        }
     }
 }
 

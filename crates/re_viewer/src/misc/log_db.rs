@@ -27,6 +27,10 @@ pub(crate) struct LogDb {
 }
 
 impl LogDb {
+    pub fn recording_info(&self) -> Option<&RecordingInfo> {
+        self.recording_info.as_ref()
+    }
+
     pub fn recording_id(&self) -> RecordingId {
         if let Some(info) = &self.recording_info {
             info.recording_id
