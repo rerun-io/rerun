@@ -537,7 +537,7 @@ fn show_msg_ids_tooltip(
         // TODO(emilk): show as a table?
         if msg_ids.len() == 1 {
             let msg_id = msg_ids[0];
-            if let Some(msg) = log_db.get_data_msg(&msg_id) {
+            if let Some(msg) = log_db.get_log_msg(&msg_id) {
                 ui.push_id(msg_id, |ui| {
                     ui.group(|ui| {
                         crate::space_view::show_log_msg(context, ui, msg, crate::Preview::Small);

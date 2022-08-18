@@ -66,6 +66,7 @@ impl MsgId {
 pub enum LogMsg {
     /// Log type-into to a [`ObjTypePath`].
     TypeMsg(TypeMsg),
+
     /// Log some data to a [`DataPath`].
     DataMsg(DataMsg),
 }

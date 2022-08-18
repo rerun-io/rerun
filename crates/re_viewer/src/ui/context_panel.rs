@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_data_store::{ObjPath, ObjTypePath};
-use re_log_types::{Data, DataMsg, DataPath, LoggedData, MsgId};
+use re_log_types::{Data, DataMsg, DataPath, LogMsg, LoggedData, MsgId};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
@@ -32,7 +32,7 @@ impl ContextPanel {
                 // ui.label(format!("Selected msg_id: {:?}", msg_id));
                 ui.label("Selected a specific log message");
 
-                let msg = if let Some(msg) = log_db.get_data_msg(msg_id) {
+                let msg = if let Some(msg) = log_db.get_log_msg(msg_id) {
                     msg
                 } else {
                     tracing::warn!("Unknown msg_id selected. Resetting selection");
@@ -40,15 +40,22 @@ impl ContextPanel {
                     return;
                 };
 
-                show_detailed_data_msg(context, ui, msg);
-                ui.separator();
-                view_object(
-                    log_db,
-                    context,
-                    ui,
-                    &msg.data_path.obj_path,
-                    Preview::Medium,
-                );
+                match msg {
+                    LogMsg::TypeMsg(msg) => {
+                        crate::ui::space_view::show_type_msg(context, ui, msg);
+                    }
+                    LogMsg::DataMsg(msg) => {
+                        show_detailed_data_msg(context, ui, msg);
+                        ui.separator();
+                        view_object(
+                            log_db,
+                            context,
+                            ui,
+                            &msg.data_path.obj_path,
+                            Preview::Medium,
+                        );
+                    }
+                }
             }
             Selection::ObjTypePath(obj_type_path) => {
                 ui.label(format!("Selected object type path: {}", obj_type_path));

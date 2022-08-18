@@ -325,6 +325,28 @@ fn weighted_split(
 pub(crate) fn show_log_msg(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
+    msg: &LogMsg,
+    preview: Preview,
+) {
+    match msg {
+        LogMsg::TypeMsg(msg) => show_type_msg(context, ui, msg),
+        LogMsg::DataMsg(msg) => {
+            show_data_msg(context, ui, msg, preview);
+        }
+    }
+}
+
+pub(crate) fn show_type_msg(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &TypeMsg) {
+    ui.horizontal(|ui| {
+        context.type_path_button(ui, &msg.type_path);
+        ui.label(" = ");
+        ui.code(format!("{:?}", msg.object_type));
+    });
+}
+
+pub(crate) fn show_data_msg(
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
     msg: &DataMsg,
     preview: Preview,
 ) {

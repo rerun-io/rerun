@@ -137,13 +137,6 @@ impl LogDb {
     pub fn get_log_msg(&self, msg_id: &MsgId) -> Option<&LogMsg> {
         self.log_messages.get(msg_id)
     }
-
-    pub fn get_data_msg(&self, msg_id: &MsgId) -> Option<&DataMsg> {
-        match self.log_messages.get(msg_id)? {
-            LogMsg::TypeMsg(_) => None,
-            LogMsg::DataMsg(msg) => Some(msg),
-        }
-    }
 }
 
 // ----------------------------------------------------------------------------
