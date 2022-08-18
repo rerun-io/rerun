@@ -211,7 +211,7 @@ impl Scene {
             crate::profile_scope!("mesh3d");
             for (props, obj) in objects.mesh3d.iter() {
                 let re_data_store::Mesh3D { mesh } = *obj;
-                let mesh_id = hash(props.log_id);
+                let mesh_id = hash(props.msg_id);
                 if let Some(cpu_mesh) = context.cache.cpu_mesh.load(
                     mesh_id,
                     "mesh.to_string()", // TODO(emilk): &type_path.to_string(),

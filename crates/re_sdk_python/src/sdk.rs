@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
 use re_log_types::{
-    LogId, LogMsg, ObjTypePath, ObjectType, Time, TimePoint, TimeSource, TimeType, TimeValue,
-    TypeMsg,
+    BeginRecordingMsg, LogMsg, MsgId, ObjTypePath, ObjectType, RecordingId, RecordingInfo, Time,
+    TimePoint, TimeSource, TimeType, TimeValue, TypeMsg,
 };
 
 #[derive(Default)]
@@ -25,6 +25,20 @@ impl Sdk {
         static INSTANCE: OnceCell<Mutex<Sdk>> = OnceCell::new();
         let mutex = INSTANCE.get_or_init(Default::default);
         mutex.lock().unwrap()
+    }
+
+    pub fn begin_new_recording(&mut self) {
+        self.send(
+            BeginRecordingMsg {
+                msg_id: MsgId::random(),
+                info: RecordingInfo {
+                    recording_id: RecordingId::random(),
+                    started: Time::now(),
+                    recording_source: re_log_types::RecordingSource::PythonSdk,
+                },
+            }
+            .into(),
+        );
     }
 
     /// Send log data to a remote server.
@@ -82,7 +96,7 @@ impl Sdk {
             self.registered_types.insert(obj_type_path.clone(), typ);
 
             self.send(LogMsg::TypeMsg(TypeMsg {
-                id: LogId::random(),
+                msg_id: MsgId::random(),
                 type_path: obj_type_path.clone(),
                 object_type: typ,
             }));

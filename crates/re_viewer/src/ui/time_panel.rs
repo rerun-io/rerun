@@ -397,7 +397,7 @@ fn show_data_over_time(
     context: &mut ViewerContext,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
-    source: &BTreeMap<TimePoint, BTreeSet<LogId>>,
+    source: &BTreeMap<TimePoint, BTreeSet<MsgId>>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
 ) {
@@ -430,7 +430,7 @@ fn show_data_over_time(
         start_time: TimeInt,
         stop_time: TimeInt,
         selected: bool,
-        log_ids: Vec<&'a BTreeSet<LogId>>,
+        msg_ids: Vec<&'a BTreeSet<MsgId>>,
     }
 
     let mut shapes = vec![];
@@ -442,7 +442,7 @@ fn show_data_over_time(
             .x_from_time(stretch.stop_time.into())
             .unwrap_or(stretch.start_x);
 
-        let num_messages: usize = stretch.log_ids.iter().map(|l| l.len()).sum();
+        let num_messages: usize = stretch.msg_ids.iter().map(|l| l.len()).sum();
         let radius = 2.5 * (1.0 + 0.5 * (num_messages as f32).log10());
         let radius = radius.at_most(full_width_rect.height() / 3.0);
 
@@ -473,13 +473,13 @@ fn show_data_over_time(
         shapes.push(Shape::circle_filled(pos, radius, color));
 
         if is_hovered && !ui.ctx().memory().is_anything_being_dragged() {
-            hovered_messages.extend(stretch.log_ids.iter().copied().flatten().copied());
+            hovered_messages.extend(stretch.msg_ids.iter().copied().flatten().copied());
         }
     };
 
     let mut stretch: Option<Stretch<'_>> = None;
 
-    for (time, log_ids) in source {
+    for (time, msg_ids) in source {
         // TODO(emilk): avoid this lookup by pre-partitioning on time source
         if let Some(time) = time.0.get(&time_source).copied() {
             let time = time.as_int();
@@ -493,7 +493,7 @@ fn show_data_over_time(
                 {
                     // extend:
                     current_stretch.stop_time = time;
-                    current_stretch.log_ids.push(log_ids);
+                    current_stretch.msg_ids.push(msg_ids);
                 } else {
                     // stop the previous…
                     paint_stretch(current_stretch);
@@ -509,7 +509,7 @@ fn show_data_over_time(
                         start_time: time,
                         stop_time: time,
                         selected,
-                        log_ids: vec![log_ids],
+                        msg_ids: vec![msg_ids],
                     });
                 }
             }
@@ -523,29 +523,29 @@ fn show_data_over_time(
     time_area_painter.extend(shapes);
 
     if !hovered_messages.is_empty() {
-        show_log_ids_tooltip(log_db, context, ui.ctx(), &hovered_messages);
+        show_msg_ids_tooltip(log_db, context, ui.ctx(), &hovered_messages);
     }
 }
 
-fn show_log_ids_tooltip(
+fn show_msg_ids_tooltip(
     log_db: &LogDb,
     context: &mut ViewerContext,
     ctx: &egui::Context,
-    log_ids: &[LogId],
+    msg_ids: &[MsgId],
 ) {
     show_tooltip_at_pointer(ctx, Id::new("data_tooltip"), |ui| {
         // TODO(emilk): show as a table?
-        if log_ids.len() == 1 {
-            let log_id = log_ids[0];
-            if let Some(msg) = log_db.get_data_msg(&log_id) {
-                ui.push_id(log_id, |ui| {
+        if msg_ids.len() == 1 {
+            let msg_id = msg_ids[0];
+            if let Some(msg) = log_db.get_log_msg(&msg_id) {
+                ui.push_id(msg_id, |ui| {
                     ui.group(|ui| {
                         crate::space_view::show_log_msg(context, ui, msg, crate::Preview::Small);
                     });
                 });
             }
         } else {
-            ui.label(format!("{} messages", log_ids.len()));
+            ui.label(format!("{} messages", msg_ids.len()));
         }
     });
 }

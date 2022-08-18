@@ -36,6 +36,13 @@ You can view higher log levels with `export RUST_LOG=debug` or `export RUST_LOG=
 ## Style
 We follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/about.html).
 
-We use default `rust fmt`.
+We use `rust fmt` with default settings.
 
 We have blank lines before functions, types, `impl` blocks, and docstrings.
+
+### Naming
+When in doubt, be explicit. BAD: `id`. GOOD: `msg_id`.
+
+Be terse when it doesn't hurt readability. BAD: `message_identifier`. GOOD: `msg_id`.
+
+Avoid negations in names. A lot of people struggle with double negations, so things like `non_blocking = false` and `if !non_blocking { … }` can become a source of confusion and will slow down most readers. So prefer `connected` over `disconnected`, `initialized` over `uninitialized` etc.

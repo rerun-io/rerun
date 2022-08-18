@@ -325,11 +325,61 @@ fn weighted_split(
 pub(crate) fn show_log_msg(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
+    msg: &LogMsg,
+    preview: Preview,
+) {
+    match msg {
+        LogMsg::BeginRecordingMsg(msg) => show_begin_recording_msg(ui, msg),
+        LogMsg::TypeMsg(msg) => show_type_msg(context, ui, msg),
+        LogMsg::DataMsg(msg) => {
+            show_data_msg(context, ui, msg, preview);
+        }
+    }
+}
+
+pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMsg) {
+    ui.code("BeginRecordingMsg");
+    let BeginRecordingMsg { msg_id: _, info } = msg;
+    let RecordingInfo {
+        recording_id,
+        started,
+        recording_source,
+    } = info;
+
+    egui::Grid::new("fields")
+        .striped(true)
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.monospace("recording_id:");
+            ui.label(format!("{recording_id:?}"));
+            ui.end_row();
+
+            ui.monospace("started:");
+            ui.label(started.format());
+            ui.end_row();
+
+            ui.monospace("recording_source:");
+            ui.label(format!("{recording_source}"));
+            ui.end_row();
+        });
+}
+
+pub(crate) fn show_type_msg(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &TypeMsg) {
+    ui.horizontal(|ui| {
+        context.type_path_button(ui, &msg.type_path);
+        ui.label(" = ");
+        ui.code(format!("{:?}", msg.object_type));
+    });
+}
+
+pub(crate) fn show_data_msg(
+    context: &mut ViewerContext,
+    ui: &mut egui::Ui,
     msg: &DataMsg,
     preview: Preview,
 ) {
     let DataMsg {
-        id,
+        msg_id,
         time_point,
         data_path,
         data,
@@ -348,7 +398,7 @@ pub(crate) fn show_log_msg(
             ui.end_row();
 
             ui.monospace("data:");
-            ui_logged_data(context, ui, id, data, preview);
+            ui_logged_data(context, ui, msg_id, data, preview);
             ui.end_row();
         });
 }
@@ -372,17 +422,17 @@ pub(crate) fn ui_time_point(
 pub(crate) fn ui_logged_data(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    id: &LogId,
+    msg_id: &MsgId,
     data: &LoggedData,
     preview: Preview,
 ) -> egui::Response {
     match data {
         LoggedData::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
-        LoggedData::Single(data) => ui_data(context, ui, id, data, preview),
+        LoggedData::Single(data) => ui_data(context, ui, msg_id, data, preview),
         LoggedData::BatchSplat(data) => {
             ui.horizontal(|ui| {
                 ui.label("Batch Splat:");
-                ui_data(context, ui, id, data, preview)
+                ui_data(context, ui, msg_id, data, preview)
             })
             .response
         }
@@ -392,7 +442,7 @@ pub(crate) fn ui_logged_data(
 pub(crate) fn ui_data(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    id: &LogId,
+    msg_id: &MsgId,
     data: &Data,
     preview: Preview,
 ) -> egui::Response {
@@ -428,7 +478,7 @@ pub(crate) fn ui_data(
         Data::Camera(_) => ui.label("Camera"),
 
         Data::Tensor(tensor) => {
-            let egui_image = context.cache.image.get(id, tensor);
+            let egui_image = context.cache.image.get(msg_id, tensor);
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {
                     Preview::Small => 32.0,

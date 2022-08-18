@@ -8,11 +8,15 @@ use re_string_interner::InternedString;
 
 use crate::misc::TimePoints;
 
+/// A in-memory database built from a stream of [`LogMsg`]es.
 #[derive(Default)]
 pub(crate) struct LogDb {
     /// Messages in the order they arrived
-    chronological_message_ids: Vec<LogId>,
-    log_messages: IntMap<LogId, LogMsg>,
+    chronological_message_ids: Vec<MsgId>,
+    log_messages: IntMap<MsgId, LogMsg>,
+
+    recording_info: Option<RecordingInfo>,
+
     pub object_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
@@ -35,11 +39,22 @@ impl LogDb {
     pub fn add(&mut self, msg: LogMsg) {
         crate::profile_function!();
         match &msg {
-            LogMsg::TypeMsg(type_msg) => self.add_type_msg(type_msg),
-            LogMsg::DataMsg(data_msg) => self.add_data_msg(data_msg),
+            LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
+            LogMsg::TypeMsg(msg) => self.add_type_msg(msg),
+            LogMsg::DataMsg(msg) => self.add_data_msg(msg),
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
+    }
+
+    fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
+        tracing::info!("Begginning a new recording: {:?}", msg.info);
+
+        // TODO(emilk): in the near future we want to this to create
+        // a new `LogDb` rather than clearing the existing one,
+        // and then let the user select which recording to view.
+        *self = Default::default();
+        self.recording_info = Some(msg.info.clone());
     }
 
     fn add_type_msg(&mut self, msg: &TypeMsg) {
@@ -105,8 +120,8 @@ impl LogDb {
                 .or_insert_with(|| space.clone());
         };
 
-        // This is a bit hacky, an I don't like it,
-        // but we want a single place to find all the spaces, ignoring time.
+        // This is a bit hacky, and I don't like it,
+        // but we nned a single place to find all the spaces (ignoring time).
         match &msg.data {
             LoggedData::Single(Data::Space(space)) | LoggedData::BatchSplat(Data::Space(space)) => {
                 register_space(space);
@@ -134,15 +149,8 @@ impl LogDb {
             .filter_map(|id| self.get_log_msg(id))
     }
 
-    pub fn get_log_msg(&self, id: &LogId) -> Option<&LogMsg> {
-        self.log_messages.get(id)
-    }
-
-    pub fn get_data_msg(&self, id: &LogId) -> Option<&DataMsg> {
-        match self.log_messages.get(id)? {
-            LogMsg::TypeMsg(_) => None,
-            LogMsg::DataMsg(msg) => Some(msg),
-        }
+    pub fn get_log_msg(&self, msg_id: &MsgId) -> Option<&LogMsg> {
+        self.log_messages.get(msg_id)
     }
 }
 
@@ -160,7 +168,7 @@ pub(crate) struct ObjectTree {
     /// When do we or a child have data?
     ///
     /// Data logged at this exact path or any child path.
-    pub prefix_times: BTreeMap<TimePoint, BTreeSet<LogId>>,
+    pub prefix_times: BTreeMap<TimePoint, BTreeSet<MsgId>>,
 
     /// Data logged at this object path.
     pub fields: BTreeMap<FieldName, DataColumns>,
@@ -181,7 +189,7 @@ impl ObjectTree {
         self.prefix_times
             .entry(msg.time_point.clone())
             .or_default()
-            .insert(msg.id);
+            .insert(msg.msg_id);
 
         match path {
             [] => {
@@ -211,8 +219,8 @@ impl ObjectTree {
 #[derive(Default)]
 pub(crate) struct DataColumns {
     /// When do we have data?
-    pub times: BTreeMap<TimePoint, BTreeSet<LogId>>,
-    pub per_type: HashMap<DataType, BTreeSet<LogId>>,
+    pub times: BTreeMap<TimePoint, BTreeSet<MsgId>>,
+    pub per_type: HashMap<DataType, BTreeSet<MsgId>>,
 }
 
 impl DataColumns {
@@ -220,12 +228,12 @@ impl DataColumns {
         self.times
             .entry(msg.time_point.clone())
             .or_default()
-            .insert(msg.id);
+            .insert(msg.msg_id);
 
         self.per_type
             .entry(msg.data.data_type())
             .or_default()
-            .insert(msg.id);
+            .insert(msg.msg_id);
     }
 
     pub fn summary(&self) -> String {

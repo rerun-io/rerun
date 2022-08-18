@@ -86,14 +86,8 @@ pub(crate) fn message_table(
 
 fn row_height(msg: &LogMsg) -> f32 {
     match msg {
-        LogMsg::TypeMsg(_) => 18.0,
-        LogMsg::DataMsg(msg) => {
-            if matches!(msg.data.data_type(), DataType::Tensor) {
-                48.0
-            } else {
-                18.0
-            }
-        }
+        LogMsg::DataMsg(msg) if msg.data.data_type() == DataType::Tensor => 48.0,
+        _ => 18.0,
     }
 }
 
@@ -105,9 +99,33 @@ fn table_row(
     row_height: f32,
 ) {
     match msg {
+        LogMsg::BeginRecordingMsg(msg) => {
+            let BeginRecordingMsg { msg_id: _, info } = msg;
+            let RecordingInfo {
+                recording_id,
+                started,
+                recording_source,
+            } = info;
+
+            row.col(|ui| {
+                ui.monospace("BeginRecordingMsg");
+                ui.label(format!("Source: {recording_source}"));
+            });
+            for _ in log_db.time_points.0.keys() {
+                row.col(|ui| {
+                    ui.label("-");
+                });
+            }
+            row.col(|ui| {
+                ui.label(started.format());
+            });
+            row.col(|ui| {
+                ui.monospace(format!("{recording_id:?}"));
+            });
+        }
         LogMsg::TypeMsg(msg) => {
             let TypeMsg {
-                id: _,
+                msg_id: _,
                 type_path,
                 object_type,
             } = msg;
@@ -129,7 +147,7 @@ fn table_row(
         }
         LogMsg::DataMsg(msg) => {
             let DataMsg {
-                id,
+                msg_id,
                 time_point,
                 data_path,
                 data,
@@ -152,7 +170,7 @@ fn table_row(
                 crate::space_view::ui_logged_data(
                     context,
                     ui,
-                    id,
+                    msg_id,
                     data,
                     Preview::Specific(row_height),
                 );

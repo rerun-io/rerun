@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 use re_data_store::*;
-use re_log_types::{FieldName, LogId};
+use re_log_types::{FieldName, MsgId};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Time(i64);
@@ -21,7 +21,7 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
         &FieldName::from("pos"),
         time_query,
         ("radius",),
-        |_object_path, _log_id: &LogId, pos: &[f32; 3], radius: Option<&f32>| {
+        |_object_path, _msg_id: &MsgId, pos: &[f32; 3], radius: Option<&f32>| {
             points.push(Point3 {
                 pos,
                 radius: radius.copied(),
@@ -37,8 +37,8 @@ fn batch<T: Clone, const N: usize>(batch: &[(Index, T); N]) -> ArcBatch<T> {
     std::sync::Arc::new(Batch::new(&indices, &values))
 }
 
-fn id() -> LogId {
-    LogId::random()
+fn id() -> MsgId {
+    MsgId::random()
 }
 
 fn s(s: &str) -> String {
@@ -180,7 +180,7 @@ fn test_batches() -> re_data_store::Result<()> {
             &FieldName::new("pos"),
             &time_query,
             ("label",),
-            |_object_path, _log_id, prim: &i32, sibling: Option<&String>| {
+            |_object_path, _msg_id, prim: &i32, sibling: Option<&String>| {
                 values.push((*prim, sibling.cloned()));
             },
         );
@@ -384,7 +384,7 @@ fn test_batched_and_individual() -> re_data_store::Result<()> {
             &FieldName::new("pos"),
             &time_query,
             ("label",),
-            |_object_path, _log_id, prim, sibling| {
+            |_object_path, _msg_id, prim, sibling| {
                 values.push((*prim, sibling.cloned()));
             },
         );
@@ -576,7 +576,7 @@ fn test_individual_and_batched() -> re_data_store::Result<()> {
             &FieldName::new("pos"),
             &time_query,
             ("label",),
-            |_object_path, _log_id, prim, sibling| {
+            |_object_path, _msg_id, prim, sibling| {
                 values.push((*prim, sibling.cloned()));
             },
         );

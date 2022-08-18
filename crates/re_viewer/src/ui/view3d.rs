@@ -261,21 +261,18 @@ impl SpaceSpecs {
 
 /// If the path to a camera is selected, we follow that camera.
 fn tracking_camera(
-    log_db: &LogDb,
     context: &ViewerContext,
     objects: &re_data_store::Objects<'_>,
 ) -> Option<Camera> {
-    if let Selection::DataPath(data_path) = &context.selection {
+    if let Selection::ObjPath(selected_obj_path) = &context.selection {
         let mut selected_camera = None;
 
         for (props, camera) in objects.camera.iter() {
-            if let Some(msg) = log_db.get_data_msg(props.log_id) {
-                if &msg.data_path == data_path {
-                    if selected_camera.is_some() {
-                        return None; // More than one camera
-                    } else {
-                        selected_camera = Some(camera.camera);
-                    }
+            if props.obj_path == selected_obj_path {
+                if selected_camera.is_some() {
+                    return None; // More than one camera
+                } else {
+                    selected_camera = Some(camera.camera);
                 }
             }
         }
@@ -346,7 +343,7 @@ pub(crate) fn combined_view_3d(
 
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-    let tracking_camera = tracking_camera(log_db, context, objects);
+    let tracking_camera = tracking_camera(context, objects);
     let orbit_camera = state.update_camera(context, tracking_camera, &response, &space_specs);
 
     let did_interact_wth_camera = orbit_camera.interact(&response);

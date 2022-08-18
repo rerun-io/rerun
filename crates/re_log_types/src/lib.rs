@@ -37,20 +37,45 @@ macro_rules! impl_into_enum {
 /// A unique id per [`LogMsg`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct LogId(uuid::Uuid);
+pub struct MsgId(uuid::Uuid);
 
-impl nohash_hasher::IsEnabled for LogId {}
+impl nohash_hasher::IsEnabled for MsgId {}
 
 // required for [`nohash_hasher`].
 #[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for LogId {
+impl std::hash::Hash for MsgId {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.0.as_u128() as u64);
     }
 }
 
-impl LogId {
+impl MsgId {
+    #[inline]
+    pub fn random() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// A unique id per recording (a stream of [`LogMsg`]es).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct RecordingId(uuid::Uuid);
+
+impl nohash_hasher::IsEnabled for RecordingId {}
+
+// required for [`nohash_hasher`].
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for RecordingId {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.0.as_u128() as u64);
+    }
+}
+
+impl RecordingId {
     #[inline]
     pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())
@@ -64,21 +89,28 @@ impl LogId {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[allow(clippy::large_enum_variant)]
 pub enum LogMsg {
+    /// A new recording has begun.
+    /// Should usually be the first message sent.
+    BeginRecordingMsg(BeginRecordingMsg),
+
     /// Log type-into to a [`ObjTypePath`].
     TypeMsg(TypeMsg),
+
     /// Log some data to a [`DataPath`].
     DataMsg(DataMsg),
 }
 
 impl LogMsg {
-    pub fn id(&self) -> LogId {
+    pub fn id(&self) -> MsgId {
         match self {
-            Self::TypeMsg(msg) => msg.id,
-            Self::DataMsg(msg) => msg.id,
+            Self::BeginRecordingMsg(msg) => msg.msg_id,
+            Self::TypeMsg(msg) => msg.msg_id,
+            Self::DataMsg(msg) => msg.msg_id,
         }
     }
 }
 
+impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
 impl_into_enum!(TypeMsg, LogMsg, TypeMsg);
 impl_into_enum!(DataMsg, LogMsg, DataMsg);
 
@@ -87,9 +119,53 @@ impl_into_enum!(DataMsg, LogMsg, DataMsg);
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct BeginRecordingMsg {
+    pub msg_id: MsgId,
+
+    pub info: RecordingInfo,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct RecordingInfo {
+    /// Should be unique for each recording.
+    pub recording_id: RecordingId,
+
+    /// When the recording started.
+    ///
+    /// Should be an abolute time, i.e. relative to Unix Epoch.
+    pub started: Time,
+
+    pub recording_source: RecordingSource,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum RecordingSource {
+    /// The official Rerun Python Logging SDK
+    PythonSdk,
+
+    /// Perhaps from som manual data ingestion?
+    Other(String),
+}
+
+impl std::fmt::Display for RecordingSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PythonSdk => "Python SDK".fmt(f),
+            Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+#[must_use]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TypeMsg {
     /// A unique id per [`LogMsg`].
-    pub id: LogId,
+    pub msg_id: MsgId,
 
     /// The [`ObjTypePath`] target.
     pub type_path: ObjTypePath,
@@ -101,7 +177,7 @@ pub struct TypeMsg {
 impl TypeMsg {
     pub fn object_type(type_path: ObjTypePath, object_type: ObjectType) -> Self {
         Self {
-            id: LogId::random(),
+            msg_id: MsgId::random(),
             type_path,
             object_type,
         }
@@ -115,7 +191,7 @@ impl TypeMsg {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DataMsg {
     /// A unique id per [`DataMsg`].
-    pub id: LogId,
+    pub msg_id: MsgId,
 
     /// Time information (when it was logged, when it was received, …)
     pub time_point: TimePoint,
@@ -138,7 +214,7 @@ pub fn data_msg(
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.into(), field_name.into()),
         data: data.into(),
-        id: LogId::random(),
+        msg_id: MsgId::random(),
     }
 }
 

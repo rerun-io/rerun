@@ -6,23 +6,23 @@ use re_log_types::*;
 
 #[derive(Default)]
 pub struct ImageCache {
-    images: nohash_hasher::IntMap<LogId, (DynamicImage, RetainedImage)>,
+    images: nohash_hasher::IntMap<MsgId, (DynamicImage, RetainedImage)>,
 }
 
 impl ImageCache {
-    pub fn get_pair(&mut self, log_id: &LogId, tensor: &Tensor) -> &(DynamicImage, RetainedImage) {
+    pub fn get_pair(&mut self, msg_id: &MsgId, tensor: &Tensor) -> &(DynamicImage, RetainedImage) {
         self.images
-            .entry(*log_id)
-            .or_insert_with(|| tensor_to_image_pair(format!("{log_id:?}"), tensor))
+            .entry(*msg_id)
+            .or_insert_with(|| tensor_to_image_pair(format!("{msg_id:?}"), tensor))
         // TODO(emilk): better debug name
     }
 
-    pub fn get(&mut self, log_id: &LogId, tensor: &Tensor) -> &RetainedImage {
-        &self.get_pair(log_id, tensor).1
+    pub fn get(&mut self, msg_id: &MsgId, tensor: &Tensor) -> &RetainedImage {
+        &self.get_pair(msg_id, tensor).1
     }
 
-    // pub fn get_dynamic_image(&mut self, log_id: &LogId, image: &Image) -> &DynamicImage {
-    //     &self.get_pair(log_id, image).0
+    // pub fn get_dynamic_image(&mut self, msg_id: &MsgId, image: &Image) -> &DynamicImage {
+    //     &self.get_pair(msg_id, image).0
     // }
 }
 
