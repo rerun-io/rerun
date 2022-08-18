@@ -39,7 +39,7 @@ class DummyCar:
         # 1. Draw the tires of the car
         tire_radius = (self.size[1] * (1./5)).astype(int)
         tire_center_y = self.max[1] - tire_radius
-        tire_distance_mm = self.distance_mm - 200
+        tire_distance_mm = self.distance_mm + 200
 
         # 1.1 Draw the left tire
         left_tire_center = np.array(
@@ -61,7 +61,7 @@ class DummyCar:
         body_section_height = self.size[1] * (2./5)
 
         # 2.1 Draw the top part of the car
-        top_section_distance_mm = self.distance_mm - 100
+        top_section_distance_mm = self.distance_mm + 100
         top_section_width = self.size[0] * (3./5)
         top_min = self.min + \
             np.array((self.size[1] - top_section_width / 2, 0))
@@ -81,11 +81,33 @@ class DummyCar:
                       DummyCar.BODY_COLOR, cv2.FILLED)
 
 
-@dataclass
+def back_project(depth_image_mm: np.ndarray, u_coords: np.ndarray, v_coords: np.ndarray) -> np.ndarray:
+    """Given a depth image, and simple assumptions on camera parameters, generate a matching point cloud.
+        - `depth_image_mm`: Depth image expressed in millimeters
+        - `u_coords`: array of same shape as `depth_image_mm` containing the u coordinate of each pixel
+        - `v_coords`: array of same shape as `depth_image_mm` containing the v coordinate of each pixel
+
+    """
+    h, w = depth_image_mm.shape
+    u_center = w / 2
+    v_center = h / 2
+    focal_length = (h * w) ** 0.5
+
+    z = depth_image_mm.reshape(-1) / 1000.
+    x = (u_coords.reshape(-1).astype(float) - u_center) * z / focal_length
+    y = (v_coords.reshape(-1).astype(float) - v_center) * z / focal_length
+
+    # TODO: Figure out why this copy is needed.
+    back_projected = np.vstack((x, y, z)).T.copy()
+    return back_projected
+
+
+@ dataclass
 class SampleFrame:
     """Holds data for a single frame of data."""
     frame_idx: int
     depth_image_mm: np.ndarray
+    point_cloud: np.ndarray
     rgb_image: np.ndarray
     car_bbox: Tuple[np.ndarray, np.ndarray]
 
@@ -97,11 +119,11 @@ def generate_dummy_data(num_frames: int) -> Sequence[SampleFrame]:
     im_h = 270
 
     # Pre-generate image containing the x and y coordinates per pixel
-    _, yv = np.meshgrid(np.arange(0, im_w), np.arange(0, im_h))
+    u_coords, v_coords = np.meshgrid(np.arange(0, im_w), np.arange(0, im_h))
 
     # Background image as a simple slanted plane
     # 1. Depth
-    depth_background_mm = 1000.0 / (0.1 + yv/im_h)
+    depth_background_mm = 1000.0 * 1. / (0.01 + 0.4*v_coords/im_h)
 
     # 2. Color
     sand_color = (194, 178, 128)
@@ -118,8 +140,11 @@ def generate_dummy_data(num_frames: int) -> Sequence[SampleFrame]:
         depth_image_mm = depth_background_mm.copy()
         rgb = rgb_background.copy()
         car.draw(depth_image_mm=depth_image_mm, rgb=rgb)
+        point_cloud = back_project(
+            depth_image_mm=depth_image_mm, u_coords=u_coords, v_coords=v_coords)
         sample = SampleFrame(frame_idx=i,
                              depth_image_mm=depth_image_mm,
+                             point_cloud=point_cloud,
                              rgb_image=rgb,
                              car_bbox=(car.min, car.size))
         samples.append(sample)
@@ -139,31 +164,14 @@ def log_dummy_data(args):
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
 
+        rgba = [200, 0, 100, 200]
+        colors = np.array([rgba])
+        rerun.log_points("depth3D", sample.point_cloud, colors)
+
         rerun.log_image("rgb", sample.rgb_image)
 
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
         rerun.log_bbox("bbox", [car_x, car_y], [car_w, car_h], "A car")
-
-    if False:
-        depth_img = cv2.imread('depth_image.pgm', cv2.IMREAD_UNCHANGED)
-        rerun.log_depth_image("depth_image", depth_img, meter=10_000)
-
-    if True:
-        positions = []
-        for i in range(1000):
-            angle = 6.28 * i / 64
-            r = 1.0
-            x = r * math.cos(angle) + 18.0
-            y = r * math.sin(angle) + 16.0
-            z = i / 64.0
-            positions.append([x, y, z])
-        positions = np.array(positions)
-
-        # Same color for all points in this case, but you can also have a different color for each point:
-        rgba = [200, 0, 100, 200]
-        colors = np.array([rgba])
-
-        rerun.log_points("point3d", positions, colors)
 
 
 if __name__ == '__main__':
