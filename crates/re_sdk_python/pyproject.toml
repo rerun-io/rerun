@@ -1,3 +1,5 @@
+# https://maturin.rs/metadata.html
+
 [build-system]
 build-backend = "maturin"
 requires = ["maturin==0.13,<0.14"]
@@ -22,3 +24,7 @@ requires-python = ">=3.7"
 homepage = "https://www.rerun.io/"
 documentation = "https://github.com/rerun-io/rerun"
 repository = "https://github.com/rerun-io/rerun"
+
+[tool.maturin]
+all-features = true
+locked = true
