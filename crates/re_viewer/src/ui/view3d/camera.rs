@@ -197,8 +197,8 @@ impl OrbitCamera {
     }
 
     /// Listen to WSAD and QE to move camera
-    fn keyboard_navigation(&mut self, ctx: &egui::Context) {
-        let input = ctx.input();
+    fn keyboard_navigation(&mut self, egui_ctx: &egui::Context) {
+        let input = egui_ctx.input();
         let dt = input.stable_dt.at_most(0.1);
 
         // X=right, Y=up, Z=back
@@ -224,7 +224,7 @@ impl OrbitCamera {
 
         drop(input); // avoid deadlock on request_repaint
         if local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed {
-            ctx.request_repaint();
+            egui_ctx.request_repaint();
         }
     }
 

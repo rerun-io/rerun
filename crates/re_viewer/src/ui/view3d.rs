@@ -14,7 +14,6 @@ use glam::Affine3A;
 use macaw::{vec3, Quat, Vec3};
 use re_log_types::ObjPath;
 
-use crate::LogDb;
 use crate::{misc::Selection, ViewerContext};
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -61,7 +60,7 @@ impl Default for State3D {
 impl State3D {
     fn update_camera(
         &mut self,
-        context: &mut ViewerContext,
+        ctx: &mut ViewerContext<'_>,
         tracking_camera: Option<Camera>,
         response: &egui::Response,
         space_specs: &SpaceSpecs,
@@ -69,7 +68,7 @@ impl State3D {
         if response.double_clicked() {
             // Reset camera
             if tracking_camera.is_some() {
-                context.selection = Selection::None;
+                ctx.rec_cfg.selection = Selection::None;
             }
             self.interpolate_to_orbit_camera(default_camera(&self.scene_bbox, space_specs));
         }
@@ -165,7 +164,7 @@ impl CameraInterpolation {
 }
 
 fn show_settings_ui(
-    context: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State3D,
     space: Option<&ObjPath>,
@@ -215,7 +214,7 @@ fn show_settings_ui(
         }
 
         // TODO(emilk): only show if there is a camera om scene.
-        ui.toggle_value(&mut context.options.show_camera_mesh_in_3d, "📷")
+        ui.toggle_value(&mut ctx.options.show_camera_mesh_in_3d, "📷")
             .on_hover_text("Show camera mesh");
 
         ui.toggle_value(&mut state.spin, "Spin")
@@ -261,10 +260,10 @@ impl SpaceSpecs {
 
 /// If the path to a camera is selected, we follow that camera.
 fn tracking_camera(
-    context: &ViewerContext,
+    ctx: &ViewerContext<'_>,
     objects: &re_data_store::Objects<'_>,
 ) -> Option<Camera> {
-    if let Selection::ObjPath(selected_obj_path) = &context.selection {
+    if let Selection::ObjPath(selected_obj_path) = &ctx.rec_cfg.selection {
         let mut selected_camera = None;
 
         for (props, camera) in objects.camera.iter() {
@@ -283,20 +282,16 @@ fn tracking_camera(
     }
 }
 
-fn click_object(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
-    state: &mut State3D,
-    obj_path: &ObjPath,
-) {
-    context.selection = crate::Selection::ObjPath(obj_path.clone());
+fn click_object(ctx: &mut ViewerContext<'_>, state: &mut State3D, obj_path: &ObjPath) {
+    ctx.rec_cfg.selection = crate::Selection::ObjPath(obj_path.clone());
 
-    if log_db.object_types.get(obj_path.obj_type_path()) == Some(&re_log_types::ObjectType::Camera)
+    if ctx.log_db.object_types.get(obj_path.obj_type_path())
+        == Some(&re_log_types::ObjectType::Camera)
     {
-        if let Some((_, data_store)) = log_db.data_store.get(context.time_control.source()) {
+        if let Some((_, data_store)) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source()) {
             if let Some(obj_store) = data_store.get(obj_path.obj_type_path()) {
                 // TODO(emilk): use the time of what we clicked instead!
-                if let Some(time_query) = context.time_control.time_query() {
+                if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
                     let mut objects = re_data_store::Objects::default();
                     re_data_store::objects::Camera::query_obj_path(
                         obj_store,
@@ -324,8 +319,7 @@ fn click_object(
 }
 
 pub(crate) fn combined_view_3d(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State3D,
     space: Option<&ObjPath>,
@@ -339,12 +333,12 @@ pub(crate) fn combined_view_3d(
 
     // TODO(emilk): show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(context, ui, state, space, &space_specs);
+    show_settings_ui(ctx, ui, state, space, &space_specs);
 
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-    let tracking_camera = tracking_camera(context, objects);
-    let orbit_camera = state.update_camera(context, tracking_camera, &response, &space_specs);
+    let tracking_camera = tracking_camera(ctx, objects);
+    let orbit_camera = state.update_camera(ctx, tracking_camera, &response, &space_specs);
 
     let did_interact_wth_camera = orbit_camera.interact(&response);
     let orbit_camera = *orbit_camera;
@@ -353,14 +347,14 @@ pub(crate) fn combined_view_3d(
         state.last_cam_interact_time = ui.input().time;
         state.cam_interpolation = None;
         if tracking_camera.is_some() {
-            context.selection = Selection::None;
+            ctx.rec_cfg.selection = Selection::None;
         }
     }
 
     let mut hovered_obj_path = state.hovered_obj_path.clone();
     if ui.input().pointer.any_click() {
         if let Some(hovered_obj_path) = &hovered_obj_path {
-            click_object(log_db, context, state, hovered_obj_path);
+            click_object(ctx, state, hovered_obj_path);
         }
     } else if ui.input().pointer.any_down() {
         hovered_obj_path = None;
@@ -371,10 +365,9 @@ pub(crate) fn combined_view_3d(
             ui.ctx(),
             egui::Id::new("3d_tooltip"),
             |ui| {
-                context.obj_path_button(ui, obj_path);
+                ctx.obj_path_button(ui, obj_path);
                 crate::ui::context_panel::view_object(
-                    log_db,
-                    context,
+                    ctx,
                     ui,
                     obj_path,
                     crate::ui::Preview::Medium,
@@ -384,7 +377,7 @@ pub(crate) fn combined_view_3d(
     }
 
     let mut scene = Scene::from_objects(
-        context,
+        ctx,
         &state.scene_bbox,
         rect.size(),
         &camera,
@@ -412,7 +405,8 @@ pub(crate) fn combined_view_3d(
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &camera));
     if let Some((obj_path_hash, point)) = hovered {
-        state.hovered_obj_path = log_db
+        state.hovered_obj_path = ctx
+            .log_db
             .data_store
             .obj_path_from_hash(&obj_path_hash)
             .cloned();

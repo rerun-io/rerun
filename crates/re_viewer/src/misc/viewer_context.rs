@@ -6,70 +6,21 @@ use re_log_types::{
 use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 
 /// Common things needed by many parts of the viewer.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub(crate) struct ViewerContext {
+pub(crate) struct ViewerContext<'a> {
     /// Global options for the whole viewer.
-    pub options: Options,
+    pub options: &'a mut Options,
 
     /// Things that need caching.
-    #[serde(skip)]
-    pub cache: Caches,
+    pub cache: &'a mut Caches,
 
-    /// The current time of the time panel, how fast it is moving, etc.
-    pub time_control: crate::TimeControl,
+    /// The current recording
+    pub log_db: &'a LogDb,
 
-    /// Currently selected thing; shown in the context menu.
-    pub selection: Selection,
-
-    /// Individual settings. Mutate this.
-    pub individual_object_properties: ObjectsProperties,
-
-    /// Properties, as inherited from parent. Read from this.
-    ///
-    /// Recalculated at the start of each frame form [`Self::individual_object_properties`].
-    #[serde(skip)]
-    pub projected_object_properties: ObjectsProperties,
+    /// UI config for the current recording (found in [`LogDb`]).
+    pub rec_cfg: &'a mut RecordingConfig,
 }
 
-impl ViewerContext {
-    /// Called at the start of each frame
-    pub fn on_frame_start(&mut self, log_db: &LogDb) {
-        crate::profile_function!();
-
-        self.project_object_properties(log_db);
-    }
-
-    fn project_object_properties(&mut self, log_db: &LogDb) {
-        crate::profile_function!();
-
-        fn project_tree(
-            context: &mut ViewerContext,
-            path: &mut Vec<ObjPathComp>,
-            prop: ObjectProps,
-            tree: &ObjectTree,
-        ) {
-            // TODO(emilk): we need to speed up and simplify this a lot.
-            let obj_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
-            let prop = prop.with_child(&context.individual_object_properties.get(&obj_path));
-            context.projected_object_properties.set(obj_path, prop);
-
-            for (name, child) in &tree.string_children {
-                path.push(ObjPathComp::String(*name));
-                project_tree(context, path, prop, child);
-                path.pop();
-            }
-            for (index, child) in &tree.index_children {
-                path.push(ObjPathComp::Index(index.clone()));
-                project_tree(context, path, prop, child);
-                path.pop();
-            }
-        }
-
-        let mut path = vec![];
-        project_tree(self, &mut path, ObjectProps::default(), &log_db.data_tree);
-    }
-
+impl<'a> ViewerContext<'a> {
     /// Show a type path and make it selectable.
     pub fn type_path_button(
         &mut self,
@@ -87,9 +38,9 @@ impl ViewerContext {
         type_path: &ObjTypePath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same type_path!
-        let response = ui.selectable_label(self.selection.is_type_path(type_path), text);
+        let response = ui.selectable_label(self.rec_cfg.selection.is_type_path(type_path), text);
         if response.clicked() {
-            self.selection = Selection::ObjTypePath(type_path.clone());
+            self.rec_cfg.selection = Selection::ObjTypePath(type_path.clone());
         }
         response
     }
@@ -107,9 +58,9 @@ impl ViewerContext {
         obj_path: &ObjPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same obj_path!
-        let response = ui.selectable_label(self.selection.is_obj_path(obj_path), text);
+        let response = ui.selectable_label(self.rec_cfg.selection.is_obj_path(obj_path), text);
         if response.clicked() {
-            self.selection = Selection::ObjPath(obj_path.clone());
+            self.rec_cfg.selection = Selection::ObjPath(obj_path.clone());
         }
         response
     }
@@ -127,9 +78,9 @@ impl ViewerContext {
         data_path: &DataPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same data_path!
-        let response = ui.selectable_label(self.selection.is_data_path(data_path), text);
+        let response = ui.selectable_label(self.rec_cfg.selection.is_data_path(data_path), text);
         if response.clicked() {
-            self.selection = Selection::DataPath(data_path.clone());
+            self.rec_cfg.selection = Selection::DataPath(data_path.clone());
         }
         response
     }
@@ -137,9 +88,10 @@ impl ViewerContext {
     /// Button to select the current space.
     pub fn space_button(&mut self, ui: &mut egui::Ui, space: &ObjPath) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same space!
-        let response = ui.selectable_label(self.selection.is_space(space), space.to_string());
+        let response =
+            ui.selectable_label(self.rec_cfg.selection.is_space(space), space.to_string());
         if response.clicked() {
-            self.selection = Selection::Space(space.clone());
+            self.rec_cfg.selection = Selection::Space(space.clone());
         }
         response
     }
@@ -151,7 +103,8 @@ impl ViewerContext {
         value: TimeInt,
     ) -> egui::Response {
         let is_selected = self
-            .time_control
+            .rec_cfg
+            .time_ctrl
             .is_time_selected(time_source, value.into());
 
         let response = ui.selectable_label(
@@ -159,8 +112,10 @@ impl ViewerContext {
             TimeValue::new(time_source.typ(), value).to_string(),
         );
         if response.clicked() {
-            self.time_control.set_source_and_time(*time_source, value);
-            self.time_control.pause();
+            self.rec_cfg
+                .time_ctrl
+                .set_source_and_time(*time_source, value);
+            self.rec_cfg.time_ctrl.pause();
         }
         response
     }
@@ -175,6 +130,67 @@ impl ViewerContext {
             .entry(hash)
             .or_insert_with(|| crate::misc::random_rgb(hash));
         color
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// UI config for the current recording (found in [`LogDb`]).
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub(crate) struct RecordingConfig {
+    /// The current time of the time panel, how fast it is moving, etc.
+    pub time_ctrl: crate::TimeControl,
+
+    /// Currently selected thing; shown in the context menu.
+    pub selection: Selection,
+
+    /// Individual settings. Mutate this.
+    pub individual_object_properties: ObjectsProperties,
+
+    /// Properties, as inherited from parent. Read from this.
+    ///
+    /// Recalculated at the start of each frame form [`Self::individual_object_properties`].
+    #[serde(skip)]
+    pub projected_object_properties: ObjectsProperties,
+}
+
+impl RecordingConfig {
+    /// Called at the start of each frame
+    pub fn on_frame_start(&mut self, log_db: &LogDb) {
+        crate::profile_function!();
+
+        self.project_object_properties(log_db);
+    }
+
+    fn project_object_properties(&mut self, log_db: &LogDb) {
+        crate::profile_function!();
+
+        fn project_tree(
+            rec_cfg: &mut RecordingConfig,
+            path: &mut Vec<ObjPathComp>,
+            prop: ObjectProps,
+            tree: &ObjectTree,
+        ) {
+            // TODO(emilk): we need to speed up and simplify this a lot.
+            let obj_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
+            let prop = prop.with_child(&rec_cfg.individual_object_properties.get(&obj_path));
+            rec_cfg.projected_object_properties.set(obj_path, prop);
+
+            for (name, child) in &tree.string_children {
+                path.push(ObjPathComp::String(*name));
+                project_tree(rec_cfg, path, prop, child);
+                path.pop();
+            }
+            for (index, child) in &tree.index_children {
+                path.push(ObjPathComp::Index(index.clone()));
+                project_tree(rec_cfg, path, prop, child);
+                path.pop();
+            }
+        }
+
+        let mut path = vec![];
+        project_tree(self, &mut path, ObjectProps::default(), &log_db.data_tree);
     }
 }
 

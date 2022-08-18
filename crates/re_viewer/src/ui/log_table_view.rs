@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_log_types::*;
 
-use crate::{LogDb, Preview, ViewerContext};
+use crate::{Preview, ViewerContext};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -9,31 +9,26 @@ pub(crate) struct LogTableView {}
 
 impl LogTableView {
     #[allow(clippy::unused_self)]
-    pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        ui.label(format!("{} log lines", log_db.len()));
+        ui.label(format!("{} log lines", ctx.log_db.len()));
         ui.separator();
 
         let messages = {
             crate::profile_scope!("Collecting messages");
-            log_db.chronological_log_messages().collect_vec()
+            ctx.log_db.chronological_log_messages().collect_vec()
         };
 
         egui::ScrollArea::horizontal()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
-                message_table(log_db, context, ui, &messages);
+                message_table(ctx, ui, &messages);
             });
     }
 }
 
-pub(crate) fn message_table(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
-    ui: &mut egui::Ui,
-    messages: &[&LogMsg],
-) {
+pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[&LogMsg]) {
     crate::profile_function!();
 
     use egui_extras::Size;
@@ -44,7 +39,7 @@ pub(crate) fn message_table(
         .resizable(true)
         .columns(
             Size::initial(200.0).at_least(100.0),
-            log_db.time_points.0.len(),
+            ctx.log_db.time_points.0.len(),
         )
         .column(Size::initial(300.0).at_least(60.0)) // message type
         .column(Size::initial(300.0).at_least(120.0)) // path
@@ -53,7 +48,7 @@ pub(crate) fn message_table(
             header.col(|ui| {
                 ui.heading("Message Type");
             });
-            for time_source in log_db.time_points.0.keys() {
+            for time_source in ctx.log_db.time_points.0.keys() {
                 header.col(|ui| {
                     ui.heading(time_source.name().as_str());
                 });
@@ -72,13 +67,13 @@ pub(crate) fn message_table(
                     messages.iter().copied().map(row_height),
                     |index, mut row| {
                         let msg = messages[index];
-                        table_row(log_db, context, &mut row, msg, row_height(msg));
+                        table_row(ctx, &mut row, msg, row_height(msg));
                     },
                 );
             } else {
                 const ROW_HEIGHT: f32 = 18.0;
                 body.rows(ROW_HEIGHT, messages.len(), |index, mut row| {
-                    table_row(log_db, context, &mut row, messages[index], ROW_HEIGHT);
+                    table_row(ctx, &mut row, messages[index], ROW_HEIGHT);
                 });
             }
         });
@@ -92,8 +87,7 @@ fn row_height(msg: &LogMsg) -> f32 {
 }
 
 fn table_row(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     row: &mut egui_extras::TableRow<'_, '_>,
     msg: &LogMsg,
     row_height: f32,
@@ -111,7 +105,7 @@ fn table_row(
                 ui.monospace("BeginRecordingMsg");
                 ui.label(format!("Source: {recording_source}"));
             });
-            for _ in log_db.time_points.0.keys() {
+            for _ in ctx.log_db.time_points.0.keys() {
                 row.col(|ui| {
                     ui.label("-");
                 });
@@ -133,13 +127,13 @@ fn table_row(
             row.col(|ui| {
                 ui.monospace("TypeMsg");
             });
-            for _ in log_db.time_points.0.keys() {
+            for _ in ctx.log_db.time_points.0.keys() {
                 row.col(|ui| {
                     ui.label("-");
                 });
             }
             row.col(|ui| {
-                context.type_path_button(ui, type_path);
+                ctx.type_path_button(ui, type_path);
             });
             row.col(|ui| {
                 ui.monospace(format!("{object_type:?}"));
@@ -156,19 +150,19 @@ fn table_row(
             row.col(|ui| {
                 ui.monospace("DataMsg");
             });
-            for time_source in log_db.time_points.0.keys() {
+            for time_source in ctx.log_db.time_points.0.keys() {
                 row.col(|ui| {
                     if let Some(value) = time_point.0.get(time_source) {
-                        context.time_button(ui, time_source, value.as_int());
+                        ctx.time_button(ui, time_source, value.as_int());
                     }
                 });
             }
             row.col(|ui| {
-                context.data_path_button(ui, data_path);
+                ctx.data_path_button(ui, data_path);
             });
             row.col(|ui| {
                 crate::space_view::ui_logged_data(
-                    context,
+                    ctx,
                     ui,
                     msg_id,
                     data,

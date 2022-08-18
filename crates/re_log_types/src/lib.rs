@@ -75,7 +75,16 @@ impl std::hash::Hash for RecordingId {
     }
 }
 
+impl Default for RecordingId {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
 impl RecordingId {
+    /// The recording id:s given to recordings that don't have an ID.
+    pub const ZERO: RecordingId = RecordingId(uuid::Uuid::nil());
+
     #[inline]
     pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())

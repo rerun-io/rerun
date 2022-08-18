@@ -17,6 +17,15 @@ impl<'a> Logger<'a> {
 pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     let logger = Logger(tx);
 
+    logger.log(BeginRecordingMsg {
+        msg_id: MsgId::random(),
+        info: RecordingInfo {
+            recording_id: RecordingId::random(),
+            started: Time::now(),
+            recording_source: RecordingSource::Other("nyud".into()),
+        },
+    });
+
     logger.log(TypeMsg::object_type(
         ObjTypePath::from("world"),
         ObjectType::Space,

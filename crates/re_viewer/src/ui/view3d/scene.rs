@@ -48,7 +48,7 @@ pub struct Scene {
 
 impl Scene {
     pub(crate) fn from_objects(
-        context: &mut ViewerContext,
+        ctx: &mut ViewerContext<'_>,
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         camera: &Camera,
@@ -69,13 +69,13 @@ impl Scene {
                 radius
             }
         };
-        let object_color = |context: &mut ViewerContext, props: &re_data_store::ObjectProps<'_>| {
+        let object_color = |ctx: &mut ViewerContext<'_>, props: &re_data_store::ObjectProps<'_>| {
             let [r, g, b, a] = if Some(props.obj_path) == hovered_obj {
                 [255; 4]
             } else if let Some(color) = props.color {
                 color
             } else {
-                let [r, g, b] = context.random_color(props);
+                let [r, g, b] = ctx.random_color(props);
                 [r, g, b, 255]
             };
 
@@ -117,7 +117,7 @@ impl Scene {
                     obj_path_hash: Some(*props.obj_path.hash()),
                     pos: *pos,
                     radius,
-                    color: object_color(context, props),
+                    color: object_color(ctx, props),
                 });
             }
         }
@@ -135,7 +135,7 @@ impl Scene {
                     |w| w / 2.0,
                 );
                 let line_radius = boost_size_on_hover(props, line_radius);
-                let color = object_color(context, props);
+                let color = object_color(ctx, props);
                 scene.add_box(props.obj_path, color, line_radius, obb);
             }
         }
@@ -158,7 +158,7 @@ impl Scene {
                     |w| w / 2.0,
                 );
                 let line_radius = boost_size_on_hover(props, line_radius);
-                let color = object_color(context, props);
+                let color = object_color(ctx, props);
 
                 let segments = points
                     .iter()
@@ -196,7 +196,7 @@ impl Scene {
                     |w| w / 2.0,
                 );
                 let line_radius = boost_size_on_hover(props, line_radius);
-                let color = object_color(context, props);
+                let color = object_color(ctx, props);
 
                 scene.line_segments.push(LineSegments {
                     obj_path_hash: Some(*props.obj_path.hash()),
@@ -212,7 +212,7 @@ impl Scene {
             for (props, obj) in objects.mesh3d.iter() {
                 let re_data_store::Mesh3D { mesh } = *obj;
                 let mesh_id = hash(props.msg_id);
-                if let Some(cpu_mesh) = context.cache.cpu_mesh.load(
+                if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
                     mesh_id,
                     "mesh.to_string()", // TODO(emilk): &type_path.to_string(),
                     &MeshSourceData::Mesh3D(mesh.clone()),
@@ -237,9 +237,9 @@ impl Scene {
                 let translation = Vec3::from_slice(&camera.position);
 
                 let dist_to_camera = camera_plane.distance(translation);
-                let color = object_color(context, props);
+                let color = object_color(ctx, props);
 
-                if context.options.show_camera_mesh_in_3d {
+                if ctx.options.show_camera_mesh_in_3d {
                     // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
                     // The lens is at the origin.
 
@@ -254,7 +254,7 @@ impl Scene {
                     let world_from_mesh =
                         Mat4::from_scale_rotation_translation(scale, rotation, translation);
 
-                    if let Some(cpu_mesh) = context.cache.cpu_mesh.load(
+                    if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
                         mesh_id,
                         "camera_mesh",
                         &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),

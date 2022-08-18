@@ -2,7 +2,7 @@ use egui::*;
 
 use re_log_types::*;
 
-use crate::{LogDb, Selection, ViewerContext};
+use crate::{Selection, ViewerContext};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -38,8 +38,7 @@ impl State2D {
 
 /// messages: latest version of each object (of all spaces).
 pub(crate) fn combined_view_2d(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State2D,
     objects: &re_data_store::Objects<'_>,
@@ -74,17 +73,11 @@ pub(crate) fn combined_view_2d(
 
     if let Some(obj_path) = &state.hovered_obj {
         if response.clicked() {
-            context.selection = Selection::ObjPath(obj_path.clone());
+            ctx.rec_cfg.selection = Selection::ObjPath(obj_path.clone());
         }
         egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
-            context.obj_path_button(ui, obj_path);
-            crate::ui::context_panel::view_object(
-                log_db,
-                context,
-                ui,
-                obj_path,
-                crate::ui::Preview::Small,
-            );
+            ctx.obj_path_button(ui, obj_path);
+            crate::ui::context_panel::view_object(ctx, ui, obj_path, crate::ui::Preview::Small);
         });
     }
 
@@ -118,19 +111,14 @@ pub(crate) fn combined_view_2d(
 
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
         let re_data_store::Image { tensor, meter } = obj;
-        let paint_props = paint_properties(
-            context,
-            &state.hovered_obj,
-            props,
-            DefaultColor::White,
-            &None,
-        );
+        let paint_props =
+            paint_properties(ctx, &state.hovered_obj, props, DefaultColor::White, &None);
 
         if tensor.shape.len() < 2 {
             continue; // not an image. don't know how to display this!
         }
 
-        let texture_id = context
+        let texture_id = ctx
             .cache
             .image
             .get(props.msg_id, tensor)
@@ -165,7 +153,7 @@ pub(crate) fn combined_view_2d(
                 response = response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        let (dynamic_image, _) = context.cache.image.get_pair(props.msg_id, tensor);
+                        let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
                         ui.horizontal(|ui| {
                             crate::ui::context_panel::show_zoomed_image_region(
                                 ui,
@@ -188,7 +176,7 @@ pub(crate) fn combined_view_2d(
             label,
         } = obj;
         let paint_props = paint_properties(
-            context,
+            ctx,
             &state.hovered_obj,
             props,
             DefaultColor::Random,
@@ -249,7 +237,7 @@ pub(crate) fn combined_view_2d(
             stroke_width,
         } = obj;
         let paint_props = paint_properties(
-            context,
+            ctx,
             &state.hovered_obj,
             props,
             DefaultColor::Random,
@@ -282,13 +270,8 @@ pub(crate) fn combined_view_2d(
 
     for (props, obj) in objects.point2d.iter() {
         let re_data_store::Point2D { pos, radius } = obj;
-        let paint_props = paint_properties(
-            context,
-            &state.hovered_obj,
-            props,
-            DefaultColor::Random,
-            &None,
-        );
+        let paint_props =
+            paint_properties(ctx, &state.hovered_obj, props, DefaultColor::Random, &None);
 
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
@@ -338,7 +321,7 @@ enum DefaultColor {
 }
 
 fn paint_properties(
-    context: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     hovered: &Option<ObjPath>,
     props: &re_data_store::ObjectProps<'_>,
     default_color: DefaultColor,
@@ -349,7 +332,7 @@ fn paint_properties(
         || match default_color {
             DefaultColor::White => Color32::WHITE,
             DefaultColor::Random => {
-                let [r, g, b] = context.random_color(props);
+                let [r, g, b] = ctx.random_color(props);
                 Color32::from_rgb(r, g, b)
             }
         },

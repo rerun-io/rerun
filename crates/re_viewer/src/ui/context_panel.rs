@@ -11,20 +11,20 @@ pub(crate) struct ContextPanel {}
 
 impl ContextPanel {
     #[allow(clippy::unused_self)]
-    pub fn ui(&mut self, log_db: &LogDb, context: &mut ViewerContext, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         ui.horizontal(|ui| {
             ui.heading("Selection");
 
-            if context.selection.is_some() && ui.small_button("Deselect").clicked() {
-                context.selection = Selection::None;
+            if ctx.rec_cfg.selection.is_some() && ui.small_button("Deselect").clicked() {
+                ctx.rec_cfg.selection = Selection::None;
             }
         });
 
         ui.separator();
 
-        match &context.selection.clone() {
+        match &ctx.rec_cfg.selection.clone() {
             Selection::None => {
                 ui.weak("(nothing)");
             }
@@ -32,11 +32,11 @@ impl ContextPanel {
                 // ui.label(format!("Selected msg_id: {:?}", msg_id));
                 ui.label("Selected a specific log message");
 
-                let msg = if let Some(msg) = log_db.get_log_msg(msg_id) {
+                let msg = if let Some(msg) = ctx.log_db.get_log_msg(msg_id) {
                     msg
                 } else {
                     tracing::warn!("Unknown msg_id selected. Resetting selection");
-                    context.selection = Selection::None;
+                    ctx.rec_cfg.selection = Selection::None;
                     return;
                 };
 
@@ -45,18 +45,12 @@ impl ContextPanel {
                         crate::ui::space_view::show_begin_recording_msg(ui, msg);
                     }
                     LogMsg::TypeMsg(msg) => {
-                        crate::ui::space_view::show_type_msg(context, ui, msg);
+                        crate::ui::space_view::show_type_msg(ctx, ui, msg);
                     }
                     LogMsg::DataMsg(msg) => {
-                        show_detailed_data_msg(context, ui, msg);
+                        show_detailed_data_msg(ctx, ui, msg);
                         ui.separator();
-                        view_object(
-                            log_db,
-                            context,
-                            ui,
-                            &msg.data_path.obj_path,
-                            Preview::Medium,
-                        );
+                        view_object(ctx, ui, &msg.data_path.obj_path, Preview::Medium);
                     }
                 }
             }
@@ -67,33 +61,36 @@ impl ContextPanel {
                 ui.label(format!("Selected object: {}", obj_path));
                 ui.horizontal(|ui| {
                     ui.label("Type path:");
-                    context.type_path_button(ui, obj_path.obj_type_path());
+                    ctx.type_path_button(ui, obj_path.obj_type_path());
                 });
                 ui.horizontal(|ui| {
                     ui.label("Object type:");
-                    ui.label(obj_type_name(log_db, obj_path.obj_type_path()));
+                    ui.label(obj_type_name(ctx.log_db, obj_path.obj_type_path()));
                 });
                 ui.separator();
-                view_object(log_db, context, ui, obj_path, Preview::Medium);
+                view_object(ctx, ui, obj_path, Preview::Medium);
             }
             Selection::DataPath(data_path) => {
                 ui.label(format!("Selected data path: {}", data_path));
                 ui.horizontal(|ui| {
                     ui.label("Object path:");
-                    context.obj_path_button(ui, &data_path.obj_path);
+                    ctx.obj_path_button(ui, &data_path.obj_path);
                 });
                 ui.horizontal(|ui| {
                     ui.label("Type path:");
-                    context.type_path_button(ui, data_path.obj_path.obj_type_path());
+                    ctx.type_path_button(ui, data_path.obj_path.obj_type_path());
                 });
                 ui.horizontal(|ui| {
                     ui.label("Object type:");
-                    ui.label(obj_type_name(log_db, data_path.obj_path.obj_type_path()));
+                    ui.label(obj_type_name(
+                        ctx.log_db,
+                        data_path.obj_path.obj_type_path(),
+                    ));
                 });
 
                 ui.separator();
 
-                view_data(log_db, context, ui, data_path);
+                view_data(ctx, ui, data_path);
             }
             Selection::Space(space) => {
                 let space = space.clone();
@@ -105,14 +102,13 @@ impl ContextPanel {
 }
 
 pub(crate) fn view_object(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     obj_path: &ObjPath,
     preview: Preview,
 ) -> Option<()> {
-    let (_, store) = log_db.data_store.get(context.time_control.source())?;
-    let time_query = context.time_control.time_query()?;
+    let (_, store) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(obj_path.obj_type_path())?;
 
     egui::Grid::new("object")
@@ -120,7 +116,7 @@ pub(crate) fn view_object(
         .num_columns(2)
         .show(ui, |ui| {
             for (field_name, data_store) in obj_store.iter() {
-                context.data_path_button_to(
+                ctx.data_path_button_to(
                     ui,
                     field_name.to_string(),
                     &DataPath::new(obj_path.clone(), *field_name),
@@ -132,7 +128,7 @@ pub(crate) fn view_object(
                 if data_vec.len() == 1 {
                     let data = data_vec.last().unwrap();
                     let msg_id = &msg_ids[0];
-                    crate::space_view::ui_data(context, ui, msg_id, &data, preview);
+                    crate::space_view::ui_data(ctx, ui, msg_id, &data, preview);
                 } else {
                     ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
                 }
@@ -144,17 +140,12 @@ pub(crate) fn view_object(
     Some(())
 }
 
-fn view_data(
-    log_db: &LogDb,
-    context: &mut ViewerContext,
-    ui: &mut egui::Ui,
-    data_path: &DataPath,
-) -> Option<()> {
+fn view_data(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, data_path: &DataPath) -> Option<()> {
     let obj_path = data_path.obj_path();
     let field_name = data_path.field_name();
 
-    let (_, store) = log_db.data_store.get(context.time_control.source())?;
-    let time_query = context.time_control.time_query()?;
+    let (_, store) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(obj_path.obj_type_path())?;
     let data_store = obj_store.get_field(field_name)?;
 
@@ -164,7 +155,7 @@ fn view_data(
     if data_vec.len() == 1 {
         let data = data_vec.last().unwrap();
         let msg_id = &msg_ids[0];
-        show_detailed_data(context, ui, msg_id, &data);
+        show_detailed_data(ctx, ui, msg_id, &data);
     } else {
         ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
     }
@@ -173,20 +164,20 @@ fn view_data(
 }
 
 pub(crate) fn show_detailed_data(
-    context: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg_id: &MsgId,
     data: &Data,
 ) {
     if let Data::Tensor(tensor) = data {
-        show_tensor(context, ui, msg_id, tensor);
+        show_tensor(ctx, ui, msg_id, tensor);
     } else {
-        crate::space_view::ui_data(context, ui, msg_id, data, Preview::Medium);
+        crate::space_view::ui_data(ctx, ui, msg_id, data, Preview::Medium);
     }
 }
 
 pub(crate) fn show_detailed_data_msg(
-    context: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg: &DataMsg,
 ) {
@@ -204,35 +195,35 @@ pub(crate) fn show_detailed_data_msg(
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("data_path:");
-            context.data_path_button(ui, data_path);
+            ctx.data_path_button(ui, data_path);
             ui.end_row();
             ui.monospace("object type path:");
-            context.type_path_button(ui, data_path.obj_path.obj_type_path());
+            ctx.type_path_button(ui, data_path.obj_path.obj_type_path());
             ui.end_row();
 
             ui.monospace("time_point:");
-            crate::space_view::ui_time_point(context, ui, time_point);
+            crate::space_view::ui_time_point(ctx, ui, time_point);
             ui.end_row();
 
             if !is_image {
                 ui.monospace("data:");
-                crate::space_view::ui_logged_data(context, ui, msg_id, data, Preview::Medium);
+                crate::space_view::ui_logged_data(ctx, ui, msg_id, data, Preview::Medium);
                 ui.end_row();
             }
         });
 
     if let LoggedData::Single(Data::Tensor(tensor)) = &msg.data {
-        show_tensor(context, ui, msg_id, tensor);
+        show_tensor(ctx, ui, msg_id, tensor);
     }
 }
 
 fn show_tensor(
-    context: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg_id: &MsgId,
     tensor: &re_log_types::Tensor,
 ) {
-    let (dynamic_image, egui_image) = context.cache.image.get_pair(msg_id, tensor);
+    let (dynamic_image, egui_image) = ctx.cache.image.get_pair(msg_id, tensor);
     let max_size = ui.available_size().min(egui_image.size_vec2());
     let response = egui_image.show_max_size(ui, max_size);
 
