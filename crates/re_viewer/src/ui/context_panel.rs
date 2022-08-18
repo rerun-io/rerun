@@ -107,8 +107,8 @@ pub(crate) fn view_object(
     obj_path: &ObjPath,
     preview: Preview,
 ) -> Option<()> {
-    let (_, store) = ctx.log_db.data_store.get(ctx.time_ctrl().source())?;
-    let time_query = ctx.time_ctrl().time_query()?;
+    let (_, store) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(obj_path.obj_type_path())?;
 
     egui::Grid::new("object")
@@ -144,8 +144,8 @@ fn view_data(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, data_path: &DataPat
     let obj_path = data_path.obj_path();
     let field_name = data_path.field_name();
 
-    let (_, store) = ctx.log_db.data_store.get(ctx.time_ctrl().source())?;
-    let time_query = ctx.time_ctrl().time_query()?;
+    let (_, store) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(obj_path.obj_type_path())?;
     let data_store = obj_store.get_field(field_name)?;
 

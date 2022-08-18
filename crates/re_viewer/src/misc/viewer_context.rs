@@ -23,10 +23,6 @@ pub(crate) struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
-    pub fn time_ctrl(&mut self) -> &mut TimeControl {
-        &mut self.rec_cfg.time_ctrl
-    }
-
     /// Show a type path and make it selectable.
     pub fn type_path_button(
         &mut self,
@@ -108,7 +104,10 @@ impl<'a> ViewerContext<'a> {
         time_source: &TimeSource,
         value: TimeInt,
     ) -> egui::Response {
-        let is_selected = self.time_ctrl().is_time_selected(time_source, value.into());
+        let is_selected = self
+            .rec_cfg
+            .time_ctrl
+            .is_time_selected(time_source, value.into());
 
         let response = ui.selectable_label(
             is_selected,

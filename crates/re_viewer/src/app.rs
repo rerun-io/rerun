@@ -322,7 +322,9 @@ impl AppState {
         });
 
         // move time last, so we get to see the first data first!
-        ctx.time_ctrl().move_time(egui_ctx, &log_db.time_points);
+        ctx.rec_cfg
+            .time_ctrl
+            .move_time(egui_ctx, &log_db.time_points);
 
         if WATERMARK {
             self.watermark(egui_ctx);

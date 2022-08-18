@@ -288,10 +288,10 @@ fn click_object(ctx: &mut ViewerContext<'_>, state: &mut State3D, obj_path: &Obj
     if ctx.log_db.object_types.get(obj_path.obj_type_path())
         == Some(&re_log_types::ObjectType::Camera)
     {
-        if let Some((_, data_store)) = ctx.log_db.data_store.get(ctx.time_ctrl().source()) {
+        if let Some((_, data_store)) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source()) {
             if let Some(obj_store) = data_store.get(obj_path.obj_type_path()) {
                 // TODO(emilk): use the time of what we clicked instead!
-                if let Some(time_query) = ctx.time_ctrl().time_query() {
+                if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
                     let mut objects = re_data_store::Objects::default();
                     re_data_store::objects::Camera::query_obj_path(
                         obj_store,
