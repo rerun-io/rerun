@@ -19,12 +19,12 @@ pub(crate) struct ViewerContext<'a> {
     pub log_db: &'a LogDb,
 
     /// UI config for the current recording (found in [`LogDb`]).
-    pub rec_config: &'a mut RecordingConfig,
+    pub rec_cfg: &'a mut RecordingConfig,
 }
 
 impl<'a> ViewerContext<'a> {
     pub fn time_control(&mut self) -> &mut TimeControl {
-        &mut self.rec_config.time_control
+        &mut self.rec_cfg.time_control
     }
 
     /// Show a type path and make it selectable.
@@ -44,9 +44,9 @@ impl<'a> ViewerContext<'a> {
         type_path: &ObjTypePath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same type_path!
-        let response = ui.selectable_label(self.rec_config.selection.is_type_path(type_path), text);
+        let response = ui.selectable_label(self.rec_cfg.selection.is_type_path(type_path), text);
         if response.clicked() {
-            self.rec_config.selection = Selection::ObjTypePath(type_path.clone());
+            self.rec_cfg.selection = Selection::ObjTypePath(type_path.clone());
         }
         response
     }
@@ -64,9 +64,9 @@ impl<'a> ViewerContext<'a> {
         obj_path: &ObjPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same obj_path!
-        let response = ui.selectable_label(self.rec_config.selection.is_obj_path(obj_path), text);
+        let response = ui.selectable_label(self.rec_cfg.selection.is_obj_path(obj_path), text);
         if response.clicked() {
-            self.rec_config.selection = Selection::ObjPath(obj_path.clone());
+            self.rec_cfg.selection = Selection::ObjPath(obj_path.clone());
         }
         response
     }
@@ -84,9 +84,9 @@ impl<'a> ViewerContext<'a> {
         data_path: &DataPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same data_path!
-        let response = ui.selectable_label(self.rec_config.selection.is_data_path(data_path), text);
+        let response = ui.selectable_label(self.rec_cfg.selection.is_data_path(data_path), text);
         if response.clicked() {
-            self.rec_config.selection = Selection::DataPath(data_path.clone());
+            self.rec_cfg.selection = Selection::DataPath(data_path.clone());
         }
         response
     }
@@ -95,9 +95,9 @@ impl<'a> ViewerContext<'a> {
     pub fn space_button(&mut self, ui: &mut egui::Ui, space: &ObjPath) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same space!
         let response =
-            ui.selectable_label(self.rec_config.selection.is_space(space), space.to_string());
+            ui.selectable_label(self.rec_cfg.selection.is_space(space), space.to_string());
         if response.clicked() {
-            self.rec_config.selection = Selection::Space(space.clone());
+            self.rec_cfg.selection = Selection::Space(space.clone());
         }
         response
     }
@@ -117,10 +117,10 @@ impl<'a> ViewerContext<'a> {
             TimeValue::new(time_source.typ(), value).to_string(),
         );
         if response.clicked() {
-            self.rec_config
+            self.rec_cfg
                 .time_control
                 .set_source_and_time(*time_source, value);
-            self.rec_config.time_control.pause();
+            self.rec_cfg.time_control.pause();
         }
         response
     }
@@ -172,24 +172,24 @@ impl RecordingConfig {
         crate::profile_function!();
 
         fn project_tree(
-            rec_config: &mut RecordingConfig,
+            rec_cfg: &mut RecordingConfig,
             path: &mut Vec<ObjPathComp>,
             prop: ObjectProps,
             tree: &ObjectTree,
         ) {
             // TODO(emilk): we need to speed up and simplify this a lot.
             let obj_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
-            let prop = prop.with_child(&rec_config.individual_object_properties.get(&obj_path));
-            rec_config.projected_object_properties.set(obj_path, prop);
+            let prop = prop.with_child(&rec_cfg.individual_object_properties.get(&obj_path));
+            rec_cfg.projected_object_properties.set(obj_path, prop);
 
             for (name, child) in &tree.string_children {
                 path.push(ObjPathComp::String(*name));
-                project_tree(rec_config, path, prop, child);
+                project_tree(rec_cfg, path, prop, child);
                 path.pop();
             }
             for (index, child) in &tree.index_children {
                 path.push(ObjPathComp::Index(index.clone()));
-                project_tree(rec_config, path, prop, child);
+                project_tree(rec_cfg, path, prop, child);
                 path.pop();
             }
         }

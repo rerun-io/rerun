@@ -73,7 +73,7 @@ pub(crate) fn combined_view_2d(
 
     if let Some(obj_path) = &state.hovered_obj {
         if response.clicked() {
-            ctx.rec_config.selection = Selection::ObjPath(obj_path.clone());
+            ctx.rec_cfg.selection = Selection::ObjPath(obj_path.clone());
         }
         egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
             ctx.obj_path_button(ui, obj_path);

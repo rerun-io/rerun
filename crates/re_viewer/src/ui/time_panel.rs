@@ -89,7 +89,7 @@ impl TimePanel {
         let time_line_rect = {
             let response = ui
                 .horizontal(|ui| {
-                    ctx.rec_config
+                    ctx.rec_cfg
                         .time_control
                         .play_pause_ui(&ctx.log_db.time_points, ui);
                 })
@@ -226,12 +226,12 @@ impl TimePanel {
         {
             let are_all_ancestors_visible = obj_path.is_root()
                 || ctx
-                    .rec_config
+                    .rec_cfg
                     .projected_object_properties
                     .get(&obj_path.parent())
                     .visible;
 
-            let mut props = ctx.rec_config.individual_object_properties.get(&obj_path);
+            let mut props = ctx.rec_cfg.individual_object_properties.get(&obj_path);
             let property_rect =
                 Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response.rect.y_range());
             let mut ui = ui.child_ui(
@@ -241,7 +241,7 @@ impl TimePanel {
             ui.set_enabled(are_all_ancestors_visible);
             ui.toggle_value(&mut props.visible, "👁")
                 .on_hover_text("Toggle visibility");
-            ctx.rec_config
+            ctx.rec_cfg
                 .individual_object_properties
                 .set(obj_path, props);
         }
@@ -350,7 +350,7 @@ impl TimePanel {
 
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
-        ctx.rec_config
+        ctx.rec_cfg
             .time_control
             .time_source_selector_ui(&ctx.log_db.time_points, ui);
 

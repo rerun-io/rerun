@@ -17,14 +17,14 @@ impl ContextPanel {
         ui.horizontal(|ui| {
             ui.heading("Selection");
 
-            if ctx.rec_config.selection.is_some() && ui.small_button("Deselect").clicked() {
-                ctx.rec_config.selection = Selection::None;
+            if ctx.rec_cfg.selection.is_some() && ui.small_button("Deselect").clicked() {
+                ctx.rec_cfg.selection = Selection::None;
             }
         });
 
         ui.separator();
 
-        match &ctx.rec_config.selection.clone() {
+        match &ctx.rec_cfg.selection.clone() {
             Selection::None => {
                 ui.weak("(nothing)");
             }
@@ -36,7 +36,7 @@ impl ContextPanel {
                     msg
                 } else {
                     tracing::warn!("Unknown msg_id selected. Resetting selection");
-                    ctx.rec_config.selection = Selection::None;
+                    ctx.rec_cfg.selection = Selection::None;
                     return;
                 };
 

@@ -68,7 +68,7 @@ impl State3D {
         if response.double_clicked() {
             // Reset camera
             if tracking_camera.is_some() {
-                ctx.rec_config.selection = Selection::None;
+                ctx.rec_cfg.selection = Selection::None;
             }
             self.interpolate_to_orbit_camera(default_camera(&self.scene_bbox, space_specs));
         }
@@ -263,7 +263,7 @@ fn tracking_camera(
     ctx: &ViewerContext<'_>,
     objects: &re_data_store::Objects<'_>,
 ) -> Option<Camera> {
-    if let Selection::ObjPath(selected_obj_path) = &ctx.rec_config.selection {
+    if let Selection::ObjPath(selected_obj_path) = &ctx.rec_cfg.selection {
         let mut selected_camera = None;
 
         for (props, camera) in objects.camera.iter() {
@@ -283,7 +283,7 @@ fn tracking_camera(
 }
 
 fn click_object(ctx: &mut ViewerContext<'_>, state: &mut State3D, obj_path: &ObjPath) {
-    ctx.rec_config.selection = crate::Selection::ObjPath(obj_path.clone());
+    ctx.rec_cfg.selection = crate::Selection::ObjPath(obj_path.clone());
 
     if ctx.log_db.object_types.get(obj_path.obj_type_path())
         == Some(&re_log_types::ObjectType::Camera)
@@ -347,7 +347,7 @@ pub(crate) fn combined_view_3d(
         state.last_cam_interact_time = ui.input().time;
         state.cam_interpolation = None;
         if tracking_camera.is_some() {
-            ctx.rec_config.selection = Selection::None;
+            ctx.rec_cfg.selection = Selection::None;
         }
     }
 

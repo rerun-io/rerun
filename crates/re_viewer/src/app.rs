@@ -124,7 +124,7 @@ impl eframe::App for App {
             }
         }
 
-        self.state.rec_config.on_frame_start(&self.log_db);
+        self.state.rec_cfg.on_frame_start(&self.log_db);
         self.state.top_panel(egui_ctx, frame, &mut self.log_db);
 
         if self.log_db.is_empty() && self.rx.is_some() {
@@ -211,7 +211,7 @@ struct AppState {
     cache: Caches,
 
     /// Configuration for the current recording (found in [`LogDb`]).
-    rec_config: RecordingConfig,
+    rec_cfg: RecordingConfig,
 
     view_index: usize,
     log_table_view: crate::log_table_view::LogTableView,
@@ -280,7 +280,7 @@ impl AppState {
         let Self {
             options,
             cache,
-            rec_config,
+            rec_cfg,
             view_index,
             log_table_view,
             space_view,
@@ -295,7 +295,7 @@ impl AppState {
             options,
             cache,
             log_db,
-            rec_config,
+            rec_cfg,
         };
 
         egui::SidePanel::right("context").show(egui_ctx, |ui| {
