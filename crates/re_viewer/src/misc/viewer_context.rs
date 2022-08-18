@@ -9,31 +9,38 @@ use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct ViewerContext {
+    /// Global options for the whole viewer.
+    pub options: Options,
+
+    /// Things that need caching.
     #[serde(skip)]
     pub cache: Caches,
 
-    /// The current time.
+    /// The current time of the time panel, how fast it is moving, etc.
     pub time_control: crate::TimeControl,
 
-    /// Currently selected thing, shown in the context menu.
+    /// Currently selected thing; shown in the context menu.
     pub selection: Selection,
 
     /// Individual settings. Mutate this.
     pub individual_object_properties: ObjectsProperties,
 
-    /// Properties, as inherited from parent.
-    /// Read from this.
+    /// Properties, as inherited from parent. Read from this.
     ///
     /// Recalculated at the start of each frame form [`Self::individual_object_properties`].
     #[serde(skip)]
     pub projected_object_properties: ObjectsProperties,
-
-    pub options: Options,
 }
 
 impl ViewerContext {
     /// Called at the start of each frame
     pub fn on_frame_start(&mut self, log_db: &LogDb) {
+        crate::profile_function!();
+
+        self.project_object_properties(log_db);
+    }
+
+    fn project_object_properties(&mut self, log_db: &LogDb) {
         crate::profile_function!();
 
         fn project_tree(

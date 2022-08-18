@@ -34,6 +34,9 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_f32, m)?)?;
+
+    Sdk::global().begin_new_recording();
+
     Ok(())
 }
 

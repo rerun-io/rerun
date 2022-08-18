@@ -41,6 +41,9 @@ impl ContextPanel {
                 };
 
                 match msg {
+                    LogMsg::BeginRecordingMsg(msg) => {
+                        crate::ui::space_view::show_begin_recording_msg(ui, msg);
+                    }
                     LogMsg::TypeMsg(msg) => {
                         crate::ui::space_view::show_type_msg(context, ui, msg);
                     }

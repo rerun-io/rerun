@@ -8,11 +8,15 @@ use re_string_interner::InternedString;
 
 use crate::misc::TimePoints;
 
+/// A in-memory database built from a stream of [`LogMsg`]es.
 #[derive(Default)]
 pub(crate) struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<MsgId>,
     log_messages: IntMap<MsgId, LogMsg>,
+
+    recording_info: Option<RecordingInfo>,
+
     pub object_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
@@ -35,11 +39,22 @@ impl LogDb {
     pub fn add(&mut self, msg: LogMsg) {
         crate::profile_function!();
         match &msg {
-            LogMsg::TypeMsg(type_msg) => self.add_type_msg(type_msg),
-            LogMsg::DataMsg(data_msg) => self.add_data_msg(data_msg),
+            LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
+            LogMsg::TypeMsg(msg) => self.add_type_msg(msg),
+            LogMsg::DataMsg(msg) => self.add_data_msg(msg),
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
+    }
+
+    fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
+        tracing::info!("Begginning a new recording: {:?}", msg.info);
+
+        // TODO(emilk): in the near future we want to this to create
+        // a new `LogDb` rather than clearing the existing one,
+        // and then let the user select which recording to view.
+        *self = Default::default();
+        self.recording_info = Some(msg.info.clone());
     }
 
     fn add_type_msg(&mut self, msg: &TypeMsg) {
@@ -105,8 +120,8 @@ impl LogDb {
                 .or_insert_with(|| space.clone());
         };
 
-        // This is a bit hacky, an I don't like it,
-        // but we want a single place to find all the spaces, ignoring time.
+        // This is a bit hacky, and I don't like it,
+        // but we nned a single place to find all the spaces (ignoring time).
         match &msg.data {
             LoggedData::Single(Data::Space(space)) | LoggedData::BatchSplat(Data::Space(space)) => {
                 register_space(space);

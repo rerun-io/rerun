@@ -329,11 +329,39 @@ pub(crate) fn show_log_msg(
     preview: Preview,
 ) {
     match msg {
+        LogMsg::BeginRecordingMsg(msg) => show_begin_recording_msg(ui, msg),
         LogMsg::TypeMsg(msg) => show_type_msg(context, ui, msg),
         LogMsg::DataMsg(msg) => {
             show_data_msg(context, ui, msg, preview);
         }
     }
+}
+
+pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMsg) {
+    ui.code("BeginRecordingMsg");
+    let BeginRecordingMsg { msg_id: _, info } = msg;
+    let RecordingInfo {
+        recording_id,
+        started,
+        recording_source,
+    } = info;
+
+    egui::Grid::new("fields")
+        .striped(true)
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.monospace("recording_id:");
+            ui.label(format!("{recording_id:?}"));
+            ui.end_row();
+
+            ui.monospace("started:");
+            ui.label(started.format());
+            ui.end_row();
+
+            ui.monospace("recording_source:");
+            ui.label(format!("{recording_source}"));
+            ui.end_row();
+        });
 }
 
 pub(crate) fn show_type_msg(context: &mut ViewerContext, ui: &mut egui::Ui, msg: &TypeMsg) {
