@@ -167,15 +167,15 @@ impl App {
     }
 }
 
-fn preview_files_being_dropped(ctx: &egui::Context) {
+fn preview_files_being_dropped(egui_ctx: &egui::Context) {
     use egui::*;
 
     // Preview hovering files:
-    if !ctx.input().raw.hovered_files.is_empty() {
+    if !egui_ctx.input().raw.hovered_files.is_empty() {
         use std::fmt::Write as _;
 
         let mut text = "Drop to load:\n".to_owned();
-        for file in &ctx.input().raw.hovered_files {
+        for file in &egui_ctx.input().raw.hovered_files {
             if let Some(path) = &file.path {
                 write!(text, "\n{}", path.display()).ok();
             } else if !file.mime.is_empty() {
@@ -184,15 +184,15 @@ fn preview_files_being_dropped(ctx: &egui::Context) {
         }
 
         let painter =
-            ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
+            egui_ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
 
-        let screen_rect = ctx.input().screen_rect();
+        let screen_rect = egui_ctx.input().screen_rect();
         painter.rect_filled(screen_rect, 0.0, Color32::from_black_alpha(192));
         painter.text(
             screen_rect.center(),
             Align2::CENTER_CENTER,
             text,
-            TextStyle::Heading.resolve(&ctx.style()),
+            TextStyle::Heading.resolve(&egui_ctx.style()),
             Color32::WHITE,
         );
     }
@@ -291,7 +291,7 @@ impl AppState {
             static_image_cache: _,
         } = self;
 
-        let mut context = ViewerContext {
+        let mut ctx = ViewerContext {
             options,
             cache,
             log_db,
@@ -299,26 +299,24 @@ impl AppState {
         };
 
         egui::SidePanel::right("context").show(egui_ctx, |ui| {
-            context_panel.ui(&mut context, ui);
+            context_panel.ui(&mut ctx, ui);
         });
 
         egui::TopBottomPanel::bottom("time_panel")
             .resizable(true)
             .default_height(210.0)
             .show(egui_ctx, |ui| {
-                time_panel.ui(&mut context, ui);
+                time_panel.ui(&mut ctx, ui);
             });
 
         egui::CentralPanel::default().show(egui_ctx, |ui| match view_index {
-            0 => space_view.ui(&mut context, ui),
-            1 => log_table_view.ui(&mut context, ui),
+            0 => space_view.ui(&mut ctx, ui),
+            1 => log_table_view.ui(&mut ctx, ui),
             _ => {}
         });
 
         // move time last, so we get to see the first data first!
-        context
-            .time_control()
-            .move_time(egui_ctx, &log_db.time_points);
+        ctx.time_control().move_time(egui_ctx, &log_db.time_points);
 
         if WATERMARK {
             self.watermark(egui_ctx);

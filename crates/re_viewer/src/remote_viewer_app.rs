@@ -58,8 +58,8 @@ impl eframe::App for RemoteViewerApp {
         }
     }
 
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("server").show(ctx, |ui| {
+    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        egui::TopBottomPanel::top("server").show(egui_ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("URL:");
                 if ui.text_edit_singleline(&mut self.url).lost_focus()
@@ -70,13 +70,13 @@ impl eframe::App for RemoteViewerApp {
                             app.save(storage);
                         }
                     }
-                    self.connect(ctx, frame.storage());
+                    self.connect(egui_ctx, frame.storage());
                 }
             });
         });
 
         if let Some((_, app)) = &mut self.app {
-            app.update(ctx, frame);
+            app.update(egui_ctx, frame);
         }
     }
 }
