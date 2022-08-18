@@ -40,6 +40,12 @@ We use `rust fmt` with default settings.
 
 We have blank lines before functions, types, `impl` blocks, and docstrings.
 
+We format comments `// Like this`, and `//not like this`.
+
+When importing a `trait` to use it's trait methods, do this: `use Trait as _;`. That lets the reader know why you imported it, even though it seems unused.
+
+When intentionally ignoring a `Result`, prefer `foo().ok();` over `let _ = foo();`. The former shows what is happening, and will fail to compile if `foo:s` return type ever changes.
+
 ### Naming
 When in doubt, be explicit. BAD: `id`. GOOD: `msg_id`.
 
