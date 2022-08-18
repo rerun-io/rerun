@@ -222,7 +222,7 @@ fn show_tensor(
     log_id: &LogId,
     tensor: &re_log_types::Tensor,
 ) {
-    let (dynamic_image, egui_image) = context.image_cache.get_pair(log_id, tensor);
+    let (dynamic_image, egui_image) = context.cache.image.get_pair(log_id, tensor);
     let max_size = ui.available_size().min(egui_image.size_vec2());
     let response = egui_image.show_max_size(ui, max_size);
 

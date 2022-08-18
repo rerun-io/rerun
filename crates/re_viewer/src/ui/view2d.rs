@@ -131,7 +131,8 @@ pub(crate) fn combined_view_2d(
         }
 
         let texture_id = context
-            .image_cache
+            .cache
+            .image
             .get(props.log_id, tensor)
             .texture_id(ui.ctx());
         let screen_rect = to_screen.transform_rect(Rect::from_min_size(
@@ -164,7 +165,7 @@ pub(crate) fn combined_view_2d(
                 response = response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        let (dynamic_image, _) = context.image_cache.get_pair(props.log_id, tensor);
+                        let (dynamic_image, _) = context.cache.image.get_pair(props.log_id, tensor);
                         ui.horizontal(|ui| {
                             crate::ui::context_panel::show_zoomed_image_region(
                                 ui,

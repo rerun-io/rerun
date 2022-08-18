@@ -92,6 +92,7 @@ pub(crate) struct TimeControl {
 
     #[serde(default)]
     pub selection_active: bool,
+
     #[serde(default)]
     pub selection_type: TimeSelectionType,
 }

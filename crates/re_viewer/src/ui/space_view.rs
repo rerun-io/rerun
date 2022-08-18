@@ -428,7 +428,7 @@ pub(crate) fn ui_data(
         Data::Camera(_) => ui.label("Camera"),
 
         Data::Tensor(tensor) => {
-            let egui_image = context.image_cache.get(id, tensor);
+            let egui_image = context.cache.image.get(id, tensor);
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {
                     Preview::Small => 32.0,

@@ -9,13 +9,8 @@ use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct ViewerContext {
-    /// For displaying images efficiently in immediate mode.
     #[serde(skip)]
-    pub image_cache: crate::misc::ImageCache,
-
-    /// For displaying meshes efficiently in immediate mode.
-    #[serde(skip)]
-    pub cpu_mesh_cache: crate::ui::view3d::CpuMeshCache,
+    pub cache: Caches,
 
     /// The current time.
     pub time_control: crate::TimeControl,
@@ -32,9 +27,6 @@ pub(crate) struct ViewerContext {
     /// Recalculated at the start of each frame form [`Self::individual_object_properties`].
     #[serde(skip)]
     pub projected_object_properties: ObjectsProperties,
-
-    /// cached auto-generated colors.
-    object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,
 
     pub options: Options,
 }
@@ -171,12 +163,29 @@ impl ViewerContext {
         let hash = props.obj_path.hash64();
 
         let color = *self
+            .cache
             .object_colors
             .entry(hash)
             .or_insert_with(|| crate::misc::random_rgb(hash));
         color
     }
 }
+
+// ----------------------------------------------------------------------------
+
+#[derive(Default)]
+pub(crate) struct Caches {
+    /// For displaying images efficiently in immediate mode.
+    pub image: crate::misc::ImageCache,
+
+    /// For displaying meshes efficiently in immediate mode.
+    pub cpu_mesh: crate::ui::view3d::CpuMeshCache,
+
+    /// Auto-generated colors.
+    object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,
+}
+
+// ----------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Options {
@@ -190,6 +199,8 @@ impl Default for Options {
         }
     }
 }
+
+// ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub(crate) enum Selection {
@@ -248,6 +259,8 @@ impl Selection {
         }
     }
 }
+
+// ----------------------------------------------------------------------------
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ObjectsProperties {

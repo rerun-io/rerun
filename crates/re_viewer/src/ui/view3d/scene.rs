@@ -212,7 +212,7 @@ impl Scene {
             for (props, obj) in objects.mesh3d.iter() {
                 let re_data_store::Mesh3D { mesh } = *obj;
                 let mesh_id = hash(props.log_id);
-                if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
+                if let Some(cpu_mesh) = context.cache.cpu_mesh.load(
                     mesh_id,
                     "mesh.to_string()", // TODO(emilk): &type_path.to_string(),
                     &MeshSourceData::Mesh3D(mesh.clone()),
@@ -254,7 +254,7 @@ impl Scene {
                     let world_from_mesh =
                         Mat4::from_scale_rotation_translation(scale, rotation, translation);
 
-                    if let Some(cpu_mesh) = context.cpu_mesh_cache.load(
+                    if let Some(cpu_mesh) = context.cache.cpu_mesh.load(
                         mesh_id,
                         "camera_mesh",
                         &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
