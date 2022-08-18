@@ -4,15 +4,13 @@ use egui::NumExt as _;
 use re_data_store::TimeQuery;
 use re_log_types::*;
 
-use crate::misc::TimePoints;
-
-use super::TimeRange;
+use super::{TimePoints, TimeRange, TimeRangeF, TimeReal};
 
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct TimeView {
     /// Where start of the the range.
-    pub min: TimeInt,
+    pub min: TimeReal,
 
     /// How much time the full view covers.
     ///
@@ -50,18 +48,14 @@ impl TimeSelectionType {
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 struct TimeState {
     /// The current time (play marker).
-    time: TimeInt,
+    time: TimeReal,
 
     /// Frames Per Second, when playing sequences (they are often video recordings).
     fps: f32,
 
-    // TODO(emilk): move into a `TimeReal` and use that for `Self::time`
-    /// How close we are to flipping over to the next sequence number (0-1).
-    sequence_t: f32,
-
     /// Selected time range, if any.
     #[serde(default)]
-    selection: Option<TimeRange>,
+    selection: Option<TimeRangeF>,
 
     /// The time range we are currently zoomed in on.
     ///
@@ -73,11 +67,10 @@ struct TimeState {
 }
 
 impl TimeState {
-    fn new(time: TimeInt) -> Self {
+    fn new(time: impl Into<TimeReal>) -> Self {
         Self {
-            time,
+            time: time.into(),
             fps: 30.0, // TODO(emilk): estimate based on data
-            sequence_t: 0.0,
             selection: Default::default(),
             view: None,
         }
@@ -172,9 +165,9 @@ impl TimeControl {
             .or_insert_with(|| TimeState::new(full_range.min));
 
         let loop_range = if self.looped && active_selection_type == Some(TimeSelectionType::Loop) {
-            state.selection.unwrap_or(full_range)
+            state.selection.unwrap_or_else(|| full_range.into())
         } else {
-            full_range
+            full_range.into()
         };
 
         egui_ctx.request_repaint();
@@ -196,11 +189,9 @@ impl TimeControl {
 
                 match self.time_source.typ() {
                     TimeType::Sequence => {
-                        state.sequence_t += state.fps * dt;
-                        new_min += TimeInt::from(state.sequence_t.floor() as i64);
-                        state.sequence_t = state.sequence_t.fract();
+                        new_min += TimeReal::from(state.fps * dt);
                     }
-                    TimeType::Time => new_min += TimeInt::from(Duration::from_secs(dt)),
+                    TimeType::Time => new_min += TimeReal::from(Duration::from_secs(dt)),
                 }
 
                 if new_min > loop_range.max {
@@ -214,7 +205,7 @@ impl TimeControl {
                 }
 
                 let new_max = new_min + length;
-                state.selection = Some(TimeRange::new(new_min, new_max));
+                state.selection = Some(TimeRangeF::new(new_min, new_max));
 
                 return;
             }
@@ -235,11 +226,9 @@ impl TimeControl {
 
         match self.time_source.typ() {
             TimeType::Sequence => {
-                state.sequence_t += state.fps * dt;
-                state.time += TimeInt::from(state.sequence_t.floor() as i64);
-                state.sequence_t = state.sequence_t.fract();
+                state.time += TimeReal::from(state.fps * dt);
             }
-            TimeType::Time => state.time += TimeInt::from(Duration::from_secs(dt)),
+            TimeType::Time => state.time += TimeReal::from(Duration::from_secs(dt)),
         }
 
         if state.time > loop_range.max && self.looped {
@@ -260,7 +249,7 @@ impl TimeControl {
         if let Some(axis) = time_points.0.get(&self.time_source) {
             if let Some(state) = self.states.get_mut(&self.time_source) {
                 if state.time >= max(axis) {
-                    state.time = min(axis);
+                    state.time = min(axis).into();
                 }
             } else {
                 self.states
@@ -335,7 +324,7 @@ impl TimeControl {
     }
 
     /// The current time. Note that this only makes sense if there is no time selection!
-    pub fn time_int(&self) -> Option<TimeInt> {
+    pub fn time(&self) -> Option<TimeReal> {
         if self.is_time_filter_active() {
             return None; // no single time
         }
@@ -345,18 +334,18 @@ impl TimeControl {
 
     /// The current filtered time.
     /// Returns a "point" range if we have no selection (normal play)
-    pub fn time_range(&self) -> Option<TimeRange> {
+    pub fn time_range(&self) -> Option<TimeRangeF> {
         let state = self.states.get(&self.time_source)?;
 
         if self.is_time_filter_active() {
             state.selection
         } else {
-            Some(TimeRange::point(state.time))
+            Some(TimeRangeF::point(state.time))
         }
     }
 
     /// If the time filter is active, what range does it cover?
-    pub fn time_filter_range(&self) -> Option<TimeRange> {
+    pub fn time_filter_range(&self) -> Option<TimeRangeF> {
         if self.is_time_filter_active() {
             self.states.get(&self.time_source)?.selection
         } else {
@@ -365,7 +354,7 @@ impl TimeControl {
     }
 
     /// The current loop range, iff looping is turned on
-    pub fn loop_range(&self) -> Option<TimeRange> {
+    pub fn loop_range(&self) -> Option<TimeRangeF> {
         if self.selection_active && self.selection_type == TimeSelectionType::Loop {
             self.states.get(&self.time_source)?.selection
         } else {
@@ -379,7 +368,7 @@ impl TimeControl {
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
-    pub fn is_time_selected(&self, time_source: &TimeSource, needle: TimeInt) -> bool {
+    pub fn is_time_selected(&self, time_source: &TimeSource, needle: TimeReal) -> bool {
         if time_source != &self.time_source {
             return false;
         }
@@ -397,15 +386,17 @@ impl TimeControl {
         }
     }
 
-    pub fn set_source_and_time(&mut self, time_source: TimeSource, time: TimeInt) {
+    pub fn set_source_and_time(&mut self, time_source: TimeSource, time: impl Into<TimeReal>) {
         self.time_source = time_source;
         self.set_time(time);
     }
 
-    pub fn set_time(&mut self, time: TimeInt) {
+    pub fn set_time(&mut self, time: impl Into<TimeReal>) {
         if self.is_time_filter_active() {
             self.selection_active = false;
         }
+
+        let time = time.into();
 
         self.states
             .entry(self.time_source)
@@ -435,11 +426,11 @@ impl TimeControl {
         }
     }
 
-    pub fn time_selection(&self) -> Option<TimeRange> {
+    pub fn time_selection(&self) -> Option<TimeRangeF> {
         self.states.get(&self.time_source)?.selection
     }
 
-    pub fn set_time_selection(&mut self, selection: TimeRange) {
+    pub fn set_time_selection(&mut self, selection: TimeRangeF) {
         self.states
             .entry(self.time_source)
             .or_insert_with(|| TimeState::new(selection.min))
@@ -474,7 +465,7 @@ impl TimeControl {
                 }
             }
         }
-        Some(TimeQuery::LatestAt(self.time_int()?.as_i64()))
+        Some(TimeQuery::LatestAt(self.time()?.as_i64()))
     }
 }
 

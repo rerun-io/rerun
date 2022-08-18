@@ -426,7 +426,8 @@ pub enum TimeValue {
 
 impl TimeValue {
     #[inline]
-    pub fn new(typ: TimeType, int: TimeInt) -> Self {
+    pub fn new(typ: TimeType, int: impl Into<TimeInt>) -> Self {
+        let int = int.into();
         match typ {
             TimeType::Time => Self::Time(Time::from_ns_since_epoch(int.0)),
             TimeType::Sequence => Self::Sequence(int.0),

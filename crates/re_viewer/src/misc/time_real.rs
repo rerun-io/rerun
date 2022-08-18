@@ -1,4 +1,4 @@
-use fixed::{traits::LossyInto, FixedI128};
+use fixed::{traits::LossyInto as _, FixedI128};
 
 use re_log_types::TimeInt;
 
@@ -38,9 +38,17 @@ impl TimeReal {
     }
 }
 
+// ---------------
+
 impl From<i64> for TimeReal {
     fn from(integer: i64) -> Self {
         Self(integer.into())
+    }
+}
+
+impl From<f32> for TimeReal {
+    fn from(value: f32) -> Self {
+        Self(FixedI128::from_num(value))
     }
 }
 
@@ -89,6 +97,8 @@ impl From<TimeReal> for re_log_types::Duration {
         Self::from_nanos(int.as_i64())
     }
 }
+
+// ---------------
 
 impl std::ops::Neg for TimeReal {
     type Output = Self;
@@ -143,6 +153,68 @@ impl std::iter::Sum for TimeReal {
         sum
     }
 }
+
+// ---------------
+
+impl std::ops::Add<TimeInt> for TimeReal {
+    type Output = TimeReal;
+
+    fn add(self, rhs: TimeInt) -> Self::Output {
+        self + TimeReal::from(rhs)
+    }
+}
+
+impl std::ops::Sub<TimeInt> for TimeReal {
+    type Output = TimeReal;
+
+    fn sub(self, rhs: TimeInt) -> Self::Output {
+        self - TimeReal::from(rhs)
+    }
+}
+
+impl std::ops::Add<TimeReal> for TimeInt {
+    type Output = TimeReal;
+
+    fn add(self, rhs: TimeReal) -> Self::Output {
+        TimeReal::from(self) + rhs
+    }
+}
+
+impl std::ops::Sub<TimeReal> for TimeInt {
+    type Output = TimeReal;
+
+    fn sub(self, rhs: TimeReal) -> Self::Output {
+        TimeReal::from(self) - rhs
+    }
+}
+
+// ---------------
+
+impl PartialEq<TimeInt> for TimeReal {
+    fn eq(&self, other: &TimeInt) -> bool {
+        self.0 == other.as_i64()
+    }
+}
+
+impl PartialEq<TimeReal> for TimeInt {
+    fn eq(&self, other: &TimeReal) -> bool {
+        self.as_i64() == other.0
+    }
+}
+
+impl PartialOrd<TimeInt> for TimeReal {
+    fn partial_cmp(&self, other: &TimeInt) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.as_i64())
+    }
+}
+
+impl PartialOrd<TimeReal> for TimeInt {
+    fn partial_cmp(&self, other: &TimeReal) -> Option<std::cmp::Ordering> {
+        self.as_i64().partial_cmp(&other.0)
+    }
+}
+
+// ---------------
 
 #[test]
 fn test_time_value_f() {
