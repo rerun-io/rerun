@@ -10,6 +10,11 @@ command = ["cargo", "cranky", "--all-targets", "--all-features", "--color", "alw
 need_stdout = false
 watch = ["tests", "benches", "examples"]
 
+[jobs.check]
+command = ["cargo", "check", "--all-targets", "--all-features", "--color", "always"]
+need_stdout = false
+watch = ["tests", "benches", "examples"]
+
 [jobs.test]
 command = ["cargo", "test", "--color", "always"]
 need_stdout = true
