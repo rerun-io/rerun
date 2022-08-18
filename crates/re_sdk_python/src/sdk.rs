@@ -82,7 +82,7 @@ impl Sdk {
             self.registered_types.insert(obj_type_path.clone(), typ);
 
             self.send(LogMsg::TypeMsg(TypeMsg {
-                id: MsgId::random(),
+                msg_id: MsgId::random(),
                 type_path: obj_type_path.clone(),
                 object_type: typ,
             }));

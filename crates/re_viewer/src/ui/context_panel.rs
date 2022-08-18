@@ -116,13 +116,13 @@ pub(crate) fn view_object(
                     &DataPath::new(obj_path.clone(), *field_name),
                 );
 
-                let (_times, ids, data_vec) =
+                let (_times, msg_ids, data_vec) =
                     data_store.query_object(obj_path.index_path().clone(), &time_query);
 
                 if data_vec.len() == 1 {
                     let data = data_vec.last().unwrap();
-                    let id = &ids[0];
-                    crate::space_view::ui_data(context, ui, id, &data, preview);
+                    let msg_id = &msg_ids[0];
+                    crate::space_view::ui_data(context, ui, msg_id, &data, preview);
                 } else {
                     ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
                 }
@@ -148,13 +148,13 @@ fn view_data(
     let obj_store = store.get(obj_path.obj_type_path())?;
     let data_store = obj_store.get_field(field_name)?;
 
-    let (_times, ids, data_vec) =
+    let (_times, msg_ids, data_vec) =
         data_store.query_object(obj_path.index_path().clone(), &time_query);
 
     if data_vec.len() == 1 {
         let data = data_vec.last().unwrap();
-        let id = &ids[0];
-        show_detailed_data(context, ui, id, &data);
+        let msg_id = &msg_ids[0];
+        show_detailed_data(context, ui, msg_id, &data);
     } else {
         ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
     }
@@ -181,7 +181,7 @@ pub(crate) fn show_detailed_data_msg(
     msg: &DataMsg,
 ) {
     let DataMsg {
-        id,
+        msg_id,
         time_point,
         data_path,
         data,
@@ -206,13 +206,13 @@ pub(crate) fn show_detailed_data_msg(
 
             if !is_image {
                 ui.monospace("data:");
-                crate::space_view::ui_logged_data(context, ui, id, data, Preview::Medium);
+                crate::space_view::ui_logged_data(context, ui, msg_id, data, Preview::Medium);
                 ui.end_row();
             }
         });
 
     if let LoggedData::Single(Data::Tensor(tensor)) = &msg.data {
-        show_tensor(context, ui, id, tensor);
+        show_tensor(context, ui, msg_id, tensor);
     }
 }
 

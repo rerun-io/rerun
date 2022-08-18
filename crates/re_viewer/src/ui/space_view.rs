@@ -329,7 +329,7 @@ pub(crate) fn show_log_msg(
     preview: Preview,
 ) {
     let DataMsg {
-        id,
+        msg_id,
         time_point,
         data_path,
         data,
@@ -348,7 +348,7 @@ pub(crate) fn show_log_msg(
             ui.end_row();
 
             ui.monospace("data:");
-            ui_logged_data(context, ui, id, data, preview);
+            ui_logged_data(context, ui, msg_id, data, preview);
             ui.end_row();
         });
 }
@@ -372,17 +372,17 @@ pub(crate) fn ui_time_point(
 pub(crate) fn ui_logged_data(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    id: &MsgId,
+    msg_id: &MsgId,
     data: &LoggedData,
     preview: Preview,
 ) -> egui::Response {
     match data {
         LoggedData::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
-        LoggedData::Single(data) => ui_data(context, ui, id, data, preview),
+        LoggedData::Single(data) => ui_data(context, ui, msg_id, data, preview),
         LoggedData::BatchSplat(data) => {
             ui.horizontal(|ui| {
                 ui.label("Batch Splat:");
-                ui_data(context, ui, id, data, preview)
+                ui_data(context, ui, msg_id, data, preview)
             })
             .response
         }
@@ -392,7 +392,7 @@ pub(crate) fn ui_logged_data(
 pub(crate) fn ui_data(
     context: &mut ViewerContext,
     ui: &mut egui::Ui,
-    id: &MsgId,
+    msg_id: &MsgId,
     data: &Data,
     preview: Preview,
 ) -> egui::Response {
@@ -428,7 +428,7 @@ pub(crate) fn ui_data(
         Data::Camera(_) => ui.label("Camera"),
 
         Data::Tensor(tensor) => {
-            let egui_image = context.cache.image.get(id, tensor);
+            let egui_image = context.cache.image.get(msg_id, tensor);
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {
                     Preview::Small => 32.0,

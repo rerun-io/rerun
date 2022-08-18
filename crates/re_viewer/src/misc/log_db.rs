@@ -134,12 +134,12 @@ impl LogDb {
             .filter_map(|id| self.get_log_msg(id))
     }
 
-    pub fn get_log_msg(&self, id: &MsgId) -> Option<&LogMsg> {
-        self.log_messages.get(id)
+    pub fn get_log_msg(&self, msg_id: &MsgId) -> Option<&LogMsg> {
+        self.log_messages.get(msg_id)
     }
 
-    pub fn get_data_msg(&self, id: &MsgId) -> Option<&DataMsg> {
-        match self.log_messages.get(id)? {
+    pub fn get_data_msg(&self, msg_id: &MsgId) -> Option<&DataMsg> {
+        match self.log_messages.get(msg_id)? {
             LogMsg::TypeMsg(_) => None,
             LogMsg::DataMsg(msg) => Some(msg),
         }
@@ -181,7 +181,7 @@ impl ObjectTree {
         self.prefix_times
             .entry(msg.time_point.clone())
             .or_default()
-            .insert(msg.id);
+            .insert(msg.msg_id);
 
         match path {
             [] => {
@@ -220,12 +220,12 @@ impl DataColumns {
         self.times
             .entry(msg.time_point.clone())
             .or_default()
-            .insert(msg.id);
+            .insert(msg.msg_id);
 
         self.per_type
             .entry(msg.data.data_type())
             .or_default()
-            .insert(msg.id);
+            .insert(msg.msg_id);
     }
 
     pub fn summary(&self) -> String {

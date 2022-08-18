@@ -73,8 +73,8 @@ pub enum LogMsg {
 impl LogMsg {
     pub fn id(&self) -> MsgId {
         match self {
-            Self::TypeMsg(msg) => msg.id,
-            Self::DataMsg(msg) => msg.id,
+            Self::TypeMsg(msg) => msg.msg_id,
+            Self::DataMsg(msg) => msg.msg_id,
         }
     }
 }
@@ -89,7 +89,7 @@ impl_into_enum!(DataMsg, LogMsg, DataMsg);
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TypeMsg {
     /// A unique id per [`LogMsg`].
-    pub id: MsgId,
+    pub msg_id: MsgId,
 
     /// The [`ObjTypePath`] target.
     pub type_path: ObjTypePath,
@@ -101,7 +101,7 @@ pub struct TypeMsg {
 impl TypeMsg {
     pub fn object_type(type_path: ObjTypePath, object_type: ObjectType) -> Self {
         Self {
-            id: MsgId::random(),
+            msg_id: MsgId::random(),
             type_path,
             object_type,
         }
@@ -115,7 +115,7 @@ impl TypeMsg {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DataMsg {
     /// A unique id per [`DataMsg`].
-    pub id: MsgId,
+    pub msg_id: MsgId,
 
     /// Time information (when it was logged, when it was received, …)
     pub time_point: TimePoint,
@@ -138,7 +138,7 @@ pub fn data_msg(
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.into(), field_name.into()),
         data: data.into(),
-        id: MsgId::random(),
+        msg_id: MsgId::random(),
     }
 }
 

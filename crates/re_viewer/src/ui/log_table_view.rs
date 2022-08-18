@@ -107,7 +107,7 @@ fn table_row(
     match msg {
         LogMsg::TypeMsg(msg) => {
             let TypeMsg {
-                id: _,
+                msg_id: _,
                 type_path,
                 object_type,
             } = msg;
@@ -129,7 +129,7 @@ fn table_row(
         }
         LogMsg::DataMsg(msg) => {
             let DataMsg {
-                id,
+                msg_id,
                 time_point,
                 data_path,
                 data,
@@ -152,7 +152,7 @@ fn table_row(
                 crate::space_view::ui_logged_data(
                     context,
                     ui,
-                    id,
+                    msg_id,
                     data,
                     Preview::Specific(row_height),
                 );
