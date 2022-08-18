@@ -68,7 +68,7 @@ impl SpaceView {
 
         let objects = ctx
             .rec_cfg
-            .time_control
+            .time_ctrl
             .selected_objects(ctx.log_db)
             .partition_on_space();
 

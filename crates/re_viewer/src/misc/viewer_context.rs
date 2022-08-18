@@ -23,8 +23,8 @@ pub(crate) struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
-    pub fn time_control(&mut self) -> &mut TimeControl {
-        &mut self.rec_cfg.time_control
+    pub fn time_ctrl(&mut self) -> &mut TimeControl {
+        &mut self.rec_cfg.time_ctrl
     }
 
     /// Show a type path and make it selectable.
@@ -108,9 +108,7 @@ impl<'a> ViewerContext<'a> {
         time_source: &TimeSource,
         value: TimeInt,
     ) -> egui::Response {
-        let is_selected = self
-            .time_control()
-            .is_time_selected(time_source, value.into());
+        let is_selected = self.time_ctrl().is_time_selected(time_source, value.into());
 
         let response = ui.selectable_label(
             is_selected,
@@ -118,9 +116,9 @@ impl<'a> ViewerContext<'a> {
         );
         if response.clicked() {
             self.rec_cfg
-                .time_control
+                .time_ctrl
                 .set_source_and_time(*time_source, value);
-            self.rec_cfg.time_control.pause();
+            self.rec_cfg.time_ctrl.pause();
         }
         response
     }
@@ -145,7 +143,7 @@ impl<'a> ViewerContext<'a> {
 #[serde(default)]
 pub(crate) struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
-    pub time_control: crate::TimeControl,
+    pub time_ctrl: crate::TimeControl,
 
     /// Currently selected thing; shown in the context menu.
     pub selection: Selection,
