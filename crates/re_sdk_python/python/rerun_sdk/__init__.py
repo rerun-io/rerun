@@ -157,18 +157,22 @@ def log_depth_image(obj_path, image, meter=None, space=None):
     log_tensor(obj_path, image, meter=meter, space=space)
 
 
-def log_tensor(obj_path, image, meter=None, space=None):
+def log_tensor(obj_path, tensor, meter=None, space=None):
     """
     If no `space` is given, the space name "2D" will be used.
     """
-    if image.dtype == 'uint8':
-        rerun_rs.log_tensor_u8(obj_path, image, meter, space)
-    elif image.dtype == 'uint16':
-        rerun_rs.log_tensor_u16(obj_path, image, meter, space)
-    elif image.dtype == 'float32':
-        rerun_rs.log_tensor_f32(obj_path, image, meter, space)
-    elif image.dtype == 'float64':
+    # Workaround to handle that `rerun_rs` can't handle numpy views correctly.
+    # TODO(nikolausWest): Remove this extra copy once underlying issue in Rust SDK is fixed.
+    tensor = tensor if tensor.base is None else tensor.copy()
+
+    if tensor.dtype == 'uint8':
+        rerun_rs.log_tensor_u8(obj_path, tensor, meter, space)
+    elif tensor.dtype == 'uint16':
+        rerun_rs.log_tensor_u16(obj_path, tensor, meter, space)
+    elif tensor.dtype == 'float32':
+        rerun_rs.log_tensor_f32(obj_path, tensor, meter, space)
+    elif tensor.dtype == 'float64':
         rerun_rs.log_tensor_f32(
-            obj_path, image.astype('float32'), meter, space)
+            obj_path, tensor.astype('float32'), meter, space)
     else:
-        raise TypeError(f"Unsupported dtype: {image.dtype}")
+        raise TypeError(f"Unsupported dtype: {tensor.dtype}")
