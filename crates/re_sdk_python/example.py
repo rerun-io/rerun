@@ -1,16 +1,37 @@
-"""
-Shows how to use the rerun SDK.
-"""
+"""Shows how to use the rerun SDK."""
 
 from dataclasses import dataclass
-import math
-from typing import Iterator, Sequence, Tuple
+from typing import Iterator, Tuple
 
 import argparse
 import cv2
 import numpy as np
 
 import rerun_sdk as rerun
+
+
+def log_dummy_data(args):
+    """Log a few frames of generated dummy data to show how the Rerun SDK is used."""
+    NUM_FRAMES = 20
+
+    for sample in generate_dummy_data(num_frames=NUM_FRAMES):
+        # This will assign logged objects a "time source" called `frame_nr`.
+        # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
+        rerun.set_time_sequence("frame_nr", sample.frame_idx)
+
+        # The depth image is in millimeters, so we set meter=1000
+        rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
+
+        # TODO(nikolausWest): Make setting the color here optional
+        rgba = [200, 0, 100, 200]
+        colors = np.array([rgba])
+        # TODO(nikolausWest): Figure out why this copy is needed.
+        rerun.log_points("depth3D", sample.point_cloud.copy(), colors)
+
+        rerun.log_image("rgb", sample.rgb_image)
+
+        ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
+        rerun.log_bbox("bbox", [car_x, car_y], [car_w, car_h], "A car")
 
 
 class DummyCar:
@@ -148,29 +169,6 @@ def generate_dummy_data(num_frames: int) -> Iterator[SampleFrame]:
 
         yield sample
         car.drive_one_step()
-
-
-def log_dummy_data(args):
-    NUM_FRAMES = 20
-
-    for sample in generate_dummy_data(num_frames=NUM_FRAMES):
-        # This will assign logged objects a "time source" called `frame_nr`.
-        # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
-        rerun.set_time_sequence("frame_nr", sample.frame_idx)
-
-        # The depth image is in millimeters, so we set meter=1000
-        rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
-
-        # TODO(nikolausWest): Make setting the color here optional
-        rgba = [200, 0, 100, 200]
-        colors = np.array([rgba])
-        # TODO(nikolausWest): Figure out why this copy is needed.
-        rerun.log_points("depth3D", sample.point_cloud.copy(), colors)
-
-        rerun.log_image("rgb", sample.rgb_image)
-
-        ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rerun.log_bbox("bbox", [car_x, car_y], [car_w, car_h], "A car")
 
 
 if __name__ == '__main__':
