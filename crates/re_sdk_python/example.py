@@ -22,10 +22,7 @@ def log_dummy_data(args):
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
 
-        # TODO(nikolausWest): Make setting the color here optional
-        rgba = [200, 0, 100, 200]
-        colors = np.array([rgba])
-        rerun.log_points("depth3D", sample.point_cloud.copy(), colors)
+        rerun.log_points("depth3D", sample.point_cloud.copy())
 
         rerun.log_image("rgb", sample.rgb_image)
 

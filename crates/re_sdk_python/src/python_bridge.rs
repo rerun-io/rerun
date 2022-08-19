@@ -192,7 +192,7 @@ fn log_bbox(
 fn log_points_rs(
     obj_path: &str,
     positions: numpy::PyReadonlyArray2<'_, f64>,
-    colors: numpy::PyReadonlyArray2<'_, u8>,
+    colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     space: Option<String>,
 ) -> PyResult<()> {
     if positions.is_empty() {

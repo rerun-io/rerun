@@ -106,7 +106,10 @@ def log_points(obj_path, positions, colors=None, space=None):
     If no `space` is given, the space name "2D" or "3D" will be used,
     depending on the dimensionality of the data.
     """
-    if colors is not None:
+    if colors is None:
+        # An empty array represents no colors.
+        colors = np.array((), dtype=np.uint8)
+    else:
         # Rust expects colors in 0-255 uint8
         if colors.dtype in ['float32', 'float64']:
             if np.amax(colors) < 1.1:
