@@ -39,7 +39,7 @@ anyhow = "1.0"
 bytemuck = "1.7"
 cgmath = { version = "0.18", features = ["mint"] }
 fixed = { version = "1.17", features = ["serde"] }
-glam = { version = "0.20", features = ["mint"] }
+glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new versio nof `macaw` is released
 glow = "0.11"
 image = { version = "0.23", default-features = false, features = ["png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
@@ -50,7 +50,7 @@ macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
 nohash-hasher = "0.2"
 rand = { version = "0.8", features = ["small_rng"] }
-rfd = "0.8"
+rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 three-d = { version = "0.12.2", default-features = false }
