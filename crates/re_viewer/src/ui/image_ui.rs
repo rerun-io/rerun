@@ -76,7 +76,6 @@ fn show_zoomed_image_region(
     meter: Option<f32>,
 ) {
     use egui::*;
-    use image::GenericImageView as _;
 
     let (_id, zoom_rect) = tooltip_ui.allocate_space(vec2(192.0, 192.0));
     let w = dynamic_image.width() as _;
@@ -209,8 +208,9 @@ fn show_zoomed_image_region(
                     }
 
                     DynamicImage::ImageRgb8(_)
-                    | DynamicImage::ImageBgr8(_)
-                    | DynamicImage::ImageRgb16(_) => {
+                    | DynamicImage::ImageRgb16(_)
+                    | DynamicImage::ImageRgb32F(_) => {
+                        // TODO(emilk): show 16-bit and 32f values differently
                         format!(
                             "R: {}\nG: {}\nB: {}\n\n#{:02X}{:02X}{:02X}",
                             r, g, b, r, g, b
@@ -218,8 +218,17 @@ fn show_zoomed_image_region(
                     }
 
                     DynamicImage::ImageRgba8(_)
-                    | DynamicImage::ImageBgra8(_)
-                    | DynamicImage::ImageRgba16(_) => {
+                    | DynamicImage::ImageRgba16(_)
+                    | DynamicImage::ImageRgba32F(_) => {
+                        // TODO(emilk): show 16-bit and 32f values differently
+                        format!(
+                            "R: {}\nG: {}\nB: {}\nA: {}\n\n#{:02X}{:02X}{:02X}{:02X}",
+                            r, g, b, a, r, g, b, a
+                        )
+                    }
+
+                    _ => {
+                        re_log::warn_once!("Unknown image color type: {:?}", dynamic_image.color());
                         format!(
                             "R: {}\nG: {}\nB: {}\nA: {}\n\n#{:02X}{:02X}{:02X}{:02X}",
                             r, g, b, a, r, g, b, a
