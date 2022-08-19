@@ -25,7 +25,6 @@ def log_dummy_data(args):
         # TODO(nikolausWest): Make setting the color here optional
         rgba = [200, 0, 100, 200]
         colors = np.array([rgba])
-        # TODO(nikolausWest): Figure out why this copy is needed.
         rerun.log_points("depth3D", sample.point_cloud.copy(), colors)
 
         rerun.log_image("rgb", sample.rgb_image)
