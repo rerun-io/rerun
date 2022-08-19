@@ -25,10 +25,10 @@ re_string_interner = { path = "../re_string_interner" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 # We use bleeding edge egui, from 2022-08-19
-eframe      = { git = "https://github.com/emilk/egui", rev = "5514a8afda53c282d2be670bef657d5c7812d467", default-features = false, features = ["default_fonts", "glow", "persistence"] }
-egui        = { git = "https://github.com/emilk/egui", rev = "5514a8afda53c282d2be670bef657d5c7812d467", features = ["extra_debug_asserts", "tracing"] }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "5514a8afda53c282d2be670bef657d5c7812d467", features = ["tracing"] }
-egui_glow   = { git = "https://github.com/emilk/egui", rev = "5514a8afda53c282d2be670bef657d5c7812d467" }
+eframe      = { git = "https://github.com/emilk/egui", rev = "193a434717791af7a2904c92f83d83422390fae0", default-features = false, features = ["default_fonts", "glow", "persistence"] }
+egui        = { git = "https://github.com/emilk/egui", rev = "193a434717791af7a2904c92f83d83422390fae0", features = ["extra_debug_asserts", "tracing"] }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "193a434717791af7a2904c92f83d83422390fae0", features = ["tracing"] }
+egui_glow   = { git = "https://github.com/emilk/egui", rev = "193a434717791af7a2904c92f83d83422390fae0" }
 # eframe      = { path = "../../../egui/eframe", features = ["persistence"] }
 # egui        = { path = "../../../egui/egui", features = ["extra_debug_asserts", "tracing"] }
 # egui_extras = { path = "../../../egui/egui_extras", features = ["tracing"] }
@@ -39,7 +39,7 @@ anyhow = "1.0"
 bytemuck = "1.7"
 cgmath = { version = "0.18", features = ["mint"] }
 fixed = { version = "1.17", features = ["serde"] }
-glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new versio nof `macaw` is released
+glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
 glow = "0.11"
 image = { version = "0.23", default-features = false, features = ["png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
