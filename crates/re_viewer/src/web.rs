@@ -14,7 +14,11 @@ pub fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::J
     // Redirect tracing to console.log and friends:
     tracing_wasm::set_as_global_default();
 
-    let web_options = eframe::WebOptions::default();
+    let web_options = eframe::WebOptions {
+        follow_system_theme: false,
+        default_theme: eframe::Theme::Dark,
+        ..Default::default()
+    };
 
     eframe::start_web(
         canvas_id,
