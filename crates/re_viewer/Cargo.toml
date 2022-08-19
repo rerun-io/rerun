@@ -39,7 +39,7 @@ egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
 glow = "0.11"
-image = { version = "0.23", default-features = false, features = ["jpeg", "png"] }
+image = { version = "0.24", default-features = false, features = ["jpeg", "png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
 macaw = { version = "0.17", features = ["with_serde"] }

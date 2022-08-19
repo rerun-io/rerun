@@ -1,5 +1,5 @@
 [package]
-name = "objectron"
+name = "nyud"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.63"
@@ -13,18 +13,19 @@ web = ["re_ws_comms", "re_web_server", "tokio", "webbrowser"]
 
 
 [dependencies]
-re_log = { path = "../../crates/re_log" }
 re_log_types = { path = "../../crates/re_log_types" }
 re_viewer = { path = "../../crates/re_viewer" }
 
 anyhow = "1"
+bytemuck = "1.9"
 clap = { version = "3.1.6", features = ["derive"] }
-glam = "0.20" # to convert rotation matrices to quaternions
-image = { version = "0.24", default-features = false, features = ["jpeg"] }
+glam = "0.20"
+image = { version = "0.24", default-features = false, features = ["pnm"] }
 itertools = "0.10"
 mimalloc = "0.1.29"
-prost = "0.10"
+tracing = "0.1"
 tracing-subscriber = "0.3"
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
 # Optional:
 re_ws_comms = { path = "../../crates/re_ws_comms", optional = true, features = ["server"] }
@@ -38,7 +39,3 @@ tokio = { version = "1.0.0", optional = true, default-features = false, features
     "time",
 ] }
 webbrowser = {version = "0.7", optional = true }
-
-
-# [build-dependencies]
-# prost-build = "0.10"
