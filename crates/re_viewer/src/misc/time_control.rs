@@ -171,9 +171,10 @@ impl TimeControl {
             full_range.into()
         };
 
-        egui_ctx.request_repaint();
-
         let dt = egui_ctx.input().stable_dt.at_most(0.1) * self.speed;
+
+        // ----
+        // Are we moving a selection or a single marker?
 
         if active_selection_type == Some(TimeSelectionType::Filter) {
             if let Some(time_selection) = state.selection {
@@ -188,21 +189,24 @@ impl TimeControl {
                     new_min = new_min.max(loop_range.min - length);
                 }
 
+                if time_selection.max >= loop_range.max && !self.looped {
+                    // Don't pause or rewind, just stop moving time forward
+                    // until we receive more data!
+                    // This is important for "live view".
+                    return;
+                }
+
                 match self.time_source.typ() {
                     TimeType::Sequence => {
                         new_min += TimeReal::from(state.fps * dt);
                     }
                     TimeType::Time => new_min += TimeReal::from(Duration::from_secs(dt)),
                 }
+                egui_ctx.request_repaint(); // keep playing next frame
 
-                if new_min > loop_range.max {
-                    if self.looped {
-                        // Put max just at start of loop:
-                        new_min = loop_range.min - length;
-                    } else {
-                        new_min = loop_range.max;
-                        self.playing = false;
-                    }
+                if new_min > loop_range.max && self.looped {
+                    // Put max just at start of loop:
+                    new_min = loop_range.min - length;
                 }
 
                 let new_max = new_min + length;
@@ -231,6 +235,7 @@ impl TimeControl {
             }
             TimeType::Time => state.time += TimeReal::from(Duration::from_secs(dt)),
         }
+        egui_ctx.request_repaint(); // keep playing next frame
 
         if state.time > loop_range.max && self.looped {
             state.time = loop_range.min;
