@@ -106,7 +106,10 @@ def log_points(obj_path, positions, colors=None, space=None):
     If no `space` is given, the space name "2D" or "3D" will be used,
     depending on the dimensionality of the data.
     """
-    if colors is not None:
+    if colors is None:
+        # An empty array represents no colors.
+        colors = np.array((), dtype=np.uint8)
+    else:
         # Rust expects colors in 0-255 uint8
         if colors.dtype in ['float32', 'float64']:
             if np.amax(colors) < 1.1:
@@ -118,6 +121,10 @@ def log_points(obj_path, positions, colors=None, space=None):
         # TODO(emilk): extend colors with alpha=255 if colors is Nx3
 
     positions.astype('float32')
+
+    # Workaround to handle that `rerun_rs` can't handle numpy views correctly.
+    # TODO(nikolausWest): Remove this extra copy once underlying issue in Rust SDK is fixed.
+    positions = positions if positions.base is None else positions.copy()
 
     rerun_rs.log_points_rs(obj_path, positions, colors, space)
 
