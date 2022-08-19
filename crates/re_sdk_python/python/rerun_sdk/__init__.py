@@ -122,6 +122,10 @@ def log_points(obj_path, positions, colors=None, space=None):
 
     positions.astype('float32')
 
+    # Workaround to handle that `rerun_rs` can't handle numpy views correctly.
+    # TODO(nikolausWest): Remove this extra copy once underlying issue in Rust SDK is fixed.
+    positions = positions if positions.base is None else positions.copy()
+
     rerun_rs.log_points_rs(obj_path, positions, colors, space)
 
 

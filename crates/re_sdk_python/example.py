@@ -22,7 +22,7 @@ def log_dummy_data(args):
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
 
-        rerun.log_points("depth3D", sample.point_cloud.copy())
+        rerun.log_points("depth3D", sample.point_cloud)
 
         rerun.log_image("rgb", sample.rgb_image)
 
