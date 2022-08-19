@@ -4,7 +4,7 @@ Shows how to use the rerun SDK.
 
 from dataclasses import dataclass
 import math
-from typing import List, Sequence, Tuple
+from typing import Iterator, Sequence, Tuple
 
 import argparse
 import cv2
@@ -97,8 +97,7 @@ def back_project(depth_image_mm: np.ndarray, u_coords: np.ndarray, v_coords: np.
     x = (u_coords.reshape(-1).astype(float) - u_center) * z / focal_length
     y = (v_coords.reshape(-1).astype(float) - v_center) * z / focal_length
 
-    # TODO: Figure out why this copy is needed.
-    back_projected = np.vstack((x, y, z)).T.copy()
+    back_projected = np.vstack((x, y, z)).T
     return back_projected
 
 
@@ -112,7 +111,7 @@ class SampleFrame:
     car_bbox: Tuple[np.ndarray, np.ndarray]
 
 
-def generate_dummy_data(num_frames: int) -> Sequence[SampleFrame]:
+def generate_dummy_data(num_frames: int) -> Iterator[SampleFrame]:
     """This function generates dummy data to log."""
     # Generate some fake data
     im_w = 480
@@ -135,7 +134,6 @@ def generate_dummy_data(num_frames: int) -> Sequence[SampleFrame]:
 
     # Generate `num_frames` sample data
     car = DummyCar(center=(140, 100), size=(200, 100), distance_mm=4000)
-    samples = []  # type: List[SampleFrame]
     for i in range(num_frames):
         depth_image_mm = depth_background_mm.copy()
         rgb = rgb_background.copy()
@@ -147,14 +145,13 @@ def generate_dummy_data(num_frames: int) -> Sequence[SampleFrame]:
                              point_cloud=point_cloud,
                              rgb_image=rgb,
                              car_bbox=(car.min, car.size))
-        samples.append(sample)
-        car.drive_one_step()
 
-    return samples
+        yield sample
+        car.drive_one_step()
 
 
 def log_dummy_data(args):
-    NUM_FRAMES = 40
+    NUM_FRAMES = 20
 
     for sample in generate_dummy_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a "time source" called `frame_nr`.
@@ -164,9 +161,11 @@ def log_dummy_data(args):
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
 
+        # TODO: Make setting the color here optional
         rgba = [200, 0, 100, 200]
         colors = np.array([rgba])
-        rerun.log_points("depth3D", sample.point_cloud, colors)
+        # TODO: Figure out why this copy is needed.
+        rerun.log_points("depth3D", sample.point_cloud.copy(), colors)
 
         rerun.log_image("rgb", sample.rgb_image)
 
