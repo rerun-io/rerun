@@ -12,7 +12,7 @@ import rerun_sdk as rerun
 
 def log_dummy_data(args):
     """Log a few frames of generated dummy data to show how the Rerun SDK is used."""
-    NUM_FRAMES = 20
+    NUM_FRAMES = 40
 
     for sample in generate_dummy_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a "time source" called `frame_nr`.
