@@ -10,7 +10,7 @@ publish = false
 [dependencies]
 re_log_types = { path = "../re_log_types" }
 
-ahash = "0.7"
+ahash = "0.8"
 itertools = "0.10"
 nohash-hasher = "0.2"
 tracing = "0.1"
