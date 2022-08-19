@@ -31,7 +31,7 @@ fn tensor_to_image_pair(debug_name: String, tensor: &Tensor) -> (DynamicImage, R
     let dynamic_image = match tensor_to_dynamic_image(tensor) {
         Ok(dynamic_image) => dynamic_image,
         Err(err) => {
-            tracing::warn!("Bad image {debug_name:?}: {err}");
+            tracing::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
             DynamicImage::ImageRgb8(image::RgbImage::from_pixel(1, 1, image::Rgb([255, 0, 255])))
         }
     };

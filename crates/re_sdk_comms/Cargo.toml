@@ -13,6 +13,7 @@ server = []
 
 
 [dependencies]
+re_error = { path = "../re_error" }
 re_log_types = { path = "../re_log_types", features = ["serde"] }
 
 anyhow = "1.0.56"

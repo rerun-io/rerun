@@ -2682,6 +2682,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_error"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "re_log_types"
 version = "0.1.0"
 dependencies = [
@@ -2706,6 +2713,7 @@ dependencies = [
  "bincode",
  "crossbeam",
  "ctrlc",
+ "re_error",
  "re_log_types",
  "tracing",
 ]
@@ -2769,6 +2777,7 @@ dependencies = [
  "puffin_http",
  "rand",
  "re_data_store",
+ "re_error",
  "re_log_types",
  "re_string_interner",
  "re_ws_comms",
@@ -2805,6 +2814,7 @@ dependencies = [
  "futures-channel",
  "futures-util",
  "parking_lot",
+ "re_error",
  "re_log_types",
  "tokio",
  "tokio-tungstenite",

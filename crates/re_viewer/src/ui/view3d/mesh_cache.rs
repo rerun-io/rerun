@@ -32,7 +32,7 @@ impl CpuMeshCache {
                 match result {
                     Ok(cpu_mesh) => Some(Arc::new(cpu_mesh)),
                     Err(err) => {
-                        tracing::warn!("{}: Failed to load mesh: {}", name, err);
+                        tracing::warn!("{name}: Failed to load mesh: {}", re_error::format(&err));
                         None
                     }
                 }
@@ -54,7 +54,11 @@ impl GpuMeshCache {
             .or_insert_with(|| match cpu_mesh.to_gpu(three_d) {
                 Ok(gpu_mesh) => Some(gpu_mesh),
                 Err(err) => {
-                    tracing::warn!("{}: Failed to load mesh: {}", cpu_mesh.name(), err);
+                    tracing::warn!(
+                        "{}: Failed to load mesh: {}",
+                        cpu_mesh.name(),
+                        re_error::format(&err)
+                    );
                     None
                 }
             });

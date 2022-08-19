@@ -100,7 +100,7 @@ async fn accept_connection(
     if let Err(e) = handle_connection(log_stream, tcp_stream, history).await {
         match e {
             Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
-            err => tracing::error!("Error processing connection: {}", err),
+            err => tracing::error!("Error processing connection: {err}"),
         }
     }
 }
@@ -133,7 +133,7 @@ async fn handle_connection(
                         tracing::debug!("Received message: {:?}", msg);
                     }
                     Some(Err(err)) => {
-                        tracing::warn!("Error message: {:?}", err);
+                        tracing::warn!("Error message: {err:?}");
                         break;
                     }
                     None => {

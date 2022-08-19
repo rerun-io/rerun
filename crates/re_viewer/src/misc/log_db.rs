@@ -109,7 +109,7 @@ impl LogDb {
         }
 
         if let Err(err) = self.data_store.insert(msg) {
-            tracing::warn!("Failed to add data to data_store: {:?}", err);
+            tracing::warn!("Failed to add data to data_store: {err:?}");
         }
 
         self.time_points.insert(&msg.time_point);

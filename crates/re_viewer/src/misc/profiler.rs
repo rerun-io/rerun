@@ -25,7 +25,10 @@ impl Profiler {
                 Some(puffin_server)
             }
             Err(err) => {
-                tracing::warn!("Failed to start puffin profiling server: {}", err);
+                tracing::warn!(
+                    "Failed to start puffin profiling server: {}",
+                    re_error::format(&err)
+                );
                 None
             }
         };

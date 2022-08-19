@@ -27,7 +27,7 @@ impl Connection {
                     WsMessage::Binary(binary) => match decode_log_msg(&binary) {
                         Ok(log_msg) => on_log_msg(log_msg),
                         Err(err) => {
-                            tracing::error!("Failed to parse message: {:?}", err);
+                            tracing::error!("Failed to parse message: {}", re_error::format(&err));
                             ControlFlow::Break(())
                         }
                     },
@@ -58,7 +58,7 @@ impl Connection {
                 }
             }),
         )
-        .map_err(|err| anyhow::format_err!("ewebsock: {}", err))?;
+        .map_err(|err| anyhow::format_err!("ewebsock: {err}"))?;
 
         Ok(Self(sender))
     }

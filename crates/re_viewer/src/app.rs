@@ -502,7 +502,7 @@ fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
             tracing::info!("Data saved to {:?}", path);
         }
         Err(err) => {
-            let msg = format!("Failed saving data to {path:?}: {err}");
+            let msg = format!("Failed saving data to {path:?}: {}", re_error::format(&err));
             tracing::error!("{msg}");
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
@@ -547,7 +547,7 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
             Some(new_log_db)
         }
         Err(err) => {
-            let msg = format!("Failed loading {path:?}: {err}");
+            let msg = format!("Failed loading {path:?}: {}", re_error::format(&err));
             tracing::error!("{msg}");
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
@@ -566,7 +566,7 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
             Some(log_db)
         }
         Err(err) => {
-            let msg = format!("Failed loading {name:?}: {err}");
+            let msg = format!("Failed loading {name:?}: {}", re_error::format(&err));
             tracing::error!("{msg}");
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)

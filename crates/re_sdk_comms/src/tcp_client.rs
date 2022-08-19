@@ -93,7 +93,7 @@ impl TcpClient {
     pub fn flush(&mut self) {
         if let Some(stream) = &mut self.stream {
             if let Err(err) = stream.flush() {
-                tracing::warn!("Failed to flush: {:?}", err);
+                tracing::warn!("Failed to flush: {err:?}");
             }
         }
         tracing::trace!("TCP stream flushed.");
