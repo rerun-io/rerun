@@ -49,8 +49,8 @@ impl SpaceInfo {
 #[serde(default)]
 pub(crate) struct SpaceView {
     // per space
-    state_2d: ahash::AHashMap<Option<ObjPath>, crate::view2d::State2D>,
-    state_3d: ahash::AHashMap<Option<ObjPath>, crate::view3d::State3D>,
+    state_2d: ahash::HashMap<Option<ObjPath>, crate::view2d::State2D>,
+    state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
 
     selected: SelectedSpace,
 }

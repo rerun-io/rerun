@@ -8,7 +8,7 @@ publish = false
 
 
 [dependencies]
-ahash = "0.7"
+ahash = "0.8"
 nohash-hasher = "0.2"
 once_cell = "1.12"
 parking_lot = "0.12"

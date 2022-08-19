@@ -687,7 +687,7 @@ impl<'s> Objects<'s> {
 }
 
 /// Partitioned on space.
-pub type ObjectsBySpace<'s> = ahash::AHashMap<Option<&'s ObjPath>, Objects<'s>>; // TODO(emilk): nohash_hasher
+pub type ObjectsBySpace<'s> = ahash::HashMap<Option<&'s ObjPath>, Objects<'s>>; // TODO(emilk): nohash_hasher
 
 #[derive(Default)]
 struct SpacePartitioner<'s> {

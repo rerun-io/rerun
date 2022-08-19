@@ -43,6 +43,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57e6e951cfbb2db8de1828d49073a113a29fd7117b1596caa781a258c7e38d72"
+dependencies = [
+ "cfg-if",
+ "getrandom",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -883,7 +895,7 @@ name = "egui"
 version = "0.18.1"
 source = "git+https://github.com/emilk/egui?rev=48e7f219a3aaa43084d042590b2871c01415e642#48e7f219a3aaa43084d042590b2871c01415e642"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
  "epaint",
  "nohash-hasher",
  "ron",
@@ -953,7 +965,7 @@ version = "0.18.1"
 source = "git+https://github.com/emilk/egui?rev=48e7f219a3aaa43084d042590b2871c01415e642#48e7f219a3aaa43084d042590b2871c01415e642"
 dependencies = [
  "ab_glyph",
- "ahash",
+ "ahash 0.7.6",
  "atomic_refcell",
  "bytemuck",
  "emath",
@@ -2368,9 +2380,9 @@ checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
 
 [[package]]
 name = "plotters"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9428003b84df1496fb9d6eeee9c5f8145cb41ca375eb0dad204328888832811f"
+checksum = "716b4eeb6c4a1d3ecc956f75b43ec2e8e8ba80026413e70a3f41fd3313d3492b"
 dependencies = [
  "num-traits",
  "plotters-backend",
@@ -2669,7 +2681,7 @@ dependencies = [
 name = "re_data_store"
 version = "0.1.0"
 dependencies = [
- "ahash",
+ "ahash 0.8.0",
  "criterion",
  "itertools",
  "mimalloc",
@@ -2683,7 +2695,7 @@ dependencies = [
 name = "re_log_types"
 version = "0.1.0"
 dependencies = [
- "ahash",
+ "ahash 0.8.0",
  "anyhow",
  "bytemuck",
  "chrono",
@@ -2730,7 +2742,7 @@ dependencies = [
 name = "re_string_interner"
 version = "0.1.0"
 dependencies = [
- "ahash",
+ "ahash 0.8.0",
  "nohash-hasher",
  "once_cell",
  "parking_lot",
@@ -2741,7 +2753,7 @@ dependencies = [
 name = "re_viewer"
 version = "0.1.0"
 dependencies = [
- "ahash",
+ "ahash 0.8.0",
  "anyhow",
  "arboard",
  "bytemuck",
@@ -2869,9 +2881,9 @@ dependencies = [
 
 [[package]]
 name = "rfd"
-version = "0.8.4"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f756b55bff8f256a1a8c24dbabb1430ac8110628e418a02e4a1c5ff67179f56"
+checksum = "0149778bd99b6959285b0933288206090c50e2327f47a9c463bfdbf45c8823ea"
 dependencies = [
  "block",
  "dispatch",
@@ -2884,7 +2896,7 @@ dependencies = [
  "objc",
  "objc-foundation",
  "objc_id",
- "raw-window-handle 0.4.3",
+ "raw-window-handle 0.5.0",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

@@ -1,7 +1,6 @@
 use std::collections::{hash_map::Entry, BTreeMap};
 use std::sync::Arc;
 
-use ahash::AHashMap;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
@@ -179,7 +178,7 @@ impl<Time: 'static + Copy + Ord> TypePathDataStore<Time> {
 ///
 /// That is, all objects with the same type path are stored here.
 pub struct ObjStore<Time> {
-    fields: AHashMap<FieldName, DataStoreTypeErased<Time>>,
+    fields: ahash::HashMap<FieldName, DataStoreTypeErased<Time>>,
 
     /// For each index suffix we know, what is the full object path?
     obj_paths_from_batch_suffix: nohash_hasher::IntMap<IndexHash, ObjPath>,
