@@ -51,9 +51,9 @@ jobs:
         with:
           profile: minimal
           toolchain: 1.63.0
+          target: wasm32-unknown-unknown
           override: true
       - run: sudo apt-get update && sudo apt-get install libgtk-3-dev
-      - run: rustup target add wasm32-unknown-unknown
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -85,8 +85,8 @@ jobs:
           profile: minimal
           toolchain: 1.63.0
           override: true
+          components: rustfmt
       - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
-      - run: rustup component add rustfmt
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -148,8 +148,8 @@ jobs:
         with:
           profile: minimal
           toolchain: 1.63.0
+          target: wasm32-unknown-unknown
           override: true
-      - run: rustup target add wasm32-unknown-unknown
       - run: ./crates/re_viewer/setup_web.sh
       - run: ./crates/re_viewer/wasm_bindgen_check.sh
 
