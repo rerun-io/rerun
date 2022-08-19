@@ -24,11 +24,11 @@ re_log_types = { path = "../re_log_types", features = ["save", "load"] }
 re_string_interner = { path = "../re_string_interner" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
-# We use bleeding edge egui, from 2022-08-15
-eframe      = { git = "https://github.com/emilk/egui", rev = "48e7f219a3aaa43084d042590b2871c01415e642", default-features = false, features = ["default_fonts", "glow", "persistence"] }
-egui        = { git = "https://github.com/emilk/egui", rev = "48e7f219a3aaa43084d042590b2871c01415e642", features = ["extra_debug_asserts", "tracing"] }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "48e7f219a3aaa43084d042590b2871c01415e642", features = ["tracing"] }
-egui_glow   = { git = "https://github.com/emilk/egui", rev = "48e7f219a3aaa43084d042590b2871c01415e642" }
+# We use bleeding edge egui, from 2022-08-19
+eframe      = { git = "https://github.com/emilk/egui", rev = "5514a8afda53c282d2be670bef657d5c7812d467", default-features = false, features = ["default_fonts", "glow", "persistence"] }
+egui        = { git = "https://github.com/emilk/egui", rev = "5514a8afda53c282d2be670bef657d5c7812d467", features = ["extra_debug_asserts", "tracing"] }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "5514a8afda53c282d2be670bef657d5c7812d467", features = ["tracing"] }
+egui_glow   = { git = "https://github.com/emilk/egui", rev = "5514a8afda53c282d2be670bef657d5c7812d467" }
 # eframe      = { path = "../../../egui/eframe", features = ["persistence"] }
 # egui        = { path = "../../../egui/egui", features = ["extra_debug_asserts", "tracing"] }
 # egui_extras = { path = "../../../egui/egui_extras", features = ["tracing"] }

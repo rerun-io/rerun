@@ -32,18 +32,6 @@ checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
 
 [[package]]
 name = "ahash"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
-dependencies = [
- "getrandom",
- "once_cell",
- "serde",
- "version_check",
-]
-
-[[package]]
-name = "ahash"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57e6e951cfbb2db8de1828d49073a113a29fd7117b1596caa781a258c7e38d72"
@@ -51,6 +39,7 @@ dependencies = [
  "cfg-if",
  "getrandom",
  "once_cell",
+ "serde",
  "version_check",
 ]
 
@@ -869,13 +858,14 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.18.0"
-source = "git+https://github.com/emilk/egui?rev=48e7f219a3aaa43084d042590b2871c01415e642#48e7f219a3aaa43084d042590b2871c01415e642"
+source = "git+https://github.com/emilk/egui?rev=5514a8afda53c282d2be670bef657d5c7812d467#5514a8afda53c282d2be670bef657d5c7812d467"
 dependencies = [
  "bytemuck",
  "directories-next",
  "egui",
  "egui-winit",
  "egui_glow",
+ "getrandom",
  "glow",
  "glutin",
  "js-sys",
@@ -893,9 +883,9 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.18.1"
-source = "git+https://github.com/emilk/egui?rev=48e7f219a3aaa43084d042590b2871c01415e642#48e7f219a3aaa43084d042590b2871c01415e642"
+source = "git+https://github.com/emilk/egui?rev=5514a8afda53c282d2be670bef657d5c7812d467#5514a8afda53c282d2be670bef657d5c7812d467"
 dependencies = [
- "ahash 0.7.6",
+ "ahash",
  "epaint",
  "nohash-hasher",
  "ron",
@@ -906,7 +896,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.18.0"
-source = "git+https://github.com/emilk/egui?rev=48e7f219a3aaa43084d042590b2871c01415e642#48e7f219a3aaa43084d042590b2871c01415e642"
+source = "git+https://github.com/emilk/egui?rev=5514a8afda53c282d2be670bef657d5c7812d467#5514a8afda53c282d2be670bef657d5c7812d467"
 dependencies = [
  "arboard",
  "egui",
@@ -922,7 +912,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.18.0"
-source = "git+https://github.com/emilk/egui?rev=48e7f219a3aaa43084d042590b2871c01415e642#48e7f219a3aaa43084d042590b2871c01415e642"
+source = "git+https://github.com/emilk/egui?rev=5514a8afda53c282d2be670bef657d5c7812d467#5514a8afda53c282d2be670bef657d5c7812d467"
 dependencies = [
  "egui",
  "tracing",
@@ -931,7 +921,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.18.1"
-source = "git+https://github.com/emilk/egui?rev=48e7f219a3aaa43084d042590b2871c01415e642#48e7f219a3aaa43084d042590b2871c01415e642"
+source = "git+https://github.com/emilk/egui?rev=5514a8afda53c282d2be670bef657d5c7812d467#5514a8afda53c282d2be670bef657d5c7812d467"
 dependencies = [
  "bytemuck",
  "egui",
@@ -953,7 +943,7 @@ checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
 [[package]]
 name = "emath"
 version = "0.18.0"
-source = "git+https://github.com/emilk/egui?rev=48e7f219a3aaa43084d042590b2871c01415e642#48e7f219a3aaa43084d042590b2871c01415e642"
+source = "git+https://github.com/emilk/egui?rev=5514a8afda53c282d2be670bef657d5c7812d467#5514a8afda53c282d2be670bef657d5c7812d467"
 dependencies = [
  "bytemuck",
  "serde",
@@ -962,10 +952,10 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.18.1"
-source = "git+https://github.com/emilk/egui?rev=48e7f219a3aaa43084d042590b2871c01415e642#48e7f219a3aaa43084d042590b2871c01415e642"
+source = "git+https://github.com/emilk/egui?rev=5514a8afda53c282d2be670bef657d5c7812d467#5514a8afda53c282d2be670bef657d5c7812d467"
 dependencies = [
  "ab_glyph",
- "ahash 0.7.6",
+ "ahash",
  "atomic_refcell",
  "bytemuck",
  "emath",
@@ -2681,7 +2671,7 @@ dependencies = [
 name = "re_data_store"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash",
  "criterion",
  "itertools",
  "mimalloc",
@@ -2695,7 +2685,7 @@ dependencies = [
 name = "re_log_types"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash",
  "anyhow",
  "bytemuck",
  "chrono",
@@ -2742,7 +2732,7 @@ dependencies = [
 name = "re_string_interner"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash",
  "nohash-hasher",
  "once_cell",
  "parking_lot",
@@ -2753,7 +2743,7 @@ dependencies = [
 name = "re_viewer"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash",
  "anyhow",
  "arboard",
  "bytemuck",
@@ -2942,9 +2932,9 @@ dependencies = [
 
 [[package]]
 name = "ron"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88073939a61e5b7680558e6be56b419e208420c2adb92be54921fa6b72283f1a"
+checksum = "300a51053b1cb55c80b7a9fde4120726ddf25ca241a1cbb926626f62fb136bff"
 dependencies = [
  "base64 0.13.0",
  "bitflags",
