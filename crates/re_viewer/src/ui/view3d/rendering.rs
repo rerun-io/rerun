@@ -95,8 +95,11 @@ impl GpuScene {
             line_segments,
             meshes,
         } = scene;
+            point_radius_from_distance,
 
-        self.points.set_instances(allocate_points(points)).unwrap();
+        self.points
+            .set_instances(allocate_points(points), *point_radius_from_distance)
+            .unwrap();
 
         self.lines
             .set_instances(&allocate_line_segments(line_segments))

@@ -412,7 +412,7 @@ pub(crate) fn combined_view_3d(
             scene.points.push(Point {
                 obj_path_hash: re_log_types::ObjPathHash::NONE,
                 pos: orbit_camera.center.to_array(),
-                radius: orbit_camera.radius * 0.01,
+                radius: -5.0, // logical pixels
                 color: [255, 0, 255, (camera_center_alpha * 255.0) as u8],
             });
             ui.ctx().request_repaint(); // let it fade out

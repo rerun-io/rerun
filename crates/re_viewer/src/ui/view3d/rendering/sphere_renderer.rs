@@ -78,6 +78,7 @@ pub struct InstancedSperesGeom {
     aabb: AxisAlignedBoundingBox,
     transformation: Mat4,
     instances: SphereInstances,
+    point_radius_from_distance: f32,
 }
 
 impl InstancedSperesGeom {
@@ -95,8 +96,9 @@ impl InstancedSperesGeom {
             aabb: AxisAlignedBoundingBox::EMPTY,
             transformation: Mat4::identity(),
             instances: Default::default(),
+            point_radius_from_distance: 0.0,
         };
-        model.set_instances(instances)?;
+        model.set_instances(instances, 0.0)?;
         Ok(model)
     }
 
@@ -104,7 +106,11 @@ impl InstancedSperesGeom {
         self.instances.count()
     }
 
-    pub fn set_instances(&mut self, instances: SphereInstances) -> ThreeDResult<()> {
+    pub fn set_instances(
+        &mut self,
+        instances: SphereInstances,
+        point_radius_from_distance: f32,
+    ) -> ThreeDResult<()> {
         crate::profile_function!();
         instances.validate()?;
 
@@ -115,6 +121,7 @@ impl InstancedSperesGeom {
             self.color_buffer.fill(instance_colors)?;
         }
         self.instances = instances;
+        self.point_radius_from_distance = point_radius_from_distance;
         self.update_aabb();
         Ok(())
     }
@@ -175,9 +182,9 @@ impl InstancedSperesGeom {
                 ""
             },
             r#"
-
 uniform mat4 viewProjection;
 uniform mat4 modelMatrix;
+uniform vec4 camera_plane;
 in vec3 position;
 
 in vec4 instance_translation_scale;
@@ -213,9 +220,15 @@ in vec4 instance_translation_scale;
 
 void main()
 {
-    float scale = instance_translation_scale.w;
-    vec4 worldPosition = modelMatrix * vec4(scale * position, 1.0);
-    worldPosition.xyz += instance_translation_scale.xyz;
+    vec3 center = instance_translation_scale.xyz;
+    float radius = instance_translation_scale.w;
+
+    if (radius < 0.0) {
+        // negative radius means "radius in pixels":
+        radius = -radius * dot(camera_plane, vec4(center, 1.0));
+    }
+
+    vec4 worldPosition = modelMatrix * vec4(radius * position, 1.0) + vec4(center.xyz, 0.0);
     gl_Position = viewProjection * worldPosition;
 
 #ifdef USE_POSITIONS
@@ -259,6 +272,17 @@ impl Geometry for InstancedSperesGeom {
         lights: &[&dyn Light],
     ) -> ThreeDResult<()> {
         crate::profile_function!();
+
+        let cam_target = macaw::vec3(camera.target().x, camera.target().y, camera.target().z);
+        let cam_position = macaw::vec3(
+            camera.position().x,
+            camera.position().y,
+            camera.position().z,
+        );
+        let cam_forward = (cam_target - cam_position).normalize();
+        let cam_plane = macaw::Plane3::from_normal_point(cam_forward, cam_position).as_vec4();
+        let cam_plane = self.point_radius_from_distance * cam_plane; // TODO
+
         let fragment_shader_source = material.fragment_shader_source(
             self.vertex_buffers.contains_key("color") || self.instances.colors.is_some(),
             lights,
@@ -271,6 +295,10 @@ impl Geometry for InstancedSperesGeom {
                 material.use_uniforms(program, camera, lights)?;
                 program.use_uniform("viewProjection", camera.projection() * camera.view())?;
                 program.use_uniform("modelMatrix", &self.transformation)?;
+                program.use_uniform(
+                    "camera_plane",
+                    cgmath::Vector4::new(cam_plane.x, cam_plane.y, cam_plane.z, cam_plane.w),
+                )?;
                 program.use_uniform_if_required(
                     "normalMatrix",
                     &self.transformation.invert().unwrap().transpose(),

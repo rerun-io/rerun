@@ -15,6 +15,7 @@ use super::camera::Camera;
 pub struct Point {
     pub obj_path_hash: ObjPathHash,
     pub pos: [f32; 3],
+    /// Negative radius means "radius in logcial pixels".
     pub radius: f32,
     pub color: [u8; 4],
 }
@@ -44,6 +45,10 @@ pub struct Scene {
     pub points: Vec<Point>,
     pub line_segments: Vec<LineSegments>,
     pub meshes: Vec<MeshSource>,
+
+    /// Negative point radius means "radius in points (logical pixels)".
+    /// How large is one point
+    pub point_radius_from_distance: f32,
 }
 
 impl Scene {
@@ -89,11 +94,11 @@ impl Scene {
 
         let viewport_area = viewport_size.x * viewport_size.y;
 
-        let line_radius_in_points = (0.0005 * viewport_size.length()).clamp(1.5, 5.0);
+        let line_radius_in_points = (0.0005 * viewport_size.length()).clamp(2.0, 5.0);
 
         // More points -> smaller points
         let point_radius_in_points =
-            (0.3 * (viewport_area / (objects.point3d.len() + 1) as f32).sqrt()).clamp(0.1, 5.0);
+            (0.3 * (viewport_area / (objects.point3d.len() + 1) as f32).sqrt()).clamp(1.0, 5.0);
 
         // Size of a pixel (in meters), when projected out one meter:
         let point_size_at_one_meter = camera.fov_y / viewport_size.y;
@@ -103,7 +108,10 @@ impl Scene {
 
         let camera_plane = macaw::Plane3::from_normal_point(camera.forward(), camera.pos());
 
-        let mut scene = Self::default();
+        let mut scene = Self {
+            point_radius_from_distance,
+            ..Self::default()
+        };
 
         {
             crate::profile_scope!("point3d");
@@ -111,8 +119,8 @@ impl Scene {
             for (props, obj) in objects.point3d.iter() {
                 let re_data_store::Point3D { pos, radius } = *obj;
 
-                let dist_to_camera = camera_plane.distance(Vec3::from(*pos));
-                let radius = radius.unwrap_or(dist_to_camera * point_radius_from_distance);
+                // Negative radius has special meaning: radius in logical pixels
+                let radius = radius.unwrap_or(-point_radius_in_points);
                 let radius = boost_size_on_hover(props, radius);
 
                 scene.points.push(Point {
@@ -409,6 +417,7 @@ impl Scene {
             points,
             line_segments,
             meshes,
+            point_radius_from_distance: _,
         } = self;
 
         // in points
