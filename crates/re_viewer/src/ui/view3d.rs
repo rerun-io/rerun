@@ -385,25 +385,10 @@ pub(crate) fn combined_view_3d(
         objects,
     );
 
-    let camera_center_alpha = egui::remap_clamp(
-        ui.input().time - state.last_cam_interact_time,
-        0.0..=0.4,
-        0.7..=0.0,
-    ) as f32;
-    if camera_center_alpha > 0.0 {
-        // Show center of orbit camera when interacting with camera (it's quite helpful).
-        scene.points.push(Point {
-            obj_path_hash: None,
-            pos: orbit_camera.center.to_array(),
-            radius: orbit_camera.radius * 0.01,
-            color: [255, 0, 255, (camera_center_alpha * 255.0) as u8],
-        });
-        ui.ctx().request_repaint(); // let it fade out
-    }
-
     let hovered = response
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &camera));
+
     if let Some((obj_path_hash, point)) = hovered {
         state.hovered_obj_path = ctx
             .log_db
@@ -414,6 +399,25 @@ pub(crate) fn combined_view_3d(
     } else {
         state.hovered_obj_path = None;
         state.hovered_point = None;
+    }
+
+    {
+        let camera_center_alpha = egui::remap_clamp(
+            ui.input().time - state.last_cam_interact_time,
+            0.0..=0.4,
+            0.7..=0.0,
+        ) as f32;
+
+        if camera_center_alpha > 0.0 {
+            // Show center of orbit camera when interacting with camera (it's quite helpful).
+            scene.points.push(Point {
+                obj_path_hash: re_log_types::ObjPathHash::NONE,
+                pos: orbit_camera.center.to_array(),
+                radius: orbit_camera.radius * 0.01,
+                color: [255, 0, 255, (camera_center_alpha * 255.0) as u8],
+            });
+            ui.ctx().request_repaint(); // let it fade out
+        }
     }
 
     let dark_mode = ui.visuals().dark_mode;

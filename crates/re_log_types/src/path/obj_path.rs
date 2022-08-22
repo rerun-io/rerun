@@ -11,6 +11,9 @@ use crate::{
 pub struct ObjPathHash(Hash128);
 
 impl ObjPathHash {
+    /// Sometimes used as the hash of `None`.
+    pub const NONE: ObjPathHash = ObjPathHash(Hash128::ZERO);
+
     #[inline]
     pub fn hash64(&self) -> u64 {
         self.0.hash64()
@@ -27,7 +30,7 @@ impl std::hash::Hash for ObjPathHash {
 impl std::cmp::PartialEq for ObjPathHash {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+        self.0.eq(&other.0)
     }
 }
 

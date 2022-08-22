@@ -321,6 +321,7 @@ impl Geometry for InstancedSperesGeom {
 pub struct SphereInstances {
     /// The translation applied to the positions of each instance.
     pub translations_and_scale: Vec<Vec4>,
+
     /// Colors multiplied onto the base color of each instance.
     pub colors: Option<Vec<Color>>,
 }
