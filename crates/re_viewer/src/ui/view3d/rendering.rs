@@ -63,7 +63,7 @@ impl GpuScene {
         let points_cache = sphere_renderer::InstancedSpheres::new_with_material(
             three_d,
             Default::default(),
-            &three_d::CpuMesh::sphere(6),
+            &three_d::CpuMesh::sphere(3), // fast
             default_material(),
         )
         .unwrap();
