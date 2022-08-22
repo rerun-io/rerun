@@ -174,7 +174,7 @@ pub(crate) struct ObjectTree {
     /// When do we or a child have data?
     ///
     /// Data logged at this exact path or any child path.
-    pub prefix_times: BTreeMap<TimePoint, BTreeSet<MsgId>>,
+    pub prefix_times: BTreeMap<TimeSource, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
 
     /// Data logged at this object path.
     pub fields: BTreeMap<FieldName, DataColumns>,
@@ -187,15 +187,20 @@ impl ObjectTree {
     }
 
     pub fn add_data_msg(&mut self, msg: &DataMsg) {
+        crate::profile_function!();
         let obj_path = ObjPathBuilder::from(&msg.data_path.obj_path);
         self.add_path(obj_path.as_slice(), msg.data_path.field_name, msg);
     }
 
     fn add_path(&mut self, path: &[ObjPathComp], field_name: FieldName, msg: &DataMsg) {
-        self.prefix_times
-            .entry(msg.time_point.clone())
-            .or_default()
-            .insert(msg.msg_id);
+        for (time_source, time_value) in &msg.time_point.0 {
+            self.prefix_times
+                .entry(*time_source)
+                .or_default()
+                .entry(time_value.as_int())
+                .or_default()
+                .insert(msg.msg_id);
+        }
 
         match path {
             [] => {
@@ -211,6 +216,7 @@ impl ObjectTree {
                 ObjPathComp::Index(index) => {
                     if index == &Index::Placeholder {
                         if let LoggedData::Batch { indices, .. } = &msg.data {
+                            crate::profile_scope!("object_tree_batch");
                             for index in indices {
                                 self.index_children
                                     .entry(index.clone())
@@ -236,16 +242,20 @@ impl ObjectTree {
 #[derive(Default)]
 pub(crate) struct DataColumns {
     /// When do we have data?
-    pub times: BTreeMap<TimePoint, BTreeSet<MsgId>>,
+    pub times: BTreeMap<TimeSource, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
     pub per_type: HashMap<DataType, BTreeSet<MsgId>>,
 }
 
 impl DataColumns {
     pub fn add(&mut self, msg: &DataMsg) {
-        self.times
-            .entry(msg.time_point.clone())
-            .or_default()
-            .insert(msg.msg_id);
+        for (time_source, time_value) in &msg.time_point.0 {
+            self.times
+                .entry(*time_source)
+                .or_default()
+                .entry(time_value.as_int())
+                .or_default()
+                .insert(msg.msg_id);
+        }
 
         self.per_type
             .entry(msg.data.data_type())

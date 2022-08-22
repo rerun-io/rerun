@@ -260,14 +260,17 @@ impl TimePanel {
         );
 
         if ui.is_rect_visible(full_width_rect) && is_closed {
-            show_data_over_time(
-                ctx,
-                time_area_painter,
-                ui,
-                &tree.prefix_times,
-                full_width_rect,
-                &self.time_ranges_ui,
-            );
+            if let Some(messages_over_time) = tree.prefix_times.get(ctx.rec_cfg.time_ctrl.source())
+            {
+                show_data_over_time(
+                    ctx,
+                    time_area_painter,
+                    ui,
+                    messages_over_time,
+                    full_width_rect,
+                    &self.time_ranges_ui,
+                );
+            }
         }
     }
 
@@ -338,14 +341,17 @@ impl TimePanel {
                 );
 
                 if ui.is_rect_visible(full_width_rect) {
-                    show_data_over_time(
-                        ctx,
-                        time_area_painter,
-                        ui,
-                        &data.times,
-                        full_width_rect,
-                        &self.time_ranges_ui,
-                    );
+                    if let Some(messages_over_time) = data.times.get(ctx.rec_cfg.time_ctrl.source())
+                    {
+                        show_data_over_time(
+                            ctx,
+                            time_area_painter,
+                            ui,
+                            messages_over_time,
+                            full_width_rect,
+                            &self.time_ranges_ui,
+                        );
+                    }
                 }
             }
         }
@@ -389,7 +395,7 @@ fn show_data_over_time(
     ctx: &mut ViewerContext<'_>,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
-    source: &BTreeMap<TimePoint, BTreeSet<MsgId>>,
+    messages_over_time: &BTreeMap<TimeInt, BTreeSet<MsgId>>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
 ) {
@@ -415,7 +421,6 @@ fn show_data_over_time(
     } else {
         ctx.rec_cfg.time_ctrl.time_selection()
     };
-    let time_source = *ctx.rec_cfg.time_ctrl.source();
 
     struct Stretch<'a> {
         start_x: f32,
@@ -471,39 +476,35 @@ fn show_data_over_time(
 
     let mut stretch: Option<Stretch<'_>> = None;
 
-    for (time, msg_ids) in source {
-        // TODO(emilk): avoid this lookup by pre-partitioning on time source
-        if let Some(time) = time.0.get(&time_source).copied() {
-            let time = time.as_int();
-            let time_real = TimeReal::from(time);
+    for (&time, msg_ids) in messages_over_time {
+        let time_real = TimeReal::from(time);
 
-            let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
+        let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
 
-            if let Some(current_stretch) = &mut stretch {
-                if current_stretch.selected == selected
-                    && (time - current_stretch.start_time).as_f64() < max_stretch_length_in_time
-                {
-                    // extend:
-                    current_stretch.stop_time = time;
-                    current_stretch.msg_ids.push(msg_ids);
-                } else {
-                    // stop the previous…
-                    paint_stretch(current_stretch);
+        if let Some(current_stretch) = &mut stretch {
+            if current_stretch.selected == selected
+                && (time - current_stretch.start_time).as_f64() < max_stretch_length_in_time
+            {
+                // extend:
+                current_stretch.stop_time = time;
+                current_stretch.msg_ids.push(msg_ids);
+            } else {
+                // stop the previous…
+                paint_stretch(current_stretch);
 
-                    stretch = None;
-                }
+                stretch = None;
             }
+        }
 
-            if stretch.is_none() {
-                if let Some(x) = time_ranges_ui.x_from_time(time_real) {
-                    stretch = Some(Stretch {
-                        start_x: x,
-                        start_time: time,
-                        stop_time: time,
-                        selected,
-                        msg_ids: vec![msg_ids],
-                    });
-                }
+        if stretch.is_none() {
+            if let Some(x) = time_ranges_ui.x_from_time(time_real) {
+                stretch = Some(Stretch {
+                    start_x: x,
+                    start_time: time,
+                    stop_time: time,
+                    selected,
+                    msg_ids: vec![msg_ids],
+                });
             }
         }
     }
