@@ -139,10 +139,13 @@ impl eframe::App for App {
         }
 
         {
-            // Cleanup
-            self.log_dbs.retain(|&recording_id, log_db| {
-                recording_id == self.state.selected_rec_id || !log_db.is_empty()
-            });
+            // Cleanup:
+            self.log_dbs.retain(|_, log_db| !log_db.is_empty());
+
+            if !self.log_dbs.contains_key(&self.state.selected_rec_id) {
+                self.state.selected_rec_id =
+                    self.log_dbs.keys().next().cloned().unwrap_or_default();
+            }
 
             // Make sure we don't persist old stuff we don't need:
             self.state
