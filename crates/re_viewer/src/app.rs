@@ -115,7 +115,7 @@ impl eframe::App for App {
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         #[cfg(not(target_arch = "wasm32"))]
         if self.ctrl_c.load(std::sync::atomic::Ordering::SeqCst) {
-            frame.quit();
+            frame.close();
             return;
         }
 
@@ -456,7 +456,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
 
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Quit").clicked() {
-        _frame.quit();
+        _frame.close();
     }
 }
 
