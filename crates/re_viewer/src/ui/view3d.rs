@@ -226,7 +226,6 @@ fn show_settings_ui(
             "Drag to rotate.\n\
             Drag with secondary mouse button to pan.\n\
             Drag with middle mouse button to roll camera.\n\
-            {}\
             Scroll to zoom.\n\
             \n\
             While hovering the 3D view, navigate camera with WSAD and QE.\n\
