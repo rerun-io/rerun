@@ -208,26 +208,35 @@ impl TimePanel {
 
         let is_closed = collapsing_response.body_returned.is_none();
         let response = collapsing_response.header_response;
+        let response_rect = response.rect;
+        self.next_col_right = self.next_col_right.max(response_rect.right());
 
-        {
+        let full_width_rect = Rect::from_x_y_ranges(
+            response_rect.left()..=ui.max_rect().right(),
+            response_rect.y_range(),
+        );
+
+        let is_visible = ui.is_rect_visible(full_width_rect);
+
+        if is_visible {
+            response.on_hover_ui(|ui| {
+                ui.label(obj_path.to_string());
+            });
+        }
+
+        if is_visible {
             // paint hline guide:
             let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
             stroke.color = stroke.color.linear_multiply(0.5);
-            let left = response.rect.left() + ui.spacing().indent;
-            let y = response.rect.bottom() + ui.spacing().item_spacing.y * 0.5;
+            let left = response_rect.left() + ui.spacing().indent;
+            let y = response_rect.bottom() + ui.spacing().item_spacing.y * 0.5;
             ui.painter().hline(left..=ui.max_rect().right(), y, stroke);
         }
-
-        self.next_col_right = self.next_col_right.max(response.rect.right());
-
-        let response = response.on_hover_ui(|ui| {
-            ui.label(obj_path.to_string());
-        });
 
         // ----------------------------------------------
         // Property column:
 
-        {
+        if is_visible {
             let are_all_ancestors_visible = obj_path.is_root()
                 || ctx
                     .rec_cfg
@@ -237,7 +246,7 @@ impl TimePanel {
 
             let mut props = ctx.rec_cfg.individual_object_properties.get(&obj_path);
             let property_rect =
-                Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response.rect.y_range());
+                Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response_rect.y_range());
             let mut ui = ui.child_ui(
                 property_rect,
                 egui::Layout::left_to_right(egui::Align::Center),
@@ -254,12 +263,7 @@ impl TimePanel {
 
         // show the data in the time area:
 
-        let full_width_rect = Rect::from_x_y_ranges(
-            response.rect.left()..=ui.max_rect().right(),
-            response.rect.y_range(),
-        );
-
-        if ui.is_rect_visible(full_width_rect) && is_closed {
+        if is_visible && is_closed {
             if let Some(messages_over_time) = tree.prefix_times.get(ctx.rec_cfg.time_ctrl.source())
             {
                 show_data_over_time(
@@ -316,7 +320,13 @@ impl TimePanel {
                     })
                     .response;
 
-                {
+                let full_width_rect = Rect::from_x_y_ranges(
+                    response.rect.left()..=ui.max_rect().right(),
+                    response.rect.y_range(),
+                );
+                let is_visible = ui.is_rect_visible(full_width_rect);
+
+                if is_visible {
                     // paint hline guide:
                     let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
                     stroke.color = stroke.color.linear_multiply(0.5);
@@ -325,22 +335,19 @@ impl TimePanel {
                     ui.painter().hline(left..=ui.max_rect().right(), y, stroke);
                 }
 
-                let response = response.on_hover_ui(|ui| {
-                    ui.label(data_path.to_string());
-                    let summary = data.summary();
-                    if !summary.is_empty() {
-                        ui.label(summary);
-                    }
-                });
+                if is_visible {
+                    response.on_hover_ui(|ui| {
+                        ui.label(data_path.to_string());
+                        let summary = data.summary();
+                        if !summary.is_empty() {
+                            ui.label(summary);
+                        }
+                    });
+                }
 
                 // show the data in the time area:
 
-                let full_width_rect = Rect::from_x_y_ranges(
-                    response.rect.left()..=ui.max_rect().right(),
-                    response.rect.y_range(),
-                );
-
-                if ui.is_rect_visible(full_width_rect) {
+                if is_visible {
                     if let Some(messages_over_time) = data.times.get(ctx.rec_cfg.time_ctrl.source())
                     {
                         show_data_over_time(
