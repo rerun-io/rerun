@@ -11,11 +11,7 @@ pub struct RenderingContext {
     ambient_dark: three_d::AmbientLight,
     ambient_light: three_d::AmbientLight,
 
-    gpu_mesh_cache: GpuMeshCache,
-
-    /// So we don't need to re-allocate them.
-    points_cache: sphere_renderer::InstancedSpheres<three_d::PhysicalMaterial>,
-    lines_cache: three_d::Gm<three_d::InstancedMesh, LineMaterial>,
+    gpu_scene: GpuScene,
 }
 
 impl RenderingContext {
@@ -41,8 +37,31 @@ impl RenderingContext {
         )
         .unwrap();
 
+        let gpu_scene = GpuScene::new(&three_d);
+
+        Ok(Self {
+            three_d,
+            skybox_dark,
+            skybox_light,
+            ambient_dark,
+            ambient_light,
+            gpu_scene,
+        })
+    }
+}
+
+pub struct GpuScene {
+    gpu_meshes: GpuMeshCache,
+    points: sphere_renderer::InstancedSpheres<three_d::PhysicalMaterial>,
+    lines: three_d::Gm<three_d::InstancedMesh, LineMaterial>,
+
+    mesh_instances: std::collections::HashMap<u64, three_d::Instances>,
+}
+
+impl GpuScene {
+    pub fn new(three_d: &three_d::Context) -> Self {
         let points_cache = sphere_renderer::InstancedSpheres::new_with_material(
-            &three_d,
+            three_d,
             Default::default(),
             &three_d::CpuMesh::sphere(6),
             default_material(),
@@ -51,7 +70,7 @@ impl RenderingContext {
 
         let lines_cache = three_d::Gm::new(
             three_d::InstancedMesh::new(
-                &three_d,
+                three_d,
                 &Default::default(),
                 &three_d::CpuMesh::cylinder(10),
             )
@@ -59,16 +78,77 @@ impl RenderingContext {
             Default::default(),
         );
 
-        Ok(Self {
-            three_d,
-            skybox_dark,
-            skybox_light,
-            ambient_dark,
-            ambient_light,
-            gpu_mesh_cache: Default::default(),
-            points_cache,
-            lines_cache,
-        })
+        Self {
+            gpu_meshes: Default::default(),
+            points: points_cache,
+            lines: lines_cache,
+
+            mesh_instances: Default::default(),
+        }
+    }
+
+    pub fn set(&mut self, three_d: &three_d::Context, scene: &Scene) {
+        crate::profile_function!();
+
+        let Scene {
+            points,
+            line_segments,
+            meshes,
+        } = scene;
+
+        self.points.set_instances(allocate_points(points)).unwrap();
+
+        self.lines
+            .set_instances(&allocate_line_segments(line_segments))
+            .unwrap();
+
+        self.mesh_instances.clear();
+
+        for mesh in meshes {
+            let instances = self.mesh_instances.entry(mesh.mesh_id).or_default();
+
+            let (scale, rotation, translation) =
+                mesh.world_from_mesh.to_scale_rotation_translation();
+            instances
+                .translations
+                .push(mint::Vector3::from(translation).into());
+            instances
+                .rotations
+                .get_or_insert_with(Default::default)
+                .push(mint::Quaternion::from(rotation).into());
+            instances
+                .scales
+                .get_or_insert_with(Default::default)
+                .push(mint::Vector3::from(scale).into());
+
+            self.gpu_meshes.load(three_d, mesh.mesh_id, &mesh.cpu_mesh);
+        }
+
+        for (mesh_id, instances) in &self.mesh_instances {
+            self.gpu_meshes.set_instances(*mesh_id, instances).unwrap();
+        }
+    }
+
+    pub fn collect_objects<'a>(&'a self, objects: &mut Vec<&'a dyn three_d::Object>) {
+        crate::profile_function!();
+
+        if self.points.instance_count() > 0 {
+            objects.push(&self.points);
+        }
+
+        if self.lines.instance_count() > 0 {
+            objects.push(&self.lines);
+        }
+
+        for &mesh_id in self.mesh_instances.keys() {
+            if let Some(gpu_mesh) = self.gpu_meshes.get(mesh_id) {
+                for obj in &gpu_mesh.meshes {
+                    if obj.instance_count() > 0 {
+                        objects.push(obj);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -282,40 +362,9 @@ pub fn paint_with_three_d(
 
     // -------------------
 
-    let Scene {
-        points,
-        line_segments,
-        meshes,
-    } = scene;
+    rendering.gpu_scene.set(three_d, scene);
 
-    let mut mesh_instances: std::collections::HashMap<u64, Instances> = Default::default();
-
-    for mesh in meshes {
-        let instances = mesh_instances.entry(mesh.mesh_id).or_default();
-
-        let (scale, rotation, translation) = mesh.world_from_mesh.to_scale_rotation_translation();
-        instances
-            .translations
-            .push(mint::Vector3::from(translation).into());
-        instances
-            .rotations
-            .get_or_insert_with(Default::default)
-            .push(mint::Quaternion::from(rotation).into());
-        instances
-            .scales
-            .get_or_insert_with(Default::default)
-            .push(mint::Vector3::from(scale).into());
-
-        rendering
-            .gpu_mesh_cache
-            .load(three_d, mesh.mesh_id, &mesh.cpu_mesh);
-    }
-
-    for (mesh_id, instances) in &mesh_instances {
-        rendering
-            .gpu_mesh_cache
-            .set_instances(*mesh_id, instances)?;
-    }
+    // -------------------
 
     let mut objects: Vec<&dyn Object> = vec![];
 
@@ -330,29 +379,7 @@ pub fn paint_with_three_d(
         objects.push(&axes);
     }
 
-    for &mesh_id in mesh_instances.keys() {
-        if let Some(gpu_mesh) = rendering.gpu_mesh_cache.get(mesh_id) {
-            for obj in &gpu_mesh.meshes {
-                if obj.instance_count() > 0 {
-                    objects.push(obj);
-                }
-            }
-        }
-    }
-
-    rendering
-        .points_cache
-        .set_instances(allocate_points(points))?;
-    if rendering.points_cache.instance_count() > 0 {
-        objects.push(&rendering.points_cache);
-    }
-
-    rendering
-        .lines_cache
-        .set_instances(&allocate_line_segments(line_segments))?;
-    if rendering.lines_cache.instance_count() > 0 {
-        objects.push(&rendering.lines_cache);
-    }
+    rendering.gpu_scene.collect_objects(&mut objects);
 
     crate::profile_scope!("render_pass");
     render_pass(&camera, &objects, lights)?;
