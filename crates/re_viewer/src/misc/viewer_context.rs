@@ -153,6 +153,9 @@ pub(crate) struct RecordingConfig {
     /// Recalculated at the start of each frame form [`Self::individual_object_properties`].
     #[serde(skip)]
     pub projected_object_properties: ObjectsProperties,
+
+    /// So we only re-calculate `projected_object_properties` when it changes.
+    individual_object_properties_last_frame: ObjectsProperties,
 }
 
 impl RecordingConfig {
@@ -166,13 +169,19 @@ impl RecordingConfig {
     fn project_object_properties(&mut self, log_db: &LogDb) {
         crate::profile_function!();
 
+        if self.individual_object_properties == self.individual_object_properties_last_frame {
+            // when we have objects with a lot of children (e.g. a batch of points),
+            // the project gets slow, so this memoization is important.
+            return;
+        }
+        self.individual_object_properties_last_frame = self.individual_object_properties.clone();
+
         fn project_tree(
             rec_cfg: &mut RecordingConfig,
             path: &mut Vec<ObjPathComp>,
             prop: ObjectProps,
             tree: &ObjectTree,
         ) {
-            // TODO(emilk): we need to speed up and simplify this a lot.
             let obj_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
             let prop = prop.with_child(&rec_cfg.individual_object_properties.get(&obj_path));
             rec_cfg.projected_object_properties.set(obj_path, prop);
@@ -285,7 +294,7 @@ impl Selection {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ObjectsProperties {
     props: nohash_hasher::IntMap<ObjPath, ObjectProps>,
 }

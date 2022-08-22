@@ -209,10 +209,21 @@ impl ObjectTree {
                         .add_path(rest, field_name, msg);
                 }
                 ObjPathComp::Index(index) => {
-                    self.index_children
-                        .entry(index.clone())
-                        .or_default()
-                        .add_path(rest, field_name, msg);
+                    if index == &Index::Placeholder {
+                        if let LoggedData::Batch { indices, .. } = &msg.data {
+                            for index in indices {
+                                self.index_children
+                                    .entry(index.clone())
+                                    .or_default()
+                                    .add_path(rest, field_name, msg);
+                            }
+                        }
+                    } else {
+                        self.index_children
+                            .entry(index.clone())
+                            .or_default()
+                            .add_path(rest, field_name, msg);
+                    }
                 }
             },
         }
