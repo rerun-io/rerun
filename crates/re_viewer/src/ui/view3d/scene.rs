@@ -12,6 +12,7 @@ use crate::{
 
 use super::camera::Camera;
 
+#[derive(Clone, PartialEq)]
 pub struct Point {
     pub obj_path_hash: ObjPathHash,
     pub pos: [f32; 3],
@@ -20,6 +21,7 @@ pub struct Point {
     pub color: [u8; 4],
 }
 
+#[derive(Clone, PartialEq)]
 pub struct LineSegments {
     pub obj_path_hash: ObjPathHash,
     pub segments: Vec<[[f32; 3]; 2]>,
@@ -33,6 +35,7 @@ pub enum MeshSourceData {
     StaticGlb(&'static [u8]),
 }
 
+#[derive(Clone)]
 pub struct MeshSource {
     pub obj_path_hash: ObjPathHash,
     pub mesh_id: u64,
@@ -40,7 +43,16 @@ pub struct MeshSource {
     pub cpu_mesh: Arc<CpuMesh>,
 }
 
-#[derive(Default)]
+impl PartialEq for MeshSource {
+    fn eq(&self, other: &Self) -> bool {
+        self.obj_path_hash == other.obj_path_hash
+            && self.mesh_id == other.mesh_id
+            && self.world_from_mesh == other.world_from_mesh
+            && Arc::ptr_eq(&self.cpu_mesh, &other.cpu_mesh)
+    }
+}
+
+#[derive(Default, PartialEq)]
 pub struct Scene {
     pub points: Vec<Point>,
     pub line_segments: Vec<LineSegments>,

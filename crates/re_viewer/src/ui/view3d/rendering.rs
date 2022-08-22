@@ -1,5 +1,7 @@
 mod sphere_renderer;
 
+use std::sync::Arc;
+
 use super::{camera::Camera, mesh_cache::GpuMeshCache, scene::*};
 
 type LineMaterial = three_d::ColorMaterial;
@@ -56,6 +58,8 @@ pub struct GpuScene {
     lines: three_d::Gm<three_d::InstancedMesh, LineMaterial>,
 
     mesh_instances: std::collections::HashMap<u64, three_d::Instances>,
+
+    previous_scene: Arc<Scene>,
 }
 
 impl GpuScene {
@@ -84,18 +88,30 @@ impl GpuScene {
             lines: lines_cache,
 
             mesh_instances: Default::default(),
+
+            previous_scene: Default::default(),
         }
     }
 
-    pub fn set(&mut self, three_d: &three_d::Context, scene: &Scene) {
+    pub fn set(&mut self, three_d: &three_d::Context, scene: &Arc<Scene>) {
         crate::profile_function!();
+
+        {
+            crate::profile_scope!("compare_scenes");
+            // This comparison is a bit expensive, but saves us from uploading to the GPU
+            // in many cases.
+            if Arc::ptr_eq(&self.previous_scene, scene) || self.previous_scene == *scene {
+                return;
+            }
+        }
+        crate::profile_scope!("update_gpu");
 
         let Scene {
             points,
             line_segments,
             meshes,
-        } = scene;
             point_radius_from_distance,
+        } = &**scene;
 
         self.points
             .set_instances(allocate_points(points), *point_radius_from_distance)
@@ -130,6 +146,8 @@ impl GpuScene {
         for (mesh_id, instances) in &self.mesh_instances {
             self.gpu_meshes.set_instances(*mesh_id, instances).unwrap();
         }
+
+        self.previous_scene = scene.clone();
     }
 
     pub fn collect_objects<'a>(&'a self, objects: &mut Vec<&'a dyn three_d::Object>) {
@@ -312,7 +330,7 @@ pub fn paint_with_three_d(
     rendering: &mut RenderingContext,
     camera: &Camera,
     info: &egui::PaintCallbackInfo,
-    scene: &Scene,
+    scene: &Arc<Scene>,
     dark_mode: bool,
     show_axes: bool, // TODO(emilk): less bool arguments
 ) -> three_d::ThreeDResult<()> {

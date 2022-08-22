@@ -400,7 +400,8 @@ pub(crate) fn combined_view_3d(
         state.hovered_point = None;
     }
 
-    {
+    let show_camera_center = false; // TODO
+    if show_camera_center {
         let camera_center_alpha = egui::remap_clamp(
             ui.input().time - state.last_cam_interact_time,
             0.0..=0.4,
@@ -421,6 +422,8 @@ pub(crate) fn combined_view_3d(
 
     let dark_mode = ui.visuals().dark_mode;
     let show_axes = state.show_axes;
+
+    let scene = std::sync::Arc::new(scene);
 
     let callback = egui::PaintCallback {
         rect,
