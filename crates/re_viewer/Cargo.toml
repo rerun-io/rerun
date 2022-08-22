@@ -25,15 +25,10 @@ re_log_types = { path = "../re_log_types", features = ["save", "load"] }
 re_string_interner = { path = "../re_string_interner" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
-# We use bleeding edge egui, from 2022-08-19
-eframe      = { git = "https://github.com/emilk/egui", rev = "193a434717791af7a2904c92f83d83422390fae0", default-features = false, features = ["default_fonts", "glow", "persistence"] }
-egui        = { git = "https://github.com/emilk/egui", rev = "193a434717791af7a2904c92f83d83422390fae0", features = ["extra_debug_asserts", "tracing"] }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "193a434717791af7a2904c92f83d83422390fae0", features = ["tracing"] }
-egui_glow   = { git = "https://github.com/emilk/egui", rev = "193a434717791af7a2904c92f83d83422390fae0" }
-# eframe      = { path = "../../../egui/eframe", features = ["persistence"] }
-# egui        = { path = "../../../egui/egui", features = ["extra_debug_asserts", "tracing"] }
-# egui_extras = { path = "../../../egui/egui_extras", features = ["tracing"] }
-# egui_glow   = { path = "../../../egui/egui_glow" }
+eframe      = { version = "0.19", default-features = false, features = ["default_fonts", "glow", "persistence"] }
+egui        = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
+egui_extras = { version = "0.19", features = ["tracing"] }
+egui_glow   = { version = "0.19" }
 
 ahash = "0.8"
 anyhow = "1.0"
