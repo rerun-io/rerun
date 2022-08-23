@@ -147,7 +147,14 @@ def log_points(
 
 def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
     """
-    Log an image with 1, 3 or 4 channels (gray, RGB or RGBA).
+    Log a gray or color image.
+
+    The image should either have 1, 3 or 4 channels (gray, RGB or RGBA).
+
+    Supported `dtype`s:
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
+    * uint16: all color components should be in 0-65535 linear space.
+    * float32/float64: all color components should be in 0-1 linear space.
 
     If no `space` is given, the space name "2D" will be used.
     """
@@ -167,6 +174,8 @@ def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
 def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
     """
     Log a depth image.
+
+    The image must be a 2D array. Supported `dtype`:s are: uint8, uint16, float32, float64
 
     meter: How long is a meter in the given dtype?
            For instance: with uint16, perhaps meter=1000 which would mean
