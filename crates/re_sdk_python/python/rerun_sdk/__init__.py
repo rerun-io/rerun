@@ -24,14 +24,18 @@ def connect(addr: Optional[str] = None):
 
 
 def disconnect():
+    """ Disconnect from the remote rerun server (if any). """
     return rerun_rs.disconnect()
 
 
-def info():
-    return rerun_rs.info()
-
-
 def show():
+    """
+    Show previously logged data.
+
+    This only works if you have not called `connect`.
+
+    NOTE: There is a bug which causes this function to only work once on some platforms.
+    """
     return rerun_rs.show()
 
 
@@ -81,14 +85,20 @@ def set_time_nanos(time_source: str, nanos: Optional[int]):
     return rerun_rs.set_time_nanos(time_source, nanos)
 
 
-def log_bbox(
+def log_rect(
     obj_path: str,
     left_top: Sequence[float],
     width_height: Sequence[float],
     label: Optional[str] = None,
     space: Optional[str] = None,
 ):
-    rerun_rs.log_bbox(obj_path,
+    """
+    Log a 2D rectangle.
+
+    Optionally give it a label and space.
+    If no `space` is given, the space name "2D" will be used.
+    """
+    rerun_rs.log_rect(obj_path,
                       left_top,
                       width_height,
                       label,
@@ -105,8 +115,9 @@ def log_points(
 
     positions: Nx2 or Nx3 array
 
-    `colors.shape[0] == 1`: same color for all points
-    `colors.shape[0] == positions.shape[0]`: a color per point
+    Colors should either be in 0-255 gamma space or in 0-1 linear space.
+    Colors can be RGB or RGBA. You can supply no colors, one color,
+    or one color per point in a Nx3 or Nx4 numpy array.
 
     If no `space` is given, the space name "2D" or "3D" will be used,
     depending on the dimensionality of the data.
@@ -136,7 +147,14 @@ def log_points(
 
 def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
     """
-    Log an image with 1, 3 or 4 channels (gray, RGB or RGBA).
+    Log a gray or color image.
+
+    The image should either have 1, 3 or 4 channels (gray, RGB or RGBA).
+
+    Supported `dtype`s:
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
+    * uint16: all color components should be in 0-65535 linear space.
+    * float32/float64: all color components should be in 0-1 linear space.
 
     If no `space` is given, the space name "2D" will be used.
     """
@@ -155,6 +173,10 @@ def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
 
 def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
     """
+    Log a depth image.
+
+    The image must be a 2D array. Supported `dtype`:s are: uint8, uint16, float32, float64
+
     meter: How long is a meter in the given dtype?
            For instance: with uint16, perhaps meter=1000 which would mean
            you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
