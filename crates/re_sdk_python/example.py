@@ -19,15 +19,20 @@ def log_dummy_data(args):
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
         rerun.set_time_sequence("frame_nr", sample.frame_idx)
 
-        # The depth image is in millimeters, so we set meter=1000
-        rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
-
-        rerun.log_points("depth3D", sample.point_cloud)
-
         rerun.log_image("rgb", sample.rgb_image)
 
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
         rerun.log_rect("bbox", [car_x, car_y], [car_w, car_h], "A car")
+
+        rerun.log_points("points", sample.point_cloud)
+
+        # The depth image is in millimeters, so we set meter=1000
+        # Everything logged are assigned different "spaces".
+        # The default spaces are "2D" and "3D" (based on what you log).
+        # In this case we chose to explicitly log to a separate space
+        # that we just call "depth_cam".
+        rerun.log_depth_image("depth", sample.depth_image_mm,
+                              meter=1000, space="depth_cam")
 
 
 class DummyCar:
