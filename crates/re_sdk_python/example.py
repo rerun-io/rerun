@@ -182,8 +182,6 @@ if __name__ == '__main__':
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    print(rerun.info())
-
     log_dummy_data(args)
 
     if not args.connect:

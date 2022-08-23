@@ -14,7 +14,6 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // Log to stdout (if you run with `RUST_LOG=debug`).
     tracing_subscriber::fmt::init();
 
-    m.add_function(wrap_pyfunction!(info, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
 
@@ -38,11 +37,6 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Sdk::global().begin_new_recording();
 
     Ok(())
-}
-
-#[pyfunction]
-fn info() -> String {
-    "Rerun Python SDK 0.1".to_owned()
 }
 
 #[pyfunction]

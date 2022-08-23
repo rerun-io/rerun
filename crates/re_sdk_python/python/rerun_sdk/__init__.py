@@ -27,8 +27,6 @@ def disconnect():
     return rerun_rs.disconnect()
 
 
-def info():
-    return rerun_rs.info()
 
 
 def show():
