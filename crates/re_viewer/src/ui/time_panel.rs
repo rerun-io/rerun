@@ -4,8 +4,8 @@ use std::{
 };
 
 use crate::{
-    log_db::ObjectTree, misc::time_axis::TimeSourceAxis, misc::time_control::TimeSelectionType,
-    TimeControl, TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
+    log_db::ObjectTree, misc::time_control::TimeSelectionType, time_axis::TimeSourceAxis,
+    Selection, TimeControl, TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
 };
 
 use egui::*;
@@ -70,7 +70,7 @@ impl TimePanel {
         self.time_ranges_ui = initialize_time_ranges_ui(ctx, time_x_range.clone());
 
         // includes the time selection and time ticks rows.
-        let time_area = Rect::from_x_y_ranges(
+        let time_area_rect = Rect::from_x_y_ranges(
             time_x_range.clone(),
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         );
@@ -100,10 +100,10 @@ impl TimePanel {
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
 
-        let time_area_painter = ui.painter().with_clip_rect(time_area);
+        let time_area_painter = ui.painter().with_clip_rect(time_area_rect);
 
         ui.painter()
-            .rect_filled(time_area, 1.0, ui.visuals().extreme_bg_color);
+            .rect_filled(time_area_rect, 1.0, ui.visuals().extreme_bg_color);
 
         ui.separator();
 
@@ -113,7 +113,7 @@ impl TimePanel {
             &time_area_painter,
             time_selection_rect.top()..=time_line_rect.bottom(),
             // time_line_rect.y_range(),
-            time_line_rect.top()..=time_area.bottom(),
+            time_line_rect.top()..=time_area_rect.bottom(),
             ctx.rec_cfg.time_ctrl.time_type(),
         );
         time_selection_ui(
@@ -129,13 +129,13 @@ impl TimePanel {
             ui,
             &time_area_painter,
             &time_line_rect,
-            time_area.bottom(),
+            time_area_rect.bottom(),
         );
-        let scroll_delta = interact_with_time_area(
+        let time_area_response = interact_with_time_area(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
             ui,
-            &time_area,
+            &time_area_rect,
         );
 
         // Don't draw on top of the time ticks
@@ -149,13 +149,15 @@ impl TimePanel {
             .auto_shrink([false; 2])
             .show(ui, |ui| {
                 crate::profile_scope!("tree_ui");
-                ui.scroll_with_delta(scroll_delta);
-                self.tree_ui(ctx, &lower_time_area_painter, ui);
+                if time_area_response.dragged_by(PointerButton::Primary) {
+                    ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
+                }
+                self.tree_ui(ctx, &time_area_response, &lower_time_area_painter, ui);
             });
 
         // TODO(emilk): fix problem of the fade covering the hlines. Need Shape Z values! https://github.com/emilk/egui/issues/1516
         if true {
-            fade_sides(ui, time_area);
+            fade_sides(ui, time_area_rect);
         }
 
         self.time_ranges_ui.snap_time_control(ctx);
@@ -167,16 +169,25 @@ impl TimePanel {
     fn tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
         let mut path = vec![];
-        self.show_children(ctx, time_area_painter, &mut path, &ctx.log_db.data_tree, ui);
+        self.show_children(
+            ctx,
+            time_area_response,
+            time_area_painter,
+            &mut path,
+            &ctx.log_db.data_tree,
+            ui,
+        );
     }
 
     fn show_tree(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         path: &mut Vec<ObjPathComp>,
         tree: &ObjectTree,
@@ -208,7 +219,7 @@ impl TimePanel {
             .id_source(&path)
             .default_open(path.is_empty()) //  || (path.len() == 1 && tree.children.len() < 3)) TODO(emilk) when data path has been simplified
             .show(ui, |ui| {
-                self.show_children(ctx, time_area_painter, path, tree, ui);
+                self.show_children(ctx, time_area_response, time_area_painter, path, tree, ui);
             });
 
         let is_closed = collapsing_response.body_returned.is_none();
@@ -261,7 +272,7 @@ impl TimePanel {
                 .on_hover_text("Toggle visibility");
             ctx.rec_cfg
                 .individual_object_properties
-                .set(obj_path, props);
+                .set(obj_path.clone(), props);
         }
 
         // ----------------------------------------------
@@ -273,11 +284,13 @@ impl TimePanel {
             {
                 show_data_over_time(
                     ctx,
+                    time_area_response,
                     time_area_painter,
                     ui,
                     messages_over_time,
                     full_width_rect,
                     &self.time_ranges_ui,
+                    Some(Selection::ObjPath(obj_path)),
                 );
             }
         }
@@ -286,6 +299,7 @@ impl TimePanel {
     fn show_children(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         path: &mut Vec<ObjPathComp>,
         tree: &ObjectTree,
@@ -293,12 +307,12 @@ impl TimePanel {
     ) {
         for (name, child) in &tree.string_children {
             path.push(ObjPathComp::String(*name));
-            self.show_tree(ctx, time_area_painter, path, child, ui);
+            self.show_tree(ctx, time_area_response, time_area_painter, path, child, ui);
             path.pop();
         }
         for (index, child) in &tree.index_children {
             path.push(ObjPathComp::Index(index.clone()));
-            self.show_tree(ctx, time_area_painter, path, child, ui);
+            self.show_tree(ctx, time_area_response, time_area_painter, path, child, ui);
             path.pop();
         }
 
@@ -361,11 +375,13 @@ impl TimePanel {
                     {
                         show_data_over_time(
                             ctx,
+                            time_area_response,
                             time_area_painter,
                             ui,
                             messages_over_time,
                             full_width_rect,
                             &self.time_ranges_ui,
+                            Some(Selection::DataPath(data_path)),
                         );
                     }
                 }
@@ -407,15 +423,21 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn show_data_over_time(
     ctx: &mut ViewerContext<'_>,
+    time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
     messages_over_time: &BTreeMap<TimeInt, BTreeSet<MsgId>>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
+    select_on_click: Option<Selection>,
 ) {
     crate::profile_function!();
+
+    let is_selected =
+        ctx.rec_cfg.selection.is_some() && select_on_click.as_ref() == Some(&ctx.rec_cfg.selection);
 
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
@@ -425,12 +447,15 @@ fn show_data_over_time(
     let pointer_pos = ui.input().pointer.hover_pos();
 
     let hovered_color = ui.visuals().widgets.hovered.text_color();
-    let inactive_color = ui
-        .visuals()
-        .widgets
-        .inactive
-        .text_color()
-        .linear_multiply(0.75);
+    let inactive_color = if is_selected {
+        ui.visuals().selection.stroke.color
+    } else {
+        ui.visuals()
+            .widgets
+            .inactive
+            .text_color()
+            .linear_multiply(0.75)
+    };
 
     let selected_time_range = if !ctx.rec_cfg.time_ctrl.selection_active {
         None
@@ -449,6 +474,7 @@ fn show_data_over_time(
     let mut shapes = vec![];
     let mut scatter = BallScatterer::default();
     let mut hovered_messages = vec![];
+    let mut hovered_time = None;
 
     let mut paint_stretch = |stretch: &Stretch<'_>| {
         let stop_x = time_ranges_ui
@@ -485,8 +511,9 @@ fn show_data_over_time(
 
         shapes.push(Shape::circle_filled(pos, radius, color));
 
-        if is_hovered && !ui.ctx().memory().is_anything_being_dragged() {
+        if is_hovered {
             hovered_messages.extend(stretch.msg_ids.iter().copied().flatten().copied());
+            hovered_time.get_or_insert(stretch.start_time);
         }
     };
 
@@ -532,7 +559,20 @@ fn show_data_over_time(
     time_area_painter.extend(shapes);
 
     if !hovered_messages.is_empty() {
-        show_msg_ids_tooltip(ctx, ui.ctx(), &hovered_messages);
+        if time_area_response.clicked_by(egui::PointerButton::Primary) {
+            if let Some(select_on_click) = select_on_click {
+                ctx.rec_cfg.selection = select_on_click;
+            } else {
+                ctx.rec_cfg.selection = Selection::None;
+            }
+
+            if let Some(hovered_time) = hovered_time {
+                ctx.rec_cfg.time_ctrl.set_time(hovered_time);
+                ctx.rec_cfg.time_ctrl.pause();
+            }
+        } else if !ui.ctx().memory().is_anything_being_dragged() {
+            show_msg_ids_tooltip(ctx, ui.ctx(), &hovered_messages);
+        }
     }
 }
 
@@ -604,15 +644,16 @@ fn paint_time_ranges_and_ticks(
 }
 
 /// Returns a scroll delta
+#[must_use]
 fn interact_with_time_area(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
     ui: &mut egui::Ui,
     full_rect: &Rect,
-) -> Vec2 {
+) -> egui::Response {
     let pointer_pos = ui.input().pointer.hover_pos();
 
-    let response = ui.interact(
+    let time_area_response = ui.interact(
         *full_rect,
         ui.id().with("time_area_interact"),
         egui::Sense::click_and_drag(),
@@ -621,20 +662,17 @@ fn interact_with_time_area(
     let mut delta_x = 0.0;
     let mut zoom_factor = 1.0;
 
-    let mut parent_scroll_delta = Vec2::ZERO;
-
-    if response.hovered() {
+    if time_area_response.hovered() {
         delta_x += ui.input().scroll_delta.x;
         zoom_factor *= ui.input().zoom_delta_2d().x;
     }
 
-    if response.dragged_by(PointerButton::Primary) {
-        delta_x += response.drag_delta().x;
-        parent_scroll_delta.y += response.drag_delta().y;
+    if time_area_response.dragged_by(PointerButton::Primary) {
+        delta_x += time_area_response.drag_delta().x;
         ui.output().cursor_icon = CursorIcon::AllScroll;
     }
-    if response.dragged_by(PointerButton::Secondary) {
-        zoom_factor *= (response.drag_delta().y * 0.01).exp();
+    if time_area_response.dragged_by(PointerButton::Secondary) {
+        zoom_factor *= (time_area_response.drag_delta().y * 0.01).exp();
     }
 
     if delta_x != 0.0 {
@@ -651,11 +689,11 @@ fn interact_with_time_area(
         }
     }
 
-    if response.double_clicked() {
+    if time_area_response.double_clicked() {
         time_ctrl.reset_time_view();
     }
 
-    parent_scroll_delta
+    time_area_response
 }
 
 fn initial_time_selection(
