@@ -153,7 +153,7 @@ def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
 
     Supported `dtype`s:
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
-    * uint16: all color components should be in 0-65535 linear space.
+    * uint16: color components should be in 0-65535 sRGB gamma space, except for alpha which should be in 0-65535 linear space.
     * float32/float64: all color components should be in 0-1 linear space.
 
     If no `space` is given, the space name "2D" will be used.
