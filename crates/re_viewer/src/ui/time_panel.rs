@@ -215,15 +215,21 @@ impl TimePanel {
             "/".to_owned()
         };
 
-        let collapsing_response = egui::CollapsingHeader::new(text)
-            .id_source(&path)
-            .default_open(path.is_empty()) //  || (path.len() == 1 && tree.children.len() < 3)) TODO(emilk) when data path has been simplified
-            .show(ui, |ui| {
+        let collapsing_header_id = ui.make_persistent_id(&path);
+        let default_open = path.is_empty();
+        let (header_response, _, body_returned) =
+            egui::collapsing_header::CollapsingState::load_with_default_open(
+                ui.ctx(),
+                collapsing_header_id,
+                default_open,
+            )
+            .show_header(ui, |ui| ctx.obj_path_button_to(ui, text, &obj_path))
+            .body(|ui| {
                 self.show_children(ctx, time_area_response, time_area_painter, path, tree, ui);
             });
 
-        let is_closed = collapsing_response.body_returned.is_none();
-        let response = collapsing_response.header_response;
+        let is_closed = body_returned.is_none();
+        let response = header_response;
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 

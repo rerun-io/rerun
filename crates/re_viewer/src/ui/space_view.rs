@@ -486,6 +486,7 @@ pub(crate) fn ui_data(
                     });
 
                 ui.vertical(|ui| {
+                    ui.set_min_width(100.0);
                     ui.label(format!("dtype: {:?}", tensor.dtype));
 
                     if tensor.shape.len() == 2 {
