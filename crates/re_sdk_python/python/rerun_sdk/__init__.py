@@ -166,6 +166,8 @@ def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
 
 def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
     """
+    Log a depth image.
+
     meter: How long is a meter in the given dtype?
            For instance: with uint16, perhaps meter=1000 which would mean
            you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
