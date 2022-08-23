@@ -1,6 +1,7 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
 import atexit
 import numpy as np
+from typing import Optional, Sequence
 
 from . import rerun_sdk as rerun_rs
 
@@ -17,7 +18,7 @@ atexit.register(rerun_shutdown)
 # I couldn't figure out how to get Python to do this, because Python imports confuses me.
 
 
-def connect(addr=None):
+def connect(addr: Optional[str] = None):
     """ Connect to a remote rerun viewer on the given ip:port. """
     return rerun_rs.connect(addr)
 
@@ -34,7 +35,7 @@ def show():
     return rerun_rs.show()
 
 
-def set_time_sequence(time_source, sequence):
+def set_time_sequence(time_source: str, sequence: Optional[int]):
     """
     Set the current time globally. Used for all subsequent logging,
     until the next call to `set_time_sequence`.
@@ -46,7 +47,7 @@ def set_time_sequence(time_source, sequence):
     return rerun_rs.set_time_sequence(time_source, sequence)
 
 
-def set_time_seconds(time_source, seconds):
+def set_time_seconds(time_source: str, seconds: Optional[float]):
     """
     Set the current time globally. Used for all subsequent logging,
     until the next call to `set_time_seconds`.
@@ -63,7 +64,7 @@ def set_time_seconds(time_source, seconds):
     return rerun_rs.set_time_seconds(time_source, seconds)
 
 
-def set_time_nanos(time_source, nanos):
+def set_time_nanos(time_source: str, nanos: Optional[int]):
     """
     Set the current time globally. Used for all subsequent logging,
     until the next call to `set_time_nanos`.
@@ -81,11 +82,11 @@ def set_time_nanos(time_source, nanos):
 
 
 def log_bbox(
-    obj_path,
-    left_top,
-    width_height,
-    label=None,
-    space=None,
+    obj_path: str,
+    left_top: Sequence[float],
+    width_height: Sequence[float],
+    label: Optional[str] = None,
+    space: Optional[str] = None,
 ):
     rerun_rs.log_bbox(obj_path,
                       left_top,
@@ -94,7 +95,11 @@ def log_bbox(
                       space)
 
 
-def log_points(obj_path, positions, colors=None, space=None):
+def log_points(
+        obj_path: str,
+        positions: np.ndarray,
+        colors: Optional[np.ndarray] = None,
+        space: Optional[str] = None):
     """
     Log 2D or 3D points, with optional colors.
 
@@ -129,7 +134,7 @@ def log_points(obj_path, positions, colors=None, space=None):
     rerun_rs.log_points_rs(obj_path, positions, colors, space)
 
 
-def log_image(obj_path, image, space=None):
+def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
     """
     Log an image with 1, 3 or 4 channels (gray, RGB or RGBA).
 
@@ -148,7 +153,7 @@ def log_image(obj_path, image, space=None):
     log_tensor(obj_path, image, space=space)
 
 
-def log_depth_image(obj_path, image, meter=None, space=None):
+def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
     """
     meter: How long is a meter in the given dtype?
            For instance: with uint16, perhaps meter=1000 which would mean
@@ -164,7 +169,7 @@ def log_depth_image(obj_path, image, meter=None, space=None):
     log_tensor(obj_path, image, meter=meter, space=space)
 
 
-def log_tensor(obj_path, tensor, meter=None, space=None):
+def log_tensor(obj_path: str, tensor: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
     """
     If no `space` is given, the space name "2D" will be used.
     """
