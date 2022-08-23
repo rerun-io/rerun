@@ -612,7 +612,7 @@ impl Tensor {
 
     /// Number of elements.
     pub fn len(&self) -> u64 {
-        let mut len = 0;
+        let mut len = 1;
         for &dim in &self.shape {
             len = dim.saturating_mul(len);
         }

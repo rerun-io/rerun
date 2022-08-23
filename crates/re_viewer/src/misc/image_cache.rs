@@ -73,7 +73,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
         TensorDataStore::Dense(bytes) => {
             anyhow::ensure!(
                 bytes.len() as u64 == tensor.len() * tensor.dtype.size(),
-                "Invalid tensor"
+                "Tensor data length doesn't match tensor shape and dtype"
             );
 
             match (depth, tensor.dtype) {
