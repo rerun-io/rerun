@@ -43,6 +43,8 @@ cargo deny check
 
 source crates/re_sdk_python/setup_env.sh
 maturin build -m crates/re_sdk_python/Cargo.toml
+mypy crates/re_sdk_python
+pytest crates/re_sdk_python
 
 # -----------------
 
