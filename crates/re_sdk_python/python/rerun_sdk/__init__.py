@@ -4,7 +4,7 @@ import numpy as np
 from typing import Optional, Sequence
 
 from . import rerun_sdk as rerun_rs
-from .color_conversion import linear_to_gamma_u8
+from .color_conversion import linear_to_gamma_u8_pixel
 
 
 def rerun_shutdown():
@@ -133,7 +133,7 @@ def log_points(
     else:
         # Rust expects colors in 0-255 uint8
         if colors.dtype in ['float32', 'float64']:
-            colors = linear_to_gamma_u8(linear=colors)
+            colors = linear_to_gamma_u8_pixel(linear=colors)
 
         if colors.dtype != 'uint8':
             colors = colors.astype('uint8')
