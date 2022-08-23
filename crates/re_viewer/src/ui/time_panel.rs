@@ -184,7 +184,12 @@ impl TimePanel {
     ) {
         use egui::*;
 
-        // TODO(emilk): ignore rows that have no data for the current time source?
+        if !tree
+            .prefix_times
+            .contains_key(ctx.rec_cfg.time_ctrl.source())
+        {
+            return; // ignore objects that have no data for the current time source
+        }
 
         let obj_path = ObjPath::from(&ObjPathBuilder::new(path.clone()));
 
@@ -303,6 +308,10 @@ impl TimePanel {
 
             let obj_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
             for (field_name, data) in &tree.fields {
+                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.source()) {
+                    continue; // ignore fields that have no data for the current time source
+                }
+
                 let data_path = DataPath::new(obj_path.clone(), *field_name);
 
                 let response = ui
