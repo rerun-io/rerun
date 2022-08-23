@@ -27,7 +27,7 @@ def log_dummy_data(args):
         rerun.log_image("rgb", sample.rgb_image)
 
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rerun.log_bbox("bbox", [car_x, car_y], [car_w, car_h], "A car")
+        rerun.log_rect("bbox", [car_x, car_y], [car_w, car_h], "A car")
 
 
 class DummyCar:

@@ -27,7 +27,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
 
-    m.add_function(wrap_pyfunction!(log_bbox, m)?)?;
+    m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
@@ -131,7 +131,7 @@ fn set_time_nanos(time_source: &str, ns: Option<i64>) {
 /// Optionally give it a label.
 /// If no `space` is given, the space name "2D" will be used.
 #[pyfunction]
-fn log_bbox(
+fn log_rect(
     obj_path: &str,
     left_top: [f32; 2],
     width_height: [f32; 2],

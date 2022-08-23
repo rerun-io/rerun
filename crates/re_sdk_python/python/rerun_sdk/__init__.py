@@ -79,14 +79,20 @@ def set_time_nanos(time_source: str, nanos: Optional[int]):
     return rerun_rs.set_time_nanos(time_source, nanos)
 
 
-def log_bbox(
+def log_rect(
     obj_path: str,
     left_top: Sequence[float],
     width_height: Sequence[float],
     label: Optional[str] = None,
     space: Optional[str] = None,
 ):
-    rerun_rs.log_bbox(obj_path,
+    """
+    Log a 2D rectangle.
+
+    Optionally give it a label and space.
+    If no `space` is given, the space name "2D" will be used.
+    """
+    rerun_rs.log_rect(obj_path,
                       left_top,
                       width_height,
                       label,
