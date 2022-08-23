@@ -4,6 +4,7 @@ import numpy as np
 from typing import Optional, Sequence
 
 from . import rerun_sdk as rerun_rs
+from .color_converstion import linear_to_gamma_u8
 
 
 def rerun_shutdown():
@@ -119,6 +120,10 @@ def log_points(
     Colors can be RGB or RGBA. You can supply no colors, one color,
     or one color per point in a Nx3 or Nx4 numpy array.
 
+    Supported `dtype`s for `colors`:
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
+    * float32/float64: all color components should be in 0-1 linear space.
+
     If no `space` is given, the space name "2D" or "3D" will be used,
     depending on the dimensionality of the data.
     """
@@ -128,13 +133,10 @@ def log_points(
     else:
         # Rust expects colors in 0-255 uint8
         if colors.dtype in ['float32', 'float64']:
-            if np.amax(colors) < 1.1:
-                # TODO(emilk): gamma curve correction for RGB, and just *255 for alpgha
-                raise TypeError(
-                    "Expected color values in 0-255 gamma range, but got color values in 0-1 range")
+            colors = linear_to_gamma_u8(linear=colors)
 
-        colors = colors.astype('uint8')
-        # TODO(emilk): extend colors with alpha=255 if colors is Nx3
+        if colors.dtype != 'uint8':
+            colors = colors.astype('uint8')
 
     positions.astype('float32')
 
