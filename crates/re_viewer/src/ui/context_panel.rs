@@ -369,12 +369,30 @@ fn show_zoomed_image_region(
         let (x, y) = (center_x as _, center_y as _);
 
         tooltip_ui.vertical(|ui| {
+            if tensor.num_dim() == 2 {
+                if let Some(raw_value) = tensor.get(&[y, x]) {
+                    ui.monospace(format!("Raw value: {}", raw_value.as_f64()));
+                }
+            } else if tensor.num_dim() == 3 {
+                let mut s = "Raw values:".to_owned();
+                for c in 0..tensor.shape[2] {
+                    if let Some(raw_value) = tensor.get(&[y, x, c]) {
+                        use std::fmt::Write as _;
+                        write!(&mut s, " {}", raw_value.as_f64()).unwrap();
+                    }
+                }
+                ui.monospace(s);
+            }
+
             let image::Rgba([r, g, b, a]) = color;
-            color_picker::show_color(
-                ui,
-                Color32::from_rgba_unmultiplied(r, g, b, a),
-                Vec2::splat(64.0),
-            );
+
+            if meter.is_none() {
+                color_picker::show_color(
+                    ui,
+                    Color32::from_rgba_unmultiplied(r, g, b, a),
+                    Vec2::splat(64.0),
+                );
+            }
 
             if let Some(meter) = meter {
                 // This is a depth map
@@ -382,11 +400,10 @@ fn show_zoomed_image_region(
                     let raw_value = raw_value.as_f64();
                     let meters = raw_value / meter as f64;
                     if meters < 1.0 {
-                        ui.monospace(format!("{:.1} mm", meters * 1e3));
+                        ui.monospace(format!("Depth: {:.1} mm", meters * 1e3));
                     } else {
-                        ui.monospace(format!("{meters:.3} m"));
+                        ui.monospace(format!("Depth: {meters:.3} m"));
                     }
-                    ui.monospace(format!("(raw value: {raw_value})"));
                 }
             } else {
                 use image::DynamicImage;
