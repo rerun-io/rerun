@@ -225,30 +225,47 @@ fn log_points_rs(
     let time_point = sdk.now();
 
     if !colors.is_empty() {
-        let num_colors = match colors.shape() {
-            [num_colors, 4] => *num_colors,
-            shape => {
-                return Err(PyTypeError::new_err(format!(
-                    "Expected Nx4 color array; got {shape:?}"
-                )));
-            }
+        let mut send_color = |data| {
+            sdk.send(LogMsg::DataMsg(DataMsg {
+                msg_id: MsgId::random(),
+                time_point: time_point.clone(),
+                data_path: DataPath::new(point_path.clone(), "color".into()),
+                data,
+            }));
         };
 
-        match num_colors {
-            0 => {}
-            1 => {
+        match colors.shape() {
+            [3] | [1, 3] => {
+                // A single RGB
+                let slice = colors.as_slice().unwrap(); // TODO(emilk): Handle non-contiguous arrays
+                assert_eq!(slice.len(), 3);
+                let color = [slice[0], slice[1], slice[2], 255];
+                send_color(LoggedData::BatchSplat(Data::Color(color)));
+            }
+            [4] | [1, 4] => {
+                // A single RGBA
                 let slice = colors.as_slice().unwrap(); // TODO(emilk): Handle non-contiguous arrays
                 assert_eq!(slice.len(), 4);
                 let color = [slice[0], slice[1], slice[2], slice[3]];
-
-                sdk.send(LogMsg::DataMsg(DataMsg {
-                    msg_id: MsgId::random(),
-                    time_point: time_point.clone(),
-                    data_path: DataPath::new(point_path.clone(), "color".into()),
-                    data: LoggedData::BatchSplat(Data::Color(color)),
-                }));
+                send_color(LoggedData::BatchSplat(Data::Color(color)));
             }
-            n if n == num_pos => {
+            [_, 3] => {
+                // RGB, RGB, RGB, …
+                let colors: Vec<[u8; 4]> = colors
+                    .as_slice()
+                    .unwrap()
+                    .chunks(3)
+                    .into_iter()
+                    .map(|chunk| [chunk[0], chunk[1], chunk[2], 255])
+                    .collect();
+
+                send_color(LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::Color(colors),
+                });
+            }
+            [_, 4] => {
+                // RGBA, RGBA, RGBA, …
                 let colors: Vec<[u8; 4]> = colors
                     .as_slice()
                     .unwrap()
@@ -257,20 +274,17 @@ fn log_points_rs(
                     .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3]])
                     .collect();
 
-                sdk.send(LogMsg::DataMsg(DataMsg {
-                    msg_id: MsgId::random(),
-                    time_point: time_point.clone(),
-                    data_path: DataPath::new(point_path.clone(), "color".into()),
-                    data: LoggedData::Batch {
-                        indices: indices.clone(),
-                        data: DataVec::Color(colors),
-                    },
-                }));
+                send_color(LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::Color(colors),
+                });
             }
-            _ => {
-                return Err(PyTypeError::new_err(format!("Got {} positions and {} colors. The number of colors must be zero, one, or the same as the number of positions.", positions.len(), colors.len())));
+            shape => {
+                return Err(PyTypeError::new_err(format!(
+                    "Expected Nx4 color array; got {shape:?}"
+                )));
             }
-        }
+        };
     }
 
     // TODO(emilk): handle non-contigious arrays
