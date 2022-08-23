@@ -24,12 +24,18 @@ def connect(addr: Optional[str] = None):
 
 
 def disconnect():
+    """ Disconnect from the remote rerun server (if any). """
     return rerun_rs.disconnect()
 
 
-
-
 def show():
+    """
+    Show previously logged data.
+
+    This only works if you have not called `connect`.
+
+    NOTE: There is a bug which causes this function to only work once on some platforms.
+    """
     return rerun_rs.show()
 
 
@@ -109,8 +115,9 @@ def log_points(
 
     positions: Nx2 or Nx3 array
 
-    `colors.shape[0] == 1`: same color for all points
-    `colors.shape[0] == positions.shape[0]`: a color per point
+    Colors should either be in 0-255 gamma space or in 0-1 linear space.
+    Colors can be RGB or RGBA. You can supply no colors, one color,
+    or one color per point in a Nx3 or Nx4 numpy array.
 
     If no `space` is given, the space name "2D" or "3D" will be used,
     depending on the dimensionality of the data.
