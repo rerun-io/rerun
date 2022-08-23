@@ -170,7 +170,7 @@ def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
             raise TypeError(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}")
 
-    log_tensor(obj_path, image, space=space)
+    _log_tensor(obj_path, image, space=space)
 
 
 def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
@@ -190,10 +190,10 @@ def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = N
         raise TypeError(
             f"Expected 2D depth image, got array of shape {image.shape}")
 
-    log_tensor(obj_path, image, meter=meter, space=space)
+    _log_tensor(obj_path, image, meter=meter, space=space)
 
 
-def log_tensor(obj_path: str, tensor: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
+def _log_tensor(obj_path: str, tensor: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
     """
     If no `space` is given, the space name "2D" will be used.
     """
