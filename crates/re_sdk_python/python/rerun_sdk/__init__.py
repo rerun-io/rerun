@@ -3,7 +3,7 @@ import atexit
 import numpy as np
 from typing import Optional, Sequence
 
-from . import rerun_sdk as rerun_rs
+from . import rerun_sdk as rerun_rs  # type: ignore
 from .color_conversion import linear_to_gamma_u8_pixel
 
 

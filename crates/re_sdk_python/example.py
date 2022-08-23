@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Iterator, Tuple
 
 import argparse
-import cv2
+import cv2  # type: ignore
 import numpy as np
 
 import rerun_sdk as rerun
