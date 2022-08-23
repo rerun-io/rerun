@@ -13,7 +13,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = ["opencv-python"]
+dependencies = ["numpy"]
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 license = {text = "MIT OR Apache-2.0"}
