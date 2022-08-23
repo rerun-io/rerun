@@ -4,7 +4,7 @@ import numpy as np
 from typing import Optional, Sequence
 
 from . import rerun_sdk as rerun_rs
-from .color_converstion import linear_to_gamma_u8
+from .color_conversion import linear_to_gamma_u8
 
 
 def rerun_shutdown():
