@@ -229,22 +229,17 @@ fn show_tensor(
 
     let image_rect = response.rect;
 
-    response
-        .on_hover_cursor(egui::CursorIcon::ZoomIn)
-        .on_hover_ui_at_pointer(|ui| {
-            if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
-                ui.horizontal(|ui| {
-                    show_zoomed_image_region(
-                        ui,
-                        tensor,
-                        dynamic_image,
-                        image_rect,
-                        pointer_pos,
-                        None,
-                    );
-                });
-            }
-        });
+    if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
+        show_zoomed_image_region_tooltip(
+            ui,
+            response,
+            tensor,
+            dynamic_image,
+            image_rect,
+            pointer_pos,
+            None,
+        );
+    }
 
     // TODO(emilk): support copying and saving images on web
     #[cfg(not(target_arch = "wasm32"))]
@@ -258,9 +253,36 @@ fn show_tensor(
     }
 }
 
+pub fn show_zoomed_image_region_tooltip(
+    parent_ui: &mut egui::Ui,
+    response: egui::Response,
+    tensor: &re_log_types::Tensor,
+    dynamic_image: &image::DynamicImage,
+    image_rect: egui::Rect,
+    pointer_pos: egui::Pos2,
+    meter: Option<f32>,
+) -> egui::Response {
+    response
+        .on_hover_cursor(egui::CursorIcon::ZoomIn)
+        .on_hover_ui_at_pointer(|ui| {
+            ui.horizontal(|ui| {
+                show_zoomed_image_region(
+                    parent_ui,
+                    ui,
+                    tensor,
+                    dynamic_image,
+                    image_rect,
+                    pointer_pos,
+                    meter,
+                );
+            });
+        })
+}
+
 /// meter: iff this is a depth map, how long is one meter?
-pub fn show_zoomed_image_region(
-    ui: &mut egui::Ui,
+fn show_zoomed_image_region(
+    parent_ui: &mut egui::Ui,
+    tooltip_ui: &mut egui::Ui,
     tensor: &re_log_types::Tensor,
     dynamic_image: &image::DynamicImage,
     image_rect: egui::Rect,
@@ -270,7 +292,7 @@ pub fn show_zoomed_image_region(
     use egui::*;
     use image::GenericImageView as _;
 
-    let (_id, zoom_rect) = ui.allocate_space(vec2(192.0, 192.0));
+    let (_id, zoom_rect) = tooltip_ui.allocate_space(vec2(192.0, 192.0));
     let w = dynamic_image.width() as _;
     let h = dynamic_image.height() as _;
     let center_x =
@@ -278,11 +300,31 @@ pub fn show_zoomed_image_region(
     let center_y =
         (remap(pointer_pos.y, image_rect.y_range(), 0.0..=(h as f32)).floor() as isize).at_most(h);
 
-    ui.painter()
-        .rect_filled(zoom_rect, 0.0, ui.visuals().extreme_bg_color);
-
-    // Show all the surrounding pixels:
+    // Show the surrounding pixels:
     let texel_radius = 12;
+
+    {
+        // Show where on the original image the zoomed-in region is at:
+        let left = (center_x - texel_radius) as f32;
+        let right = (center_x + texel_radius) as f32;
+        let top = (center_y - texel_radius) as f32;
+        let bottom = (center_y + texel_radius) as f32;
+
+        let left = remap(left, 0.0..=w as f32, image_rect.x_range());
+        let right = remap(right, 0.0..=w as f32, image_rect.x_range());
+        let top = remap(top, 0.0..=h as f32, image_rect.y_range());
+        let bottom = remap(bottom, 0.0..=h as f32, image_rect.y_range());
+
+        let rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
+        // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
+        let painter = parent_ui.ctx().debug_painter();
+        painter.rect_stroke(rect, 0.0, (2.0, Color32::BLACK));
+        painter.rect_stroke(rect, 0.0, (1.0, Color32::WHITE));
+    }
+
+    let painter = tooltip_ui.painter();
+
+    painter.rect_filled(zoom_rect, 0.0, tooltip_ui.visuals().extreme_bg_color);
 
     let mut mesh = Mesh::default();
     let mut center_texel_rect = None;
@@ -315,20 +357,18 @@ pub fn show_zoomed_image_region(
         }
     }
 
-    ui.painter().add(mesh);
+    painter.add(mesh);
 
     if let Some(center_texel_rect) = center_texel_rect {
-        ui.painter()
-            .rect_stroke(center_texel_rect, 0.0, (2.0, Color32::BLACK));
-        ui.painter()
-            .rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
+        painter.rect_stroke(center_texel_rect, 0.0, (2.0, Color32::BLACK));
+        painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
     }
 
     if let Some(color) = get_pixel(dynamic_image, [center_x, center_y]) {
-        ui.separator();
+        tooltip_ui.separator();
         let (x, y) = (center_x as _, center_y as _);
 
-        ui.vertical(|ui| {
+        tooltip_ui.vertical(|ui| {
             let image::Rgba([r, g, b, a]) = color;
             color_picker::show_color(
                 ui,

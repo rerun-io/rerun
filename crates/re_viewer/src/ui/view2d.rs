@@ -150,21 +150,16 @@ pub(crate) fn combined_view_2d(
             if Some(props.obj_path) == state.hovered_obj.as_ref()
                 && screen_rect.contains(pointer_pos)
             {
-                response = response
-                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
-                    .on_hover_ui_at_pointer(|ui| {
-                        let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
-                        ui.horizontal(|ui| {
-                            crate::ui::context_panel::show_zoomed_image_region(
-                                ui,
-                                tensor,
-                                dynamic_image,
-                                screen_rect,
-                                pointer_pos,
-                                *meter,
-                            );
-                        });
-                    });
+                let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
+                response = crate::ui::context_panel::show_zoomed_image_region_tooltip(
+                    ui,
+                    response,
+                    tensor,
+                    dynamic_image,
+                    screen_rect,
+                    pointer_pos,
+                    *meter,
+                );
             }
         }
     }
