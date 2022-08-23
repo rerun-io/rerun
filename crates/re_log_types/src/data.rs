@@ -578,7 +578,7 @@ pub struct Tensor {
     /// the "tighest wound" dimension is last.
     ///
     /// An empty shape means this tensor is a scale, i.e. of length 1.
-    /// An empty vector has shape [0], an empty matrix shape [0, 0], etc.
+    /// An empty vector has shape `[0]`, an empty matrix shape `[0, 0]`, etc.
     ///
     /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc in most circumstances.
     pub shape: Vec<u64>,

@@ -4,7 +4,7 @@ use re_log_types::TimeInt;
 
 /// Either nanoseconds or sequence numbers.
 ///
-/// Must be matched with a [`TimeType`] to know what.
+/// Must be matched with a [`re_log_types::TimeType`] to know what.
 ///
 /// Used both for time points and durations.
 ///
