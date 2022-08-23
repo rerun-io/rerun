@@ -488,7 +488,8 @@ pub enum TensorDataType {
 
 impl TensorDataType {
     /// Number of bytes used by the type
-    fn size(&self) -> u64 {
+    #[inline]
+    pub fn size(&self) -> u64 {
         match self {
             Self::U8 => 1,
             Self::U16 => 2,
@@ -525,6 +526,7 @@ pub enum TensorElement {
 }
 
 impl TensorElement {
+    #[inline]
     pub fn as_f64(&self) -> f64 {
         match self {
             Self::U8(value) => *value as _,
@@ -575,14 +577,17 @@ pub struct Tensor {
     /// The order martches that of numpy etc, and is ordered so that
     /// the "tighest wound" dimension is last.
     ///
-    /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc.
+    /// An empty shape means this tensor is a scale, i.e. of length 1.
+    /// An empty vector has shape [0], an empty matrix shape [0, 0], etc.
+    ///
+    /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc in most circumstances.
     pub shape: Vec<u64>,
 
     /// The per-element data format.
     /// numpy calls this `dtype`.
     pub dtype: TensorDataType,
 
-    /// The actual contents of the tensor
+    /// The actual contents of the tensor.
     pub data: TensorDataStore,
 }
 
@@ -597,6 +602,29 @@ impl std::fmt::Debug for Tensor {
 }
 
 impl Tensor {
+    /// True if the shape has a zero in it anywhere.
+    ///
+    /// Note that `shape=[]` means this tensor is a scale, and thus NOT empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.shape.iter().any(|&d| d == 0)
+    }
+
+    /// Number of elements.
+    pub fn len(&self) -> u64 {
+        let mut len = 0;
+        for &dim in &self.shape {
+            len = dim.saturating_mul(len);
+        }
+        len
+    }
+
+    /// Number of dimensions. Same as length of [`Self::shape`].
+    #[inline]
+    pub fn num_dim(&self) -> usize {
+        self.shape.len()
+    }
+
     /// The index must be the same length as the dimension.
     ///
     /// `None` if out of bounds, or if [`Self::data`] is not [`TensorDataStore::Dense`].
@@ -609,7 +637,7 @@ impl Tensor {
         }
 
         match &self.data {
-            TensorDataStore::Dense(dense) => {
+            TensorDataStore::Dense(bytes) => {
                 let mut stride = self.dtype.size();
                 let mut offset = 0;
                 for (size, index) in self.shape.iter().zip(index).rev() {
@@ -619,16 +647,18 @@ impl Tensor {
                     offset += index * stride;
                     stride *= size;
                 }
-                debug_assert_eq!(stride, dense.len() as u64);
+                if stride != bytes.len() as u64 {
+                    return None; // Bad tensor
+                }
 
                 let begin = offset as usize;
                 let end = (offset + self.dtype.size()) as usize;
-                let data = &dense[begin..end];
+                let data = &bytes[begin..end];
 
                 Some(match self.dtype {
-                    TensorDataType::U8 => TensorElement::U8(*bytemuck::from_bytes(data)),
-                    TensorDataType::U16 => TensorElement::U16(*bytemuck::from_bytes(data)),
-                    TensorDataType::F32 => TensorElement::F32(*bytemuck::from_bytes(data)),
+                    TensorDataType::U8 => TensorElement::U8(bytemuck::pod_read_unaligned(data)),
+                    TensorDataType::U16 => TensorElement::U16(bytemuck::pod_read_unaligned(data)),
+                    TensorDataType::F32 => TensorElement::F32(bytemuck::pod_read_unaligned(data)),
                 })
             }
             TensorDataStore::Jpeg(_) => None, // Too expensive to unpack here.
