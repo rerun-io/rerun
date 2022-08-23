@@ -604,13 +604,15 @@ impl std::fmt::Debug for Tensor {
 impl Tensor {
     /// True if the shape has a zero in it anywhere.
     ///
-    /// Note that `shape=[]` means this tensor is a scale, and thus NOT empty.
+    /// Note that `shape=[]` means this tensor is a scalar, and thus NOT empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.shape.iter().any(|&d| d == 0)
     }
 
-    /// Number of elements.
+    /// Number of elements (the product of [`Self::shape`]).
+    ///
+    /// NOTE: Returns `1` for scalars (shape=[]).
     pub fn len(&self) -> u64 {
         let mut len = 1;
         for &dim in &self.shape {
