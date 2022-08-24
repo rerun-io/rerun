@@ -80,7 +80,7 @@ jobs:
           command: test
           args: --all-features --lib
 
-  -fmt-crank:
+  fmt-crank:
     name: Rustfmt and Cranky
     runs-on: ubuntu-latest
     steps:
