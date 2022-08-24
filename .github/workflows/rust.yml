@@ -119,13 +119,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: EmbarkStudios/cargo-deny-action@v1
         with:
-          profile: minimal
-          toolchain: 1.63.0
-          override: true
-      - run: cargo install cargo-deny
-      - run: cargo deny check
+          rust-version: "1.63.0"
 
   lint_py:
     name: lint.py
