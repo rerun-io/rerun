@@ -138,11 +138,10 @@ jobs:
         continue-on-error: false
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
+            ~\.cargo\bin\
+            ~\.cargo\registry\index\
+            ~\.cargo\registry\cache\
+            ~\.cargo\git\db\
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
       - uses: messense/maturin-action@v1
