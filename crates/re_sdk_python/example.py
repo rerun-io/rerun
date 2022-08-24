@@ -11,6 +11,12 @@ import rerun_sdk as rerun
 
 
 def log_dummy_data(args):
+    if args.connect:
+        # Send logging data to separate `rerun` process.
+        # You can ommit the argument to connect to the default address,
+        # which is `127.0.0.1:9876`.
+        rerun.connect(args.addr)
+
     """Log a few frames of generated dummy data to show how the Rerun SDK is used."""
     NUM_FRAMES = 40
 
@@ -36,6 +42,10 @@ def log_dummy_data(args):
         # that we just call "depth_cam".
         rerun.log_depth_image("depth", sample.depth_image_mm,
                               meter=1000, space="depth_cam")
+
+    if not args.connect:
+        # Show the logged data inside the Python process:
+        rerun.show()
 
 
 class DummyCar:
@@ -184,13 +194,4 @@ if __name__ == '__main__':
                         help='Connect to this ip:port')
     args = parser.parse_args()
 
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
-
     log_dummy_data(args)
-
-    if not args.connect:
-        rerun.show()
