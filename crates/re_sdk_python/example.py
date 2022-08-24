@@ -28,7 +28,8 @@ def log_dummy_data(args):
         rerun.log_image("rgb", sample.rgb_image)
 
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rerun.log_rect("bbox", [car_x, car_y], [car_w, car_h], "A car")
+        rerun.log_rect("bbox", [car_x, car_y], [
+                       car_w, car_h], label="A car", color=(0, 128, 255))
 
         # Set our preferred up-axis in the viewer
         rerun.set_space_up("3D", [0, -1, 0])

@@ -111,17 +111,20 @@ def log_rect(
     left_top: Sequence[float],
     width_height: Sequence[float],
     label: Optional[str] = None,
+    color: Optional[Sequence[int]] = None,
     space: Optional[str] = None,
 ):
     """
     Log a 2D rectangle.
 
-    Optionally give it a label and space.
+    `label` is an optional text to show inside the rectangle.
+    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     If no `space` is given, the space name "2D" will be used.
     """
     rerun_rs.log_rect(obj_path,
                       left_top,
                       width_height,
+                      color,
                       label,
                       space)
 

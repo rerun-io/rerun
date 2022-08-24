@@ -157,9 +157,10 @@ fn log_rect(
     obj_path: &str,
     left_top: [f32; 2],
     width_height: [f32; 2],
+    color: Option<Vec<u8>>,
     label: Option<String>,
     space: Option<String>,
-) {
+) -> PyResult<()> {
     let [x, y] = left_top;
     let [w, h] = width_height;
     let min = [x, y];
@@ -179,6 +180,26 @@ fn log_rect(
         data: LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
     }));
 
+    if let Some(color) = color {
+        let color = match &color[..] {
+            [r, g, b] => [*r, *g, *b, 255],
+            [r, g, b, a] => [*r, *g, *b, *a],
+            _ => {
+                return Err(PyTypeError::new_err(format!(
+                    "Expected color to be of length 3 or 4, got {:?}",
+                    color
+                )));
+            }
+        };
+
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "color".into()),
+            data: LoggedData::Single(Data::Color(color)),
+        }));
+    }
+
     if let Some(label) = label {
         sdk.send(LogMsg::DataMsg(DataMsg {
             msg_id: MsgId::random(),
@@ -195,6 +216,8 @@ fn log_rect(
         data_path: DataPath::new(obj_path, "space".into()),
         data: LoggedData::Single(Data::Space(space.into())),
     }));
+
+    Ok(())
 }
 
 /// positions: Nx2 or Nx3 array
