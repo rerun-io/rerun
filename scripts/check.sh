@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # This scripts runs various CI-like checks in a convenient way.
-set -eux
+
+set -eu
+script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+cd "$script_path/.."
+set -x
 
 RUSTFLAGS="-D warnings"
 RUSTDOCFLAGS="-D warnings" # https://github.com/emilk/egui/pull/1454

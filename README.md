@@ -9,7 +9,7 @@ We don't have any pre-built binaries yet, so you need to build Rerun from source
 
 First up, you need to install the Rust toolchain: https://rustup.rs/
 
-Then, setup the rest of the required tools by running `./setup.sh`.
+Then, setup the rest of the required tools by running `./scripts/setup.sh`.
 
 ## Installing the Rerun viewer
 After running the setup above, you can build and install the rerun viewer with:
