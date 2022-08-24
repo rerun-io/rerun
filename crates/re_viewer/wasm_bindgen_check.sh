@@ -3,7 +3,15 @@ set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path/../.."
 
-crates/re_viewer/setup_web.sh
+
+
+if [[ $* == --skip-setup ]]
+then
+  echo "Skipp running setup_web.sh"
+else
+  echo "Running setup_web.sh"
+    crates/re_viewer/setup_web.sh
+fi
 
 CRATE_NAME="re_viewer"
 
