@@ -103,6 +103,31 @@ jobs:
         with:
           command: test
           args: --all-features --lib
+
+maturin-linux:
+    name: Linux Wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.63.0
+          override: true
+          components: rustfmt
+      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
       - name: Setup python for building wheel
         uses: actions/setup-python@v2
         with:
@@ -110,7 +135,7 @@ jobs:
           cache: 'pip'
       - run: pip install -r crates/re_sdk_python/requirements.txt
       - name: Build wheels
-        run: maturin build -m crates/re_sdk_python/Cargo.toml
+        run: maturin build -m crates/re_sdk_python/Cargo.toml -o dist
 
   cargo-deny:
     name: cargo deny
