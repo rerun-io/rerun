@@ -130,16 +130,6 @@ jobs:
       - uses: actions/checkout@v2
       - run: ./scripts/lint.py
 
-  # For some reason this causes weird problems:
-  # https://github.com/rerun-io/rerun/runs/6271778805?check_suite_focus=true
-  # Error: -03 10:39:38 [ERROR] `cargo metadata` exited with an error: info: syncing channel updates for '1.60.0-x86_64-unknown-linux-musl'
-  # failed to read `/github/rerun/web_server/Cargo.toml`
-  # cargo-deny:
-  #   runs-on: ubuntu-20.04
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: EmbarkStudios/cargo-deny-action@v1
-
   wasm_bindgen:
     name: wasm-bindgen
     runs-on: ubuntu-latest
