@@ -38,15 +38,6 @@ cargo doc --document-private-items --no-deps --all-features
 
 cargo deny check
 
-# ----------------
-# Python SDK:
-
-source crates/re_sdk_python/setup_env.sh
-maturin build -m crates/re_sdk_python/Cargo.toml
-pip3 install ./target/wheels/*.whl
-mypy crates/re_sdk_python
-pytest crates/re_sdk_python
-
-# -----------------
+./scripts/check_python.py
 
 echo "All checks passed!"
