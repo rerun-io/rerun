@@ -141,8 +141,10 @@ jobs:
           toolchain: 1.63.0
           target: wasm32-unknown-unknown
           override: true
-      - run: ./crates/re_viewer/setup_web.sh
-      - run: ./crates/re_viewer/wasm_bindgen_check.sh
+      - uses: jetli/wasm-bindgen-action@v0.1.0
+        with:
+          version: '0.2.82'
+      - run: ./crates/re_viewer/wasm_bindgen_check.sh --skip-setup
 
   # NOTE: we don't use messense/maturin-action here because we need extra steps to install eframe dependencies
   linux-wheels:
