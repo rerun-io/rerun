@@ -216,7 +216,7 @@ impl Scene {
                 let mesh_id = hash(props.msg_id);
                 if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
                     mesh_id,
-                    "mesh.to_string()", // TODO(emilk): &type_path.to_string(),
+                    &props.obj_path.to_string(),
                     &MeshSourceData::Mesh3D(mesh.clone()),
                 ) {
                     // TODO(emilk): props.color

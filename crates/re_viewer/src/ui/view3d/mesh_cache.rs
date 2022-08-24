@@ -20,7 +20,7 @@ impl CpuMeshCache {
         self.0
             .entry(mesh_id)
             .or_insert_with(|| {
-                tracing::debug!("Loading CPU mesh {}…", name);
+                tracing::debug!("Loading CPU mesh {name:?}…");
 
                 let result = match mesh_data {
                     MeshSourceData::Mesh3D(mesh3d) => CpuMesh::load(name.to_owned(), mesh3d),
@@ -32,7 +32,7 @@ impl CpuMeshCache {
                 match result {
                     Ok(cpu_mesh) => Some(Arc::new(cpu_mesh)),
                     Err(err) => {
-                        tracing::warn!("{name}: Failed to load mesh: {}", re_error::format(&err));
+                        tracing::warn!("Failed to load mesh {name:?}: {}", re_error::format(&err));
                         None
                     }
                 }
@@ -55,7 +55,7 @@ impl GpuMeshCache {
                 Ok(gpu_mesh) => Some(gpu_mesh),
                 Err(err) => {
                     tracing::warn!(
-                        "{}: Failed to load mesh: {}",
+                        "Failed to load mesh {:?}: {}",
                         cpu_mesh.name(),
                         re_error::format(&err)
                     );
