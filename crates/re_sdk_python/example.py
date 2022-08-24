@@ -24,7 +24,10 @@ def log_dummy_data(args):
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
         rerun.log_rect("bbox", [car_x, car_y], [car_w, car_h], "A car")
 
-        rerun.log_points("points", sample.point_cloud)
+        # Set our preferred up-axis
+        rerun.set_space_up("3D", [0, -1, 0])
+
+        rerun.log_points("points", sample.point_cloud, space="3D")
 
         # The depth image is in millimeters, so we set meter=1000
         # Everything logged are assigned different "spaces".

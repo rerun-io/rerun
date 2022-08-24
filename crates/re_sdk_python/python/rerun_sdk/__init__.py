@@ -86,6 +86,11 @@ def set_time_nanos(time_source: str, nanos: Optional[int]):
     return rerun_rs.set_time_nanos(time_source, nanos)
 
 
+def set_space_up(space: str, up: Sequence[float]):
+    """ Set the preferred up-axis for a given 3D space. """
+    return rerun_rs.set_space_up(space, up)
+
+
 def log_rect(
     obj_path: str,
     left_top: Sequence[float],
