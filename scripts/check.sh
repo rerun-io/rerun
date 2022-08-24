@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # This scripts runs various CI-like checks in a convenient way.
-set -eux
+
+set -eu
+script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+cd "$script_path/.."
+set -x
 
 RUSTFLAGS="-D warnings"
 RUSTDOCFLAGS="-D warnings" # https://github.com/emilk/egui/pull/1454
@@ -38,15 +42,6 @@ cargo doc --document-private-items --no-deps --all-features
 
 cargo deny check
 
-# ----------------
-# Python SDK:
-
-source crates/re_sdk_python/setup_env.sh
-maturin build -m crates/re_sdk_python/Cargo.toml
-pip3 install ./target/wheels/*.whl
-mypy crates/re_sdk_python
-pytest crates/re_sdk_python
-
-# -----------------
+./scripts/check_python.py
 
 echo "All checks passed!"
