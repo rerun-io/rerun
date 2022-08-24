@@ -36,6 +36,8 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_f32, m)?)?;
 
+    m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
+
     Sdk::global().begin_new_recording();
 
     Ok(())
@@ -440,4 +442,77 @@ fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
         dtype: T::DTYPE,
         data: TensorDataStore::Dense(vec),
     }
+}
+
+#[pyfunction]
+fn log_mesh_file(
+    obj_path: &str,
+    mesh_format: &str,
+    bytes: &[u8],
+    transform: numpy::PyReadonlyArray2<'_, f32>,
+    space: Option<String>,
+) -> PyResult<()> {
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let format = match mesh_format {
+        "GLB" => MeshFormat::Glb,
+        "GLTF" => MeshFormat::Gltf,
+        "OBJ" => MeshFormat::Obj,
+        _ => {
+            return Err(PyTypeError::new_err(format!(
+                "Unknown mesh format {mesh_format:?}. Expected one of: GLB, GLTF, OBJ"
+            )));
+        }
+    };
+    let bytes = bytes.into();
+    let transform = if transform.is_empty() {
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    } else {
+        if transform.shape() != [4, 4] {
+            return Err(PyTypeError::new_err(format!(
+                "Expected a 4x4 transformation matrix, got shape={:?}",
+                transform.shape()
+            )));
+        }
+
+        let get = |row, col| *transform.get([row, col]).unwrap();
+
+        [
+            [get(0, 0), get(1, 0), get(2, 0), get(3, 0)], // col 0
+            [get(0, 1), get(1, 1), get(2, 1), get(3, 1)], // col 1
+            [get(0, 2), get(1, 2), get(2, 2), get(3, 2)], // col 2
+            [get(0, 3), get(1, 3), get(2, 3), get(3, 3)], // col 3
+        ]
+    };
+    let space = space.unwrap_or_else(|| "3D".to_owned());
+
+    let mut sdk = Sdk::global();
+
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
+
+    let time_point = sdk.now();
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "mesh".into()),
+        data: LoggedData::Single(Data::Mesh3D(Mesh3D::Encoded(EncodedMesh3D {
+            format,
+            bytes,
+            transform,
+        }))),
+    }));
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: LoggedData::Single(Data::Space(space.into())),
+    }));
+
+    Ok(())
 }

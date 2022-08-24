@@ -43,6 +43,10 @@ def log_dummy_data(args):
         rerun.log_depth_image("depth", sample.depth_image_mm,
                               meter=1000, space="depth_cam")
 
+    with open('crates/re_viewer/data/camera.glb', mode='rb') as file:
+        mesh_file = file.read()
+        rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB, mesh_file, space="example_mesh")
+
     if not args.connect:
         # Show the logged data inside the Python process:
         rerun.show()

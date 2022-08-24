@@ -1,5 +1,6 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
 import atexit
+from enum import Enum
 import numpy as np
 from typing import Optional, Sequence
 
@@ -13,10 +14,19 @@ def rerun_shutdown():
 
 atexit.register(rerun_shutdown)
 
+# -----------------------------------------------------------------------------
 
-# TODO(emilk): remove the forwarded calls below and just import them from the rust library
-# (which already has documentation etc).
-# I couldn't figure out how to get Python to do this, because Python imports confuses me.
+class MeshFormat(Enum):
+    # Untested
+    # """ glTF """
+    # GLTF="GLTF"
+
+    """ Binary glTF """
+    GLB="GLB"
+
+    # Untested
+    # """ Wavefront .obj """
+    # OBJ="OBJ"
 
 
 def connect(addr: Optional[str] = None):
@@ -221,3 +231,17 @@ def _log_tensor(obj_path: str, tensor: np.ndarray, meter: Optional[float] = None
             obj_path, tensor.astype('float32'), meter, space)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
+
+
+def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, transform: np.ndarray = None, space: Optional[str] = None):
+    """
+    Log the contents of a mesh file (.gltf, .glb, .obj, …).
+
+    `transform` is an optional 4x4 transform matrix applied to the mesh.
+    """
+    if transform is None:
+        transform = np.empty(shape=(0,0), dtype=np.float32)
+    else:
+        transform = transform.astype('f32')
+
+    rerun_rs.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, space)
