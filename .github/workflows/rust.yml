@@ -80,8 +80,8 @@ jobs:
           command: test
           args: --all-features --lib
 
-  fmt:
-    name: Rustfmt
+  -fmt-crank:
+    name: Rustfmt and Cranky
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -92,24 +92,26 @@ jobs:
           override: true
           components: rustfmt
       - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
-      - uses: actions-rs/cargo@v1
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - name: Rustfmt
+        uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-
-  cranky:
-    name: cargo cranky
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.63.0
-          override: true
-      - run: sudo apt-get update && sudo apt-get install libgtk-3-dev
       - run: cargo install cargo-cranky
-      - uses: actions-rs/cargo@v1
+      - name: Cranky
+        uses: actions-rs/cargo@v1
         with:
           command: cranky
           args: --all-targets --all-features --  -D warnings
