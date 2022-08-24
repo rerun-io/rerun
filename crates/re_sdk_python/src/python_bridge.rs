@@ -27,6 +27,8 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
 
+    m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
+
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
 
@@ -124,6 +126,24 @@ fn set_time_nanos(time_source: &str, ns: Option<i64>) {
         TimeSource::new(time_source, TimeType::Time),
         ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
     );
+}
+
+/// Set the preferred up-axis for a given 3D space.
+#[pyfunction]
+fn set_space_up(space_obj_path: &str, up: [f32; 3]) {
+    let mut sdk = Sdk::global();
+
+    let space_obj_path = ObjPath::from(space_obj_path); // TODO(emilk): pass in proper obj path somehow
+    sdk.register_type(space_obj_path.obj_type_path(), ObjectType::Space);
+
+    let time_point = sdk.now();
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point,
+        data_path: DataPath::new(space_obj_path, "up".into()),
+        data: LoggedData::Single(Data::Vec3(up)),
+    }));
 }
 
 /// Log a 2D bounding box.
