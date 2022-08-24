@@ -238,10 +238,20 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, tran
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
 
     `transform` is an optional 4x4 transform matrix applied to the mesh.
+
+    Example:
+    ```
+    # Move mesh 10 units along the X axis.
+    transform=np.array([
+        [1, 0, 0, 10],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]])
+    ```
     """
     if transform is None:
         transform = np.empty(shape=(0,0), dtype=np.float32)
     else:
-        transform = transform.astype('f32')
+        transform = transform.astype('float32')
 
     rerun_rs.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, space)
