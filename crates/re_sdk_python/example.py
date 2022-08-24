@@ -31,18 +31,14 @@ def log_dummy_data(args):
         rerun.log_rect("bbox", [car_x, car_y], [
                        car_w, car_h], label="A car", color=(0, 128, 255))
 
-        # Set our preferred up-axis in the viewer
-        rerun.set_space_up("3D", [0, -1, 0])
-
-        rerun.log_points("points", sample.point_cloud, space="3D")
+        # Lets log the projected points into a separate "space", called 'projected_space'.
+        # We also set its up-axis.
+        # The default spaces are "2D" and "3D" (based on what you log).
+        rerun.set_space_up("projected_space", [0, -1, 0])
+        rerun.log_points("points", sample.point_cloud, space="projected_space")
 
         # The depth image is in millimeters, so we set meter=1000
-        # Everything logged are assigned different "spaces".
-        # The default spaces are "2D" and "3D" (based on what you log).
-        # In this case we chose to explicitly log to a separate space
-        # that we just call "depth_cam".
-        rerun.log_depth_image("depth", sample.depth_image_mm,
-                              meter=1000, space="depth_cam")
+        rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
 
     with open('crates/re_viewer/data/camera.glb', mode='rb') as file:
         mesh_file = file.read()
@@ -53,7 +49,14 @@ def log_dummy_data(args):
             [0, 0, 2, 0],
             [0, 0, 0, 1]])
         rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB,
-                            mesh_file, transform=transform, space="example_mesh")
+                            mesh_file, transform=transform)
+
+    rerun.log_path("a_box", [
+        [0, 0, 0],
+        [0, 1, 0],
+        [1, 1, 0],
+        [1, 0, 0],
+        [0, 0, 0]])
 
     if not args.connect:
         # Show the logged data inside the Python process:

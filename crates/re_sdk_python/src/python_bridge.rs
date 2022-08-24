@@ -31,6 +31,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(log_path, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
@@ -148,6 +149,17 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) {
     }));
 }
 
+fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
+    match &color[..] {
+        [r, g, b] => Ok([*r, *g, *b, 255]),
+        [r, g, b, a] => Ok([*r, *g, *b, *a]),
+        _ => Err(PyTypeError::new_err(format!(
+            "Expected color to be of length 3 or 4, got {:?}",
+            color
+        ))),
+    }
+}
+
 /// Log a 2D bounding box.
 ///
 /// Optionally give it a label.
@@ -181,17 +193,7 @@ fn log_rect(
     }));
 
     if let Some(color) = color {
-        let color = match &color[..] {
-            [r, g, b] => [*r, *g, *b, 255],
-            [r, g, b, a] => [*r, *g, *b, *a],
-            _ => {
-                return Err(PyTypeError::new_err(format!(
-                    "Expected color to be of length 3 or 4, got {:?}",
-                    color
-                )));
-            }
-        };
-
+        let color = convert_color(color)?;
         sdk.send(LogMsg::DataMsg(DataMsg {
             msg_id: MsgId::random(),
             time_point: time_point.clone(),
@@ -373,6 +375,73 @@ fn log_points_rs(
         time_point,
         data_path: DataPath::new(point_path, "space".into()),
         data: LoggedData::BatchSplat(Data::Space(space.into())),
+    }));
+
+    Ok(())
+}
+
+#[pyfunction]
+fn log_path(
+    obj_path: &str,
+    positions: numpy::PyReadonlyArray2<'_, f32>,
+    stroke_width: Option<f32>,
+    color: Option<Vec<u8>>,
+    space: Option<String>,
+) -> PyResult<()> {
+    if !matches!(positions.shape(), [_, 3]) {
+        return Err(PyTypeError::new_err(format!(
+            "Expected Nx3 positions array; got {:?}",
+            positions.shape()
+        )));
+    }
+
+    let mut sdk = Sdk::global();
+
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Path3D);
+
+    let time_point = sdk.now();
+
+    let positions: Vec<[f32; 3]> = positions
+        .as_slice()
+        .unwrap()
+        .chunks(3)
+        .into_iter()
+        .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+        .collect();
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "points".into()),
+        data: LoggedData::Single(Data::Path3D(positions)),
+    }));
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "color".into()),
+            data: LoggedData::Single(Data::Color(color)),
+        }));
+    }
+
+    if let Some(stroke_width) = stroke_width {
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "stroke_width".into()),
+            data: LoggedData::Single(Data::F32(stroke_width)),
+        }));
+    }
+
+    let space = space.unwrap_or_else(|| "3D".to_owned());
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: LoggedData::Single(Data::Space(space.into())),
     }));
 
     Ok(())

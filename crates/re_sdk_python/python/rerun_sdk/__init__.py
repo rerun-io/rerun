@@ -137,7 +137,7 @@ def log_points(
     """
     Log 2D or 3D points, with optional colors.
 
-    positions: Nx2 or Nx3 array
+    `positions`: Nx2 or Nx3 array
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -168,6 +168,30 @@ def log_points(
     positions = positions if positions.base is None else positions.copy()
 
     rerun_rs.log_points_rs(obj_path, positions, colors, space)
+
+
+def log_path(
+        obj_path: str,
+        positions: np.ndarray,
+        stroke_width: Optional[float] = None,
+        color: Optional[Sequence[int]] = None,
+        space: Optional[str] = None):
+    """
+    Log a 3D path.
+    A path is a list of points, pairwise connected with lines.
+    It can be used to draw approximations of smooth curves.
+
+    `positions`: a Nx3 array of points along the path.
+    `stroke_width`: width of the line.
+    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+
+    If no `space` is given, the space name "3D" will be used.
+    """
+    positions = np.array(positions)
+    positions = np.array(positions)
+    positions = positions.astype(
+        'float32')
+    rerun_rs.log_path(obj_path, positions, stroke_width, color, space)
 
 
 def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
