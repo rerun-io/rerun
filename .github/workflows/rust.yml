@@ -147,6 +147,7 @@ jobs:
       - run: ./crates/re_viewer/wasm_bindgen_check.sh --skip-setup
 
   # NOTE: we don't use messense/maturin-action here because we need extra steps to install eframe dependencies
+  # NOTE 2: We skip uploading the wheels for all these maturin builds since they are just there to test that it works
   linux-wheels:
     name: Build Linux Wheels
     runs-on: ubuntu-latest
@@ -157,15 +158,11 @@ jobs:
           profile: minimal
           toolchain: 1.63.0
           override: true
-      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs  # TODO(Niko): Could be built into a container
       - run: python3 -m pip install -r crates/re_sdk_python/requirements.txt
       - name: Build wheels
-        run: maturin build -m crates/re_sdk_python/Cargo.toml --release -o dist
-      - name: Upload wheels
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheels
-          path: dist
+        run: maturin build -m crates/re_sdk_python/Cargo.toml
+
 
   maturin-windows:
     name: Maturin Windows
@@ -176,12 +173,8 @@ jobs:
         with:
           maturin-version: "0.13.1"
           command: build
-          args: -m crates/re_sdk_python/Cargo.toml --release -o dist
-      - name: Upload wheels
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheels
-          path: dist
+          args: -m crates/re_sdk_python/Cargo.toml -o dist
+
 
   maturin-macos:
     name: Maturin MacOS
@@ -193,9 +186,5 @@ jobs:
         with:
           maturin-version: "0.13.1"
           command: build
-          args: -m crates/re_sdk_python/Cargo.toml --release -o dist --universal2
-      - name: Upload wheels
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheels
-          path: dist
+          args: -m crates/re_sdk_python/Cargo.toml  -o dist --universal2
+
