@@ -51,7 +51,7 @@ jobs:
       - run: ./crates/re_viewer/wasm_bindgen_check.sh --skip-setup
 
   fmt-crank-check-test:
-    name: Rustfmt + cranky + check + test
+    name: Format + check + test + wheel
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -133,6 +133,18 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
       - uses: messense/maturin-action@v1
         with:
           maturin-version: "0.13.1"
