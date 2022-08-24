@@ -16,17 +16,18 @@ atexit.register(rerun_shutdown)
 
 # -----------------------------------------------------------------------------
 
+
 class MeshFormat(Enum):
     # Untested
     # """ glTF """
-    # GLTF="GLTF"
+    # GLTF = "GLTF"
 
     """ Binary glTF """
-    GLB="GLB"
+    GLB = "GLB"
 
     # Untested
     # """ Wavefront .obj """
-    # OBJ="OBJ"
+    # OBJ = "OBJ"
 
 
 def connect(addr: Optional[str] = None):
@@ -250,8 +251,9 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, tran
     ```
     """
     if transform is None:
-        transform = np.empty(shape=(0,0), dtype=np.float32)
+        transform = np.empty(shape=(0, 0), dtype=np.float32)
     else:
         transform = transform.astype('float32')
 
-    rerun_rs.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, space)
+    rerun_rs.log_mesh_file(obj_path, mesh_format.value,
+                           mesh_file, transform, space)

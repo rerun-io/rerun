@@ -45,13 +45,14 @@ def log_dummy_data(args):
 
     with open('crates/re_viewer/data/camera.glb', mode='rb') as file:
         mesh_file = file.read()
-        # Optional transformation matrix to apply (in this case: scale it up by a factor 2)
-        transform=np.array([
+        # Optional transformation matrix to apply (in this case: scale it up by a factor x2)
+        transform = np.array([
             [2, 0, 0, 0],
             [0, 2, 0, 0],
             [0, 0, 2, 0],
             [0, 0, 0, 1]])
-        rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB, mesh_file, transform=transform, space="example_mesh")
+        rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB,
+                            mesh_file, transform=transform, space="example_mesh")
 
     if not args.connect:
         # Show the logged data inside the Python process:
