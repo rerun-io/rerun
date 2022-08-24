@@ -87,7 +87,11 @@ def set_time_nanos(time_source: str, nanos: Optional[int]):
 
 
 def set_space_up(space: str, up: Sequence[float]):
-    """ Set the preferred up-axis for a given 3D space. """
+    """ Set the preferred up-axis in the viewer for a given 3D space.
+
+    - space: The name of the space
+    - up: The (x, y, z) values of the up-axis
+"""
     return rerun_rs.set_space_up(space, up)
 
 
