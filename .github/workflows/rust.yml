@@ -103,6 +103,14 @@ jobs:
         with:
           command: test
           args: --all-features --lib
+      - name: Setup python for building wheel
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          cache: 'pip'
+      - run: pip install -r crates/re_sdk_python/requirements.txt
+      - name: Build wheels
+        run: maturin build -m crates/re_sdk_python/Cargo.toml
 
   cargo-deny:
     name: cargo deny
@@ -119,24 +127,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: ./scripts/lint.py
-
-  # NOTE: we don't use messense/maturin-action here because we need extra steps to install eframe dependencies
-  # NOTE 2: We skip uploading the wheels for all these maturin builds since they are just there to test that it works
-  linux-wheels:
-    name: Build Linux Wheels
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.63.0
-          override: true
-      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs  # TODO(Niko): Could be built into a container
-      - run: python3 -m pip install -r crates/re_sdk_python/requirements.txt
-      - name: Build wheels
-        run: maturin build -m crates/re_sdk_python/Cargo.toml
-
 
   maturin-windows:
     name: Maturin Windows
