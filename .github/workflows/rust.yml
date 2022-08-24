@@ -93,7 +93,9 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-      - run: cargo install cargo-cranky
+        # Often fails because it's already in the cache
+        # TODO(Niko): Figure out if we can check this before installing
+      - run: cargo install cargo-cranky || true
       - name: Cranky
         uses: actions-rs/cargo@v1
         with:
