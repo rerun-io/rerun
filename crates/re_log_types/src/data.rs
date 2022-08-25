@@ -2,7 +2,7 @@ use crate::{impl_into_enum, ObjPath};
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum DataType {
     // 1D:
@@ -15,20 +15,21 @@ pub enum DataType {
     // 2D:
     Vec2,
     BBox2D,
-    LineSegments2D,
 
     // ----------------------------
     // 3D:
     Vec3,
     Box3,
-    Path3D,
-    LineSegments3D,
     Mesh3D,
     Camera,
 
     // ----------------------------
     // N-D:
     Tensor,
+
+    /// A homogenous vector of data,
+    /// represented by [`DataVec`]
+    DataVec,
 
     // ----------------------------
     Space,
@@ -47,10 +48,9 @@ pub mod data_types {
     use super::DataTrait;
     use super::DataType;
 
-    /// For batches
-    impl<T: DataTrait> DataTrait for Vec<T> {
+    impl DataTrait for super::DataVec {
         fn data_typ() -> DataType {
-            T::data_typ()
+            DataType::DataVec
         }
     }
 
@@ -95,13 +95,6 @@ pub mod data_types {
         }
     }
 
-    pub type LineSegments2D = Vec<LineSegment2D>;
-    pub type LineSegment2D = [Vec2; 2];
-    impl DataTrait for LineSegment2D {
-        fn data_typ() -> DataType {
-            DataType::LineSegments2D
-        }
-    }
     impl DataTrait for crate::Tensor {
         fn data_typ() -> DataType {
             DataType::Tensor
@@ -120,16 +113,6 @@ pub mod data_types {
     impl DataTrait for crate::Box3 {
         fn data_typ() -> DataType {
             DataType::Box3
-        }
-    }
-
-    pub type Path3D = Vec<Vec3>;
-
-    pub type LineSegments3D = Vec<LineSegment3D>;
-    pub type LineSegment3D = [Vec3; 2];
-    impl DataTrait for LineSegment3D {
-        fn data_typ() -> DataType {
-            DataType::LineSegments3D
         }
     }
 
@@ -169,20 +152,20 @@ pub enum Data {
     // 2D:
     Vec2(data_types::Vec2),
     BBox2D(BBox2D),
-    LineSegments2D(data_types::LineSegments2D),
 
     // ----------------------------
     // 3D:
     Vec3(data_types::Vec3),
     Box3(Box3),
-    Path3D(data_types::Path3D),
-    LineSegments3D(data_types::LineSegments3D),
     Mesh3D(Mesh3D),
     Camera(Camera),
 
     // ----------------------------
     // N-D:
     Tensor(Tensor),
+
+    /// Homogenous vector
+    DataVec(DataVec),
 
     // ----------------------------
     // Meta:
@@ -201,16 +184,14 @@ impl Data {
 
             Self::Vec2(_) => DataType::Vec2,
             Self::BBox2D(_) => DataType::BBox2D,
-            Self::LineSegments2D(_) => DataType::LineSegments2D,
 
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
-            Self::Path3D(_) => DataType::Path3D,
-            Self::LineSegments3D(_) => DataType::LineSegments3D,
             Self::Mesh3D(_) => DataType::Mesh3D,
             Self::Camera(_) => DataType::Camera,
 
             Self::Tensor(_) => DataType::Tensor,
+            Self::DataVec(_) => DataType::DataVec,
 
             Self::Space(_) => DataType::Space,
         }
@@ -229,6 +210,7 @@ impl_into_enum!(ObjPath, Data, Space);
 // ----------------------------------------------------------------------------
 
 /// Vectorized, type-erased version of [`Data`].
+// TODO(emilk): we should generalize this to a tensor.
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum DataVec {
@@ -239,16 +221,16 @@ pub enum DataVec {
 
     Vec2(Vec<data_types::Vec2>),
     BBox2D(Vec<BBox2D>),
-    LineSegments2D(Vec<data_types::LineSegments2D>),
 
     Vec3(Vec<data_types::Vec3>),
     Box3(Vec<Box3>),
-    Path3D(Vec<data_types::Path3D>),
-    LineSegments3D(Vec<data_types::LineSegments3D>),
     Mesh3D(Vec<Mesh3D>),
     Camera(Vec<Camera>),
 
     Tensor(Vec<Tensor>),
+
+    /// A vector of [`DataVec`] (vector of vectors)
+    DataVec(Vec<DataVec>),
 
     Space(Vec<ObjPath>),
 }
@@ -270,14 +252,12 @@ macro_rules! data_map(
             Data::String($value) => $action,
             Data::Vec2($value) => $action,
             Data::BBox2D($value) => $action,
-            Data::LineSegments2D($value) => $action,
             Data::Vec3($value) => $action,
             Data::Box3($value) => $action,
-            Data::Path3D($value) => $action,
-            Data::LineSegments3D($value) => $action,
             Data::Mesh3D($value) => $action,
             Data::Camera($value) => $action,
             Data::Tensor($value) => $action,
+            Data::DataVec($value) => $action,
             Data::Space($value) => $action,
         }
     });
@@ -300,14 +280,12 @@ macro_rules! data_vec_map(
             DataVec::String($vec) => $action,
             DataVec::Vec2($vec) => $action,
             DataVec::BBox2D($vec) => $action,
-            DataVec::LineSegments2D($vec) => $action,
-            DataVec::Tensor($vec) => $action,
             DataVec::Vec3($vec) => $action,
             DataVec::Box3($vec) => $action,
-            DataVec::Path3D($vec) => $action,
-            DataVec::LineSegments3D($vec) => $action,
             DataVec::Mesh3D($vec) => $action,
             DataVec::Camera($vec) => $action,
+            DataVec::Tensor($vec) => $action,
+            DataVec::DataVec($vec) => $action,
             DataVec::Space($vec) => $action,
         }
     });
@@ -315,7 +293,7 @@ macro_rules! data_vec_map(
 
 impl DataVec {
     #[inline]
-    pub fn data_type(&self) -> DataType {
+    pub fn element_data_type(&self) -> DataType {
         match self {
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
@@ -324,16 +302,14 @@ impl DataVec {
 
             Self::Vec2(_) => DataType::Vec2,
             Self::BBox2D(_) => DataType::BBox2D,
-            Self::LineSegments2D(_) => DataType::LineSegments2D,
 
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
-            Self::Path3D(_) => DataType::Path3D,
-            Self::LineSegments3D(_) => DataType::LineSegments3D,
             Self::Mesh3D(_) => DataType::Mesh3D,
             Self::Camera(_) => DataType::Camera,
 
             Self::Tensor(_) => DataType::Tensor,
+            Self::DataVec(_) => DataType::DataVec,
 
             Self::Space(_) => DataType::Space,
         }
@@ -356,16 +332,14 @@ impl DataVec {
 
             Self::Vec2(vec) => vec.last().cloned().map(Data::Vec2),
             Self::BBox2D(vec) => vec.last().cloned().map(Data::BBox2D),
-            Self::LineSegments2D(vec) => vec.last().cloned().map(Data::LineSegments2D),
 
             Self::Vec3(vec) => vec.last().cloned().map(Data::Vec3),
             Self::Box3(vec) => vec.last().cloned().map(Data::Box3),
-            Self::Path3D(vec) => vec.last().cloned().map(Data::Path3D),
-            Self::LineSegments3D(vec) => vec.last().cloned().map(Data::LineSegments3D),
             Self::Mesh3D(vec) => vec.last().cloned().map(Data::Mesh3D),
             Self::Camera(vec) => vec.last().cloned().map(Data::Camera),
 
             Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
+            Self::DataVec(vec) => vec.last().cloned().map(Data::DataVec),
 
             Self::Space(vec) => vec.last().cloned().map(Data::Space),
         }
@@ -375,8 +349,8 @@ impl DataVec {
 impl std::fmt::Debug for DataVec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DataVec")
-            .field("data_type", &self.data_type())
             .field("len", &self.len())
+            .field("data_type", &self.element_data_type())
             .finish_non_exhaustive()
     }
 }

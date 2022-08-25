@@ -5,6 +5,8 @@ use re_log_types::{Data, DataMsg, DataPath, LogMsg, LoggedData, MsgId};
 
 use crate::{LogDb, Preview, Selection, ViewerContext};
 
+use super::space_view::ui_data_vec;
+
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct ContextPanel {}
@@ -130,7 +132,7 @@ pub(crate) fn view_object(
                     let msg_id = &msg_ids[0];
                     crate::space_view::ui_data(ctx, ui, msg_id, &data, preview);
                 } else {
-                    ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
+                    ui_data_vec(ui, &data_vec);
                 }
 
                 ui.end_row();
@@ -157,7 +159,7 @@ fn view_data(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, data_path: &DataPat
         let msg_id = &msg_ids[0];
         show_detailed_data(ctx, ui, msg_id, &data);
     } else {
-        ui.label(format!("{} x {:?}", data_vec.len(), data_vec.data_type()));
+        ui_data_vec(ui, &data_vec);
     }
 
     Some(())

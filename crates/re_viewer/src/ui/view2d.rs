@@ -228,7 +228,7 @@ pub(crate) fn combined_view_2d(
 
     for (props, obj) in objects.line_segments2d.iter() {
         let re_data_store::LineSegments2D {
-            line_segments,
+            points,
             stroke_width,
         } = obj;
         let paint_props = paint_properties(
@@ -239,28 +239,22 @@ pub(crate) fn combined_view_2d(
             stroke_width,
         );
 
-        for [a, b] in line_segments.iter() {
-            let a = to_screen.transform_pos(a.into());
-            let b = to_screen.transform_pos(b.into());
-            shapes.push(Shape::line_segment([a, b], paint_props.bg_stroke));
-        }
-        for [a, b] in line_segments.iter() {
-            let a = to_screen.transform_pos(a.into());
-            let b = to_screen.transform_pos(b.into());
-            shapes.push(Shape::line_segment([a, b], paint_props.fg_stroke));
-        }
+        let mut min_dist_sq = f32::INFINITY;
 
-        if let Some(pointer_pos) = pointer_pos {
-            let mut min_dist_sq = f32::INFINITY;
-            for [a, b] in line_segments.iter() {
-                let a = to_screen.transform_pos(a.into());
-                let b = to_screen.transform_pos(b.into());
+        for pair in points.chunks_exact(2) {
+            let a = to_screen.transform_pos(pair[0].into());
+            let b = to_screen.transform_pos(pair[1].into());
+            shapes.push(Shape::line_segment([a, b], paint_props.bg_stroke));
+            shapes.push(Shape::line_segment([a, b], paint_props.fg_stroke));
+
+            if let Some(pointer_pos) = pointer_pos {
                 let line_segment_distance_sq =
                     crate::math::line_segment_distance_sq_to_point([a, b], pointer_pos);
                 min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
             }
-            check_hovering(props.obj_path, min_dist_sq.sqrt());
         }
+
+        check_hovering(props.obj_path, min_dist_sq.sqrt());
     }
 
     for (props, obj) in objects.point2d.iter() {

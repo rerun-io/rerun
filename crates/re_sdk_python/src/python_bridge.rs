@@ -302,7 +302,7 @@ fn log_points(
                 let colors: Vec<[u8; 4]> = colors
                     .as_slice()
                     .unwrap()
-                    .chunks(3)
+                    .chunks_exact(3)
                     .into_iter()
                     .map(|chunk| [chunk[0], chunk[1], chunk[2], 255])
                     .collect();
@@ -317,7 +317,7 @@ fn log_points(
                 let colors: Vec<[u8; 4]> = colors
                     .as_slice()
                     .unwrap()
-                    .chunks(4)
+                    .chunks_exact(4)
                     .into_iter()
                     .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3]])
                     .collect();
@@ -341,7 +341,7 @@ fn log_points(
             let data: Vec<[f32; 2]> = positions
                 .as_slice()
                 .unwrap()
-                .chunks(2)
+                .chunks_exact(2)
                 .into_iter()
                 .map(|chunk| [chunk[0] as f32, chunk[1] as f32])
                 .collect();
@@ -351,7 +351,7 @@ fn log_points(
             let data: Vec<[f32; 3]> = positions
                 .as_slice()
                 .unwrap()
-                .chunks(3)
+                .chunks_exact(3)
                 .into_iter()
                 .map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32])
                 .collect();
@@ -406,7 +406,7 @@ fn log_path(
     let positions: Vec<[f32; 3]> = positions
         .as_slice()
         .unwrap()
-        .chunks(3)
+        .chunks_exact(3)
         .into_iter()
         .map(|chunk| [chunk[0], chunk[1], chunk[2]])
         .collect();
@@ -415,7 +415,7 @@ fn log_path(
         msg_id: MsgId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.clone(), "points".into()),
-        data: LoggedData::Single(Data::Path3D(positions)),
+        data: LoggedData::Single(Data::DataVec(DataVec::Vec3(positions))),
     }));
 
     if let Some(color) = color {
@@ -468,21 +468,21 @@ fn log_line_segments(
             let positions = positions
                 .as_slice()
                 .unwrap()
-                .chunks(4)
+                .chunks_exact(2)
                 .into_iter()
-                .map(|c| [[c[0], c[1]], [c[2], c[3]]])
+                .map(|c| [c[0], c[1]])
                 .collect();
-            (2, Data::LineSegments2D(positions))
+            (2, Data::DataVec(DataVec::Vec2(positions)))
         }
         [_, 3] => {
             let positions = positions
                 .as_slice()
                 .unwrap()
-                .chunks(6)
+                .chunks_exact(3)
                 .into_iter()
-                .map(|c| [[c[0], c[1], c[2]], [c[3], c[4], c[5]]])
+                .map(|c| [c[0], c[1], c[2]])
                 .collect();
-            (3, Data::LineSegments3D(positions))
+            (3, Data::DataVec(DataVec::Vec3(positions)))
         }
         _ => {
             return Err(PyTypeError::new_err(format!(

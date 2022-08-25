@@ -254,7 +254,7 @@ impl LoggedData {
     pub fn data_type(&self) -> DataType {
         match self {
             Self::Single(data) | Self::BatchSplat(data) => data.data_type(),
-            Self::Batch { data, .. } => data.data_type(),
+            Self::Batch { data, .. } => data.element_data_type(),
         }
     }
 }
