@@ -273,18 +273,17 @@ impl DataColumns {
 
                 DataType::Vec2 => ("2D vector", "s"),
                 DataType::BBox2D => ("2D bounding box", "es"),
-                DataType::LineSegments2D => ("2D line segment list", "s"),
 
                 DataType::Vec3 => ("3D vector", "s"),
                 DataType::Box3 => ("3D box", "es"),
-                DataType::Path3D => ("3D path", "s"),
-                DataType::LineSegments3D => ("3D line segment list", "s"),
                 DataType::Mesh3D => ("mesh", "es"),
                 DataType::Camera => ("camera", "s"),
 
                 DataType::Tensor => ("tensor", "s"),
 
                 DataType::Space => ("space", "s"),
+
+                DataType::DataVec => ("vector", "s"),
             };
 
             summaries.push(plurality(set.len(), stem, plur));

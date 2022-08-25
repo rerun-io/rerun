@@ -2681,6 +2681,8 @@ dependencies = [
  "ahash",
  "criterion",
  "itertools",
+ "log",
+ "log-once",
  "mimalloc",
  "nohash-hasher",
  "puffin",

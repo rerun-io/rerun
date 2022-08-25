@@ -459,9 +459,6 @@ pub(crate) fn ui_data(
         Data::String(string) => ui.label(format!("{string:?}")),
 
         Data::Vec2([x, y]) => ui.label(format!("[{x:.1}, {y:.1}]")),
-        Data::LineSegments2D(linesegments) => {
-            ui.label(format!("{} 2D line segment(s)", linesegments.len()))
-        }
         Data::BBox2D(bbox) => ui.label(format!(
             "BBox2D(min: [{:.1} {:.1}], max: [{:.1} {:.1}])",
             bbox.min[0], bbox.min[1], bbox.max[0], bbox.max[1]
@@ -469,8 +466,6 @@ pub(crate) fn ui_data(
 
         Data::Vec3([x, y, z]) => ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]")),
         Data::Box3(_) => ui.label("3D box"),
-        Data::Path3D(_) => ui.label("3D path"),
-        Data::LineSegments3D(segments) => ui.label(format!("{} 3D line segments", segments.len())),
         Data::Mesh3D(_) => ui.label("3D mesh"),
         Data::Camera(_) => ui.label("Camera"),
 
@@ -509,5 +504,15 @@ pub(crate) fn ui_data(
             // ui.label(space.to_string())
             ctx.space_button(ui, space)
         }
+
+        Data::DataVec(data_vec) => ui_data_vec(ui, data_vec),
     }
+}
+
+pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Response {
+    ui.label(format!(
+        "{} x {:?}",
+        data_vec.len(),
+        data_vec.element_data_type(),
+    ))
 }

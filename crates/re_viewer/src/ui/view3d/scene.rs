@@ -181,16 +181,16 @@ impl Scene {
             crate::profile_scope!("line_segments3d");
             for (props, obj) in objects.line_segments3d.iter() {
                 let re_data_store::LineSegments3D {
-                    line_segments,
+                    points,
                     stroke_width,
                 } = *obj;
 
                 let line_radius = stroke_width.map_or_else(
                     || {
                         let bbox = macaw::BoundingBox::from_points(
-                            line_segments
-                                .iter()
-                                .flat_map(|&[a, b]| [Vec3::from(a), Vec3::from(b)]),
+                            points
+                                .chunks_exact(2)
+                                .flat_map(|pair| [Vec3::from(pair[0]), Vec3::from(pair[1])]),
                         );
                         let dist_to_camera = camera_plane.distance(bbox.center());
                         dist_to_camera * line_radius_from_distance
@@ -202,7 +202,10 @@ impl Scene {
 
                 scene.line_segments.push(LineSegments {
                     obj_path_hash: *props.obj_path.hash(),
-                    segments: line_segments.clone(),
+                    segments: points
+                        .chunks_exact(2)
+                        .map(|pair| [pair[0], pair[1]])
+                        .collect(),
                     radius: line_radius,
                     color,
                 });

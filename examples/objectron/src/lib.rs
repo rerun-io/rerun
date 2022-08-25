@@ -170,29 +170,52 @@ fn log_annotation_pbdata(
 
             if keypoints_2d.len() == 9 {
                 // Bounding box. First point is center.
-                let line_segments = vec![
-                    [keypoints_2d[1], keypoints_2d[2]],
-                    [keypoints_2d[1], keypoints_2d[3]],
-                    [keypoints_2d[4], keypoints_2d[2]],
-                    [keypoints_2d[4], keypoints_2d[3]],
+                let points = vec![
+                    keypoints_2d[1],
+                    keypoints_2d[2],
                     //
-                    [keypoints_2d[5], keypoints_2d[6]],
-                    [keypoints_2d[5], keypoints_2d[7]],
-                    [keypoints_2d[8], keypoints_2d[6]],
-                    [keypoints_2d[8], keypoints_2d[7]],
+                    keypoints_2d[1],
+                    keypoints_2d[3],
                     //
-                    [keypoints_2d[1], keypoints_2d[5]],
-                    [keypoints_2d[2], keypoints_2d[6]],
-                    [keypoints_2d[3], keypoints_2d[7]],
-                    [keypoints_2d[4], keypoints_2d[8]],
+                    keypoints_2d[4],
+                    keypoints_2d[2],
+                    //
+                    keypoints_2d[4],
+                    keypoints_2d[3],
+                    //
+                    //
+                    keypoints_2d[5],
+                    keypoints_2d[6],
+                    //
+                    keypoints_2d[5],
+                    keypoints_2d[7],
+                    //
+                    keypoints_2d[8],
+                    keypoints_2d[6],
+                    //
+                    keypoints_2d[8],
+                    keypoints_2d[7],
+                    //
+                    //
+                    keypoints_2d[1],
+                    keypoints_2d[5],
+                    //
+                    keypoints_2d[2],
+                    keypoints_2d[6],
+                    //
+                    keypoints_2d[3],
+                    keypoints_2d[7],
+                    //
+                    keypoints_2d[4],
+                    keypoints_2d[8],
                 ];
 
                 let obj_path = &data_path / "bbox2d";
                 logger.log(data_msg(
                     &time_point,
                     &obj_path,
-                    "line_segments",
-                    Data::LineSegments2D(line_segments),
+                    "points",
+                    Data::DataVec(DataVec::Vec2(points)),
                 ));
                 logger.log(data_msg(
                     &time_point,

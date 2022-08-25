@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_log_types::{FieldName, MsgId, ObjPath};
+use re_log_types::{DataVec, FieldName, MsgId, ObjPath};
 
 pub use re_log_types::objects::*;
 
@@ -307,22 +307,24 @@ impl<'s> Path3D<'s> {
             ("space", "color", "stroke_width"),
             |obj_path: &ObjPath,
              msg_id: &MsgId,
-             points: &Vec<[f32; 3]>,
+             points: &DataVec,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
-                out.path3d.0.push(Object {
-                    props: ObjectProps {
-                        msg_id,
-                        space,
-                        color: color.copied(),
-                        obj_path,
-                    },
-                    data: Path3D {
-                        points,
-                        stroke_width: stroke_width.copied(),
-                    },
-                });
+                if let Some(points) = as_vec_of_vec3("Path3D::points", points) {
+                    out.path3d.0.push(Object {
+                        props: ObjectProps {
+                            msg_id,
+                            space,
+                            color: color.copied(),
+                            obj_path,
+                        },
+                        data: Path3D {
+                            points,
+                            stroke_width: stroke_width.copied(),
+                        },
+                    });
+                }
             },
         );
     }
@@ -330,7 +332,8 @@ impl<'s> Path3D<'s> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct LineSegments2D<'s> {
-    pub line_segments: &'s Vec<[[f32; 2]; 2]>,
+    /// Connected pair-wise even-odd.
+    pub points: &'s Vec<[f32; 2]>,
     pub stroke_width: Option<f32>,
 }
 
@@ -349,22 +352,24 @@ impl<'s> LineSegments2D<'s> {
             ("space", "color", "stroke_width"),
             |obj_path: &ObjPath,
              msg_id: &MsgId,
-             line_segments: &Vec<[[f32; 2]; 2]>,
+             points: &DataVec,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
-                out.line_segments2d.0.push(Object {
-                    props: ObjectProps {
-                        msg_id,
-                        space,
-                        color: color.copied(),
-                        obj_path,
-                    },
-                    data: LineSegments2D {
-                        line_segments,
-                        stroke_width: stroke_width.copied(),
-                    },
-                });
+                if let Some(points) = as_vec_of_vec2("LineSegments2D::points", points) {
+                    out.line_segments2d.0.push(Object {
+                        props: ObjectProps {
+                            msg_id,
+                            space,
+                            color: color.copied(),
+                            obj_path,
+                        },
+                        data: LineSegments2D {
+                            points,
+                            stroke_width: stroke_width.copied(),
+                        },
+                    });
+                }
             },
         );
     }
@@ -372,7 +377,8 @@ impl<'s> LineSegments2D<'s> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct LineSegments3D<'s> {
-    pub line_segments: &'s Vec<[[f32; 3]; 2]>,
+    /// Connected pair-wise even-odd.
+    pub points: &'s Vec<[f32; 3]>,
     pub stroke_width: Option<f32>,
 }
 
@@ -391,22 +397,24 @@ impl<'s> LineSegments3D<'s> {
             ("space", "color", "stroke_width"),
             |obj_path: &ObjPath,
              msg_id: &MsgId,
-             line_segments: &Vec<[[f32; 3]; 2]>,
+             points: &DataVec,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
-                out.line_segments3d.0.push(Object {
-                    props: ObjectProps {
-                        msg_id,
-                        space,
-                        color: color.copied(),
-                        obj_path,
-                    },
-                    data: LineSegments3D {
-                        line_segments,
-                        stroke_width: stroke_width.copied(),
-                    },
-                });
+                if let Some(points) = as_vec_of_vec3("LineSegments3D::points", points) {
+                    out.line_segments3d.0.push(Object {
+                        props: ObjectProps {
+                            msg_id,
+                            space,
+                            color: color.copied(),
+                            obj_path,
+                        },
+                        data: LineSegments3D {
+                            points,
+                            stroke_width: stroke_width.copied(),
+                        },
+                    });
+                }
             },
         );
     }
@@ -719,5 +727,31 @@ impl<'s> SpacePartitioner<'s> {
         partitioned.insert(current_space, current_objects);
         partitioned.retain(|_, objects| !objects.is_empty());
         partitioned
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+fn as_vec_of_vec2<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32; 2]>> {
+    if let DataVec::Vec2(vec) = data_vec {
+        Some(vec)
+    } else {
+        log_once::warn_once!(
+            "Expected {what} to be Vec<Vec2>, got Vec<{:?}>",
+            data_vec.element_data_type()
+        );
+        None
+    }
+}
+
+fn as_vec_of_vec3<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32; 3]>> {
+    if let DataVec::Vec3(vec) = data_vec {
+        Some(vec)
+    } else {
+        log_once::warn_once!(
+            "Expected {what} to be Vec<Vec3>, got Vec<{:?}>",
+            data_vec.element_data_type()
+        );
+        None
     }
 }

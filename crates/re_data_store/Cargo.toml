@@ -12,6 +12,8 @@ re_log_types = { path = "../re_log_types" }
 
 ahash = "0.8"
 itertools = "0.10"
+log = "0.4"
+log-once = "0.3"
 nohash-hasher = "0.2"
 tracing = "0.1"
 
