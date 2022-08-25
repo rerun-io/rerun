@@ -32,6 +32,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
+    m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
@@ -437,6 +438,94 @@ fn log_path(
     }
 
     let space = space.unwrap_or_else(|| "3D".to_owned());
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: LoggedData::Single(Data::Space(space.into())),
+    }));
+
+    Ok(())
+}
+
+#[pyfunction]
+fn log_line_segments(
+    obj_path: &str,
+    positions: numpy::PyReadonlyArray2<'_, f32>,
+    stroke_width: Option<f32>,
+    color: Option<Vec<u8>>,
+    space: Option<String>,
+) -> PyResult<()> {
+    let num_points = positions.shape()[0];
+    if num_points % 2 != 0 {
+        return Err(PyTypeError::new_err(format!(
+            "Expected an even number of points; got {num_points} points"
+        )));
+    }
+
+    let (positions, obj_type) = match positions.shape() {
+        [_, 2] => {
+            let positions = positions
+                .as_slice()
+                .unwrap()
+                .chunks(4)
+                .into_iter()
+                .map(|c| [[c[0], c[1]], [c[2], c[3]]])
+                .collect();
+            (Data::LineSegments2D(positions), ObjectType::LineSegments2D)
+        }
+        [_, 3] => {
+            let positions = positions
+                .as_slice()
+                .unwrap()
+                .chunks(6)
+                .into_iter()
+                .map(|c| [[c[0], c[1], c[2]], [c[3], c[4], c[5]]])
+                .collect();
+            (Data::LineSegments3D(positions), ObjectType::LineSegments3D)
+        }
+        _ => {
+            return Err(PyTypeError::new_err(format!(
+                "Expected Nx2 or Nx3 positions array; got {:?}",
+                positions.shape()
+            )));
+        }
+    };
+
+    let mut sdk = Sdk::global();
+
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    sdk.register_type(obj_path.obj_type_path(), obj_type);
+
+    let time_point = sdk.now();
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "line_segments".into()),
+        data: LoggedData::Single(positions),
+    }));
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "color".into()),
+            data: LoggedData::Single(Data::Color(color)),
+        }));
+    }
+
+    if let Some(stroke_width) = stroke_width {
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "stroke_width".into()),
+            data: LoggedData::Single(Data::F32(stroke_width)),
+        }));
+    }
+
+    let space = space.unwrap_or_else(|| "2D".to_owned());
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
         time_point,

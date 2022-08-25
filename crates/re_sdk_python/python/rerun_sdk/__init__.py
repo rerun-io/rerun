@@ -198,6 +198,32 @@ def log_path(
     rerun_rs.log_path(obj_path, positions, stroke_width, color, space)
 
 
+def log_line_segments(
+        obj_path: str,
+        positions: np.ndarray,
+        stroke_width: Optional[float] = None,
+        color: Optional[Sequence[int]] = None,
+        space: Optional[str] = None):
+    """
+    Log many 2D or 3D line segments.
+
+    The points will be connected in even-odd pairs, like so:
+
+           2------3     5
+                       /
+    0----1            /
+                     4
+
+    `positions`: a Nx3 array of points along the path.
+    `stroke_width`: width of the line.
+    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+
+    If no `space` is given, the space name "3D" will be used.
+    """
+    positions = np.array(positions, dtype='float32')
+    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, space)
+
+
 def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
     """
     Log a gray or color image.
