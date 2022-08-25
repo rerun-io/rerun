@@ -77,6 +77,12 @@ jobs:
         with:
           command: check
           args: --no-default-features --features __ci --lib
+      # Pre-build for testing so we can keep track of what time is spent building vs testing
+      - name: Pre-build test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test --no-run
+          args: --all-features --lib
       - name: Test
         uses: actions-rs/cargo@v1
         with:
