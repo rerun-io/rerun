@@ -1,5 +1,6 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
 import atexit
+from enum import Enum
 import numpy as np
 from typing import Optional, Sequence
 
@@ -13,10 +14,20 @@ def rerun_shutdown():
 
 atexit.register(rerun_shutdown)
 
+# -----------------------------------------------------------------------------
 
-# TODO(emilk): remove the forwarded calls below and just import them from the rust library
-# (which already has documentation etc).
-# I couldn't figure out how to get Python to do this, because Python imports confuses me.
+
+class MeshFormat(Enum):
+    # Needs some way of logging materials too, or adding some default material to the viewer.
+    # """ glTF """
+    # GLTF = "GLTF"
+
+    """ Binary glTF """
+    GLB = "GLB"
+
+    # Needs some way of logging materials too, or adding some default material to the viewer.
+    # """ Wavefront .obj """
+    # OBJ = "OBJ"
 
 
 def connect(addr: Optional[str] = None):
@@ -99,18 +110,22 @@ def log_rect(
     obj_path: str,
     left_top: Sequence[float],
     width_height: Sequence[float],
+    *,
     label: Optional[str] = None,
+    color: Optional[Sequence[int]] = None,
     space: Optional[str] = None,
 ):
     """
     Log a 2D rectangle.
 
-    Optionally give it a label and space.
+    `label` is an optional text to show inside the rectangle.
+    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     If no `space` is given, the space name "2D" will be used.
     """
     rerun_rs.log_rect(obj_path,
                       left_top,
                       width_height,
+                      color,
                       label,
                       space)
 
@@ -118,12 +133,13 @@ def log_rect(
 def log_points(
         obj_path: str,
         positions: np.ndarray,
+        *,
         colors: Optional[np.ndarray] = None,
         space: Optional[str] = None):
     """
     Log 2D or 3D points, with optional colors.
 
-    positions: Nx2 or Nx3 array
+    `positions`: Nx2 or Nx3 array
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -153,10 +169,66 @@ def log_points(
     # TODO(nikolausWest): Remove this extra copy once underlying issue in Rust SDK is fixed.
     positions = positions if positions.base is None else positions.copy()
 
-    rerun_rs.log_points_rs(obj_path, positions, colors, space)
+    rerun_rs.log_points(obj_path, positions, colors, space)
 
 
-def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
+def log_path(
+        obj_path: str,
+        positions: np.ndarray,
+        *,
+        stroke_width: Optional[float] = None,
+        color: Optional[Sequence[int]] = None,
+        space: Optional[str] = None):
+    """
+    Log a 3D path.
+    A path is a list of points connected by line segments.
+    It can be used to draw approximations of smooth curves.
+
+    The points will be connected in order, like so:
+
+           2------3     5
+          /        \   /
+    0----1          \ /
+                     4
+
+    `positions`: a Nx3 array of points along the path.
+    `stroke_width`: width of the line.
+    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+
+    If no `space` is given, the space name "3D" will be used.
+    """
+    positions = np.array(positions, dtype='float32')
+    rerun_rs.log_path(obj_path, positions, stroke_width, color, space)
+
+
+def log_line_segments(
+        obj_path: str,
+        positions: np.ndarray,
+        *,
+        stroke_width: Optional[float] = None,
+        color: Optional[Sequence[int]] = None,
+        space: Optional[str] = None):
+    """
+    Log many 2D or 3D line segments.
+
+    The points will be connected in even-odd pairs, like so:
+
+           2------3     5
+                       /
+    0----1            /
+                     4
+
+    `positions`: a Nx3 array of points along the path.
+    `stroke_width`: width of the line.
+    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+
+    If no `space` is given, the space name "3D" will be used.
+    """
+    positions = np.array(positions, dtype='float32')
+    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, space)
+
+
+def log_image(obj_path: str, image: np.ndarray, *, space: Optional[str] = None):
     """
     Log a gray or color image.
 
@@ -182,7 +254,7 @@ def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
     _log_tensor(obj_path, image, space=space)
 
 
-def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
+def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, space: Optional[str] = None):
     """
     Log a depth image.
 
@@ -202,7 +274,7 @@ def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = N
     _log_tensor(obj_path, image, meter=meter, space=space)
 
 
-def _log_tensor(obj_path: str, tensor: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
+def _log_tensor(obj_path: str, tensor: np.ndarray, *, meter: Optional[float] = None, space: Optional[str] = None):
     """
     If no `space` is given, the space name "2D" will be used.
     """
@@ -221,3 +293,28 @@ def _log_tensor(obj_path: str, tensor: np.ndarray, meter: Optional[float] = None
             obj_path, tensor.astype('float32'), meter, space)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
+
+
+def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, transform: np.ndarray = None, space: Optional[str] = None):
+    """
+    Log the contents of a mesh file (.gltf, .glb, .obj, …).
+
+    `transform` is an optional 4x4 transform matrix applied to the mesh.
+
+    Example:
+    ```
+    # Move mesh 10 units along the X axis.
+    transform=np.array([
+        [1, 0, 0, 10],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]])
+    ```
+    """
+    if transform is None:
+        transform = np.empty(shape=(0, 0), dtype=np.float32)
+    else:
+        transform = np.array(transform, dtype='float32')
+
+    rerun_rs.log_mesh_file(obj_path, mesh_format.value,
+                           mesh_file, transform, space)

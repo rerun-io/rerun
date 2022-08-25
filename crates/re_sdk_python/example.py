@@ -11,6 +11,12 @@ import rerun_sdk as rerun
 
 
 def log_dummy_data(args):
+    if args.connect:
+        # Send logging data to separate `rerun` process.
+        # You can ommit the argument to connect to the default address,
+        # which is `127.0.0.1:9876`.
+        rerun.connect(args.addr)
+
     """Log a few frames of generated dummy data to show how the Rerun SDK is used."""
     NUM_FRAMES = 40
 
@@ -22,20 +28,39 @@ def log_dummy_data(args):
         rerun.log_image("rgb", sample.rgb_image)
 
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rerun.log_rect("bbox", [car_x, car_y], [car_w, car_h], "A car")
+        rerun.log_rect("bbox", [car_x, car_y],
+                       [car_w, car_h], label="A car", color=(0, 128, 255))
 
-        # Set our preferred up-axis in the viewer
-        rerun.set_space_up("3D", [0, -1, 0])
-
-        rerun.log_points("points", sample.point_cloud, space="3D")
+        # Lets log the projected points into a separate "space", called 'projected_space'.
+        # We also set its up-axis.
+        # The default spaces are "2D" and "3D" (based on what you log).
+        rerun.set_space_up("projected_space", [0, -1, 0])
+        rerun.log_points("points", sample.point_cloud, space="projected_space")
 
         # The depth image is in millimeters, so we set meter=1000
-        # Everything logged are assigned different "spaces".
-        # The default spaces are "2D" and "3D" (based on what you log).
-        # In this case we chose to explicitly log to a separate space
-        # that we just call "depth_cam".
-        rerun.log_depth_image("depth", sample.depth_image_mm,
-                              meter=1000, space="depth_cam")
+        rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
+
+    with open('crates/re_viewer/data/camera.glb', mode='rb') as file:
+        mesh_file = file.read()
+        # Optional transformation matrix to apply (in this case: scale it up by a factor x2)
+        transform = [
+            [2, 0, 0, 0],
+            [0, 2, 0, 0],
+            [0, 0, 2, 0],
+            [0, 0, 0, 1]]
+        rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB,
+                            mesh_file, transform=transform)
+
+    rerun.log_path("a_box", [
+        [0, 0, 0],
+        [0, 1, 0],
+        [1, 1, 0],
+        [1, 0, 0],
+        [0, 0, 0]])
+
+    if not args.connect:
+        # Show the logged data inside the Python process:
+        rerun.show()
 
 
 class DummyCar:
@@ -184,13 +209,4 @@ if __name__ == '__main__':
                         help='Connect to this ip:port')
     args = parser.parse_args()
 
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
-
     log_dummy_data(args)
-
-    if not args.connect:
-        rerun.show()

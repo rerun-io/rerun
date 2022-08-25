@@ -30,11 +30,15 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
-    m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(log_points, m)?)?;
+    m.add_function(wrap_pyfunction!(log_path, m)?)?;
+    m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_f32, m)?)?;
+
+    m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
 
     Sdk::global().begin_new_recording();
 
@@ -146,6 +150,17 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) {
     }));
 }
 
+fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
+    match &color[..] {
+        [r, g, b] => Ok([*r, *g, *b, 255]),
+        [r, g, b, a] => Ok([*r, *g, *b, *a]),
+        _ => Err(PyTypeError::new_err(format!(
+            "Expected color to be of length 3 or 4, got {:?}",
+            color
+        ))),
+    }
+}
+
 /// Log a 2D bounding box.
 ///
 /// Optionally give it a label.
@@ -155,9 +170,10 @@ fn log_rect(
     obj_path: &str,
     left_top: [f32; 2],
     width_height: [f32; 2],
+    color: Option<Vec<u8>>,
     label: Option<String>,
     space: Option<String>,
-) {
+) -> PyResult<()> {
     let [x, y] = left_top;
     let [w, h] = width_height;
     let min = [x, y];
@@ -177,6 +193,16 @@ fn log_rect(
         data: LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
     }));
 
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "color".into()),
+            data: LoggedData::Single(Data::Color(color)),
+        }));
+    }
+
     if let Some(label) = label {
         sdk.send(LogMsg::DataMsg(DataMsg {
             msg_id: MsgId::random(),
@@ -193,6 +219,8 @@ fn log_rect(
         data_path: DataPath::new(obj_path, "space".into()),
         data: LoggedData::Single(Data::Space(space.into())),
     }));
+
+    Ok(())
 }
 
 /// positions: Nx2 or Nx3 array
@@ -203,7 +231,7 @@ fn log_rect(
 /// If no `space` is given, the space name "2D" or "3D" will be used,
 /// depending on the dimensionality of the data.
 #[pyfunction]
-fn log_points_rs(
+fn log_points(
     obj_path: &str,
     positions: numpy::PyReadonlyArray2<'_, f64>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
@@ -353,6 +381,166 @@ fn log_points_rs(
     Ok(())
 }
 
+#[pyfunction]
+fn log_path(
+    obj_path: &str,
+    positions: numpy::PyReadonlyArray2<'_, f32>,
+    stroke_width: Option<f32>,
+    color: Option<Vec<u8>>,
+    space: Option<String>,
+) -> PyResult<()> {
+    if !matches!(positions.shape(), [_, 3]) {
+        return Err(PyTypeError::new_err(format!(
+            "Expected Nx3 positions array; got {:?}",
+            positions.shape()
+        )));
+    }
+
+    let mut sdk = Sdk::global();
+
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Path3D);
+
+    let time_point = sdk.now();
+
+    let positions: Vec<[f32; 3]> = positions
+        .as_slice()
+        .unwrap()
+        .chunks(3)
+        .into_iter()
+        .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+        .collect();
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "points".into()),
+        data: LoggedData::Single(Data::Path3D(positions)),
+    }));
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "color".into()),
+            data: LoggedData::Single(Data::Color(color)),
+        }));
+    }
+
+    if let Some(stroke_width) = stroke_width {
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "stroke_width".into()),
+            data: LoggedData::Single(Data::F32(stroke_width)),
+        }));
+    }
+
+    let space = space.unwrap_or_else(|| "3D".to_owned());
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: LoggedData::Single(Data::Space(space.into())),
+    }));
+
+    Ok(())
+}
+
+#[pyfunction]
+fn log_line_segments(
+    obj_path: &str,
+    positions: numpy::PyReadonlyArray2<'_, f32>,
+    stroke_width: Option<f32>,
+    color: Option<Vec<u8>>,
+    space: Option<String>,
+) -> PyResult<()> {
+    let num_points = positions.shape()[0];
+    if num_points % 2 != 0 {
+        return Err(PyTypeError::new_err(format!(
+            "Expected an even number of points; got {num_points} points"
+        )));
+    }
+
+    let (dim, positions) = match positions.shape() {
+        [_, 2] => {
+            let positions = positions
+                .as_slice()
+                .unwrap()
+                .chunks(4)
+                .into_iter()
+                .map(|c| [[c[0], c[1]], [c[2], c[3]]])
+                .collect();
+            (2, Data::LineSegments2D(positions))
+        }
+        [_, 3] => {
+            let positions = positions
+                .as_slice()
+                .unwrap()
+                .chunks(6)
+                .into_iter()
+                .map(|c| [[c[0], c[1], c[2]], [c[3], c[4], c[5]]])
+                .collect();
+            (3, Data::LineSegments3D(positions))
+        }
+        _ => {
+            return Err(PyTypeError::new_err(format!(
+                "Expected Nx2 or Nx3 positions array; got {:?}",
+                positions.shape()
+            )));
+        }
+    };
+
+    let mut sdk = Sdk::global();
+
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_type = if dim == 2 {
+        ObjectType::LineSegments2D
+    } else {
+        ObjectType::LineSegments3D
+    };
+    sdk.register_type(obj_path.obj_type_path(), obj_type);
+
+    let time_point = sdk.now();
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "line_segments".into()),
+        data: LoggedData::Single(positions),
+    }));
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "color".into()),
+            data: LoggedData::Single(Data::Color(color)),
+        }));
+    }
+
+    if let Some(stroke_width) = stroke_width {
+        sdk.send(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.clone(), "stroke_width".into()),
+            data: LoggedData::Single(Data::F32(stroke_width)),
+        }));
+    }
+
+    let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: LoggedData::Single(Data::Space(space.into())),
+    }));
+
+    Ok(())
+}
+
 /// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
@@ -440,4 +628,77 @@ fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
         dtype: T::DTYPE,
         data: TensorDataStore::Dense(vec),
     }
+}
+
+#[pyfunction]
+fn log_mesh_file(
+    obj_path: &str,
+    mesh_format: &str,
+    bytes: &[u8],
+    transform: numpy::PyReadonlyArray2<'_, f32>,
+    space: Option<String>,
+) -> PyResult<()> {
+    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let format = match mesh_format {
+        "GLB" => MeshFormat::Glb,
+        "GLTF" => MeshFormat::Gltf,
+        "OBJ" => MeshFormat::Obj,
+        _ => {
+            return Err(PyTypeError::new_err(format!(
+                "Unknown mesh format {mesh_format:?}. Expected one of: GLB, GLTF, OBJ"
+            )));
+        }
+    };
+    let bytes = bytes.into();
+    let transform = if transform.is_empty() {
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    } else {
+        if transform.shape() != [4, 4] {
+            return Err(PyTypeError::new_err(format!(
+                "Expected a 4x4 transformation matrix, got shape={:?}",
+                transform.shape()
+            )));
+        }
+
+        let get = |row, col| *transform.get([row, col]).unwrap();
+
+        [
+            [get(0, 0), get(1, 0), get(2, 0), get(3, 0)], // col 0
+            [get(0, 1), get(1, 1), get(2, 1), get(3, 1)], // col 1
+            [get(0, 2), get(1, 2), get(2, 2), get(3, 2)], // col 2
+            [get(0, 3), get(1, 3), get(2, 3), get(3, 3)], // col 3
+        ]
+    };
+    let space = space.unwrap_or_else(|| "3D".to_owned());
+
+    let mut sdk = Sdk::global();
+
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
+
+    let time_point = sdk.now();
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "mesh".into()),
+        data: LoggedData::Single(Data::Mesh3D(Mesh3D::Encoded(EncodedMesh3D {
+            format,
+            bytes,
+            transform,
+        }))),
+    }));
+
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: LoggedData::Single(Data::Space(space.into())),
+    }));
+
+    Ok(())
 }
