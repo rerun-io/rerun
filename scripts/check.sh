@@ -42,6 +42,6 @@ cargo doc --document-private-items --no-deps --all-features
 
 cargo deny check
 
-./scripts/check_python.py
+./scripts/check_python.sh
 
 echo "All checks passed!"
