@@ -101,6 +101,10 @@ impl ObjPath {
         self.path.index_path()
     }
 
+    pub fn to_components(&self) -> Vec<ObjPathComp> {
+        self.path.to_components()
+    }
+
     #[inline]
     pub fn into_type_path_and_index_path(self) -> (ObjTypePath, IndexPath) {
         self.path.into_type_path_and_index_path()
@@ -132,14 +136,14 @@ impl From<ObjPathImpl> for ObjPath {
 impl From<Vec<ObjPathComp>> for ObjPath {
     #[inline]
     fn from(path: Vec<ObjPathComp>) -> Self {
-        Self::from(ObjPathImpl::from(path))
+        Self::from(ObjPathImpl::from(path.iter()))
     }
 }
 
-impl From<&Vec<ObjPathComp>> for ObjPath {
+impl From<&[ObjPathComp]> for ObjPath {
     #[inline]
-    fn from(path: &Vec<ObjPathComp>) -> Self {
-        Self::from(ObjPathImpl::from(path))
+    fn from(path: &[ObjPathComp]) -> Self {
+        Self::from(ObjPathImpl::from(path.iter()))
     }
 }
 

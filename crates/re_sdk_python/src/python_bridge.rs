@@ -53,7 +53,7 @@ fn parse_obj_path_comps(obj_path: &str) -> PyResult<Vec<ObjPathComp>> {
 }
 
 fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
-    parse_obj_path_comps(obj_path).map(|comps| ObjPath::from(ObjPathBuilder::new(comps)))
+    parse_obj_path_comps(obj_path).map(ObjPath::from)
 }
 
 fn vec_from_np_array<T: numpy::Element, D: numpy::ndarray::Dimension>(
@@ -279,10 +279,14 @@ fn log_points(
 
     let mut sdk = Sdk::global();
 
-    let root_path = ObjPathBuilder::new(parse_obj_path_comps(obj_path)?);
-    let point_path = ObjPath::from(&root_path / ObjPathComp::Index(Index::Placeholder));
+    let root_path = parse_obj_path_comps(obj_path)?;
+    let point_path = {
+        let mut point_path = root_path.clone();
+        point_path.push(ObjPathComp::Index(Index::Placeholder));
+        ObjPath::from(point_path)
+    };
 
-    let mut type_path = root_path.obj_type_path();
+    let mut type_path = ObjPath::from(root_path).obj_type_path().clone();
     type_path.push(TypePathComp::Index);
 
     sdk.register_type(

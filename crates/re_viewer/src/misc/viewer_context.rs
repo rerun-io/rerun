@@ -1,7 +1,5 @@
 use re_data_store::ObjTypePath;
-use re_log_types::{
-    DataPath, MsgId, ObjPath, ObjPathBuilder, ObjPathComp, TimeInt, TimeSource, TimeValue,
-};
+use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource, TimeValue};
 
 use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 
@@ -182,7 +180,7 @@ impl RecordingConfig {
             prop: ObjectProps,
             tree: &ObjectTree,
         ) {
-            let obj_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
+            let obj_path = ObjPath::from(path.clone());
             let prop = prop.with_child(&rec_cfg.individual_object_properties.get(&obj_path));
             rec_cfg.projected_object_properties.set(obj_path, prop);
 

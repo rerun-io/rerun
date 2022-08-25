@@ -185,7 +185,7 @@ impl ObjectTree {
 
     pub fn add_data_msg(&mut self, msg: &DataMsg) {
         crate::profile_function!();
-        let obj_path = ObjPathBuilder::from(&msg.data_path.obj_path);
+        let obj_path = msg.data_path.obj_path.to_components();
         self.add_path(obj_path.as_slice(), msg.data_path.field_name, msg);
     }
 

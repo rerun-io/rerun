@@ -116,7 +116,7 @@ fn log_annotation_pbdata(
                 half_size: half_size.to_array(),
             };
             let obj_path = data_path.clone().join("bbox3d".into());
-            logger.log(data_msg(&time_point, &obj_path, "obb", box3));
+            logger.log(data_msg(&time_point, obj_path.clone(), "obb", box3));
             logger.log(data_msg(
                 &time_point,
                 obj_path,
@@ -213,13 +213,13 @@ fn log_annotation_pbdata(
                 let obj_path = data_path.join("bbox2d".into());
                 logger.log(data_msg(
                     &time_point,
-                    &obj_path,
+                    obj_path.clone(),
                     "points",
                     Data::DataVec(DataVec::Vec2(points)),
                 ));
                 logger.log(data_msg(
                     &time_point,
-                    &obj_path,
+                    obj_path.clone(),
                     "space",
                     image_space.clone(),
                 ));
@@ -237,7 +237,7 @@ fn log_annotation_pbdata(
                         .join(Index::Integer(id as _).into());
                     logger.log(data_msg(
                         &time_point,
-                        &point_path,
+                        point_path.clone(),
                         "pos2d",
                         Data::Vec2(pos2),
                     ));
@@ -327,20 +327,20 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
 
                         logger.log(data_msg(
                             &time_point,
-                            &point_path,
+                            point_path.clone(),
                             "pos",
                             Data::Vec3([x, y, z]),
                         ));
                         logger.log(data_msg(
                             &time_point,
-                            &point_path,
+                            point_path.clone(),
                             "space",
                             world_space.clone(),
                         ));
                         // TODO(emilk): log once for the parent ("points")
                         logger.log(data_msg(
                             &time_point,
-                            &point_path,
+                            point_path.clone(),
                             "color",
                             Data::Color([255; 4]),
                         ));
@@ -451,10 +451,15 @@ fn log_plane_anchor(
             .map(|(a, b, c)| [a as u32, b as u32, c as u32])
             .collect();
         let mesh = RawMesh3D { positions, indices };
-        logger.log(data_msg(time_point, &plane_path, "mesh", Mesh3D::Raw(mesh)));
         logger.log(data_msg(
             time_point,
-            &plane_path,
+            plane_path.clone(),
+            "mesh",
+            Mesh3D::Raw(mesh),
+        ));
+        logger.log(data_msg(
+            time_point,
+            plane_path,
             "space",
             world_space.clone(),
         ));
