@@ -110,6 +110,7 @@ def log_rect(
     obj_path: str,
     left_top: Sequence[float],
     width_height: Sequence[float],
+    *,
     label: Optional[str] = None,
     color: Optional[Sequence[int]] = None,
     space: Optional[str] = None,
@@ -132,6 +133,7 @@ def log_rect(
 def log_points(
         obj_path: str,
         positions: np.ndarray,
+        *,
         colors: Optional[np.ndarray] = None,
         space: Optional[str] = None):
     """
@@ -173,6 +175,7 @@ def log_points(
 def log_path(
         obj_path: str,
         positions: np.ndarray,
+        *,
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
         space: Optional[str] = None):
@@ -201,6 +204,7 @@ def log_path(
 def log_line_segments(
         obj_path: str,
         positions: np.ndarray,
+        *,
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
         space: Optional[str] = None):
@@ -224,7 +228,7 @@ def log_line_segments(
     rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, space)
 
 
-def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
+def log_image(obj_path: str, image: np.ndarray, *, space: Optional[str] = None):
     """
     Log a gray or color image.
 
@@ -250,7 +254,7 @@ def log_image(obj_path: str, image: np.ndarray, space: Optional[str] = None):
     _log_tensor(obj_path, image, space=space)
 
 
-def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
+def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, space: Optional[str] = None):
     """
     Log a depth image.
 
@@ -270,7 +274,7 @@ def log_depth_image(obj_path: str, image: np.ndarray, meter: Optional[float] = N
     _log_tensor(obj_path, image, meter=meter, space=space)
 
 
-def _log_tensor(obj_path: str, tensor: np.ndarray, meter: Optional[float] = None, space: Optional[str] = None):
+def _log_tensor(obj_path: str, tensor: np.ndarray, *, meter: Optional[float] = None, space: Optional[str] = None):
     """
     If no `space` is given, the space name "2D" will be used.
     """
@@ -291,7 +295,7 @@ def _log_tensor(obj_path: str, tensor: np.ndarray, meter: Optional[float] = None
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
 
-def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, transform: np.ndarray = None, space: Optional[str] = None):
+def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, transform: np.ndarray = None, space: Optional[str] = None):
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
 
