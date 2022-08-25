@@ -177,6 +177,10 @@ impl SpaceView {
                 .visible
         });
 
+        if objects.has_any_2d() && objects.has_any_3d() {
+            log_once::warn_once!("Space {:?} has both 2D and 3D objects", space_name(space));
+        }
+
         if objects.has_any_3d() {
             let state_3d = self.state_3d.entry(space.cloned()).or_default();
             crate::view3d::combined_view_3d(ctx, ui, state_3d, space, &objects);
