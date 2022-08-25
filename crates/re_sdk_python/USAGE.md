@@ -10,8 +10,6 @@ To get started, start the Rerun Viewer by just typing `rerun` in a terminal. It 
 ## Logging
 Rerun assumes you are using `numpy` for any large chunks of data.
 
-The first argument to each log function is the object name. This needs to be unique for each thing you log. You can not log an image with the same name as a point cloud!
-
 ```python
 import rerun_sdk as rerun
 
@@ -21,6 +19,28 @@ rerun.log_image("rgb_image", image)
 ```
 
 See more in [`example.py`](./example.py).
+
+## Paths
+The first argument to each log function is a _name path_. This needs to be unique for each thing you log. You can not log an image with the same name as a point cloud!
+
+A path can look like this: `detections/object/42/bbox`. Each component (between the slashes) can either be:
+
+* A name (`detections`). Intended for hard-coded names.
+* A "quoted string". Intended for things like serial numbers.
+* An integer. Intended for hashes or similar.
+* A number sequence, prefixed by `#` (#0, #1, #2, …). Intended for indices.
+* A UUID.
+
+So for instance, `/foo/bar/#42/5678/"CA426571"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d` is a valid path.
+
+Example usage:
+
+``` python
+for cam in cameras:
+    for i, detection in enumerate(cam.detect()):
+        rerun.log_rect(f'camera/"{cam.id}"/detection/#{i}', detection.top_left, detection.bottom_right)
+```
+
 
 ## Inline viewer
 If you prefer, you can open the viewer directly from Python (blocking the Python process).

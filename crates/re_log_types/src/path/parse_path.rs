@@ -18,16 +18,16 @@ pub enum PathParseError {
     MissingSlash,
 }
 
+/// Parses an object path, e.g. `/foo/bar/#1234/5678/"string index"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d`
 pub fn parse_obj_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
-    // Allow optional leading slash
-    let path = path.strip_prefix('/').unwrap_or(path);
+    let path = path.strip_prefix('/').unwrap_or(path); // Allow optional leading slash
+
     let mut bytes = path.as_bytes();
 
     let mut components = vec![];
 
     while let Some(c) = bytes.first() {
         if *c == b'"' {
-            // "a string"
             // Look for the terminating quote ignoring escaped quotes (\"):
             let mut i = 1;
             loop {
