@@ -169,7 +169,7 @@ def log_points(
     # TODO(nikolausWest): Remove this extra copy once underlying issue in Rust SDK is fixed.
     positions = positions if positions.base is None else positions.copy()
 
-    rerun_rs.log_points_rs(obj_path, positions, colors, space)
+    rerun_rs.log_points(obj_path, positions, colors, space)
 
 
 def log_path(

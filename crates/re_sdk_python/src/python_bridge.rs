@@ -30,7 +30,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
-    m.add_function(wrap_pyfunction!(log_points_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(log_points, m)?)?;
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
 
@@ -231,7 +231,7 @@ fn log_rect(
 /// If no `space` is given, the space name "2D" or "3D" will be used,
 /// depending on the dimensionality of the data.
 #[pyfunction]
-fn log_points_rs(
+fn log_points(
     obj_path: &str,
     positions: numpy::PyReadonlyArray2<'_, f64>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
