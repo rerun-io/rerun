@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-cd "$script_path/../.."
+cd "$script_path/.."
 
 # TODO(emilk): we should probably replace this with https://trunkrs.dev/ or https://github.com/rustwasm/wasm-pack
 
-./crates/re_viewer/setup_web.sh
+./scripts/setup_web.sh
 
 OPEN=false
 OPTIMIZE=false

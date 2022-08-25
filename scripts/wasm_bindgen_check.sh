@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-cd "$script_path/../.."
+cd "$script_path/.."
 
 
 
@@ -10,7 +10,7 @@ then
   echo "Skipping setup_web.sh"
 else
   echo "Running setup_web.sh"
-    crates/re_viewer/setup_web.sh
+    scripts/setup_web.sh
 fi
 
 CRATE_NAME="re_viewer"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-cd "$script_path/../.."
+cd "$script_path/.."
 
 # Pre-requisites:
 rustup target add wasm32-unknown-unknown
@@ -16,5 +16,5 @@ elif [ -x "$(command -v zypper)" ];  then sudo zypper install $packagesNeeded
 elif [ -x "$(command -v apk)" ];     then sudo apk add --no-cache $packagesNeeded
 else echo "FAILED TO INSTALL PACKAGE: Package manager not found. You must manually install: $packagesNeeded">&2; fi
 
-# For local tests with `./start_server`:
+# For local tests with `start_server.sh`:
 cargo install basic-http-server

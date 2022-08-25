@@ -16,7 +16,7 @@ fn main() {
     rerun_if_changed("../../crates/re_viewer/src/**/*.rs");
 
     // Disabled, because it hangs :(
-    // std::process::Command::new("../../crates/re_viewer/build_web.sh")
+    // std::process::Command::new("../../scripts/build_web.sh")
     //     .output()
     //     .expect("failed to build viewer for web");
 }
