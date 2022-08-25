@@ -131,6 +131,26 @@ class DummyCar:
                       DummyCar.BODY_COLOR, cv2.FILLED)
 
 
+@dataclass
+class CameraParameters:
+    """Holds the intrinsic and extrinsic parameters of a camera."""
+    width: int
+    height: int
+    intrinsics: np.ndarray
+    rotation_q: np.ndarray
+    position: np.ndarray
+
+
+@ dataclass
+class SampleFrame:
+    """Holds data for a single frame of data."""
+    frame_idx: int
+    camera: CameraParameters
+    depth_image_mm: np.ndarray
+    point_cloud: np.ndarray
+    rgb_image: np.ndarray
+    car_bbox: Tuple[np.ndarray, np.ndarray]
+
 class SimpleDepthCamera:
 
     def __init__(self, image_width: int, image_height: int) -> None:
@@ -162,15 +182,35 @@ class SimpleDepthCamera:
         """Renders a depth image of a slanted plane in millimeters."""
         return 1000.0 * 1. / (0.01 + 0.4*self.v_coords/self.h)
 
+    @property
+    def intrinsics(self) -> np.ndarray:
+        """The camera's row-major intrinsics matrix."""
+        return np.array((
+            (self.focal_length, 0,                 self.u_center),
+            (0,                 self.focal_length, self.v_center),
+            (0,                 0,                 1)
+        ))
 
-@ dataclass
-class SampleFrame:
-    """Holds data for a single frame of data."""
-    frame_idx: int
-    depth_image_mm: np.ndarray
-    point_cloud: np.ndarray
-    rgb_image: np.ndarray
-    car_bbox: Tuple[np.ndarray, np.ndarray]
+    @property
+    def rotation_q(self) -> np.ndarray:
+        """The camera's rotation (world from camera) as a xyzw encoded quaternion."""
+        return np.array((0, 0, 0, 1))  # Dummy "identity" value
+
+    @property
+    def position(self) -> np.ndarray:
+        """The camera's position in world space."""
+        return np.array((0, 0, 0))  # Dummy "identity" value
+
+    @property
+    def parameters(self) -> CameraParameters:
+        """The camera's parameters."""
+        return CameraParameters(
+            width=self.w,
+            height=self.w,
+            intrinsics=self.intrinsics,
+            rotation_q=self.rotation_q,
+            position=self.position
+        )
 
 
 def generate_dummy_data(num_frames: int) -> Iterator[SampleFrame]:
@@ -201,6 +241,7 @@ def generate_dummy_data(num_frames: int) -> Iterator[SampleFrame]:
         car.draw(depth_image_mm=depth_image_mm, rgb=rgb)
         point_cloud = camera.back_project(depth_image_mm=depth_image_mm)
         sample = SampleFrame(frame_idx=i,
+                             camera=camera.parameters,
                              depth_image_mm=depth_image_mm,
                              point_cloud=point_cloud,
                              rgb_image=rgb,
