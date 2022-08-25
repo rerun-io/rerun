@@ -107,19 +107,21 @@ jobs:
           source env/bin/activate
           pip install -r crates/re_sdk_python/requirements.txt
       - name: Build wheels
-        run: maturin build -m crates/re_sdk_python/Cargo.toml -o dist
+        run: |
+          source env/bin/activate
+          maturin build -m crates/re_sdk_python/Cargo.toml -o dist
       - name: Install wheel
         run: |
-          unzip -l dist/*.whl
+          source env/bin/activate
           pip install dist/*.whl
-          pip show rerun_sdk
       - name: pytest
         run: |
-          pip freeze
-          ls -l /opt/hostedtoolcache/Python/3.8.13/x64/lib/python3.8/site-packages/rerun_sdk
+          source env/bin/activate
           pytest crates/re_sdk_python
       - name: mypy
-        run: mypy crates/re_sdk_python
+        run: |
+          source env/bin/activate
+          mypy crates/re_sdk_python
 
   cargo-deny:
     name: cargo deny
