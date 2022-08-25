@@ -1,5 +1,5 @@
 use crate::{
-    path::{IndexPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp},
+    path::{IndexPath, ObjPathComp, ObjTypePath, TypePathComp},
     Index,
 };
 
@@ -111,45 +111,6 @@ where
             }
         }
         ObjPathImpl::new(ObjTypePath::new(obj_type_path), IndexPath::new(index_path))
-    }
-}
-
-impl From<&ObjPathBuilder> for ObjPathImpl {
-    #[inline]
-    fn from(path: &ObjPathBuilder) -> Self {
-        let mut obj_type_path = vec![];
-        let mut index_path = vec![];
-        for comp in path.iter() {
-            match comp {
-                ObjPathComp::String(name) => {
-                    obj_type_path.push(TypePathComp::String(*name));
-                }
-                ObjPathComp::Index(index) => {
-                    obj_type_path.push(TypePathComp::Index);
-                    index_path.push(index.clone());
-                }
-            }
-        }
-        ObjPathImpl::new(ObjTypePath::new(obj_type_path), IndexPath::new(index_path))
-    }
-}
-
-impl From<ObjPathBuilder> for ObjPathImpl {
-    fn from(obj_path: ObjPathBuilder) -> Self {
-        let mut obj_type_path = Vec::default();
-        let mut index_path = IndexPath::default();
-        for comp in obj_path {
-            match comp {
-                ObjPathComp::String(name) => {
-                    obj_type_path.push(TypePathComp::String(name));
-                }
-                ObjPathComp::Index(index) => {
-                    obj_type_path.push(TypePathComp::Index);
-                    index_path.push(index);
-                }
-            }
-        }
-        ObjPathImpl::new(ObjTypePath::new(obj_type_path), index_path)
     }
 }
 

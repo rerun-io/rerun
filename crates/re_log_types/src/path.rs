@@ -1,7 +1,6 @@
 mod data_path;
 mod index_path;
 mod obj_path;
-mod obj_path_builder;
 pub(crate) mod obj_path_impl;
 mod obj_type_path;
 mod parse_path;
@@ -9,7 +8,6 @@ mod parse_path;
 pub use data_path::DataPath;
 pub use index_path::{IndexPath, IndexPathHash};
 pub use obj_path::{ObjPath, ObjPathHash};
-pub use obj_path_builder::ObjPathBuilder;
 pub use obj_type_path::ObjTypePath;
 pub use parse_path::parse_obj_path;
 

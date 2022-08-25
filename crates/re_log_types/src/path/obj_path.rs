@@ -1,6 +1,6 @@
 use crate::{
     hash::Hash128,
-    path::{obj_path_impl::ObjPathImpl, IndexPath, ObjPathBuilder, ObjTypePath},
+    path::{obj_path_impl::ObjPathImpl, IndexPath, ObjTypePath},
     Index, ObjPathComp,
 };
 
@@ -147,31 +147,17 @@ impl From<&[ObjPathComp]> for ObjPath {
     }
 }
 
-impl From<ObjPathBuilder> for ObjPath {
-    #[inline]
-    fn from(path: ObjPathBuilder) -> Self {
-        Self::from(ObjPathImpl::from(path))
-    }
-}
-
-impl From<&ObjPathBuilder> for ObjPath {
-    #[inline]
-    fn from(path: &ObjPathBuilder) -> Self {
-        Self::from(ObjPathImpl::from(path))
-    }
-}
-
 impl From<&str> for ObjPath {
     #[inline]
     fn from(component: &str) -> Self {
-        Self::from(&ObjPathBuilder::from(component))
+        Self::from(vec![ObjPathComp::from(component)])
     }
 }
 
 impl From<String> for ObjPath {
     #[inline]
     fn from(component: String) -> Self {
-        Self::from(&ObjPathBuilder::from(component))
+        Self::from(vec![ObjPathComp::from(component)])
     }
 }
 
