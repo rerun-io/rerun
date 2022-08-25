@@ -102,9 +102,8 @@ pub fn calc_bbox_2d(objects: &re_data_store::Objects<'_>) -> emath::Rect {
     }
 
     for (_, obj) in objects.line_segments2d.iter() {
-        for pair in obj.points.chunks_exact(2) {
-            bbox.extend_with(pair[0].into());
-            bbox.extend_with(pair[1].into());
+        for point in obj.points {
+            bbox.extend_with(point.into());
         }
     }
 
@@ -156,9 +155,8 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
     }
 
     for (_, obj) in objects.line_segments3d.iter() {
-        for pair in obj.points.chunks_exact(2) {
-            bbox.extend(pair[0].into());
-            bbox.extend(pair[1].into());
+        for &point in obj.points {
+            bbox.extend(point.into());
         }
     }
 

@@ -1,6 +1,7 @@
 #![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pufunction] need to be by value
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 
+use bytemuck::allocation::pod_collect_to_vec;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -43,6 +44,14 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Sdk::global().begin_new_recording();
 
     Ok(())
+}
+
+fn parse_obj_path_comps(obj_path: &str) -> PyResult<Vec<ObjPathComp>> {
+    re_log_types::parse_obj_path(obj_path).map_err(|err| PyTypeError::new_err(err.to_string()))
+}
+
+fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
+    parse_obj_path_comps(obj_path).map(|comps| ObjPath::from(ObjPathBuilder::new(comps)))
 }
 
 #[pyfunction]
@@ -134,10 +143,10 @@ fn set_time_nanos(time_source: &str, ns: Option<i64>) {
 
 /// Set the preferred up-axis for a given 3D space.
 #[pyfunction]
-fn set_space_up(space_obj_path: &str, up: [f32; 3]) {
+fn set_space_up(space_obj_path: &str, up: [f32; 3]) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
-    let space_obj_path = ObjPath::from(space_obj_path); // TODO(emilk): pass in proper obj path somehow
+    let space_obj_path = parse_obj_path(space_obj_path)?;
     sdk.register_type(space_obj_path.obj_type_path(), ObjectType::Space);
 
     let time_point = sdk.now();
@@ -148,6 +157,8 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) {
         data_path: DataPath::new(space_obj_path, "up".into()),
         data: LoggedData::Single(Data::Vec3(up)),
     }));
+
+    Ok(())
 }
 
 fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
@@ -181,7 +192,7 @@ fn log_rect(
 
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
     let time_point = sdk.now();
@@ -233,7 +244,7 @@ fn log_rect(
 #[pyfunction]
 fn log_points(
     obj_path: &str,
-    positions: numpy::PyReadonlyArray2<'_, f64>,
+    positions: numpy::PyReadonlyArray2<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -253,7 +264,7 @@ fn log_points(
 
     let mut sdk = Sdk::global();
 
-    let root_path = ObjPathBuilder::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let root_path = ObjPathBuilder::new(parse_obj_path_comps(obj_path)?);
     let point_path = ObjPath::from(&root_path / ObjPathComp::Index(Index::Placeholder));
 
     let mut type_path = root_path.obj_type_path();
@@ -314,17 +325,9 @@ fn log_points(
             }
             [_, 4] => {
                 // RGBA, RGBA, RGBA, …
-                let colors: Vec<[u8; 4]> = colors
-                    .as_slice()
-                    .unwrap()
-                    .chunks_exact(4)
-                    .into_iter()
-                    .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3]])
-                    .collect();
-
                 send_color(LoggedData::Batch {
                     indices: indices.clone(),
-                    data: DataVec::Color(colors),
+                    data: DataVec::Color(pod_collect_to_vec(colors.as_slice().unwrap())),
                 });
             }
             shape => {
@@ -337,26 +340,8 @@ fn log_points(
 
     // TODO(emilk): handle non-contigious arrays
     let pos_data = match dim {
-        2 => {
-            let data: Vec<[f32; 2]> = positions
-                .as_slice()
-                .unwrap()
-                .chunks_exact(2)
-                .into_iter()
-                .map(|chunk| [chunk[0] as f32, chunk[1] as f32])
-                .collect();
-            DataVec::Vec2(data)
-        }
-        3 => {
-            let data: Vec<[f32; 3]> = positions
-                .as_slice()
-                .unwrap()
-                .chunks_exact(3)
-                .into_iter()
-                .map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32])
-                .collect();
-            DataVec::Vec3(data)
-        }
+        2 => DataVec::Vec2(pod_collect_to_vec(positions.as_slice().unwrap())),
+        3 => DataVec::Vec3(pod_collect_to_vec(positions.as_slice().unwrap())),
         _ => unreachable!(),
     };
 
@@ -398,18 +383,12 @@ fn log_path(
 
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Path3D);
 
     let time_point = sdk.now();
 
-    let positions: Vec<[f32; 3]> = positions
-        .as_slice()
-        .unwrap()
-        .chunks_exact(3)
-        .into_iter()
-        .map(|chunk| [chunk[0], chunk[1], chunk[2]])
-        .collect();
+    let positions = pod_collect_to_vec(positions.as_slice().unwrap());
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
@@ -464,26 +443,18 @@ fn log_line_segments(
     }
 
     let (dim, positions) = match positions.shape() {
-        [_, 2] => {
-            let positions = positions
-                .as_slice()
-                .unwrap()
-                .chunks_exact(2)
-                .into_iter()
-                .map(|c| [c[0], c[1]])
-                .collect();
-            (2, Data::DataVec(DataVec::Vec2(positions)))
-        }
-        [_, 3] => {
-            let positions = positions
-                .as_slice()
-                .unwrap()
-                .chunks_exact(3)
-                .into_iter()
-                .map(|c| [c[0], c[1], c[2]])
-                .collect();
-            (3, Data::DataVec(DataVec::Vec3(positions)))
-        }
+        [_, 2] => (
+            2,
+            Data::DataVec(DataVec::Vec2(pod_collect_to_vec(
+                positions.as_slice().unwrap(),
+            ))),
+        ),
+        [_, 3] => (
+            3,
+            Data::DataVec(DataVec::Vec3(pod_collect_to_vec(
+                positions.as_slice().unwrap(),
+            ))),
+        ),
         _ => {
             return Err(PyTypeError::new_err(format!(
                 "Expected Nx2 or Nx3 positions array; got {:?}",
@@ -494,7 +465,7 @@ fn log_line_segments(
 
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     let obj_type = if dim == 2 {
         ObjectType::LineSegments2D
     } else {
@@ -549,8 +520,8 @@ fn log_tensor_u8(
     img: numpy::PyReadonlyArrayDyn<'_, u8>,
     meter: Option<f32>,
     space: Option<String>,
-) {
-    log_tensor(obj_path, img, meter, space);
+) -> PyResult<()> {
+    log_tensor(obj_path, img, meter, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -561,8 +532,8 @@ fn log_tensor_u16(
     img: numpy::PyReadonlyArrayDyn<'_, u16>,
     meter: Option<f32>,
     space: Option<String>,
-) {
-    log_tensor(obj_path, img, meter, space);
+) -> PyResult<()> {
+    log_tensor(obj_path, img, meter, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -573,8 +544,8 @@ fn log_tensor_f32(
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
     meter: Option<f32>,
     space: Option<String>,
-) {
-    log_tensor(obj_path, img, meter, space);
+) -> PyResult<()> {
+    log_tensor(obj_path, img, meter, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -583,10 +554,10 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     img: numpy::PyReadonlyArrayDyn<'_, T>,
     meter: Option<f32>,
     space: Option<String>,
-) {
+) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
     let time_point = sdk.now();
@@ -614,6 +585,8 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
             data: LoggedData::Single(Data::F32(meter)),
         }));
     }
+
+    Ok(())
 }
 
 fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
@@ -638,7 +611,7 @@ fn log_mesh_file(
     transform: numpy::PyReadonlyArray2<'_, f32>,
     space: Option<String>,
 ) -> PyResult<()> {
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     let format = match mesh_format {
         "GLB" => MeshFormat::Glb,
         "GLTF" => MeshFormat::Gltf,

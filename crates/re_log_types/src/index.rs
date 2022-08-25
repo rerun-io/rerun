@@ -52,6 +52,13 @@ impl std::fmt::Display for Index {
 
 crate::impl_into_enum!(String, Index, String);
 
+impl From<&str> for Index {
+    #[inline]
+    fn from(s: &str) -> Self {
+        Self::String(s.into())
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// A 128 bit hash of [`Index`] with negligible chance of collision.

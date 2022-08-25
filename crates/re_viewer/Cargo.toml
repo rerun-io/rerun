@@ -32,7 +32,7 @@ egui_glow   = { version = "0.19" }
 
 ahash = "0.8"
 anyhow = "1.0"
-bytemuck = "1.7"
+bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released

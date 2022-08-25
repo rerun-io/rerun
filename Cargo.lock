@@ -2710,6 +2710,7 @@ dependencies = [
  "rmp-serde",
  "ruzstd",
  "serde",
+ "thiserror",
  "uuid",
  "zstd",
 ]
@@ -2743,6 +2744,7 @@ dependencies = [
  "re_viewer",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
