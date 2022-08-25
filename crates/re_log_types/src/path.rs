@@ -64,6 +64,13 @@ impl From<String> for ObjPathComp {
     }
 }
 
+impl From<Index> for ObjPathComp {
+    #[inline]
+    fn from(comp: Index) -> Self {
+        Self::Index(comp)
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

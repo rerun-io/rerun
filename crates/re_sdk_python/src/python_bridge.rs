@@ -45,6 +45,14 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
+fn parse_obj_path_comps(obj_path: &str) -> PyResult<Vec<ObjPathComp>> {
+    crate::parse_path::parse_path(obj_path).map_err(|err| PyTypeError::new_err(err.to_string()))
+}
+
+fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
+    parse_obj_path_comps(obj_path).map(|comps| ObjPath::from(ObjPathBuilder::new(comps)))
+}
+
 #[pyfunction]
 fn connect(addr: Option<String>) -> PyResult<()> {
     let addr = if let Some(addr) = addr {
@@ -134,10 +142,10 @@ fn set_time_nanos(time_source: &str, ns: Option<i64>) {
 
 /// Set the preferred up-axis for a given 3D space.
 #[pyfunction]
-fn set_space_up(space_obj_path: &str, up: [f32; 3]) {
+fn set_space_up(space_obj_path: &str, up: [f32; 3]) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
-    let space_obj_path = ObjPath::from(space_obj_path); // TODO(emilk): pass in proper obj path somehow
+    let space_obj_path = parse_obj_path(space_obj_path)?;
     sdk.register_type(space_obj_path.obj_type_path(), ObjectType::Space);
 
     let time_point = sdk.now();
@@ -148,6 +156,8 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) {
         data_path: DataPath::new(space_obj_path, "up".into()),
         data: LoggedData::Single(Data::Vec3(up)),
     }));
+
+    Ok(())
 }
 
 fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
@@ -181,7 +191,7 @@ fn log_rect(
 
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
     let time_point = sdk.now();
@@ -253,7 +263,7 @@ fn log_points(
 
     let mut sdk = Sdk::global();
 
-    let root_path = ObjPathBuilder::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let root_path = ObjPathBuilder::new(parse_obj_path_comps(obj_path)?);
     let point_path = ObjPath::from(&root_path / ObjPathComp::Index(Index::Placeholder));
 
     let mut type_path = root_path.obj_type_path();
@@ -398,7 +408,7 @@ fn log_path(
 
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Path3D);
 
     let time_point = sdk.now();
@@ -494,7 +504,7 @@ fn log_line_segments(
 
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     let obj_type = if dim == 2 {
         ObjectType::LineSegments2D
     } else {
@@ -549,8 +559,8 @@ fn log_tensor_u8(
     img: numpy::PyReadonlyArrayDyn<'_, u8>,
     meter: Option<f32>,
     space: Option<String>,
-) {
-    log_tensor(obj_path, img, meter, space);
+) -> PyResult<()> {
+    log_tensor(obj_path, img, meter, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -561,8 +571,8 @@ fn log_tensor_u16(
     img: numpy::PyReadonlyArrayDyn<'_, u16>,
     meter: Option<f32>,
     space: Option<String>,
-) {
-    log_tensor(obj_path, img, meter, space);
+) -> PyResult<()> {
+    log_tensor(obj_path, img, meter, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -573,8 +583,8 @@ fn log_tensor_f32(
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
     meter: Option<f32>,
     space: Option<String>,
-) {
-    log_tensor(obj_path, img, meter, space);
+) -> PyResult<()> {
+    log_tensor(obj_path, img, meter, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -583,10 +593,10 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     img: numpy::PyReadonlyArrayDyn<'_, T>,
     meter: Option<f32>,
     space: Option<String>,
-) {
+) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
     let time_point = sdk.now();
@@ -614,6 +624,8 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
             data: LoggedData::Single(Data::F32(meter)),
         }));
     }
+
+    Ok(())
 }
 
 fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
@@ -638,7 +650,7 @@ fn log_mesh_file(
     transform: numpy::PyReadonlyArray2<'_, f32>,
     space: Option<String>,
 ) -> PyResult<()> {
-    let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_path = parse_obj_path(obj_path)?;
     let format = match mesh_format {
         "GLB" => MeshFormat::Glb,
         "GLTF" => MeshFormat::Gltf,

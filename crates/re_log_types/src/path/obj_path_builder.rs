@@ -10,6 +10,11 @@ pub struct ObjPathBuilder {
 
 impl ObjPathBuilder {
     #[inline]
+    pub fn root() -> Self {
+        Self { components: vec![] }
+    }
+
+    #[inline]
     pub fn new(components: Vec<ObjPathComp>) -> Self {
         Self { components }
     }
@@ -53,6 +58,10 @@ impl ObjPathBuilder {
                 .map(|c| c.clone().to_type_path_comp())
                 .collect(),
         )
+    }
+
+    pub fn build(self) -> ObjPath {
+        self.into()
     }
 }
 
