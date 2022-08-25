@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug 'rerun' recording.rrd",
+            "name": "Debug 'rerun' data.rrd",
             "type": "lldb",
             "request": "launch",
             "cargo": {
@@ -19,7 +19,7 @@
                 }
             },
             "args": [
-                "../recording.rrd"
+                "../data.rrd"
             ],
             "cwd": "${workspaceFolder}"
         },
