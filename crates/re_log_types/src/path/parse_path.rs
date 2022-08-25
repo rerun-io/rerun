@@ -17,12 +17,12 @@ pub enum PathParseError {
 
 pub fn parse_obj_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
     // Allow optional leading slash
-    let path = path.strip_prefix("/").unwrap_or(path);
+    let path = path.strip_prefix('/').unwrap_or(path);
     let mut bytes = path.as_bytes();
 
     let mut components = vec![];
 
-    while let Some(c) = bytes.get(0) {
+    while let Some(c) = bytes.first() {
         if *c == b'"' {
             // "a string"
             // Look for the terminating quote ignoring escaped quotes (\"):
@@ -95,7 +95,7 @@ fn unescape_string(s: &str) -> Result<String, &'static str> {
                     _ => {
                         return Err("Unknown escape sequence (\\)");
                     }
-                })
+                });
             } else {
                 return Err("Trailing escape (\\)");
             }
@@ -119,11 +119,9 @@ fn test_parse_path() {
         () => {
             vec![]
         };
-        ($($comp: expr),+) => {{
-            let mut components = vec![];
-            $(components.push(ObjPathComp::from($comp));)+
-            components
-        }};
+        ($($comp: expr),+) => {
+            vec![ $(ObjPathComp::from($comp),)+ ]
+        };
     }
 
     assert_eq!(parse_obj_path(""), Ok(path!()));
