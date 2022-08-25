@@ -7,7 +7,7 @@ cd "$script_path/../.."
 
 if [[ $* == --skip-setup ]]
 then
-  echo "Skipp running setup_web.sh"
+  echo "Skipping setup_web.sh"
 else
   echo "Running setup_web.sh"
     crates/re_viewer/setup_web.sh
