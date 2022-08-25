@@ -1,4 +1,4 @@
-use re_log_types::{Index, ObjPathComp};
+use crate::{Index, ObjPathComp};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
@@ -15,7 +15,7 @@ pub enum PathParseError {
     InvalidSequence(String),
 }
 
-pub fn parse_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
+pub fn parse_obj_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
     // Allow optional leading slash
     let path = path.strip_prefix("/").unwrap_or(path);
     let mut bytes = path.as_bytes();
@@ -126,13 +126,13 @@ fn test_parse_path() {
         }};
     }
 
-    assert_eq!(parse_path(""), Ok(path!()));
-    assert_eq!(parse_path("/"), Ok(path!()));
-    assert_eq!(parse_path("//"), Err(PathParseError::DoubleSlash));
-    assert_eq!(parse_path("foo"), Ok(path!("foo")));
-    assert_eq!(parse_path("foo/bar"), Ok(path!("foo", "bar")));
+    assert_eq!(parse_obj_path(""), Ok(path!()));
+    assert_eq!(parse_obj_path("/"), Ok(path!()));
+    assert_eq!(parse_obj_path("//"), Err(PathParseError::DoubleSlash));
+    assert_eq!(parse_obj_path("foo"), Ok(path!("foo")));
+    assert_eq!(parse_obj_path("foo/bar"), Ok(path!("foo", "bar")));
     assert_eq!(
-        parse_path(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
+        parse_obj_path(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
         Ok(path!(
             "foo",
             Index::String("bar".into()),

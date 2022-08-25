@@ -46,7 +46,8 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 fn parse_obj_path_comps(obj_path: &str) -> PyResult<Vec<ObjPathComp>> {
-    crate::parse_path::parse_path(obj_path).map_err(|err| PyTypeError::new_err(err.to_string()))
+    re_log_types::parse_obj_path(obj_path)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))
 }
 
 fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
