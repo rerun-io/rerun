@@ -13,6 +13,9 @@ pub enum PathParseError {
 
     #[error("Invalid sequence: {0:?} (expected positive integer)")]
     InvalidSequence(String),
+
+    #[error("Missing slash (/)")]
+    MissingSlash,
 }
 
 pub fn parse_obj_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
@@ -44,7 +47,19 @@ pub fn parse_obj_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
 
             components.push(ObjPathComp::Index(Index::String(unescaped)));
 
-            bytes = &bytes[i + 2..]; // skip the closing quote too
+            bytes = &bytes[i + 1..]; // skip the closing quote
+
+            match bytes.first() {
+                None => {
+                    break;
+                }
+                Some(b'/') => {
+                    bytes = &bytes[1..];
+                }
+                _ => {
+                    return Err(PathParseError::MissingSlash);
+                }
+            }
         } else {
             let end = bytes.iter().position(|&b| b == b'/').unwrap_or(bytes.len());
             components.push(parse_component(
@@ -81,17 +96,17 @@ fn parse_component(s: &str) -> Result<ObjPathComp, PathParseError> {
     }
 }
 
-fn unescape_string(s: &str) -> Result<String, &'static str> {
-    let mut output = String::with_capacity(s.len());
-    let mut char_iter = s.chars();
-    while let Some(c) = char_iter.next() {
+fn unescape_string(input: &str) -> Result<String, &'static str> {
+    let mut output = String::with_capacity(input.len());
+    let mut chars = input.chars();
+    while let Some(c) = chars.next() {
         if c == '\\' {
-            if let Some(c) = char_iter.next() {
+            if let Some(c) = chars.next() {
                 output.push(match c {
                     'n' => '\n',
                     'r' => '\r',
                     't' => '\t',
-                    '\"' | '\\' | '/' => c,
+                    '\"' | '\\' => c,
                     _ => {
                         return Err("Unknown escape sequence (\\)");
                     }
@@ -138,5 +153,9 @@ fn test_parse_path() {
             Index::Integer(-1234),
             Index::Uuid(uuid::Uuid::parse_str("6d046bf4-e5d3-4599-9153-85dd97218cb3").unwrap())
         ))
+    );
+    assert_eq!(
+        parse_obj_path(r#"foo/"bar""baz""#),
+        Err(PathParseError::MissingSlash)
     );
 }
