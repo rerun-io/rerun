@@ -241,9 +241,9 @@ pub(crate) fn combined_view_2d(
 
         let mut min_dist_sq = f32::INFINITY;
 
-        for pair in points.chunks_exact(2) {
-            let a = to_screen.transform_pos(pair[0].into());
-            let b = to_screen.transform_pos(pair[1].into());
+        for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
+            let a = to_screen.transform_pos(a);
+            let b = to_screen.transform_pos(b);
             shapes.push(Shape::line_segment([a, b], paint_props.bg_stroke));
             shapes.push(Shape::line_segment([a, b], paint_props.fg_stroke));
 
