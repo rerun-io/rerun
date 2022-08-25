@@ -94,3 +94,33 @@ impl std::fmt::Display for TypePathComp {
         }
     }
 }
+
+// ----------------------------------------------------------------------------
+
+/// Build a `Vec<ObjPathComp>`:
+/// ```
+/// obj_path_vec!("foo", Index::Sequence(123))
+/// ```
+#[macro_export]
+macro_rules! obj_path_vec {
+        () => {
+            vec![]
+        };
+        ($($comp: expr),* $(,)?) => {
+            vec![ $(ObjPathComp::from($comp),)+ ]
+        };
+    }
+
+/// Build a `ObjPath`:
+/// ```
+/// obj_path!("foo", Index::Sequence(123))
+/// ```
+#[macro_export]
+macro_rules! obj_path {
+        () => {
+            vec![]
+        };
+        ($($comp: expr),* $(,)?) => {
+            ObjPath::from(vec![ $(ObjPathComp::from($comp),)+ ])
+        };
+    }

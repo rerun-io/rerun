@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 use re_data_store::*;
-use re_log_types::{FieldName, MsgId};
+use re_log_types::{obj_path, FieldName, MsgId};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Time(i64);
@@ -64,13 +64,12 @@ fn test_singular() -> re_data_store::Result<()> {
         ])
     }
     fn obj_data_path(cam: &str, point: u64) -> ObjPath {
-        ObjPathBuilder::new(vec![
-            ObjPathComp::String("camera".into()),
-            ObjPathComp::Index(Index::String(cam.into())),
-            ObjPathComp::String("point".into()),
-            ObjPathComp::Index(Index::Sequence(point)),
-        ])
-        .into()
+        obj_path!(
+            "camera",
+            Index::String(cam.into()),
+            "point",
+            Index::Sequence(point),
+        )
     }
 
     let mut store = TypePathDataStore::default();
@@ -162,13 +161,12 @@ fn test_batches() -> re_data_store::Result<()> {
     }
 
     fn obj_path_batch(cam: &str) -> ObjPath {
-        ObjPathBuilder::new(vec![
-            ObjPathComp::String("camera".into()),
-            ObjPathComp::Index(Index::String(cam.into())),
-            ObjPathComp::String("point".into()),
-            ObjPathComp::Index(Index::Placeholder),
-        ])
-        .into()
+        obj_path!(
+            "camera",
+            Index::String(cam.into()),
+            "point",
+            Index::Placeholder,
+        )
     }
 
     fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<String>)> {
@@ -357,22 +355,20 @@ fn test_batched_and_individual() -> re_data_store::Result<()> {
         ])
     }
     fn obj_path(cam: &str, point: u64) -> ObjPath {
-        ObjPathBuilder::new(vec![
-            ObjPathComp::String("camera".into()),
-            ObjPathComp::Index(Index::String(cam.into())),
-            ObjPathComp::String("point".into()),
-            ObjPathComp::Index(Index::Sequence(point)),
-        ])
-        .into()
+        obj_path!(
+            "camera",
+            Index::String(cam.into()),
+            "point",
+            Index::Sequence(point),
+        )
     }
     fn obj_path_batch(cam: &str) -> ObjPath {
-        ObjPathBuilder::new(vec![
-            ObjPathComp::String("camera".into()),
-            ObjPathComp::Index(Index::String(cam.into())),
-            ObjPathComp::String("point".into()),
-            ObjPathComp::Index(Index::Placeholder),
-        ])
-        .into()
+        obj_path!(
+            "camera",
+            Index::String(cam.into()),
+            "point",
+            Index::Placeholder,
+        )
     }
 
     fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<String>)> {
@@ -549,22 +545,20 @@ fn test_individual_and_batched() -> re_data_store::Result<()> {
         ])
     }
     fn obj_path(cam: &str, point: u64) -> ObjPath {
-        ObjPathBuilder::new(vec![
-            ObjPathComp::String("camera".into()),
-            ObjPathComp::Index(Index::String(cam.into())),
-            ObjPathComp::String("point".into()),
-            ObjPathComp::Index(Index::Sequence(point)),
-        ])
-        .into()
+        obj_path!(
+            "camera",
+            Index::String(cam.into()),
+            "point",
+            Index::Sequence(point),
+        )
     }
     fn obj_path_batch(cam: &str) -> ObjPath {
-        ObjPathBuilder::new(vec![
-            ObjPathComp::String("camera".into()),
-            ObjPathComp::Index(Index::String(cam.into())),
-            ObjPathComp::String("point".into()),
-            ObjPathComp::Index(Index::Placeholder),
-        ])
-        .into()
+        obj_path!(
+            "camera",
+            Index::String(cam.into()),
+            "point",
+            Index::Placeholder,
+        )
     }
 
     fn values(store: &TypePathDataStore<Time>, frame: i64) -> Vec<(i32, Option<String>)> {

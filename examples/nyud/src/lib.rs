@@ -72,7 +72,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
     let mut depth_images_counter = 0;
     const DEPTH_IMAGE_INTERVAL: usize = 8;
 
-    let obj_path = ObjPathBuilder::from("points") / Index::Placeholder;
+    let obj_path = obj_path_vec!("points", Index::Placeholder);
 
     {
         // TODO(emilk): better way to do "forever and always"
@@ -80,7 +80,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
 
         logger.log(data_msg(
             &time_point,
-            &obj_path,
+            obj_path.clone(),
             "space",
             LoggedData::BatchSplat(Data::Space(ObjPath::from("world"))),
         ));
@@ -88,7 +88,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
         // TODO(emilk): base color on depth?
         logger.log(data_msg(
             &time_point,
-            &obj_path,
+            obj_path.clone(),
             "color",
             LoggedData::BatchSplat(Data::Color([255_u8; 4])),
         ));
@@ -122,8 +122,8 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                     data: TensorDataStore::Dense(image.to_vec()),
                 };
 
-                let obj_path = ObjPathBuilder::from("rgb");
-                logger.log(data_msg(&time_point, &obj_path, "tensor", tensor));
+                let obj_path = obj_path_vec!("rgb");
+                logger.log(data_msg(&time_point, obj_path.clone(), "tensor", tensor));
                 logger.log(data_msg(
                     &time_point,
                     obj_path,
@@ -147,8 +147,8 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                             bytemuck::cast_slice(depth_image.as_raw()).to_vec(),
                         ),
                     };
-                    let obj_path = ObjPathBuilder::from("depth");
-                    logger.log(data_msg(&time_point, &obj_path, "tensor", tensor));
+                    let obj_path = obj_path_vec!("depth");
+                    logger.log(data_msg(&time_point, obj_path.clone(), "tensor", tensor));
                     logger.log(data_msg(
                         &time_point,
                         obj_path,
@@ -186,7 +186,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
 
                 logger.log(data_msg(
                     &time_point,
-                    &obj_path,
+                    obj_path.clone(),
                     "pos",
                     LoggedData::Batch {
                         indices: indices.clone(),
