@@ -168,6 +168,28 @@ def log_points(
     rerun_rs.log_points(obj_path, positions, colors, space)
 
 
+def log_camera(obj_path: str,
+                width: int,
+                height: int,
+                intrinsics: np.ndarray,
+                rotation_q: np.ndarray,
+                position: np.ndarray,
+                space: Optional[str] = None):
+    """TODO(Niko): fill out"""
+    assert intrinsics.shape == (3, 3)
+    assert rotation_q.size == 4
+    assert position.size == 3
+
+    rerun_rs.log_camera(
+        obj_path,
+        width,
+        height,
+        intrinsics.T.tolist(),
+        rotation_q.tolist(),
+        position.tolist(),
+        space)
+
+
 def log_path(
         obj_path: str,
         positions: np.ndarray,
