@@ -21,14 +21,14 @@ rerun.log_image("rgb_image", image)
 See more in [`example.py`](./example.py).
 
 ## Paths
-The first argument to each log function is a _name path_. This needs to be unique for each thing you log. You can not log an image with the same name as a point cloud!
+The first argument to each log function is an _object path_. Each time you log to a specific object path you will update the object, i.e. log a new instance of it along the timeline. Each logging to a path bust be of the same type (you cannot log an image to the same path as a point cloud).
 
 A path can look like this: `detections/object/42/bbox`. Each component (between the slashes) can either be:
 
 * A name (`detections`). Intended for hard-coded names.
-* A "quoted string". Intended for things like serial numbers.
+* A `"quoted string"`. Intended for things like serial numbers.
 * An integer. Intended for hashes or similar.
-* A number sequence, prefixed by `#` (#0, #1, #2, …). Intended for indices.
+* A number sequence, prefixed by `#`, intended for indices.
 * A UUID.
 
 So for instance, `/foo/bar/#42/5678/"CA426571"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d` is a valid path.
