@@ -243,7 +243,7 @@ fn log_rect(
         msg_id: MsgId::random(),
         time_point,
         data_path: DataPath::new(obj_path, "space".into()),
-        data: LoggedData::Single(Data::Space(space.into())),
+        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
     }));
 
     Ok(())
@@ -373,7 +373,7 @@ fn log_points(
         msg_id: MsgId::random(),
         time_point,
         data_path: DataPath::new(point_path, "space".into()),
-        data: LoggedData::BatchSplat(Data::Space(space.into())),
+        data: LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
     }));
 
     Ok(())
@@ -434,7 +434,7 @@ fn log_path(
         msg_id: MsgId::random(),
         time_point,
         data_path: DataPath::new(obj_path, "space".into()),
-        data: LoggedData::Single(Data::Space(space.into())),
+        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
     }));
 
     Ok(())
@@ -519,7 +519,7 @@ fn log_line_segments(
         msg_id: MsgId::random(),
         time_point,
         data_path: DataPath::new(obj_path, "space".into()),
-        data: LoggedData::Single(Data::Space(space.into())),
+        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
     }));
 
     Ok(())
@@ -587,7 +587,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
         msg_id: MsgId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.clone(), "space".into()),
-        data: LoggedData::Single(Data::Space(space.into())),
+        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
     }));
 
     if let Some(meter) = meter {
@@ -683,7 +683,7 @@ fn log_mesh_file(
         msg_id: MsgId::random(),
         time_point,
         data_path: DataPath::new(obj_path, "space".into()),
-        data: LoggedData::Single(Data::Space(space.into())),
+        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
     }));
 
     Ok(())
