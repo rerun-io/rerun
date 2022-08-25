@@ -310,7 +310,7 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, tran
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
     else:
-        transform = transform.astype('float32')
+        transform = np.array(transform, dtype='float32')
 
     rerun_rs.log_mesh_file(obj_path, mesh_format.value,
                            mesh_file, transform, space)
