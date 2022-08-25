@@ -84,7 +84,7 @@ jobs:
           args: --all-features --lib
 
   maturin-linux:
-    name: Maturing Wheel
+    name: Linux; Build + Test SDK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -105,6 +105,12 @@ jobs:
       - run: pip install -r crates/re_sdk_python/requirements.txt
       - name: Build wheels
         run: maturin build -m crates/re_sdk_python/Cargo.toml -o dist
+      - name: Install wheel
+        run: pip install dist/*.whl
+      - name: pytest
+        run: pytest crates/re_sdk_python
+      - name: mypy
+        run: mypy crates/re_sdk_python
 
   cargo-deny:
     name: cargo deny
