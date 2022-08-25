@@ -178,8 +178,15 @@ def log_path(
         space: Optional[str] = None):
     """
     Log a 3D path.
-    A path is a list of points, pairwise connected with lines.
+    A path is a list of points connected by line segments.
     It can be used to draw approximations of smooth curves.
+
+    The points will be connected in order, like so:
+
+           2------3     5
+          /        \   /
+    0----1          \ /
+                     4
 
     `positions`: a Nx3 array of points along the path.
     `stroke_width`: width of the line.
@@ -187,10 +194,7 @@ def log_path(
 
     If no `space` is given, the space name "3D" will be used.
     """
-    positions = np.array(positions)
-    positions = np.array(positions)
-    positions = positions.astype(
-        'float32')
+    positions = np.array(positions, dtype='float32')
     rerun_rs.log_path(obj_path, positions, stroke_width, color, space)
 
 
