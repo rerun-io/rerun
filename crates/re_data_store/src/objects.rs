@@ -347,7 +347,7 @@ impl<'s> LineSegments2D<'s> {
 
         visit_type_data_3(
             obj_store,
-            &FieldName::from("line_segments"),
+            &FieldName::from("points"),
             time_query,
             ("space", "color", "stroke_width"),
             |obj_path: &ObjPath,
@@ -392,7 +392,7 @@ impl<'s> LineSegments3D<'s> {
 
         visit_type_data_3(
             obj_store,
-            &FieldName::from("line_segments"),
+            &FieldName::from("points"),
             time_query,
             ("space", "color", "stroke_width"),
             |obj_path: &ObjPath,

@@ -507,7 +507,7 @@ fn log_line_segments(
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
         time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "line_segments".into()),
+        data_path: DataPath::new(obj_path.clone(), "points".into()),
         data: LoggedData::Single(positions),
     }));
 
