@@ -133,7 +133,8 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
-          cache: "pip"
+          # Caching pip packages is broken for some reason
+          # cache: "pip"
       - uses: messense/maturin-action@v1
         with:
           maturin-version: "0.13.1"
