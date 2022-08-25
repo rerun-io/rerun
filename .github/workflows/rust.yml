@@ -111,7 +111,10 @@ jobs:
           pip install dist/*.whl
           pip show rerun_sdk
       - name: pytest
-        run: pytest crates/re_sdk_python
+        run: |
+          pip freeze
+          ls -l /opt/hostedtoolcache/Python/3.8.13/x64/lib/python3.8/site-packages/rerun_sdk
+          pytest crates/re_sdk_python
       - name: mypy
         run: mypy crates/re_sdk_python
 
