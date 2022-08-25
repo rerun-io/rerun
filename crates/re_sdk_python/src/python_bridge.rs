@@ -46,6 +46,8 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
+// ----------------------------------------------------------------------------
+
 fn parse_obj_path_comps(obj_path: &str) -> PyResult<Vec<ObjPathComp>> {
     re_log_types::parse_obj_path(obj_path).map_err(|err| PyTypeError::new_err(err.to_string()))
 }
@@ -53,6 +55,19 @@ fn parse_obj_path_comps(obj_path: &str) -> PyResult<Vec<ObjPathComp>> {
 fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
     parse_obj_path_comps(obj_path).map(|comps| ObjPath::from(ObjPathBuilder::new(comps)))
 }
+
+fn vec_from_np_array<T: numpy::Element, D: numpy::ndarray::Dimension>(
+    array: &numpy::PyReadonlyArray<'_, T, D>,
+) -> Vec<T> {
+    let array = array.as_array();
+    if let Some(slice) = array.to_slice() {
+        slice.to_vec()
+    } else {
+        array.iter().cloned().collect()
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 #[pyfunction]
 fn connect(addr: Option<String>) -> PyResult<()> {
@@ -296,23 +311,21 @@ fn log_points(
         match colors.shape() {
             [3] | [1, 3] => {
                 // A single RGB
-                let slice = colors.as_slice().unwrap(); // TODO(emilk): Handle non-contiguous arrays
-                assert_eq!(slice.len(), 3);
-                let color = [slice[0], slice[1], slice[2], 255];
+                let colors = vec_from_np_array(&colors);
+                assert_eq!(colors.len(), 3);
+                let color = [colors[0], colors[1], colors[2], 255];
                 send_color(LoggedData::BatchSplat(Data::Color(color)));
             }
             [4] | [1, 4] => {
                 // A single RGBA
-                let slice = colors.as_slice().unwrap(); // TODO(emilk): Handle non-contiguous arrays
-                assert_eq!(slice.len(), 4);
-                let color = [slice[0], slice[1], slice[2], slice[3]];
+                let colors = vec_from_np_array(&colors);
+                assert_eq!(colors.len(), 4);
+                let color = [colors[0], colors[1], colors[2], colors[3]];
                 send_color(LoggedData::BatchSplat(Data::Color(color)));
             }
             [_, 3] => {
                 // RGB, RGB, RGB, …
-                let colors: Vec<[u8; 4]> = colors
-                    .as_slice()
-                    .unwrap()
+                let colors = vec_from_np_array(&colors)
                     .chunks_exact(3)
                     .into_iter()
                     .map(|chunk| [chunk[0], chunk[1], chunk[2], 255])
@@ -327,7 +340,7 @@ fn log_points(
                 // RGBA, RGBA, RGBA, …
                 send_color(LoggedData::Batch {
                     indices: indices.clone(),
-                    data: DataVec::Color(pod_collect_to_vec(colors.as_slice().unwrap())),
+                    data: DataVec::Color(pod_collect_to_vec(&vec_from_np_array(&colors))),
                 });
             }
             shape => {
@@ -340,8 +353,8 @@ fn log_points(
 
     // TODO(emilk): handle non-contigious arrays
     let pos_data = match dim {
-        2 => DataVec::Vec2(pod_collect_to_vec(positions.as_slice().unwrap())),
-        3 => DataVec::Vec3(pod_collect_to_vec(positions.as_slice().unwrap())),
+        2 => DataVec::Vec2(pod_collect_to_vec(&vec_from_np_array(&positions))),
+        3 => DataVec::Vec3(pod_collect_to_vec(&vec_from_np_array(&positions))),
         _ => unreachable!(),
     };
 
@@ -388,7 +401,7 @@ fn log_path(
 
     let time_point = sdk.now();
 
-    let positions = pod_collect_to_vec(positions.as_slice().unwrap());
+    let positions = pod_collect_to_vec(&vec_from_np_array(&positions));
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
@@ -445,15 +458,15 @@ fn log_line_segments(
     let (dim, positions) = match positions.shape() {
         [_, 2] => (
             2,
-            Data::DataVec(DataVec::Vec2(pod_collect_to_vec(
-                positions.as_slice().unwrap(),
-            ))),
+            Data::DataVec(DataVec::Vec2(pod_collect_to_vec(&vec_from_np_array(
+                &positions,
+            )))),
         ),
         [_, 3] => (
             3,
-            Data::DataVec(DataVec::Vec3(pod_collect_to_vec(
-                positions.as_slice().unwrap(),
-            ))),
+            Data::DataVec(DataVec::Vec3(pod_collect_to_vec(&vec_from_np_array(
+                &positions,
+            )))),
         ),
         _ => {
             return Err(PyTypeError::new_err(format!(
