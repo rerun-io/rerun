@@ -36,7 +36,7 @@ cargo doc --document-private-items --no-deps --all-features
 (cd examples/nyud && cargo check --all-features)
 (cd examples/objectron && cargo check --all-features)
 
-./crates/re_viewer/wasm_bindgen_check.sh
+./scripts/wasm_bindgen_check.sh
 
 ./scripts/lint.py
 

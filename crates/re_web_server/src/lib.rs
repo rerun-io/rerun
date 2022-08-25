@@ -32,11 +32,11 @@ impl Service<Request<Body>> for Svc {
         let rsp = Response::builder();
 
         let bytes = match req.uri().path() {
-            "/" | "/index.html" => &include_bytes!("../../../docs/index.html")[..],
-            "/favicon.ico" => &include_bytes!("../../../docs/favicon.ico")[..],
-            "/sw.js" => &include_bytes!("../../../docs/sw.js")[..],
-            "/re_viewer_bg.wasm" => &include_bytes!("../../../docs/re_viewer_bg.wasm")[..],
-            "/re_viewer.js" => &include_bytes!("../../../docs/re_viewer.js")[..],
+            "/" | "/index.html" => &include_bytes!("../../../web_viewer/index.html")[..],
+            "/favicon.ico" => &include_bytes!("../../../web_viewer/favicon.ico")[..],
+            "/sw.js" => &include_bytes!("../../../web_viewer/sw.js")[..],
+            "/re_viewer_bg.wasm" => &include_bytes!("../../../web_viewer/re_viewer_bg.wasm")[..],
+            "/re_viewer.js" => &include_bytes!("../../../web_viewer/re_viewer.js")[..],
             _ => {
                 tracing::warn!("404 path: {}", req.uri().path());
                 let body = Body::from(Vec::new());
