@@ -1,7 +1,4 @@
-use crate::{
-    hash::Hash64,
-    path::{ObjPathBuilder, ObjPathComp, TypePathComp},
-};
+use crate::{hash::Hash64, path::TypePathComp};
 
 /// The shared type path for all objects at a path with different indices
 ///
@@ -106,17 +103,6 @@ impl std::cmp::Ord for ObjTypePath {
 // ----------------------------------------------------------------------------
 
 pub type Iter<'a> = std::slice::Iter<'a, TypePathComp>;
-
-impl From<ObjPathBuilder> for ObjTypePath {
-    fn from(obj_path_builder: ObjPathBuilder) -> Self {
-        ObjTypePath::new(
-            obj_path_builder
-                .iter()
-                .map(ObjPathComp::to_type_path_comp)
-                .collect(),
-        )
-    }
-}
 
 impl<'a> IntoIterator for &'a ObjTypePath {
     type Item = &'a TypePathComp;

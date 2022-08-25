@@ -152,21 +152,16 @@ fn test_encode_decode() {
         Time::from_ns_since_epoch(1_649_934_625_012_345_678).into(),
     )]);
     let messages = vec![
+        LogMsg::from(data_msg(&time_point, obj_path!("foo", "bar"), "baz", 42)),
         LogMsg::from(data_msg(
             &time_point,
-            ObjPathBuilder::from("foo") / "bar",
-            "baz",
-            42,
-        )),
-        LogMsg::from(data_msg(
-            &time_point,
-            ObjPathBuilder::from("badger") / "mushroom",
+            obj_path!("badger", "mushroom"),
             "snake",
             1337.0,
         )),
         LogMsg::from(data_msg(
             &time_point,
-            ObjPathBuilder::from("badger") / "mushroom",
+            obj_path!("badger", "mushroom"),
             "pos",
             Data::Vec3([1.0, 2.5, 3.0]),
         )),

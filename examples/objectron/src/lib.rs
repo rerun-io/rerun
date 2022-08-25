@@ -101,7 +101,7 @@ fn log_annotation_pbdata(
             ("time", TimeValue::time(Time::from_seconds_since_epoch(0.0))),
         ]);
 
-        let data_path = ObjPathBuilder::from("objects") / Index::Integer(object.id as _);
+        let data_path = obj_path_vec!("objects", Index::Integer(object.id as _));
 
         // dbg!(&object.category); // Most cups have "chair" as the category
 
@@ -115,8 +115,8 @@ fn log_annotation_pbdata(
                 translation: translation.to_array(),
                 half_size: half_size.to_array(),
             };
-            let obj_path = &data_path / "bbox3d";
-            logger.log(data_msg(&time_point, &obj_path, "obb", box3));
+            let obj_path = data_path.clone().join("bbox3d".into());
+            logger.log(data_msg(&time_point, obj_path.clone(), "obb", box3));
             logger.log(data_msg(
                 &time_point,
                 obj_path,
@@ -129,7 +129,7 @@ fn log_annotation_pbdata(
 
         logger.log(data_msg(
             &time_point,
-            &data_path / "bbox3d",
+            data_path.join("bbox3d".into()),
             "color",
             Data::Color([130, 160, 250, 255]),
         ));
@@ -146,7 +146,7 @@ fn log_annotation_pbdata(
 
         for object_annotation in &frame_annotation.annotations {
             let data_path =
-                ObjPathBuilder::from("objects") / Index::Integer(object_annotation.object_id as _);
+                obj_path_vec!("objects", Index::Integer(object_annotation.object_id as _));
 
             // always zero?
             // logger.log(data_msg(
@@ -210,16 +210,16 @@ fn log_annotation_pbdata(
                     keypoints_2d[8],
                 ];
 
-                let obj_path = &data_path / "bbox2d";
+                let obj_path = data_path.join("bbox2d".into());
                 logger.log(data_msg(
                     &time_point,
-                    &obj_path,
+                    obj_path.clone(),
                     "points",
                     Data::DataVec(DataVec::Vec2(points)),
                 ));
                 logger.log(data_msg(
                     &time_point,
-                    &obj_path,
+                    obj_path.clone(),
                     "space",
                     image_space.clone(),
                 ));
@@ -232,10 +232,12 @@ fn log_annotation_pbdata(
                 ));
             } else {
                 for (id, pos2) in keypoint_ids.into_iter().zip(keypoints_2d) {
-                    let point_path = &data_path / "points" / Index::Integer(id as _);
+                    let point_path = data_path
+                        .join("points".into())
+                        .join(Index::Integer(id as _).into());
                     logger.log(data_msg(
                         &time_point,
-                        &point_path,
+                        point_path.clone(),
                         "pos2d",
                         Data::Vec2(pos2),
                     ));
@@ -290,7 +292,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
         if let Some(ar_camera) = &ar_frame.camera {
             log_ar_camera(
                 &time_point,
-                ObjPathBuilder::from("camera"),
+                obj_path!("camera"),
                 &world_space,
                 ar_camera,
                 logger,
@@ -303,7 +305,7 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
                 // TODO(emilk): we shouldn't need to explicitly group planes and points like this! (we do it so we can toggle their visibility all at once).
                 log_plane_anchor(
                     &time_point,
-                    &ObjPathBuilder::from("planes"),
+                    &obj_path_vec!("planes"),
                     &world_space,
                     plane_anchor,
                     logger,
@@ -314,31 +316,31 @@ fn log_geometry_pbdata(path: &Path, logger: &Logger<'_>) -> anyhow::Result<Vec<T
         if let Some(raw_feature_points) = &ar_frame.raw_feature_points {
             if let Some(count) = raw_feature_points.count {
                 // TODO(emilk): we shouldn't need to explicitly group planes and points like this! (we do it so we can toggle their visibility all at once).
-                let points_path = ObjPathBuilder::from("points");
+                let points_path = obj_path_vec!("points");
 
                 for i in 0..count as usize {
                     let point = &raw_feature_points.point[i];
                     let identifier = raw_feature_points.identifier[i];
 
                     if let (Some(x), Some(y), Some(z)) = (point.x, point.y, point.z) {
-                        let point_path = &points_path / Index::Integer(identifier as _);
+                        let point_path = points_path.join(Index::Integer(identifier as _).into());
 
                         logger.log(data_msg(
                             &time_point,
-                            &point_path,
+                            point_path.clone(),
                             "pos",
                             Data::Vec3([x, y, z]),
                         ));
                         logger.log(data_msg(
                             &time_point,
-                            &point_path,
+                            point_path.clone(),
                             "space",
                             world_space.clone(),
                         ));
                         // TODO(emilk): log once for the parent ("points")
                         logger.log(data_msg(
                             &time_point,
-                            &point_path,
+                            point_path.clone(),
                             "color",
                             Data::Color([255; 4]),
                         ));
@@ -371,7 +373,7 @@ fn log_image(path: &PathBuf, time_point: &TimePoint, logger: &Logger<'_>) -> any
         data: TensorDataStore::Jpeg(jpeg_bytes),
     };
 
-    let obj_path = ObjPathBuilder::from("video");
+    let obj_path = obj_path!("video");
     logger.log(data_msg(time_point, obj_path.clone(), "tensor", tensor));
     logger.log(data_msg(time_point, obj_path, "space", image_space));
 
@@ -380,7 +382,7 @@ fn log_image(path: &PathBuf, time_point: &TimePoint, logger: &Logger<'_>) -> any
 
 fn log_ar_camera(
     time_point: &TimePoint,
-    data_path: ObjPathBuilder,
+    data_path: ObjPath,
     world_space: &ObjPath,
     ar_camera: &ArCamera,
     logger: &Logger<'_>,
@@ -405,7 +407,7 @@ fn log_ar_camera(
         resolution: Some([w, h]),
     };
 
-    logger.log(data_msg(time_point, &data_path, "camera", camera));
+    logger.log(data_msg(time_point, data_path.clone(), "camera", camera));
     logger.log(data_msg(
         time_point,
         data_path,
@@ -416,7 +418,7 @@ fn log_ar_camera(
 
 fn log_plane_anchor(
     time_point: &TimePoint,
-    root_path: &ObjPathBuilder,
+    root_path: &Vec<ObjPathComp>,
     world_space: &ObjPath,
     plane_anchor: &ArPlaneAnchor,
     logger: &Logger<'_>,
@@ -424,7 +426,9 @@ fn log_plane_anchor(
     let transform = glam::Mat4::from_cols_slice(&plane_anchor.transform).transpose();
 
     let identifier = plane_anchor.identifier.clone().unwrap();
-    let plane_path = root_path / "planes" / Index::from(identifier);
+    let plane_path = root_path
+        .join("planes".into())
+        .join(Index::from(identifier).into());
 
     if let Some(plane_geometry) = &plane_anchor.geometry {
         let positions = plane_geometry
@@ -447,12 +451,31 @@ fn log_plane_anchor(
             .map(|(a, b, c)| [a as u32, b as u32, c as u32])
             .collect();
         let mesh = RawMesh3D { positions, indices };
-        logger.log(data_msg(time_point, &plane_path, "mesh", Mesh3D::Raw(mesh)));
         logger.log(data_msg(
             time_point,
-            &plane_path,
+            plane_path.clone(),
+            "mesh",
+            Mesh3D::Raw(mesh),
+        ));
+        logger.log(data_msg(
+            time_point,
+            plane_path,
             "space",
             world_space.clone(),
         ));
+    }
+}
+
+trait Append<T> {
+    #[must_use]
+    fn join(&self, t: T) -> Self;
+}
+
+impl<T: Clone> Append<T> for Vec<T> {
+    #[must_use]
+    fn join(&self, t: T) -> Self {
+        let mut v = self.clone();
+        v.push(t);
+        v
     }
 }

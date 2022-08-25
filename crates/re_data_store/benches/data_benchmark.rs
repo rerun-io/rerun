@@ -4,11 +4,11 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use std::sync::Arc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-
 use itertools::Itertools as _;
+
 use re_data_store::TypePathDataStore;
 use re_data_store::*;
-use re_log_types::{FieldName, MsgId};
+use re_log_types::{obj_path, FieldName, MsgId};
 
 const NUM_FRAMES: i64 = 1_000; // this can have a big impact on performance
 const NUM_POINTS_PER_CAMERA: u64 = 1_000;
@@ -48,12 +48,12 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
 }
 
 fn obj_path(camera: &str, index: u64) -> ObjPath {
-    ObjPath::from(ObjPathBuilder::new(vec![
-        ObjPathComp::String("camera".into()),
-        ObjPathComp::Index(Index::String(camera.into())),
-        ObjPathComp::String("point".into()),
-        ObjPathComp::Index(Index::Sequence(index)),
-    ]))
+    obj_path!(
+        "camera",
+        Index::String(camera.into()),
+        "point",
+        Index::Sequence(index),
+    )
 }
 
 fn type_path() -> ObjTypePath {

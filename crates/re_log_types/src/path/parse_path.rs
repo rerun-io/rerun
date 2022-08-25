@@ -130,23 +130,16 @@ fn test_unescape_string() {
 
 #[test]
 fn test_parse_path() {
-    macro_rules! path {
-        () => {
-            vec![]
-        };
-        ($($comp: expr),+) => {
-            vec![ $(ObjPathComp::from($comp),)+ ]
-        };
-    }
+    use crate::obj_path_vec;
 
-    assert_eq!(parse_obj_path(""), Ok(path!()));
-    assert_eq!(parse_obj_path("/"), Ok(path!()));
+    assert_eq!(parse_obj_path(""), Ok(obj_path_vec!()));
+    assert_eq!(parse_obj_path("/"), Ok(obj_path_vec!()));
     assert_eq!(parse_obj_path("//"), Err(PathParseError::DoubleSlash));
-    assert_eq!(parse_obj_path("foo"), Ok(path!("foo")));
-    assert_eq!(parse_obj_path("foo/bar"), Ok(path!("foo", "bar")));
+    assert_eq!(parse_obj_path("foo"), Ok(obj_path_vec!("foo")));
+    assert_eq!(parse_obj_path("foo/bar"), Ok(obj_path_vec!("foo", "bar")));
     assert_eq!(
         parse_obj_path(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
-        Ok(path!(
+        Ok(obj_path_vec!(
             "foo",
             Index::String("bar".into()),
             Index::Sequence(123),

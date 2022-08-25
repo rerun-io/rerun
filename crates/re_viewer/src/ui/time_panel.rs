@@ -202,7 +202,7 @@ impl TimePanel {
             return; // ignore objects that have no data for the current time source
         }
 
-        let obj_path = ObjPath::from(&ObjPathBuilder::new(path.clone()));
+        let obj_path = ObjPath::from(path.clone());
 
         // The last part of the the path component
         let text = if let Some(last) = path.last() {
@@ -326,7 +326,7 @@ impl TimePanel {
         if !tree.fields.is_empty() {
             let indent = ui.spacing().indent;
 
-            let obj_path = ObjPath::from(ObjPathBuilder::new(path.clone()));
+            let obj_path = ObjPath::from(path.clone());
             for (field_name, data) in &tree.fields {
                 if !data.times.contains_key(ctx.rec_cfg.time_ctrl.source()) {
                     continue; // ignore fields that have no data for the current time source

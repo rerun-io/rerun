@@ -39,7 +39,7 @@ impl SpaceInfo {
     fn obj_path_components(&self) -> Vec<ObjPathComp> {
         self.space_path
             .as_ref()
-            .map(|space_path| ObjPathBuilder::from(space_path).as_slice().to_vec())
+            .map(|space_path| space_path.to_components())
             .unwrap_or_default()
     }
 }

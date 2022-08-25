@@ -1,7 +1,7 @@
 use crate::{
     hash::Hash128,
-    path::{obj_path_impl::ObjPathImpl, IndexPath, ObjPathBuilder, ObjTypePath},
-    Index,
+    path::{obj_path_impl::ObjPathImpl, IndexPath, ObjTypePath},
+    Index, ObjPathComp,
 };
 
 // ----------------------------------------------------------------------------
@@ -101,6 +101,10 @@ impl ObjPath {
         self.path.index_path()
     }
 
+    pub fn to_components(&self) -> Vec<ObjPathComp> {
+        self.path.to_components()
+    }
+
     #[inline]
     pub fn into_type_path_and_index_path(self) -> (ObjTypePath, IndexPath) {
         self.path.into_type_path_and_index_path()
@@ -129,31 +133,31 @@ impl From<ObjPathImpl> for ObjPath {
     }
 }
 
-impl From<ObjPathBuilder> for ObjPath {
+impl From<Vec<ObjPathComp>> for ObjPath {
     #[inline]
-    fn from(path: ObjPathBuilder) -> Self {
-        Self::from(ObjPathImpl::from(path))
+    fn from(path: Vec<ObjPathComp>) -> Self {
+        Self::from(ObjPathImpl::from(path.iter()))
     }
 }
 
-impl From<&ObjPathBuilder> for ObjPath {
+impl From<&[ObjPathComp]> for ObjPath {
     #[inline]
-    fn from(path: &ObjPathBuilder) -> Self {
-        Self::from(ObjPathImpl::from(path))
+    fn from(path: &[ObjPathComp]) -> Self {
+        Self::from(ObjPathImpl::from(path.iter()))
     }
 }
 
 impl From<&str> for ObjPath {
     #[inline]
     fn from(component: &str) -> Self {
-        Self::from(&ObjPathBuilder::from(component))
+        Self::from(vec![ObjPathComp::from(component)])
     }
 }
 
 impl From<String> for ObjPath {
     #[inline]
     fn from(component: String) -> Self {
-        Self::from(&ObjPathBuilder::from(component))
+        Self::from(vec![ObjPathComp::from(component)])
     }
 }
 

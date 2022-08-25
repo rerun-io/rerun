@@ -9,9 +9,7 @@ pub use objects::*;
 pub use storage::*;
 pub use type_path_query::*;
 
-pub use re_log_types::{
-    Index, IndexPath, ObjPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp,
-};
+pub use re_log_types::{Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, TypePathComp};
 
 // ----------------------------------------------------------------------------
 

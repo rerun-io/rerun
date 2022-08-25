@@ -48,7 +48,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
 
 use itertools::Itertools as _;
 use re_data_store::*;
-use re_log_types::{MsgId, TimeValue};
+use re_log_types::{obj_path, MsgId, TimeValue};
 
 impl TrackingAllocator {
     fn used_bytes(&self) -> usize {
@@ -57,13 +57,12 @@ impl TrackingAllocator {
 }
 
 fn obj_path(camera: u64, index: u64) -> ObjPath {
-    ObjPathBuilder::new(vec![
-        ObjPathComp::String("camera".into()),
-        ObjPathComp::Index(Index::Sequence(camera)),
-        ObjPathComp::String("point".into()),
-        ObjPathComp::Index(Index::Sequence(index)),
-    ])
-    .into()
+    obj_path!(
+        "camera",
+        Index::Sequence(camera),
+        "point",
+        Index::Sequence(index),
+    )
 }
 
 const BYTES_PER_POINT: usize = 16 + 24; // IndexPathKey + [f32; 3]

@@ -1,5 +1,5 @@
 use crate::{
-    path::{IndexPath, ObjPathBuilder, ObjPathComp, ObjTypePath, TypePathComp},
+    path::{IndexPath, ObjPathComp, ObjTypePath, TypePathComp},
     Index,
 };
 
@@ -60,6 +60,10 @@ impl ObjPathImpl {
         &self.index_path
     }
 
+    pub fn to_components(&self) -> Vec<ObjPathComp> {
+        self.iter().map(|comp_ref| comp_ref.to_owned()).collect()
+    }
+
     #[inline]
     pub fn into_type_path_and_index_path(self) -> (ObjTypePath, IndexPath) {
         (self.obj_type_path, self.index_path)
@@ -86,12 +90,16 @@ impl ObjPathImpl {
     }
 }
 
-impl From<&ObjPathBuilder> for ObjPathImpl {
-    #[inline]
-    fn from(path: &ObjPathBuilder) -> Self {
+// ----------------------------------------------------------------------------
+
+impl<'a, It> From<It> for ObjPathImpl
+where
+    It: Iterator<Item = &'a ObjPathComp>,
+{
+    fn from(path: It) -> Self {
         let mut obj_type_path = vec![];
         let mut index_path = vec![];
-        for comp in path.iter() {
+        for comp in path {
             match comp {
                 ObjPathComp::String(name) => {
                     obj_type_path.push(TypePathComp::String(*name));
@@ -103,27 +111,6 @@ impl From<&ObjPathBuilder> for ObjPathImpl {
             }
         }
         ObjPathImpl::new(ObjTypePath::new(obj_type_path), IndexPath::new(index_path))
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-impl From<ObjPathBuilder> for ObjPathImpl {
-    fn from(obj_path: ObjPathBuilder) -> Self {
-        let mut obj_type_path = Vec::default();
-        let mut index_path = IndexPath::default();
-        for comp in obj_path {
-            match comp {
-                ObjPathComp::String(name) => {
-                    obj_type_path.push(TypePathComp::String(name));
-                }
-                ObjPathComp::Index(index) => {
-                    obj_type_path.push(TypePathComp::Index);
-                    index_path.push(index);
-                }
-            }
-        }
-        ObjPathImpl::new(ObjTypePath::new(obj_type_path), index_path)
     }
 }
 
@@ -168,6 +155,16 @@ pub enum ObjPathComponentRef<'a> {
     Index(&'a Index),
 
     IndexPlaceholder,
+}
+
+impl<'a> ObjPathComponentRef<'a> {
+    fn to_owned(&self) -> ObjPathComp {
+        match self {
+            Self::String(name) => ObjPathComp::String(**name),
+            Self::Index(index) => ObjPathComp::Index((*index).clone()),
+            Self::IndexPlaceholder => ObjPathComp::Index(Index::Placeholder),
+        }
+    }
 }
 
 impl<'a> std::fmt::Display for ObjPathComponentRef<'a> {
