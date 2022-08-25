@@ -463,7 +463,7 @@ fn log_line_segments(
         )));
     }
 
-    let (positions, obj_type) = match positions.shape() {
+    let (dim, positions) = match positions.shape() {
         [_, 2] => {
             let positions = positions
                 .as_slice()
@@ -472,7 +472,7 @@ fn log_line_segments(
                 .into_iter()
                 .map(|c| [[c[0], c[1]], [c[2], c[3]]])
                 .collect();
-            (Data::LineSegments2D(positions), ObjectType::LineSegments2D)
+            (2, Data::LineSegments2D(positions))
         }
         [_, 3] => {
             let positions = positions
@@ -482,7 +482,7 @@ fn log_line_segments(
                 .into_iter()
                 .map(|c| [[c[0], c[1], c[2]], [c[3], c[4], c[5]]])
                 .collect();
-            (Data::LineSegments3D(positions), ObjectType::LineSegments3D)
+            (3, Data::LineSegments3D(positions))
         }
         _ => {
             return Err(PyTypeError::new_err(format!(
@@ -495,6 +495,11 @@ fn log_line_segments(
     let mut sdk = Sdk::global();
 
     let obj_path = ObjPath::from(obj_path); // TODO(emilk): pass in proper obj path somehow
+    let obj_type = if dim == 2 {
+        ObjectType::LineSegments2D
+    } else {
+        ObjectType::LineSegments3D
+    };
     sdk.register_type(obj_path.obj_type_path(), obj_type);
 
     let time_point = sdk.now();
@@ -525,7 +530,7 @@ fn log_line_segments(
         }));
     }
 
-    let space = space.unwrap_or_else(|| "2D".to_owned());
+    let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
         time_point,
