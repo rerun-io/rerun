@@ -131,24 +131,36 @@ class DummyCar:
                       DummyCar.BODY_COLOR, cv2.FILLED)
 
 
-def back_project(depth_image_mm: np.ndarray, u_coords: np.ndarray, v_coords: np.ndarray) -> np.ndarray:
-    """Given a depth image, and simple assumptions on camera parameters, generate a matching point cloud.
-        - `depth_image_mm`: Depth image expressed in millimeters
-        - `u_coords`: array of same shape as `depth_image_mm` containing the u coordinate of each pixel
-        - `v_coords`: array of same shape as `depth_image_mm` containing the v coordinate of each pixel
+class SimpleDepthCamera:
 
-    """
-    h, w = depth_image_mm.shape
-    u_center = w / 2
-    v_center = h / 2
-    focal_length = (h * w) ** 0.5
+    def __init__(self, image_width: int, image_height: int) -> None:
+        self.w = image_width
+        self.h = image_height
 
-    z = depth_image_mm.reshape(-1) / 1000.
-    x = (u_coords.reshape(-1).astype(float) - u_center) * z / focal_length
-    y = (v_coords.reshape(-1).astype(float) - v_center) * z / focal_length
+        # Simplest reasonable camera intrinsics given the resolution
+        self.u_center = self.w / 2
+        self.v_center = self.h / 2
+        self.focal_length = (self.h * self.w) ** 0.5
 
-    back_projected = np.vstack((x, y, z)).T
-    return back_projected
+        # Pre-generate image containing the x and y coordinates per pixel
+        self.u_coords, self.v_coords = np.meshgrid(np.arange(0, self.w), np.arange(0, self.h))
+
+
+    def back_project(self, depth_image_mm: np.ndarray) -> np.ndarray:
+        """Given a depth image, generate a matching point cloud.
+            - `depth_image_mm`: Depth image expressed in millimeters
+        """
+
+        z = depth_image_mm.reshape(-1) / 1000.
+        x = (self.u_coords.reshape(-1).astype(float) - self.u_center) * z / self.focal_length
+        y = (self.v_coords.reshape(-1).astype(float) - self.v_center) * z / self.focal_length
+
+        back_projected = np.vstack((x, y, z)).T
+        return back_projected
+
+    def render_dummy_slanted_plane_mm(self) -> np.ndarray:
+        """Renders a depth image of a slanted plane in millimeters."""
+        return 1000.0 * 1. / (0.01 + 0.4*self.v_coords/self.h)
 
 
 @ dataclass
@@ -167,12 +179,11 @@ def generate_dummy_data(num_frames: int) -> Iterator[SampleFrame]:
     im_w = 480
     im_h = 270
 
-    # Pre-generate image containing the x and y coordinates per pixel
-    u_coords, v_coords = np.meshgrid(np.arange(0, im_w), np.arange(0, im_h))
+    camera = SimpleDepthCamera(image_width=im_w, image_height=im_h)
 
     # Background image as a simple slanted plane
     # 1. Depth
-    depth_background_mm = 1000.0 * 1. / (0.01 + 0.4*v_coords/im_h)
+    depth_background_mm = camera.render_dummy_slanted_plane_mm()
 
     # 2. Color
     sand_color = (194, 178, 128)
@@ -188,8 +199,7 @@ def generate_dummy_data(num_frames: int) -> Iterator[SampleFrame]:
         depth_image_mm = depth_background_mm.copy()
         rgb = rgb_background.copy()
         car.draw(depth_image_mm=depth_image_mm, rgb=rgb)
-        point_cloud = back_project(
-            depth_image_mm=depth_image_mm, u_coords=u_coords, v_coords=v_coords)
+        point_cloud = camera.back_project(depth_image_mm=depth_image_mm)
         sample = SampleFrame(frame_idx=i,
                              depth_image_mm=depth_image_mm,
                              point_cloud=point_cloud,
