@@ -9,9 +9,9 @@ fn main() {
     // Rebuild the web-viewer WASM,
     // because the web_server library bundles it with `include_bytes!`
 
-    rerun_if_changed("../../docs/favicon.ico");
-    rerun_if_changed("../../docs/index.html");
-    rerun_if_changed("../../docs/sw.js");
+    rerun_if_changed("../../web_viewer/favicon.ico");
+    rerun_if_changed("../../web_viewer/index.html");
+    rerun_if_changed("../../web_viewer/sw.js");
     rerun_if_changed("../../crates/re_viewer/Cargo.toml");
     rerun_if_changed("../../crates/re_viewer/src/**/*.rs");
 

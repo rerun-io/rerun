@@ -44,13 +44,15 @@ done
 CRATE_NAME="re_viewer"
 CRATE_NAME_SNAKE_CASE="${CRATE_NAME//-/_}" # for those who name crates with-kebab-case
 
+BUILD_DIR="web_viewer"
+
 # This is required to enable the web_sys clipboard API which egui_web uses
 # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
 # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
 export RUSTFLAGS=--cfg=web_sys_unstable_apis
 
 # Clear output from old stuff:
-rm -f docs/${CRATE_NAME_SNAKE_CASE}_bg.wasm
+rm -f ${BUILD_DIR}/${CRATE_NAME_SNAKE_CASE}_bg.wasm
 
 echo "Compiling rust to wasm…"
 BUILD=release
@@ -62,15 +64,15 @@ TARGET=`cargo metadata --format-version=1 | jq --raw-output .target_directory`
 echo "Generating JS bindings for wasm…"
 TARGET_NAME="${CRATE_NAME_SNAKE_CASE}.wasm"
 wasm-bindgen "${TARGET}/wasm32-unknown-unknown/${BUILD}/${TARGET_NAME}" \
-  --out-dir docs --no-modules --no-typescript
+  --out-dir ${BUILD_DIR} --no-modules --no-typescript
 
 if [[ "${OPTIMIZE}" = true ]]; then
   echo "Optimizing wasm…"
   # to get wasm-opt:  apt/brew/dnf install binaryen
-  wasm-opt docs/${CRATE_NAME}_bg.wasm -O2 --fast-math -o docs/${CRATE_NAME}_bg.wasm # add -g to get debug symbols
+  wasm-opt ${BUILD_DIR}/${CRATE_NAME}_bg.wasm -O2 --fast-math -o ${BUILD_DIR}/${CRATE_NAME}_bg.wasm # add -g to get debug symbols
 fi
 
-echo "Finished: docs/${CRATE_NAME_SNAKE_CASE}.wasm"
+echo "Finished: ${BUILD_DIR}/${CRATE_NAME_SNAKE_CASE}.wasm"
 
 if [ "${OPEN}" = true ]; then
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
