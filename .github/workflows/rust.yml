@@ -98,7 +98,7 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
       - name: Setup python for building wheel
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.8"
           cache: "pip"
@@ -130,7 +130,7 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
       - name: Setup python for building wheel
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.8"
           cache: "pip"
@@ -149,7 +149,7 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
       - name: Setup python for building wheel
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.8"
           cache: "pip"
