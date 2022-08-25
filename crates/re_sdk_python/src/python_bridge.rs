@@ -1,6 +1,7 @@
 #![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pufunction] need to be by value
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 
+use bytemuck::allocation::pod_collect_to_vec;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -243,7 +244,7 @@ fn log_rect(
 #[pyfunction]
 fn log_points(
     obj_path: &str,
-    positions: numpy::PyReadonlyArray2<'_, f64>,
+    positions: numpy::PyReadonlyArray2<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -324,17 +325,9 @@ fn log_points(
             }
             [_, 4] => {
                 // RGBA, RGBA, RGBA, …
-                let colors: Vec<[u8; 4]> = colors
-                    .as_slice()
-                    .unwrap()
-                    .chunks_exact(4)
-                    .into_iter()
-                    .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3]])
-                    .collect();
-
                 send_color(LoggedData::Batch {
                     indices: indices.clone(),
-                    data: DataVec::Color(colors),
+                    data: DataVec::Color(pod_collect_to_vec(colors.as_slice().unwrap())),
                 });
             }
             shape => {
@@ -347,26 +340,8 @@ fn log_points(
 
     // TODO(emilk): handle non-contigious arrays
     let pos_data = match dim {
-        2 => {
-            let data: Vec<[f32; 2]> = positions
-                .as_slice()
-                .unwrap()
-                .chunks_exact(2)
-                .into_iter()
-                .map(|chunk| [chunk[0] as f32, chunk[1] as f32])
-                .collect();
-            DataVec::Vec2(data)
-        }
-        3 => {
-            let data: Vec<[f32; 3]> = positions
-                .as_slice()
-                .unwrap()
-                .chunks_exact(3)
-                .into_iter()
-                .map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32])
-                .collect();
-            DataVec::Vec3(data)
-        }
+        2 => DataVec::Vec2(pod_collect_to_vec(positions.as_slice().unwrap())),
+        3 => DataVec::Vec3(pod_collect_to_vec(positions.as_slice().unwrap())),
         _ => unreachable!(),
     };
 
@@ -413,13 +388,7 @@ fn log_path(
 
     let time_point = sdk.now();
 
-    let positions: Vec<[f32; 3]> = positions
-        .as_slice()
-        .unwrap()
-        .chunks_exact(3)
-        .into_iter()
-        .map(|chunk| [chunk[0], chunk[1], chunk[2]])
-        .collect();
+    let positions = pod_collect_to_vec(positions.as_slice().unwrap());
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
@@ -474,26 +443,18 @@ fn log_line_segments(
     }
 
     let (dim, positions) = match positions.shape() {
-        [_, 2] => {
-            let positions = positions
-                .as_slice()
-                .unwrap()
-                .chunks_exact(2)
-                .into_iter()
-                .map(|c| [c[0], c[1]])
-                .collect();
-            (2, Data::DataVec(DataVec::Vec2(positions)))
-        }
-        [_, 3] => {
-            let positions = positions
-                .as_slice()
-                .unwrap()
-                .chunks_exact(3)
-                .into_iter()
-                .map(|c| [c[0], c[1], c[2]])
-                .collect();
-            (3, Data::DataVec(DataVec::Vec3(positions)))
-        }
+        [_, 2] => (
+            2,
+            Data::DataVec(DataVec::Vec2(pod_collect_to_vec(
+                positions.as_slice().unwrap(),
+            ))),
+        ),
+        [_, 3] => (
+            3,
+            Data::DataVec(DataVec::Vec3(pod_collect_to_vec(
+                positions.as_slice().unwrap(),
+            ))),
+        ),
         _ => {
             return Err(PyTypeError::new_err(format!(
                 "Expected Nx2 or Nx3 positions array; got {:?}",

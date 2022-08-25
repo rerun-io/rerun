@@ -202,10 +202,7 @@ impl Scene {
 
                 scene.line_segments.push(LineSegments {
                     obj_path_hash: *props.obj_path.hash(),
-                    segments: points
-                        .chunks_exact(2)
-                        .map(|pair| [pair[0], pair[1]])
-                        .collect(),
+                    segments: bytemuck::allocation::pod_collect_to_vec(points),
                     radius: line_radius,
                     color,
                 });
