@@ -18,14 +18,14 @@ atexit.register(rerun_shutdown)
 
 
 class MeshFormat(Enum):
-    # Untested
+    # Needs some way of logging materials too, or adding some default material to the viewer.
     # """ glTF """
     # GLTF = "GLTF"
 
     """ Binary glTF """
     GLB = "GLB"
 
-    # Untested
+    # Needs some way of logging materials too, or adding some default material to the viewer.
     # """ Wavefront .obj """
     # OBJ = "OBJ"
 
