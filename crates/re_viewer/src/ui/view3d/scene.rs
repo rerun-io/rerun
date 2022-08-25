@@ -187,11 +187,8 @@ impl Scene {
 
                 let line_radius = stroke_width.map_or_else(
                     || {
-                        let bbox = macaw::BoundingBox::from_points(
-                            points
-                                .chunks_exact(2)
-                                .flat_map(|pair| [Vec3::from(pair[0]), Vec3::from(pair[1])]),
-                        );
+                        let bbox =
+                            macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
                         let dist_to_camera = camera_plane.distance(bbox.center());
                         dist_to_camera * line_radius_from_distance
                     },
