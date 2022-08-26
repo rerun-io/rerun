@@ -198,12 +198,12 @@ fn log_camera(
     rotation_q: re_log_types::Quaternion,
     position: [f32; 3],
     space: Option<String>,
-) -> PyResult<()> {
+) {
     let resolution: [f32; 2] = [width as f32, height as f32];
 
     let camera = re_log_types::Camera {
         rotation: rotation_q,
-        position: position,
+        position,
         intrinsics: Some(intrinsics),
         resolution: Some(resolution),
     };
@@ -220,18 +220,16 @@ fn log_camera(
         msg_id: MsgId::random(),
         time_point: time_point.clone(),
         data_path: DataPath::new(obj_path.clone(), "camera".into()),
-        data: LoggedData::Single(Data::Camera(camera.into())),
+        data: LoggedData::Single(Data::Camera(camera)),
     }));
 
     let space = space.unwrap_or_else(|| "3D".to_owned());
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "space".into()),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
         data: LoggedData::Single(Data::Space(space.into())),
     }));
-
-    Ok(())
 }
 
 /// Log a 2D bounding box.
