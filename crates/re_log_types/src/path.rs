@@ -97,7 +97,8 @@ impl std::fmt::Display for TypePathComp {
 
 /// Build a `Vec<ObjPathComp>`:
 /// ```
-/// obj_path_vec!("foo", Index::Sequence(123))
+/// # use re_log_types::*;
+/// obj_path_vec!("foo", Index::Sequence(123));
 /// ```
 #[macro_export]
 macro_rules! obj_path_vec {
@@ -111,7 +112,8 @@ macro_rules! obj_path_vec {
 
 /// Build a `ObjPath`:
 /// ```
-/// obj_path!("foo", Index::Sequence(123))
+/// # use re_log_types::*;
+/// obj_path!("foo", Index::Sequence(123));
 /// ```
 #[macro_export]
 macro_rules! obj_path {
