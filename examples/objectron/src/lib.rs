@@ -394,7 +394,7 @@ fn log_ar_camera(
     let w = ar_camera.image_resolution_width.unwrap() as f32;
     let h = ar_camera.image_resolution_height.unwrap() as f32;
 
-    // Because the dataset is collected in portrait:
+    // Because the dataset was collected in portrait:
     let swizzle_x_y = glam::Mat3::from_cols_array_2d(&[[0., 1., 0.], [1., 0., 0.], [0., 0., 1.]]);
     let intrinsics = swizzle_x_y * intrinsics * swizzle_x_y;
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::Z, std::f32::consts::TAU / 4.0);
@@ -403,6 +403,7 @@ fn log_ar_camera(
     let camera = re_log_types::Camera {
         rotation: rot.into(),
         position: translation.into(),
+        camera_space_convention: CameraSpaceConvention::XRightYUpZBack,
         intrinsics: Some(intrinsics.to_cols_array_2d()),
         resolution: Some([w, h]),
     };

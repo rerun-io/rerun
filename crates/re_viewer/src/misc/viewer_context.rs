@@ -220,12 +220,14 @@ pub(crate) struct Caches {
 #[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Options {
     pub show_camera_mesh_in_3d: bool,
+    pub show_camera_axes_in_3d: bool,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
             show_camera_mesh_in_3d: true,
+            show_camera_axes_in_3d: true,
         }
     }
 }

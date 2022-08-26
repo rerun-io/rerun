@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::util::hash;
-use glam::{vec3, Mat4, Quat, Vec3};
+use glam::{vec3, Mat4, Vec3};
 use itertools::Itertools as _;
 
 use re_log_types::{Box3, Mesh3D, ObjPath, ObjPathHash};
@@ -232,26 +232,24 @@ impl Scene {
             for (props, obj) in objects.camera.iter() {
                 let re_data_store::Camera { camera } = *obj;
 
-                let rotation = Quat::from_slice(&camera.rotation);
-                let translation = Vec3::from_slice(&camera.position);
+                let world_from_view = crate::misc::world_from_view_from_cam(camera);
 
-                let dist_to_camera = camera_plane.distance(translation);
+                let dist_to_camera = camera_plane.distance(world_from_view.translation());
                 let color = object_color(ctx, props);
+
+                let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
+                let scale_based_on_distance = dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
+                let scale = scale_based_on_scene_size.min(scale_based_on_distance);
+                let scale = boost_size_on_hover(props, scale);
 
                 if ctx.options.show_camera_mesh_in_3d {
                     // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
                     // The lens is at the origin.
 
-                    let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
-                    let scale_based_on_distance =
-                        dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
-                    let scale = scale_based_on_scene_size.min(scale_based_on_distance);
-                    let scale = boost_size_on_hover(props, scale);
                     let scale = Vec3::splat(scale);
 
                     let mesh_id = hash("camera_mesh");
-                    let world_from_mesh =
-                        Mat4::from_scale_rotation_translation(scale, rotation, translation);
+                    let world_from_mesh = world_from_view * Mat4::from_scale(scale);
 
                     if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
                         mesh_id,
@@ -267,6 +265,29 @@ impl Scene {
                     }
                 }
 
+                if ctx.options.show_camera_axes_in_3d {
+                    let world_from_view = crate::misc::world_from_view_from_cam(camera);
+                    let center = world_from_view.translation();
+                    let radius = dist_to_camera * line_radius_from_distance * 2.0;
+
+                    for (axis_index, dir) in camera
+                        .camera_space_convention
+                        .axis_dirs_in_rerun_view_space()
+                        .iter()
+                        .enumerate()
+                    {
+                        let color = axis_color(axis_index);
+                        let axis_end =
+                            world_from_view.transform_point3(scale * glam::Vec3::from(*dir));
+                        scene.line_segments.push(LineSegments {
+                            obj_path_hash: *props.obj_path.hash(),
+                            segments: vec![[center.into(), axis_end.into()]],
+                            radius,
+                            color,
+                        });
+                    }
+                }
+
                 let line_radius = dist_to_camera * line_radius_from_distance;
                 scene.add_camera_frustum(camera, scene_bbox, props.obj_path, line_radius, color);
             }
@@ -275,6 +296,7 @@ impl Scene {
         scene
     }
 
+    /// Paint frustum lines
     fn add_camera_frustum(
         &mut self,
         cam: &re_log_types::Camera,
@@ -283,16 +305,13 @@ impl Scene {
         line_radius: f32,
         color: [u8; 4],
     ) {
-        let rotation = Quat::from_slice(&cam.rotation);
-        let translation = Vec3::from_slice(&cam.position);
-
         if let (Some(intrinsis), Some([w, h])) = (cam.intrinsics, cam.resolution) {
-            // Frustum lines:
-            let world_from_cam = Mat4::from_rotation_translation(rotation, translation);
+            let world_from_view = crate::misc::world_from_view_from_cam(cam);
+
             let intrinsis = glam::Mat3::from_cols_array_2d(&intrinsis);
 
             // TODO(emilk): verify and clarify the coordinate systems! RHS, origin is what corner of image, etc.
-            let world_from_pixel = world_from_cam
+            let world_from_pixel = world_from_view
                 * Mat4::from_diagonal([1.0, 1.0, -1.0, 1.0].into()) // negative Z, because we use RHS
                 * Mat4::from_mat3(intrinsis.inverse());
 
@@ -314,7 +333,7 @@ impl Scene {
                     .into(),
             ];
 
-            let center = translation.into();
+            let center = world_from_view.translation().into();
 
             let segments = vec![
                 [center, corners[0]],     // frustum corners
@@ -495,5 +514,14 @@ impl Scene {
         } else {
             None
         }
+    }
+}
+
+fn axis_color(axis: usize) -> [u8; 4] {
+    match axis {
+        0 => [255, 0, 0, 255],
+        1 => [0, 255, 0, 255],
+        2 => [0, 0, 255, 255],
+        _ => unreachable!("Axis should be one of 0,1,2; got {axis}"),
     }
 }
