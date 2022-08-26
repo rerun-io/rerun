@@ -34,7 +34,7 @@ def log_dummy_data(args):
         # Lets log the projected points into a separate "space", called 'projected_space'.
         # We also set its up-axis.
         # The default spaces are "2D" and "3D" (based on what you log).
-        #rerun.set_space_up("projected_space", [0, -1, 0])
+        rerun.set_space_up("projected_space", [0, -1, 0])
         rerun.log_points("points", sample.point_cloud, space="projected_space")
 
         rerun.log_camera("rgbd_camera",
