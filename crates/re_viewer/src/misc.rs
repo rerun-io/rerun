@@ -28,7 +28,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use egui::emath;
 
-use re_log_types::{TimeInt, TimePoint, TimeSource};
+use re_log_types::{CameraSpaceConvention, TimeInt, TimePoint, TimeSource};
 
 /// An aggregate of [`TimePoint`]:s.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -178,4 +178,27 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
     }
 
     bbox
+}
+
+// ----------------------------------------------------------------------------
+
+/// Rerun uses a RHS view-space with +X=right, +Y=up, -Z=fwd.
+/// This creates a transform from the Rerun view-space
+/// to the parent space of the camera.
+pub fn world_from_view_from_cam(cam: &re_log_types::Camera) -> macaw::IsoTransform {
+    use glam::*;
+
+    let rotation = Quat::from_slice(&cam.rotation);
+    let translation = Vec3::from_slice(&cam.position);
+
+    let rotation = match cam.camera_space_convention {
+        CameraSpaceConvention::XRightYUpZBack => {
+            rotation // same as the Rerun convention
+        }
+        CameraSpaceConvention::XRightYDownZFwd => {
+            rotation * Quat::from_rotation_x(std::f32::consts::TAU / 2.0)
+        }
+    };
+
+    macaw::IsoTransform::from_rotation_translation(rotation, translation)
 }

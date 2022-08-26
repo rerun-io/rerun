@@ -1,5 +1,7 @@
 use crate::{impl_into_enum, ObjPath};
 
+use self::data_types::Vec3;
+
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -380,16 +382,24 @@ pub type Quaternion = [f32; 4];
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Camera {
     /// How is the camera rotated, compared to the parent space?
     ///
-    /// World from local.
+    /// This transforms from the camera space to the parent space.
+    ///
+    /// The exact meaning of this depends on [`Self::camera_space_convention`].
+    /// For instance, using [`CameraSpaceConvention::XRightYDownZFwd`],
+    /// [`Self::rotation`] rotates the +Z axis so that it points in the direction
+    /// the camera is facing.
     pub rotation: Quaternion,
 
     /// Where is the camera?
     pub position: [f32; 3],
+
+    /// What is the users camera-space coordinate system?
+    pub camera_space_convention: CameraSpaceConvention,
 
     /// Column-major intrinsics matrix for projecting to pixel coordinates.
     ///
@@ -408,6 +418,50 @@ pub struct Camera {
     /// [1920.0, 1440.0]
     /// ```
     pub resolution: Option<[f32; 2]>,
+}
+
+/// Convention for the coordinate system of the camera.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum CameraSpaceConvention {
+    /// Right-handed system used by ARKit and PyTorch3D.
+    /// * +X=right
+    /// * +Y=up
+    /// * +Z=back (camera looks long -Z)
+    XRightYUpZBack,
+
+    /// Right-handed system used by OpenCV.
+    /// * +X=right
+    /// * +Y=down
+    /// * +Z=forward
+    XRightYDownZFwd,
+}
+
+impl CameraSpaceConvention {
+    /// Rerun uses the view-space convention of +X=right, +Y=up, -Z=fwd.
+    ///
+    /// This returns the direction of the X,Y,Z axis in the rerun convention.
+    ///
+    /// Another way of looking at this is that it returns the columns in
+    /// the matrix that transforms one convention to the other.
+    pub fn axis_dirs_in_rerun_view_space(&self) -> [Vec3; 3] {
+        match self {
+            Self::XRightYUpZBack => {
+                [
+                    [1.0, 0.0, 0.0], //
+                    [0.0, 1.0, 0.0], //
+                    [0.0, 0.0, 1.0], //
+                ]
+            }
+            Self::XRightYDownZFwd => {
+                [
+                    [1.0, 0.0, 0.0],  //
+                    [0.0, -1.0, 0.0], //
+                    [0.0, 0.0, -1.0], //
+                ]
+            }
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
