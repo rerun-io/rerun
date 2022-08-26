@@ -192,15 +192,12 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
 #[pyfunction]
 fn log_camera(
     obj_path: &str,
-    width: i64,
-    height: i64,
+    resolution: [f32; 2],
     intrinsics: [[f32; 3]; 3],
     rotation_q: re_log_types::Quaternion,
     position: [f32; 3],
     space: Option<String>,
 ) -> PyResult<()> {
-    let resolution: [f32; 2] = [width as f32, height as f32];
-
     let camera = re_log_types::Camera {
         rotation: rotation_q,
         position,

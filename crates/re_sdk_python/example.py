@@ -38,8 +38,7 @@ def log_dummy_data(args):
         rerun.log_points("points", sample.point_cloud, space="projected_space")
 
         rerun.log_camera("rgbd_camera",
-                         width=sample.camera.width,
-                         height=sample.camera.height,
+                         resolution=sample.camera.resolution,
                          intrinsics=sample.camera.intrinsics,
                          rotation_q=sample.camera.rotation_q,
                          position=sample.camera.position,
@@ -142,8 +141,7 @@ class DummyCar:
 @dataclass
 class CameraParameters:
     """Holds the intrinsic and extrinsic parameters of a camera."""
-    width: int
-    height: int
+    resolution: np.ndarray
     intrinsics: np.ndarray
     rotation_q: np.ndarray
     position: np.ndarray
@@ -159,6 +157,7 @@ class SampleFrame:
     rgb_image: np.ndarray
     car_bbox: Tuple[np.ndarray, np.ndarray]
 
+
 class SimpleDepthCamera:
 
     def __init__(self, image_width: int, image_height: int) -> None:
@@ -171,8 +170,8 @@ class SimpleDepthCamera:
         self.focal_length = (self.h * self.w) ** 0.5
 
         # Pre-generate image containing the x and y coordinates per pixel
-        self.u_coords, self.v_coords = np.meshgrid(np.arange(0, self.w), np.arange(0, self.h))
-
+        self.u_coords, self.v_coords = np.meshgrid(
+            np.arange(0, self.w), np.arange(0, self.h))
 
     def back_project(self, depth_image_mm: np.ndarray) -> np.ndarray:
         """Given a depth image, generate a matching point cloud.
@@ -180,8 +179,10 @@ class SimpleDepthCamera:
         """
 
         z = depth_image_mm.reshape(-1) / 1000.
-        x = (self.u_coords.reshape(-1).astype(float) - self.u_center) * z / self.focal_length
-        y = (self.v_coords.reshape(-1).astype(float) - self.v_center) * z / self.focal_length
+        x = (self.u_coords.reshape(-1).astype(float) -
+             self.u_center) * z / self.focal_length
+        y = (self.v_coords.reshape(-1).astype(float) -
+             self.v_center) * z / self.focal_length
 
         back_projected = np.vstack((x, y, z)).T
         return back_projected
@@ -210,11 +211,15 @@ class SimpleDepthCamera:
         return np.array((0, 0, 0))  # Dummy "identity" value
 
     @property
+    def resolution(self) -> np.ndarray:
+        """Image resolution as [width, height]."""
+        return np.array([self.w, self.h])
+
+    @property
     def parameters(self) -> CameraParameters:
         """The camera's parameters."""
         return CameraParameters(
-            width=self.w,
-            height=self.w,
+            resolution=self.resolution,
             intrinsics=self.intrinsics,
             rotation_q=self.rotation_q,
             position=self.position

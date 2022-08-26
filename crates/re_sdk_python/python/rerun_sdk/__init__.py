@@ -169,21 +169,29 @@ def log_points(
 
 
 def log_camera(obj_path: str,
-                width: int,
-                height: int,
-                intrinsics: np.ndarray,
-                rotation_q: np.ndarray,
-                position: np.ndarray,
-                space: Optional[str] = None):
-    """TODO(Niko): fill out"""
+               # TODO(Niko): Add nicer handling of array like arguments
+               resolution: np.ndarray,
+               intrinsics: np.ndarray,
+               rotation_q: np.ndarray,
+               position: np.ndarray,
+               space: Optional[str] = None):
+    """Log a perspective camera model.
+
+    `resolution`: array with [width, height] image resolution in pixels.
+    `intrinsics`: row-major intrinsics matrix for projecting from camera space to pixel space
+    `rotation_q`: array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
+    `position`: array with [x, y, z] position of the camera in world space.
+
+    If no `space` is given, the space name "3D" will be used.
+    """
+    assert resolution.size == 2
     assert intrinsics.shape == (3, 3)
     assert rotation_q.size == 4
     assert position.size == 3
 
     rerun_rs.log_camera(
         obj_path,
-        width,
-        height,
+        resolution.tolist(),
         intrinsics.T.tolist(),
         rotation_q.tolist(),
         position.tolist(),
