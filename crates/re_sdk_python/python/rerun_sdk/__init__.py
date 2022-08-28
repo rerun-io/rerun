@@ -320,8 +320,9 @@ def _log_tensor(obj_path: str, tensor: np.ndarray, *, meter: Optional[float] = N
     If no `space` is given, the space name "2D" will be used.
     """
     # Workaround to handle that `rerun_rs` can't handle numpy views correctly.
-    # TODO(nikolausWest): Remove this extra copy once underlying issue in Rust SDK is fixed.
-    tensor = tensor if tensor.base is None else tensor.copy()
+    # TODO(nikolausWest): Remove requirement once underlying issue in Rust SDK is fixed.
+    # Require that the underlying data is owned by the object
+    tensor = np.require(tensor, requirements='O')
 
     if tensor.dtype == 'uint8':
         rerun_rs.log_tensor_u8(obj_path, tensor, meter, space)
