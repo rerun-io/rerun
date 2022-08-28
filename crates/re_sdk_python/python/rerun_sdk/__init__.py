@@ -194,10 +194,11 @@ def log_camera(obj_path: str,
                space: Optional[str] = None,):
     """Log a perspective camera model.
 
-    `resolution`: array with [width, height] image resolution in pixels.
-    `intrinsics`: row-major intrinsics matrix for projecting from camera space to pixel space
     `rotation_q`: array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
     `position`: array with [x, y, z] position of the camera in world space.
+    `intrinsics`: row-major intrinsics matrix for projecting from camera space to pixel space
+    `resolution`: array with [width, height] image resolution in pixels.
+    `camera_space_convention`: The convention used for the orientation of the camera´s 3D coordinate system.
 
     If no `space` is given, the space name "3D" will be used.
     """
