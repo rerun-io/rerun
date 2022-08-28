@@ -30,6 +30,22 @@ class MeshFormat(Enum):
     # OBJ = "OBJ"
 
 
+class CameraSpaceConvention(Enum):
+    """The convetion used for the camera space's (3D) coordinate system."""
+
+    # Right-handed system used by ARKit and PyTorch3D.
+    # * +X = right
+    # * +Y = up
+    # * +Z = back(camera looks along - Z)
+    X_RIGHT_Y_UP_Z_BACK = "XRightYUpZBack"
+
+    # Right-handed system used by OpenCV.
+    # * +X = right
+    # * +Y = down
+    # * +Z = forward
+    X_RIGHT_Y_DOWN_Z_FWD = "XRightYDownZFwd"
+
+
 def connect(addr: Optional[str] = None):
     """ Connect to a remote rerun viewer on the given ip:port. """
     return rerun_rs.connect(addr)
@@ -170,11 +186,12 @@ def log_points(
 
 def log_camera(obj_path: str,
                # TODO(Niko): Add nicer handling of array like arguments
-               resolution: np.ndarray,
-               intrinsics: np.ndarray,
                rotation_q: np.ndarray,
                position: np.ndarray,
-               space: Optional[str] = None):
+               intrinsics: np.ndarray,
+               resolution: np.ndarray,
+               camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+               space: Optional[str] = None,):
     """Log a perspective camera model.
 
     `resolution`: array with [width, height] image resolution in pixels.
@@ -195,6 +212,7 @@ def log_camera(obj_path: str,
         intrinsics.T.tolist(),
         rotation_q.tolist(),
         position.tolist(),
+        camera_space_convention.value,
         space)
 
 

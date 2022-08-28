@@ -196,13 +196,26 @@ fn log_camera(
     intrinsics: [[f32; 3]; 3],
     rotation_q: re_log_types::Quaternion,
     position: [f32; 3],
+    camera_space_convention: &str,
     space: Option<String>,
 ) -> PyResult<()> {
+    let convention = match camera_space_convention {
+        "XRightYUpZBack" => re_log_types::CameraSpaceConvention::XRightYUpZBack,
+        "XRightYDownZFwd" => re_log_types::CameraSpaceConvention::XRightYDownZFwd,
+        _ => {
+            return Err(PyTypeError::new_err(format!(
+                "Unknown camera space convetions format {camera_space_convention:?}.
+                Expected one of: XRightYUpZBack, XRightYDownZFwd"
+            )));
+        }
+    };
+
     let camera = re_log_types::Camera {
         rotation: rotation_q,
         position,
         intrinsics: Some(intrinsics),
         resolution: Some(resolution),
+        camera_space_convention: convention,
     };
 
     let mut sdk = Sdk::global();
