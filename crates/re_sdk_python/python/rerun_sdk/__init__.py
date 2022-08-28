@@ -2,7 +2,7 @@
 import atexit
 from enum import Enum
 import numpy as np
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 from . import rerun_sdk as rerun_rs  # type: ignore
 from .color_conversion import linear_to_gamma_u8_pixel
@@ -15,6 +15,8 @@ def rerun_shutdown():
 atexit.register(rerun_shutdown)
 
 # -----------------------------------------------------------------------------
+
+ArrayLike = Union[np.ndarray, Sequence]
 
 
 class MeshFormat(Enum):
@@ -124,8 +126,8 @@ def set_space_up(space: str, up: Sequence[float]):
 
 def log_rect(
     obj_path: str,
-    left_top: Sequence[float],
-    width_height: Sequence[float],
+    left_top: ArrayLike,
+    width_height: ArrayLike,
     *,
     label: Optional[str] = None,
     color: Optional[Sequence[int]] = None,
@@ -139,8 +141,8 @@ def log_rect(
     If no `space` is given, the space name "2D" will be used.
     """
     rerun_rs.log_rect(obj_path,
-                      left_top,
-                      width_height,
+                      _to_sequence(left_top),
+                      _to_sequence(width_height),
                       color,
                       label,
                       space)
@@ -185,11 +187,10 @@ def log_points(
 
 
 def log_camera(obj_path: str,
-               # TODO(Niko): Add nicer handling of array like arguments
-               rotation_q: np.ndarray,
-               position: np.ndarray,
-               intrinsics: np.ndarray,
-               resolution: np.ndarray,
+               rotation_q: ArrayLike,
+               position: ArrayLike,
+               intrinsics: ArrayLike,
+               resolution: ArrayLike,
                camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
                space: Optional[str] = None,):
     """Log a perspective camera model.
@@ -202,17 +203,12 @@ def log_camera(obj_path: str,
 
     If no `space` is given, the space name "3D" will be used.
     """
-    assert resolution.size == 2
-    assert intrinsics.shape == (3, 3)
-    assert rotation_q.size == 4
-    assert position.size == 3
-
     rerun_rs.log_camera(
         obj_path,
-        resolution.tolist(),
-        intrinsics.T.tolist(),
-        rotation_q.tolist(),
-        position.tolist(),
+        _to_sequence(resolution),
+        _to_transposed_sequence(intrinsics),
+        _to_sequence(rotation_q),
+        _to_sequence(position),
         camera_space_convention.value,
         space)
 
@@ -363,3 +359,13 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, t
 
     rerun_rs.log_mesh_file(obj_path, mesh_format.value,
                            mesh_file, transform, space)
+
+
+def _to_sequence(array: ArrayLike) -> Sequence:
+    if hasattr(array, 'tolist'):
+        return array.tolist()  # type: ignore
+    return array  # type: ignore
+
+
+def _to_transposed_sequence(array: ArrayLike) -> Sequence:
+    return np.asarray(array).T.tolist()
