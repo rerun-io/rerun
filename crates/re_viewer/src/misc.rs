@@ -182,23 +182,37 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
 
 // ----------------------------------------------------------------------------
 
-/// Rerun uses a RHS view-space with +X=right, +Y=up, -Z=fwd.
-/// This creates a transform from the Rerun view-space
-/// to the parent space of the camera.
-pub fn world_from_view_from_cam(cam: &re_log_types::Camera) -> macaw::IsoTransform {
+pub mod cam {
+    use super::*;
     use glam::*;
 
-    let rotation = Quat::from_slice(&cam.rotation);
-    let translation = Vec3::from_slice(&cam.position);
+    /// Rerun uses a RHS view-space with +X=right, +Y=up, -Z=fwd.
+    /// This creates a transform from the Rerun view-space
+    /// to the parent space of the camera.
+    pub fn world_from_view(cam: &re_log_types::Camera) -> macaw::IsoTransform {
+        let rotation = Quat::from_slice(&cam.rotation);
+        let translation = Vec3::from_slice(&cam.position);
 
-    let rotation = match cam.camera_space_convention {
-        CameraSpaceConvention::XRightYUpZBack => {
-            rotation // same as the Rerun convention
-        }
-        CameraSpaceConvention::XRightYDownZFwd => {
-            rotation * Quat::from_rotation_x(std::f32::consts::TAU / 2.0)
-        }
-    };
+        let rotation = match cam.camera_space_convention {
+            CameraSpaceConvention::XRightYUpZBack => {
+                rotation // same as the Rerun convention
+            }
+            CameraSpaceConvention::XRightYDownZFwd => {
+                rotation * Quat::from_rotation_x(std::f32::consts::TAU / 2.0)
+            }
+        };
 
-    macaw::IsoTransform::from_rotation_translation(rotation, translation)
+        macaw::IsoTransform::from_rotation_translation(rotation, translation)
+    }
+
+    /// Projects pixel coordinates into world coordinates
+    pub fn world_from_pixel(cam: &re_log_types::Camera) -> Option<glam::Mat4> {
+        cam.intrinsics.map(|intrinsics| {
+            // TODO(emilk): verify and clarify the coordinate systems! RHS, origin is what corner of image, etc.
+            let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics);
+            world_from_view(cam)
+                * Mat4::from_diagonal([1.0, 1.0, -1.0, 1.0].into()) // negative Z, because we use RHS
+                * Mat4::from_mat3(intrinsics.inverse())
+        })
+    }
 }

@@ -232,7 +232,7 @@ impl Scene {
             for (props, obj) in objects.camera.iter() {
                 let re_data_store::Camera { camera } = *obj;
 
-                let world_from_view = crate::misc::world_from_view_from_cam(camera);
+                let world_from_view = crate::misc::cam::world_from_view(camera);
 
                 let dist_to_camera = camera_plane.distance(world_from_view.translation());
                 let color = object_color(ctx, props);
@@ -266,7 +266,7 @@ impl Scene {
                 }
 
                 if ctx.options.show_camera_axes_in_3d {
-                    let world_from_view = crate::misc::world_from_view_from_cam(camera);
+                    let world_from_view = crate::misc::cam::world_from_view(camera);
                     let center = world_from_view.translation();
                     let radius = dist_to_camera * line_radius_from_distance * 2.0;
 
@@ -305,15 +305,10 @@ impl Scene {
         line_radius: f32,
         color: [u8; 4],
     ) {
-        if let (Some(intrinsis), Some([w, h])) = (cam.intrinsics, cam.resolution) {
-            let world_from_view = crate::misc::world_from_view_from_cam(cam);
-
-            let intrinsis = glam::Mat3::from_cols_array_2d(&intrinsis);
-
-            // TODO(emilk): verify and clarify the coordinate systems! RHS, origin is what corner of image, etc.
-            let world_from_pixel = world_from_view
-                * Mat4::from_diagonal([1.0, 1.0, -1.0, 1.0].into()) // negative Z, because we use RHS
-                * Mat4::from_mat3(intrinsis.inverse());
+        if let (Some(world_from_pixel), Some([w, h])) =
+            (crate::misc::cam::world_from_pixel(cam), cam.resolution)
+        {
+            let world_from_view = crate::misc::cam::world_from_view(cam);
 
             // At what distance do we end the frustum?
             let d = scene_bbox.size().length() * 0.3;

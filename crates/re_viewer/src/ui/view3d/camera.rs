@@ -20,7 +20,7 @@ impl Camera {
         };
 
         Self {
-            world_from_view: crate::misc::world_from_view_from_cam(cam),
+            world_from_view: crate::misc::cam::world_from_view(cam),
             fov_y,
         }
     }
