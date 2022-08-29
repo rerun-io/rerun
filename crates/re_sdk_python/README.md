@@ -51,6 +51,9 @@ In a second terminal, run the example with the `--connect` option:
 python3 crates/re_sdk_python/example.py --connect
 ```
 
+## Usage
+See [`USAGE.md`](USAGE.md).
+
 ## Developing
 For ease of development you can build and install in "editable" mode by passing the `-e` (or `--editable` ) flag to `pip install`. This means you can edit the `rerun_sdk` Python code without having to re-build and install to see changes.
 ```sh
