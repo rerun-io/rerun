@@ -444,14 +444,19 @@ fn default_camera(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) ->
         radius = 1.0;
     }
 
-    let cam_dir = vec3(1.0, 1.0, 0.5).normalize();
-    let camera_pos = center + radius * cam_dir;
-
     let look_up = if space_spects.up == Vec3::ZERO {
-        Vec3::Z // TODO(emilk): make sure this isn't colinear with `center - camera_pos`.
+        Vec3::Z
     } else {
-        space_spects.up
+        space_spects.up.normalize()
     };
+
+    // Look along the cardinal directions:
+    let look_dir = vec3(1.0, 1.0, 1.0);
+    // Make sure the camera is looking down, but just slightly:
+    let look_dir = look_dir + look_up * (-0.5 - look_dir.dot(look_up));
+    let look_dir = look_dir.normalize();
+
+    let camera_pos = center - radius * look_dir;
 
     OrbitCamera {
         center,
