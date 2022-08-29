@@ -316,7 +316,7 @@ fn click_object(
     }
 }
 
-pub(crate) fn combined_view_3d(
+pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State3D,

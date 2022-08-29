@@ -183,12 +183,12 @@ impl SpaceView {
 
         if objects.has_any_3d() {
             let state_3d = self.state_3d.entry(space.cloned()).or_default();
-            crate::view3d::combined_view_3d(ctx, ui, state_3d, space, &objects);
+            crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
         }
 
         if objects.has_any_2d() {
             let state_2d = self.state_2d.entry(space.cloned()).or_default();
-            crate::view2d::combined_view_2d(ctx, ui, state_2d, &objects);
+            crate::view2d::view_2d(ctx, ui, state_2d, &objects);
         }
     }
 }
