@@ -11,7 +11,7 @@ pub(crate) struct State2D {
     #[serde(skip)]
     hovered_obj: Option<ObjPath>,
 
-    /// Estimate of the the bounding box of all data. Accumulated.
+    /// Estimated bounding box of all data. Accumulated.
     #[serde(skip)]
     scene_bbox_accum: epaint::Rect,
 }
@@ -41,7 +41,7 @@ pub(crate) fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State2D,
-    objects: &re_data_store::Objects<'_>,
+    objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
 ) {
     crate::profile_function!();
 
