@@ -6,6 +6,8 @@ Note: The rust crate is called `re_sdk_python`, while the Python library is call
 
 ## Setup
 
+Note: these instructions all assume you're running them from the root of the rerun repository.
+
 Make sure you have a virtualenv set up.
 
 ```sh
@@ -60,19 +62,16 @@ pip install -e "crates/re_sdk_python[tests,examples]"
 
 To build an installable Python wheel
 ```
-pip install -r requirments-build.txt
+pip install -r crates/re_sdk_python/requirments-build.txt
 maturin build -m ./crates/re_sdk_python/Cargo.toml --release
 ```
 
-By default the wheels will be built to:
-```
-PATH_TO_RERUN_REPOSITORY/target/wheels
-```
+By default the wheels will be built to `target/wheels`.
 
 Now you can install `rerun_sdk` in any Python3 environment using:
 
 ```
-pip3 install PATH_TO_RERUN_REPOSITORY/target/wheels/*.whl
+pip3 install target/wheels/*.whl
 ```
 
 
