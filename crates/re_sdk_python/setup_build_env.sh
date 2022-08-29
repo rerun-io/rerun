@@ -1,4 +1,4 @@
-# source this file to set up the python environment
+# source this file to set up the python build environment
 
 python3 -m venv env
 source env/bin/activate
