@@ -5,7 +5,7 @@ use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 
 /// We use X=right, Y=up, Z=back.
-#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Camera {
     pub world_from_view: IsoTransform,
     pub fov_y: f32,

@@ -73,14 +73,22 @@ impl State3D {
             self.interpolate_to_orbit_camera(default_camera(&self.scene_bbox, space_specs));
         }
 
+        if let Some(tracking_camera) = tracking_camera {
+            if let Some(cam_interpolation) = &mut self.cam_interpolation {
+                // Update interpolation target:
+                cam_interpolation.target_orbit = None;
+                if cam_interpolation.target_camera != Some(tracking_camera) {
+                    cam_interpolation.target_camera = Some(tracking_camera);
+                    response.ctx.request_repaint();
+                }
+            } else {
+                self.interpolate_to_camera(tracking_camera);
+            }
+        }
+
         let orbit_camera = self
             .orbit_camera
             .get_or_insert_with(|| default_camera(&self.scene_bbox, space_specs));
-
-        if let Some(tracking_camera) = tracking_camera {
-            orbit_camera.copy_from_camera(&tracking_camera);
-            self.cam_interpolation = None;
-        }
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -91,20 +99,23 @@ impl State3D {
         }
 
         if let Some(cam_interpolation) = &mut self.cam_interpolation {
-            if cam_interpolation.elapsed_time < cam_interpolation.target_time {
-                cam_interpolation.elapsed_time += response.ctx.input().stable_dt.at_most(0.1);
+            cam_interpolation.elapsed_time += response.ctx.input().stable_dt.at_most(0.1);
+
+            let t = cam_interpolation.elapsed_time / cam_interpolation.target_time;
+            let t = t.clamp(0.0, 1.0);
+            let t = crate::math::ease_out(t);
+
+            if t < 1.0 {
                 response.ctx.request_repaint();
-                let t = cam_interpolation.elapsed_time / cam_interpolation.target_time;
-                let t = t.clamp(0.0, 1.0);
-                let t = crate::math::ease_out(t);
-                if let Some(target_orbit) = &cam_interpolation.target_orbit {
-                    *orbit_camera = cam_interpolation.start.lerp(target_orbit, t);
-                } else if let Some(target_camera) = &cam_interpolation.target_camera {
-                    let camera = cam_interpolation.start.to_camera().lerp(target_camera, t);
-                    orbit_camera.copy_from_camera(&camera);
-                } else {
-                    self.cam_interpolation = None;
-                }
+            }
+
+            if let Some(target_orbit) = &cam_interpolation.target_orbit {
+                *orbit_camera = cam_interpolation.start.lerp(target_orbit, t);
+            } else if let Some(target_camera) = &cam_interpolation.target_camera {
+                let camera = cam_interpolation.start.to_camera().lerp(target_camera, t);
+                orbit_camera.copy_from_camera(&camera);
+            } else {
+                self.cam_interpolation = None;
             }
         }
 
@@ -263,51 +274,39 @@ fn tracking_camera(
     objects: &re_data_store::Objects<'_>,
 ) -> Option<Camera> {
     if let Selection::ObjPath(selected_obj_path) = &ctx.rec_cfg.selection {
-        let mut selected_camera = None;
-
-        for (props, camera) in objects.camera.iter() {
-            if props.obj_path == selected_obj_path {
-                if selected_camera.is_some() {
-                    return None; // More than one camera
-                } else {
-                    selected_camera = Some(camera.camera);
-                }
-            }
-        }
-
-        selected_camera.map(Camera::from_camera_data)
+        find_camera(objects, selected_obj_path)
     } else {
         None
     }
 }
 
-fn click_object(ctx: &mut ViewerContext<'_>, state: &mut State3D, obj_path: &ObjPath) {
-    ctx.rec_cfg.selection = crate::Selection::ObjPath(obj_path.clone());
+fn find_camera(objects: &re_data_store::Objects<'_>, needle_obj_path: &ObjPath) -> Option<Camera> {
+    let mut found_camera = None;
 
-    if ctx.log_db.object_types.get(obj_path.obj_type_path())
-        == Some(&re_log_types::ObjectType::Camera)
-    {
-        if let Some((_, data_store)) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source()) {
-            if let Some(obj_store) = data_store.get(obj_path.obj_type_path()) {
-                // TODO(emilk): use the time of what we clicked instead!
-                if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
-                    let mut objects = re_data_store::Objects::default();
-                    re_data_store::objects::Camera::query_obj_path(
-                        obj_store,
-                        obj_path,
-                        &time_query,
-                        &mut objects,
-                    );
-                    if let Some((_, camera)) = objects.camera.last() {
-                        state.interpolate_to_camera(Camera::from_camera_data(camera.camera));
-                        return;
-                    }
-                }
+    for (props, camera) in objects.camera.iter() {
+        if props.obj_path == needle_obj_path {
+            if found_camera.is_some() {
+                return None; // More than one camera
+            } else {
+                found_camera = Some(camera.camera);
             }
         }
     }
 
-    if let Some(clicked_point) = state.hovered_point {
+    found_camera.map(Camera::from_camera_data)
+}
+
+fn click_object(
+    ctx: &mut ViewerContext<'_>,
+    objects: &re_data_store::Objects<'_>,
+    state: &mut State3D,
+    obj_path: &ObjPath,
+) {
+    ctx.rec_cfg.selection = crate::Selection::ObjPath(obj_path.clone());
+
+    if let Some(camera) = find_camera(objects, obj_path) {
+        state.interpolate_to_camera(camera);
+    } else if let Some(clicked_point) = state.hovered_point {
         // center camera on what we click on
         if let Some(mut new_orbit_cam) = state.orbit_camera {
             new_orbit_cam.radius = new_orbit_cam.position().distance(clicked_point);
@@ -353,7 +352,7 @@ pub(crate) fn combined_view_3d(
     let mut hovered_obj_path = state.hovered_obj_path.clone();
     if ui.input().pointer.any_click() {
         if let Some(hovered_obj_path) = &hovered_obj_path {
-            click_object(ctx, state, hovered_obj_path);
+            click_object(ctx, objects, state, hovered_obj_path);
         }
     } else if ui.input().pointer.any_down() {
         hovered_obj_path = None;
