@@ -38,7 +38,7 @@ class CameraSpaceConvention(Enum):
     # Right-handed system used by ARKit and PyTorch3D.
     # * +X = right
     # * +Y = up
-    # * +Z = back(camera looks along - Z)
+    # * +Z = back (camera looks along -Z)
     X_RIGHT_Y_UP_Z_BACK = "XRightYUpZBack"
 
     # Right-handed system used by OpenCV.
