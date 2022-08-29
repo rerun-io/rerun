@@ -13,12 +13,21 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = ["numpy"]
+
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 license = {text = "MIT OR Apache-2.0"}
 name = "rerun_sdk"
 requires-python = ">=3.7"
+
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+tests = [
+    "mypy==0.971",
+    "pytest==7.1.2",
+]
+examples = ["opencv-python~=4.6.0"]
 
 [project.urls]
 homepage = "https://www.rerun.io/"
