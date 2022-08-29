@@ -180,9 +180,9 @@ def log_points(
 
         if colors.dtype != 'uint8':
             colors = colors.astype('uint8')
-        colors = np.require(colors, dtype='uint8', requirements='O')
+        colors = np.require(colors, dtype='uint8')
 
-    positions = np.require(positions, dtype='float32', requirements='O')
+    positions = np.require(positions, dtype='float32')
 
     rerun_rs.log_points(obj_path, positions, colors, space)
 
@@ -239,7 +239,7 @@ def log_path(
 
     If no `space` is given, the space name "3D" will be used.
     """
-    positions = np.require(positions, dtype='float32', requirements='O')
+    positions = np.require(positions, dtype='float32')
     rerun_rs.log_path(obj_path, positions, stroke_width, color, space)
 
 
@@ -266,7 +266,7 @@ def log_line_segments(
 
     If no `space` is given, the space name "3D" will be used.
     """
-    positions = np.require(positions, dtype='float32', requirements='O')
+    positions = np.require(positions, dtype='float32')
     rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, space)
 
 
@@ -320,10 +320,6 @@ def _log_tensor(obj_path: str, tensor: np.ndarray, *, meter: Optional[float] = N
     """
     If no `space` is given, the space name "2D" will be used.
     """
-    # Workaround to handle that `rerun_rs` can't handle numpy views correctly.
-    # TODO(nikolausWest): Remove requirement once underlying issue in Rust SDK is fixed.
-    tensor = np.require(tensor, requirements='O')
-
     if tensor.dtype == 'uint8':
         rerun_rs.log_tensor_u8(obj_path, tensor, meter, space)
     elif tensor.dtype == 'uint16':
@@ -356,7 +352,7 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, t
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
     else:
-        transform = np.require(transform, dtype='float32', requirements='O')
+        transform = np.require(transform, dtype='float32')
 
     rerun_rs.log_mesh_file(obj_path, mesh_format.value,
                            mesh_file, transform, space)
