@@ -60,7 +60,7 @@ pip install -e "crates/re_sdk_python[tests,examples]"
 
 To build an installable Python wheel
 ```
-pip install -r build_requirments.txt
+pip install -r requirments-build.txt
 maturin build -m ./crates/re_sdk_python/Cargo.toml --release
 ```
 
