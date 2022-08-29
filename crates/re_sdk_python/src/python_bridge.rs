@@ -31,6 +31,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
+    m.add_function(wrap_pyfunction!(log_camera, m)?)?;
     m.add_function(wrap_pyfunction!(log_points, m)?)?;
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
@@ -185,6 +186,62 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
             color
         ))),
     }
+}
+
+/// Log a 3D camera
+#[pyfunction]
+fn log_camera(
+    obj_path: &str,
+    resolution: [f32; 2],
+    intrinsics: [[f32; 3]; 3],
+    rotation_q: re_log_types::Quaternion,
+    position: [f32; 3],
+    camera_space_convention: &str,
+    space: Option<String>,
+) -> PyResult<()> {
+    let convention = match camera_space_convention {
+        "XRightYUpZBack" => re_log_types::CameraSpaceConvention::XRightYUpZBack,
+        "XRightYDownZFwd" => re_log_types::CameraSpaceConvention::XRightYDownZFwd,
+        _ => {
+            return Err(PyTypeError::new_err(format!(
+                "Unknown camera space convetions format {camera_space_convention:?}.
+                Expected one of: XRightYUpZBack, XRightYDownZFwd"
+            )));
+        }
+    };
+
+    let camera = re_log_types::Camera {
+        rotation: rotation_q,
+        position,
+        intrinsics: Some(intrinsics),
+        resolution: Some(resolution),
+        camera_space_convention: convention,
+    };
+
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Camera);
+
+    let time_point = sdk.now();
+
+    //logger.log(data_msg(time_point, &data_path, "camera", camera));
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point: time_point.clone(),
+        data_path: DataPath::new(obj_path.clone(), "camera".into()),
+        data: LoggedData::Single(Data::Camera(camera)),
+    }));
+
+    let space = space.unwrap_or_else(|| "3D".to_owned());
+    sdk.send(LogMsg::DataMsg(DataMsg {
+        msg_id: MsgId::random(),
+        time_point,
+        data_path: DataPath::new(obj_path, "space".into()),
+        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    }));
+
+    Ok(())
 }
 
 /// Log a 2D bounding box.

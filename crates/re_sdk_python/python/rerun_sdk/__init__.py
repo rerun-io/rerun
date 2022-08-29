@@ -2,7 +2,7 @@
 import atexit
 from enum import Enum
 import numpy as np
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 from . import rerun_sdk as rerun_rs  # type: ignore
 from .color_conversion import linear_to_gamma_u8_pixel
@@ -16,6 +16,8 @@ atexit.register(rerun_shutdown)
 
 # -----------------------------------------------------------------------------
 
+ArrayLike = Union[np.ndarray, Sequence]
+
 
 class MeshFormat(Enum):
     # Needs some way of logging materials too, or adding some default material to the viewer.
@@ -28,6 +30,22 @@ class MeshFormat(Enum):
     # Needs some way of logging materials too, or adding some default material to the viewer.
     # """ Wavefront .obj """
     # OBJ = "OBJ"
+
+
+class CameraSpaceConvention(Enum):
+    """The convetion used for the camera space's (3D) coordinate system."""
+
+    # Right-handed system used by ARKit and PyTorch3D.
+    # * +X = right
+    # * +Y = up
+    # * +Z = back (camera looks along -Z)
+    X_RIGHT_Y_UP_Z_BACK = "XRightYUpZBack"
+
+    # Right-handed system used by OpenCV.
+    # * +X = right
+    # * +Y = down
+    # * +Z = forward
+    X_RIGHT_Y_DOWN_Z_FWD = "XRightYDownZFwd"
 
 
 def connect(addr: Optional[str] = None):
@@ -108,8 +126,8 @@ def set_space_up(space: str, up: Sequence[float]):
 
 def log_rect(
     obj_path: str,
-    left_top: Sequence[float],
-    width_height: Sequence[float],
+    left_top: ArrayLike,
+    width_height: ArrayLike,
     *,
     label: Optional[str] = None,
     color: Optional[Sequence[int]] = None,
@@ -123,8 +141,8 @@ def log_rect(
     If no `space` is given, the space name "2D" will be used.
     """
     rerun_rs.log_rect(obj_path,
-                      left_top,
-                      width_height,
+                      _to_sequence(left_top),
+                      _to_sequence(width_height),
                       color,
                       label,
                       space)
@@ -162,10 +180,38 @@ def log_points(
 
         if colors.dtype != 'uint8':
             colors = colors.astype('uint8')
+        colors = np.require(colors, dtype='uint8')
 
-    positions = positions.astype('float32')
+    positions = np.require(positions, dtype='float32')
 
     rerun_rs.log_points(obj_path, positions, colors, space)
+
+
+def log_camera(obj_path: str,
+               rotation_q: ArrayLike,
+               position: ArrayLike,
+               intrinsics: ArrayLike,
+               resolution: ArrayLike,
+               camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+               space: Optional[str] = None,):
+    """Log a perspective camera model.
+
+    `rotation_q`: array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
+    `position`: array with [x, y, z] position of the camera in world space.
+    `intrinsics`: row-major intrinsics matrix for projecting from camera space to pixel space
+    `resolution`: array with [width, height] image resolution in pixels.
+    `camera_space_convention`: The convention used for the orientation of the camera´s 3D coordinate system.
+
+    If no `space` is given, the space name "3D" will be used.
+    """
+    rerun_rs.log_camera(
+        obj_path,
+        _to_sequence(resolution),
+        _to_transposed_sequence(intrinsics),
+        _to_sequence(rotation_q),
+        _to_sequence(position),
+        camera_space_convention.value,
+        space)
 
 
 def log_path(
@@ -193,7 +239,7 @@ def log_path(
 
     If no `space` is given, the space name "3D" will be used.
     """
-    positions = np.array(positions, dtype='float32')
+    positions = np.require(positions, dtype='float32')
     rerun_rs.log_path(obj_path, positions, stroke_width, color, space)
 
 
@@ -220,7 +266,7 @@ def log_line_segments(
 
     If no `space` is given, the space name "3D" will be used.
     """
-    positions = np.array(positions, dtype='float32')
+    positions = np.require(positions, dtype='float32')
     rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, space)
 
 
@@ -274,10 +320,6 @@ def _log_tensor(obj_path: str, tensor: np.ndarray, *, meter: Optional[float] = N
     """
     If no `space` is given, the space name "2D" will be used.
     """
-    # Workaround to handle that `rerun_rs` can't handle numpy views correctly.
-    # TODO(nikolausWest): Remove this extra copy once underlying issue in Rust SDK is fixed.
-    tensor = tensor if tensor.base is None else tensor.copy()
-
     if tensor.dtype == 'uint8':
         rerun_rs.log_tensor_u8(obj_path, tensor, meter, space)
     elif tensor.dtype == 'uint16':
@@ -310,7 +352,17 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, t
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
     else:
-        transform = np.array(transform, dtype='float32')
+        transform = np.require(transform, dtype='float32')
 
     rerun_rs.log_mesh_file(obj_path, mesh_format.value,
                            mesh_file, transform, space)
+
+
+def _to_sequence(array: ArrayLike) -> Sequence:
+    if hasattr(array, 'tolist'):
+        return array.tolist()  # type: ignore
+    return array  # type: ignore
+
+
+def _to_transposed_sequence(array: ArrayLike) -> Sequence:
+    return np.asarray(array).T.tolist()
