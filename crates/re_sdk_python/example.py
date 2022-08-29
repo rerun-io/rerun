@@ -43,7 +43,8 @@ def log_dummy_data(args):
                          rotation_q=sample.camera.rotation_q,
                          position=sample.camera.position,
                          camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
-                         space="projected_space")
+                         space="projected_space"
+                         target_space="2D")
 
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)

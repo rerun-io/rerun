@@ -189,6 +189,7 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
 }
 
 /// Log a 3D camera
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn log_camera(
     obj_path: &str,
@@ -198,7 +199,10 @@ fn log_camera(
     position: [f32; 3],
     camera_space_convention: &str,
     space: Option<String>,
+    target_space: Option<String>,
 ) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+
     let convention = match camera_space_convention {
         "XRightYUpZBack" => re_log_types::CameraSpaceConvention::XRightYUpZBack,
         "XRightYDownZFwd" => re_log_types::CameraSpaceConvention::XRightYDownZFwd,
@@ -210,22 +214,27 @@ fn log_camera(
         }
     };
 
+    let target_space = if let Some(target_space) = target_space {
+        Some(parse_obj_path(&target_space)?)
+    } else {
+        None
+    };
+
     let camera = re_log_types::Camera {
         rotation: rotation_q,
         position,
         intrinsics: Some(intrinsics),
         resolution: Some(resolution),
         camera_space_convention: convention,
+        target_space,
     };
 
     let mut sdk = Sdk::global();
 
-    let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Camera);
 
     let time_point = sdk.now();
 
-    //logger.log(data_msg(time_point, &data_path, "camera", camera));
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
         time_point: time_point.clone(),

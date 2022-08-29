@@ -527,6 +527,7 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
         camera_space_convention,
         intrinsics,
         resolution,
+        target_space,
     } = cam;
     ui.vertical(|ui| {
         ui.label("Camera");
@@ -555,6 +556,12 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
 
                     ui.label("resolution");
                     ui.monospace(format!("{resolution:?}"));
+                    ui.end_row();
+
+                    ui.label("target_space");
+                    if let Some(target_space) = target_space {
+                        ui.monospace(target_space.to_string());
+                    }
                     ui.end_row();
                 });
         });

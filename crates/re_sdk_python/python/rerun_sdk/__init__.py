@@ -193,7 +193,8 @@ def log_camera(obj_path: str,
                intrinsics: ArrayLike,
                resolution: ArrayLike,
                camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
-               space: Optional[str] = None,):
+               space: Optional[str] = None,
+               target_space: Optional[str] = None):
     """Log a perspective camera model.
 
     `rotation_q`: array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
@@ -201,8 +202,8 @@ def log_camera(obj_path: str,
     `intrinsics`: row-major intrinsics matrix for projecting from camera space to pixel space
     `resolution`: array with [width, height] image resolution in pixels.
     `camera_space_convention`: The convention used for the orientation of the camera´s 3D coordinate system.
-
-    If no `space` is given, the space name "3D" will be used.
+    `space`: The 3D space the camera is in. Will default to "3D".
+    `target_space`: The 2D space that the camera projects into.
     """
     rerun_rs.log_camera(
         obj_path,
@@ -211,7 +212,8 @@ def log_camera(obj_path: str,
         _to_sequence(rotation_q),
         _to_sequence(position),
         camera_space_convention.value,
-        space)
+        space,
+        target_space)
 
 
 def log_path(

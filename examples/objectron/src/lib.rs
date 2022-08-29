@@ -406,6 +406,7 @@ fn log_ar_camera(
         camera_space_convention: CameraSpaceConvention::XRightYUpZBack,
         intrinsics: Some(intrinsics.to_cols_array_2d()),
         resolution: Some([w, h]),
+        target_space: Some(ObjPath::from("image")),
     };
 
     logger.log(data_msg(time_point, data_path.clone(), "camera", camera));

@@ -418,6 +418,9 @@ pub struct Camera {
     /// [1920.0, 1440.0]
     /// ```
     pub resolution: Option<[f32; 2]>,
+
+    /// The 2D space that this camera proejcts into.
+    pub target_space: Option<ObjPath>,
 }
 
 /// Convention for the coordinate system of the camera.
