@@ -2202,9 +2202,9 @@ dependencies = [
 
 [[package]]
 name = "numpy"
-version = "0.17.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16c4ecda873842a954a8a007d1bfd7c0c6ff88a08ca8b1c4a9a6004efd230287"
+checksum = "6522ac2e780f532432a7c7f5dbadbfcea9ff1cf4dd858fb509ca13061a928413"
 dependencies = [
  "ahash 0.7.6",
  "libc",
