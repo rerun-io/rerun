@@ -87,6 +87,7 @@ pub(crate) fn view_2d(
 
     // Screen coordinates from space coordinates.
     let screen_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
+    let space_from_screen = screen_from_space.inverse();
 
     // Paint background in case there is no image covering it all:
     let mut shapes = vec![Shape::rect_filled(
@@ -111,6 +112,8 @@ pub(crate) fn view_2d(
             closest_obj_path = Some(obj_path.clone());
         }
     };
+
+    let mut depths_at_pointer = vec![];
 
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
         let re_data_store::Image { tensor, meter } = obj;
@@ -163,6 +166,17 @@ pub(crate) fn view_2d(
                     pointer_pos,
                     *meter,
                 );
+
+                if let Some(meter) = *meter {
+                    let pixel_pos = space_from_screen.transform_pos(pointer_pos);
+                    if let Some(raw_value) =
+                        tensor.get(&[pixel_pos.y.round() as _, pixel_pos.x.round() as _])
+                    {
+                        let raw_value = raw_value.as_f64();
+                        let depth_in_meters = raw_value / meter as f64;
+                        depths_at_pointer.push(depth_in_meters);
+                    }
+                }
             }
         }
     }
@@ -287,7 +301,12 @@ pub(crate) fn view_2d(
 
     // ------------------------------------------------------------------------
 
-    project_onto_other_spaces(ctx, space, &response, &screen_from_space);
+    let depth_at_pointer = if depths_at_pointer.len() == 1 {
+        depths_at_pointer[0] as f32
+    } else {
+        f32::INFINITY
+    };
+    project_onto_other_spaces(ctx, space, &response, &space_from_screen, depth_at_pointer);
     show_projections_from_3d_space(ctx, ui, space, &screen_from_space, &mut shapes);
 
     // ------------------------------------------------------------------------
@@ -305,14 +324,14 @@ fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
     space: Option<&ObjPath>,
     response: &Response,
-    screen_from_space: &RectTransform,
+    space_from_screen: &RectTransform,
+    z: f32,
 ) {
     if let Some(pointer_in_screen) = response.hover_pos() {
-        let space_from_screen = screen_from_space.inverse();
         let pointer_in_space = space_from_screen.transform_pos(pointer_in_screen);
         ctx.rec_cfg.hovered_space = HoveredSpace::TwoD {
             space_2d: space.cloned(),
-            pos: pointer_in_space,
+            pos: glam::vec3(pointer_in_space.x, pointer_in_space.y, z),
         };
     }
 }

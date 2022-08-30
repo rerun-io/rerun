@@ -455,7 +455,12 @@ fn show_projections_from_2d_space(
                 if let Some(ray) = crate::misc::cam::unproject_as_ray(cam, glam::vec2(pos.x, pos.y))
                 {
                     // TODO(emilk): better visualization of a ray
-                    let length = 2.0 * state.scene_bbox.half_size().length(); // TODO: get ray length from 2D depth map, if any.
+                    let has_ending = pos.z.is_finite() && pos.z > 0.0;
+                    let length = if has_ending {
+                        pos.z
+                    } else {
+                        4.0 * state.scene_bbox.half_size().length() // should be long enough
+                    };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
                     let distance = crate::math::line_segment_distance_to_point_3d(
@@ -469,6 +474,16 @@ fn show_projections_from_2d_space(
                         radius,
                         color: [255; 4],
                     });
+
+                    if has_ending {
+                        // Show where the ray hits the depth map (if any)
+                        scene.points.push(Point {
+                            obj_path_hash: ObjPathHash::NONE,
+                            pos: end.into(),
+                            radius: radius * 3.0,
+                            color: [255; 4],
+                        });
+                    }
                 }
             }
         }

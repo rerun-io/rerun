@@ -141,8 +141,8 @@ pub enum HoveredSpace {
     /// Hovering in a 2D space.
     TwoD {
         space_2d: Option<ObjPath>,
-        /// Where in this 2D space?
-        pos: egui::Pos2,
+        /// Where in this 2D space (+ depth)?
+        pos: glam::Vec3,
     },
     /// Hovering in a 3D space.
     ThreeD {
