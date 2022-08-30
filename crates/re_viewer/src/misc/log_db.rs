@@ -90,18 +90,23 @@ impl LogDb {
         crate::profile_function!();
 
         let obj_type_path = &msg.data_path.obj_path.obj_type_path();
+        let field_name = &msg.data_path.field_name;
         if let Some(object_type) = self.object_types.get(obj_type_path) {
-            let field_name = &msg.data_path.field_name;
             let valid_members = object_type.members();
             if !valid_members.contains(&field_name.as_str()) {
                 log_once::warn_once!(
-                    "Logged to {obj_type_path}.{field_name}, but the parent object ({object_type:?}) does not have that field. Expected one of: {}",
+                    "Logged to {}.{}, but the parent object ({:?}) does not have that field. Expected one of: {}",
+                    obj_type_path,
+                    field_name,
+                    object_type,
                     valid_members.iter().format(", ")
                 );
             }
         } else {
             log_once::warn_once!(
-                "Logging to {obj_type_path}.{field_name} without first registering object type"
+                "Logging to {}.{} without first registering object type",
+                obj_type_path,
+                field_name,
             );
         }
 
