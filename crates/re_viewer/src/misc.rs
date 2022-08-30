@@ -213,7 +213,6 @@ pub mod cam {
     /// Projects pixel coordinates into world coordinates
     pub fn world_from_pixel(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
         cam.intrinsics.map(|intrinsics| {
-            // TODO(emilk): verify and clarify the coordinate systems! RHS, origin is what corner of image, etc.
             let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics);
             world_from_view(cam)
                 * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different.

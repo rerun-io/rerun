@@ -448,6 +448,8 @@ fn show_projections_from_2d_space(
     orbit_camera: OrbitCamera,
     scene: &mut Scene,
 ) {
+    let eye_pos = orbit_camera.position();
+
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space {
         for (_, cam) in objects.camera.iter() {
             let cam = cam.camera;
@@ -455,19 +457,24 @@ fn show_projections_from_2d_space(
                 if let Some(ray) = crate::misc::cam::unproject_as_ray(cam, glam::vec2(pos.x, pos.y))
                 {
                     // TODO(emilk): better visualization of a ray
-                    let has_ending = pos.z.is_finite() && pos.z > 0.0;
-                    let length = if has_ending {
-                        pos.z
+                    let mut hit_pos = None;
+                    if pos.z.is_finite() && pos.z > 0.0 {
+                        if let Some(world_from_pixel) = crate::misc::cam::world_from_pixel(cam) {
+                            let pos = world_from_pixel
+                                .transform_point3(glam::vec3(pos.x, pos.y, 1.0) * pos.z);
+                            hit_pos = Some(pos);
+                        }
+                    }
+                    let length = if let Some(hit_pos) = hit_pos {
+                        hit_pos.distance(Vec3::from_slice(&cam.position))
                     } else {
                         4.0 * state.scene_bbox.half_size().length() // should be long enough
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
-                    let distance = crate::math::line_segment_distance_to_point_3d(
-                        [origin, end],
-                        orbit_camera.center,
-                    );
-                    let radius = 5.0 * scene.line_radius_from_distance * distance;
+                    let distance =
+                        crate::math::line_segment_distance_to_point_3d([origin, end], eye_pos);
+                    let radius = 2.0 * scene.line_radius_from_distance * distance;
                     scene.line_segments.push(LineSegments {
                         obj_path_hash: ObjPathHash::NONE,
                         segments: vec![[origin.into(), end.into()]],
@@ -475,11 +482,11 @@ fn show_projections_from_2d_space(
                         color: [255; 4],
                     });
 
-                    if has_ending {
-                        // Show where the ray hits the depth map (if any)
+                    if let Some(pos) = hit_pos {
+                        // Show where the ray hits the depth map:
                         scene.points.push(Point {
                             obj_path_hash: ObjPathHash::NONE,
-                            pos: end.into(),
+                            pos: pos.into(),
                             radius: radius * 3.0,
                             color: [255; 4],
                         });
