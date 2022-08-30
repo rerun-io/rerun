@@ -251,7 +251,7 @@ pub(crate) fn view_2d(
 
             if let Some(pointer_pos) = pointer_pos {
                 let line_segment_distance_sq =
-                    crate::math::line_segment_distance_sq_to_point([a, b], pointer_pos);
+                    crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos);
                 min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
             }
         }

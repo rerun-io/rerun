@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 use re_log_types::{Box3, Mesh3D, ObjPath, ObjPathHash};
 
 use crate::{
-    math::line_segment_distance_sq_to_point, misc::mesh_loader::CpuMesh, misc::ViewerContext,
+    math::line_segment_distance_sq_to_point_2d, misc::mesh_loader::CpuMesh, misc::ViewerContext,
 };
 
 use super::camera::Camera;
@@ -44,6 +44,11 @@ pub struct Scene {
     pub points: Vec<Point>,
     pub line_segments: Vec<LineSegments>,
     pub meshes: Vec<MeshSource>,
+
+    /// Multiply this with the distance to a point to get its suggested radius.
+    pub point_radius_from_distance: f32,
+    /// Multiply this with the distance to a line to get its suggested radius.
+    pub line_radius_from_distance: f32,
 }
 
 impl Scene {
@@ -103,7 +108,11 @@ impl Scene {
 
         let camera_plane = macaw::Plane3::from_normal_point(camera.forward(), camera.pos());
 
-        let mut scene = Self::default();
+        let mut scene = Scene {
+            point_radius_from_distance,
+            line_radius_from_distance,
+            ..Default::default()
+        };
 
         {
             crate::profile_scope!("point3d");
@@ -420,6 +429,8 @@ impl Scene {
             points,
             line_segments,
             meshes,
+            point_radius_from_distance: _,
+            line_radius_from_distance: _,
         } = self;
 
         // in points
@@ -462,7 +473,7 @@ impl Scene {
                     for [a, b] in &line_segments.segments {
                         let a = screen_from_world.project_point3((*a).into());
                         let b = screen_from_world.project_point3((*b).into());
-                        let dist_sq = line_segment_distance_sq_to_point(
+                        let dist_sq = line_segment_distance_sq_to_point_2d(
                             [pos2(a.x, a.y), pos2(b.x, b.y)],
                             pointer_pos,
                         );

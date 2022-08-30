@@ -424,12 +424,18 @@ pub(crate) fn view_3d(
                 if let Some(ray) = crate::misc::cam::unproject_as_ray(cam, glam::vec2(pos.x, pos.y))
                 {
                     // TODO(emilk): better visualization of a ray
+                    let length = 2.0 * state.scene_bbox.half_size().length(); // TODO: get ray length from 2D depth map, if any.
                     let origin = ray.point_along(0.0);
-                    let end = ray.point_along(2.0); // TODO: distance
+                    let end = ray.point_along(length);
+                    let distance = crate::math::line_segment_distance_to_point_3d(
+                        [origin, end],
+                        orbit_camera.center,
+                    );
+                    let radius = 5.0 * scene.line_radius_from_distance * distance;
                     scene.line_segments.push(LineSegments {
                         obj_path_hash: ObjPathHash::NONE,
                         segments: vec![[origin.into(), end.into()]],
-                        radius: 0.001, // TODO
+                        radius,
                         color: [255; 4],
                     });
                 }
