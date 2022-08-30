@@ -129,7 +129,7 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
         let translation = glam::Vec3::from(*translation);
         let half_size = glam::Vec3::from(*half_size);
         let transform =
-            glam::Mat4::from_scale_rotation_translation(half_size, rotation, translation);
+            glam::Affine3A::from_scale_rotation_translation(half_size, rotation, translation);
         use glam::vec3;
         let corners = [
             transform

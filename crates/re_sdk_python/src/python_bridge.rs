@@ -699,15 +699,15 @@ fn log_mesh_file(
     let bytes = bytes.into();
     let transform = if transform.is_empty() {
         [
-            [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0], // col 0
+            [0.0, 1.0, 0.0], // col 1
+            [0.0, 0.0, 1.0], // col 2
+            [0.0, 0.0, 0.0], // col 3 = translation
         ]
     } else {
-        if transform.shape() != [4, 4] {
+        if transform.shape() != [3, 4] {
             return Err(PyTypeError::new_err(format!(
-                "Expected a 4x4 transformation matrix, got shape={:?}",
+                "Expected a 3x4 affine transformation matrix, got shape={:?}",
                 transform.shape()
             )));
         }
@@ -715,10 +715,10 @@ fn log_mesh_file(
         let get = |row, col| *transform.get([row, col]).unwrap();
 
         [
-            [get(0, 0), get(1, 0), get(2, 0), get(3, 0)], // col 0
-            [get(0, 1), get(1, 1), get(2, 1), get(3, 1)], // col 1
-            [get(0, 2), get(1, 2), get(2, 2), get(3, 2)], // col 2
-            [get(0, 3), get(1, 3), get(2, 3), get(3, 3)], // col 3
+            [get(0, 0), get(1, 0), get(2, 0)], // col 0
+            [get(0, 1), get(1, 1), get(2, 1)], // col 1
+            [get(0, 2), get(1, 2), get(2, 2)], // col 2
+            [get(0, 3), get(1, 3), get(2, 3)], // col 3 = translation
         ]
     };
     let space = space.unwrap_or_else(|| "3D".to_owned());

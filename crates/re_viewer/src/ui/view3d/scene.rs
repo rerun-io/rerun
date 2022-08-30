@@ -35,7 +35,7 @@ pub enum MeshSourceData {
 pub struct MeshSource {
     pub obj_path_hash: ObjPathHash,
     pub mesh_id: u64,
-    pub world_from_mesh: glam::Mat4,
+    pub world_from_mesh: glam::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
 }
 
@@ -220,7 +220,7 @@ impl Scene {
                     scene.meshes.push(MeshSource {
                         obj_path_hash: *props.obj_path.hash(),
                         mesh_id,
-                        world_from_mesh: glam::Mat4::IDENTITY,
+                        world_from_mesh: glam::Affine3A::IDENTITY,
                         cpu_mesh,
                     });
                 }
@@ -249,7 +249,7 @@ impl Scene {
                     let scale = Vec3::splat(scale);
 
                     let mesh_id = hash("camera_mesh");
-                    let world_from_mesh = world_from_view * Mat4::from_scale(scale);
+                    let world_from_mesh = world_from_view * glam::Affine3A::from_scale(scale);
 
                     if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
                         mesh_id,
@@ -365,7 +365,7 @@ impl Scene {
         let translation = glam::Vec3::from(*translation);
         let half_size = glam::Vec3::from(*half_size);
         let transform =
-            glam::Mat4::from_scale_rotation_translation(half_size, rotation, translation);
+            glam::Affine3A::from_scale_rotation_translation(half_size, rotation, translation);
 
         let corners = [
             transform
