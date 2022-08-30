@@ -50,12 +50,12 @@ def log_dummy_data(args):
 
     with open('crates/re_viewer/data/camera.glb', mode='rb') as file:
         mesh_file = file.read()
-        # Optional transformation matrix to apply (in this case: scale it up by a factor x2)
+        # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
         transform = [
             [2, 0, 0, 0],
             [0, 2, 0, 0],
             [0, 0, 2, 0],
-            [0, 0, 0, 1]]
+        ]
         rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB,
                             mesh_file, transform=transform)
 

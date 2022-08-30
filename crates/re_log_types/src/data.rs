@@ -486,8 +486,8 @@ pub struct RawMesh3D {
 pub struct EncodedMesh3D {
     pub format: MeshFormat,
     pub bytes: std::sync::Arc<[u8]>,
-    /// four columns of a transformation matrix
-    pub transform: [[f32; 4]; 4],
+    /// four columns of an affine transformation matrix
+    pub transform: [[f32; 3]; 4],
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

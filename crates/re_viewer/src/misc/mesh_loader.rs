@@ -70,7 +70,12 @@ impl CpuMesh {
         let mut slf = Self::load_raw(name, *format, bytes)?;
 
         let [c0, c1, c2, c3] = *transform;
-        let root_transform = three_d::Mat4::from_cols(c0.into(), c1.into(), c2.into(), c3.into());
+        let root_transform = three_d::Mat4::from_cols(
+            three_d::Vec3::from(c0).extend(0.0),
+            three_d::Vec3::from(c1).extend(0.0),
+            three_d::Vec3::from(c2).extend(0.0),
+            three_d::Vec3::from(c3).extend(1.0),
+        );
         for mesh in &mut slf.meshes {
             mesh.transform(&root_transform)
                 .context("Bad object transform")?;
