@@ -519,9 +519,9 @@ impl Scene {
 
 fn axis_color(axis: usize) -> [u8; 4] {
     match axis {
-        0 => [255, 0, 0, 255],
-        1 => [0, 255, 0, 255],
-        2 => [0, 0, 255, 255],
+        0 => [255, 25, 25, 255],
+        1 => [0, 240, 0, 255],
+        2 => [80, 80, 255, 255],
         _ => unreachable!("Axis should be one of 0,1,2; got {axis}"),
     }
 }
