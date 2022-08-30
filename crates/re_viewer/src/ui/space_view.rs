@@ -467,7 +467,10 @@ pub(crate) fn ui_data(
         Data::Vec3([x, y, z]) => ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]")),
         Data::Box3(_) => ui.label("3D box"),
         Data::Mesh3D(_) => ui.label("3D mesh"),
-        Data::Camera(_) => ui.label("Camera"),
+        Data::Camera(cam) => match preview {
+            Preview::Small | Preview::Specific(_) => ui.label("Camera"),
+            Preview::Medium => ui_camera(ui, cam),
+        },
 
         Data::Tensor(tensor) => {
             let egui_image = ctx.cache.image.get(msg_id, tensor);
@@ -515,4 +518,65 @@ pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Respon
         data_vec.len(),
         data_vec.element_data_type(),
     ))
+}
+
+fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
+    let Camera {
+        rotation,
+        position,
+        camera_space_convention,
+        intrinsics,
+        resolution,
+    } = cam;
+    ui.vertical(|ui| {
+        ui.label("Camera");
+        ui.indent("camera", |ui| {
+            egui::Grid::new("camera")
+                .striped(true)
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("rotation");
+                    ui.monospace(format!("{rotation:?}"));
+                    ui.end_row();
+
+                    ui.label("position");
+                    ui.monospace(format!("{position:?}"));
+                    ui.end_row();
+
+                    ui.label("camera_space_convention");
+                    ui.monospace(format!("{camera_space_convention:?}"));
+                    ui.end_row();
+
+                    ui.label("intrinsics");
+                    if let Some(intrinsics) = intrinsics {
+                        ui_intrinsics(ui, intrinsics);
+                    }
+                    ui.end_row();
+
+                    ui.label("resolution");
+                    ui.monospace(format!("{resolution:?}"));
+                    ui.end_row();
+                });
+        });
+    })
+    .response
+}
+
+fn ui_intrinsics(ui: &mut egui::Ui, intrinsics: &[[f32; 3]; 3]) {
+    egui::Grid::new("intrinsics").num_columns(3).show(ui, |ui| {
+        ui.monospace(intrinsics[0][0].to_string());
+        ui.monospace(intrinsics[1][0].to_string());
+        ui.monospace(intrinsics[2][0].to_string());
+        ui.end_row();
+
+        ui.monospace(intrinsics[0][1].to_string());
+        ui.monospace(intrinsics[1][1].to_string());
+        ui.monospace(intrinsics[2][1].to_string());
+        ui.end_row();
+
+        ui.monospace(intrinsics[0][2].to_string());
+        ui.monospace(intrinsics[1][2].to_string());
+        ui.monospace(intrinsics[2][2].to_string());
+        ui.end_row();
+    });
 }
