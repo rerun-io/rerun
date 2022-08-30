@@ -4,15 +4,19 @@ use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
 pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 
-/// We use X=right, Y=up, Z=back.
+/// An eye in a 3D view.
+///
+/// Note: we prefer the word "eye" to not confuse it with logged cameras.
+///
+/// Our view-space uses X=right, Y=up, Z=back.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct Camera {
+pub struct Eye {
     pub world_from_view: IsoTransform,
     pub fov_y: f32,
 }
 
-impl Camera {
-    pub fn from_camera_data(cam: &re_log_types::Camera) -> Camera {
+impl Eye {
+    pub fn from_camera(cam: &re_log_types::Camera) -> Eye {
         let fov_y = if let (Some(intrinsis), Some([_w, h])) = (cam.intrinsics, cam.resolution) {
             2.0 * (0.5 * h / intrinsis[1][1]).atan()
         } else {
@@ -57,7 +61,7 @@ impl Camera {
             .rotation()
             .slerp(other.world_from_view.rotation(), t);
         let fov_y = egui::lerp(self.fov_y..=other.fov_y, t);
-        Camera {
+        Eye {
             world_from_view: IsoTransform::from_rotation_translation(rotation, translation),
             fov_y,
         }
@@ -66,28 +70,29 @@ impl Camera {
 
 // ----------------------------------------------------------------------------
 
+/// Note: we use "eye" so we don't confuse this with logged camera.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
-pub struct OrbitCamera {
-    pub center: Vec3,
-    pub radius: f32,
+pub struct OrbitEye {
+    pub orbit_center: Vec3,
+    pub orbit_radius: f32,
     pub world_from_view_rot: Quat,
     pub fov_y: f32,
     /// Zero = no up (3dof rotation)
     pub up: Vec3,
 
-    /// For controlling the camera with WSAD in a smooth way.
+    /// For controlling the eye with WSAD in a smooth way.
     pub velocity: Vec3,
 }
 
-impl OrbitCamera {
+impl OrbitEye {
     const MAX_PITCH: f32 = 0.999 * 0.25 * std::f32::consts::TAU;
 
     pub fn position(&self) -> Vec3 {
-        self.center + self.world_from_view_rot * vec3(0.0, 0.0, self.radius)
+        self.orbit_center + self.world_from_view_rot * vec3(0.0, 0.0, self.orbit_radius)
     }
 
-    pub fn to_camera(self) -> Camera {
-        Camera {
+    pub fn to_eye(self) -> Eye {
+        Eye {
             world_from_view: IsoTransform::from_rotation_translation(
                 self.world_from_view_rot,
                 self.position(),
@@ -96,21 +101,21 @@ impl OrbitCamera {
         }
     }
 
-    /// Create an [`OrbitCamera`] from a [`Camera`].
-    pub fn copy_from_camera(&mut self, camera: &Camera) {
+    /// Create an [`OrbitEye`] from a [`Eye`].
+    pub fn copy_from_eye(&mut self, eye: &Eye) {
         // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
-        let distance = camera.forward().dot(self.center - camera.pos());
-        self.radius = distance.at_least(self.radius / 5.0);
-        self.center = camera.pos() + self.radius * camera.forward();
-        self.world_from_view_rot = camera.world_from_view.rotation();
-        self.fov_y = camera.fov_y;
+        let distance = eye.forward().dot(self.orbit_center - eye.pos());
+        self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
+        self.orbit_center = eye.pos() + self.orbit_radius * eye.forward();
+        self.world_from_view_rot = eye.world_from_view.rotation();
+        self.fov_y = eye.fov_y;
         self.velocity = Vec3::ZERO;
     }
 
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
         Self {
-            center: self.center.lerp(other.center, t),
-            radius: lerp(self.radius..=other.radius, t),
+            orbit_center: self.orbit_center.lerp(other.orbit_center, t),
+            orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
             world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
             fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
             up: self.up.lerp(other.up, t).normalize_or_zero(),
@@ -186,7 +191,7 @@ impl OrbitCamera {
 
             let factor = input.zoom_delta() * (input.scroll_delta.y / 200.0).exp();
             if factor != 1.0 {
-                self.radius /= factor;
+                self.orbit_radius /= factor;
                 did_interact = true;
             }
         }
@@ -194,7 +199,7 @@ impl OrbitCamera {
         did_interact
     }
 
-    /// Listen to WSAD and QE to move camera
+    /// Listen to WSAD and QE to move the eye.
     fn keyboard_navigation(&mut self, egui_ctx: &egui::Context) {
         let input = egui_ctx.input();
         let dt = input.stable_dt.at_most(0.1);
@@ -209,7 +214,7 @@ impl OrbitCamera {
         local_movement.y += input.key_down(egui::Key::E) as i32 as f32;
         local_movement = local_movement.normalize_or_zero();
 
-        let speed = self.radius
+        let speed = self.orbit_radius
             * (if input.modifiers.shift { 10.0 } else { 1.0 })
             * (if input.modifiers.ctrl { 0.1 } else { 1.0 });
         let world_movement = self.world_from_view_rot * (speed * local_movement);
@@ -218,7 +223,7 @@ impl OrbitCamera {
             self.velocity..=world_movement,
             egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
         );
-        self.center += self.velocity * dt;
+        self.orbit_center += self.velocity * dt;
 
         drop(input); // avoid deadlock on request_repaint
         if local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed {
@@ -261,19 +266,19 @@ impl OrbitCamera {
         let rot_delta = Quat::from_rotation_z(delta_angle);
         self.world_from_view_rot *= rot_delta;
 
-        self.up = Vec3::ZERO; // forget about this until user resets camera
+        self.up = Vec3::ZERO; // forget about this until user resets the eye
     }
 
     /// Translate based on a certain number of pixel delta.
     fn translate(&mut self, delta: egui::Vec2) {
-        let delta = delta * self.radius * 0.001; // TODO(emilk): take fov and screen size into account?
+        let delta = delta * self.orbit_radius * 0.001; // TODO(emilk): take fov and screen size into account?
 
         let up = self.world_from_view_rot * Vec3::Y;
         let right = self.world_from_view_rot * -Vec3::X; // TODO(emilk): why do we need a negation here? O.o
 
         let translate = delta.x * right + delta.y * up;
 
-        self.center += translate;
+        self.orbit_center += translate;
     }
 }
 

@@ -10,7 +10,7 @@ use crate::{
     math::line_segment_distance_sq_to_point_2d, misc::mesh_loader::CpuMesh, misc::ViewerContext,
 };
 
-use super::camera::Camera;
+use super::eye::Eye;
 
 pub struct Point {
     pub obj_path_hash: ObjPathHash,
@@ -56,7 +56,7 @@ impl Scene {
         ctx: &mut ViewerContext<'_>,
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
-        camera: &Camera,
+        eye: &Eye,
         hovered_obj: Option<&ObjPath>,
         objects: &re_data_store::Objects<'_>,
     ) -> Self {
@@ -101,12 +101,12 @@ impl Scene {
             (0.3 * (viewport_area / (objects.point3d.len() + 1) as f32).sqrt()).clamp(0.1, 5.0);
 
         // Size of a pixel (in meters), when projected out one meter:
-        let point_size_at_one_meter = camera.fov_y / viewport_size.y;
+        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
 
         let point_radius_from_distance = point_radius_in_points * point_size_at_one_meter;
         let line_radius_from_distance = line_radius_in_points * point_size_at_one_meter;
 
-        let camera_plane = macaw::Plane3::from_normal_point(camera.forward(), camera.pos());
+        let eye_camera_plane = macaw::Plane3::from_normal_point(eye.forward(), eye.pos());
 
         let mut scene = Scene {
             point_radius_from_distance,
@@ -120,8 +120,8 @@ impl Scene {
             for (props, obj) in objects.point3d.iter() {
                 let re_data_store::Point3D { pos, radius } = *obj;
 
-                let dist_to_camera = camera_plane.distance(Vec3::from(*pos));
-                let radius = radius.unwrap_or(dist_to_camera * point_radius_from_distance);
+                let dist_to_eye = eye_camera_plane.distance(Vec3::from(*pos));
+                let radius = radius.unwrap_or(dist_to_eye * point_radius_from_distance);
                 let radius = boost_size_on_hover(props, radius);
 
                 scene.points.push(Point {
@@ -139,9 +139,9 @@ impl Scene {
                 let re_data_store::Box3D { obb, stroke_width } = obj;
                 let line_radius = stroke_width.map_or_else(
                     || {
-                        let dist_to_camera =
-                            camera_plane.distance(glam::Vec3::from(obb.translation));
-                        dist_to_camera * line_radius_from_distance
+                        let dist_to_eye =
+                            eye_camera_plane.distance(glam::Vec3::from(obb.translation));
+                        dist_to_eye * line_radius_from_distance
                     },
                     |w| w / 2.0,
                 );
@@ -163,8 +163,8 @@ impl Scene {
                     || {
                         let bbox =
                             macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
-                        let dist_to_camera = camera_plane.distance(bbox.center());
-                        dist_to_camera * line_radius_from_distance
+                        let dist_to_eye = eye_camera_plane.distance(bbox.center());
+                        dist_to_eye * line_radius_from_distance
                     },
                     |w| w / 2.0,
                 );
@@ -198,8 +198,8 @@ impl Scene {
                     || {
                         let bbox =
                             macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
-                        let dist_to_camera = camera_plane.distance(bbox.center());
-                        dist_to_camera * line_radius_from_distance
+                        let dist_to_eye = eye_camera_plane.distance(bbox.center());
+                        dist_to_eye * line_radius_from_distance
                     },
                     |w| w / 2.0,
                 );
@@ -243,11 +243,11 @@ impl Scene {
 
                 let world_from_view = crate::misc::cam::world_from_view(camera);
 
-                let dist_to_camera = camera_plane.distance(world_from_view.translation());
+                let dist_to_eye = eye_camera_plane.distance(world_from_view.translation());
                 let color = object_color(ctx, props);
 
                 let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
-                let scale_based_on_distance = dist_to_camera * point_radius_from_distance * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
+                let scale_based_on_distance = dist_to_eye * point_radius_from_distance * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
                 let scale = scale_based_on_scene_size.min(scale_based_on_distance);
                 let scale = boost_size_on_hover(props, scale);
 
@@ -277,7 +277,7 @@ impl Scene {
                 if ctx.options.show_camera_axes_in_3d {
                     let world_from_view = crate::misc::cam::world_from_view(camera);
                     let center = world_from_view.translation();
-                    let radius = dist_to_camera * line_radius_from_distance * 2.0;
+                    let radius = dist_to_eye * line_radius_from_distance * 2.0;
 
                     for (axis_index, dir) in camera
                         .camera_space_convention
@@ -297,7 +297,7 @@ impl Scene {
                     }
                 }
 
-                let line_radius = dist_to_camera * line_radius_from_distance;
+                let line_radius = dist_to_eye * line_radius_from_distance;
                 scene.add_camera_frustum(camera, scene_bbox, props.obj_path, line_radius, color);
             }
         }
@@ -414,16 +414,16 @@ impl Scene {
         &self,
         pointer_pos: egui::Pos2,
         rect: &egui::Rect,
-        camera: &Camera,
+        eye: &Eye,
     ) -> Option<(ObjPathHash, glam::Vec3)> {
         crate::profile_function!();
 
-        let screen_from_world = camera.screen_from_world(rect);
+        let screen_from_world = eye.screen_from_world(rect);
         let world_from_screen = screen_from_world.inverse();
         let ray_dir =
             world_from_screen.project_point3(Vec3::new(pointer_pos.x, pointer_pos.y, -1.0))
-                - camera.pos();
-        let ray_in_world = macaw::Ray3::from_origin_dir(camera.pos(), ray_dir.normalize());
+                - eye.pos();
+        let ray_in_world = macaw::Ray3::from_origin_dir(eye.pos(), ray_dir.normalize());
 
         let Self {
             points,

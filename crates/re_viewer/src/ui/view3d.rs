@@ -1,11 +1,11 @@
-mod camera;
+mod eye;
 mod mesh_cache;
 mod rendering;
 mod scene;
 
 pub use mesh_cache::CpuMeshCache;
 
-use camera::*;
+use eye::*;
 use rendering::*;
 use scene::*;
 
@@ -22,14 +22,15 @@ use crate::{
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State3D {
-    orbit_camera: Option<OrbitCamera>,
+    orbit_eye: Option<OrbitEye>,
 
     #[serde(skip)]
-    cam_interpolation: Option<CameraInterpolation>,
+    eye_interpolation: Option<EyeInterpolation>,
 
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
     hovered_obj_path: Option<ObjPath>,
+
     /// Where in world space the mouse is hovering (from previous frame)
     #[serde(skip)]
     hovered_point: Option<glam::Vec3>,
@@ -42,56 +43,56 @@ pub(crate) struct State3D {
     spin: bool,
     show_axes: bool,
 
-    last_cam_interact_time: f64,
+    last_eye_interact_time: f64,
 }
 
 impl Default for State3D {
     fn default() -> Self {
         Self {
-            orbit_camera: Default::default(),
-            cam_interpolation: Default::default(),
+            orbit_eye: Default::default(),
+            eye_interpolation: Default::default(),
             hovered_obj_path: Default::default(),
             hovered_point: Default::default(),
             scene_bbox: macaw::BoundingBox::nothing(),
             spin: false,
             show_axes: false,
-            last_cam_interact_time: f64::NEG_INFINITY,
+            last_eye_interact_time: f64::NEG_INFINITY,
         }
     }
 }
 
 impl State3D {
-    fn update_camera(
+    fn update_eye(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        tracking_camera: Option<Camera>,
+        tracking_camera: Option<Eye>,
         response: &egui::Response,
         space_specs: &SpaceSpecs,
-    ) -> &mut OrbitCamera {
+    ) -> &mut OrbitEye {
         if response.double_clicked() {
             // Reset camera
             if tracking_camera.is_some() {
                 ctx.rec_cfg.selection = Selection::None;
             }
-            self.interpolate_to_orbit_camera(default_camera(&self.scene_bbox, space_specs));
+            self.interpolate_to_orbit_eye(default_eye(&self.scene_bbox, space_specs));
         }
 
         if let Some(tracking_camera) = tracking_camera {
-            if let Some(cam_interpolation) = &mut self.cam_interpolation {
+            if let Some(cam_interpolation) = &mut self.eye_interpolation {
                 // Update interpolation target:
                 cam_interpolation.target_orbit = None;
-                if cam_interpolation.target_camera != Some(tracking_camera) {
-                    cam_interpolation.target_camera = Some(tracking_camera);
+                if cam_interpolation.target_eye != Some(tracking_camera) {
+                    cam_interpolation.target_eye = Some(tracking_camera);
                     response.ctx.request_repaint();
                 }
             } else {
-                self.interpolate_to_camera(tracking_camera);
+                self.interpolate_to_eye(tracking_camera);
             }
         }
 
         let orbit_camera = self
-            .orbit_camera
-            .get_or_insert_with(|| default_camera(&self.scene_bbox, space_specs));
+            .orbit_eye
+            .get_or_insert_with(|| default_eye(&self.scene_bbox, space_specs));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -101,7 +102,7 @@ impl State3D {
             response.ctx.request_repaint();
         }
 
-        if let Some(cam_interpolation) = &mut self.cam_interpolation {
+        if let Some(cam_interpolation) = &mut self.eye_interpolation {
             cam_interpolation.elapsed_time += response.ctx.input().stable_dt.at_most(0.1);
 
             let t = cam_interpolation.elapsed_time / cam_interpolation.target_time;
@@ -114,59 +115,58 @@ impl State3D {
 
             if let Some(target_orbit) = &cam_interpolation.target_orbit {
                 *orbit_camera = cam_interpolation.start.lerp(target_orbit, t);
-            } else if let Some(target_camera) = &cam_interpolation.target_camera {
-                let camera = cam_interpolation.start.to_camera().lerp(target_camera, t);
-                orbit_camera.copy_from_camera(&camera);
+            } else if let Some(target_camera) = &cam_interpolation.target_eye {
+                let camera = cam_interpolation.start.to_eye().lerp(target_camera, t);
+                orbit_camera.copy_from_eye(&camera);
             } else {
-                self.cam_interpolation = None;
+                self.eye_interpolation = None;
             }
         }
 
         orbit_camera
     }
 
-    fn interpolate_to_camera(&mut self, target: Camera) {
-        if let Some(start) = self.orbit_camera {
-            let target_time = CameraInterpolation::target_time(&start.to_camera(), &target);
-            self.cam_interpolation = Some(CameraInterpolation {
+    fn interpolate_to_eye(&mut self, target: Eye) {
+        if let Some(start) = self.orbit_eye {
+            let target_time = EyeInterpolation::target_time(&start.to_eye(), &target);
+            self.eye_interpolation = Some(EyeInterpolation {
                 elapsed_time: 0.0,
                 target_time,
                 start,
                 target_orbit: None,
-                target_camera: Some(target),
+                target_eye: Some(target),
             });
         } else {
             // self.orbit_camera = todo!()
         }
     }
 
-    fn interpolate_to_orbit_camera(&mut self, target: OrbitCamera) {
-        if let Some(start) = self.orbit_camera {
-            let target_time =
-                CameraInterpolation::target_time(&start.to_camera(), &target.to_camera());
-            self.cam_interpolation = Some(CameraInterpolation {
+    fn interpolate_to_orbit_eye(&mut self, target: OrbitEye) {
+        if let Some(start) = self.orbit_eye {
+            let target_time = EyeInterpolation::target_time(&start.to_eye(), &target.to_eye());
+            self.eye_interpolation = Some(EyeInterpolation {
                 elapsed_time: 0.0,
                 target_time,
                 start,
                 target_orbit: Some(target),
-                target_camera: None,
+                target_eye: None,
             });
         } else {
-            self.orbit_camera = Some(target);
+            self.orbit_eye = Some(target);
         }
     }
 }
 
-struct CameraInterpolation {
+struct EyeInterpolation {
     elapsed_time: f32,
     target_time: f32,
-    start: OrbitCamera,
-    target_orbit: Option<OrbitCamera>,
-    target_camera: Option<Camera>,
+    start: OrbitEye,
+    target_orbit: Option<OrbitEye>,
+    target_eye: Option<Eye>,
 }
 
-impl CameraInterpolation {
-    pub fn target_time(start: &Camera, stop: &Camera) -> f32 {
+impl EyeInterpolation {
+    pub fn target_time(start: &Eye, stop: &Eye) -> f32 {
         // Take more time if the rotation is big:
         let angle_difference = start
             .world_from_view
@@ -218,12 +218,12 @@ fn show_settings_ui(
         }
 
         if ui
-            .button("Reset camera")
+            .button("Reset view")
             .on_hover_text("You can also double-click the 3D view")
             .clicked()
         {
-            state.orbit_camera = Some(default_camera(&state.scene_bbox, space_specs));
-            state.cam_interpolation = None;
+            state.orbit_eye = Some(default_eye(&state.scene_bbox, space_specs));
+            state.eye_interpolation = None;
             // TODO(emilk): reset tracking camera too
         }
 
@@ -232,22 +232,22 @@ fn show_settings_ui(
             .on_hover_text("Show camera mesh");
 
         ui.toggle_value(&mut state.spin, "Spin")
-            .on_hover_text("Spin camera");
+            .on_hover_text("Spin view");
         ui.toggle_value(&mut state.show_axes, "Axes")
             .on_hover_text("Show X-Y-Z axes");
 
         crate::misc::help_hover_button(ui).on_hover_text(
             "Drag to rotate.\n\
             Drag with secondary mouse button to pan.\n\
-            Drag with middle mouse button to roll camera.\n\
+            Drag with middle mouse button to roll the view.\n\
             Scroll to zoom.\n\
             \n\
-            While hovering the 3D view, navigate camera with WSAD and QE.\n\
+            While hovering the 3D view, navigate with WSAD and QE.\n\
             CTRL slows down, SHIFT speeds up.\n\
             \n\
-            Click on a object to focus the camera on it.\n\
+            Click on a object to focus the view on it.\n\
             \n\
-            Double-click anywhere to reset camera.",
+            Double-click anywhere to reset the view.",
         );
     });
 }
@@ -272,10 +272,7 @@ impl SpaceSpecs {
 }
 
 /// If the path to a camera is selected, we follow that camera.
-fn tracking_camera(
-    ctx: &ViewerContext<'_>,
-    objects: &re_data_store::Objects<'_>,
-) -> Option<Camera> {
+fn tracking_camera(ctx: &ViewerContext<'_>, objects: &re_data_store::Objects<'_>) -> Option<Eye> {
     if let Selection::ObjPath(selected_obj_path) = &ctx.rec_cfg.selection {
         find_camera(objects, selected_obj_path)
     } else {
@@ -283,7 +280,7 @@ fn tracking_camera(
     }
 }
 
-fn find_camera(objects: &re_data_store::Objects<'_>, needle_obj_path: &ObjPath) -> Option<Camera> {
+fn find_camera(objects: &re_data_store::Objects<'_>, needle_obj_path: &ObjPath) -> Option<Eye> {
     let mut found_camera = None;
 
     for (props, camera) in objects.camera.iter() {
@@ -296,7 +293,7 @@ fn find_camera(objects: &re_data_store::Objects<'_>, needle_obj_path: &ObjPath) 
         }
     }
 
-    found_camera.map(Camera::from_camera_data)
+    found_camera.map(Eye::from_camera)
 }
 
 fn click_object(
@@ -308,13 +305,13 @@ fn click_object(
     ctx.rec_cfg.selection = crate::Selection::ObjPath(obj_path.clone());
 
     if let Some(camera) = find_camera(objects, obj_path) {
-        state.interpolate_to_camera(camera);
+        state.interpolate_to_eye(camera);
     } else if let Some(clicked_point) = state.hovered_point {
         // center camera on what we click on
-        if let Some(mut new_orbit_cam) = state.orbit_camera {
-            new_orbit_cam.radius = new_orbit_cam.position().distance(clicked_point);
-            new_orbit_cam.center = clicked_point;
-            state.interpolate_to_orbit_camera(new_orbit_cam);
+        if let Some(mut new_orbit_eye) = state.orbit_eye {
+            new_orbit_eye.orbit_radius = new_orbit_eye.position().distance(clicked_point);
+            new_orbit_eye.orbit_center = clicked_point;
+            state.interpolate_to_orbit_eye(new_orbit_eye);
         }
     }
 }
@@ -339,14 +336,14 @@ pub(crate) fn view_3d(
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     let tracking_camera = tracking_camera(ctx, objects);
-    let orbit_camera = state.update_camera(ctx, tracking_camera, &response, &space_specs);
+    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, &space_specs);
 
-    let did_interact_wth_camera = orbit_camera.interact(&response);
-    let orbit_camera = *orbit_camera;
-    let camera = orbit_camera.to_camera();
-    if did_interact_wth_camera {
-        state.last_cam_interact_time = ui.input().time;
-        state.cam_interpolation = None;
+    let did_interact_wth_eye = orbit_eye.interact(&response);
+    let orbit_eye = *orbit_eye;
+    let eye = orbit_eye.to_eye();
+    if did_interact_wth_eye {
+        state.last_eye_interact_time = ui.input().time;
+        state.eye_interpolation = None;
         if tracking_camera.is_some() {
             ctx.rec_cfg.selection = Selection::None;
         }
@@ -381,14 +378,14 @@ pub(crate) fn view_3d(
         ctx,
         &state.scene_bbox,
         rect.size(),
-        &camera,
+        &eye,
         hovered_obj_path.as_ref(),
         objects,
     );
 
     let hovered = response
         .hover_pos()
-        .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &camera));
+        .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &eye));
 
     if let Some((obj_path_hash, point)) = hovered {
         state.hovered_obj_path = ctx
@@ -402,23 +399,23 @@ pub(crate) fn view_3d(
         state.hovered_point = None;
     }
 
-    project_onto_other_spaces(ctx, state, space, &response, orbit_camera, objects);
-    show_projections_from_2d_space(ctx, objects, state, orbit_camera, &mut scene);
+    project_onto_other_spaces(ctx, state, space, &response, orbit_eye, objects);
+    show_projections_from_2d_space(ctx, objects, state, orbit_eye, &mut scene);
 
     {
-        let camera_center_alpha = egui::remap_clamp(
-            ui.input().time - state.last_cam_interact_time,
+        let orbit_center_alpha = egui::remap_clamp(
+            ui.input().time - state.last_eye_interact_time,
             0.0..=0.4,
             0.7..=0.0,
         ) as f32;
 
-        if camera_center_alpha > 0.0 {
+        if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
             scene.points.push(Point {
                 obj_path_hash: re_log_types::ObjPathHash::NONE,
-                pos: orbit_camera.center.to_array(),
-                radius: orbit_camera.radius * 0.01,
-                color: [255, 0, 255, (camera_center_alpha * 255.0) as u8],
+                pos: orbit_eye.orbit_center.to_array(),
+                radius: orbit_eye.orbit_radius * 0.01,
+                color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
             });
             ui.ctx().request_repaint(); // let it fade out
         }
@@ -431,8 +428,7 @@ pub(crate) fn view_3d(
         rect,
         callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
             with_three_d_context(painter.gl(), |rendering| {
-                paint_with_three_d(rendering, &camera, &info, &scene, dark_mode, show_axes)
-                    .unwrap();
+                paint_with_three_d(rendering, &eye, &info, &scene, dark_mode, show_axes).unwrap();
             });
         })),
     };
@@ -445,10 +441,10 @@ fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
     objects: &re_data_store::Objects<'_>,
     state: &mut State3D,
-    orbit_camera: OrbitCamera,
+    orbit_eye: OrbitEye,
     scene: &mut Scene,
 ) {
-    let eye_pos = orbit_camera.position();
+    let eye_pos = orbit_eye.position();
 
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space {
         for (_, cam) in objects.camera.iter() {
@@ -502,19 +498,19 @@ fn project_onto_other_spaces(
     state: &mut State3D,
     space: Option<&ObjPath>,
     response: &egui::Response,
-    orbit_camera: OrbitCamera,
+    orbit_eye: OrbitEye,
     objects: &re_data_store::Objects<'_>,
 ) {
     if let Some(pointer_pos) = response.hover_pos() {
         let world_ray = {
-            let camera = orbit_camera.to_camera();
-            let screen_from_world = camera.screen_from_world(&response.rect);
+            let eye = orbit_eye.to_eye();
+            let screen_from_world = eye.screen_from_world(&response.rect);
             let world_from_screen = screen_from_world.inverse();
-            let ray_origin = camera.pos();
+            let ray_origin = eye.pos();
             let ray_dir =
                 world_from_screen.project_point3(glam::vec3(pointer_pos.x, pointer_pos.y, 1.0))
                     - ray_origin;
-            Ray3::from_origin_dir(camera.pos(), ray_dir.normalize())
+            Ray3::from_origin_dir(ray_origin, ray_dir.normalize())
         };
 
         let mut target_spaces = vec![];
@@ -538,7 +534,7 @@ fn project_onto_other_spaces(
     }
 }
 
-fn default_camera(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> OrbitCamera {
+fn default_eye(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> OrbitEye {
     let mut center = scene_bbox.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
@@ -557,19 +553,19 @@ fn default_camera(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) ->
 
     // Look along the cardinal directions:
     let look_dir = vec3(1.0, 1.0, 1.0);
-    // Make sure the camera is looking down, but just slightly:
+    // Make sure the eye is looking down, but just slightly:
     let look_dir = look_dir + look_up * (-0.5 - look_dir.dot(look_up));
     let look_dir = look_dir.normalize();
 
-    let camera_pos = center - radius * look_dir;
+    let eye_pos = center - radius * look_dir;
 
-    OrbitCamera {
-        center,
-        radius,
+    OrbitEye {
+        orbit_center: center,
+        orbit_radius: radius,
         world_from_view_rot: Quat::from_affine3(
-            &Affine3A::look_at_rh(camera_pos, center, look_up).inverse(),
+            &Affine3A::look_at_rh(eye_pos, center, look_up).inverse(),
         ),
-        fov_y: camera::DEFAULT_FOV_Y,
+        fov_y: eye::DEFAULT_FOV_Y,
         up: space_spects.up,
         velocity: Vec3::ZERO,
     }

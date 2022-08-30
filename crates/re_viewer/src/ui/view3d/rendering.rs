@@ -1,6 +1,6 @@
 mod sphere_renderer;
 
-use super::{camera::Camera, mesh_cache::GpuMeshCache, scene::*};
+use super::{eye::Eye, mesh_cache::GpuMeshCache, scene::*};
 
 type LineMaterial = three_d::ColorMaterial;
 
@@ -309,7 +309,7 @@ fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances 
 
 pub fn paint_with_three_d(
     rendering: &mut RenderingContext,
-    camera: &Camera,
+    eye: &Eye,
     info: &egui::PaintCallbackInfo,
     scene: &Scene,
     dark_mode: bool,
@@ -337,17 +337,17 @@ pub fn paint_with_three_d(
     });
     three_d.set_blend(three_d::Blend::TRANSPARENCY);
 
-    let position = camera.world_from_view.translation();
-    let target = camera.world_from_view.transform_point3(-glam::Vec3::Z);
-    let up = camera.world_from_view.transform_vector3(glam::Vec3::Y);
-    let camera = Camera::new_perspective(
+    let position = eye.world_from_view.translation();
+    let target = eye.world_from_view.transform_point3(-glam::Vec3::Z);
+    let up = eye.world_from_view.transform_vector3(glam::Vec3::Y);
+    let three_d_camera = three_d::Camera::new_perspective(
         three_d,
         viewport,
         mint::Vector3::from(position).into(),
         mint::Vector3::from(target).into(),
         mint::Vector3::from(up).into(),
-        radians(camera.fov_y),
-        camera.near(),
+        radians(eye.fov_y),
+        eye.near(),
         1000.0, // TODO(emilk): infinity (https://github.com/rustgd/cgmath/pull/547)
     )?;
 
@@ -384,7 +384,7 @@ pub fn paint_with_three_d(
     rendering.gpu_scene.collect_objects(&mut objects);
 
     crate::profile_scope!("render_pass");
-    render_pass(&camera, &objects, lights)?;
+    render_pass(&three_d_camera, &objects, lights)?;
 
     Ok(())
 }
