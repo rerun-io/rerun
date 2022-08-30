@@ -180,11 +180,10 @@ class SimpleDepthCamera:
             - `depth_image_mm`: Depth image expressed in millimeters
         """
 
+        # Apply inverse of the intrinsics matrix:
         z = depth_image_mm.reshape(-1) / 1000.
-        x = (self.u_coords.reshape(-1).astype(float) -
-             self.u_center) * z / self.focal_length
-        y = (self.v_coords.reshape(-1).astype(float) -
-             self.v_center) * z / self.focal_length
+        x = (self.u_coords.reshape(-1).astype(float) - self.u_center) * z / self.focal_length
+        y = (self.v_coords.reshape(-1).astype(float) - self.v_center) * z / self.focal_length
 
         back_projected = np.vstack((x, y, z)).T
         return back_projected
