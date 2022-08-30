@@ -7,6 +7,7 @@ This repository contains the Rerun log SDK, server, and viewer.
 # For our users
 We don't have any pre-built binaries yet, so you need to build Rerun from source. There is some setup involved, but most of it should be pretty painless.
 
+## Setup
 First up, you need to install the Rust toolchain: https://rustup.rs/
 
 Then, setup the rest of the required tools by running `./scripts/setup.sh`.
@@ -20,18 +21,14 @@ cargo install --path ./crates/rerun/ --all-features
 
 You should now be able to run `rerun --help` in any terminal.
 
-## Installing the Rerun Python SDK
-
-First build it:
-```
-source crates/re_sdk_python/setup_env.sh
-maturin build -m ./crates/re_sdk_python/Cargo.toml --release
-```
-
-Now you can install `rerun_sdk` in any Python3 environment using:
+## Build and install the Rerun Python SDK
 
 ```
-pip3 install PATH_TO_RERUN_REPOSITORY/target/wheels/*.whl
+pip3 install "crates/re_sdk_python[tests,examples]"
+```
+### Run the example
+```sh
+python3 crates/re_sdk_python/example.py
 ```
 
 ### Using the Rerun Python SDK

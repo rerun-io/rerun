@@ -1,5 +1,0 @@
-maturin==0.13.1
-mypy==0.971
-numpy==1.23.1
-opencv-python==4.6.0.66
-pytest==7.1.2

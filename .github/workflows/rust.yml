@@ -117,7 +117,8 @@ jobs:
         with:
           python-version: "3.8"
           cache: "pip"
-      - run: pip install -r crates/re_sdk_python/requirements.txt
+          cache-dependency-path: "crates/re_sdk_python/requirements-build.txt"
+      - run: pip install -r crates/re_sdk_python/requirements-build.txt
       - name: Build wheels
         run: maturin build -m crates/re_sdk_python/Cargo.toml -o dist
 
