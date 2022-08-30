@@ -132,7 +132,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                     &time_point,
                     obj_path,
                     "space",
-                    ObjPath::from("image"),
+                    Data::Space(ObjPath::from("image")),
                 ));
             }
 
@@ -165,7 +165,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                         &time_point,
                         obj_path,
                         "space",
-                        Data::Space(ObjPath::from("depth_image")),
+                        Data::Space(ObjPath::from("image")),
                     ));
                 }
 
@@ -219,7 +219,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                             camera_space_convention: CameraSpaceConvention::XRightYDownZFwd,
                             intrinsics: Some(intrinsics.to_cols_array_2d()),
                             resolution: Some([w as _, h as _]),
-                            target_space: Some(ObjPath::from("depth_image")),
+                            target_space: Some(ObjPath::from("image")),
                         }),
                     ));
                     logger.log(data_msg(
