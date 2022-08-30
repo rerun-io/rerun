@@ -11,10 +11,13 @@ use scene::*;
 
 use egui::NumExt as _;
 use glam::Affine3A;
-use macaw::{vec3, Quat, Vec3};
-use re_log_types::ObjPath;
+use macaw::{vec3, Quat, Ray3, Vec3};
+use re_log_types::{ObjPath, ObjPathHash};
 
-use crate::{misc::Selection, ViewerContext};
+use crate::{
+    misc::{HoveredSpace, Selection},
+    ViewerContext,
+};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -316,13 +319,13 @@ fn click_object(
     }
 }
 
-pub(crate) fn combined_view_3d(
+pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State3D,
     space: Option<&ObjPath>,
     objects: &re_data_store::Objects<'_>,
-) {
+) -> egui::Response {
     crate::profile_function!();
 
     state.scene_bbox = state.scene_bbox.union(crate::misc::calc_bbox_3d(objects));
@@ -399,6 +402,9 @@ pub(crate) fn combined_view_3d(
         state.hovered_point = None;
     }
 
+    project_onto_other_spaces(ctx, state, space, &response, orbit_camera, objects);
+    show_projections_from_2d_space(ctx, objects, state, orbit_camera, &mut scene);
+
     {
         let camera_center_alpha = egui::remap_clamp(
             ui.input().time - state.last_cam_interact_time,
@@ -431,6 +437,105 @@ pub(crate) fn combined_view_3d(
         })),
     };
     ui.painter().add(callback);
+
+    response
+}
+
+fn show_projections_from_2d_space(
+    ctx: &mut ViewerContext<'_>,
+    objects: &re_data_store::Objects<'_>,
+    state: &mut State3D,
+    orbit_camera: OrbitCamera,
+    scene: &mut Scene,
+) {
+    let eye_pos = orbit_camera.position();
+
+    if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space {
+        for (_, cam) in objects.camera.iter() {
+            let cam = cam.camera;
+            if &cam.target_space == space_2d {
+                if let Some(ray) = crate::misc::cam::unproject_as_ray(cam, glam::vec2(pos.x, pos.y))
+                {
+                    // TODO(emilk): better visualization of a ray
+                    let mut hit_pos = None;
+                    if pos.z.is_finite() && pos.z > 0.0 {
+                        if let Some(world_from_pixel) = crate::misc::cam::world_from_pixel(cam) {
+                            let pos = world_from_pixel
+                                .transform_point3(glam::vec3(pos.x, pos.y, 1.0) * pos.z);
+                            hit_pos = Some(pos);
+                        }
+                    }
+                    let length = if let Some(hit_pos) = hit_pos {
+                        hit_pos.distance(Vec3::from_slice(&cam.position))
+                    } else {
+                        4.0 * state.scene_bbox.half_size().length() // should be long enough
+                    };
+                    let origin = ray.point_along(0.0);
+                    let end = ray.point_along(length);
+                    let distance =
+                        crate::math::line_segment_distance_to_point_3d([origin, end], eye_pos);
+                    let radius = 2.0 * scene.line_radius_from_distance * distance;
+                    scene.line_segments.push(LineSegments {
+                        obj_path_hash: ObjPathHash::NONE,
+                        segments: vec![[origin.into(), end.into()]],
+                        radius,
+                        color: [255; 4],
+                    });
+
+                    if let Some(pos) = hit_pos {
+                        // Show where the ray hits the depth map:
+                        scene.points.push(Point {
+                            obj_path_hash: ObjPathHash::NONE,
+                            pos: pos.into(),
+                            radius: radius * 3.0,
+                            color: [255; 4],
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn project_onto_other_spaces(
+    ctx: &mut ViewerContext<'_>,
+    state: &mut State3D,
+    space: Option<&ObjPath>,
+    response: &egui::Response,
+    orbit_camera: OrbitCamera,
+    objects: &re_data_store::Objects<'_>,
+) {
+    if let Some(pointer_pos) = response.hover_pos() {
+        let world_ray = {
+            let camera = orbit_camera.to_camera();
+            let screen_from_world = camera.screen_from_world(&response.rect);
+            let world_from_screen = screen_from_world.inverse();
+            let ray_origin = camera.pos();
+            let ray_dir =
+                world_from_screen.project_point3(glam::vec3(pointer_pos.x, pointer_pos.y, 1.0))
+                    - ray_origin;
+            Ray3::from_origin_dir(camera.pos(), ray_dir.normalize())
+        };
+
+        let mut target_spaces = vec![];
+        for (_, cam) in objects.camera.iter() {
+            let cam = cam.camera;
+            if let Some(target_space) = cam.target_space.clone() {
+                let ray_in_2d = crate::misc::cam::pixel_from_world(cam)
+                    .map(|pixel_from_world| (pixel_from_world * world_ray).normalize());
+
+                let point_in_2d = state.hovered_point.and_then(|hovered_point| {
+                    crate::misc::cam::project_onto_2d(cam, hovered_point)
+                });
+
+                target_spaces.push((target_space, ray_in_2d, point_in_2d));
+            }
+        }
+        ctx.rec_cfg.hovered_space = HoveredSpace::ThreeD {
+            space_3d: space.cloned(),
+            target_spaces,
+        }
+    }
 }
 
 fn default_camera(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> OrbitCamera {

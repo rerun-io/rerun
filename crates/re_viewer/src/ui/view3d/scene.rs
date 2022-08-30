@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use egui::util::hash;
-use glam::{vec3, Mat4, Vec3};
+use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
 use re_log_types::{Box3, Mesh3D, ObjPath, ObjPathHash};
 
 use crate::{
-    math::line_segment_distance_sq_to_point, misc::mesh_loader::CpuMesh, misc::ViewerContext,
+    math::line_segment_distance_sq_to_point_2d, misc::mesh_loader::CpuMesh, misc::ViewerContext,
 };
 
 use super::camera::Camera;
@@ -44,6 +44,11 @@ pub struct Scene {
     pub points: Vec<Point>,
     pub line_segments: Vec<LineSegments>,
     pub meshes: Vec<MeshSource>,
+
+    /// Multiply this with the distance to a point to get its suggested radius.
+    pub point_radius_from_distance: f32,
+    /// Multiply this with the distance to a line to get its suggested radius.
+    pub line_radius_from_distance: f32,
 }
 
 impl Scene {
@@ -103,7 +108,11 @@ impl Scene {
 
         let camera_plane = macaw::Plane3::from_normal_point(camera.forward(), camera.pos());
 
-        let mut scene = Self::default();
+        let mut scene = Scene {
+            point_radius_from_distance,
+            line_radius_from_distance,
+            ..Default::default()
+        };
 
         {
             crate::profile_scope!("point3d");
@@ -232,7 +241,7 @@ impl Scene {
             for (props, obj) in objects.camera.iter() {
                 let re_data_store::Camera { camera } = *obj;
 
-                let world_from_view = crate::misc::world_from_view_from_cam(camera);
+                let world_from_view = crate::misc::cam::world_from_view(camera);
 
                 let dist_to_camera = camera_plane.distance(world_from_view.translation());
                 let color = object_color(ctx, props);
@@ -266,7 +275,7 @@ impl Scene {
                 }
 
                 if ctx.options.show_camera_axes_in_3d {
-                    let world_from_view = crate::misc::world_from_view_from_cam(camera);
+                    let world_from_view = crate::misc::cam::world_from_view(camera);
                     let center = world_from_view.translation();
                     let radius = dist_to_camera * line_radius_from_distance * 2.0;
 
@@ -305,15 +314,10 @@ impl Scene {
         line_radius: f32,
         color: [u8; 4],
     ) {
-        if let (Some(intrinsis), Some([w, h])) = (cam.intrinsics, cam.resolution) {
-            let world_from_view = crate::misc::world_from_view_from_cam(cam);
-
-            let intrinsis = glam::Mat3::from_cols_array_2d(&intrinsis);
-
-            // TODO(emilk): verify and clarify the coordinate systems! RHS, origin is what corner of image, etc.
-            let world_from_pixel = world_from_view
-                * Mat4::from_diagonal([1.0, 1.0, -1.0, 1.0].into()) // negative Z, because we use RHS
-                * Mat4::from_mat3(intrinsis.inverse());
+        if let (Some(world_from_pixel), Some([w, h])) =
+            (crate::misc::cam::world_from_pixel(cam), cam.resolution)
+        {
+            let world_from_view = crate::misc::cam::world_from_view(cam);
 
             // At what distance do we end the frustum?
             let d = scene_bbox.size().length() * 0.3;
@@ -425,6 +429,8 @@ impl Scene {
             points,
             line_segments,
             meshes,
+            point_radius_from_distance: _,
+            line_radius_from_distance: _,
         } = self;
 
         // in points
@@ -467,7 +473,7 @@ impl Scene {
                     for [a, b] in &line_segments.segments {
                         let a = screen_from_world.project_point3((*a).into());
                         let b = screen_from_world.project_point3((*b).into());
-                        let dist_sq = line_segment_distance_sq_to_point(
+                        let dist_sq = line_segment_distance_sq_to_point_2d(
                             [pos2(a.x, a.y), pos2(b.x, b.y)],
                             pointer_pos,
                         );

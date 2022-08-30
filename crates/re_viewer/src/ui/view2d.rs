@@ -1,8 +1,9 @@
+use eframe::emath::RectTransform;
 use egui::*;
 
 use re_log_types::*;
 
-use crate::{Selection, ViewerContext};
+use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -11,7 +12,7 @@ pub(crate) struct State2D {
     #[serde(skip)]
     hovered_obj: Option<ObjPath>,
 
-    /// Estimate of the the bounding box of all data. Accumulated.
+    /// Estimated bounding box of all data. Accumulated.
     #[serde(skip)]
     scene_bbox_accum: epaint::Rect,
 }
@@ -37,12 +38,13 @@ impl State2D {
 }
 
 /// messages: latest version of each object (of all spaces).
-pub(crate) fn combined_view_2d(
+pub(crate) fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State2D,
-    objects: &re_data_store::Objects<'_>,
-) {
+    space: Option<&ObjPath>,
+    objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
+) -> egui::Response {
     crate::profile_function!();
 
     state.scene_bbox_accum = state
@@ -83,11 +85,13 @@ pub(crate) fn combined_view_2d(
 
     // ------------------------------------------------------------------------
 
-    let to_screen = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
+    // Screen coordinates from space coordinates.
+    let screen_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
+    let space_from_screen = screen_from_space.inverse();
 
     // Paint background in case there is no image covering it all:
     let mut shapes = vec![Shape::rect_filled(
-        to_screen.transform_rect(scene_bbox),
+        screen_from_space.transform_rect(scene_bbox),
         3.0,
         ui.visuals().extreme_bg_color,
     )];
@@ -109,6 +113,8 @@ pub(crate) fn combined_view_2d(
         }
     };
 
+    let mut depths_at_pointer = vec![];
+
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
         let re_data_store::Image { tensor, meter } = obj;
         let paint_props =
@@ -123,7 +129,7 @@ pub(crate) fn combined_view_2d(
             .image
             .get(props.msg_id, tensor)
             .texture_id(ui.ctx());
-        let screen_rect = to_screen.transform_rect(Rect::from_min_size(
+        let screen_rect = screen_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
             vec2(tensor.shape[1] as _, tensor.shape[0] as _),
         ));
@@ -160,6 +166,17 @@ pub(crate) fn combined_view_2d(
                     pointer_pos,
                     *meter,
                 );
+
+                if let Some(meter) = *meter {
+                    let pixel_pos = space_from_screen.transform_pos(pointer_pos);
+                    if let Some(raw_value) =
+                        tensor.get(&[pixel_pos.y.round() as _, pixel_pos.x.round() as _])
+                    {
+                        let raw_value = raw_value.as_f64();
+                        let depth_in_meters = raw_value / meter as f64;
+                        depths_at_pointer.push(depth_in_meters);
+                    }
+                }
             }
         }
     }
@@ -179,7 +196,7 @@ pub(crate) fn combined_view_2d(
         );
 
         let screen_rect =
-            to_screen.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
+            screen_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
         let rounding = 2.0;
         shapes.push(Shape::rect_stroke(
             screen_rect,
@@ -242,14 +259,14 @@ pub(crate) fn combined_view_2d(
         let mut min_dist_sq = f32::INFINITY;
 
         for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
-            let a = to_screen.transform_pos(a);
-            let b = to_screen.transform_pos(b);
+            let a = screen_from_space.transform_pos(a);
+            let b = screen_from_space.transform_pos(b);
             shapes.push(Shape::line_segment([a, b], paint_props.bg_stroke));
             shapes.push(Shape::line_segment([a, b], paint_props.fg_stroke));
 
             if let Some(pointer_pos) = pointer_pos {
                 let line_segment_distance_sq =
-                    crate::math::line_segment_distance_sq_to_point([a, b], pointer_pos);
+                    crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos);
                 min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
             }
         }
@@ -265,7 +282,7 @@ pub(crate) fn combined_view_2d(
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
 
-        let screen_pos = to_screen.transform_pos(pos2(pos[0], pos[1]));
+        let screen_pos = screen_from_space.transform_pos(pos2(pos[0], pos[1]));
         shapes.push(Shape::circle_filled(
             screen_pos,
             radius + 1.0,
@@ -282,10 +299,104 @@ pub(crate) fn combined_view_2d(
         }
     }
 
+    // ------------------------------------------------------------------------
+
+    let depth_at_pointer = if depths_at_pointer.len() == 1 {
+        depths_at_pointer[0] as f32
+    } else {
+        f32::INFINITY
+    };
+    project_onto_other_spaces(ctx, space, &response, &space_from_screen, depth_at_pointer);
+    show_projections_from_3d_space(ctx, ui, space, &screen_from_space, &mut shapes);
+
+    // ------------------------------------------------------------------------
+
     painter.extend(shapes);
 
     state.hovered_obj = closest_obj_path;
+
+    response
 }
+
+// ------------------------------------------------------------------------
+
+fn project_onto_other_spaces(
+    ctx: &mut ViewerContext<'_>,
+    space: Option<&ObjPath>,
+    response: &Response,
+    space_from_screen: &RectTransform,
+    z: f32,
+) {
+    if let Some(pointer_in_screen) = response.hover_pos() {
+        let pointer_in_space = space_from_screen.transform_pos(pointer_in_screen);
+        ctx.rec_cfg.hovered_space = HoveredSpace::TwoD {
+            space_2d: space.cloned(),
+            pos: glam::vec3(pointer_in_space.x, pointer_in_space.y, z),
+        };
+    }
+}
+
+fn show_projections_from_3d_space(
+    ctx: &ViewerContext<'_>,
+    ui: &egui::Ui,
+    space: Option<&ObjPath>,
+    screen_from_space: &RectTransform,
+    shapes: &mut Vec<Shape>,
+) {
+    if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space {
+        for (space_2d, ray_2d, pos_2d) in target_spaces {
+            if Some(space_2d) == space {
+                if let Some(pos_2d) = pos_2d {
+                    // User is hovering a 2D point inside a 3D view.
+                    let screen_pos = screen_from_space.transform_pos(pos2(pos_2d.x, pos_2d.y));
+                    let radius = 4.0;
+                    shapes.push(Shape::circle_filled(
+                        screen_pos,
+                        radius + 2.0,
+                        Color32::BLACK,
+                    ));
+                    shapes.push(Shape::circle_filled(screen_pos, radius, Color32::WHITE));
+
+                    let text = format!("Depth: {:.3} m", pos_2d.z);
+                    let font_id = egui::TextStyle::Body.resolve(ui.style());
+                    let galley = ui.fonts().layout_no_wrap(text, font_id, Color32::WHITE);
+                    let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
+                        screen_pos + vec2(0.0, 5.0),
+                        galley.size(),
+                    ));
+                    shapes.push(Shape::rect_filled(
+                        rect,
+                        2.0,
+                        Color32::from_black_alpha(196),
+                    ));
+                    shapes.push(Shape::galley(rect.min, galley));
+                }
+
+                let show_ray = false; // This visualization is mostly confusing
+                if show_ray {
+                    if let Some(ray_2d) = ray_2d {
+                        // User is hovering a 3D view with a camera in it.
+                        // TODO(emilk): figure out a nice visualization here, or delete the code.
+                        let origin = ray_2d.origin;
+                        let end = ray_2d.point_along(10_000.0);
+
+                        let origin = pos2(origin.x / origin.z, origin.y / origin.z);
+                        let end = pos2(end.x / end.z, end.y / end.z);
+
+                        let origin = screen_from_space.transform_pos(origin);
+                        let end = screen_from_space.transform_pos(end);
+
+                        shapes.push(Shape::circle_filled(origin, 5.0, Color32::WHITE));
+                        shapes.push(Shape::line_segment([origin, end], (3.0, Color32::BLACK)));
+                        shapes.push(Shape::line_segment([origin, end], (2.0, Color32::WHITE)));
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ------------------------------------------------------------------------
 
 struct ObjectPaintProperties {
     is_hovered: bool,

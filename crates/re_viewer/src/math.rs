@@ -4,7 +4,7 @@ pub use egui::emath::{remap, remap_clamp, Rect};
 
 pub use macaw::BoundingBox;
 
-pub fn line_segment_distance_sq_to_point([a, b]: [Pos2; 2], p: Pos2) -> f32 {
+pub fn line_segment_distance_sq_to_point_2d([a, b]: [Pos2; 2], p: Pos2) -> f32 {
     let l2 = a.distance_sq(b);
     if l2 == 0.0 {
         a.distance_sq(p)
@@ -13,6 +13,21 @@ pub fn line_segment_distance_sq_to_point([a, b]: [Pos2; 2], p: Pos2) -> f32 {
         let projection = a + t * (b - a);
         p.distance_sq(projection)
     }
+}
+
+pub fn line_segment_distance_sq_to_point_3d([a, b]: [glam::Vec3; 2], p: glam::Vec3) -> f32 {
+    let l2 = a.distance_squared(b);
+    if l2 == 0.0 {
+        a.distance_squared(p)
+    } else {
+        let t = ((p - a).dot(b - a) / l2).clamp(0.0, 1.0);
+        let projection = a + t * (b - a);
+        p.distance_squared(projection)
+    }
+}
+
+pub fn line_segment_distance_to_point_3d([a, b]: [glam::Vec3; 2], p: glam::Vec3) -> f32 {
+    line_segment_distance_sq_to_point_3d([a, b], p).sqrt()
 }
 
 /// Returns the distance the ray traveled of the first intersection or `f32::INFINITY` on miss.

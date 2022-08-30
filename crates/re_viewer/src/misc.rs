@@ -182,23 +182,69 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
 
 // ----------------------------------------------------------------------------
 
-/// Rerun uses a RHS view-space with +X=right, +Y=up, -Z=fwd.
-/// This creates a transform from the Rerun view-space
-/// to the parent space of the camera.
-pub fn world_from_view_from_cam(cam: &re_log_types::Camera) -> macaw::IsoTransform {
+pub mod cam {
+    use super::*;
     use glam::*;
+    use macaw::Ray3;
 
-    let rotation = Quat::from_slice(&cam.rotation);
-    let translation = Vec3::from_slice(&cam.position);
+    /// Rerun uses a RHS view-space with +X=right, +Y=up, -Z=fwd.
+    /// This creates a transform from the Rerun view-space
+    /// to the parent space of the camera.
+    pub fn world_from_view(cam: &re_log_types::Camera) -> macaw::IsoTransform {
+        let rotation = Quat::from_slice(&cam.rotation);
+        let translation = Vec3::from_slice(&cam.position);
 
-    let rotation = match cam.camera_space_convention {
-        CameraSpaceConvention::XRightYUpZBack => {
-            rotation // same as the Rerun convention
-        }
-        CameraSpaceConvention::XRightYDownZFwd => {
-            rotation * Quat::from_rotation_x(std::f32::consts::TAU / 2.0)
-        }
-    };
+        let rotation = match cam.camera_space_convention {
+            CameraSpaceConvention::XRightYUpZBack => {
+                rotation // same as the Rerun convention
+            }
+            CameraSpaceConvention::XRightYDownZFwd => {
+                rotation * Quat::from_rotation_x(std::f32::consts::TAU / 2.0)
+            }
+        };
 
-    macaw::IsoTransform::from_rotation_translation(rotation, translation)
+        macaw::IsoTransform::from_rotation_translation(rotation, translation)
+    }
+
+    pub fn view_from_world(cam: &re_log_types::Camera) -> macaw::IsoTransform {
+        world_from_view(cam).inverse()
+    }
+
+    /// Projects pixel coordinates into world coordinates
+    pub fn world_from_pixel(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
+        cam.intrinsics.map(|intrinsics| {
+            let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics);
+            world_from_view(cam)
+                * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different.
+                * Affine3A::from_mat3(intrinsics.inverse())
+        })
+    }
+
+    /// Projects world coordinates onto 2D pixel coordinates
+    pub fn pixel_from_world(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
+        cam.intrinsics.map(|intrinsics| {
+            let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics);
+            Affine3A::from_mat3(intrinsics)
+            * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different.
+            * view_from_world(cam)
+        })
+    }
+
+    /// Returns x, y, and depth.
+    pub fn project_onto_2d(cam: &re_log_types::Camera, pos3d: Vec3) -> Option<Vec3> {
+        pixel_from_world(cam).map(|pixel_from_world| {
+            let point = pixel_from_world.transform_point3(pos3d);
+            vec3(point.x / point.z, point.y / point.z, point.z)
+        })
+    }
+
+    /// Unproject a 2D coordinate as a ray in 3D space
+    pub fn unproject_as_ray(cam: &re_log_types::Camera, pos2d: Vec2) -> Option<Ray3> {
+        world_from_pixel(cam).map(|world_from_pixel| {
+            let origin = Vec3::from_slice(&cam.position);
+            let stop = world_from_pixel.transform_point3(pos2d.extend(1.0));
+            let dir = (stop - origin).normalize();
+            Ray3::from_origin_dir(origin, dir)
+        })
+    }
 }

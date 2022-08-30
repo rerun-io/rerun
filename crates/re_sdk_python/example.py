@@ -43,7 +43,8 @@ def log_dummy_data(args):
                          rotation_q=sample.camera.rotation_q,
                          position=sample.camera.position,
                          camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
-                         space="projected_space")
+                         space="projected_space",
+                         target_space="2D")
 
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
@@ -179,11 +180,10 @@ class SimpleDepthCamera:
             - `depth_image_mm`: Depth image expressed in millimeters
         """
 
+        # Apply inverse of the intrinsics matrix:
         z = depth_image_mm.reshape(-1) / 1000.
-        x = (self.u_coords.reshape(-1).astype(float) -
-             self.u_center) * z / self.focal_length
-        y = (self.v_coords.reshape(-1).astype(float) -
-             self.v_center) * z / self.focal_length
+        x = (self.u_coords.reshape(-1).astype(float) - self.u_center) * z / self.focal_length
+        y = (self.v_coords.reshape(-1).astype(float) - self.v_center) * z / self.focal_length
 
         back_projected = np.vstack((x, y, z)).T
         return back_projected

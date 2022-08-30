@@ -42,6 +42,10 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
         ObjTypePath::from("points") / TypePathComp::Index,
         ObjectType::Point3D,
     ));
+    logger.log(TypeMsg::object_type(
+        ObjTypePath::from("camera"),
+        ObjectType::Camera,
+    ));
 
     configure_world_space(&logger);
     log_dataset_zip(path, &logger);
@@ -72,7 +76,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
     let mut depth_images_counter = 0;
     const DEPTH_IMAGE_INTERVAL: usize = 8;
 
-    let obj_path = obj_path_vec!("points", Index::Placeholder);
+    let points_obj_path = obj_path_vec!("points", Index::Placeholder);
 
     {
         // TODO(emilk): better way to do "forever and always"
@@ -80,7 +84,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
 
         logger.log(data_msg(
             &time_point,
-            obj_path.clone(),
+            points_obj_path.clone(),
             "space",
             LoggedData::BatchSplat(Data::Space(ObjPath::from("world"))),
         ));
@@ -88,7 +92,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
         // TODO(emilk): base color on depth?
         logger.log(data_msg(
             &time_point,
-            obj_path.clone(),
+            points_obj_path.clone(),
             "color",
             LoggedData::BatchSplat(Data::Color([255_u8; 4])),
         ));
@@ -128,7 +132,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                     &time_point,
                     obj_path,
                     "space",
-                    ObjPath::from("image"),
+                    Data::Space(ObjPath::from("image")),
                 ));
             }
 
@@ -138,6 +142,8 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                 let depth_image = image::load_from_memory(&file_contents)
                     .unwrap()
                     .into_luma16();
+
+                let meter = 1e4; // TODO(emilk): unit of the depth data = what?
 
                 {
                     let tensor = re_log_types::Tensor {
@@ -151,9 +157,15 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                     logger.log(data_msg(&time_point, obj_path.clone(), "tensor", tensor));
                     logger.log(data_msg(
                         &time_point,
+                        obj_path.clone(),
+                        "meter",
+                        Data::F32(meter),
+                    ));
+                    logger.log(data_msg(
+                        &time_point,
                         obj_path,
                         "space",
-                        ObjPath::from("depth_image"),
+                        Data::Space(ObjPath::from("image")),
                     ));
                 }
 
@@ -176,8 +188,9 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
                             continue; // unreliable!
                         }
 
-                        let depth = depth as f32 * 3e-5; // TODO(emilk): unit of the depth data = what?
-                        let pos = world_from_pixel * glam::Vec3::new(x as f32, y as f32, depth);
+                        let depth = depth as f32 / meter;
+                        let pos =
+                            world_from_pixel * glam::Vec3::new(x as f32, y as f32, 1.0) * depth;
 
                         indices.push(Index::Pixel([x as _, y as _]));
                         positions.push(pos.to_array());
@@ -186,13 +199,36 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
 
                 logger.log(data_msg(
                     &time_point,
-                    obj_path.clone(),
+                    points_obj_path.clone(),
                     "pos",
                     LoggedData::Batch {
                         indices: indices.clone(),
                         data: DataVec::Vec3(positions),
                     },
                 ));
+
+                {
+                    let obj_path = obj_path_vec!("camera");
+                    logger.log(data_msg(
+                        &time_point,
+                        obj_path.clone(),
+                        "camera",
+                        Data::Camera(Camera {
+                            rotation: [0.0, 0.0, 0.0, 1.0],
+                            position: [0.0, 0.0, 0.0],
+                            camera_space_convention: CameraSpaceConvention::XRightYDownZFwd,
+                            intrinsics: Some(intrinsics.to_cols_array_2d()),
+                            resolution: Some([w as _, h as _]),
+                            target_space: Some(ObjPath::from("image")),
+                        }),
+                    ));
+                    logger.log(data_msg(
+                        &time_point,
+                        obj_path.clone(),
+                        "space",
+                        Data::Space(ObjPath::from("world")),
+                    ));
+                }
             }
         }
     }

@@ -1,3 +1,4 @@
+use macaw::Ray3;
 use re_data_store::ObjTypePath;
 use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource, TimeValue};
 
@@ -133,6 +134,38 @@ impl<'a> ViewerContext<'a> {
 
 // ----------------------------------------------------------------------------
 
+#[derive(Clone, Default, Debug, PartialEq)]
+pub enum HoveredSpace {
+    #[default]
+    None,
+    /// Hovering in a 2D space.
+    TwoD {
+        space_2d: Option<ObjPath>,
+        /// Where in this 2D space (+ depth)?
+        pos: glam::Vec3,
+    },
+    /// Hovering in a 3D space.
+    ThreeD {
+        /// The 3D space with the camera(s)
+        space_3d: Option<ObjPath>,
+
+        /// 2D spaces and pixel coordinates (with Z=depth)
+        target_spaces: Vec<(ObjPath, Option<Ray3>, Option<glam::Vec3>)>,
+    },
+}
+
+impl HoveredSpace {
+    pub fn space(&self) -> Option<&ObjPath> {
+        match self {
+            Self::None => None,
+            Self::TwoD { space_2d, .. } => space_2d.as_ref(),
+            Self::ThreeD { space_3d, .. } => space_3d.as_ref(),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// UI config for the current recording (found in [`LogDb`]).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -154,6 +187,10 @@ pub(crate) struct RecordingConfig {
 
     /// So we only re-calculate `projected_object_properties` when it changes.
     individual_object_properties_last_frame: ObjectsProperties,
+
+    /// What space is the pointer hovering over?
+    #[serde(skip)]
+    pub hovered_space: HoveredSpace,
 }
 
 impl RecordingConfig {
