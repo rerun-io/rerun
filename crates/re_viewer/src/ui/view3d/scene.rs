@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::util::hash;
-use glam::{vec3, Mat4, Vec3};
+use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
 use re_log_types::{Box3, Mesh3D, ObjPath, ObjPathHash};

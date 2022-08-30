@@ -154,6 +154,16 @@ pub enum HoveredSpace {
     },
 }
 
+impl HoveredSpace {
+    pub fn space(&self) -> Option<&ObjPath> {
+        match self {
+            Self::None => None,
+            Self::TwoD { space_2d, .. } => space_2d.as_ref(),
+            Self::ThreeD { space_3d, .. } => space_3d.as_ref(),
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// UI config for the current recording (found in [`LogDb`]).

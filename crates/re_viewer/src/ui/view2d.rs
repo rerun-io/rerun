@@ -44,7 +44,7 @@ pub(crate) fn view_2d(
     state: &mut State2D,
     space: Option<&ObjPath>,
     objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
-) {
+) -> egui::Response {
     crate::profile_function!();
 
     state.scene_bbox_accum = state
@@ -295,6 +295,8 @@ pub(crate) fn view_2d(
     painter.extend(shapes);
 
     state.hovered_obj = closest_obj_path;
+
+    response
 }
 
 // ------------------------------------------------------------------------

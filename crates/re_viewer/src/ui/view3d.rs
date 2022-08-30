@@ -325,7 +325,7 @@ pub(crate) fn view_3d(
     state: &mut State3D,
     space: Option<&ObjPath>,
     objects: &re_data_store::Objects<'_>,
-) {
+) -> egui::Response {
     crate::profile_function!();
 
     state.scene_bbox = state.scene_bbox.union(crate::misc::calc_bbox_3d(objects));
@@ -437,6 +437,8 @@ pub(crate) fn view_3d(
         })),
     };
     ui.painter().add(callback);
+
+    response
 }
 
 fn show_projections_from_2d_space(

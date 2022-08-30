@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use re_data_store::ObjectsBySpace;
 use re_log_types::*;
 
-use crate::{Preview, Selection, ViewerContext};
+use crate::{misc::HoveredSpace, Preview, Selection, ViewerContext};
 
 // ----------------------------------------------------------------------------
 
@@ -109,6 +109,9 @@ impl SpaceView {
                     }
                 });
                 self.show_space(ctx, &objects, selected_space.as_ref(), ui);
+                if ctx.rec_cfg.hovered_space.space() != selected_space.as_ref() {
+                    ctx.rec_cfg.hovered_space = HoveredSpace::None;
+                }
             }
         }
     }
@@ -183,12 +186,18 @@ impl SpaceView {
 
         if objects.has_any_3d() {
             let state_3d = self.state_3d.entry(space.cloned()).or_default();
-            crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
+            let response = crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
+            if !response.hovered() && ctx.rec_cfg.hovered_space.space() == space {
+                ctx.rec_cfg.hovered_space = HoveredSpace::None;
+            }
         }
 
         if objects.has_any_2d() {
             let state_2d = self.state_2d.entry(space.cloned()).or_default();
-            crate::view2d::view_2d(ctx, ui, state_2d, space, &objects);
+            let response = crate::view2d::view_2d(ctx, ui, state_2d, space, &objects);
+            if !response.hovered() && ctx.rec_cfg.hovered_space.space() == space {
+                ctx.rec_cfg.hovered_space = HoveredSpace::None;
+            }
         }
     }
 }
