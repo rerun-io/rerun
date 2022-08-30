@@ -4,13 +4,12 @@ script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path/.."
 
 
-
 if [[ $* == --skip-setup ]]
 then
   echo "Skipping setup_web.sh"
 else
   echo "Running setup_web.sh"
-    scripts/setup_web.sh
+  scripts/setup_web.sh
 fi
 
 CRATE_NAME="re_viewer"
