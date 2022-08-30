@@ -188,7 +188,7 @@ impl SpaceView {
 
         if objects.has_any_2d() {
             let state_2d = self.state_2d.entry(space.cloned()).or_default();
-            crate::view2d::view_2d(ctx, ui, state_2d, &objects);
+            crate::view2d::view_2d(ctx, ui, state_2d, space, &objects);
         }
     }
 }

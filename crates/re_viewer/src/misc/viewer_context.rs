@@ -133,6 +133,28 @@ impl<'a> ViewerContext<'a> {
 
 // ----------------------------------------------------------------------------
 
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
+pub enum HoveredSpace {
+    #[default]
+    None,
+    /// Hovering in a 2D space.
+    TwoD {
+        space_2d: Option<ObjPath>,
+        /// Where in this 2D space?
+        pos: egui::Pos2,
+    },
+    /// Hovering in a 3D space.
+    ThreeD {
+        /// The 3D space with the camera(s)
+        space_3d: Option<ObjPath>,
+
+        /// 2D spaces and pixel coordinates (with Z=depth)
+        target_spaces: Vec<(ObjPath, egui::Pos2)>,
+    },
+}
+
+// ----------------------------------------------------------------------------
+
 /// UI config for the current recording (found in [`LogDb`]).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -154,6 +176,10 @@ pub(crate) struct RecordingConfig {
 
     /// So we only re-calculate `projected_object_properties` when it changes.
     individual_object_properties_last_frame: ObjectsProperties,
+
+    /// What space is the pointer hovering over?
+    #[serde(skip)]
+    pub hovered_space: HoveredSpace,
 }
 
 impl RecordingConfig {

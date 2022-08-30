@@ -12,9 +12,12 @@ use scene::*;
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Vec3};
-use re_log_types::ObjPath;
+use re_log_types::{ObjPath, ObjPathHash};
 
-use crate::{misc::Selection, ViewerContext};
+use crate::{
+    misc::{HoveredSpace, Selection},
+    ViewerContext,
+};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -397,6 +400,41 @@ pub(crate) fn view_3d(
     } else {
         state.hovered_obj_path = None;
         state.hovered_point = None;
+    }
+
+    if let Some(hovered_point) = state.hovered_point {
+        let mut target_spaces = vec![];
+        for (_, cam) in objects.camera.iter() {
+            let cam = cam.camera;
+            if let Some(target_space) = cam.target_space.clone() {
+                if let Some(pos2d) = crate::misc::cam::project_onto_2d(cam, hovered_point) {
+                    target_spaces.push((target_space, pos2d));
+                }
+            }
+        }
+        ctx.rec_cfg.hovered_space = HoveredSpace::ThreeD {
+            space_3d: space.cloned(),
+            target_spaces,
+        }
+    }
+    if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space {
+        for (_, cam) in objects.camera.iter() {
+            let cam = cam.camera;
+            if &cam.target_space == space_2d {
+                if let Some(ray) = crate::misc::cam::unproject_as_ray(cam, glam::vec2(pos.x, pos.y))
+                {
+                    // TODO(emilk): better visualization of a ray
+                    let origin = ray.point_along(0.0);
+                    let end = ray.point_along(2.0); // TODO: distance
+                    scene.line_segments.push(LineSegments {
+                        obj_path_hash: ObjPathHash::NONE,
+                        segments: vec![[origin.into(), end.into()]],
+                        radius: 0.001, // TODO
+                        color: [255; 4],
+                    });
+                }
+            }
+        }
     }
 
     {

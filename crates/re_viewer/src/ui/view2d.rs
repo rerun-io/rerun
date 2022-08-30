@@ -2,7 +2,7 @@ use egui::*;
 
 use re_log_types::*;
 
-use crate::{Selection, ViewerContext};
+use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -41,6 +41,7 @@ pub(crate) fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State2D,
+    space: Option<&ObjPath>,
     objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
 ) {
     crate::profile_function!();
@@ -83,11 +84,12 @@ pub(crate) fn view_2d(
 
     // ------------------------------------------------------------------------
 
-    let to_screen = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
+    // Screen coordinates from space coordinates.
+    let screen_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
 
     // Paint background in case there is no image covering it all:
     let mut shapes = vec![Shape::rect_filled(
-        to_screen.transform_rect(scene_bbox),
+        screen_from_space.transform_rect(scene_bbox),
         3.0,
         ui.visuals().extreme_bg_color,
     )];
@@ -123,7 +125,7 @@ pub(crate) fn view_2d(
             .image
             .get(props.msg_id, tensor)
             .texture_id(ui.ctx());
-        let screen_rect = to_screen.transform_rect(Rect::from_min_size(
+        let screen_rect = screen_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
             vec2(tensor.shape[1] as _, tensor.shape[0] as _),
         ));
@@ -179,7 +181,7 @@ pub(crate) fn view_2d(
         );
 
         let screen_rect =
-            to_screen.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
+            screen_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
         let rounding = 2.0;
         shapes.push(Shape::rect_stroke(
             screen_rect,
@@ -242,8 +244,8 @@ pub(crate) fn view_2d(
         let mut min_dist_sq = f32::INFINITY;
 
         for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
-            let a = to_screen.transform_pos(a);
-            let b = to_screen.transform_pos(b);
+            let a = screen_from_space.transform_pos(a);
+            let b = screen_from_space.transform_pos(b);
             shapes.push(Shape::line_segment([a, b], paint_props.bg_stroke));
             shapes.push(Shape::line_segment([a, b], paint_props.fg_stroke));
 
@@ -265,7 +267,7 @@ pub(crate) fn view_2d(
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
 
-        let screen_pos = to_screen.transform_pos(pos2(pos[0], pos[1]));
+        let screen_pos = screen_from_space.transform_pos(pos2(pos[0], pos[1]));
         shapes.push(Shape::circle_filled(
             screen_pos,
             radius + 1.0,
@@ -281,6 +283,34 @@ pub(crate) fn view_2d(
             check_hovering(props.obj_path, screen_pos.distance(pointer_pos));
         }
     }
+
+    // ------------------------------------------------------------------------
+
+    if let Some(pointer_in_screen) = response.hover_pos() {
+        let space_from_screen = screen_from_space.inverse();
+        let pointer_in_space = space_from_screen.transform_pos(pointer_in_screen);
+        ctx.rec_cfg.hovered_space = HoveredSpace::TwoD {
+            space_2d: space.cloned(),
+            pos: pointer_in_space,
+        };
+    }
+
+    if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space {
+        for (space_2d, pos) in target_spaces {
+            if Some(space_2d) == space {
+                let screen_pos = screen_from_space.transform_pos(*pos);
+                let radius = 4.0;
+                shapes.push(Shape::circle_filled(
+                    screen_pos,
+                    radius + 2.0,
+                    Color32::BLACK,
+                ));
+                shapes.push(Shape::circle_filled(screen_pos, radius, Color32::WHITE));
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
 
     painter.extend(shapes);
 
