@@ -11,7 +11,7 @@ use scene::*;
 
 use egui::NumExt as _;
 use glam::Affine3A;
-use macaw::{vec3, Quat, Vec3};
+use macaw::{vec3, Quat, Ray3, Vec3};
 use re_log_types::{ObjPath, ObjPathHash};
 
 use crate::{
@@ -402,14 +402,32 @@ pub(crate) fn view_3d(
         state.hovered_point = None;
     }
 
-    if let Some(hovered_point) = state.hovered_point {
+    if let Some(pointer_pos) = response.hover_pos() {
+        let screen_from_world = orbit_camera.to_camera().screen_from_world(&response.rect);
+        let world_from_screen = screen_from_world.inverse();
+        let ray_origin = orbit_camera.center;
+        let ray_dir =
+            world_from_screen.project_point3(glam::vec3(pointer_pos.x, pointer_pos.y, 1.0))
+                - ray_origin;
+        let world_ray = Ray3::from_origin_dir(ray_origin, ray_dir.normalize());
+
         let mut target_spaces = vec![];
         for (_, cam) in objects.camera.iter() {
             let cam = cam.camera;
             if let Some(target_space) = cam.target_space.clone() {
-                if let Some(pos2d) = crate::misc::cam::project_onto_2d(cam, hovered_point) {
-                    target_spaces.push((target_space, pos2d));
-                }
+                let ray_in_2d = crate::misc::cam::pixel_from_world(cam).map(|pixel_from_world| {
+                    let origin = pixel_from_world.transform_point3(world_ray.origin);
+                    let origin = vec3(origin.x / origin.z, origin.y / origin.z, origin.z);
+                    let along = pixel_from_world.transform_point3(world_ray.point_along(1.0));
+                    let along = vec3(along.x / along.z, along.y / along.z, along.z);
+                    Ray3::from_origin_dir(origin, (along - origin).normalize())
+                });
+
+                let point_in_2d = state.hovered_point.and_then(|hovered_point| {
+                    crate::misc::cam::project_onto_2d(cam, hovered_point)
+                });
+
+                target_spaces.push((target_space, ray_in_2d, point_in_2d));
             }
         }
         ctx.rec_cfg.hovered_space = HoveredSpace::ThreeD {

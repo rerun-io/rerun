@@ -1,3 +1,4 @@
+use macaw::Ray3;
 use re_data_store::ObjTypePath;
 use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource, TimeValue};
 
@@ -133,7 +134,7 @@ impl<'a> ViewerContext<'a> {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub enum HoveredSpace {
     #[default]
     None,
@@ -149,7 +150,7 @@ pub enum HoveredSpace {
         space_3d: Option<ObjPath>,
 
         /// 2D spaces and pixel coordinates (with Z=depth)
-        target_spaces: Vec<(ObjPath, egui::Pos2)>,
+        target_spaces: Vec<(ObjPath, Option<Ray3>, Option<glam::Vec3>)>,
     },
 }
 

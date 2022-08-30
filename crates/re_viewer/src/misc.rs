@@ -184,7 +184,6 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
 
 pub mod cam {
     use super::*;
-    use egui::{pos2, Pos2};
     use glam::*;
     use macaw::Ray3;
 
@@ -212,30 +211,31 @@ pub mod cam {
     }
 
     /// Projects pixel coordinates into world coordinates
-    pub fn world_from_pixel(cam: &re_log_types::Camera) -> Option<glam::Mat4> {
+    pub fn world_from_pixel(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
         cam.intrinsics.map(|intrinsics| {
             // TODO(emilk): verify and clarify the coordinate systems! RHS, origin is what corner of image, etc.
             let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics);
             world_from_view(cam)
-                * Mat4::from_diagonal([1.0, -1.0, -1.0, 1.0].into()) // negate Y and Z here here because image space and view space are different.
-                * Mat4::from_mat3(intrinsics.inverse())
+                * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different.
+                * Affine3A::from_mat3(intrinsics.inverse())
         })
     }
 
     /// Projects world coordinates onto 2D pixel coordinates
-    pub fn pixel_from_world(cam: &re_log_types::Camera) -> Option<glam::Mat4> {
+    pub fn pixel_from_world(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
         cam.intrinsics.map(|intrinsics| {
             let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics);
-            Mat4::from_mat3(intrinsics)
-            * Mat4::from_diagonal([1.0, -1.0, -1.0, 1.0].into()) // negate Y and Z here here because image space and view space are different.
+            Affine3A::from_mat3(intrinsics)
+            * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different.
             * view_from_world(cam)
         })
     }
 
-    pub fn project_onto_2d(cam: &re_log_types::Camera, pos3d: Vec3) -> Option<Pos2> {
+    /// Returns x, y, and depth.
+    pub fn project_onto_2d(cam: &re_log_types::Camera, pos3d: Vec3) -> Option<Vec3> {
         pixel_from_world(cam).map(|pixel_from_world| {
-            let point = pixel_from_world.project_point3(pos3d);
-            pos2(point.x / point.z, point.y / point.z)
+            let point = pixel_from_world.transform_point3(pos3d);
+            vec3(point.x / point.z, point.y / point.z, point.z)
         })
     }
 
@@ -243,7 +243,7 @@ pub mod cam {
     pub fn unproject_as_ray(cam: &re_log_types::Camera, pos2d: Vec2) -> Option<Ray3> {
         world_from_pixel(cam).map(|world_from_pixel| {
             let origin = Vec3::from_slice(&cam.position);
-            let stop = world_from_pixel.project_point3(pos2d.extend(1.0));
+            let stop = world_from_pixel.transform_point3(pos2d.extend(1.0));
             let dir = (stop - origin).normalize();
             Ray3::from_origin_dir(origin, dir)
         })

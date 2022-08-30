@@ -296,16 +296,32 @@ pub(crate) fn view_2d(
     }
 
     if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space {
-        for (space_2d, pos) in target_spaces {
+        for (space_2d, ray, pos) in target_spaces {
             if Some(space_2d) == space {
-                let screen_pos = screen_from_space.transform_pos(*pos);
-                let radius = 4.0;
-                shapes.push(Shape::circle_filled(
-                    screen_pos,
-                    radius + 2.0,
-                    Color32::BLACK,
-                ));
-                shapes.push(Shape::circle_filled(screen_pos, radius, Color32::WHITE));
+                if let Some(pos) = pos {
+                    let screen_pos = screen_from_space.transform_pos(pos2(pos.x, pos.y));
+                    let radius = 4.0;
+                    shapes.push(Shape::circle_filled(
+                        screen_pos,
+                        radius + 2.0,
+                        Color32::BLACK,
+                    ));
+                    shapes.push(Shape::circle_filled(screen_pos, radius, Color32::WHITE));
+
+                    let text = format!("Depth: {:.3} m", pos.z);
+                    let font_id = egui::TextStyle::Body.resolve(ui.style());
+                    let galley = ui.fonts().layout_no_wrap(text, font_id, Color32::WHITE);
+                    let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
+                        screen_pos + vec2(0.0, 5.0),
+                        galley.size(),
+                    ));
+                    shapes.push(Shape::rect_filled(
+                        rect,
+                        2.0,
+                        Color32::from_black_alpha(196),
+                    ));
+                    shapes.push(Shape::galley(rect.min, galley));
+                }
             }
         }
     }
