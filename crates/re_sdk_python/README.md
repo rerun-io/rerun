@@ -43,7 +43,7 @@ Rerun can aslo be run in non-blocking mode with viewer and logger in different p
 
 In one terminal, start up a viewer with a server that the SDK can connect to:
 ```sh
-cargo run -p rerun
+cargo run -p rerun --release
 ```
 
 In a second terminal, run the example with the `--connect` option:
