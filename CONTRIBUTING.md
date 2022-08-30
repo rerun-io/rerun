@@ -33,7 +33,14 @@ You can use [bacon](https://github.com/Canop/bacon) to automatically check your 
 You can view higher log levels with `export RUST_LOG=debug` or `export RUST_LOG=trace`.
 
 
-## Style
+## Rust code
+
+### Libraries
+We use [`tracing`](https://crates.io/crates/tracing/) for logging.
+
+We use [`thiserrors`](https://crates.io/crates/thiserror) for errors in our libraries, and [`anyhow`](https://crates.io/crates/anyhow) for type-erased errors in applications.
+
+### Style
 We follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/about.html).
 
 We use `rust fmt` with default settings.
@@ -44,7 +51,12 @@ We format comments `// Like this`, and `//not like this`.
 
 When importing a `trait` to use it's trait methods, do this: `use Trait as _;`. That lets the reader know why you imported it, even though it seems unused.
 
-When intentionally ignoring a `Result`, prefer `foo().ok();` over `let _ = foo();`. The former shows what is happening, and will fail to compile if `foo:s` return type ever changes.
+When intentionally ignoring a `Result`, prefer `foo().ok();` over `let _ = foo();`. The former shows what is happening, and will fail to compile if `foo`:s return type ever changes.
+
+### Misc
+Use debug-formatting (`{:?}`) when logging strings in logs and error messages. This will surround the string with quotes and escape newlines, tabs, etc. For instance: `tracing::warn!("Unknown key: {key:?}");`.
+
+Use `re_error::format(err)` when displaying an error.
 
 ### Naming
 When in doubt, be explicit. BAD: `id`. GOOD: `msg_id`.
@@ -52,3 +64,23 @@ When in doubt, be explicit. BAD: `id`. GOOD: `msg_id`.
 Be terse when it doesn't hurt readability. BAD: `message_identifier`. GOOD: `msg_id`.
 
 Avoid negations in names. A lot of people struggle with double negations, so things like `non_blocking = false` and `if !non_blocking { … }` can become a source of confusion and will slow down most readers. So prefer `connected` over `disconnected`, `initialized` over `uninitialized` etc.
+
+#### Matrices
+We use column vectors, which means matrix multiplication is done as `M * v`, i.e. we read all matrix/vector operations right-to-left. We therefore name all transform matrices as `foo_from_bar`, for instance:
+
+```rust
+let point_in_world = world_from_view * point_in_view;
+```
+
+This means the name of the space matches up nicely, e.g.:
+
+```rust
+let projection_from_object = projection_from_view * view_from_world * world_from_object;
+```
+
+See <https://www.sebastiansylvan.com/post/matrix_naming_convention/> for motivation.
+
+For consistency, we use the same naming convention for other non-matrix transforms too. For instance, functions: `let screen = screen_from_world(world);`.
+
+#### Vectors vs points
+Vectors are directions with magnitudes. Points are positions.
