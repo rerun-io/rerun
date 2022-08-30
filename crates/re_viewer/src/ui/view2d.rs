@@ -1,3 +1,4 @@
+use eframe::emath::RectTransform;
 use egui::*;
 
 use re_log_types::*;
@@ -286,6 +287,24 @@ pub(crate) fn view_2d(
 
     // ------------------------------------------------------------------------
 
+    project_onto_other_spaces(ctx, space, &response, &screen_from_space);
+    show_projections_from_3d_space(ctx, ui, space, &screen_from_space, &mut shapes);
+
+    // ------------------------------------------------------------------------
+
+    painter.extend(shapes);
+
+    state.hovered_obj = closest_obj_path;
+}
+
+// ------------------------------------------------------------------------
+
+fn project_onto_other_spaces(
+    ctx: &mut ViewerContext<'_>,
+    space: Option<&ObjPath>,
+    response: &Response,
+    screen_from_space: &RectTransform,
+) {
     if let Some(pointer_in_screen) = response.hover_pos() {
         let space_from_screen = screen_from_space.inverse();
         let pointer_in_space = space_from_screen.transform_pos(pointer_in_screen);
@@ -294,12 +313,21 @@ pub(crate) fn view_2d(
             pos: pointer_in_space,
         };
     }
+}
 
+fn show_projections_from_3d_space(
+    ctx: &ViewerContext<'_>,
+    ui: &egui::Ui,
+    space: Option<&ObjPath>,
+    screen_from_space: &RectTransform,
+    shapes: &mut Vec<Shape>,
+) {
     if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space {
-        for (space_2d, ray, pos) in target_spaces {
+        for (space_2d, ray_2d, pos_2d) in target_spaces {
             if Some(space_2d) == space {
-                if let Some(pos) = pos {
-                    let screen_pos = screen_from_space.transform_pos(pos2(pos.x, pos.y));
+                if let Some(pos_2d) = pos_2d {
+                    // User is hovering a 2D point inside a 3D view.
+                    let screen_pos = screen_from_space.transform_pos(pos2(pos_2d.x, pos_2d.y));
                     let radius = 4.0;
                     shapes.push(Shape::circle_filled(
                         screen_pos,
@@ -308,7 +336,7 @@ pub(crate) fn view_2d(
                     ));
                     shapes.push(Shape::circle_filled(screen_pos, radius, Color32::WHITE));
 
-                    let text = format!("Depth: {:.3} m", pos.z);
+                    let text = format!("Depth: {:.3} m", pos_2d.z);
                     let font_id = egui::TextStyle::Body.resolve(ui.style());
                     let galley = ui.fonts().layout_no_wrap(text, font_id, Color32::WHITE);
                     let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
@@ -322,16 +350,32 @@ pub(crate) fn view_2d(
                     ));
                     shapes.push(Shape::galley(rect.min, galley));
                 }
+
+                let show_ray = false; // This visualization is mostly confusing
+                if show_ray {
+                    if let Some(ray_2d) = ray_2d {
+                        // User is hovering a 3D view with a camera in it.
+                        // TODO(emilk): figure out a nice visualization here, or delete the code.
+                        let origin = ray_2d.origin;
+                        let end = ray_2d.point_along(10_000.0);
+
+                        let origin = pos2(origin.x / origin.z, origin.y / origin.z);
+                        let end = pos2(end.x / end.z, end.y / end.z);
+
+                        let origin = screen_from_space.transform_pos(origin);
+                        let end = screen_from_space.transform_pos(end);
+
+                        shapes.push(Shape::circle_filled(origin, 5.0, Color32::WHITE));
+                        shapes.push(Shape::line_segment([origin, end], (3.0, Color32::BLACK)));
+                        shapes.push(Shape::line_segment([origin, end], (2.0, Color32::WHITE)));
+                    }
+                }
             }
         }
     }
-
-    // ------------------------------------------------------------------------
-
-    painter.extend(shapes);
-
-    state.hovered_obj = closest_obj_path;
 }
+
+// ------------------------------------------------------------------------
 
 struct ObjectPaintProperties {
     is_hovered: bool,
