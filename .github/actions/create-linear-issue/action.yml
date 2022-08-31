@@ -1,0 +1,10 @@
+name: "Create Linear Issue"
+description: "Create a Linear issue from a new Github issue."
+inputs:
+  linear-api-token:
+    description: "The API key for our Linear team"
+    required: true
+
+runs:
+  using: "node16"
+  main: "index.js"
