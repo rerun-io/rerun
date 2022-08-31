@@ -71,7 +71,9 @@ def show():
 
 def set_time_sequence(time_source: str, sequence: Optional[int]):
     """
-    Set the current time globally. Used for all subsequent logging,
+    Set the current time for this thread.
+
+    Used for all subsequent logging on the same thread,
     until the next call to `set_time_sequence`.
 
     For instance: `set_time_sequence("frame_nr", frame_nr)`.
@@ -83,7 +85,9 @@ def set_time_sequence(time_source: str, sequence: Optional[int]):
 
 def set_time_seconds(time_source: str, seconds: Optional[float]):
     """
-    Set the current time globally. Used for all subsequent logging,
+    Set the current time for this thread.
+
+    Used for all subsequent logging on the same thread,
     until the next call to `set_time_seconds`.
 
     For instance: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
@@ -100,7 +104,9 @@ def set_time_seconds(time_source: str, seconds: Optional[float]):
 
 def set_time_nanos(time_source: str, nanos: Optional[int]):
     """
-    Set the current time globally. Used for all subsequent logging,
+    Set the current time for this thread.
+
+    Used for all subsequent logging on the same thread,
     until the next call to `set_time_nanos`.
 
     For instance: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
@@ -120,7 +126,7 @@ def set_space_up(space: str, up: Sequence[float]):
 
     - space: The name of the space
     - up: The (x, y, z) values of the up-axis
-"""
+    """
     return rerun_rs.set_space_up(space, up)
 
 

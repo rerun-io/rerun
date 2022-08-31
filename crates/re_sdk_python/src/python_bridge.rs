@@ -9,11 +9,62 @@ use re_log_types::{LoggedData, *};
 
 use crate::sdk::Sdk;
 
+// ----------------------------------------------------------------------------
+
+/// Thread-local info
+#[derive(Default)]
+struct ThreadInfo {
+    /// The current time, which can be set by users.
+    time_point: TimePoint,
+}
+
+impl ThreadInfo {
+    pub fn thread_now() -> TimePoint {
+        Self::with(|ti| ti.now())
+    }
+
+    pub fn set_thread_time(time_source: TimeSource, time_value: Option<TimeValue>) {
+        Self::with(|ti| ti.set_time(time_source, time_value));
+    }
+
+    /// Get access to the thread-local [`ThreadInfo`].
+    fn with<R>(f: impl FnOnce(&mut ThreadInfo) -> R) -> R {
+        use std::cell::RefCell;
+        thread_local! {
+            static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None);
+        }
+
+        THREAD_INFO.with(|thread_info| {
+            let mut thread_info = thread_info.borrow_mut();
+            let thread_info = thread_info.get_or_insert_with(ThreadInfo::default);
+            f(thread_info)
+        })
+    }
+
+    fn now(&self) -> TimePoint {
+        let mut time_point = self.time_point.clone();
+        time_point.0.insert(
+            TimeSource::new("log_time", TimeType::Time),
+            Time::now().into(),
+        );
+        time_point
+    }
+
+    fn set_time(&mut self, time_source: TimeSource, time_value: Option<TimeValue>) {
+        if let Some(time_value) = time_value {
+            self.time_point.0.insert(time_source, time_value);
+        } else {
+            self.time_point.0.remove(&time_source);
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// The python module is called "rerun_sdk".
 #[pymodule]
 fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // Log to stdout (if you run with `RUST_LOG=debug`).
-    tracing_subscriber::fmt::init();
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
@@ -135,7 +186,7 @@ fn show() {
 /// You can remove a time source again using `set_time_sequence("frame_nr", None)`.
 #[pyfunction]
 fn set_time_sequence(time_source: &str, sequence: Option<i64>) {
-    Sdk::global().set_time(
+    ThreadInfo::set_thread_time(
         TimeSource::new(time_source, TimeType::Sequence),
         sequence.map(TimeValue::sequence),
     );
@@ -143,7 +194,7 @@ fn set_time_sequence(time_source: &str, sequence: Option<i64>) {
 
 #[pyfunction]
 fn set_time_seconds(time_source: &str, seconds: Option<f64>) {
-    Sdk::global().set_time(
+    ThreadInfo::set_thread_time(
         TimeSource::new(time_source, TimeType::Time),
         seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
     );
@@ -151,7 +202,7 @@ fn set_time_seconds(time_source: &str, seconds: Option<f64>) {
 
 #[pyfunction]
 fn set_time_nanos(time_source: &str, ns: Option<i64>) {
-    Sdk::global().set_time(
+    ThreadInfo::set_thread_time(
         TimeSource::new(time_source, TimeType::Time),
         ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
     );
@@ -165,7 +216,7 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) -> PyResult<()> {
     let space_obj_path = parse_obj_path(space_obj_path)?;
     sdk.register_type(space_obj_path.obj_type_path(), ObjectType::Space);
 
-    let time_point = sdk.now();
+    let time_point = ThreadInfo::thread_now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
@@ -233,7 +284,7 @@ fn log_camera(
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Camera);
 
-    let time_point = sdk.now();
+    let time_point = ThreadInfo::thread_now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
@@ -276,7 +327,7 @@ fn log_rect(
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
-    let time_point = sdk.now();
+    let time_point = ThreadInfo::thread_now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
@@ -366,7 +417,7 @@ fn log_points(
 
     let indices: Vec<_> = (0..num_pos).map(|i| Index::Sequence(i as _)).collect();
 
-    let time_point = sdk.now();
+    let time_point = ThreadInfo::thread_now();
 
     if !colors.is_empty() {
         let mut send_color = |data| {
@@ -469,7 +520,7 @@ fn log_path(
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Path3D);
 
-    let time_point = sdk.now();
+    let time_point = ThreadInfo::thread_now();
 
     let positions = pod_collect_to_vec(&vec_from_np_array(&positions));
 
@@ -556,7 +607,7 @@ fn log_line_segments(
     };
     sdk.register_type(obj_path.obj_type_path(), obj_type);
 
-    let time_point = sdk.now();
+    let time_point = ThreadInfo::thread_now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
@@ -643,7 +694,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
-    let time_point = sdk.now();
+    let time_point = ThreadInfo::thread_now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
@@ -736,7 +787,7 @@ fn log_mesh_file(
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
 
-    let time_point = sdk.now();
+    let time_point = ThreadInfo::thread_now();
 
     sdk.send(LogMsg::DataMsg(DataMsg {
         msg_id: MsgId::random(),
