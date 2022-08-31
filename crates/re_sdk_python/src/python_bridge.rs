@@ -65,6 +65,7 @@ impl ThreadInfo {
 #[pymodule]
 fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // Log to stdout (if you run with `RUST_LOG=debug`).
+    tracing_subscriber::fmt::init();
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
