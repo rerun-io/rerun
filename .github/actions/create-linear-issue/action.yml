@@ -4,6 +4,9 @@ inputs:
   linear-api-token:
     description: "The API key for our Linear team"
     required: true
+  linear-team-name:
+    description: "The name of the team in Linear to copy issues to"
+    required: true
 
 runs:
   using: "node16"

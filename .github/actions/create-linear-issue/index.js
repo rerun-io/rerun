@@ -5,7 +5,8 @@ const github = require('@actions/github');
 
 const createLinearIssue = async function (client, title, description, githubUrl) {
     const teams = await client.teams();
-    const team = teams.nodes.filter(team => team.name == "Rerun")[0];
+    const teamName = core.getInput('linear-team-name');
+    const team = teams.nodes.filter(team => team.name == teamName)[0];
 
     const extendedDescription = `
 **This issue is a copy of an issue created on Github**

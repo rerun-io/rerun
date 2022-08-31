@@ -19,3 +19,4 @@ jobs:
         uses: ./.github/actions/create-linear-issue
         with:
           linear-api-token: ${{ secrets.LINEAR_API_KEY }}
+          linear-team-name: ${{ secrets.LINEAR_ISSUE_INBOX_TEAM_NAME }}
