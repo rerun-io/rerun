@@ -64,9 +64,22 @@ def show():
 
     This only works if you have not called `connect`.
 
+    This will clear the logged data after showing it.
+
     NOTE: There is a bug which causes this function to only work once on some platforms.
     """
     return rerun_rs.show()
+
+
+def save(path: str):
+    """
+    Save previously logged data to a file.
+
+    This only works if you have not called `connect`.
+
+    This will clear the logged data after saving.
+    """
+    return rerun_rs.save(path)
 
 
 def set_time_sequence(time_source: str, sequence: Optional[int]):
