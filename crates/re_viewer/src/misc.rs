@@ -210,8 +210,8 @@ pub mod cam {
         world_from_view(cam).inverse()
     }
 
-    /// Projects pixel coordinates into world coordinates
-    pub fn world_from_pixel(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
+    /// Projects image coordinates into world coordinates
+    pub fn world_from_image(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
         cam.intrinsics.map(|intrinsics| {
             let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics);
             world_from_view(cam)
@@ -220,8 +220,8 @@ pub mod cam {
         })
     }
 
-    /// Projects world coordinates onto 2D pixel coordinates
-    pub fn pixel_from_world(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
+    /// Projects world coordinates onto 2D image coordinates
+    pub fn image_from_world(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
         cam.intrinsics.map(|intrinsics| {
             let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics);
             Affine3A::from_mat3(intrinsics)
@@ -230,17 +230,17 @@ pub mod cam {
         })
     }
 
-    /// Returns x, y, and depth.
+    /// Returns x, y, and depth in image coordiantes.
     pub fn project_onto_2d(cam: &re_log_types::Camera, pos3d: Vec3) -> Option<Vec3> {
-        pixel_from_world(cam).map(|pixel_from_world| {
+        image_from_world(cam).map(|pixel_from_world| {
             let point = pixel_from_world.transform_point3(pos3d);
             vec3(point.x / point.z, point.y / point.z, point.z)
         })
     }
 
-    /// Unproject a 2D coordinate as a ray in 3D space
+    /// Unproject a 2D image coordinate as a ray in 3D space
     pub fn unproject_as_ray(cam: &re_log_types::Camera, pos2d: Vec2) -> Option<Ray3> {
-        world_from_pixel(cam).map(|world_from_pixel| {
+        world_from_image(cam).map(|world_from_pixel| {
             let origin = Vec3::from_slice(&cam.position);
             let stop = world_from_pixel.transform_point3(pos2d.extend(1.0));
             let dir = (stop - origin).normalize();

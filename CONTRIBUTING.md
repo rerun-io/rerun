@@ -65,6 +65,17 @@ Be terse when it doesn't hurt readability. BAD: `message_identifier`. GOOD: `msg
 
 Avoid negations in names. A lot of people struggle with double negations, so things like `non_blocking = false` and `if !non_blocking { … }` can become a source of confusion and will slow down most readers. So prefer `connected` over `disconnected`, `initialized` over `uninitialized` etc.
 
+#### Spaces
+Points, vectors, rays etc all live in different _spaces_. Whenever there is room for ambiguity, we explicitly state which space something is in, e.g. with `ray_in_world`.
+
+Here are some of our standard spaces:
+
+* `ui`: coordinate system used by `egui`, measured in logical pixels ("points"), with origin in the top left
+* `image`: image pixel coordinates, possibly with an added z=depth
+* `space`: a user-defined space where they log stuff into
+* `world`: the common coordinate system of a 3D screen, usually same as `space`
+* `view`: X=right, Y=down, Z=back, origin = center of screen
+
 #### Matrices
 We use column vectors, which means matrix multiplication is done as `M * v`, i.e. we read all matrix/vector operations right-to-left. We therefore name all transform matrices as `foo_from_bar`, for instance:
 

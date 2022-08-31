@@ -106,7 +106,8 @@ impl Scene {
         let point_radius_from_distance = point_radius_in_points * point_size_at_one_meter;
         let line_radius_from_distance = line_radius_in_points * point_size_at_one_meter;
 
-        let eye_camera_plane = macaw::Plane3::from_normal_point(eye.forward(), eye.pos());
+        let eye_camera_plane =
+            macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
         let mut scene = Scene {
             point_radius_from_distance,
@@ -314,8 +315,8 @@ impl Scene {
         line_radius: f32,
         color: [u8; 4],
     ) {
-        if let (Some(world_from_pixel), Some([w, h])) =
-            (crate::misc::cam::world_from_pixel(cam), cam.resolution)
+        if let (Some(world_from_image), Some([w, h])) =
+            (crate::misc::cam::world_from_image(cam), cam.resolution)
         {
             let world_from_view = crate::misc::cam::world_from_view(cam);
 
@@ -323,16 +324,16 @@ impl Scene {
             let d = scene_bbox.size().length() * 0.3;
 
             let corners = [
-                world_from_pixel
+                world_from_image
                     .transform_point3(d * vec3(0.0, 0.0, 1.0))
                     .into(),
-                world_from_pixel
+                world_from_image
                     .transform_point3(d * vec3(0.0, h, 1.0))
                     .into(),
-                world_from_pixel
+                world_from_image
                     .transform_point3(d * vec3(w, h, 1.0))
                     .into(),
-                world_from_pixel
+                world_from_image
                     .transform_point3(d * vec3(w, 0.0, 1.0))
                     .into(),
             ];
@@ -412,18 +413,21 @@ impl Scene {
 
     pub fn picking(
         &self,
-        pointer_pos: egui::Pos2,
+        pointer_in_ui: egui::Pos2,
         rect: &egui::Rect,
         eye: &Eye,
     ) -> Option<(ObjPathHash, glam::Vec3)> {
         crate::profile_function!();
 
-        let screen_from_world = eye.screen_from_world(rect);
-        let world_from_screen = screen_from_world.inverse();
-        let ray_dir =
-            world_from_screen.project_point3(Vec3::new(pointer_pos.x, pointer_pos.y, -1.0))
-                - eye.pos();
-        let ray_in_world = macaw::Ray3::from_origin_dir(eye.pos(), ray_dir.normalize());
+        let ui_from_world = eye.ui_from_world(rect);
+        let world_from_ui = eye.world_from_ui(rect);
+
+        let ray_in_world = {
+            let ray_dir =
+                world_from_ui.project_point3(Vec3::new(pointer_in_ui.x, pointer_in_ui.y, -1.0))
+                    - eye.pos_in_world();
+            macaw::Ray3::from_origin_dir(eye.pos_in_world(), ray_dir.normalize())
+        };
 
         let Self {
             points,
@@ -446,13 +450,13 @@ impl Scene {
             for point in points {
                 if point.obj_path_hash != ObjPathHash::NONE {
                     // TODO(emilk): take point radius into account
-                    let screen_pos = screen_from_world.project_point3(point.pos.into());
-                    if screen_pos.z < 0.0 {
+                    let pos_in_ui = ui_from_world.project_point3(point.pos.into());
+                    if pos_in_ui.z < 0.0 {
                         continue; // TODO(emilk): don't we expect negative Z!? RHS etc
                     }
-                    let dist_sq = egui::pos2(screen_pos.x, screen_pos.y).distance_sq(pointer_pos);
+                    let dist_sq = egui::pos2(pos_in_ui.x, pos_in_ui.y).distance_sq(pointer_in_ui);
                     if dist_sq < max_side_dist_sq {
-                        let t = screen_pos.z.abs();
+                        let t = pos_in_ui.z.abs();
                         if t < closest_z || dist_sq < closest_side_dist_sq {
                             closest_z = t;
                             closest_side_dist_sq = dist_sq;
@@ -471,11 +475,11 @@ impl Scene {
                     use egui::pos2;
 
                     for [a, b] in &line_segments.segments {
-                        let a = screen_from_world.project_point3((*a).into());
-                        let b = screen_from_world.project_point3((*b).into());
+                        let a = ui_from_world.project_point3((*a).into());
+                        let b = ui_from_world.project_point3((*b).into());
                         let dist_sq = line_segment_distance_sq_to_point_2d(
                             [pos2(a.x, a.y), pos2(b.x, b.y)],
-                            pointer_pos,
+                            pointer_in_ui,
                         );
 
                         if dist_sq < max_side_dist_sq {
@@ -511,9 +515,9 @@ impl Scene {
         }
 
         if let Some(closest_obj_path_hash) = closest_obj_path_hash {
-            let closest_point = world_from_screen.project_point3(Vec3::new(
-                pointer_pos.x,
-                pointer_pos.y,
+            let closest_point = world_from_ui.project_point3(Vec3::new(
+                pointer_in_ui.x,
+                pointer_in_ui.y,
                 closest_z,
             ));
             Some((closest_obj_path_hash, closest_point))

@@ -86,12 +86,12 @@ pub(crate) fn view_2d(
     // ------------------------------------------------------------------------
 
     // Screen coordinates from space coordinates.
-    let screen_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
-    let space_from_screen = screen_from_space.inverse();
+    let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
+    let space_from_ui = ui_from_space.inverse();
 
     // Paint background in case there is no image covering it all:
     let mut shapes = vec![Shape::rect_filled(
-        screen_from_space.transform_rect(scene_bbox),
+        ui_from_space.transform_rect(scene_bbox),
         3.0,
         ui.visuals().extreme_bg_color,
     )];
@@ -129,7 +129,7 @@ pub(crate) fn view_2d(
             .image
             .get(props.msg_id, tensor)
             .texture_id(ui.ctx());
-        let screen_rect = screen_from_space.transform_rect(Rect::from_min_size(
+        let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
             vec2(tensor.shape[1] as _, tensor.shape[0] as _),
         ));
@@ -142,19 +142,19 @@ pub(crate) fn view_2d(
             1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
         };
         let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
-        shapes.push(egui::Shape::image(texture_id, screen_rect, uv, tint));
+        shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
 
         if paint_props.is_hovered {
-            shapes.push(Shape::rect_stroke(screen_rect, 0.0, paint_props.fg_stroke));
+            shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
         }
 
         if let Some(pointer_pos) = pointer_pos {
-            let dist = screen_rect.distance_sq_to_pos(pointer_pos).sqrt();
+            let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
             check_hovering(props.obj_path, dist);
 
             if Some(props.obj_path) == state.hovered_obj.as_ref()
-                && screen_rect.contains(pointer_pos)
+                && rect_in_ui.contains(pointer_pos)
             {
                 let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
                 response = crate::ui::context_panel::show_zoomed_image_region_tooltip(
@@ -162,15 +162,15 @@ pub(crate) fn view_2d(
                     response,
                     tensor,
                     dynamic_image,
-                    screen_rect,
+                    rect_in_ui,
                     pointer_pos,
                     *meter,
                 );
 
                 if let Some(meter) = *meter {
-                    let pixel_pos = space_from_screen.transform_pos(pointer_pos);
+                    let pos_in_image = space_from_ui.transform_pos(pointer_pos);
                     if let Some(raw_value) =
-                        tensor.get(&[pixel_pos.y.round() as _, pixel_pos.x.round() as _])
+                        tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
                     {
                         let raw_value = raw_value.as_f64();
                         let depth_in_meters = raw_value / meter as f64;
@@ -195,16 +195,16 @@ pub(crate) fn view_2d(
             stroke_width,
         );
 
-        let screen_rect =
-            screen_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
+        let rect_in_ui =
+            ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
         let rounding = 2.0;
         shapes.push(Shape::rect_stroke(
-            screen_rect,
+            rect_in_ui,
             rounding,
             paint_props.bg_stroke,
         ));
         shapes.push(Shape::rect_stroke(
-            screen_rect,
+            rect_in_ui,
             rounding,
             paint_props.fg_stroke,
         ));
@@ -212,11 +212,11 @@ pub(crate) fn view_2d(
         let mut hover_dist = f32::INFINITY;
 
         if let Some(pointer_pos) = pointer_pos {
-            hover_dist = screen_rect.signed_distance_to_pos(pointer_pos).abs();
+            hover_dist = rect_in_ui.signed_distance_to_pos(pointer_pos).abs();
         }
 
         if let Some(label) = label {
-            let shrunken_screen_rect = screen_rect.shrink(4.0);
+            let shrunken_screen_rect = rect_in_ui.shrink(4.0);
             let font_id = TextStyle::Body.resolve(ui.style());
             let galley = ui.fonts().layout(
                 (*label).to_owned(),
@@ -259,8 +259,8 @@ pub(crate) fn view_2d(
         let mut min_dist_sq = f32::INFINITY;
 
         for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
-            let a = screen_from_space.transform_pos(a);
-            let b = screen_from_space.transform_pos(b);
+            let a = ui_from_space.transform_pos(a);
+            let b = ui_from_space.transform_pos(b);
             shapes.push(Shape::line_segment([a, b], paint_props.bg_stroke));
             shapes.push(Shape::line_segment([a, b], paint_props.fg_stroke));
 
@@ -282,20 +282,20 @@ pub(crate) fn view_2d(
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
 
-        let screen_pos = screen_from_space.transform_pos(pos2(pos[0], pos[1]));
+        let pos_in_ui = ui_from_space.transform_pos(pos2(pos[0], pos[1]));
         shapes.push(Shape::circle_filled(
-            screen_pos,
+            pos_in_ui,
             radius + 1.0,
             paint_props.bg_stroke.color,
         ));
         shapes.push(Shape::circle_filled(
-            screen_pos,
+            pos_in_ui,
             radius,
             paint_props.fg_stroke.color,
         ));
 
         if let Some(pointer_pos) = pointer_pos {
-            check_hovering(props.obj_path, screen_pos.distance(pointer_pos));
+            check_hovering(props.obj_path, pos_in_ui.distance(pointer_pos));
         }
     }
 
@@ -306,8 +306,8 @@ pub(crate) fn view_2d(
     } else {
         f32::INFINITY
     };
-    project_onto_other_spaces(ctx, space, &response, &space_from_screen, depth_at_pointer);
-    show_projections_from_3d_space(ctx, ui, space, &screen_from_space, &mut shapes);
+    project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
+    show_projections_from_3d_space(ctx, ui, space, &ui_from_space, &mut shapes);
 
     // ------------------------------------------------------------------------
 
@@ -324,11 +324,11 @@ fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
     space: Option<&ObjPath>,
     response: &Response,
-    space_from_screen: &RectTransform,
+    space_from_ui: &RectTransform,
     z: f32,
 ) {
     if let Some(pointer_in_screen) = response.hover_pos() {
-        let pointer_in_space = space_from_screen.transform_pos(pointer_in_screen);
+        let pointer_in_space = space_from_ui.transform_pos(pointer_in_screen);
         ctx.rec_cfg.hovered_space = HoveredSpace::TwoD {
             space_2d: space.cloned(),
             pos: glam::vec3(pointer_in_space.x, pointer_in_space.y, z),
@@ -340,7 +340,7 @@ fn show_projections_from_3d_space(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     space: Option<&ObjPath>,
-    screen_from_space: &RectTransform,
+    ui_from_space: &RectTransform,
     shapes: &mut Vec<Shape>,
 ) {
     if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space {
@@ -348,20 +348,20 @@ fn show_projections_from_3d_space(
             if Some(space_2d) == space {
                 if let Some(pos_2d) = pos_2d {
                     // User is hovering a 2D point inside a 3D view.
-                    let screen_pos = screen_from_space.transform_pos(pos2(pos_2d.x, pos_2d.y));
+                    let pos_in_ui = ui_from_space.transform_pos(pos2(pos_2d.x, pos_2d.y));
                     let radius = 4.0;
                     shapes.push(Shape::circle_filled(
-                        screen_pos,
+                        pos_in_ui,
                         radius + 2.0,
                         Color32::BLACK,
                     ));
-                    shapes.push(Shape::circle_filled(screen_pos, radius, Color32::WHITE));
+                    shapes.push(Shape::circle_filled(pos_in_ui, radius, Color32::WHITE));
 
                     let text = format!("Depth: {:.3} m", pos_2d.z);
                     let font_id = egui::TextStyle::Body.resolve(ui.style());
                     let galley = ui.fonts().layout_no_wrap(text, font_id, Color32::WHITE);
                     let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
-                        screen_pos + vec2(0.0, 5.0),
+                        pos_in_ui + vec2(0.0, 5.0),
                         galley.size(),
                     ));
                     shapes.push(Shape::rect_filled(
@@ -383,8 +383,8 @@ fn show_projections_from_3d_space(
                         let origin = pos2(origin.x / origin.z, origin.y / origin.z);
                         let end = pos2(end.x / end.z, end.y / end.z);
 
-                        let origin = screen_from_space.transform_pos(origin);
-                        let end = screen_from_space.transform_pos(end);
+                        let origin = ui_from_space.transform_pos(origin);
+                        let end = ui_from_space.transform_pos(end);
 
                         shapes.push(Shape::circle_filled(origin, 5.0, Color32::WHITE));
                         shapes.push(Shape::line_segment([origin, end], (3.0, Color32::BLACK)));

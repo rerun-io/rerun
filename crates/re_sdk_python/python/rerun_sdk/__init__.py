@@ -197,11 +197,11 @@ def log_camera(obj_path: str,
                target_space: Optional[str] = None):
     """Log a perspective camera model.
 
-    `rotation_q`: array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
-    `position`: array with [x, y, z] position of the camera in world space.
-    `intrinsics`: row-major intrinsics matrix for projecting from camera space to pixel space
-    `resolution`: array with [width, height] image resolution in pixels.
-    `camera_space_convention`: The convention used for the orientation of the camera´s 3D coordinate system.
+    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
+    `position`: Array with [x, y, z] position of the camera in world space.
+    `intrinsics`: Row-major intrinsics matrix for projecting from camera space to image space
+    `resolution`: Array with [width, height] image resolution in pixels.
+    `camera_space_convention`: The convention used for the orientation of the camera's 3D coordinate system.
     `space`: The 3D space the camera is in. Will default to "3D".
     `target_space`: The 2D space that the camera projects into.
     """
@@ -339,7 +339,7 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, t
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
 
-    `transform` is an optional 4x4 transform matrix applied to the mesh.
+    `transform` is an optional 3x4 affine transform matrix applied to the mesh.
 
     Example:
     ```
@@ -347,8 +347,7 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, t
     transform=np.array([
         [1, 0, 0, 10],
         [0, 1, 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1]])
+        [0, 0, 1, 0]])
     ```
     """
     if transform is None:

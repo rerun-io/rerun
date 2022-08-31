@@ -34,8 +34,7 @@ impl Eye {
         0.01 // TODO(emilk)
     }
 
-    /// Screen coordinates are in points.
-    pub fn screen_from_world(&self, rect: &Rect) -> Mat4 {
+    pub fn ui_from_world(&self, rect: &Rect) -> Mat4 {
         let aspect_ratio = rect.width() / rect.height();
         Mat4::from_translation(vec3(rect.center().x, rect.center().y, 0.0))
             * Mat4::from_scale(0.5 * vec3(rect.width(), -rect.height(), 1.0))
@@ -43,11 +42,15 @@ impl Eye {
             * self.world_from_view.inverse()
     }
 
-    pub fn pos(&self) -> glam::Vec3 {
+    pub fn world_from_ui(&self, rect: &Rect) -> Mat4 {
+        self.ui_from_world(rect).inverse()
+    }
+
+    pub fn pos_in_world(&self) -> glam::Vec3 {
         self.world_from_view.translation()
     }
 
-    pub fn forward(&self) -> glam::Vec3 {
+    pub fn forward_in_world(&self) -> glam::Vec3 {
         self.world_from_view.rotation() * -Vec3::Z
     }
 
@@ -104,9 +107,11 @@ impl OrbitEye {
     /// Create an [`OrbitEye`] from a [`Eye`].
     pub fn copy_from_eye(&mut self, eye: &Eye) {
         // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
-        let distance = eye.forward().dot(self.orbit_center - eye.pos());
+        let distance = eye
+            .forward_in_world()
+            .dot(self.orbit_center - eye.pos_in_world());
         self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
-        self.orbit_center = eye.pos() + self.orbit_radius * eye.forward();
+        self.orbit_center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
         self.world_from_view_rot = eye.world_from_view.rotation();
         self.fov_y = eye.fov_y;
         self.velocity = Vec3::ZERO;

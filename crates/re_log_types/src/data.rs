@@ -385,23 +385,24 @@ pub type Quaternion = [f32; 4];
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Camera {
-    /// How is the camera rotated, compared to the parent space?
+    /// How is the camera rotated?
     ///
-    /// This transforms from the camera space to the parent space.
+    /// This transforms world-space from camera-space.
     ///
     /// The exact meaning of this depends on [`Self::camera_space_convention`].
     /// For instance, using [`CameraSpaceConvention::XRightYDownZFwd`],
     /// [`Self::rotation`] rotates the +Z axis so that it points in the direction
-    /// the camera is facing.
+    /// the camera is facing in world space.
     pub rotation: Quaternion,
 
-    /// Where is the camera?
+    /// Where is the camera in world space?
     pub position: [f32; 3],
 
     /// What is the users camera-space coordinate system?
     pub camera_space_convention: CameraSpaceConvention,
 
-    /// Column-major intrinsics matrix for projecting to pixel coordinates.
+    /// Column-major intrinsics matrix.
+    /// Image coordiantes from view coordinates (via projection).
     ///
     /// Example:
     /// ```text
@@ -443,7 +444,7 @@ pub enum CameraSpaceConvention {
 impl CameraSpaceConvention {
     /// Rerun uses the view-space convention of +X=right, +Y=up, -Z=fwd.
     ///
-    /// This returns the direction of the X,Y,Z axis in the rerun convention.
+    /// This returns the direction of the X,Y,Z axis in the Rerun convention.
     ///
     /// Another way of looking at this is that it returns the columns in
     /// the matrix that transforms one convention to the other.

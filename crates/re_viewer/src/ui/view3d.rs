@@ -455,8 +455,8 @@ fn show_projections_from_2d_space(
                     // TODO(emilk): better visualization of a ray
                     let mut hit_pos = None;
                     if pos.z.is_finite() && pos.z > 0.0 {
-                        if let Some(world_from_pixel) = crate::misc::cam::world_from_pixel(cam) {
-                            let pos = world_from_pixel
+                        if let Some(world_from_image) = crate::misc::cam::world_from_image(cam) {
+                            let pos = world_from_image
                                 .transform_point3(glam::vec3(pos.x, pos.y, 1.0) * pos.z);
                             hit_pos = Some(pos);
                         }
@@ -501,15 +501,13 @@ fn project_onto_other_spaces(
     orbit_eye: OrbitEye,
     objects: &re_data_store::Objects<'_>,
 ) {
-    if let Some(pointer_pos) = response.hover_pos() {
-        let world_ray = {
+    if let Some(pos_in_ui) = response.hover_pos() {
+        let ray_in_world = {
             let eye = orbit_eye.to_eye();
-            let screen_from_world = eye.screen_from_world(&response.rect);
-            let world_from_screen = screen_from_world.inverse();
-            let ray_origin = eye.pos();
-            let ray_dir =
-                world_from_screen.project_point3(glam::vec3(pointer_pos.x, pointer_pos.y, 1.0))
-                    - ray_origin;
+            let world_from_ui = eye.world_from_ui(&response.rect);
+            let ray_origin = eye.pos_in_world();
+            let ray_dir = world_from_ui.project_point3(glam::vec3(pos_in_ui.x, pos_in_ui.y, 1.0))
+                - ray_origin;
             Ray3::from_origin_dir(ray_origin, ray_dir.normalize())
         };
 
@@ -517,8 +515,8 @@ fn project_onto_other_spaces(
         for (_, cam) in objects.camera.iter() {
             let cam = cam.camera;
             if let Some(target_space) = cam.target_space.clone() {
-                let ray_in_2d = crate::misc::cam::pixel_from_world(cam)
-                    .map(|pixel_from_world| (pixel_from_world * world_ray).normalize());
+                let ray_in_2d = crate::misc::cam::image_from_world(cam)
+                    .map(|image_from_world| (image_from_world * ray_in_world).normalize());
 
                 let point_in_2d = state.hovered_point.and_then(|hovered_point| {
                     crate::misc::cam::project_onto_2d(cam, hovered_point)
