@@ -89,6 +89,11 @@ impl RecordingId {
     pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())
     }
+
+    #[inline]
+    pub fn from_uuid(uuid: uuid::Uuid) -> Self {
+        Self(uuid)
+    }
 }
 
 // ----------------------------------------------------------------------------

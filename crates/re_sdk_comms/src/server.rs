@@ -17,12 +17,11 @@ pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<Receiver<LogM
     std::thread::Builder::new()
         .name("sdk-server".into())
         .spawn(move || {
-            // accept connections and process them serially
             for stream in listener.incoming() {
                 match stream {
                     Ok(stream) => {
                         let tx = tx.clone();
-                        handle_client(stream, tx);
+                        spawn_client(stream, tx);
                     }
                     Err(err) => {
                         tracing::warn!("Failed to accept incoming SDK client: {err:?}");
@@ -35,9 +34,12 @@ pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<Receiver<LogM
     Ok(rx)
 }
 
-fn handle_client(stream: std::net::TcpStream, tx: Sender<LogMsg>) {
+fn spawn_client(stream: std::net::TcpStream, tx: Sender<LogMsg>) {
     std::thread::Builder::new()
-        .name("sdk-server-client-handler".into())
+        .name(format!(
+            "sdk-server-client-handler-{:?}",
+            stream.peer_addr()
+        ))
         .spawn(move || {
             tracing::info!("New SDK client connected: {:?}", stream.peer_addr());
 

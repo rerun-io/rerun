@@ -24,12 +24,12 @@ impl Sdk {
         mutex.lock().unwrap()
     }
 
-    pub fn begin_new_recording(&mut self) {
+    pub fn begin_recording(&mut self, recording_id: RecordingId) {
         self.send(
             BeginRecordingMsg {
                 msg_id: MsgId::random(),
                 info: RecordingInfo {
-                    recording_id: RecordingId::random(),
+                    recording_id,
                     started: Time::now(),
                     recording_source: re_log_types::RecordingSource::PythonSdk,
                 },

@@ -49,7 +49,12 @@ class CameraSpaceConvention(Enum):
 
 
 def connect(addr: Optional[str] = None):
-    """ Connect to a remote rerun viewer on the given ip:port. """
+    """
+    Connect to a remote rerun viewer on the given ip:port.
+
+    If this is a child-process, then it will continue the same recording
+    as the parent process.
+    """
     return rerun_rs.connect(addr)
 
 
