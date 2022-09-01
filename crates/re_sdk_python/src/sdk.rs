@@ -12,6 +12,10 @@ pub struct Sdk {
 
     // TODO(emilk): just store `ObjTypePathHash`
     registered_types: nohash_hasher::IntMap<ObjTypePath, ObjectType>,
+
+    recording_id: Option<RecordingId>,
+
+    has_sent_begin_recording_msg: bool,
 }
 
 impl Sdk {
@@ -24,18 +28,15 @@ impl Sdk {
         mutex.lock().unwrap()
     }
 
-    pub fn begin_recording(&mut self, recording_id: RecordingId) {
-        self.send(
-            BeginRecordingMsg {
-                msg_id: MsgId::random(),
-                info: RecordingInfo {
-                    recording_id,
-                    started: Time::now(),
-                    recording_source: re_log_types::RecordingSource::PythonSdk,
-                },
-            }
-            .into(),
-        );
+    pub fn recording_id(&self) -> Option<RecordingId> {
+        self.recording_id
+    }
+
+    pub fn set_recording_id(&mut self, recording_id: RecordingId) {
+        if self.recording_id != Some(recording_id) {
+            self.recording_id = Some(recording_id);
+            self.has_sent_begin_recording_msg = false;
+        }
     }
 
     /// Send log data to a remote server.
@@ -99,6 +100,24 @@ impl Sdk {
     }
 
     pub fn send(&mut self, log_msg: LogMsg) {
+        if !self.has_sent_begin_recording_msg {
+            if let Some(recording_id) = self.recording_id {
+                tracing::debug!("Beginning new recording with recording id {recording_id}");
+                self.sender.send(
+                    BeginRecordingMsg {
+                        msg_id: MsgId::random(),
+                        info: RecordingInfo {
+                            recording_id,
+                            started: Time::now(),
+                            recording_source: re_log_types::RecordingSource::PythonSdk,
+                        },
+                    }
+                    .into(),
+                );
+                self.has_sent_begin_recording_msg = true;
+            }
+        }
+
         self.sender.send(log_msg);
     }
 }

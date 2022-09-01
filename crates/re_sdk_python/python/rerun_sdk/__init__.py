@@ -48,12 +48,45 @@ class CameraSpaceConvention(Enum):
     X_RIGHT_Y_DOWN_Z_FWD = "XRightYDownZFwd"
 
 
+def get_recording_id() -> str:
+    """
+    Get the recording ID that this process is logging to, as a UUIDv4.
+
+    The default recording_id is based on `multiprocessing.current_process().authkey`
+    which means that all processes spawned with `multiprocessing`
+    will have the same default recording_id.
+
+    If you are not using `multiprocessing` and still want several
+    different Python processes to log to the same Rerun instance,
+    and be part of the same recording,
+    you will need to manually assign them all the same recording_id.
+    Any random UUIDv4 will work.
+    """
+    return rerun_rs.get_recording_id()
+
+def set_recording_id(value: str):
+    """
+    Set the recording ID that this process is logging to, as a UUIDv4.
+
+    The default recording_id is based on `multiprocessing.current_process().authkey`
+    which means that all processes spawned with `multiprocessing`
+    will have the same default recording_id.
+
+    If you are not using `multiprocessing` and still want several
+    different Python processes to log to the same Rerun instance,
+    and be part of the same recording,
+    you will need to manually assign them all the same recording_id.
+    Any random UUIDv4 will work.
+    """
+    rerun_rs.set_recording_id(str)
+
+
 def connect(addr: Optional[str] = None):
     """
     Connect to a remote rerun viewer on the given ip:port.
 
-    If this is a child-process, then it will continue the same recording
-    as the parent process.
+    If this is a child-process created with `multiprocessing`, then it will continue
+    the same recording as the parent process.
     """
     return rerun_rs.connect(addr)
 

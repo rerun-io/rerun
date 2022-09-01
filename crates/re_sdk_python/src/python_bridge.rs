@@ -67,9 +67,10 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // Log to stdout (if you run with `RUST_LOG=debug`).
     tracing_subscriber::fmt::init();
 
-    let recording_id = recording_id(py);
-    tracing::debug!("rerun sdk starting up, using recording id {recording_id:?}…");
-    Sdk::global().begin_recording(recording_id);
+    Sdk::global().set_recording_id(default_recording_id(py));
+
+    m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
+    m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
@@ -102,7 +103,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-fn recording_id(py: Python<'_>) -> RecordingId {
+fn default_recording_id(py: Python<'_>) -> RecordingId {
     use rand::{Rng as _, SeedableRng as _};
     use std::hash::{Hash as _, Hasher as _};
 
@@ -165,6 +166,27 @@ fn vec_from_np_array<T: numpy::Element, D: numpy::ndarray::Dimension>(
 }
 
 // ----------------------------------------------------------------------------
+
+#[pyfunction]
+fn get_recording_id() -> String {
+    let recording_id = Sdk::global()
+        .recording_id()
+        .expect("module has not been initialized");
+    recording_id.to_string()
+}
+
+#[pyfunction]
+fn set_recording_id(recording_id: &str) -> PyResult<()> {
+    if let Ok(recording_id) = recording_id.parse() {
+        Sdk::global().set_recording_id(recording_id);
+        Ok(())
+    } else {
+        Err(PyTypeError::new_err(format!(
+            "Invalid recording id - expected a UUID, got {:?}",
+            recording_id
+        )))
+    }
+}
 
 #[pyfunction]
 fn connect(addr: Option<String>) -> PyResult<()> {

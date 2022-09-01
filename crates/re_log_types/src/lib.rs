@@ -96,6 +96,20 @@ impl RecordingId {
     }
 }
 
+impl std::fmt::Display for RecordingId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::str::FromStr for RecordingId {
+    type Err = <uuid::Uuid as std::str::FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse().map(Self)
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[must_use]
