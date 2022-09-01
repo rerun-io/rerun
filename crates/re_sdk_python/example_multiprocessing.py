@@ -2,7 +2,7 @@ import rerun_sdk as rerun
 import multiprocessing
 
 def task(title):
-    # All processes spawned with `multiprocessing` will autoamticlaly
+    # All processes spawned with `multiprocessing` will automatically
     # be assigned the same default recording_id.
     print(f'Logging using the rerun recording id {rerun.get_recording_id()}');
     rerun.connect()
