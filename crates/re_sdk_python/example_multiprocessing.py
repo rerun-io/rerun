@@ -1,13 +1,18 @@
+import multiprocessing
+import os
+import threading
+
 import rerun_sdk as rerun
-from multiprocessing import Process
 
 def task(title):
-    # This should connect using the same recording id
+    # All processes spawned with `multiprocessing` will automatically
+    # be assigned the same default recording_id.
+    print(f'Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rerun.get_recording_id()}');
     rerun.connect()
     rerun.log_rect(title, [10, 20], [30, 40], label=title, space=title)
 
 if __name__ == '__main__':
     task('main_task')
-    p = Process(target=task, args=('chiild_task',))
+    p = multiprocessing.Process(target=task, args=('child_task',))
     p.start()
     p.join()
