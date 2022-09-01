@@ -64,7 +64,6 @@ impl Sdk {
         }
     }
 
-    #[cfg(feature = "re_viewer")]
     pub fn is_connected(&self) -> bool {
         matches!(&self.sender, &Sender::Remote(_))
     }
@@ -76,7 +75,6 @@ impl Sdk {
         }
     }
 
-    #[cfg(feature = "re_viewer")]
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
