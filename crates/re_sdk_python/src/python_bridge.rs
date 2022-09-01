@@ -75,6 +75,7 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         m.add_function(wrap_pyfunction!(disconnect, m)?)?;
         m.add_function(wrap_pyfunction!(show, m)?)?;
     }
+    m.add_function(wrap_pyfunction!(save, m)?)?;
 
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
@@ -157,27 +158,70 @@ fn disconnect() {
 /// Blocked on <https://github.com/emilk/egui/issues/1918>.
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
-fn show() {
+fn show() -> Result<(), PyErr> {
     let mut sdk = Sdk::global();
     if sdk.is_connected() {
-        tracing::error!(
-            "Can't show the log messages of Rerun: it was configured to send the data to a server!"
-        );
-    } else {
-        let log_messages = sdk.drain_log_messages_buffer();
-        drop(sdk);
+        return Err(PyTypeError::new_err(
+            "Can't show the log messages: Rerun was configured to send the data to a server!",
+        ));
+    }
 
-        if log_messages.is_empty() {
-            tracing::info!("Nothing logged, so nothing to show");
-        } else {
-            let (tx, rx) = std::sync::mpsc::channel();
-            for log_msg in log_messages {
-                tx.send(log_msg).ok();
-            }
-            re_viewer::run_native_viewer_with_rx(rx);
+    let log_messages = sdk.drain_log_messages_buffer();
+    drop(sdk);
+
+    if log_messages.is_empty() {
+        tracing::info!("Nothing logged, so nothing to show");
+    } else {
+        let (tx, rx) = std::sync::mpsc::channel();
+        for log_msg in log_messages {
+            tx.send(log_msg).ok();
         }
+        re_viewer::run_native_viewer_with_rx(rx);
+    }
+
+    Ok(())
+}
+
+#[pyfunction]
+fn save(path: &str) -> Result<(), PyErr> {
+    tracing::trace!("Saving file to {path:?}…");
+
+    let mut sdk = Sdk::global();
+    if sdk.is_connected() {
+        return Err(PyTypeError::new_err(
+            "Can't show the log messages: Rerun was configured to send the data to a server!",
+        ));
+    }
+
+    let log_messages = sdk.drain_log_messages_buffer();
+    drop(sdk);
+
+    if log_messages.is_empty() {
+        tracing::info!("Nothing logged, so nothing to save");
+    }
+
+    if !path.ends_with(".rrd") {
+        tracing::warn!("Expected path to end with .rrd, got {path:?}");
+    }
+
+    match std::fs::File::create(path) {
+        Ok(file) => {
+            if let Err(err) = re_log_types::encoding::encode(log_messages.iter(), file) {
+                Err(PyTypeError::new_err(format!(
+                    "Failed to write to file at {path:?}: {err}",
+                )))
+            } else {
+                tracing::info!("Rerurn data file saved to {path:?}");
+                Ok(())
+            }
+        }
+        Err(err) => Err(PyTypeError::new_err(format!(
+            "Failed to create file at {path:?}: {err}",
+        ))),
     }
 }
+
+// ----------------------------------------------------------------------------
 
 /// Set the current time globally. Used for all subsequent logging,
 /// until the next call to `set_time_sequence`.

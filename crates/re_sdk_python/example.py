@@ -67,7 +67,9 @@ def log_dummy_data(args):
         [1, 0, 0],
         [0, 0, 0]])
 
-    if not args.connect:
+    if args.save is not None:
+        rerun.save(args.save)
+    elif not args.connect:
         # Show the logged data inside the Python process:
         rerun.show()
 
@@ -272,6 +274,8 @@ if __name__ == '__main__':
                         help='Connect to an external viewer')
     parser.add_argument('--addr', type=str, default=None,
                         help='Connect to this ip:port')
+    parser.add_argument('--save', type=str, default=None,
+                        help='Save data to a .rrd file at this path')
     args = parser.parse_args()
 
     log_dummy_data(args)
