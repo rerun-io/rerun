@@ -63,9 +63,13 @@ impl ThreadInfo {
 
 /// The python module is called "rerun_sdk".
 #[pymodule]
-fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // Log to stdout (if you run with `RUST_LOG=debug`).
     tracing_subscriber::fmt::init();
+
+    let recording_id = recording_id(py);
+    tracing::debug!("rerun sdk starting up, using recording id {recording_id:?}…");
+    Sdk::global().begin_recording(recording_id);
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
@@ -95,9 +99,48 @@ fn rerun_sdk(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
 
-    Sdk::global().begin_new_recording();
-
     Ok(())
+}
+
+fn recording_id(py: Python<'_>) -> RecordingId {
+    use rand::{Rng as _, SeedableRng as _};
+    use std::hash::{Hash as _, Hasher as _};
+
+    // If the user uses `multiprocessing` for parallelism,
+    // we still want child processes to log to the same recording.
+    // We can use authkey for this, because it is the same for parent
+    // and child processes.
+    //
+    // TODO(emilk): are there any security conserns with leaking authkey?
+    //
+    // https://docs.python.org/3/library/multiprocessing.html#multiprocessing.Process.authkey
+    let seed = authkey(py);
+    let salt: u64 = 0xab12_cd34_ef56_0178;
+
+    let mut hasher = std::collections::hash_map::DefaultHasher::default();
+    seed.hash(&mut hasher);
+    salt.hash(&mut hasher);
+    let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
+    let uuid = uuid::Builder::from_random_bytes(rng.gen()).into_uuid();
+    RecordingId::from_uuid(uuid)
+}
+
+fn authkey(py: Python<'_>) -> Vec<u8> {
+    use pyo3::types::{PyBytes, PyDict};
+    let locals = PyDict::new(py);
+    py.run(
+        r#"
+import multiprocessing
+# authkey is the same for child and parent processes, so this is how we know we're the same
+authkey = multiprocessing.current_process().authkey
+            "#,
+        None,
+        Some(locals),
+    )
+    .unwrap();
+    let authkey = locals.get_item("authkey").unwrap();
+    let authkey: &PyBytes = authkey.downcast().unwrap();
+    authkey.as_bytes().to_vec()
 }
 
 // ----------------------------------------------------------------------------
