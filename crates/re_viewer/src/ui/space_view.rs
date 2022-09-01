@@ -43,16 +43,48 @@ impl SpaceInfo {
             .unwrap_or_default()
     }
 }
+
+// ----------------------------------------------------------------------------
+
+#[derive(Clone)]
+struct Tab {
+    space: Option<ObjPath>,
+}
+
+fn initialize_tree(tabs: Vec<Tab>) -> egui_dock::Tree<Tab> {
+    // TODO: create splits etc
+    egui_dock::Tree::new(tabs)
+}
+
+struct TabViewer<'a, 'b> {
+    ctx: &'a mut ViewerContext<'b>,
+    objects: ObjectsBySpace<'b>,
+    space_states: &'a mut SpaceStates,
+}
+
+impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
+    type Tab = Tab;
+
+    fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
+        self.space_states
+            .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
+    }
+
+    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
+        space_name(tab.space.as_ref()).into()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct SpaceView {
     // per space
-    state_2d: ahash::HashMap<Option<ObjPath>, crate::view2d::State2D>,
-    state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
+    space_states: SpaceStates,
 
-    selected: SelectedSpace,
+    #[serde(skip)] // TODO: serialize tab state
+    tree: egui_dock::Tree<Tab>,
 }
 
 impl SpaceView {
@@ -84,6 +116,16 @@ impl SpaceView {
         all_spaces.sort_unstable();
         let all_spaces = all_spaces;
 
+        if self.tree.is_empty() {
+            let tabs = all_spaces
+                .iter()
+                .map(|space| Tab {
+                    space: space.cloned(),
+                })
+                .collect();
+            self.tree = initialize_tree(tabs);
+        }
+
         if false {
             ui.label(format!(
                 "Spaces: {}",
@@ -91,73 +133,34 @@ impl SpaceView {
             ));
         }
 
-        if let Selection::Space(selected_space) = &ctx.rec_cfg.selection {
-            self.selected = SelectedSpace::Specific(Some(selected_space.clone()));
-        }
+        let mut tab_viewer = TabViewer {
+            ctx,
+            objects,
+            space_states: &mut self.space_states,
+        };
 
-        match self.selected.clone() {
-            SelectedSpace::All => {
-                self.show_all(ctx, &all_spaces, &objects, ui);
-            }
-            SelectedSpace::Specific(selected_space) => {
-                ui.horizontal(|ui| {
-                    if ui.button("Show all spaces").clicked() {
-                        self.selected = SelectedSpace::All;
-                        if matches!(&ctx.rec_cfg.selection, Selection::Space(_)) {
-                            ctx.rec_cfg.selection = Selection::None;
-                        }
-                    }
-                });
-                self.show_space(ctx, &objects, selected_space.as_ref(), ui);
-                if ctx.rec_cfg.hovered_space.space() != selected_space.as_ref() {
-                    ctx.rec_cfg.hovered_space = HoveredSpace::None;
-                }
-            }
-        }
+        egui_dock::DockArea::new(&mut self.tree)
+            .style(egui_dock::Style::from_egui(ui.style().as_ref()))
+            .show_inside(ui, &mut tab_viewer);
+
+        // TODO: this
+        // if ctx.rec_cfg.hovered_space.space() != tab_viewer.hovered_space.as_ref() {
+        //     ctx.rec_cfg.hovered_space = HoveredSpace::None;
+        // }
     }
+}
 
-    fn show_all(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        all_spaces: &[Option<&ObjPath>],
-        objects: &ObjectsBySpace<'_>,
-        ui: &mut egui::Ui,
-    ) {
-        let space_infos = all_spaces
-            .iter()
-            .map(|opt_space_path| {
-                let size = self
-                    .state_2d
-                    .get(&opt_space_path.cloned())
-                    .and_then(|state| state.size());
-                SpaceInfo {
-                    space_path: opt_space_path.cloned(),
-                    size,
-                }
-            })
-            .collect_vec();
+// ----------------------------------------------------------------------------
 
-        let regions = layout_spaces(ui.available_rect_before_wrap(), &space_infos);
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub(crate) struct SpaceStates {
+    // per space
+    state_2d: ahash::HashMap<Option<ObjPath>, crate::view2d::State2D>,
+    state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
+}
 
-        for (rect, space_info) in itertools::izip!(&regions, &space_infos) {
-            let mut ui = ui.child_ui_with_id_source(*rect, *ui.layout(), &space_info.space_path);
-            egui::Frame::group(ui.style())
-                .inner_margin(Vec2::splat(4.0))
-                .show(&mut ui, |ui| {
-                    ui.vertical_centered(|ui| {
-                        if ui
-                            .selectable_label(false, space_name(space_info.space_path.as_ref()))
-                            .clicked()
-                        {
-                            self.selected = SelectedSpace::Specific(space_info.space_path.clone());
-                        }
-                        self.show_space(ctx, objects, space_info.space_path.as_ref(), ui);
-                        ui.allocate_space(ui.available_size());
-                    });
-                });
-        }
-    }
-
+impl SpaceStates {
     fn show_space(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -209,6 +212,8 @@ fn space_name(space: Option<&ObjPath>) -> String {
         "<default space>".to_owned()
     }
 }
+
+// ----------------------------------------------------------------------------
 
 fn layout_spaces(available_rect: Rect, spaces: &[SpaceInfo]) -> Vec<Rect> {
     if spaces.is_empty() {
