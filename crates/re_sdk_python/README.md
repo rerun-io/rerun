@@ -19,10 +19,14 @@ python3 -m pip install --upgrade pip
 ## Build, test, and run
 ### Build and install
 To build and install the `rerun_sdk` into your current Python environment run:
+
 ```sh
+python3 -m pip install --upgrade pip
 pip3 install "crates/re_sdk_python[tests,examples]"
 ```
-Note: `[tests,examples]` here is used to specify that we also want to install the dependencies needed for running tests and examples.
+ℹ️ Notes:
+- If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip3 install` command.
+-  `[tests,examples]` here is used to specify that we also want to install the dependencies needed for running tests and examples.
 
 ### Test
 ```sh
