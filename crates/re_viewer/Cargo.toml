@@ -30,7 +30,7 @@ egui        = { version = "0.19", features = ["extra_debug_asserts", "tracing"] 
 egui_extras = { version = "0.19", features = ["tracing"] }
 egui_glow   = { version = "0.19" }
 
-egui_dock      = { git = "https://github.com/rerun-io/egui_dock", rev = "642629794126fc0c965ee0fbec8e5a9394e12dc4" }
+egui_dock      = { git = "https://github.com/rerun-io/egui_dock", rev = "e7be2a1cce7374b3f7fa119fcd80a1e5c14aac7d" }
 # egui_dock      = { path = "../../../../forks/egui_dock" }
 
 ahash = "0.8"

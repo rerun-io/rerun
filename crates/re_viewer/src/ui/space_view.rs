@@ -1,12 +1,10 @@
-use std::ops::RangeInclusive;
-
-use egui::{Rect, Vec2};
+use egui::{vec2, Vec2};
 use itertools::Itertools as _;
 
 use re_data_store::ObjectsBySpace;
 use re_log_types::*;
 
-use crate::{misc::HoveredSpace, Preview, Selection, ViewerContext};
+use crate::{misc::HoveredSpace, Preview, ViewerContext};
 
 // ----------------------------------------------------------------------------
 
@@ -32,7 +30,7 @@ struct SpaceInfo {
     space_path: Option<ObjPath>,
 
     /// Only set for 2D spaces
-    size: Option<Vec2>,
+    size2d: Option<Vec2>,
 }
 
 impl SpaceInfo {
@@ -42,6 +40,10 @@ impl SpaceInfo {
             .map(|space_path| space_path.to_components())
             .unwrap_or_default()
     }
+
+    fn is_2d(&self) -> bool {
+        self.size2d.is_some()
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -49,11 +51,6 @@ impl SpaceInfo {
 #[derive(Clone)]
 struct Tab {
     space: Option<ObjPath>,
-}
-
-fn initialize_tree(tabs: Vec<Tab>) -> egui_dock::Tree<Tab> {
-    // TODO: create splits etc
-    egui_dock::Tree::new(tabs)
 }
 
 struct TabViewer<'a, 'b> {
@@ -117,13 +114,7 @@ impl SpaceView {
         let all_spaces = all_spaces;
 
         if self.tree.is_empty() {
-            let tabs = all_spaces
-                .iter()
-                .map(|space| Tab {
-                    space: space.cloned(),
-                })
-                .collect();
-            self.tree = initialize_tree(tabs);
+            self.reset_tree(ui.available_size(), &all_spaces);
         }
 
         if false {
@@ -139,14 +130,41 @@ impl SpaceView {
             space_states: &mut self.space_states,
         };
 
+        let dock_style = egui_dock::Style {
+            separator_width: 2.0,
+            ..egui_dock::Style::from_egui(ui.style().as_ref())
+        };
+
         egui_dock::DockArea::new(&mut self.tree)
-            .style(egui_dock::Style::from_egui(ui.style().as_ref()))
+            .style(dock_style)
             .show_inside(ui, &mut tab_viewer);
 
         // TODO: this
         // if ctx.rec_cfg.hovered_space.space() != tab_viewer.hovered_space.as_ref() {
         //     ctx.rec_cfg.hovered_space = HoveredSpace::None;
         // }
+    }
+
+    pub fn reset_tree(&mut self, available_size: Vec2, all_spaces: &[Option<&ObjPath>]) {
+        let mut spaces = all_spaces
+            .iter()
+            .map(|opt_space_path| {
+                let size2d = self
+                    .space_states
+                    .state_2d
+                    .get(&opt_space_path.cloned())
+                    .and_then(|state| state.size());
+                SpaceInfo {
+                    space_path: opt_space_path.cloned(),
+                    size2d,
+                }
+            })
+            .collect_vec();
+
+        let split = layout_spaces(available_size, &mut spaces);
+
+        self.tree = egui_dock::Tree::new(vec![]);
+        tree_from_split(&mut self.tree, egui_dock::NodeIndex(0), &split);
     }
 }
 
@@ -215,44 +233,91 @@ fn space_name(space: Option<&ObjPath>) -> String {
 
 // ----------------------------------------------------------------------------
 
-fn layout_spaces(available_rect: Rect, spaces: &[SpaceInfo]) -> Vec<Rect> {
-    if spaces.is_empty() {
-        return vec![];
-    } else if spaces.len() == 1 {
-        return vec![available_rect];
-    }
+enum LayoutSplit {
+    LeftRight(Box<LayoutSplit>, f32, Box<LayoutSplit>),
+    TopBottom(Box<LayoutSplit>, f32, Box<LayoutSplit>),
+    Leaf(SpaceInfo),
+}
 
+fn tree_from_split(
+    tree: &mut egui_dock::Tree<Tab>,
+    parent: egui_dock::NodeIndex,
+    split: &LayoutSplit,
+) {
+    match split {
+        LayoutSplit::LeftRight(left, fraction, right) => {
+            let [left_ni, right_ni] = tree.split_right(parent, *fraction, vec![]);
+            tree_from_split(tree, left_ni, left);
+            tree_from_split(tree, right_ni, right);
+        }
+        LayoutSplit::TopBottom(top, fraction, bottom) => {
+            let [top_ni, bottom_ni] = tree.split_below(parent, *fraction, vec![]);
+            tree_from_split(tree, top_ni, top);
+            tree_from_split(tree, bottom_ni, bottom);
+        }
+        LayoutSplit::Leaf(space_info) => {
+            let tab = Tab {
+                space: space_info.space_path.clone(),
+            };
+            tree.set_focused_node(parent);
+            tree.push_to_focused_leaf(tab);
+        }
+    }
+}
+
+// TODO(emilk): fix O(N^2) execution for layout_spaces
+fn layout_spaces(size: Vec2, spaces: &mut [SpaceInfo]) -> LayoutSplit {
+    assert!(!spaces.is_empty());
+
+    if spaces.len() == 1 {
+        LayoutSplit::Leaf(spaces[0].clone())
+    } else {
+        spaces.sort_by_key(|si| si.is_2d());
+        let start_3d = spaces.partition_point(|si| !si.is_2d());
+
+        if 0 < start_3d && start_3d < spaces.len() {
+            split_spaces_at(size, spaces, start_3d)
+        } else {
+            // All 2D or all 3D
+            let groups = group_by_path_prefix(spaces);
+            assert!(groups.len() > 1);
+
+            let num_spaces = spaces.len();
+
+            let mut best_split = 0;
+            let mut rearranged_spaces = vec![];
+            for mut group in groups {
+                rearranged_spaces.append(&mut group);
+
+                let split_candidate = rearranged_spaces.len();
+                if (split_candidate as f32 / num_spaces as f32 - 0.5).abs()
+                    < (best_split as f32 / num_spaces as f32 - 0.5).abs()
+                {
+                    best_split = split_candidate;
+                }
+            }
+            assert_eq!(rearranged_spaces.len(), num_spaces);
+            assert!(0 < best_split && best_split < num_spaces,);
+
+            split_spaces_at(size, &mut rearranged_spaces, best_split)
+        }
+    }
+}
+
+fn split_spaces_at(size: Vec2, spaces: &mut [SpaceInfo], index: usize) -> LayoutSplit {
+    assert!(0 < index && index < spaces.len());
+
+    let t = index as f32 / spaces.len() as f32;
     let desired_aspect_ratio = desired_aspect_ratio(spaces).unwrap_or(16.0 / 9.0);
 
-    let groups = group_by_path_prefix(spaces);
-    assert!(groups.len() > 1);
-
-    // TODO(emilk): if there are a lot of groups (>3) we likely want to put them in a grid instead of doing a linear split (like we do below)
-
-    if available_rect.width() > desired_aspect_ratio * available_rect.height() {
-        // left-to-right
-        let x_ranges = weighted_split(available_rect.x_range(), &groups);
-        x_ranges
-            .iter()
-            .cloned()
-            .zip(&groups)
-            .flat_map(|(x_range, group)| {
-                let sub_rect = Rect::from_x_y_ranges(x_range, available_rect.y_range());
-                layout_spaces(sub_rect, group)
-            })
-            .collect()
+    if size.x > desired_aspect_ratio * size.y {
+        let left = layout_spaces(vec2(size.x * t, size.y), &mut spaces[..index]);
+        let right = layout_spaces(vec2(size.x * (1.0 - t), size.y), &mut spaces[index..]);
+        LayoutSplit::LeftRight(left.into(), t, right.into())
     } else {
-        // top-to-bottom
-        let y_ranges = weighted_split(available_rect.y_range(), &groups);
-        y_ranges
-            .iter()
-            .cloned()
-            .zip(&groups)
-            .flat_map(|(y_range, group)| {
-                let sub_rect = Rect::from_x_y_ranges(available_rect.x_range(), y_range);
-                layout_spaces(sub_rect, group)
-            })
-            .collect()
+        let top = layout_spaces(vec2(size.y, size.y * t), &mut spaces[..index]);
+        let bottom = layout_spaces(vec2(size.y, size.x * (1.0 - t)), &mut spaces[index..]);
+        LayoutSplit::TopBottom(top.into(), t, bottom.into())
     }
 }
 
@@ -260,7 +325,7 @@ fn desired_aspect_ratio(spaces: &[SpaceInfo]) -> Option<f32> {
     let mut sum = 0.0;
     let mut num = 0.0;
     for space in spaces {
-        if let Some(size) = space.size {
+        if let Some(size) = space.size2d {
             let aspect = size.x / size.y;
             if aspect.is_finite() {
                 sum += aspect;
@@ -306,28 +371,6 @@ fn group_by_path_prefix(space_infos: &[SpaceInfo]) -> Vec<Vec<SpaceInfo>> {
     space_infos
         .iter()
         .map(|space| vec![space.clone()])
-        .collect()
-}
-
-fn weighted_split(
-    range: RangeInclusive<f32>,
-    groups: &[Vec<SpaceInfo>],
-) -> Vec<RangeInclusive<f32>> {
-    let weights: Vec<f64> = groups
-        .iter()
-        .map(|group| (group.len() as f64).sqrt())
-        .collect();
-    let total_weight: f64 = weights.iter().sum();
-
-    let mut w_accum: f64 = 0.0;
-    weights
-        .iter()
-        .map(|&w| {
-            let l = egui::lerp(range.clone(), (w_accum / total_weight) as f32);
-            w_accum += w;
-            let r = egui::lerp(range.clone(), (w_accum / total_weight) as f32);
-            l..=r
-        })
         .collect()
 }
 
