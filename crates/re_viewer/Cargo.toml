@@ -30,13 +30,11 @@ egui        = { version = "0.19", features = ["extra_debug_asserts", "tracing"] 
 egui_extras = { version = "0.19", features = ["tracing"] }
 egui_glow   = { version = "0.19" }
 
-egui_dock      = { git = "https://github.com/rerun-io/egui_dock", rev = "e7be2a1cce7374b3f7fa119fcd80a1e5c14aac7d" }
-# egui_dock      = { path = "../../../../forks/egui_dock" }
-
 ahash = "0.8"
 anyhow = "1.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
+egui_dock      = "0.2"
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
 glow = "0.11"
