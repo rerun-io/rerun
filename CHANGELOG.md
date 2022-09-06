@@ -1,7 +1,17 @@
-# rerun changelog
+# Rerun changelog
 
-A crude and incomplete time-line of user-facing things added, removed and changed. Newest on top.
+A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-09-01: Python SDK: support logging from multiple processes ([#79](https://github.com/rerun-io/rerun/pull/79), [#80](https://github.com/rerun-io/rerun/pull/80)).
+* 2022-09-01: Python SDK: add `rerun.save(…)` to save recorded data to file ([#78](https://github.com/rerun-io/rerun/pull/78)).
+* 2022-08-30: The camera log type can link a 3D and 2D space ([#72](https://github.com/rerun-io/rerun/pull/72)).
+* 2022-08-29: Python SDK: `rerun.log_camera` ([#68](https://github.com/rerun-io/rerun/pull/68)).
+* 2022-08-25: Python SDK: `rerun.log_mesh_file` and `rerun.log_path` ([#59](https://github.com/rerun-io/rerun/pull/59)).
+* 2022-08-24: Python SDK: `rerun.set_space_up` ([#56](https://github.com/rerun-io/rerun/pull/56)).
+* 2022-08-23: Viewer: improve zoom-in view when hovering an image.
+* 2022-08-18: Viewer: you can have multiple open recordings ([#37](https://github.com/rerun-io/rerun/pull/37)).
+* 2022-08-17: Python SDK: add `rerun.set_time_…` functions.
+* 2022-08-10: Viewer: don't pause or rewind when play reaches end of data.
 * 2022-08-08: Add optional "label" to 2D bounding boxes.
 * 2022-08-05: Generalize image as tensors ([#25](https://github.com/rerun-io/rerun/pull/25)).
 * 2022-07-26: Add Python SDK.
