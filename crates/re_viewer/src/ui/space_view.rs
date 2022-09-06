@@ -227,14 +227,21 @@ impl SpacesPanel {
 
         let view = self.views.get_mut(&self.selected).unwrap();
 
-        for space in all_spaces {
+        for space in &all_spaces {
             // Make sure the view has all spaces:
             let tab = Tab {
                 space: space.cloned(),
             };
             if view.tree.find_tab(&tab).is_none() {
                 tracing::debug!("Inserting space into existing view");
-                view.tree.push_to_first_leaf(tab);
+
+                if self.selected == "Focus" {
+                    *view = View::focus(&all_spaces);
+                } else if self.selected == "Overview" {
+                    *view = View::overview(ui.available_size(), &all_spaces);
+                } else {
+                    view.tree.push_to_first_leaf(tab);
+                }
             }
         }
 
