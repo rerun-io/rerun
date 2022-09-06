@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use egui::{vec2, Vec2};
 use itertools::Itertools as _;
 
@@ -60,15 +58,21 @@ struct TabViewer<'a, 'b> {
     objects: ObjectsBySpace<'b>,
     space_states: &'a mut SpaceStates,
     hovered_space: Option<ObjPath>,
+    maximized: &'a mut Option<Tab>,
 }
 
 impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     type Tab = Tab;
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
+        if ui.button("Maximize").clicked() {
+            *self.maximized = Some(tab.clone());
+        }
+
         let hovered = self
             .space_states
             .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
+
         if hovered {
             self.hovered_space = tab.space.clone();
         }
@@ -88,10 +92,14 @@ struct View {
     space_states: SpaceStates,
 
     tree: egui_dock::Tree<Tab>,
+
+    /// Show one tab as maximized?
+    maximized: Option<Tab>,
 }
 
 impl View {
     /// All spaces get their own tab, viewing one space at a time.
+    #[allow(unused)]
     pub fn focus(all_spaces: &[Option<&ObjPath>]) -> Self {
         let tabs = all_spaces
             .iter()
@@ -100,10 +108,7 @@ impl View {
             })
             .collect_vec();
 
-        Self {
-            tree: egui_dock::Tree::new(tabs),
-            space_states: Default::default(),
-        }
+        Self::from_tree(egui_dock::Tree::new(tabs))
     }
 
     /// Show all spaces at the same time, in a tilemap.
@@ -124,9 +129,14 @@ impl View {
         let mut tree = egui_dock::Tree::new(vec![]);
         tree_from_split(&mut tree, egui_dock::NodeIndex(0), &split);
 
+        Self::from_tree(tree)
+    }
+
+    fn from_tree(tree: egui_dock::Tree<Tab>) -> Self {
         Self {
             tree,
             space_states: Default::default(),
+            maximized: None,
         }
     }
 
@@ -136,30 +146,46 @@ impl View {
         objects: ObjectsBySpace<'b>,
         ui: &mut egui::Ui,
     ) {
-        let mut tab_viewer = TabViewer {
-            ctx,
-            objects,
-            space_states: &mut self.space_states,
-            hovered_space: None,
-        };
+        if let Some(tab) = self.maximized.clone() {
+            egui::TopBottomPanel::top("maximized_space").show_inside(ui, |ui| {
+                if ui.button("Show all spaces").clicked() {
+                    self.maximized = None;
+                }
+            });
 
-        let dock_style = egui_dock::Style {
-            separator_width: 2.0,
-            show_close_buttons: false,
-            ..egui_dock::Style::from_egui(ui.style().as_ref())
-        };
+            if tab.space.as_ref() != ctx.rec_cfg.hovered_space.space() {
+                ctx.rec_cfg.hovered_space = HoveredSpace::None;
+            }
 
-        // TODO(emilk): fix egui_dock: this scope shouldn't be needed
-        ui.scope(|ui| {
-            egui_dock::DockArea::new(&mut self.tree)
-                .style(dock_style)
-                .show_inside(ui, &mut tab_viewer);
-        });
+            self.space_states
+                .show_space(ctx, &objects, tab.space.as_ref(), ui);
+        } else {
+            let mut tab_viewer = TabViewer {
+                ctx,
+                objects,
+                space_states: &mut self.space_states,
+                hovered_space: None,
+                maximized: &mut self.maximized,
+            };
 
-        let hovered_space = tab_viewer.hovered_space;
+            let dock_style = egui_dock::Style {
+                separator_width: 2.0,
+                show_close_buttons: false,
+                ..egui_dock::Style::from_egui(ui.style().as_ref())
+            };
 
-        if hovered_space.as_ref() != ctx.rec_cfg.hovered_space.space() {
-            ctx.rec_cfg.hovered_space = HoveredSpace::None;
+            // TODO(emilk): fix egui_dock: this scope shouldn't be needed
+            ui.scope(|ui| {
+                egui_dock::DockArea::new(&mut self.tree)
+                    .style(dock_style)
+                    .show_inside(ui, &mut tab_viewer);
+            });
+
+            let hovered_space = tab_viewer.hovered_space;
+
+            if hovered_space.as_ref() != ctx.rec_cfg.hovered_space.space() {
+                ctx.rec_cfg.hovered_space = HoveredSpace::None;
+            }
         }
     }
 }
@@ -169,8 +195,9 @@ impl View {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct SpacesPanel {
-    views: BTreeMap<String, View>,
-    selected: String,
+    // In the future we will support multiple user-defined views,
+    // but for now we only have one.
+    view: View,
 }
 
 impl SpacesPanel {
@@ -204,55 +231,18 @@ impl SpacesPanel {
             all_spaces
         };
 
-        self.views
-            .entry("Focus".to_owned())
-            .or_insert_with(|| View::focus(&all_spaces));
-
-        self.views
-            .entry("Overview".to_owned())
-            .or_insert_with(|| View::overview(ui.available_size(), &all_spaces));
-
-        if !self.views.contains_key(&self.selected) {
-            self.selected = self.views.keys().rev().next().cloned().unwrap();
-        }
-
-        egui::TopBottomPanel::top("views")
-            .resizable(false)
-            .show_inside(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Views:");
-                    for view_name in self.views.keys() {
-                        if ui
-                            .selectable_label(view_name == &self.selected, view_name)
-                            .clicked()
-                        {
-                            self.selected = view_name.clone();
-                        }
-                    }
-                });
-            });
-
-        let view = self.views.get_mut(&self.selected).unwrap();
-
         for space in &all_spaces {
             // Make sure the view has all spaces:
             let tab = Tab {
                 space: space.cloned(),
             };
-            if view.tree.find_tab(&tab).is_none() {
-                tracing::debug!("Inserting space into existing view");
-
-                if self.selected == "Focus" {
-                    *view = View::focus(&all_spaces);
-                } else if self.selected == "Overview" {
-                    *view = View::overview(ui.available_size(), &all_spaces);
-                } else {
-                    view.tree.push_to_first_leaf(tab);
-                }
+            if self.view.tree.find_tab(&tab).is_none() {
+                self.view = View::overview(ui.available_size(), &all_spaces);
+                break;
             }
         }
 
-        view.ui(ctx, objects, ui);
+        self.view.ui(ctx, objects, ui);
     }
 }
 
@@ -296,15 +286,15 @@ impl SpaceStates {
             log_once::warn_once!("Space {:?} has both 2D and 3D objects", space_name(space));
         }
 
-        if objects.has_any_3d() {
-            let state_3d = self.state_3d.entry(space.cloned()).or_default();
-            let response = crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
-            hovered |= response.hovered();
-        }
-
         if objects.has_any_2d() {
             let state_2d = self.state_2d.entry(space.cloned()).or_default();
             let response = crate::view2d::view_2d(ctx, ui, state_2d, space, &objects);
+            hovered |= response.hovered();
+        }
+
+        if objects.has_any_3d() {
+            let state_3d = self.state_3d.entry(space.cloned()).or_default();
+            let response = crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
             hovered |= response.hovered();
         }
 
