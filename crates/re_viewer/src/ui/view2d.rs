@@ -166,16 +166,16 @@ pub(crate) fn view_2d(
                     pointer_pos,
                     *meter,
                 );
+            }
 
-                if let Some(meter) = *meter {
-                    let pos_in_image = space_from_ui.transform_pos(pointer_pos);
-                    if let Some(raw_value) =
-                        tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
-                    {
-                        let raw_value = raw_value.as_f64();
-                        let depth_in_meters = raw_value / meter as f64;
-                        depths_at_pointer.push(depth_in_meters);
-                    }
+            if let Some(meter) = *meter {
+                let pos_in_image = space_from_ui.transform_pos(pointer_pos);
+                if let Some(raw_value) =
+                    tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
+                {
+                    let raw_value = raw_value.as_f64();
+                    let depth_in_meters = raw_value / meter as f64;
+                    depths_at_pointer.push(depth_in_meters);
                 }
             }
         }
