@@ -59,14 +59,19 @@ struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
     objects: ObjectsBySpace<'b>,
     space_states: &'a mut SpaceStates,
+    hovered_space: Option<ObjPath>,
 }
 
 impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     type Tab = Tab;
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
-        self.space_states
+        let hovered = self
+            .space_states
             .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
+        if hovered {
+            self.hovered_space = tab.space.clone();
+        }
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
@@ -135,6 +140,7 @@ impl View {
             ctx,
             objects,
             space_states: &mut self.space_states,
+            hovered_space: None,
         };
 
         let dock_style = egui_dock::Style {
@@ -143,17 +149,18 @@ impl View {
             ..egui_dock::Style::from_egui(ui.style().as_ref())
         };
 
-        // TODO: fix egui_dock: this scope shouldn't be needed
+        // TODO(emilk): fix egui_dock: this scope shouldn't be needed
         ui.scope(|ui| {
             egui_dock::DockArea::new(&mut self.tree)
                 .style(dock_style)
                 .show_inside(ui, &mut tab_viewer);
         });
 
-        // TODO: this
-        // if ctx.rec_cfg.hovered_space.space() != tab_viewer.hovered_space.as_ref() {
-        //     ctx.rec_cfg.hovered_space = HoveredSpace::None;
-        // }
+        let hovered_space = tab_viewer.hovered_space;
+
+        if hovered_space.as_ref() != ctx.rec_cfg.hovered_space.space() {
+            ctx.rec_cfg.hovered_space = HoveredSpace::None;
+        }
     }
 }
 
@@ -260,19 +267,22 @@ pub(crate) struct SpaceStates {
 }
 
 impl SpaceStates {
+    /// Returns `true` if hovered.
     fn show_space(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         objects: &ObjectsBySpace<'_>,
         space: Option<&ObjPath>,
         ui: &mut egui::Ui,
-    ) {
+    ) -> bool {
         crate::profile_function!(space_name(space));
+
+        let mut hovered = false;
 
         let objects = if let Some(objects) = objects.get(&space) {
             objects
         } else {
-            return;
+            return hovered;
         };
 
         let objects = objects.filter(|props| {
@@ -289,18 +299,20 @@ impl SpaceStates {
         if objects.has_any_3d() {
             let state_3d = self.state_3d.entry(space.cloned()).or_default();
             let response = crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
-            if !response.hovered() && ctx.rec_cfg.hovered_space.space() == space {
-                ctx.rec_cfg.hovered_space = HoveredSpace::None;
-            }
+            hovered |= response.hovered();
         }
 
         if objects.has_any_2d() {
             let state_2d = self.state_2d.entry(space.cloned()).or_default();
             let response = crate::view2d::view_2d(ctx, ui, state_2d, space, &objects);
-            if !response.hovered() && ctx.rec_cfg.hovered_space.space() == space {
-                ctx.rec_cfg.hovered_space = HoveredSpace::None;
-            }
+            hovered |= response.hovered();
         }
+
+        if !hovered && ctx.rec_cfg.hovered_space.space() == space {
+            ctx.rec_cfg.hovered_space = HoveredSpace::None;
+        }
+
+        hovered
     }
 }
 
