@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use egui::{vec2, Vec2};
 use itertools::Itertools as _;
 
@@ -48,7 +50,7 @@ impl SpaceInfo {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct Tab {
     space: Option<ObjPath>,
 }
@@ -74,17 +76,97 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
 
 // ----------------------------------------------------------------------------
 
+/// A view of several spaces, organized to the users liking.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub(crate) struct SpaceView {
+struct View {
     // per space
     space_states: SpaceStates,
 
-    #[serde(skip)] // TODO: serialize tab state
     tree: egui_dock::Tree<Tab>,
 }
 
-impl SpaceView {
+impl View {
+    /// All spaces get their own tab, viewing one space at a time.
+    pub fn focus(all_spaces: &[Option<&ObjPath>]) -> Self {
+        let tabs = all_spaces
+            .iter()
+            .map(|space| Tab {
+                space: space.cloned(),
+            })
+            .collect_vec();
+
+        Self {
+            tree: egui_dock::Tree::new(tabs),
+            space_states: Default::default(),
+        }
+    }
+
+    /// Show all spaces at the same time, in a tilemap.
+    pub fn overview(available_size: Vec2, all_spaces: &[Option<&ObjPath>]) -> Self {
+        let mut spaces = all_spaces
+            .iter()
+            .map(|opt_space_path| {
+                let size2d = None; // TODO: estimate view sizes
+                SpaceInfo {
+                    space_path: opt_space_path.cloned(),
+                    size2d,
+                }
+            })
+            .collect_vec();
+
+        let split = layout_spaces(available_size, &mut spaces);
+
+        let mut tree = egui_dock::Tree::new(vec![]);
+        tree_from_split(&mut tree, egui_dock::NodeIndex(0), &split);
+
+        Self {
+            tree,
+            space_states: Default::default(),
+        }
+    }
+
+    pub fn ui<'a, 'b>(
+        &mut self,
+        ctx: &'a mut ViewerContext<'b>,
+        objects: ObjectsBySpace<'b>,
+        ui: &mut egui::Ui,
+    ) {
+        let mut tab_viewer = TabViewer {
+            ctx,
+            objects,
+            space_states: &mut self.space_states,
+        };
+
+        let dock_style = egui_dock::Style {
+            separator_width: 2.0,
+            show_close_buttons: false,
+            ..egui_dock::Style::from_egui(ui.style().as_ref())
+        };
+
+        // TODO: fix egui_dock: this scope shouldn't be needed
+        ui.scope(|ui| {
+            egui_dock::DockArea::new(&mut self.tree)
+                .style(dock_style)
+                .show_inside(ui, &mut tab_viewer);
+        });
+
+        // TODO: this
+        // if ctx.rec_cfg.hovered_space.space() != tab_viewer.hovered_space.as_ref() {
+        //     ctx.rec_cfg.hovered_space = HoveredSpace::None;
+        // }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub(crate) struct SpacesPanel {
+    views: BTreeMap<String, View>,
+    selected: String,
+}
+
+impl SpacesPanel {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
@@ -101,70 +183,62 @@ impl SpaceView {
             .selected_objects(ctx.log_db)
             .partition_on_space();
 
-        // `objects` contain all spaces that exist in this time,
-        // but we want to show all spaces that could ever exist.
-        // Othewise we get a lot of flicker of spaces as we play back data.
-        let mut all_spaces = ctx.log_db.spaces().map(Some).collect_vec();
-        if objects.contains_key(&None) {
-            // Some objects lack a space, so they end up in the `None` space.
-            // TODO(emilk): figure this out beforehand somehow.
-            all_spaces.push(None);
-        }
-        all_spaces.sort_unstable();
-        let all_spaces = all_spaces;
-
-        if self.tree.is_empty() {
-            self.reset_tree(ui.available_size(), &all_spaces);
-        }
-
-        if false {
-            ui.label(format!(
-                "Spaces: {}",
-                all_spaces.iter().map(|&s| space_name(s)).format(" ")
-            ));
-        }
-
-        let mut tab_viewer = TabViewer {
-            ctx,
-            objects,
-            space_states: &mut self.space_states,
+        let all_spaces = {
+            // `objects` contain all spaces that exist in this time,
+            // but we want to show all spaces that could ever exist.
+            // Othewise we get a lot of flicker of spaces as we play back data.
+            let mut all_spaces = ctx.log_db.spaces().map(Some).collect_vec();
+            if objects.contains_key(&None) {
+                // Some objects lack a space, so they end up in the `None` space.
+                // TODO(emilk): figure this out beforehand somehow.
+                all_spaces.push(None);
+            }
+            all_spaces.sort_unstable();
+            all_spaces
         };
 
-        let dock_style = egui_dock::Style {
-            separator_width: 2.0,
-            ..egui_dock::Style::from_egui(ui.style().as_ref())
-        };
+        self.views
+            .entry("Focus".to_owned())
+            .or_insert_with(|| View::focus(&all_spaces));
 
-        egui_dock::DockArea::new(&mut self.tree)
-            .style(dock_style)
-            .show_inside(ui, &mut tab_viewer);
+        self.views
+            .entry("Overview".to_owned())
+            .or_insert_with(|| View::overview(ui.available_size(), &all_spaces));
 
-        // TODO: this
-        // if ctx.rec_cfg.hovered_space.space() != tab_viewer.hovered_space.as_ref() {
-        //     ctx.rec_cfg.hovered_space = HoveredSpace::None;
-        // }
-    }
+        if !self.views.contains_key(&self.selected) {
+            self.selected = self.views.keys().rev().next().cloned().unwrap();
+        }
 
-    pub fn reset_tree(&mut self, available_size: Vec2, all_spaces: &[Option<&ObjPath>]) {
-        let mut spaces = all_spaces
-            .iter()
-            .map(|opt_space_path| {
-                let size2d = self
-                    .space_states
-                    .state_2d
-                    .get(&opt_space_path.cloned())
-                    .and_then(|state| state.size());
-                SpaceInfo {
-                    space_path: opt_space_path.cloned(),
-                    size2d,
-                }
-            })
-            .collect_vec();
+        egui::TopBottomPanel::top("views")
+            .resizable(false)
+            .show_inside(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Views:");
+                    for view_name in self.views.keys() {
+                        if ui
+                            .selectable_label(view_name == &self.selected, view_name)
+                            .clicked()
+                        {
+                            self.selected = view_name.clone();
+                        }
+                    }
+                });
+            });
 
-        let split = layout_spaces(available_size, &mut spaces);
+        let view = self.views.get_mut(&self.selected).unwrap();
 
-        self.tree = egui_dock::Tree::new(vec![]);
-        tree_from_split(&mut self.tree, egui_dock::NodeIndex(0), &split);
+        for space in all_spaces {
+            // Make sure the view has all spaces:
+            let tab = Tab {
+                space: space.cloned(),
+            };
+            if view.tree.find_tab(&tab).is_none() {
+                tracing::debug!("Inserting space into existing view");
+                view.tree.push_to_first_leaf(tab);
+            }
+        }
+
+        view.ui(ctx, objects, ui);
     }
 }
 

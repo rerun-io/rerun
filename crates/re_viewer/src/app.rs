@@ -266,7 +266,7 @@ struct AppState {
 
     view_index: usize,
     log_table_view: crate::log_table_view::LogTableView,
-    space_view: crate::space_view::SpaceView,
+    spaces_panel: crate::space_view::SpacesPanel,
     context_panel: crate::context_panel::ContextPanel,
     time_panel: crate::time_panel::TimePanel,
 
@@ -290,7 +290,7 @@ impl AppState {
             recording_configs,
             view_index,
             log_table_view,
-            space_view,
+            spaces_panel,
             context_panel,
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -319,7 +319,7 @@ impl AppState {
             });
 
         egui::CentralPanel::default().show(egui_ctx, |ui| match view_index {
-            0 => space_view.ui(&mut ctx, ui),
+            0 => spaces_panel.ui(&mut ctx, ui),
             1 => log_table_view.ui(&mut ctx, ui),
             _ => {}
         });
