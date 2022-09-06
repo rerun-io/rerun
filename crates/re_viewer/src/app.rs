@@ -310,9 +310,11 @@ impl AppState {
             rec_cfg,
         };
 
-        egui::SidePanel::right("context").show(egui_ctx, |ui| {
-            context_panel.ui(&mut ctx, ui);
-        });
+        if ctx.rec_cfg.selection.is_some() {
+            egui::SidePanel::right("context").show(egui_ctx, |ui| {
+                context_panel.ui(&mut ctx, ui);
+            });
+        }
 
         egui::TopBottomPanel::bottom("time_panel")
             .resizable(true)
