@@ -165,7 +165,7 @@ impl View {
         } else if let Some(tab) = self.maximized.clone() {
             ui.horizontal(|ui| {
                 if ui
-                    .button("🗙")
+                    .button("⬅")
                     .on_hover_text("Restore - show all spaces")
                     .clicked()
                 {
