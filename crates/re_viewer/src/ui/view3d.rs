@@ -181,7 +181,6 @@ fn show_settings_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State3D,
-    space: Option<&ObjPath>,
     space_specs: &SpaceSpecs,
 ) {
     ui.horizontal(|ui| {
@@ -203,18 +202,17 @@ fn show_settings_ui(
             } else if up != Vec3::ZERO {
                 ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
             } else {
-                ui.label("Up: unspecified")
+                ui.label("Up: —")
             };
-            if let Some(space) = space {
-                up_response.on_hover_ui(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 0.0;
-                        ui.label("Set by logging to ");
-                        ui.code(format!("{space}/up"));
-                        ui.label(".");
-                    });
+
+            up_response.on_hover_ui(|ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.label("Set with ");
+                    ui.code("rerun.set_space_up");
+                    ui.label(".");
                 });
-            }
+            });
         }
 
         if ui
@@ -331,7 +329,7 @@ pub(crate) fn view_3d(
 
     // TODO(emilk): show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(ctx, ui, state, space, &space_specs);
+    show_settings_ui(ctx, ui, state, &space_specs);
 
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 

@@ -34,6 +34,7 @@ ahash = "0.8"
 anyhow = "1.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
+egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc7471eea48df9104fe62acfc96d2b", features = ["serde"] } # 2022-09-06
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
 glow = "0.11"

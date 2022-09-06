@@ -340,6 +340,7 @@ pub fn paint_with_three_d(
     let position = eye.world_from_view.translation();
     let target = eye.world_from_view.transform_point3(-glam::Vec3::Z);
     let up = eye.world_from_view.transform_vector3(glam::Vec3::Y);
+    let far = 100_000.0; // TODO(emilk): infinity (https://github.com/rustgd/cgmath/pull/547)
     let three_d_camera = three_d::Camera::new_perspective(
         three_d,
         viewport,
@@ -348,7 +349,7 @@ pub fn paint_with_three_d(
         mint::Vector3::from(up).into(),
         radians(eye.fov_y),
         eye.near(),
-        1000.0, // TODO(emilk): infinity (https://github.com/rustgd/cgmath/pull/547)
+        far,
     )?;
 
     // -------------------

@@ -915,6 +915,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_dock"
+version = "0.2.0"
+source = "git+https://github.com/rerun-io/egui_dock?rev=096be40cc9fc7471eea48df9104fe62acfc96d2b#096be40cc9fc7471eea48df9104fe62acfc96d2b"
+dependencies = [
+ "egui",
+ "serde",
+]
+
+[[package]]
 name = "egui_extras"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2778,6 +2787,7 @@ dependencies = [
  "ctrlc",
  "eframe",
  "egui",
+ "egui_dock",
  "egui_extras",
  "egui_glow",
  "fixed",
