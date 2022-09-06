@@ -318,7 +318,12 @@ impl SpaceStates {
 
 fn space_name(space: Option<&ObjPath>) -> String {
     if let Some(space) = space {
-        space.to_string()
+        let name = space.to_string();
+        if name == "/" {
+            name
+        } else {
+            name.strip_prefix('/').unwrap_or(name.as_str()).to_owned()
+        }
     } else {
         "<default space>".to_owned()
     }
