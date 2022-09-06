@@ -148,8 +148,22 @@ impl View {
         objects: ObjectsBySpace<'b>,
         ui: &mut egui::Ui,
     ) {
-        if let Some(tab) = self.maximized.clone() {
-            ui.horizontal_top(|ui| {
+        let num_tabs = num_tabs(&self.tree);
+
+        if num_tabs == 0 {
+            // nothing to show
+        } else if num_tabs == 1 {
+            let tab = first_tab(&self.tree).unwrap();
+
+            ui.strong(space_name(tab.space.as_ref()));
+            if tab.space.as_ref() != ctx.rec_cfg.hovered_space.space() {
+                ctx.rec_cfg.hovered_space = HoveredSpace::None;
+            }
+
+            self.space_states
+                .show_space(ctx, &objects, tab.space.as_ref(), ui);
+        } else if let Some(tab) = self.maximized.clone() {
+            ui.horizontal(|ui| {
                 if ui
                     .button("🗙")
                     .on_hover_text("Restore - show all spaces")
@@ -157,14 +171,15 @@ impl View {
                 {
                     self.maximized = None;
                 }
-
-                if tab.space.as_ref() != ctx.rec_cfg.hovered_space.space() {
-                    ctx.rec_cfg.hovered_space = HoveredSpace::None;
-                }
-
-                self.space_states
-                    .show_space(ctx, &objects, tab.space.as_ref(), ui);
+                ui.strong(space_name(tab.space.as_ref()));
             });
+
+            if tab.space.as_ref() != ctx.rec_cfg.hovered_space.space() {
+                ctx.rec_cfg.hovered_space = HoveredSpace::None;
+            }
+
+            self.space_states
+                .show_space(ctx, &objects, tab.space.as_ref(), ui);
         } else {
             let mut tab_viewer = TabViewer {
                 ctx,
@@ -194,6 +209,29 @@ impl View {
             }
         }
     }
+}
+
+// TODO(emilk): move this into `egui_dock`
+fn num_tabs(tree: &egui_dock::Tree<Tab>) -> usize {
+    let mut count = 0;
+    for node in tree.iter() {
+        if let egui_dock::Node::Leaf { tabs, .. } = node {
+            count += tabs.len();
+        }
+    }
+    count
+}
+
+// TODO(emilk): move this into `egui_dock`
+fn first_tab(tree: &egui_dock::Tree<Tab>) -> Option<Tab> {
+    for node in tree.iter() {
+        if let egui_dock::Node::Leaf { tabs, .. } = node {
+            if let Some(first) = tabs.first() {
+                return Some(first.clone());
+            }
+        }
+    }
+    None
 }
 
 // ----------------------------------------------------------------------------
