@@ -362,12 +362,7 @@ pub(crate) fn view_3d(
             egui::Id::new("3d_tooltip"),
             |ui| {
                 ctx.obj_path_button(ui, obj_path);
-                crate::ui::context_panel::view_object(
-                    ctx,
-                    ui,
-                    obj_path,
-                    crate::ui::Preview::Medium,
-                );
+                crate::ui::data_ui::view_object(ctx, ui, obj_path, crate::ui::Preview::Medium);
             },
         );
     }

@@ -161,7 +161,7 @@ fn table_row(
                 ctx.data_path_button(ui, data_path);
             });
             row.col(|ui| {
-                crate::space_view::ui_logged_data(
+                crate::data_ui::ui_logged_data(
                     ctx,
                     ui,
                     msg_id,

@@ -590,7 +590,7 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
             if let Some(msg) = ctx.log_db.get_log_msg(&msg_id) {
                 ui.push_id(msg_id, |ui| {
                     ui.group(|ui| {
-                        crate::space_view::show_log_msg(ctx, ui, msg, crate::Preview::Small);
+                        crate::data_ui::show_log_msg(ctx, ui, msg, crate::Preview::Small);
                     });
                 });
             }

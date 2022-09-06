@@ -70,7 +70,7 @@ pub(crate) fn view_2d(
         }
         egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
             ctx.obj_path_button(ui, obj_path);
-            crate::ui::context_panel::view_object(ctx, ui, obj_path, crate::ui::Preview::Small);
+            crate::ui::data_ui::view_object(ctx, ui, obj_path, crate::ui::Preview::Small);
         });
     }
 
@@ -148,7 +148,7 @@ pub(crate) fn view_2d(
                 && rect_in_ui.contains(pointer_pos)
             {
                 let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
-                response = crate::ui::context_panel::show_zoomed_image_region_tooltip(
+                response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
                     ui,
                     response,
                     tensor,
