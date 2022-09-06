@@ -19,7 +19,7 @@ server = [
 ]
 tls = [
     "ewebsock/tls",
-    "tungstenite/rustls-tls-webpki-roots", # TODO: there is some problem with this. check alternative tungstenite tls features
+    "tungstenite/rustls-tls-webpki-roots", # TODO(emilk): there is some problem with this. check alternative tungstenite tls features
 ]
 
 

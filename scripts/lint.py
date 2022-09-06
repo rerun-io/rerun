@@ -65,7 +65,7 @@ if __name__ == '__main__':
             dirs[:] = [d for d in dirs if d not in exclude_dirs]
             for filename in files:
                 extension = filename.split('.')[-1]
-                if extension in ['html', 'js', 'py', 'rs']:
+                if extension in ['html', 'js', 'py', 'rs', 'toml']:
                     filepath = os.path.join(root, filename)
                     if not filepath in exclude_paths:
                         num_errors += lint_file(filepath, args)
