@@ -25,10 +25,11 @@ deny = [
 ]
 
 skip = [
-    { name = "ahash" },               # old version via dark-light
-    { name = "base64" },              # old version via gltf
-    { name = "hashbrown" },           # old version via dark-light
+    { name = "ahash" },               # Old version via dark-light
+    { name = "base64" },              # Old version via gltf
+    { name = "hashbrown" },           # Old version via dark-light
     { name = "miniz_oxide" },         # Old version from old png crate, because we are stuck on old version of image crate
+    { name = "nix" },                 # Too many to protect against
     { name = "windows_x86_64_msvc" }, # Fix coming in https://github.com/PolyMeilex/rfd/pull/64
 ]
 skip-tree = [
