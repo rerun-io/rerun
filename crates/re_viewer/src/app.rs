@@ -151,6 +151,9 @@ impl eframe::App for App {
             self.state
                 .recording_configs
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
+            self.state
+                .spaces_panels
+                .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
         top_panel(egui_ctx, frame, self);
@@ -263,10 +266,10 @@ struct AppState {
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
+    spaces_panels: IntMap<RecordingId, crate::space_view::SpacesPanel>,
 
     view_index: usize,
     log_table_view: crate::log_table_view::LogTableView,
-    spaces_panel: crate::space_view::SpacesPanel,
     context_panel: crate::context_panel::ContextPanel,
     time_panel: crate::time_panel::TimePanel,
 
@@ -290,7 +293,7 @@ impl AppState {
             recording_configs,
             view_index,
             log_table_view,
-            spaces_panel,
+            spaces_panels,
             context_panel,
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -319,7 +322,10 @@ impl AppState {
             });
 
         egui::CentralPanel::default().show(egui_ctx, |ui| match view_index {
-            0 => spaces_panel.ui(&mut ctx, ui),
+            0 => spaces_panels
+                .entry(*selected_recording_id)
+                .or_default()
+                .ui(&mut ctx, ui),
             1 => log_table_view.ui(&mut ctx, ui),
             _ => {}
         });
