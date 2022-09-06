@@ -75,25 +75,17 @@ impl Client {
     }
 
     pub fn set_addr(&mut self, addr: SocketAddr) {
-        self.msg_tx
-            .send(MsgMsg::SetAddr(addr))
-            .expect("msg_encoder should not shut down until we tell it to");
+        self.send_msg_msg(MsgMsg::SetAddr(addr));
     }
 
     pub fn send(&mut self, log_msg: LogMsg) {
-        tracing::trace!("Sending message…");
-        self.msg_tx
-            .send(MsgMsg::LogMsg(log_msg))
-            .expect("msg_encoder should not shut down until we tell it to");
+        self.send_msg_msg(MsgMsg::LogMsg(log_msg));
     }
 
     /// Stall untill all messages so far has been sent.
     pub fn flush(&mut self) {
         tracing::debug!("Flushing message queue…");
-
-        self.msg_tx
-            .send(MsgMsg::Flush)
-            .expect("msg_encoder should not shut down until we tell it to");
+        self.send_msg_msg(MsgMsg::Flush);
 
         match self.flushed_rx.recv() {
             Ok(FlushedMsg) => {
@@ -104,6 +96,11 @@ impl Client {
                 tracing::warn!("Failed to flush pipeline - not all messages were sent (Ctrl-C).");
             }
         }
+    }
+
+    fn send_msg_msg(&mut self, msg: MsgMsg) {
+        // ignoring errors, because Ctrl-C can shut down the receiving end.
+        self.msg_tx.send(msg).ok();
     }
 }
 
