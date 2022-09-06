@@ -13,6 +13,8 @@ pub(crate) struct State2D {
     hovered_obj: Option<ObjPath>,
 
     /// Estimated bounding box of all data. Accumulated.
+    ///
+    /// TODO(emilk): accumulate this per space once as data arrives instead.
     #[serde(skip)]
     scene_bbox_accum: epaint::Rect,
 }
@@ -22,17 +24,6 @@ impl Default for State2D {
         Self {
             hovered_obj: Default::default(),
             scene_bbox_accum: epaint::Rect::NOTHING,
-        }
-    }
-}
-
-impl State2D {
-    /// Size of the 2D bounding box, if any.
-    pub fn size(&self) -> Option<egui::Vec2> {
-        if self.scene_bbox_accum.is_positive() {
-            Some(self.scene_bbox_accum.size())
-        } else {
-            None
         }
     }
 }

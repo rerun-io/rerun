@@ -111,7 +111,7 @@ impl View {
         let mut spaces = all_spaces
             .iter()
             .map(|opt_space_path| {
-                let size2d = None; // TODO: estimate view sizes
+                let size2d = None; // TODO(emilk): estimate view sizes so we can do better auto-layouts.
                 SpaceInfo {
                     space_path: opt_space_path.cloned(),
                     size2d,
