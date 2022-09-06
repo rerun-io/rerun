@@ -65,17 +65,19 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     type Tab = Tab;
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
-        if ui.button("Maximize").clicked() {
-            *self.maximized = Some(tab.clone());
-        }
+        ui.horizontal_top(|ui| {
+            if ui.button("🗖").on_hover_text("Maximize space").clicked() {
+                *self.maximized = Some(tab.clone());
+            }
 
-        let hovered = self
-            .space_states
-            .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
+            let hovered =
+                self.space_states
+                    .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
 
-        if hovered {
-            self.hovered_space = tab.space.clone();
-        }
+            if hovered {
+                self.hovered_space = tab.space.clone();
+            }
+        });
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
@@ -147,18 +149,22 @@ impl View {
         ui: &mut egui::Ui,
     ) {
         if let Some(tab) = self.maximized.clone() {
-            egui::TopBottomPanel::top("maximized_space").show_inside(ui, |ui| {
-                if ui.button("Show all spaces").clicked() {
+            ui.horizontal_top(|ui| {
+                if ui
+                    .button("🗙")
+                    .on_hover_text("Restore - show all spaces")
+                    .clicked()
+                {
                     self.maximized = None;
                 }
+
+                if tab.space.as_ref() != ctx.rec_cfg.hovered_space.space() {
+                    ctx.rec_cfg.hovered_space = HoveredSpace::None;
+                }
+
+                self.space_states
+                    .show_space(ctx, &objects, tab.space.as_ref(), ui);
             });
-
-            if tab.space.as_ref() != ctx.rec_cfg.hovered_space.space() {
-                ctx.rec_cfg.hovered_space = HoveredSpace::None;
-            }
-
-            self.space_states
-                .show_space(ctx, &objects, tab.space.as_ref(), ui);
         } else {
             let mut tab_viewer = TabViewer {
                 ctx,
@@ -293,9 +299,11 @@ impl SpaceStates {
         }
 
         if objects.has_any_3d() {
-            let state_3d = self.state_3d.entry(space.cloned()).or_default();
-            let response = crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
-            hovered |= response.hovered();
+            ui.vertical(|ui| {
+                let state_3d = self.state_3d.entry(space.cloned()).or_default();
+                let response = crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
+                hovered |= response.hovered();
+            });
         }
 
         if !hovered && ctx.rec_cfg.hovered_space.space() == space {
