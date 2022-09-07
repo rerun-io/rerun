@@ -191,10 +191,10 @@ class RectFormat(Enum):
     YXYX = "YXYX"
 
     # """ [x_center, y_center, width, height]"
-    XC_YC_W_H = "XC_YC_W_H"
+    XCYCWH = "XCYCWH"
 
     # """ [x_center, y_center, width/2, height/2]"
-    XC_YC_HALF_WH = "XC_YC_HALF_WH"
+    XCYCW2H2 = "XCYCW2H2"
 
 
 def log_rect(

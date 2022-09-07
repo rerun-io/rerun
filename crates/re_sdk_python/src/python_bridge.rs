@@ -419,8 +419,8 @@ enum RectFormat {
     YXHW,
     XYXY,
     YXYX,
-    XC_YC_W_H,
-    XC_YC_HALF_WH,
+    XCYCWH,
+    XCYCW2H2,
 }
 
 impl RectFormat {
@@ -430,11 +430,11 @@ impl RectFormat {
             "YXHW" => Ok(Self::YXHW),
             "XYXY" => Ok(Self::XYXY),
             "YXYX" => Ok(Self::YXYX),
-            "XC_YC_W_H" => Ok(Self::XC_YC_W_H),
-            "XC_YC_HALF_WH" => Ok(Self::XC_YC_HALF_WH),
+            "XCYCWH" => Ok(Self::XCYCWH),
+            "XCYCW2H2" => Ok(Self::XCYCW2H2),
             _ => Err(PyTypeError::new_err(format!(
                 "Unknown RectFormat: {rect_format:?}. \
-                Expected one of: XYWH YXHW XYXY XC_YC_W_H XC_YC_HALF_WH"
+                Expected one of: XYWH YXHW XYXY XCYCWH XCYCW2H2"
             ))),
         }
     }
@@ -443,10 +443,10 @@ impl RectFormat {
         match (self, r) {
             (Self::XYWH, [x, y, w, h]) | (Self::YXHW, [y, x, h, w]) => ([x, y], [x + w, y + h]),
             (Self::XYXY, [x0, y0, x1, y1]) | (Self::YXYX, [y0, x0, y1, x1]) => ([x0, y0], [x1, y1]),
-            (Self::XC_YC_W_H, [xc, yc, w, h]) => {
+            (Self::XCYCWH, [xc, yc, w, h]) => {
                 ([xc - w / 2.0, yc - h / 2.0], [xc + w / 2.0, yc + h / 2.0])
             }
-            (Self::XC_YC_HALF_WH, [xc, yc, half_w, half_h]) => {
+            (Self::XCYCW2H2, [xc, yc, half_w, half_h]) => {
                 ([xc - half_w, yc - half_h], [xc + half_w, yc + half_h])
             }
         }
