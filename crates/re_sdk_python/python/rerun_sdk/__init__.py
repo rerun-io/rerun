@@ -235,6 +235,7 @@ def log_rects(
 ):
     """
     Log multiple 2D rectangles.
+    Logging again to the same `obj_path` will replace all the previous rectangles.
 
     * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format` argument.
     * `rect_format`: how to interpret the `rect` argument
@@ -271,6 +272,7 @@ def log_points(
         space: Optional[str] = None):
     """
     Log 2D or 3D points, with optional colors.
+    Logging again to the same `obj_path` will replace all the previous points.
 
     `positions`: Nx2 or Nx3 array
 
