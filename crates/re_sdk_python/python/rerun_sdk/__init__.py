@@ -199,9 +199,9 @@ class RectFormat(Enum):
 
 def log_rect(
     obj_path: str,
-    rect_format: RectFormat,
     rect: ArrayLike,
     *,
+    rect_format: RectFormat = RectFormat.XYWH,
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     space: Optional[str] = None,
@@ -209,8 +209,8 @@ def log_rect(
     """
     Log a 2D rectangle.
 
+    * `rect`: the recangle in [x, y, w, h], or some format you pick with the `rect_format` argument.
     * `rect_format`: how to interpret the `rect` argument
-    * `rect`: the recangle, interpretation depending on `RectFormat`.
     * `label` is an optional text to show inside the rectangle.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     If no `space` is given, the space name "2D" will be used.
