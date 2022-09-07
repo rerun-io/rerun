@@ -414,6 +414,48 @@ fn log_camera(
     Ok(())
 }
 
+// ----------------------------------------------------------------------------
+
+#[allow(non_camel_case_types, clippy::upper_case_acronyms)] // we follow Python style
+enum RectFormat {
+    XYWH,
+    YXHW,
+    XYXY,
+    YXYX,
+    XC_YC_W_H,
+    XC_YC_HALF_WH,
+}
+
+impl RectFormat {
+    fn parse(rect_format: &str) -> PyResult<RectFormat> {
+        match rect_format {
+            "XYWH" => Ok(Self::XYWH),
+            "YXHW" => Ok(Self::YXHW),
+            "XYXY" => Ok(Self::XYXY),
+            "YXYX" => Ok(Self::YXYX),
+            "XC_YC_W_H" => Ok(Self::XC_YC_W_H),
+            "XC_YC_HALF_WH" => Ok(Self::XC_YC_HALF_WH),
+            _ => Err(PyTypeError::new_err(format!(
+                "Unknown RectFormat: {rect_format:?}. \
+                Expected one of: XYWH YXHW XYXY XC_YC_W_H XC_YC_HALF_WH"
+            ))),
+        }
+    }
+
+    fn to_min_max(&self, r: [f32; 4]) -> ([f32; 2], [f32; 2]) {
+        match (self, r) {
+            (Self::XYWH, [x, y, w, h]) | (Self::YXHW, [y, x, h, w]) => ([x, y], [x + w, y + h]),
+            (Self::XYXY, [x0, y0, x1, y1]) | (Self::YXYX, [y0, x0, y1, x1]) => ([x0, y0], [x1, y1]),
+            (Self::XC_YC_W_H, [xc, yc, w, h]) => {
+                ([xc - w / 2.0, yc - h / 2.0], [xc + w / 2.0, yc + h / 2.0])
+            }
+            (Self::XC_YC_HALF_WH, [xc, yc, half_w, half_h]) => {
+                ([xc - half_w, yc - half_h], [xc + half_w, yc + half_h])
+            }
+        }
+    }
+}
+
 /// Log a 2D bounding box.
 ///
 /// Optionally give it a label.
@@ -421,16 +463,14 @@ fn log_camera(
 #[pyfunction]
 fn log_rect(
     obj_path: &str,
-    left_top: [f32; 2],
-    width_height: [f32; 2],
+    rect_format: &str,
+    r: [f32; 4],
     color: Option<Vec<u8>>,
     label: Option<String>,
     space: Option<String>,
 ) -> PyResult<()> {
-    let [x, y] = left_top;
-    let [w, h] = width_height;
-    let min = [x, y];
-    let max = [x + w, y + h];
+    let rect_format = RectFormat::parse(rect_format)?;
+    let (min, max) = rect_format.to_min_max(r);
 
     let mut sdk = Sdk::global();
 
@@ -475,6 +515,8 @@ fn log_rect(
 
     Ok(())
 }
+
+// ----------------------------------------------------------------------------
 
 /// positions: Nx2 or Nx3 array
 /// * `colors.len() == 0`: no colors

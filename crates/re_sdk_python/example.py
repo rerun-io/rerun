@@ -28,8 +28,7 @@ def log_dummy_data(args):
         rerun.log_image("rgb", sample.rgb_image)
 
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rerun.log_rect("bbox", [car_x, car_y],
-                       [car_w, car_h], label="A car", color=(0, 128, 255))
+        rerun.log_rect("bbox", rerun.RectFormat.XYWH, [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
 
         # Lets log the projected points into a separate "space", called 'projected_space'.
         # We also set its up-axis.

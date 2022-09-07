@@ -6,5 +6,10 @@
         }
     },
     "files.insertFinalNewline": true,
-    "files.trimTrailingWhitespace": true
+    "files.trimTrailingWhitespace": true,
+    "files.exclude": {
+        "env/**": true,
+        "target/**": true
+    },
+    "files.autoGuessEncoding": true
 }

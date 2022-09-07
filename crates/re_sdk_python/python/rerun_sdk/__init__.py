@@ -176,25 +176,49 @@ def set_space_up(space: str, up: Sequence[float]):
     return rerun_rs.set_space_up(space, up)
 
 
+# """ How to specify rectangles (axis-aligned bounding boxes). """
+class RectFormat(Enum):
+    # """ [x,y,w,h], with x,y = left,top. """"
+    XYWH = "XYWH"
+
+    # """ [y,x,h,w], with x,y = left,top. """"
+    YXHW = "YXHW"
+
+    # """ [x0, y0, x1, y1], with x0,y0 = left,top and x1,y1 = right,bottom """"
+    XYXY = "XYXY"
+
+    # """ [y0, x0, y1, x1], with x0,y0 = left,top and x1,y1 = right,bottom """"
+    YXYX = "YXYX"
+
+    # """ [x_center, y_center, width, height]"
+    XC_YC_W_H = "XC_YC_W_H"
+
+    # """ [x_center, y_center, width/2, height/2]"
+    XC_YC_HALF_WH = "XC_YC_HALF_WH"
+
+
 def log_rect(
     obj_path: str,
-    left_top: ArrayLike,
-    width_height: ArrayLike,
+    rect_format: RectFormat,
+    rect: ArrayLike,
     *,
-    label: Optional[str] = None,
     color: Optional[Sequence[int]] = None,
+    label: Optional[str] = None,
     space: Optional[str] = None,
 ):
     """
     Log a 2D rectangle.
 
-    `label` is an optional text to show inside the rectangle.
-    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    * `rect_format`: how to interpret the `rect` argument
+    * `rect`: the recangle, interpretation depending on `RectFormat`.
+    * `label` is an optional text to show inside the rectangle.
+    * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     If no `space` is given, the space name "2D" will be used.
     """
+
     rerun_rs.log_rect(obj_path,
-                      _to_sequence(left_top),
-                      _to_sequence(width_height),
+                      rect_format.value,
+                      _to_sequence(rect),
                       color,
                       label,
                       space)
