@@ -2,6 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 
 use bytemuck::allocation::pod_collect_to_vec;
+use itertools::Itertools as _;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -89,6 +90,8 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
+    m.add_function(wrap_pyfunction!(log_rects, m)?)?;
+
     m.add_function(wrap_pyfunction!(log_camera, m)?)?;
     m.add_function(wrap_pyfunction!(log_points, m)?)?;
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
@@ -439,8 +442,8 @@ impl RectFormat {
         }
     }
 
-    fn to_min_max(&self, r: [f32; 4]) -> ([f32; 2], [f32; 2]) {
-        match (self, r) {
+    fn to_bbox(&self, r: [f32; 4]) -> BBox2D {
+        let (min, max) = match (self, r) {
             (Self::XYWH, [x, y, w, h]) | (Self::YXHW, [y, x, h, w]) => ([x, y], [x + w, y + h]),
             (Self::XYXY, [x0, y0, x1, y1]) | (Self::YXYX, [y0, x0, y1, x1]) => ([x0, y0], [x1, y1]),
             (Self::XCYCWH, [xc, yc, w, h]) => {
@@ -449,7 +452,8 @@ impl RectFormat {
             (Self::XCYCW2H2, [xc, yc, half_w, half_h]) => {
                 ([xc - half_w, yc - half_h], [xc + half_w, yc + half_h])
             }
-        }
+        };
+        BBox2D { min, max }
     }
 }
 
@@ -467,7 +471,7 @@ fn log_rect(
     space: Option<String>,
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
-    let (min, max) = rect_format.to_min_max(r);
+    let bbox = rect_format.to_bbox(r);
 
     let mut sdk = Sdk::global();
 
@@ -479,7 +483,7 @@ fn log_rect(
     sdk.send_data(
         &time_point,
         (&obj_path, "bbox"),
-        LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
+        LoggedData::Single(Data::BBox2D(bbox)),
     );
 
     if let Some(color) = color {
@@ -509,6 +513,102 @@ fn log_rect(
     Ok(())
 }
 
+#[pyfunction]
+fn log_rects(
+    obj_path: &str,
+    rect_format: &str,
+    rects: numpy::PyReadonlyArray2<'_, f32>,
+    colors: numpy::PyReadonlyArrayDyn<'_, u8>,
+    labels: Vec<String>,
+    space: Option<String>,
+) -> PyResult<()> {
+    // Note: we cannot early-out here on `rects.empty()`, beacause logging
+    // an empty batch is same as deleting previous batch.
+
+    let rect_format = RectFormat::parse(rect_format)?;
+
+    let n = match rects.shape() {
+        [n, 4] => *n,
+        shape => {
+            return Err(PyTypeError::new_err(format!(
+                "Expected Nx4 rects array; got {shape:?}"
+            )));
+        }
+    };
+
+    let mut sdk = Sdk::global();
+
+    let root_path = parse_obj_path_comps(obj_path)?;
+    let obj_path = {
+        let mut obj_path = root_path.clone();
+        obj_path.push(ObjPathComp::Index(Index::Placeholder));
+        ObjPath::from(obj_path)
+    };
+
+    let mut type_path = ObjPath::from(root_path).obj_type_path().clone();
+    type_path.push(TypePathComp::Index);
+
+    sdk.register_type(&type_path, ObjectType::BBox2D);
+
+    let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
+
+    let time_point = ThreadInfo::thread_now();
+
+    if !colors.is_empty() {
+        let color_data = color_batch(&indices, colors)?;
+        sdk.send_data(&time_point, (&obj_path, "color"), color_data);
+    }
+
+    match labels.len() {
+        0 => {}
+        1 => {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "label"),
+                LoggedData::BatchSplat(Data::String(labels[0].clone())),
+            );
+        }
+        num_labels if num_labels == n => {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "label"),
+                LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::String(labels),
+                },
+            );
+        }
+        num_labels => {
+            return Err(PyTypeError::new_err(format!(
+                "Got {num_labels} labels for {n} rects"
+            )));
+        }
+    }
+
+    let rects = vec_from_np_array(&rects)
+        .chunks_exact(4)
+        .map(|r| rect_format.to_bbox([r[0], r[1], r[2], r[3]]))
+        .collect();
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "bbox"),
+        LoggedData::Batch {
+            indices,
+            data: DataVec::BBox2D(rects),
+        },
+    );
+
+    let space = space.unwrap_or_else(|| "2D".to_owned());
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
 // ----------------------------------------------------------------------------
 
 /// positions: Nx2 or Nx3 array
@@ -528,7 +628,7 @@ fn log_points(
     // Note: we cannot early-out here on `positions.empty()`, beacause logging
     // an empty batch is same as deleting previous batch.
 
-    let (num_pos, dim) = match positions.shape() {
+    let (n, dim) = match positions.shape() {
         [n, 2] => (*n, 2),
         [n, 3] => (*n, 3),
         shape => {
@@ -541,10 +641,10 @@ fn log_points(
     let mut sdk = Sdk::global();
 
     let root_path = parse_obj_path_comps(obj_path)?;
-    let point_path = {
-        let mut point_path = root_path.clone();
-        point_path.push(ObjPathComp::Index(Index::Placeholder));
-        ObjPath::from(point_path)
+    let obj_path = {
+        let mut obj_path = root_path.clone();
+        obj_path.push(ObjPathComp::Index(Index::Placeholder));
+        ObjPath::from(obj_path)
     };
 
     let mut type_path = ObjPath::from(root_path).obj_type_path().clone();
@@ -559,59 +659,15 @@ fn log_points(
         },
     );
 
-    let indices: Vec<_> = (0..num_pos).map(|i| Index::Sequence(i as _)).collect();
+    let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
 
     let time_point = ThreadInfo::thread_now();
 
     if !colors.is_empty() {
-        let mut send_color = |data| {
-            sdk.send_data(&time_point, (&point_path, "color"), data);
-        };
-
-        match colors.shape() {
-            [3] | [1, 3] => {
-                // A single RGB
-                let colors = vec_from_np_array(&colors);
-                assert_eq!(colors.len(), 3);
-                let color = [colors[0], colors[1], colors[2], 255];
-                send_color(LoggedData::BatchSplat(Data::Color(color)));
-            }
-            [4] | [1, 4] => {
-                // A single RGBA
-                let colors = vec_from_np_array(&colors);
-                assert_eq!(colors.len(), 4);
-                let color = [colors[0], colors[1], colors[2], colors[3]];
-                send_color(LoggedData::BatchSplat(Data::Color(color)));
-            }
-            [_, 3] => {
-                // RGB, RGB, RGB, …
-                let colors = vec_from_np_array(&colors)
-                    .chunks_exact(3)
-                    .into_iter()
-                    .map(|chunk| [chunk[0], chunk[1], chunk[2], 255])
-                    .collect();
-
-                send_color(LoggedData::Batch {
-                    indices: indices.clone(),
-                    data: DataVec::Color(colors),
-                });
-            }
-            [_, 4] => {
-                // RGBA, RGBA, RGBA, …
-                send_color(LoggedData::Batch {
-                    indices: indices.clone(),
-                    data: DataVec::Color(pod_collect_to_vec(&vec_from_np_array(&colors))),
-                });
-            }
-            shape => {
-                return Err(PyTypeError::new_err(format!(
-                    "Expected Nx4 color array; got {shape:?}"
-                )));
-            }
-        };
+        let color_data = color_batch(&indices, colors)?;
+        sdk.send_data(&time_point, (&obj_path, "color"), color_data);
     }
 
-    // TODO(emilk): handle non-contigious arrays
     let pos_data = match dim {
         2 => DataVec::Vec2(pod_collect_to_vec(&vec_from_np_array(&positions))),
         3 => DataVec::Vec3(pod_collect_to_vec(&vec_from_np_array(&positions))),
@@ -620,7 +676,7 @@ fn log_points(
 
     sdk.send_data(
         &time_point,
-        (&point_path, "pos"),
+        (&obj_path, "pos"),
         LoggedData::Batch {
             indices,
             data: pos_data,
@@ -630,11 +686,75 @@ fn log_points(
     let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
     sdk.send_data(
         &time_point,
-        (&point_path, "space"),
+        (&obj_path, "space"),
         LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
     );
 
     Ok(())
+}
+
+fn color_batch(
+    indices: &Vec<Index>,
+    colors: numpy::PyReadonlyArrayDyn<'_, u8>,
+) -> PyResult<LoggedData> {
+    match colors.shape() {
+        [3] | [1, 3] => {
+            // A single RGB
+            let colors = vec_from_np_array(&colors);
+            assert_eq!(colors.len(), 3);
+            let color = [colors[0], colors[1], colors[2], 255];
+            Ok(LoggedData::BatchSplat(Data::Color(color)))
+        }
+        [4] | [1, 4] => {
+            // A single RGBA
+            let colors = vec_from_np_array(&colors);
+            assert_eq!(colors.len(), 4);
+            let color = [colors[0], colors[1], colors[2], colors[3]];
+            Ok(LoggedData::BatchSplat(Data::Color(color)))
+        }
+        [_, 3] => {
+            // RGB, RGB, RGB, …
+            let colors = vec_from_np_array(&colors)
+                .chunks_exact(3)
+                .into_iter()
+                .map(|chunk| [chunk[0], chunk[1], chunk[2], 255])
+                .collect_vec();
+
+            if colors.len() == indices.len() {
+                Ok(LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::Color(colors),
+                })
+            } else {
+                Err(PyTypeError::new_err(format!(
+                    "Expected {} colors, got {}",
+                    indices.len(),
+                    colors.len()
+                )))
+            }
+        }
+        [_, 4] => {
+            // RGBA, RGBA, RGBA, …
+
+            let colors = pod_collect_to_vec(&vec_from_np_array(&colors));
+
+            if colors.len() == indices.len() {
+                Ok(LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::Color(colors),
+                })
+            } else {
+                Err(PyTypeError::new_err(format!(
+                    "Expected {} colors, got {}",
+                    indices.len(),
+                    colors.len()
+                )))
+            }
+        }
+        shape => Err(PyTypeError::new_err(format!(
+            "Expected Nx4 color array; got {shape:?}"
+        ))),
+    }
 }
 
 #[pyfunction]

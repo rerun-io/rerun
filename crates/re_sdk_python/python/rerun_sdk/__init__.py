@@ -224,6 +224,46 @@ def log_rect(
                       space)
 
 
+def log_rects(
+    obj_path: str,
+    rects: ArrayLike,
+    *,
+    rect_format: RectFormat = RectFormat.XYWH,
+    colors: Optional[np.ndarray] = None,
+    labels: Optional[Sequence[str]] = None,
+    space: Optional[str] = None,
+):
+    """
+    Log multiple 2D rectangles.
+    Logging again to the same `obj_path` will replace all the previous rectangles.
+
+    * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format` argument.
+    * `rect_format`: how to interpret the `rect` argument
+    * `labels` is an optional per-rectangle text to show inside the rectangle.
+
+    Colors should either be in 0-255 gamma space or in 0-1 linear space.
+    Colors can be RGB or RGBA. You can supply no colors, one color,
+    or one color per point in a Nx3 or Nx4 numpy array.
+
+    Supported `dtype`s for `colors`:
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
+    * float32/float64: all color components should be in 0-1 linear space.
+
+    If no `space` is given, the space name "2D" will be used.
+    """
+    rects = np.require(rects, dtype='float32')
+    colors = _normalize_colors(colors)
+    if labels is None:
+        labels = []
+
+    rerun_rs.log_rects(obj_path,
+                       rect_format.value,
+                       rects,
+                       colors,
+                       labels,
+                       space)
+
+
 def log_points(
         obj_path: str,
         positions: np.ndarray,
@@ -232,6 +272,7 @@ def log_points(
         space: Optional[str] = None):
     """
     Log 2D or 3D points, with optional colors.
+    Logging again to the same `obj_path` will replace all the previous points.
 
     `positions`: Nx2 or Nx3 array
 
@@ -246,6 +287,13 @@ def log_points(
     If no `space` is given, the space name "2D" or "3D" will be used,
     depending on the dimensionality of the data.
     """
+    positions = np.require(positions, dtype='float32')
+    colors = _normalize_colors(colors)
+
+    rerun_rs.log_points(obj_path, positions, colors, space)
+
+
+def _normalize_colors(colors: Optional[np.ndarray] = None):
     if colors is None:
         # An empty array represents no colors.
         colors = np.array((), dtype=np.uint8)
@@ -257,10 +305,7 @@ def log_points(
         if colors.dtype != 'uint8':
             colors = colors.astype('uint8')
         colors = np.require(colors, dtype='uint8')
-
-    positions = np.require(positions, dtype='float32')
-
-    rerun_rs.log_points(obj_path, positions, colors, space)
+    return colors
 
 
 def log_camera(obj_path: str,
