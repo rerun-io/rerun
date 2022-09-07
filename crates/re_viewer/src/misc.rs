@@ -37,10 +37,7 @@ pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
 impl TimePoints {
     pub fn insert(&mut self, time_point: &TimePoint) {
         for (time_source, value) in &time_point.0 {
-            self.0
-                .entry(*time_source)
-                .or_default()
-                .insert(value.as_int());
+            self.0.entry(*time_source).or_default().insert(*value);
         }
     }
 }

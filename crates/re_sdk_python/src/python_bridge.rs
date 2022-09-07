@@ -53,7 +53,7 @@ impl ThreadInfo {
 
     fn set_time(&mut self, time_source: TimeSource, time_value: Option<TimeValue>) {
         if let Some(time_value) = time_value {
-            self.time_point.0.insert(time_source, time_value);
+            self.time_point.0.insert(time_source, time_value.as_int());
         } else {
             self.time_point.0.remove(&time_source);
         }

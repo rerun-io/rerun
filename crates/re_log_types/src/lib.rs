@@ -380,7 +380,7 @@ impl std::hash::Hash for TimeSource {
 /// It can be represented by [`Time`], a sequence index, or a mix of several things.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimePoint(pub BTreeMap<TimeSource, TimeValue>);
+pub struct TimePoint(pub BTreeMap<TimeSource, TimeInt>);
 
 // ----------------------------------------------------------------------------
 
@@ -583,7 +583,7 @@ pub fn time_point(fields: impl IntoIterator<Item = (&'static str, TimeValue)>) -
     TimePoint(
         fields
             .into_iter()
-            .map(|(name, tt)| (TimeSource::new(name, tt.typ()), tt))
+            .map(|(name, tt)| (TimeSource::new(name, tt.typ()), tt.as_int()))
             .collect(),
     )
 }
