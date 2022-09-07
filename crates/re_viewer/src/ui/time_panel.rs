@@ -415,12 +415,12 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
 
                 ui.vertical_centered(|ui| {
                     if range.min == range.max {
-                        ui.monospace(TimeValue::new(time_type, range.min).to_string());
+                        ui.monospace(time_type.format(range.min.into()));
                     } else {
                         ui.monospace(format!(
                             "{} - {}",
-                            TimeValue::new(time_type, range.min),
-                            TimeValue::new(time_type, range.max)
+                            time_type.format(range.min.into()),
+                            time_type.format(range.max.into())
                         ));
                     }
                 });

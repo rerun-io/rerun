@@ -24,8 +24,8 @@ impl ThreadInfo {
         Self::with(|ti| ti.now())
     }
 
-    pub fn set_thread_time(time_source: TimeSource, time_value: Option<TimeValue>) {
-        Self::with(|ti| ti.set_time(time_source, time_value));
+    pub fn set_thread_time(time_source: TimeSource, time_int: Option<TimeInt>) {
+        Self::with(|ti| ti.set_time(time_source, time_int));
     }
 
     /// Get access to the thread-local [`ThreadInfo`].
@@ -51,9 +51,9 @@ impl ThreadInfo {
         time_point
     }
 
-    fn set_time(&mut self, time_source: TimeSource, time_value: Option<TimeValue>) {
-        if let Some(time_value) = time_value {
-            self.time_point.0.insert(time_source, time_value.as_int());
+    fn set_time(&mut self, time_source: TimeSource, time_int: Option<TimeInt>) {
+        if let Some(time_int) = time_int {
+            self.time_point.0.insert(time_source, time_int);
         } else {
             self.time_point.0.remove(&time_source);
         }
@@ -301,7 +301,7 @@ fn save(path: &str) -> Result<(), PyErr> {
 fn set_time_sequence(time_source: &str, sequence: Option<i64>) {
     ThreadInfo::set_thread_time(
         TimeSource::new(time_source, TimeType::Sequence),
-        sequence.map(TimeValue::sequence),
+        sequence.map(TimeInt::from),
     );
 }
 
