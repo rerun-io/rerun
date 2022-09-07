@@ -328,12 +328,11 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) -> PyResult<()> {
 
     let time_point = ThreadInfo::thread_now();
 
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point,
-        data_path: DataPath::new(space_obj_path, "up".into()),
-        data: LoggedData::Single(Data::Vec3(up)),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&space_obj_path, "up"),
+        LoggedData::Single(Data::Vec3(up)),
+    );
 
     Ok(())
 }
@@ -396,22 +395,62 @@ fn log_camera(
 
     let time_point = ThreadInfo::thread_now();
 
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "camera".into()),
-        data: LoggedData::Single(Data::Camera(camera)),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "camera"),
+        LoggedData::Single(Data::Camera(camera)),
+    );
 
     let space = space.unwrap_or_else(|| "3D".to_owned());
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point,
-        data_path: DataPath::new(obj_path, "space".into()),
-        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
 
     Ok(())
+}
+
+// ----------------------------------------------------------------------------
+
+#[allow(non_camel_case_types, clippy::upper_case_acronyms)] // we follow Python style
+enum RectFormat {
+    XYWH,
+    YXHW,
+    XYXY,
+    YXYX,
+    XCYCWH,
+    XCYCW2H2,
+}
+
+impl RectFormat {
+    fn parse(rect_format: &str) -> PyResult<RectFormat> {
+        match rect_format {
+            "XYWH" => Ok(Self::XYWH),
+            "YXHW" => Ok(Self::YXHW),
+            "XYXY" => Ok(Self::XYXY),
+            "YXYX" => Ok(Self::YXYX),
+            "XCYCWH" => Ok(Self::XCYCWH),
+            "XCYCW2H2" => Ok(Self::XCYCW2H2),
+            _ => Err(PyTypeError::new_err(format!(
+                "Unknown RectFormat: {rect_format:?}. \
+                Expected one of: XYWH YXHW XYXY XCYCWH XCYCW2H2"
+            ))),
+        }
+    }
+
+    fn to_min_max(&self, r: [f32; 4]) -> ([f32; 2], [f32; 2]) {
+        match (self, r) {
+            (Self::XYWH, [x, y, w, h]) | (Self::YXHW, [y, x, h, w]) => ([x, y], [x + w, y + h]),
+            (Self::XYXY, [x0, y0, x1, y1]) | (Self::YXYX, [y0, x0, y1, x1]) => ([x0, y0], [x1, y1]),
+            (Self::XCYCWH, [xc, yc, w, h]) => {
+                ([xc - w / 2.0, yc - h / 2.0], [xc + w / 2.0, yc + h / 2.0])
+            }
+            (Self::XCYCW2H2, [xc, yc, half_w, half_h]) => {
+                ([xc - half_w, yc - half_h], [xc + half_w, yc + half_h])
+            }
+        }
+    }
 }
 
 /// Log a 2D bounding box.
@@ -421,16 +460,14 @@ fn log_camera(
 #[pyfunction]
 fn log_rect(
     obj_path: &str,
-    left_top: [f32; 2],
-    width_height: [f32; 2],
+    rect_format: &str,
+    r: [f32; 4],
     color: Option<Vec<u8>>,
     label: Option<String>,
     space: Option<String>,
 ) -> PyResult<()> {
-    let [x, y] = left_top;
-    let [w, h] = width_height;
-    let min = [x, y];
-    let max = [x + w, y + h];
+    let rect_format = RectFormat::parse(rect_format)?;
+    let (min, max) = rect_format.to_min_max(r);
 
     let mut sdk = Sdk::global();
 
@@ -439,42 +476,40 @@ fn log_rect(
 
     let time_point = ThreadInfo::thread_now();
 
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "bbox".into()),
-        data: LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "bbox"),
+        LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
+    );
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send(LogMsg::DataMsg(DataMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            data_path: DataPath::new(obj_path.clone(), "color".into()),
-            data: LoggedData::Single(Data::Color(color)),
-        }));
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
     }
 
     if let Some(label) = label {
-        sdk.send(LogMsg::DataMsg(DataMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            data_path: DataPath::new(obj_path.clone(), "label".into()),
-            data: LoggedData::Single(Data::String(label)),
-        }));
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "label"),
+            LoggedData::Single(Data::String(label)),
+        );
     }
 
     let space = space.unwrap_or_else(|| "2D".to_owned());
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point,
-        data_path: DataPath::new(obj_path, "space".into()),
-        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
 
     Ok(())
 }
+
+// ----------------------------------------------------------------------------
 
 /// positions: Nx2 or Nx3 array
 /// * `colors.len() == 0`: no colors
@@ -490,9 +525,8 @@ fn log_points(
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     space: Option<String>,
 ) -> PyResult<()> {
-    if positions.is_empty() {
-        return Ok(());
-    }
+    // Note: we cannot early-out here on `positions.empty()`, beacause logging
+    // an empty batch is same as deleting previous batch.
 
     let (num_pos, dim) = match positions.shape() {
         [n, 2] => (*n, 2),
@@ -531,12 +565,7 @@ fn log_points(
 
     if !colors.is_empty() {
         let mut send_color = |data| {
-            sdk.send(LogMsg::DataMsg(DataMsg {
-                msg_id: MsgId::random(),
-                time_point: time_point.clone(),
-                data_path: DataPath::new(point_path.clone(), "color".into()),
-                data,
-            }));
+            sdk.send_data(&time_point, (&point_path, "color"), data);
         };
 
         match colors.shape() {
@@ -589,23 +618,21 @@ fn log_points(
         _ => unreachable!(),
     };
 
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(point_path.clone(), "pos".into()),
-        data: LoggedData::Batch {
+    sdk.send_data(
+        &time_point,
+        (&point_path, "pos"),
+        LoggedData::Batch {
             indices,
             data: pos_data,
         },
-    }));
+    );
 
     let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point,
-        data_path: DataPath::new(point_path, "space".into()),
-        data: LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&point_path, "space"),
+        LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
+    );
 
     Ok(())
 }
@@ -634,39 +661,35 @@ fn log_path(
 
     let positions = pod_collect_to_vec(&vec_from_np_array(&positions));
 
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "points".into()),
-        data: LoggedData::Single(Data::DataVec(DataVec::Vec3(positions))),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "points"),
+        LoggedData::Single(Data::DataVec(DataVec::Vec3(positions))),
+    );
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send(LogMsg::DataMsg(DataMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            data_path: DataPath::new(obj_path.clone(), "color".into()),
-            data: LoggedData::Single(Data::Color(color)),
-        }));
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
     }
 
     if let Some(stroke_width) = stroke_width {
-        sdk.send(LogMsg::DataMsg(DataMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            data_path: DataPath::new(obj_path.clone(), "stroke_width".into()),
-            data: LoggedData::Single(Data::F32(stroke_width)),
-        }));
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "stroke_width"),
+            LoggedData::Single(Data::F32(stroke_width)),
+        );
     }
 
     let space = space.unwrap_or_else(|| "3D".to_owned());
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point,
-        data_path: DataPath::new(obj_path, "space".into()),
-        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
 
     Ok(())
 }
@@ -719,39 +742,35 @@ fn log_line_segments(
 
     let time_point = ThreadInfo::thread_now();
 
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "points".into()),
-        data: LoggedData::Single(positions),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "points"),
+        LoggedData::Single(positions),
+    );
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send(LogMsg::DataMsg(DataMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            data_path: DataPath::new(obj_path.clone(), "color".into()),
-            data: LoggedData::Single(Data::Color(color)),
-        }));
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
     }
 
     if let Some(stroke_width) = stroke_width {
-        sdk.send(LogMsg::DataMsg(DataMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            data_path: DataPath::new(obj_path.clone(), "stroke_width".into()),
-            data: LoggedData::Single(Data::F32(stroke_width)),
-        }));
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "stroke_width"),
+            LoggedData::Single(Data::F32(stroke_width)),
+        );
     }
 
     let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point,
-        data_path: DataPath::new(obj_path, "space".into()),
-        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
 
     Ok(())
 }
@@ -806,28 +825,25 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
 
     let time_point = ThreadInfo::thread_now();
 
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "tensor".into()),
-        data: LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "tensor"),
+        LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
+    );
 
     let space = space.unwrap_or_else(|| "2D".to_owned());
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "space".into()),
-        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
 
     if let Some(meter) = meter {
-        sdk.send(LogMsg::DataMsg(DataMsg {
-            msg_id: MsgId::random(),
-            time_point,
-            data_path: DataPath::new(obj_path, "meter".into()),
-            data: LoggedData::Single(Data::F32(meter)),
-        }));
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "meter"),
+            LoggedData::Single(Data::F32(meter)),
+        );
     }
 
     Ok(())
@@ -899,23 +915,21 @@ fn log_mesh_file(
 
     let time_point = ThreadInfo::thread_now();
 
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.clone(), "mesh".into()),
-        data: LoggedData::Single(Data::Mesh3D(Mesh3D::Encoded(EncodedMesh3D {
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "mesh"),
+        LoggedData::Single(Data::Mesh3D(Mesh3D::Encoded(EncodedMesh3D {
             format,
             bytes,
             transform,
         }))),
-    }));
+    );
 
-    sdk.send(LogMsg::DataMsg(DataMsg {
-        msg_id: MsgId::random(),
-        time_point,
-        data_path: DataPath::new(obj_path, "space".into()),
-        data: LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
-    }));
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
 
     Ok(())
 }

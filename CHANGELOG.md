@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-09-07: Python SDK: `log_rect` has changed signature to allow you to select your preferred rectangle format ([#85](https://github.com/rerun-io/rerun/pull/85)).
 * 2022-09-06: Viewer: rearrange different space views by resizing and drag-dropping tabs ([#82](https://github.com/rerun-io/rerun/pull/82)).
 * 2022-09-01: Python SDK: support logging from multiple processes ([#79](https://github.com/rerun-io/rerun/pull/79), [#80](https://github.com/rerun-io/rerun/pull/80)).
 * 2022-09-01: Python SDK: add `rerun.save(…)` to save recorded data to file ([#78](https://github.com/rerun-io/rerun/pull/78)).
