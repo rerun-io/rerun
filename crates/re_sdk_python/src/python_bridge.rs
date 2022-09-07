@@ -90,6 +90,8 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
+    m.add_function(wrap_pyfunction!(log_rects, m)?)?;
+
     m.add_function(wrap_pyfunction!(log_camera, m)?)?;
     m.add_function(wrap_pyfunction!(log_points, m)?)?;
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
@@ -511,6 +513,102 @@ fn log_rect(
     Ok(())
 }
 
+#[pyfunction]
+fn log_rects(
+    obj_path: &str,
+    rect_format: &str,
+    rects: numpy::PyReadonlyArray2<'_, f32>,
+    colors: numpy::PyReadonlyArrayDyn<'_, u8>,
+    labels: Vec<String>,
+    space: Option<String>,
+) -> PyResult<()> {
+    // Note: we cannot early-out here on `rects.empty()`, beacause logging
+    // an empty batch is same as deleting previous batch.
+
+    let rect_format = RectFormat::parse(rect_format)?;
+
+    let n = match rects.shape() {
+        [n, 4] => *n,
+        shape => {
+            return Err(PyTypeError::new_err(format!(
+                "Expected Nx4 rects array; got {shape:?}"
+            )));
+        }
+    };
+
+    let mut sdk = Sdk::global();
+
+    let root_path = parse_obj_path_comps(obj_path)?;
+    let obj_path = {
+        let mut obj_path = root_path.clone();
+        obj_path.push(ObjPathComp::Index(Index::Placeholder));
+        ObjPath::from(obj_path)
+    };
+
+    let mut type_path = ObjPath::from(root_path).obj_type_path().clone();
+    type_path.push(TypePathComp::Index);
+
+    sdk.register_type(&type_path, ObjectType::BBox2D);
+
+    let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
+
+    let time_point = ThreadInfo::thread_now();
+
+    if !colors.is_empty() {
+        let color_data = color_batch(&indices, colors)?;
+        sdk.send_data(&time_point, (&obj_path, "color"), color_data);
+    }
+
+    match labels.len() {
+        0 => {}
+        1 => {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "label"),
+                LoggedData::BatchSplat(Data::String(labels[0].clone())),
+            );
+        }
+        num_labels if num_labels == n => {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "label"),
+                LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::String(labels),
+                },
+            );
+        }
+        num_labels => {
+            return Err(PyTypeError::new_err(format!(
+                "Got {num_labels} labels for {n} rects"
+            )));
+        }
+    }
+
+    let rects = vec_from_np_array(&rects)
+        .chunks_exact(4)
+        .map(|r| rect_format.to_bbox([r[0], r[1], r[2], r[3]]))
+        .collect();
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "bbox"),
+        LoggedData::Batch {
+            indices,
+            data: DataVec::BBox2D(rects),
+        },
+    );
+
+    let space = space.unwrap_or_else(|| "2D".to_owned());
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
 // ----------------------------------------------------------------------------
 
 /// positions: Nx2 or Nx3 array
@@ -530,7 +628,7 @@ fn log_points(
     // Note: we cannot early-out here on `positions.empty()`, beacause logging
     // an empty batch is same as deleting previous batch.
 
-    let (num_pos, dim) = match positions.shape() {
+    let (n, dim) = match positions.shape() {
         [n, 2] => (*n, 2),
         [n, 3] => (*n, 3),
         shape => {
@@ -543,10 +641,10 @@ fn log_points(
     let mut sdk = Sdk::global();
 
     let root_path = parse_obj_path_comps(obj_path)?;
-    let point_path = {
-        let mut point_path = root_path.clone();
-        point_path.push(ObjPathComp::Index(Index::Placeholder));
-        ObjPath::from(point_path)
+    let obj_path = {
+        let mut obj_path = root_path.clone();
+        obj_path.push(ObjPathComp::Index(Index::Placeholder));
+        ObjPath::from(obj_path)
     };
 
     let mut type_path = ObjPath::from(root_path).obj_type_path().clone();
@@ -561,16 +659,15 @@ fn log_points(
         },
     );
 
-    let indices: Vec<_> = (0..num_pos).map(|i| Index::Sequence(i as _)).collect();
+    let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
 
     let time_point = ThreadInfo::thread_now();
 
     if !colors.is_empty() {
         let color_data = color_batch(&indices, colors)?;
-        sdk.send_data(&time_point, (&point_path, "color"), color_data);
+        sdk.send_data(&time_point, (&obj_path, "color"), color_data);
     }
 
-    // TODO(emilk): handle non-contigious arrays
     let pos_data = match dim {
         2 => DataVec::Vec2(pod_collect_to_vec(&vec_from_np_array(&positions))),
         3 => DataVec::Vec3(pod_collect_to_vec(&vec_from_np_array(&positions))),
@@ -579,7 +676,7 @@ fn log_points(
 
     sdk.send_data(
         &time_point,
-        (&point_path, "pos"),
+        (&obj_path, "pos"),
         LoggedData::Batch {
             indices,
             data: pos_data,
@@ -589,7 +686,7 @@ fn log_points(
     let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
     sdk.send_data(
         &time_point,
-        (&point_path, "space"),
+        (&obj_path, "space"),
         LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
     );
 
