@@ -2,6 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 
 use bytemuck::allocation::pod_collect_to_vec;
+use itertools::Itertools as _;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -564,51 +565,8 @@ fn log_points(
     let time_point = ThreadInfo::thread_now();
 
     if !colors.is_empty() {
-        let mut send_color = |data| {
-            sdk.send_data(&time_point, (&point_path, "color"), data);
-        };
-
-        match colors.shape() {
-            [3] | [1, 3] => {
-                // A single RGB
-                let colors = vec_from_np_array(&colors);
-                assert_eq!(colors.len(), 3);
-                let color = [colors[0], colors[1], colors[2], 255];
-                send_color(LoggedData::BatchSplat(Data::Color(color)));
-            }
-            [4] | [1, 4] => {
-                // A single RGBA
-                let colors = vec_from_np_array(&colors);
-                assert_eq!(colors.len(), 4);
-                let color = [colors[0], colors[1], colors[2], colors[3]];
-                send_color(LoggedData::BatchSplat(Data::Color(color)));
-            }
-            [_, 3] => {
-                // RGB, RGB, RGB, …
-                let colors = vec_from_np_array(&colors)
-                    .chunks_exact(3)
-                    .into_iter()
-                    .map(|chunk| [chunk[0], chunk[1], chunk[2], 255])
-                    .collect();
-
-                send_color(LoggedData::Batch {
-                    indices: indices.clone(),
-                    data: DataVec::Color(colors),
-                });
-            }
-            [_, 4] => {
-                // RGBA, RGBA, RGBA, …
-                send_color(LoggedData::Batch {
-                    indices: indices.clone(),
-                    data: DataVec::Color(pod_collect_to_vec(&vec_from_np_array(&colors))),
-                });
-            }
-            shape => {
-                return Err(PyTypeError::new_err(format!(
-                    "Expected Nx4 color array; got {shape:?}"
-                )));
-            }
-        };
+        let color_data = color_batch(&indices, colors)?;
+        sdk.send_data(&time_point, (&point_path, "color"), color_data);
     }
 
     // TODO(emilk): handle non-contigious arrays
@@ -635,6 +593,70 @@ fn log_points(
     );
 
     Ok(())
+}
+
+fn color_batch(
+    indices: &Vec<Index>,
+    colors: numpy::PyReadonlyArrayDyn<'_, u8>,
+) -> PyResult<LoggedData> {
+    match colors.shape() {
+        [3] | [1, 3] => {
+            // A single RGB
+            let colors = vec_from_np_array(&colors);
+            assert_eq!(colors.len(), 3);
+            let color = [colors[0], colors[1], colors[2], 255];
+            Ok(LoggedData::BatchSplat(Data::Color(color)))
+        }
+        [4] | [1, 4] => {
+            // A single RGBA
+            let colors = vec_from_np_array(&colors);
+            assert_eq!(colors.len(), 4);
+            let color = [colors[0], colors[1], colors[2], colors[3]];
+            Ok(LoggedData::BatchSplat(Data::Color(color)))
+        }
+        [_, 3] => {
+            // RGB, RGB, RGB, …
+            let colors = vec_from_np_array(&colors)
+                .chunks_exact(3)
+                .into_iter()
+                .map(|chunk| [chunk[0], chunk[1], chunk[2], 255])
+                .collect_vec();
+
+            if colors.len() == indices.len() {
+                Ok(LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::Color(colors),
+                })
+            } else {
+                Err(PyTypeError::new_err(format!(
+                    "Expected {} colors, got {}",
+                    indices.len(),
+                    colors.len()
+                )))
+            }
+        }
+        [_, 4] => {
+            // RGBA, RGBA, RGBA, …
+
+            let colors = pod_collect_to_vec(&vec_from_np_array(&colors));
+
+            if colors.len() == indices.len() {
+                Ok(LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::Color(colors),
+                })
+            } else {
+                Err(PyTypeError::new_err(format!(
+                    "Expected {} colors, got {}",
+                    indices.len(),
+                    colors.len()
+                )))
+            }
+        }
+        shape => Err(PyTypeError::new_err(format!(
+            "Expected Nx4 color array; got {shape:?}"
+        ))),
+    }
 }
 
 #[pyfunction]
