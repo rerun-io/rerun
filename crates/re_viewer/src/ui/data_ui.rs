@@ -218,7 +218,7 @@ pub(crate) fn ui_time_point(
         egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
             for (time_source, value) in &time_point.0 {
                 ui.label(format!("{}:", time_source.name()));
-                ctx.time_button(ui, time_source, value.as_int());
+                ctx.time_button(ui, time_source, *value);
                 ui.end_row();
             }
         });

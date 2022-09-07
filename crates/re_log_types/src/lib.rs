@@ -380,11 +380,11 @@ impl std::hash::Hash for TimeSource {
 /// It can be represented by [`Time`], a sequence index, or a mix of several things.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimePoint(pub BTreeMap<TimeSource, TimeValue>);
+pub struct TimePoint(pub BTreeMap<TimeSource, TimeInt>);
 
 // ----------------------------------------------------------------------------
 
-/// The type of a [`TimeValue`].
+/// The type of a [`TimeInt`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
@@ -400,6 +400,13 @@ impl TimeType {
         match self {
             Self::Time => 0,
             Self::Sequence => 1,
+        }
+    }
+
+    pub fn format(&self, time_int: TimeInt) -> String {
+        match self {
+            Self::Time => Time::from(time_int).format(),
+            Self::Sequence => format!("#{}", time_int.0),
         }
     }
 }
@@ -518,72 +525,14 @@ impl std::iter::Sum for TimeInt {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum TimeValue {
-    /// Normal wall time.
-    Time(Time),
-
-    /// Used e.g. for frames in a film.
-    Sequence(i64),
-}
-
-impl TimeValue {
-    #[inline]
-    pub fn new(typ: TimeType, int: impl Into<TimeInt>) -> Self {
-        let int = int.into();
-        match typ {
-            TimeType::Time => Self::Time(Time::from_ns_since_epoch(int.0)),
-            TimeType::Sequence => Self::Sequence(int.0),
-        }
-    }
-
-    #[inline]
-    pub fn time(time: Time) -> Self {
-        Self::Time(time)
-    }
-
-    #[inline]
-    pub fn sequence(seq: i64) -> Self {
-        Self::Sequence(seq)
-    }
-
-    #[inline]
-    pub fn typ(&self) -> TimeType {
-        match self {
-            Self::Time(_) => TimeType::Time,
-            Self::Sequence(_) => TimeType::Sequence,
-        }
-    }
-
-    /// Either nanos since epoch, or a sequence number.
-    #[inline]
-    pub fn as_int(&self) -> TimeInt {
-        match *self {
-            Self::Time(time) => time.into(),
-            Self::Sequence(seq) => seq.into(),
-        }
-    }
-}
-
-impl std::fmt::Display for TimeValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Time(time) => time.format().fmt(f),
-            Self::Sequence(seq) => format!("#{seq}").fmt(f),
-        }
-    }
-}
-
-impl_into_enum!(Time, TimeValue, Time);
-impl_into_enum!(i64, TimeValue, Sequence);
-
 #[inline]
-pub fn time_point(fields: impl IntoIterator<Item = (&'static str, TimeValue)>) -> TimePoint {
+pub fn time_point(
+    fields: impl IntoIterator<Item = (&'static str, TimeType, TimeInt)>,
+) -> TimePoint {
     TimePoint(
         fields
             .into_iter()
-            .map(|(name, tt)| (TimeSource::new(name, tt.typ()), tt))
+            .map(|(name, tt, ti)| (TimeSource::new(name, tt), ti))
             .collect(),
     )
 }

@@ -55,8 +55,8 @@ impl LogDataStore {
 
         let mut batcher = Batcher::default();
 
-        for (time_source, time_value) in &data_msg.time_point.0 {
-            let time_i64 = time_value.as_int().as_i64();
+        for (time_source, time_int) in &data_msg.time_point.0 {
+            let time_i64 = time_int.as_i64();
             let msg_id = data_msg.msg_id;
 
             let DataPath {
@@ -70,7 +70,7 @@ impl LogDataStore {
                         .entry(*op.hash())
                         .or_insert_with(|| op.clone());
 
-                    let store = self.entry(time_source, time_value.typ());
+                    let store = self.entry(time_source, time_source.typ());
                     re_log_types::data_map!(data.clone(), |data| store
                         .insert_individual(op, fname, time_i64, msg_id, data))
                 }
@@ -78,12 +78,12 @@ impl LogDataStore {
                     re_log_types::data_vec_map!(data, |vec| {
                         let batch = batcher.batch(indices, vec);
                         self.register_batch_obj_paths(data_msg, batch.indices());
-                        let store = self.entry(time_source, time_value.typ());
+                        let store = self.entry(time_source, time_source.typ());
                         store.insert_batch(&op, fname, time_i64, msg_id, batch)
                     })
                 }
                 LoggedData::BatchSplat(data) => {
-                    let store = self.entry(time_source, time_value.typ());
+                    let store = self.entry(time_source, time_source.typ());
                     re_log_types::data_map!(data.clone(), |data| store
                         .insert_batch_splat(op, fname, time_i64, msg_id, data))
                 }

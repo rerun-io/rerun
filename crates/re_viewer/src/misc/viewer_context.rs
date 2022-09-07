@@ -1,6 +1,6 @@
 use macaw::Ray3;
 use re_data_store::ObjTypePath;
-use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource, TimeValue};
+use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource};
 
 use crate::{log_db::LogDb, misc::log_db::ObjectTree};
 
@@ -106,10 +106,7 @@ impl<'a> ViewerContext<'a> {
             .time_ctrl
             .is_time_selected(time_source, value.into());
 
-        let response = ui.selectable_label(
-            is_selected,
-            TimeValue::new(time_source.typ(), value).to_string(),
-        );
+        let response = ui.selectable_label(is_selected, time_source.typ().format(value));
         if response.clicked() {
             self.rec_cfg
                 .time_ctrl

@@ -199,7 +199,7 @@ impl ObjectTree {
             self.prefix_times
                 .entry(*time_source)
                 .or_default()
-                .entry(time_value.as_int())
+                .entry(*time_value)
                 .or_default()
                 .insert(msg.msg_id);
         }
@@ -255,7 +255,7 @@ impl DataColumns {
             self.times
                 .entry(*time_source)
                 .or_default()
-                .entry(time_value.as_int())
+                .entry(*time_value)
                 .or_default()
                 .insert(msg.msg_id);
         }
