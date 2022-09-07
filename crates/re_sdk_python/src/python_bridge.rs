@@ -440,8 +440,8 @@ impl RectFormat {
         }
     }
 
-    fn to_min_max(&self, r: [f32; 4]) -> ([f32; 2], [f32; 2]) {
-        match (self, r) {
+    fn to_bbox(&self, r: [f32; 4]) -> BBox2D {
+        let (min, max) = match (self, r) {
             (Self::XYWH, [x, y, w, h]) | (Self::YXHW, [y, x, h, w]) => ([x, y], [x + w, y + h]),
             (Self::XYXY, [x0, y0, x1, y1]) | (Self::YXYX, [y0, x0, y1, x1]) => ([x0, y0], [x1, y1]),
             (Self::XCYCWH, [xc, yc, w, h]) => {
@@ -450,7 +450,8 @@ impl RectFormat {
             (Self::XCYCW2H2, [xc, yc, half_w, half_h]) => {
                 ([xc - half_w, yc - half_h], [xc + half_w, yc + half_h])
             }
-        }
+        };
+        BBox2D { min, max }
     }
 }
 
@@ -468,7 +469,7 @@ fn log_rect(
     space: Option<String>,
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
-    let (min, max) = rect_format.to_min_max(r);
+    let bbox = rect_format.to_bbox(r);
 
     let mut sdk = Sdk::global();
 
@@ -480,7 +481,7 @@ fn log_rect(
     sdk.send_data(
         &time_point,
         (&obj_path, "bbox"),
-        LoggedData::Single(Data::BBox2D(BBox2D { min, max })),
+        LoggedData::Single(Data::BBox2D(bbox)),
     );
 
     if let Some(color) = color {
