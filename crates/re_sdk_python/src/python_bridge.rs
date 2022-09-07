@@ -532,9 +532,8 @@ fn log_points(
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     space: Option<String>,
 ) -> PyResult<()> {
-    if positions.is_empty() {
-        return Ok(());
-    }
+    // Note: we cannot early-out here on `positions.empty()`, beacause logging
+    // an empty batch is same as deleting previous batch.
 
     let (num_pos, dim) = match positions.shape() {
         [n, 2] => (*n, 2),
