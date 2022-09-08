@@ -69,7 +69,7 @@ The Python bindings to the core Rust library are built using https://github.com/
 
 To build an installable Python wheel run:
 ```
-pip install -r crates/re_sdk_python/requirments-build.txt
+pip install -r crates/re_sdk_python/requirements-build.txt
 maturin build -m ./crates/re_sdk_python/Cargo.toml --release
 ```
 
