@@ -6,7 +6,7 @@ use crate::{BatchOrSplat, Error, Result, TimeQuery};
 
 // ----------------------------------------------------------------------------
 
-/// Stores data for a specific [`FieldName`] of a specific [`ObjPath`] on a specific [`TimeSource`].
+/// Stores data for a specific [`re_log_types::FieldName`] of a specific [`ObjPath`] on a specific [`re_log_types::TimeSource`].
 pub struct FieldStore<Time> {
     data_store: Box<dyn std::any::Any>,
     mono: bool,
@@ -95,14 +95,14 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
 
     /// Typed-erased query of the contents of one field of this object.
     ///
-    /// If `multi_index` is `None`, all instances are returned.
-    /// If `multi_index` is `Some`, only those instances that match will be returned.
+    /// If `instance_index` is `None`, all instances are returned.
+    /// If `instance_index` is `Some`, only those instances that match will be returned.
     ///
     /// Returns vectors of equal length.
     pub fn query_field_to_datavec(
         &self,
         time_query: &TimeQuery<Time>,
-        multi_index: Option<&Index>,
+        instance_index: Option<&Index>,
     ) -> (Vec<(Time, MsgId, Option<Index>)>, DataVec) {
         // TODO(emilk): proper error handling in this function
         macro_rules! handle_type(
@@ -110,7 +110,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
                 let mut time_msgid_index = vec![];
                 let mut values = vec![];
                 if self.mono {
-                    assert!(multi_index.is_none());
+                    assert!(instance_index.is_none());
                     let mono = self.get_mono::<$typ>().unwrap();
                     mono.query(time_query, |time, msg_id, value| {
                         time_msgid_index.push((*time, *msg_id, None));
@@ -126,8 +126,8 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
                             }
                             BatchOrSplat::Batch(batch) => {
                                 for (index_hash, index) in batch.indices() {
-                                    if let Some(multi_index) = multi_index {
-                                        if index != multi_index {
+                                    if let Some(instance_index) = instance_index {
+                                        if index != instance_index {
                                             continue;
                                         }
                                     }

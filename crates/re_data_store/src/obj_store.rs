@@ -5,7 +5,7 @@ use crate::{BatchOrSplat, Error, FieldStore, MonoFieldStore, MultiFieldStore, Re
 
 // ----------------------------------------------------------------------------
 
-/// Stores all the fields of a specific [`ObjPath`] on a specific [`TimeSource`].
+/// Stores all the fields of a specific [`re_log_types::ObjPath`] on a specific [`re_log_types::TimeSource`].
 pub struct ObjStore<Time> {
     pub(crate) mono: bool,
     pub(crate) fields: IntMap<FieldName, FieldStore<Time>>,

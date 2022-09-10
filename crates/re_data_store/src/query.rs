@@ -142,8 +142,8 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
             time_query,
             |_time, (msg_id, primary_batch)| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
-                    for (multi_index, primary_value) in primary_batch.iter() {
-                        visit(Some(multi_index), msg_id, primary_value);
+                    for (instance_index, primary_value) in primary_batch.iter() {
+                        visit(Some(instance_index), msg_id, primary_value);
                     }
                 }
             },
@@ -182,12 +182,12 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
             |time, (msg_id, primary_batch)| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
-                    for (multi_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, primary_value) in primary_batch.iter() {
                         visit(
-                            Some(multi_index),
+                            Some(instance_index),
                             msg_id,
                             primary_value,
-                            child1.get(multi_index),
+                            child1.get(instance_index),
                         );
                     }
                 }
@@ -243,13 +243,13 @@ pub fn visit_type_data_2<
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
                     let child2 = MultiDataReader::latest_at(child2, time);
-                    for (multi_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, primary_value) in primary_batch.iter() {
                         visit(
-                            Some(multi_index),
+                            Some(instance_index),
                             msg_id,
                             primary_value,
-                            child1.get(multi_index),
-                            child2.get(multi_index),
+                            child1.get(instance_index),
+                            child2.get(instance_index),
                         );
                     }
                 }
@@ -318,14 +318,14 @@ pub fn visit_type_data_3<
                     let child1 = MultiDataReader::latest_at(child1, time);
                     let child2 = MultiDataReader::latest_at(child2, time);
                     let child3 = MultiDataReader::latest_at(child3, time);
-                    for (multi_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, primary_value) in primary_batch.iter() {
                         visit(
-                            Some(multi_index),
+                            Some(instance_index),
                             msg_id,
                             primary_value,
-                            child1.get(multi_index),
-                            child2.get(multi_index),
-                            child3.get(multi_index),
+                            child1.get(instance_index),
+                            child2.get(instance_index),
+                            child3.get(instance_index),
                         );
                     }
                 }
@@ -401,15 +401,15 @@ pub fn visit_type_data_4<
                     let child2 = MultiDataReader::latest_at(child2, time);
                     let child3 = MultiDataReader::latest_at(child3, time);
                     let child4 = MultiDataReader::latest_at(child4, time);
-                    for (multi_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, primary_value) in primary_batch.iter() {
                         visit(
-                            Some(multi_index),
+                            Some(instance_index),
                             msg_id,
                             primary_value,
-                            child1.get(multi_index),
-                            child2.get(multi_index),
-                            child3.get(multi_index),
-                            child4.get(multi_index),
+                            child1.get(instance_index),
+                            child2.get(instance_index),
+                            child3.get(instance_index),
+                            child4.get(instance_index),
                         );
                     }
                 }

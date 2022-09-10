@@ -61,7 +61,7 @@ impl<'a> ViewerContext<'a> {
         if response.clicked() {
             self.rec_cfg.selection = Selection::Instance(InstanceId {
                 obj_path: obj_path.clone(),
-                multi_index: None,
+                instance_index: None,
             });
         }
         response

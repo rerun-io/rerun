@@ -299,7 +299,7 @@ impl TimePanel {
                     &self.time_ranges_ui,
                     Some(Selection::Instance(InstanceId {
                         obj_path,
-                        multi_index: None,
+                        instance_index: None,
                     })),
                 );
             }

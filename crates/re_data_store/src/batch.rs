@@ -23,7 +23,7 @@ impl<T: Clone> BatchOrSplat<T> {
 
 /// Can be shared between different timelines with [`ArcBatch`].
 ///
-/// Each [`Index`] is the last path of the [`IndexPath`].
+/// Each [`Index`] in a batch corresponds to an instance of a multi-object.
 pub struct Batch<T> {
     map: IntMap<IndexHash, T>,
     hashed_indices: Vec<(IndexHash, Index)>,

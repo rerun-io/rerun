@@ -16,7 +16,7 @@ pub struct ObjectProps<'s> {
 
     /// If it is a multi-object, this is the instance index,
     /// else it is [`IndexHash::NONE`].
-    pub multi_index: IndexHash,
+    pub instance_index: IndexHash,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -93,7 +93,7 @@ impl<'s> Image<'s> {
             &FieldName::from("tensor"),
             time_query,
             ("space", "color", "meter"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              tensor: &re_log_types::Tensor,
              space: Option<&ObjPath>,
@@ -105,7 +105,7 @@ impl<'s> Image<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Image {
                         tensor,
@@ -137,7 +137,7 @@ impl<'s> Point2D<'s> {
             &FieldName::from("pos"),
             time_query,
             ("space", "color", "radius"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              pos: &[f32; 2],
              space: Option<&ObjPath>,
@@ -149,7 +149,7 @@ impl<'s> Point2D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Point2D {
                         pos,
@@ -181,7 +181,7 @@ impl<'s> Point3D<'s> {
             &FieldName::from("pos"),
             time_query,
             ("space", "color", "radius"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              pos: &[f32; 3],
              space: Option<&ObjPath>,
@@ -193,7 +193,7 @@ impl<'s> Point3D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Point3D {
                         pos,
@@ -226,7 +226,7 @@ impl<'s> BBox2D<'s> {
             &FieldName::from("bbox"),
             time_query,
             ("space", "color", "stroke_width", "label"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              bbox: &re_log_types::BBox2D,
              space: Option<&ObjPath>,
@@ -239,7 +239,7 @@ impl<'s> BBox2D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: BBox2D {
                         bbox,
@@ -272,7 +272,7 @@ impl<'s> Box3D<'s> {
             &FieldName::from("obb"),
             time_query,
             ("space", "color", "stroke_width"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              obb: &re_log_types::Box3,
              space: Option<&ObjPath>,
@@ -284,7 +284,7 @@ impl<'s> Box3D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Box3D {
                         obb,
@@ -316,7 +316,7 @@ impl<'s> Path3D<'s> {
             &FieldName::from("points"),
             time_query,
             ("space", "color", "stroke_width"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
@@ -329,7 +329,7 @@ impl<'s> Path3D<'s> {
                             space,
                             color: color.copied(),
                             obj_path,
-                            multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                            instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                         },
                         data: Path3D {
                             points,
@@ -363,7 +363,7 @@ impl<'s> LineSegments2D<'s> {
             &FieldName::from("points"),
             time_query,
             ("space", "color", "stroke_width"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
@@ -376,7 +376,7 @@ impl<'s> LineSegments2D<'s> {
                             space,
                             color: color.copied(),
                             obj_path,
-                            multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                            instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                         },
                         data: LineSegments2D {
                             points,
@@ -410,7 +410,7 @@ impl<'s> LineSegments3D<'s> {
             &FieldName::from("points"),
             time_query,
             ("space", "color", "stroke_width"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
@@ -423,7 +423,7 @@ impl<'s> LineSegments3D<'s> {
                             space,
                             color: color.copied(),
                             obj_path,
-                            multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                            instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                         },
                         data: LineSegments3D {
                             points,
@@ -455,7 +455,7 @@ impl<'s> Mesh3D<'s> {
             &FieldName::from("mesh"),
             time_query,
             ("space", "color"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              mesh: &re_log_types::Mesh3D,
              space: Option<&ObjPath>,
@@ -466,7 +466,7 @@ impl<'s> Mesh3D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Mesh3D { mesh },
                 });
@@ -495,7 +495,7 @@ impl<'s> Camera<'s> {
             &FieldName::from("camera"),
             time_query,
             ("space", "color"),
-            |multi_index: Option<&IndexHash>,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              camera: &re_log_types::Camera,
              space: Option<&ObjPath>,
@@ -506,7 +506,7 @@ impl<'s> Camera<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Camera { camera },
                 });
@@ -534,7 +534,7 @@ impl<'s> Space<'s> {
             obj_store,
             &FieldName::from("up"),
             time_query,
-            |_multi_index: Option<&IndexHash>, _msg_id: &MsgId, up: &[f32; 3]| {
+            |_instance_index: Option<&IndexHash>, _msg_id: &MsgId, up: &[f32; 3]| {
                 out.space.insert(obj_path, Space { up });
             },
         );

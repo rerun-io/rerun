@@ -13,9 +13,9 @@ To complicate things even further, we allowed some field of an object to be batc
 
 ## Changes in the new model
 
-In the new model, batches are first-class-citizens. Each object can either be "mono" or "multi" (batch). Mono-objects are referred to with just an object path, but multi-objects have an added `MultiIndex` to distinguish witch instance of the multi-object it is.
+In the new model, batches are first-class-citizens. Each object can either be "mono" or "multi" (batch). Mono-objects are referred to with just an object path, but multi-objects have an added `InstanceIndex` to distinguish which instance of the multi-object it is.
 
-All fields in a multi-object are batch-logged. There is no mixing.
+All fields in a multi-object must be batch-logged. There is no mixing allowed.
 
 
 ## Details
@@ -23,16 +23,16 @@ All fields in a multi-object are batch-logged. There is no mixing.
 The basic structure is this:
 
 ```
-objpath[multi_index].field
+objpath[instance_index].field
 ```
 
-where `[multi_index]` is omitted for mono-objects.
+where `[instance_index]` is omitted for mono-objects.
 
-To log a mono-object to the `ObjPath` `point`, we log `point.pos`, `point.color`, etc (no `MultiIndex`).
+To log a mono-object to the `ObjPath` `point`, we log `point.pos`, `point.color`, etc (no `InstanceIndex`).
 
 If we log a point cloud, we have an index for each point, and we log each field in a batch, i.e. log all `points[*].pos` at once, and all `points[*].color` at once.
 
-**Instances**: A mono-object has only one _instance_, while multi-objects have many _instances_. So an instance is uniquely identified with an `ObjPath` plus an optional `MultiIndex`. You can get a hierarchical view of each object where you can toggle their visibility on/off, but you can NOT do it per-instance.
+**Instances**: A mono-object has only one _instance_, while multi-objects have many _instances_. So an instance is uniquely identified with an `ObjPath` plus an optional `InstanceIndex`. You can get a hierarchical view of each object where you can toggle their visibility on/off, but you can NOT do it per-instance.
 
 Each `ObjPath` has an associated `ObjectType` which dictates how the `field`s are interpreted (and which fields are allowed). The `ObjectType` needs to be logged once before any data is logged to the stream.
 

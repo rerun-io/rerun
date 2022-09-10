@@ -18,7 +18,7 @@ pub(crate) fn view_object(
         ui,
         &InstanceId {
             obj_path: obj_path.clone(),
-            multi_index: None,
+            instance_index: None,
         },
         preview,
     )
@@ -46,7 +46,7 @@ pub(crate) fn view_instance(
                 );
 
                 let (time_msgid_index, data_vec) = field_store
-                    .query_field_to_datavec(&time_query, instance_id.multi_index.as_ref());
+                    .query_field_to_datavec(&time_query, instance_id.instance_index.as_ref());
 
                 if data_vec.len() == 1 {
                     let data = data_vec.last().unwrap();

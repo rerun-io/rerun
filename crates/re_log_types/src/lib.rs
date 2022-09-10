@@ -256,7 +256,7 @@ pub enum LoggedData {
 
     /// Log multiple values at once.
     ///
-    /// The index becomes a "multi-index" that is added after the object-path to create an "Instance".
+    /// The index becomes an "instance index" that, togher with the object-path, forms an "instance".
     Batch { indices: Vec<Index>, data: DataVec },
 
     /// Log the same value for all instances.
