@@ -25,10 +25,10 @@ deny = [
 ]
 
 skip = [
-    { name = "ahash" },               # Old version via dark-light
-    { name = "base64" },              # Old version via gltf
-    { name = "miniz_oxide" },         # Old version from old png crate, because we are stuck on old version of image crate
-    { name = "nix" },                 # Too many to protect against
+    { name = "ahash" },       # Old version via dark-light
+    { name = "base64" },      # Old version via gltf
+    { name = "miniz_oxide" }, # Old version from old png crate, because we are stuck on old version of image crate
+    { name = "nix" },         # Too many to protect against
 ]
 skip-tree = [
     { name = "criterion" }, # dev-dependency

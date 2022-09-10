@@ -8,7 +8,8 @@ publish = false
 
 
 [features]
-__ci = [] # when set: will compile despite missing wasm artifact, BUT IT WON'T RUN!
+## when set: will compile despite missing wasm artifact, BUT IT WON'T RUN!
+__ci = []
 
 
 [dependencies]

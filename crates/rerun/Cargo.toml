@@ -23,7 +23,9 @@ puffin = { version = "0.13" }
 
 ## Optional dependencies
 puffin_http = { version = "0.10", optional = true }
-re_sdk_comms = { path = "../re_sdk_comms", optional=true, features = ["server"] }
+re_sdk_comms = { path = "../re_sdk_comms", optional = true, features = [
+    "server",
+] }
 tracing = "0.1"
 
 ## Native dependencies

@@ -25,23 +25,31 @@ re_log_types = { path = "../re_log_types", features = ["save", "load"] }
 re_string_interner = { path = "../re_string_interner" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
-eframe      = { version = "0.19", default-features = false, features = ["default_fonts", "glow", "persistence"] }
-egui        = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
+eframe = { version = "0.19", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "persistence",
+] }
+egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { version = "0.19", features = ["tracing"] }
-egui_glow   = { version = "0.19" }
+egui_glow = { version = "0.19" }
 
 ahash = "0.8"
 anyhow = "1.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
-egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc7471eea48df9104fe62acfc96d2b", features = ["serde"] } # 2022-09-06
+egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc7471eea48df9104fe62acfc96d2b", features = [
+    "serde",
+] } # 2022-09-06
 fixed = { version = "1.17", features = ["serde"] }
-glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
+glam = { version = "0.20", features = [
+    "mint",
+] } # can't update glam until a new version of `macaw` is released
 glow = "0.11"
 image = { version = "0.23", default-features = false, features = ["png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
-log = "0.4"  # TODO(emilk): tracing-specific crate instead
+log = "0.4" # TODO(emilk): tracing-specific crate instead
 log-once = "0.3" # TODO(emilk): tracing-specific crate instead
 macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"

@@ -5,9 +5,7 @@ build-backend = "maturin"
 requires = ["maturin==0.13,<0.14"]
 
 [project]
-authors = [
-    {name = "Rerun.io", email="opensource@rerun.io"}
-]
+authors = [{ name = "Rerun.io", email = "opensource@rerun.io" }]
 classifiers = [
   "Programming Language :: Rust",
   "Programming Language :: Python :: Implementation :: CPython",
@@ -16,17 +14,14 @@ classifiers = [
 
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
-license = {text = "MIT OR Apache-2.0"}
+license = { text = "MIT OR Apache-2.0" }
 name = "rerun_sdk"
 requires-python = ">=3.7"
 
 dependencies = ["numpy"]
 
 [project.optional-dependencies]
-tests = [
-    "mypy==0.971",
-    "pytest==7.1.2",
-]
+tests = ["mypy==0.971", "pytest==7.1.2"]
 examples = ["opencv-python~=4.6.0"]
 
 [project.urls]
