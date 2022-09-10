@@ -77,7 +77,7 @@ fn tracking_points() {
 
     let mut num_points = 0;
 
-    let mut store = TypePathDataStore::default();
+    let mut store = FullStore::default();
     for frame in 0..NUM_FRAMES {
         for offset in 0..OVERLAP {
             store
@@ -108,7 +108,7 @@ fn big_clouds() {
     const NUM_FRAMES: usize = 100;
     const NUM_POINTS_PER_CAMERA: usize = 1_000;
 
-    let mut store = TypePathDataStore::default();
+    let mut store = FullStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {
@@ -150,18 +150,18 @@ fn big_clouds_batched() {
     let point: [f32; 3] = [1.0, 2.0, 3.0];
     let positions = vec![point; NUM_POINTS_PER_CAMERA];
 
-    let mut store = TypePathDataStore::default();
+    let mut store = FullStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {
         for camera in 0..NUM_CAMERAS {
-            let batch = std::sync::Arc::new(Batch::new(&indices, &positions));
+            let batch = BatchOrSplat::new_batch(&indices, &positions);
             let (obj_type_path, index_path) =
                 obj_path(camera as _, 0).into_type_path_and_index_path();
             let (index_path_prefix, _) = index_path.replace_last_with_placeholder();
             store
                 .insert_batch::<[f32; 3]>(
-                    &ObjPath::new(obj_type_path, index_path_prefix),
+                    ObjPath::new(obj_type_path, index_path_prefix),
                     "pos".into(),
                     frame,
                     MsgId::random(),

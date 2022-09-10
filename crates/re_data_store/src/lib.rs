@@ -1,15 +1,35 @@
-mod log_store;
-pub mod obj_path_query;
+mod batch;
+mod full_store;
+mod instance;
+mod obj_store;
 pub mod objects;
-mod storage;
-pub mod type_path_query;
+pub mod query;
 
-pub use log_store::*;
-pub use objects::*;
-pub use storage::*;
-pub use type_path_query::*;
+pub use batch::*;
+pub use full_store::*;
+pub use instance::*;
+pub use obj_store::*;
+pub use objects::{ObjectProps, Objects, ObjectsBySpace, *};
+
+use re_log_types::DataType;
 
 pub use re_log_types::{Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, TypePathComp};
+
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    /// Using an object both as mono and multi.
+    MixingMonoAndMulti,
+
+    /// Logging different types to the same field.
+    MixingTypes {
+        existing: DataType,
+        expected: DataType,
+    },
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 // ----------------------------------------------------------------------------
 

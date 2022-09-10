@@ -2695,22 +2695,6 @@ dependencies = [
  "nohash-hasher",
  "puffin",
  "re_log_types",
- "tracing",
-]
-
-[[package]]
-name = "re_data_store_3"
-version = "0.1.0"
-dependencies = [
- "ahash 0.8.0",
- "criterion",
- "itertools",
- "log",
- "log-once",
- "mimalloc",
- "nohash-hasher",
- "puffin",
- "re_log_types",
  "serde",
  "tracing",
 ]
@@ -2814,7 +2798,7 @@ dependencies = [
  "puffin",
  "puffin_http",
  "rand",
- "re_data_store_3",
+ "re_data_store",
  "re_error",
  "re_log_types",
  "re_string_interner",

@@ -7,6 +7,13 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 
+[features]
+default = []
+
+# Enable (de)serialization using serde.
+serde = ["dep:serde", "re_log_types/serde"]
+
+
 [dependencies]
 re_log_types = { path = "../re_log_types" }
 
@@ -16,6 +23,7 @@ log = "0.4"
 log-once = "0.3"
 nohash-hasher = "0.2"
 tracing = "0.1"
+serde = { version = "1", features = ["derive", "rc"], optional = true }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -26,10 +34,10 @@ criterion = "0.3"
 mimalloc = "0.1"
 
 
-# [[bench]]
-# name = "data_benchmark"
-# harness = false
+[[bench]]
+name = "data_benchmark"
+harness = false
 
-# [[bench]]
-# name = "obj_query_benchmark"
-# harness = false
+[[bench]]
+name = "obj_query_benchmark"
+harness = false
