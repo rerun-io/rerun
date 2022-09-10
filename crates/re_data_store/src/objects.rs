@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntMap;
 use re_log_types::{objects::*, DataVec, FieldName, IndexHash, MsgId, ObjPath, ObjTypePath};
 
-use crate::{query::*, FullStore, ObjStore, TimeQuery};
+use crate::{query::*, ObjStore, TimeLineStore, TimeQuery};
 
 #[derive(Copy, Clone, Debug)]
 pub struct ObjectProps<'s> {
@@ -562,13 +562,13 @@ pub struct Objects<'s> {
 impl<'s> Objects<'s> {
     pub fn query<Time: 'static + Copy + Ord>(
         &mut self,
-        full_store: &'s FullStore<Time>,
+        store: &'s TimeLineStore<Time>,
         time_query: &'_ TimeQuery<Time>,
         obj_types: &IntMap<ObjTypePath, ObjectType>,
     ) {
         crate::profile_function!();
 
-        for (obj_path, obj_store) in full_store.iter() {
+        for (obj_path, obj_store) in store.iter() {
             if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
                 self.query_object(obj_store, time_query, obj_path, obj_type);
             } else {

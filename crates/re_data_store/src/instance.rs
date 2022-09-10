@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use re_log_types::{Index, IndexHash, ObjPath, ObjPathHash};
 
-use crate::{LogDataStore, ObjectProps};
+use crate::{DataStore, ObjectProps};
 
 // ----------------------------------------------------------------------------
 
@@ -79,7 +79,7 @@ impl InstanceIdHash {
         self.obj_path_hash.is_some()
     }
 
-    pub fn resolve(&self, store: &LogDataStore) -> Option<InstanceId> {
+    pub fn resolve(&self, store: &DataStore) -> Option<InstanceId> {
         Some(InstanceId {
             obj_path: store.obj_path_from_hash(&self.obj_path_hash).cloned()?,
             multi_index: store.index_from_hash(&self.multi_index_hash).cloned(),

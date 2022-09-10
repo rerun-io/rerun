@@ -77,7 +77,7 @@ fn tracking_points() {
 
     let mut num_points = 0;
 
-    let mut store = FullStore::default();
+    let mut store = TimeLineStore::default();
     for frame in 0..NUM_FRAMES {
         for offset in 0..OVERLAP {
             store
@@ -108,7 +108,7 @@ fn big_clouds() {
     const NUM_FRAMES: usize = 100;
     const NUM_POINTS_PER_CAMERA: usize = 1_000;
 
-    let mut store = FullStore::default();
+    let mut store = TimeLineStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {
@@ -150,7 +150,7 @@ fn big_clouds_batched() {
     let point: [f32; 3] = [1.0, 2.0, 3.0];
     let positions = vec![point; NUM_POINTS_PER_CAMERA];
 
-    let mut store = FullStore::default();
+    let mut store = TimeLineStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {

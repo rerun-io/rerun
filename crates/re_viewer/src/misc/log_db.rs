@@ -20,7 +20,7 @@ pub(crate) struct LogDb {
     pub obj_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
-    pub data_store: re_data_store::LogDataStore,
+    pub data_store: re_data_store::DataStore,
 
     /// All known spaces
     spaces: IntMap<ObjPathHash, ObjPath>,

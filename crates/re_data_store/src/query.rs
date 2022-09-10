@@ -42,7 +42,7 @@ pub(crate) fn query<'data, Time: Copy + Ord, T>(
 // ----------------------------------------------------------------------------
 
 struct MonoDataReader<'store, Time, T> {
-    history: Option<&'store MonoHistory<Time, T>>,
+    history: Option<&'store MonoFieldStore<Time, T>>,
 }
 
 impl<'store, Time: 'static + Copy + Ord, T: DataTrait> MonoDataReader<'store, Time, T> {
@@ -67,7 +67,7 @@ enum MultiDataReader<'store, T> {
 
 impl<'store, T: DataTrait> MultiDataReader<'store, T> {
     pub fn latest_at<Time: 'static + Copy + Ord>(
-        history: Option<&'store MultiHistory<Time, T>>,
+        history: Option<&'store MultiFieldStore<Time, T>>,
         query_time: &Time,
     ) -> Self {
         if let Some(history) = history {
@@ -78,7 +78,7 @@ impl<'store, T: DataTrait> MultiDataReader<'store, T> {
     }
 
     pub fn latest_at_impl<Time: 'static + Copy + Ord>(
-        history: &'store MultiHistory<Time, T>,
+        history: &'store MultiFieldStore<Time, T>,
         query_time: &Time,
     ) -> Self {
         if let Some((_, (_, batch))) = latest_at(&history.history, query_time) {

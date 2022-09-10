@@ -1,15 +1,19 @@
 mod batch;
-mod full_store;
+mod data_store;
+mod field_store;
 mod instance;
 mod obj_store;
 pub mod objects;
 pub mod query;
+mod timeline_store;
 
 pub use batch::*;
-pub use full_store::*;
+pub use data_store::*;
+pub use field_store::*;
 pub use instance::*;
 pub use obj_store::*;
 pub use objects::{ObjectProps, Objects, ObjectsBySpace, *};
+pub use timeline_store::*;
 
 use re_log_types::DataType;
 

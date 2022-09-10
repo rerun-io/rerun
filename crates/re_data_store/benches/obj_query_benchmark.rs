@@ -17,12 +17,12 @@ fn time_source() -> TimeSource {
 
 fn do_query<'s>(
     obj_types: &IntMap<ObjTypePath, ObjectType>,
-    data_store: &'s LogDataStore,
+    data_store: &'s DataStore,
 ) -> Objects<'s> {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let mut objects = Objects::default();
-    let full_store = data_store.get(&time_source()).unwrap();
-    objects.query(full_store, &time_query, obj_types);
+    let timeline_store = data_store.get(&time_source()).unwrap();
+    objects.query(timeline_store, &time_query, obj_types);
     assert_eq!(objects.point3d.len(), NUM_POINTS as usize);
     objects
 }
@@ -103,12 +103,12 @@ fn batch_data_messages() -> Vec<DataMsg> {
     messages
 }
 
-fn insert_data(data_messages: &[DataMsg]) -> LogDataStore {
-    let mut full_store = LogDataStore::default();
+fn insert_data(data_messages: &[DataMsg]) -> DataStore {
+    let mut store = DataStore::default();
     for msg in data_messages {
-        full_store.insert(msg).unwrap();
+        store.insert(msg).unwrap();
     }
-    full_store
+    store
 }
 
 fn obj_mono_points(c: &mut Criterion) {
