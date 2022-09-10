@@ -66,7 +66,8 @@ impl From<&str> for Index {
 pub struct IndexHash(Hash128);
 
 impl IndexHash {
-    pub const PLACEHOLDER: IndexHash = Self(Hash128::ZERO);
+    pub const NONE: IndexHash = Self(Hash128::ZERO);
+    pub const PLACEHOLDER: IndexHash = Self(Hash128::ZERO); // TODO: remove
 
     #[inline]
     pub fn hash(index: &Index) -> Self {

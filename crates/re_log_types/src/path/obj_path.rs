@@ -18,6 +18,11 @@ impl ObjPathHash {
     pub fn hash64(&self) -> u64 {
         self.0.hash64()
     }
+
+    #[inline]
+    pub fn is_some(&self) -> bool {
+        *self != Self::NONE
+    }
 }
 
 impl std::hash::Hash for ObjPathHash {
