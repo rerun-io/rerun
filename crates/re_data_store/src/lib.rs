@@ -21,15 +21,17 @@ pub use re_log_types::{Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, Type
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
 pub enum Error {
-    /// Batch had differing number of indices and data.
+    #[error("Batch had differing number of indices and data.")]
     BadBatch,
 
-    /// Using an object both as mono and multi.
+    #[error("Using an object both as mono and multi.")]
     MixingMonoAndMulti,
 
-    /// Logging different types to the same field.
+    #[error(
+        "Logging different types to the same field. Existing: {existing:?}, expected: {expected:?}"
+    )]
     MixingTypes {
         existing: DataType,
         expected: DataType,

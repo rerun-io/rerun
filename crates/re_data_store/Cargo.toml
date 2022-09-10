@@ -23,6 +23,7 @@ log = "0.4"
 log-once = "0.3"
 nohash-hasher = "0.2"
 serde = { version = "1", features = ["derive", "rc"], optional = true }
+thiserror = "1.0"
 tracing = "0.1"
 
 # native:

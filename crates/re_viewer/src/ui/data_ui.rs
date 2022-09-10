@@ -96,7 +96,7 @@ pub(crate) fn view_data(
             }
         }
         Err(err) => {
-            log_once::warn_once!("Bad data for {instance_id}: {err}");
+            log_once::warn_once!("Bad data for {data_path}: {err}");
             ui.colored_label(
                 ui.visuals().error_fg_color,
                 format!("Data error: {:?}", err),
