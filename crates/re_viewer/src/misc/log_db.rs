@@ -214,23 +214,10 @@ impl ObjectTree {
                         .add_path(rest, field_name, msg);
                 }
                 ObjPathComp::Index(index) => {
-                    let slow_but_accurate = false; // TODO(emilk): ths is way too slow, though it is the only way to get toggling of batches to work. We need to do something else.
-                    if index == &Index::Placeholder && slow_but_accurate {
-                        if let LoggedData::Batch { indices, .. } = &msg.data {
-                            crate::profile_scope!("object_tree_batch");
-                            for index in indices {
-                                self.index_children
-                                    .entry(index.clone())
-                                    .or_default()
-                                    .add_path(rest, field_name, msg);
-                            }
-                        }
-                    } else {
-                        self.index_children
-                            .entry(index.clone())
-                            .or_default()
-                            .add_path(rest, field_name, msg);
-                    }
+                    self.index_children
+                        .entry(index.clone())
+                        .or_default()
+                        .add_path(rest, field_name, msg);
                 }
             },
         }

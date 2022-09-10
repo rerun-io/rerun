@@ -1,7 +1,7 @@
 use crate::{
     hash::Hash128,
     path::{obj_path_impl::ObjPathImpl, IndexPath, ObjTypePath},
-    Index, ObjPathComp,
+    ObjPathComp,
 };
 
 // ----------------------------------------------------------------------------
@@ -119,12 +119,6 @@ impl ObjPath {
     pub fn parent(&self) -> Self {
         let parent = self.path.parent();
         Self::from(parent)
-    }
-
-    /// Replace last [`Index::Placeholder`] with the given key.
-    #[must_use]
-    pub fn replace_last_placeholder_with(self, key: Index) -> Self {
-        Self::from(self.path.replace_last_placeholder_with(key))
     }
 }
 

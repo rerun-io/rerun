@@ -256,12 +256,10 @@ pub enum LoggedData {
 
     /// Log multiple values at once.
     ///
-    /// The index replaces the last index in [`DataMsg.data_path`], which should be [`Index::Placeholder]`.
+    /// The index becomes a "multi-index" that is added after the object-path to create an "Instance".
     Batch { indices: Vec<Index>, data: DataVec },
 
-    /// Log the same value for all objects sharing the same index prefix (i.e. ignoring the last index).
-    ///
-    /// The last index in [`DataMsg.data_path`] should be [`Index::Placeholder]`.
+    /// Log the same value for all instances.
     ///
     /// You can only use this for optional fields such as `color`, `space` etc.
     /// You can NOT use it for primary fields such as `pos`.

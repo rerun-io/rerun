@@ -20,17 +20,9 @@ pub enum Index {
 
     /// Anything goes.
     String(String),
-
-    /// Used as the last index when logging a batch of data.
-    Placeholder,
 }
 
 impl Index {
-    #[inline]
-    pub fn is_placeholder(&self) -> bool {
-        matches!(self, Self::Placeholder)
-    }
-
     #[inline]
     pub fn hash(&self) -> IndexHash {
         IndexHash::hash(self)
@@ -45,7 +37,6 @@ impl std::fmt::Display for Index {
             Self::Integer(value) => value.fmt(f),
             Self::Uuid(value) => value.fmt(f),
             Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
-            Self::Placeholder => '_'.fmt(f),                    // put it in quotes
         }
     }
 }
@@ -67,21 +58,10 @@ pub struct IndexHash(Hash128);
 
 impl IndexHash {
     pub const NONE: IndexHash = Self(Hash128::ZERO);
-    pub const PLACEHOLDER: IndexHash = Self(Hash128::ZERO); // TODO: remove
 
     #[inline]
     pub fn hash(index: &Index) -> Self {
-        if index.is_placeholder() {
-            Self(Hash128::ZERO)
-        } else {
-            Self(Hash128::hash(index))
-        }
-    }
-
-    /// Is this equal to `IndexHash::hash(&Index::Placeholder)` ?
-    #[inline]
-    pub fn is_placeholder(&self) -> bool {
-        self.0 == Hash128::ZERO
+        Self(Hash128::hash(index))
     }
 
     #[inline]
