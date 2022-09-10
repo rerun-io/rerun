@@ -54,18 +54,21 @@ impl ContextPanel {
             Selection::ObjTypePath(obj_type_path) => {
                 ui.label(format!("Selected object type path: {}", obj_type_path));
             }
-            Selection::ObjPath(obj_path) => {
-                ui.label(format!("Selected object: {}", obj_path));
+            Selection::Instance(instance_id) => {
+                ui.label(format!("Selected object: {}", instance_id));
                 ui.horizontal(|ui| {
                     ui.label("Type path:");
-                    ctx.type_path_button(ui, obj_path.obj_type_path());
+                    ctx.type_path_button(ui, instance_id.obj_path.obj_type_path());
                 });
                 ui.horizontal(|ui| {
                     ui.label("Object type:");
-                    ui.label(obj_type_name(ctx.log_db, obj_path.obj_type_path()));
+                    ui.label(obj_type_name(
+                        ctx.log_db,
+                        instance_id.obj_path.obj_type_path(),
+                    ));
                 });
                 ui.separator();
-                view_object(ctx, ui, obj_path, Preview::Medium);
+                view_instance(ctx, ui, instance_id, Preview::Medium);
             }
             Selection::DataPath(data_path) => {
                 ui.label(format!("Selected data path: {}", data_path));

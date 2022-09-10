@@ -1,5 +1,6 @@
 use egui::Vec2;
 
+use re_data_store::InstanceId;
 pub use re_log_types::*;
 
 use crate::misc::ViewerContext;
@@ -42,6 +43,15 @@ pub(crate) fn view_object(
         });
 
     Some(())
+}
+
+pub(crate) fn view_instance(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    instance_id: &InstanceId,
+    preview: Preview,
+) -> Option<()> {
+    view_object(ctx, ui, &instance_id.obj_path, preview) // TODO: view isntance id
 }
 
 pub(crate) fn view_data(

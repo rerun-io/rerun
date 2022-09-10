@@ -1,5 +1,5 @@
 use macaw::Ray3;
-use re_data_store::ObjTypePath;
+use re_data_store::{InstanceId, ObjTypePath};
 use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource};
 
 use crate::{log_db::LogDb, misc::log_db::ObjectTree};
@@ -59,7 +59,35 @@ impl<'a> ViewerContext<'a> {
         // TODO(emilk): common hover-effect of all buttons for the same obj_path!
         let response = ui.selectable_label(self.rec_cfg.selection.is_obj_path(obj_path), text);
         if response.clicked() {
-            self.rec_cfg.selection = Selection::ObjPath(obj_path.clone());
+            self.rec_cfg.selection = Selection::Instance(InstanceId {
+                obj_path: obj_path.clone(),
+                multi_index: None,
+            });
+        }
+        response
+    }
+
+    /// Show a instance id and make it selectable.
+    pub fn instance_id_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        instance_id: &InstanceId,
+    ) -> egui::Response {
+        self.instance_id_button_to(ui, instance_id.to_string(), instance_id)
+    }
+
+    /// Show an instance id and make it selectable.
+    pub fn instance_id_button_to(
+        &mut self,
+        ui: &mut egui::Ui,
+        text: impl Into<egui::WidgetText>,
+        instance_id: &InstanceId,
+    ) -> egui::Response {
+        // TODO(emilk): common hover-effect of all buttons for the same instance_id!
+        let response =
+            ui.selectable_label(self.rec_cfg.selection.is_instance_id(instance_id), text);
+        if response.clicked() {
+            self.rec_cfg.selection = Selection::Instance(instance_id.clone());
         }
         response
     }
@@ -273,7 +301,7 @@ pub(crate) enum Selection {
     None,
     MsgId(MsgId),
     ObjTypePath(ObjTypePath),
-    ObjPath(ObjPath),
+    Instance(InstanceId),
     DataPath(DataPath),
     Space(ObjPath),
 }
@@ -301,9 +329,17 @@ impl Selection {
         }
     }
 
-    pub fn is_obj_path(&self, needle: &ObjPath) -> bool {
-        if let Self::ObjPath(hay) = self {
+    pub fn is_instance_id(&self, needle: &InstanceId) -> bool {
+        if let Self::Instance(hay) = self {
             hay == needle
+        } else {
+            false
+        }
+    }
+
+    pub fn is_obj_path(&self, needle: &ObjPath) -> bool {
+        if let Self::Instance(hay) = self {
+            &hay.obj_path == needle
         } else {
             false
         }

@@ -85,4 +85,10 @@ impl InstanceIdHash {
             multi_index: store.index_from_hash(&self.multi_index_hash).cloned(),
         })
     }
+
+    #[inline]
+    pub fn is_obj_props(&self, obj_props: &ObjectProps<'_>) -> bool {
+        &self.obj_path_hash == obj_props.obj_path.hash()
+            && self.multi_index_hash == obj_props.multi_index
+    }
 }

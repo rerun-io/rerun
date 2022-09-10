@@ -4,8 +4,8 @@ use egui::util::hash;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
-use re_data_store::ObjectProps;
-use re_log_types::{Box3, IndexHash, Mesh3D, ObjPath, ObjPathHash};
+use re_data_store::{InstanceId, InstanceIdHash};
+use re_log_types::{Box3, Mesh3D};
 
 use crate::{
     math::line_segment_distance_sq_to_point_2d, misc::mesh_loader::CpuMesh, misc::ViewerContext,
@@ -13,41 +13,15 @@ use crate::{
 
 use super::eye::Eye;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct InstanceId {
-    pub obj_path_hash: ObjPathHash,
-    /// If this is a multi-object, what index are we?
-    pub multi_index_hash: IndexHash,
-}
-
-impl InstanceId {
-    pub const NONE: Self = Self {
-        obj_path_hash: ObjPathHash::NONE,
-        multi_index_hash: IndexHash::NONE,
-    };
-
-    pub fn from_props(props: &ObjectProps<'_>) -> Self {
-        Self {
-            obj_path_hash: *props.obj_path.hash(),
-            multi_index_hash: props.multi_index,
-        }
-    }
-
-    #[inline]
-    pub fn is_some(&self) -> bool {
-        self.obj_path_hash.is_some()
-    }
-}
-
 pub struct Point {
-    pub instance_id: InstanceId,
+    pub instance_id: InstanceIdHash,
     pub pos: [f32; 3],
     pub radius: f32,
     pub color: [u8; 4],
 }
 
 pub struct LineSegments {
-    pub instance_id: InstanceId,
+    pub instance_id: InstanceIdHash,
     pub segments: Vec<[[f32; 3]; 2]>,
     pub radius: f32,
     pub color: [u8; 4],
@@ -60,7 +34,7 @@ pub enum MeshSourceData {
 }
 
 pub struct MeshSource {
-    pub instance_id: InstanceId,
+    pub instance_id: InstanceIdHash,
     pub mesh_id: u64,
     pub world_from_mesh: glam::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
@@ -84,11 +58,12 @@ impl Scene {
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         eye: &Eye,
-        hovered_obj: Option<&ObjPath>,
+        hovered_instance_id: Option<&InstanceId>,
         objects: &re_data_store::Objects<'_>,
     ) -> Self {
         crate::profile_function!();
-        let hovered_obj_hash = hovered_obj.map_or(ObjPathHash::NONE, |obj| *obj.hash());
+        let hovered_instance_id_hash =
+            hovered_instance_id.map_or(InstanceIdHash::NONE, |id| id.hash());
 
         // HACK because three-d handles colors wrong. TODO(emilk): fix three-d
         let gamma_lut = (0..=255)
@@ -97,14 +72,14 @@ impl Scene {
         let gamma_lut = &gamma_lut[0..256]; // saves us bounds checks later.
 
         let boost_size_on_hover = |props: &re_data_store::ObjectProps<'_>, radius: f32| {
-            if Some(props.obj_path) == hovered_obj {
+            if hovered_instance_id_hash.is_obj_props(props) {
                 1.5 * radius
             } else {
                 radius
             }
         };
         let object_color = |ctx: &mut ViewerContext<'_>, props: &re_data_store::ObjectProps<'_>| {
-            let [r, g, b, a] = if *props.obj_path.hash() == hovered_obj_hash {
+            let [r, g, b, a] = if hovered_instance_id_hash.is_obj_props(props) {
                 [255; 4]
             } else if let Some(color) = props.color {
                 color
@@ -153,7 +128,7 @@ impl Scene {
                 let radius = boost_size_on_hover(props, radius);
 
                 scene.points.push(Point {
-                    instance_id: InstanceId::from_props(props),
+                    instance_id: InstanceIdHash::from_props(props),
                     pos: *pos,
                     radius,
                     color: object_color(ctx, props),
@@ -175,7 +150,7 @@ impl Scene {
                 );
                 let line_radius = boost_size_on_hover(props, line_radius);
                 let color = object_color(ctx, props);
-                scene.add_box(InstanceId::from_props(props), color, line_radius, obb);
+                scene.add_box(InstanceIdHash::from_props(props), color, line_radius, obb);
             }
         }
 
@@ -206,7 +181,7 @@ impl Scene {
                     .collect();
 
                 scene.line_segments.push(LineSegments {
-                    instance_id: InstanceId::from_props(props),
+                    instance_id: InstanceIdHash::from_props(props),
                     segments,
                     radius: line_radius,
                     color,
@@ -235,7 +210,7 @@ impl Scene {
                 let color = object_color(ctx, props);
 
                 scene.line_segments.push(LineSegments {
-                    instance_id: InstanceId::from_props(props),
+                    instance_id: InstanceIdHash::from_props(props),
                     segments: bytemuck::allocation::pod_collect_to_vec(points),
                     radius: line_radius,
                     color,
@@ -255,7 +230,7 @@ impl Scene {
                 ) {
                     // TODO(emilk): props.color
                     scene.meshes.push(MeshSource {
-                        instance_id: InstanceId::from_props(props),
+                        instance_id: InstanceIdHash::from_props(props),
                         mesh_id,
                         world_from_mesh: glam::Affine3A::IDENTITY,
                         cpu_mesh,
@@ -269,7 +244,7 @@ impl Scene {
             for (props, obj) in objects.camera.iter() {
                 let re_data_store::Camera { camera } = *obj;
 
-                let instance_id = InstanceId::from_props(props);
+                let instance_id = InstanceIdHash::from_props(props);
 
                 let world_from_view = crate::misc::cam::world_from_view(camera);
 
@@ -340,7 +315,7 @@ impl Scene {
         &mut self,
         cam: &re_log_types::Camera,
         scene_bbox: &macaw::BoundingBox,
-        instance_id: InstanceId,
+        instance_id: InstanceIdHash,
         line_radius: f32,
         color: [u8; 4],
     ) {
@@ -389,7 +364,13 @@ impl Scene {
         }
     }
 
-    fn add_box(&mut self, instance_id: InstanceId, color: [u8; 4], line_radius: f32, box3: &Box3) {
+    fn add_box(
+        &mut self,
+        instance_id: InstanceIdHash,
+        color: [u8; 4],
+        line_radius: f32,
+        box3: &Box3,
+    ) {
         let Box3 {
             rotation,
             translation,
@@ -445,7 +426,7 @@ impl Scene {
         pointer_in_ui: egui::Pos2,
         rect: &egui::Rect,
         eye: &Eye,
-    ) -> Option<(InstanceId, glam::Vec3)> {
+    ) -> Option<(InstanceIdHash, glam::Vec3)> {
         crate::profile_function!();
 
         let ui_from_world = eye.ui_from_world(rect);

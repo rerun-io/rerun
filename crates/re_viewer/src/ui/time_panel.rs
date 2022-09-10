@@ -9,6 +9,7 @@ use crate::{
 };
 
 use egui::*;
+use re_data_store::InstanceId;
 use re_log_types::*;
 
 /// A column where we should button to hide/show a propery.
@@ -296,7 +297,10 @@ impl TimePanel {
                     messages_over_time,
                     full_width_rect,
                     &self.time_ranges_ui,
-                    Some(Selection::ObjPath(obj_path)),
+                    Some(Selection::Instance(InstanceId {
+                        obj_path,
+                        multi_index: None,
+                    })),
                 );
             }
         }
