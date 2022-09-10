@@ -4,10 +4,7 @@ use re_log_types::{DataVec, FieldName, MsgId, ObjPath};
 
 pub use re_log_types::objects::*;
 
-use crate::{
-    obj_path_query::*, storage::ObjStore, type_path_query::*, ObjTypePath, TimeQuery,
-    TypePathDataStore,
-};
+use crate::{storage::ObjStore, type_path_query::*, ObjTypePath, TimeQuery, TypePathDataStore};
 
 #[derive(Copy, Clone, Debug)]
 pub struct ObjectProps<'s> {
@@ -473,38 +470,6 @@ impl<'s> Camera<'s> {
 
         visit_type_data_2(
             obj_store,
-            &FieldName::from("camera"),
-            time_query,
-            ("space", "color"),
-            |obj_path: &ObjPath,
-             msg_id: &MsgId,
-             camera: &re_log_types::Camera,
-             space: Option<&ObjPath>,
-             color: Option<&[u8; 4]>| {
-                out.camera.0.push(Object {
-                    props: ObjectProps {
-                        msg_id,
-                        space,
-                        color: color.copied(),
-                        obj_path,
-                    },
-                    data: Camera { camera },
-                });
-            },
-        );
-    }
-
-    pub fn query_obj_path<Time: 'static + Copy + Ord>(
-        obj_store: &'s ObjStore<Time>,
-        obj_path: &ObjPath,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_obj_data_2(
-            obj_store,
-            obj_path.index_path(),
             &FieldName::from("camera"),
             time_query,
             ("space", "color"),
