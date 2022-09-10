@@ -99,25 +99,28 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
     /// If `instance_index` is `Some`, only those instances that match will be returned.
     ///
     /// Returns vectors of equal length.
+    #[allow(clippy::type_complexity)]
     pub fn query_field_to_datavec(
         &self,
         time_query: &TimeQuery<Time>,
         instance_index: Option<&Index>,
-    ) -> (Vec<(Time, MsgId, Option<Index>)>, DataVec) {
-        // TODO: proper error handling in this function
+    ) -> Result<(Vec<(Time, MsgId, Option<Index>)>, DataVec)> {
         macro_rules! handle_type(
             ($enum_variant: ident, $typ: ty) => {{
                 let mut time_msgid_index = vec![];
                 let mut values = vec![];
                 if self.mono {
-                    assert!(instance_index.is_none());
-                    let mono = self.get_mono::<$typ>().unwrap();
+                    if instance_index.is_some() {
+                        return Err(Error::MixingMonoAndMulti);
+                    }
+
+                    let mono = self.get_mono::<$typ>()?;
                     mono.query(time_query, |time, msg_id, value| {
                         time_msgid_index.push((*time, *msg_id, None));
                         values.push(value.clone());
                     });
                 } else {
-                    let multi = self.get_multi::<$typ>().unwrap();
+                    let multi = self.get_multi::<$typ>()?;
                     multi.query(time_query, |time, msg_id, batch| {
                         match batch {
                             BatchOrSplat::Splat(value) => {
@@ -132,7 +135,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
                                         }
                                     }
 
-                                    let value = batch.get(index_hash).unwrap();
+                                    let value = batch.get(index_hash).expect("Batches should be self-consistent");
                                     time_msgid_index.push((*time, *msg_id, Some(index.clone())));
                                     values.push(value.clone());
                                 }
@@ -140,7 +143,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
                         }
                     });
                 }
-                (time_msgid_index, DataVec::$enum_variant(values))
+                Ok((time_msgid_index, DataVec::$enum_variant(values)))
             }}
         );
 

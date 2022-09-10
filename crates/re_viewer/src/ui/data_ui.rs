@@ -45,15 +45,25 @@ pub(crate) fn view_instance(
                     &DataPath::new(instance_id.obj_path.clone(), *field_name),
                 );
 
-                let (time_msgid_index, data_vec) = field_store
-                    .query_field_to_datavec(&time_query, instance_id.instance_index.as_ref());
-
-                if data_vec.len() == 1 {
-                    let data = data_vec.last().unwrap();
-                    let (_, msg_id, _) = &time_msgid_index[0];
-                    crate::data_ui::ui_data(ctx, ui, msg_id, &data, preview);
-                } else {
-                    ui_data_vec(ui, &data_vec);
+                match field_store
+                    .query_field_to_datavec(&time_query, instance_id.instance_index.as_ref())
+                {
+                    Ok((time_msgid_index, data_vec)) => {
+                        if data_vec.len() == 1 {
+                            let data = data_vec.last().unwrap();
+                            let (_, msg_id, _) = &time_msgid_index[0];
+                            crate::data_ui::ui_data(ctx, ui, msg_id, &data, preview);
+                        } else {
+                            ui_data_vec(ui, &data_vec);
+                        }
+                    }
+                    Err(err) => {
+                        log_once::warn_once!("Bad data for {instance_id}: {err}");
+                        ui.colored_label(
+                            ui.visuals().error_fg_color,
+                            format!("Data error: {:?}", err),
+                        );
+                    }
                 }
 
                 ui.end_row();
@@ -75,14 +85,23 @@ pub(crate) fn view_data(
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(obj_path)?;
     let field_store = obj_store.get(field_name)?;
-    let (time_msgid_index, data_vec) = field_store.query_field_to_datavec(&time_query, None);
-
-    if data_vec.len() == 1 {
-        let data = data_vec.last().unwrap();
-        let (_, msg_id, _) = &time_msgid_index[0];
-        show_detailed_data(ctx, ui, msg_id, &data);
-    } else {
-        ui_data_vec(ui, &data_vec);
+    match field_store.query_field_to_datavec(&time_query, None) {
+        Ok((time_msgid_index, data_vec)) => {
+            if data_vec.len() == 1 {
+                let data = data_vec.last().unwrap();
+                let (_, msg_id, _) = &time_msgid_index[0];
+                show_detailed_data(ctx, ui, msg_id, &data);
+            } else {
+                ui_data_vec(ui, &data_vec);
+            }
+        }
+        Err(err) => {
+            log_once::warn_once!("Bad data for {instance_id}: {err}");
+            ui.colored_label(
+                ui.visuals().error_fg_color,
+                format!("Data error: {:?}", err),
+            );
+        }
     }
 
     Some(())
