@@ -4,7 +4,7 @@ use self::data_types::Vec3;
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum DataType {
     // 1D:
@@ -248,19 +248,19 @@ pub enum DataVec {
 macro_rules! data_map(
     ($data: expr, |$value: pat_param| $action: expr) => ({
         match $data {
-            Data::I32($value) => $action,
-            Data::F32($value) => $action,
-            Data::Color($value) => $action,
-            Data::String($value) => $action,
-            Data::Vec2($value) => $action,
-            Data::BBox2D($value) => $action,
-            Data::Vec3($value) => $action,
-            Data::Box3($value) => $action,
-            Data::Mesh3D($value) => $action,
-            Data::Camera($value) => $action,
-            Data::Tensor($value) => $action,
-            Data::DataVec($value) => $action,
-            Data::Space($value) => $action,
+            $crate::Data::I32($value) => $action,
+            $crate::Data::F32($value) => $action,
+            $crate::Data::Color($value) => $action,
+            $crate::Data::String($value) => $action,
+            $crate::Data::Vec2($value) => $action,
+            $crate::Data::BBox2D($value) => $action,
+            $crate::Data::Vec3($value) => $action,
+            $crate::Data::Box3($value) => $action,
+            $crate::Data::Mesh3D($value) => $action,
+            $crate::Data::Camera($value) => $action,
+            $crate::Data::Tensor($value) => $action,
+            $crate::Data::DataVec($value) => $action,
+            $crate::Data::Space($value) => $action,
         }
     });
 );
@@ -276,19 +276,19 @@ macro_rules! data_map(
 macro_rules! data_vec_map(
     ($data_vec: expr, |$vec: pat_param| $action: expr) => ({
         match $data_vec {
-            DataVec::I32($vec) => $action,
-            DataVec::F32($vec) => $action,
-            DataVec::Color($vec) => $action,
-            DataVec::String($vec) => $action,
-            DataVec::Vec2($vec) => $action,
-            DataVec::BBox2D($vec) => $action,
-            DataVec::Vec3($vec) => $action,
-            DataVec::Box3($vec) => $action,
-            DataVec::Mesh3D($vec) => $action,
-            DataVec::Camera($vec) => $action,
-            DataVec::Tensor($vec) => $action,
-            DataVec::DataVec($vec) => $action,
-            DataVec::Space($vec) => $action,
+            $crate::DataVec::I32($vec) => $action,
+            $crate::DataVec::F32($vec) => $action,
+            $crate::DataVec::Color($vec) => $action,
+            $crate::DataVec::String($vec) => $action,
+            $crate::DataVec::Vec2($vec) => $action,
+            $crate::DataVec::BBox2D($vec) => $action,
+            $crate::DataVec::Vec3($vec) => $action,
+            $crate::DataVec::Box3($vec) => $action,
+            $crate::DataVec::Mesh3D($vec) => $action,
+            $crate::DataVec::Camera($vec) => $action,
+            $crate::DataVec::Tensor($vec) => $action,
+            $crate::DataVec::DataVec($vec) => $action,
+            $crate::DataVec::Space($vec) => $action,
         }
     });
 );

@@ -174,7 +174,7 @@ pub(crate) fn show_type_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg:
     ui.horizontal(|ui| {
         ctx.type_path_button(ui, &msg.type_path);
         ui.label(" = ");
-        ui.code(format!("{:?}", msg.object_type));
+        ui.code(format!("{:?}", msg.obj_type));
     });
 }
 

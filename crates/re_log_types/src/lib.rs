@@ -199,15 +199,15 @@ pub struct TypeMsg {
     pub type_path: ObjTypePath,
 
     /// The type of object at this object type path.
-    pub object_type: ObjectType,
+    pub obj_type: ObjectType,
 }
 
 impl TypeMsg {
-    pub fn object_type(type_path: ObjTypePath, object_type: ObjectType) -> Self {
+    pub fn obj_type(type_path: ObjTypePath, obj_type: ObjectType) -> Self {
         Self {
             msg_id: MsgId::random(),
             type_path,
-            object_type,
+            obj_type,
         }
     }
 }

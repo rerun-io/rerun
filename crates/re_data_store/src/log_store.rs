@@ -1,8 +1,7 @@
 use nohash_hasher::{IntMap, IntSet};
 
 use re_log_types::{
-    Data, DataMsg, DataPath, DataVec, Index, IndexHash, LoggedData, ObjPath, ObjPathHash,
-    TimeSource, TimeType,
+    DataMsg, DataPath, Index, IndexHash, LoggedData, ObjPath, ObjPathHash, TimeSource, TimeType,
 };
 
 use crate::{ArcBatch, Batch, TypePathDataStore};

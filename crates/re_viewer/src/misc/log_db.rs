@@ -17,7 +17,7 @@ pub(crate) struct LogDb {
 
     recording_info: Option<RecordingInfo>,
 
-    pub object_types: IntMap<ObjTypePath, ObjectType>,
+    pub obj_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
     pub data_store: re_data_store::LogDataStore,
@@ -64,24 +64,22 @@ impl LogDb {
     }
 
     fn add_type_msg(&mut self, msg: &TypeMsg) {
-        let previous_value = self
-            .object_types
-            .insert(msg.type_path.clone(), msg.object_type);
+        let previous_value = self.obj_types.insert(msg.type_path.clone(), msg.obj_type);
 
         if let Some(previous_value) = previous_value {
-            if previous_value != msg.object_type {
+            if previous_value != msg.obj_type {
                 tracing::warn!(
                     "Object {} changed type from {:?} to {:?}",
                     msg.type_path,
                     previous_value,
-                    msg.object_type
+                    msg.obj_type
                 );
             }
         } else {
             tracing::debug!(
                 "Registered object type {}: {:?}",
                 msg.type_path,
-                msg.object_type
+                msg.obj_type
             );
         }
     }
@@ -91,14 +89,14 @@ impl LogDb {
 
         let obj_type_path = &msg.data_path.obj_path.obj_type_path();
         let field_name = &msg.data_path.field_name;
-        if let Some(object_type) = self.object_types.get(obj_type_path) {
-            let valid_members = object_type.members();
+        if let Some(obj_type) = self.obj_types.get(obj_type_path) {
+            let valid_members = obj_type.members();
             if !valid_members.contains(&field_name.as_str()) {
                 log_once::warn_once!(
                     "Logged to {}.{}, but the parent object ({:?}) does not have that field. Expected one of: {}",
                     obj_type_path,
                     field_name,
-                    object_type,
+                    obj_type,
                     valid_members.iter().format(", ")
                 );
             }

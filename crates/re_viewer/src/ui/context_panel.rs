@@ -99,7 +99,7 @@ impl ContextPanel {
 }
 
 fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
-    if let Some(typ) = log_db.object_types.get(obj_type_path) {
+    if let Some(typ) = log_db.obj_types.get(obj_type_path) {
         format!("{typ:?}")
     } else {
         "<UNKNOWN>".to_owned()
