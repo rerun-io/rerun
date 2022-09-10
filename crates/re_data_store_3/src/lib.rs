@@ -1,11 +1,13 @@
 mod batch;
 mod full_store;
+mod instance;
 mod obj_store;
 pub mod objects;
 pub mod query;
 
 pub use batch::*;
 pub use full_store::*;
+pub use instance::*;
 pub use obj_store::*;
 pub use objects::{ObjectProps, Objects, ObjectsBySpace, *};
 
