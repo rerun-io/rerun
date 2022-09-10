@@ -26,23 +26,23 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
         },
     });
 
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("world"),
         ObjectType::Space,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("depth"),
         ObjectType::Image,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("rgb"),
         ObjectType::Image,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("points") / TypePathComp::Index,
         ObjectType::Point3D,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("camera"),
         ObjectType::Camera,
     ));

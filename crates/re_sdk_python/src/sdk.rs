@@ -94,7 +94,7 @@ impl Sdk {
             self.send(LogMsg::TypeMsg(TypeMsg {
                 msg_id: MsgId::random(),
                 type_path: obj_type_path.clone(),
-                object_type: typ,
+                obj_type: typ,
             }));
         }
     }

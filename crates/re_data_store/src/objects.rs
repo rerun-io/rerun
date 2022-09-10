@@ -541,12 +541,12 @@ impl<'s> Objects<'s> {
         store: &'s TypePathDataStore<Time>,
         time_query: &TimeQuery<Time>,
         obj_type_path: &ObjTypePath,
-        object_type: ObjectType,
+        obj_type: ObjectType,
     ) {
         crate::profile_function!();
 
         if let Some(obj_store) = store.get(obj_type_path) {
-            let query_fn = match object_type {
+            let query_fn = match obj_type {
                 ObjectType::Space => Space::query,
                 ObjectType::Image => Image::query,
                 ObjectType::Point2D => Point2D::query,

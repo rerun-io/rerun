@@ -31,31 +31,31 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
         },
     });
 
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("world"),
         ObjectType::Space,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("camera"),
         ObjectType::Camera,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("video"),
         ObjectType::Image,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("rgb"),
         ObjectType::Image,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("points") / TypePathComp::Index,
         ObjectType::Point3D,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("objects") / TypePathComp::Index / "bbox2d",
         ObjectType::LineSegments2D,
     ));
-    logger.log(TypeMsg::object_type(
+    logger.log(TypeMsg::obj_type(
         ObjTypePath::from("objects") / TypePathComp::Index / "bbox3d",
         ObjectType::Box3D,
     ));

@@ -24,8 +24,8 @@ fn do_query<'s>(
     let (_, store) = data_store.get(&time_source()).unwrap();
 
     let mut objects = Objects::default();
-    for (obj_type_path, object_type) in obj_types {
-        objects.query_object(store, &time_query, obj_type_path, *object_type);
+    for (obj_type_path, obj_type) in obj_types {
+        objects.query_object(store, &time_query, obj_type_path, *obj_type);
     }
 
     assert_eq!(objects.point3d.len(), NUM_POINTS as usize);

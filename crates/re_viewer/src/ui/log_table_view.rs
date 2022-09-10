@@ -121,7 +121,7 @@ fn table_row(
             let TypeMsg {
                 msg_id: _,
                 type_path,
-                object_type,
+                obj_type,
             } = msg;
 
             row.col(|ui| {
@@ -136,7 +136,7 @@ fn table_row(
                 ctx.type_path_button(ui, type_path);
             });
             row.col(|ui| {
-                ui.monospace(format!("{object_type:?}"));
+                ui.monospace(format!("{obj_type:?}"));
             });
         }
         LogMsg::DataMsg(msg) => {
