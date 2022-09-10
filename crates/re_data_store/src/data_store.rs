@@ -72,7 +72,7 @@ impl DataStore {
                 LoggedData::Single(data) => {
                     let store = self.entry(time_source, time_source.typ());
                     re_log_types::data_map!(data.clone(), |data| store
-                        .insert_individual(obj_path, field_name, time_i64, msg_id, data))
+                        .insert_mono(obj_path, field_name, time_i64, msg_id, data))
                 }
                 LoggedData::Batch { indices, data } => {
                     re_log_types::data_vec_map!(data, |vec| {
@@ -102,21 +102,18 @@ impl DataStore {
     }
 
     fn register_obj_path(&mut self, obj_path: &ObjPath) {
-        let hash = *obj_path.hash();
-        #[allow(clippy::map_entry)]
-        // False positive: we want to avoid cloning the path until we really need to.
-        if !self.obj_path_from_hash.contains_key(&hash) {
-            self.obj_path_from_hash.insert(hash, obj_path.clone());
-        }
+        self.obj_path_from_hash
+            .entry(*obj_path.hash())
+            .or_insert_with(|| obj_path.clone());
     }
 
     #[inline(never)]
     fn register_batch_indices<T>(&mut self, batch: &Batch<T>) {
         crate::profile_function!();
         for (hash, index) in batch.indices() {
-            if !self.index_from_hash.contains_key(hash) {
-                self.index_from_hash.insert(*hash, index.clone());
-            }
+            self.index_from_hash
+                .entry(*hash)
+                .or_insert_with(|| index.clone());
         }
     }
 }

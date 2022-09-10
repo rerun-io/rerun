@@ -6,10 +6,13 @@ use re_log_types::{Index, IndexHash};
 
 pub type ArcBatch<T> = Arc<Batch<T>>;
 
+/// The value of a multi-object field at some time point.
 #[derive(Clone)]
 pub enum BatchOrSplat<T> {
-    /// Splat the same value for everything
+    /// Splat the same value for every instance of a multi-object.
     Splat(T),
+
+    /// Individual values for all instances of a multi-object.
     Batch(ArcBatch<T>),
 }
 
@@ -21,9 +24,9 @@ impl<T: Clone> BatchOrSplat<T> {
 
 // ----------------------------------------------------------------------------
 
-/// Can be shared between different timelines with [`ArcBatch`].
-///
 /// Each [`Index`] in a batch corresponds to an instance of a multi-object.
+///
+/// Can be shared between different timelines with [`ArcBatch`].
 pub struct Batch<T> {
     map: IntMap<IndexHash, T>,
     hashed_indices: Vec<(IndexHash, Index)>,
@@ -34,7 +37,7 @@ impl<T: Clone> Batch<T> {
     pub fn new(indices: &[re_log_types::Index], data: &[T]) -> Self {
         crate::profile_function!(std::any::type_name::<T>());
 
-        assert_eq!(indices.len(), data.len()); // TODO(emilk): return Result instead
+        assert_eq!(indices.len(), data.len()); // TODO: return Result instead
         let mut hashed_indices = Vec::with_capacity(indices.len());
         let map = itertools::izip!(indices, data)
             .map(|(index, value)| {

@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use re_log_types::{Index, IndexHash, ObjPath, ObjPathHash};
 
-use crate::{DataStore, ObjectProps};
+use crate::{DataStore, InstanceProps};
 
 // ----------------------------------------------------------------------------
 
@@ -11,7 +11,7 @@ use crate::{DataStore, ObjectProps};
 pub struct InstanceId {
     pub obj_path: ObjPath,
 
-    /// If this is a multi-object, what index are we?
+    /// If this is a multi-object, what instance index are we?
     pub instance_index: Option<Index>,
 }
 
@@ -24,13 +24,14 @@ impl InstanceId {
         }
     }
 
+    /// Does this object match this instance id?
     #[inline]
-    pub fn is_obj_props(&self, obj_props: &ObjectProps<'_>) -> bool {
-        &self.obj_path == obj_props.obj_path
+    pub fn is_instance(&self, props: &InstanceProps<'_>) -> bool {
+        &self.obj_path == props.obj_path
             && if let Some(index) = &self.instance_index {
-                index.hash() == obj_props.instance_index
+                index.hash() == props.instance_index
             } else {
-                obj_props.instance_index.is_none()
+                props.instance_index.is_none()
             }
     }
 
@@ -56,7 +57,9 @@ impl std::fmt::Display for InstanceId {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct InstanceIdHash {
     pub obj_path_hash: ObjPathHash,
-    /// If this is a multi-object, what index are we?
+
+    /// If this is a multi-object, what instance index are we?
+    /// [`IndexHash::NONE`] if we aren't a multi-object.
     pub instance_index_hash: IndexHash,
 }
 
@@ -67,7 +70,7 @@ impl InstanceIdHash {
     };
 
     #[inline]
-    pub fn from_props(props: &ObjectProps<'_>) -> Self {
+    pub fn from_props(props: &InstanceProps<'_>) -> Self {
         Self {
             obj_path_hash: *props.obj_path.hash(),
             instance_index_hash: props.instance_index,
@@ -86,9 +89,10 @@ impl InstanceIdHash {
         })
     }
 
+    /// Does this object match this instance id?
     #[inline]
-    pub fn is_obj_props(&self, obj_props: &ObjectProps<'_>) -> bool {
-        &self.obj_path_hash == obj_props.obj_path.hash()
-            && self.instance_index_hash == obj_props.instance_index
+    pub fn is_instance(&self, props: &InstanceProps<'_>) -> bool {
+        &self.obj_path_hash == props.obj_path.hash()
+            && self.instance_index_hash == props.instance_index
     }
 }

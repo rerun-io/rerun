@@ -136,9 +136,9 @@ fn obj_mono_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("obj_mono_points");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let log_store = insert_data(&data_messages);
+        let store = insert_data(&data_messages);
         group.bench_function("query", |b| {
-            b.iter(|| do_query(&obj_types, &log_store));
+            b.iter(|| do_query(&obj_types, &store));
         });
     }
 }
@@ -165,9 +165,9 @@ fn obj_batch_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("obj_batch_points");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let log_store = insert_data(&data_messages);
+        let store = insert_data(&data_messages);
         group.bench_function("query", |b| {
-            b.iter(|| do_query(&obj_types, &log_store));
+            b.iter(|| do_query(&obj_types, &store));
         });
     }
 }

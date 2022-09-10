@@ -283,7 +283,7 @@ fn find_camera(objects: &re_data_store::Objects<'_>, needle: &InstanceId) -> Opt
     let mut found_camera = None;
 
     for (props, camera) in objects.camera.iter() {
-        if needle.is_obj_props(props) {
+        if needle.is_instance(props) {
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {

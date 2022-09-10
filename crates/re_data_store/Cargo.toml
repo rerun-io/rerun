@@ -22,8 +22,8 @@ itertools = "0.10"
 log = "0.4"
 log-once = "0.3"
 nohash-hasher = "0.2"
-tracing = "0.1"
 serde = { version = "1", features = ["derive", "rc"], optional = true }
+tracing = "0.1"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

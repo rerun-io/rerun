@@ -5,8 +5,9 @@ use re_log_types::{objects::*, DataVec, FieldName, IndexHash, MsgId, ObjPath, Ob
 
 use crate::{query::*, ObjStore, TimeLineStore, TimeQuery};
 
+/// Common properties of an object instance.
 #[derive(Copy, Clone, Debug)]
-pub struct ObjectProps<'s> {
+pub struct InstanceProps<'s> {
     pub msg_id: &'s MsgId,
     pub space: Option<&'s ObjPath>,
     pub color: Option<[u8; 4]>,
@@ -21,7 +22,7 @@ pub struct ObjectProps<'s> {
 
 #[derive(Copy, Clone, Debug)]
 struct Object<'s, T: Copy + Clone + std::fmt::Debug> {
-    pub props: ObjectProps<'s>,
+    pub props: InstanceProps<'s>,
     pub data: T,
 }
 
@@ -43,19 +44,19 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
         self.0.is_empty()
     }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&ObjectProps<'s>, &T)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&InstanceProps<'s>, &T)> {
         self.0.iter().map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn first(&self) -> Option<(&ObjectProps<'s>, &T)> {
+    pub fn first(&self) -> Option<(&InstanceProps<'s>, &T)> {
         self.0.first().map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn last(&self) -> Option<(&ObjectProps<'s>, &T)> {
+    pub fn last(&self) -> Option<(&InstanceProps<'s>, &T)> {
         self.0.last().map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn filter(&self, keep: &impl Fn(&ObjectProps<'_>) -> bool) -> Self {
+    pub fn filter(&self, keep: &impl Fn(&InstanceProps<'_>) -> bool) -> Self {
         crate::profile_function!();
         Self(
             self.0
@@ -100,7 +101,7 @@ impl<'s> Image<'s> {
              color: Option<&[u8; 4]>,
              meter: Option<&f32>| {
                 out.image.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
@@ -144,7 +145,7 @@ impl<'s> Point2D<'s> {
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
                 out.point2d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
@@ -188,7 +189,7 @@ impl<'s> Point3D<'s> {
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
                 out.point3d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
@@ -234,7 +235,7 @@ impl<'s> BBox2D<'s> {
              stroke_width: Option<&f32>,
              label: Option<&String>| {
                 out.bbox2d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
@@ -279,7 +280,7 @@ impl<'s> Box3D<'s> {
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
                 out.box3d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
@@ -324,7 +325,7 @@ impl<'s> Path3D<'s> {
              stroke_width: Option<&f32>| {
                 if let Some(points) = as_vec_of_vec3("Path3D::points", points) {
                     out.path3d.0.push(Object {
-                        props: ObjectProps {
+                        props: InstanceProps {
                             msg_id,
                             space,
                             color: color.copied(),
@@ -371,7 +372,7 @@ impl<'s> LineSegments2D<'s> {
              stroke_width: Option<&f32>| {
                 if let Some(points) = as_vec_of_vec2("LineSegments2D::points", points) {
                     out.line_segments2d.0.push(Object {
-                        props: ObjectProps {
+                        props: InstanceProps {
                             msg_id,
                             space,
                             color: color.copied(),
@@ -418,7 +419,7 @@ impl<'s> LineSegments3D<'s> {
              stroke_width: Option<&f32>| {
                 if let Some(points) = as_vec_of_vec3("LineSegments3D::points", points) {
                     out.line_segments3d.0.push(Object {
-                        props: ObjectProps {
+                        props: InstanceProps {
                             msg_id,
                             space,
                             color: color.copied(),
@@ -461,7 +462,7 @@ impl<'s> Mesh3D<'s> {
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.mesh3d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
@@ -501,7 +502,7 @@ impl<'s> Camera<'s> {
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.camera.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
@@ -584,8 +585,6 @@ impl<'s> Objects<'s> {
         obj_path: &'s ObjPath,
         obj_type: &ObjectType,
     ) {
-        crate::profile_function!();
-
         let query_fn = match obj_type {
             ObjectType::Space => Space::query,
             ObjectType::Image => Image::query,
@@ -603,7 +602,7 @@ impl<'s> Objects<'s> {
         query_fn(obj_path, obj_store, time_query, self);
     }
 
-    pub fn filter(&self, keep: impl Fn(&ObjectProps<'_>) -> bool) -> Self {
+    pub fn filter(&self, keep: impl Fn(&InstanceProps<'_>) -> bool) -> Self {
         crate::profile_function!();
 
         Self {

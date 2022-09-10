@@ -98,7 +98,7 @@ pub(crate) fn view_2d(
     let mut closest_instance_id_hash = InstanceIdHash::NONE;
     let pointer_pos = response.hover_pos();
 
-    let mut check_hovering = |props: &re_data_store::ObjectProps<'_>, dist: f32| {
+    let mut check_hovering = |props: &re_data_store::InstanceProps<'_>, dist: f32| {
         if dist <= closest_dist {
             closest_dist = dist;
             closest_instance_id_hash = InstanceIdHash::from_props(props);
@@ -155,7 +155,7 @@ pub(crate) fn view_2d(
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
             check_hovering(props, dist);
 
-            if hovered_instance_id_hash.is_obj_props(props) && rect_in_ui.contains(pointer_pos) {
+            if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
                 let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
                 response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
                     ui,
@@ -428,7 +428,7 @@ enum DefaultColor {
 fn paint_properties(
     ctx: &mut ViewerContext<'_>,
     hovered: &InstanceIdHash,
-    props: &re_data_store::ObjectProps<'_>,
+    props: &re_data_store::InstanceProps<'_>,
     default_color: DefaultColor,
     stroke_width: &Option<f32>,
 ) -> ObjectPaintProperties {

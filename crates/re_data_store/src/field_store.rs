@@ -104,7 +104,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
         time_query: &TimeQuery<Time>,
         instance_index: Option<&Index>,
     ) -> (Vec<(Time, MsgId, Option<Index>)>, DataVec) {
-        // TODO(emilk): proper error handling in this function
+        // TODO: proper error handling in this function
         macro_rules! handle_type(
             ($enum_variant: ident, $typ: ty) => {{
                 let mut time_msgid_index = vec![];

@@ -12,7 +12,7 @@ pub use data_store::*;
 pub use field_store::*;
 pub use instance::*;
 pub use obj_store::*;
-pub use objects::{ObjectProps, Objects, ObjectsBySpace, *};
+pub use objects::{InstanceProps, Objects, ObjectsBySpace, *};
 pub use timeline_store::*;
 
 use re_log_types::DataType;

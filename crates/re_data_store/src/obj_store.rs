@@ -7,8 +7,8 @@ use crate::{BatchOrSplat, Error, FieldStore, MonoFieldStore, MultiFieldStore, Re
 
 /// Stores all the fields of a specific [`re_log_types::ObjPath`] on a specific [`re_log_types::TimeSource`].
 pub struct ObjStore<Time> {
-    pub(crate) mono: bool,
-    pub(crate) fields: IntMap<FieldName, FieldStore<Time>>,
+    mono: bool,
+    fields: IntMap<FieldName, FieldStore<Time>>,
 }
 
 impl<Time> Default for ObjStore<Time> {
@@ -21,14 +21,17 @@ impl<Time> Default for ObjStore<Time> {
 }
 
 impl<Time: 'static + Copy + Ord> ObjStore<Time> {
+    #[inline]
     pub fn mono(&self) -> bool {
         self.mono
     }
 
+    #[inline]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&FieldName, &FieldStore<Time>)> {
         self.fields.iter()
     }
 
+    #[inline]
     pub fn get(&self, field_name: &FieldName) -> Option<&FieldStore<Time>> {
         self.fields.get(field_name)
     }
@@ -49,6 +52,29 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         self.fields.get(field_name)?.get_multi::<T>().ok()
     }
 
+    pub fn insert_mono<T: DataTrait>(
+        &mut self,
+        field_name: FieldName,
+        time: Time,
+        msg_id: MsgId,
+        value: T,
+    ) -> Result<()> {
+        if self.fields.is_empty() {
+            self.mono = true; // first insertion - we can decide that we are mono from now on
+        } else if !self.mono {
+            return Err(Error::MixingMonoAndMulti);
+        }
+
+        let mono = self
+            .fields
+            .entry(field_name)
+            .or_insert_with(|| FieldStore::new_mono::<T>())
+            .get_mono_mut::<T>()?;
+
+        mono.history.insert(time, (msg_id, value));
+        Ok(())
+    }
+
     pub fn insert_batch<T: DataTrait>(
         &mut self,
         field_name: FieldName,
@@ -57,7 +83,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         batch: BatchOrSplat<T>,
     ) -> Result<()> {
         if self.fields.is_empty() {
-            self.mono = false;
+            self.mono = false; // first insertion - we can decide that we are multi from now on
         } else if self.mono {
             return Err(Error::MixingMonoAndMulti);
         }
@@ -72,29 +98,6 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
 
         Ok(())
     }
-
-    pub fn insert_individual<T: DataTrait>(
-        &mut self,
-        field_name: FieldName,
-        time: Time,
-        msg_id: MsgId,
-        value: T,
-    ) -> Result<()> {
-        if self.fields.is_empty() {
-            self.mono = true;
-        } else if !self.mono {
-            return Err(Error::MixingMonoAndMulti);
-        }
-
-        let mono = self
-            .fields
-            .entry(field_name)
-            .or_insert_with(|| FieldStore::new_mono::<T>())
-            .get_mono_mut::<T>()?;
-
-        mono.history.insert(time, (msg_id, value));
-        Ok(())
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -106,19 +109,19 @@ fn test_obj_store() {
     let mut obj_store = ObjStore::default();
 
     assert!(obj_store
-        .insert_individual("field1".into(), 0, MsgId::random(), 3.15)
+        .insert_mono("field1".into(), 0, MsgId::random(), 3.15)
         .is_ok());
 
     assert!(obj_store
-        .insert_individual("field1".into(), 0, MsgId::random(), 3.15)
+        .insert_mono("field1".into(), 0, MsgId::random(), 3.15)
         .is_ok());
 
     assert!(obj_store
-        .insert_individual("field2".into(), 0, MsgId::random(), 3.15)
+        .insert_mono("field2".into(), 0, MsgId::random(), 3.15)
         .is_ok());
 
     assert_eq!(
-        obj_store.insert_individual("field2".into(), 0, MsgId::random(), 42),
+        obj_store.insert_mono("field2".into(), 0, MsgId::random(), 42),
         Err(crate::Error::MixingTypes {
             existing: DataType::F32,
             expected: DataType::I32

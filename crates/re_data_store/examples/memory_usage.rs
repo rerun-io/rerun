@@ -56,13 +56,17 @@ impl TrackingAllocator {
     }
 }
 
-fn obj_path(camera: u64, index: u64) -> ObjPath {
+fn obj_path_mono(camera: u64, index: u64) -> ObjPath {
     obj_path!(
         "camera",
         Index::Sequence(camera),
         "point",
         Index::Sequence(index),
     )
+}
+
+fn obj_path_batch(camera: u64) -> ObjPath {
+    obj_path!("camera", Index::Sequence(camera), "points",)
 }
 
 const BYTES_PER_POINT: usize = 16 + 24; // IndexPathKey + [f32; 3]
@@ -81,8 +85,8 @@ fn tracking_points() {
     for frame in 0..NUM_FRAMES {
         for offset in 0..OVERLAP {
             store
-                .insert_individual::<[f32; 3]>(
-                    obj_path(0, (frame + offset) as _),
+                .insert_mono::<[f32; 3]>(
+                    obj_path_mono(0, (frame + offset) as _),
                     "pos".into(),
                     frame,
                     MsgId::random(),
@@ -115,8 +119,8 @@ fn big_clouds() {
         for camera in 0..NUM_CAMERAS {
             for point in 0..NUM_POINTS_PER_CAMERA {
                 store
-                    .insert_individual::<[f32; 3]>(
-                        obj_path(camera as _, point as _),
+                    .insert_mono::<[f32; 3]>(
+                        obj_path_mono(camera as _, point as _),
                         "pos".into(),
                         frame,
                         MsgId::random(),
@@ -158,7 +162,7 @@ fn big_clouds_batched() {
             let batch = BatchOrSplat::new_batch(&indices, &positions);
             store
                 .insert_batch::<[f32; 3]>(
-                    obj_path(camera as _, 0),
+                    obj_path_batch(camera as _),
                     "pos".into(),
                     frame,
                     MsgId::random(),

@@ -27,7 +27,7 @@ pub(crate) fn query<'data, Time: Copy + Ord, T>(
         TimeQuery::LatestAt(query_time) => {
             if let Some((_data_time, data)) = latest_at(data_over_time, query_time) {
                 // we use `query_time` here instead of a`data_time`
-                // because we want to also query for the latest radius, not the latest radius at the time of the position.
+                // because we want to also query for the latest color, not the latest color at the time of the position.
                 visit(query_time, data);
             }
         }
@@ -77,7 +77,7 @@ impl<'store, T: DataTrait> MultiDataReader<'store, T> {
         }
     }
 
-    pub fn latest_at_impl<Time: 'static + Copy + Ord>(
+    fn latest_at_impl<Time: 'static + Copy + Ord>(
         history: &'store MultiFieldStore<Time, T>,
         query_time: &Time,
     ) -> Self {
@@ -126,7 +126,7 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
 ) -> Option<()> {
     crate::profile_function!();
 
-    if obj_store.mono {
+    if obj_store.mono() {
         let primary = obj_store.get_mono::<T>(field_name)?;
         query(
             &primary.history,
@@ -163,7 +163,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
     crate::profile_function!();
     let child1 = FieldName::from(child1);
 
-    if obj_store.mono {
+    if obj_store.mono() {
         let primary = obj_store.get_mono::<T>(field_name)?;
         let child1 = MonoDataReader::<Time, S1>::new(obj_store, &child1);
         query(
@@ -215,7 +215,7 @@ pub fn visit_type_data_2<
     let child1 = FieldName::from(child1);
     let child2 = FieldName::from(child2);
 
-    if obj_store.mono {
+    if obj_store.mono() {
         let primary = obj_store.get_mono::<T>(field_name)?;
         let child1 = MonoDataReader::<Time, S1>::new(obj_store, &child1);
         let child2 = MonoDataReader::<Time, S2>::new(obj_store, &child2);
@@ -286,7 +286,7 @@ pub fn visit_type_data_3<
     let child2 = FieldName::from(child2);
     let child3 = FieldName::from(child3);
 
-    if obj_store.mono {
+    if obj_store.mono() {
         let primary = obj_store.get_mono::<T>(field_name)?;
         let child1 = MonoDataReader::<Time, S1>::new(obj_store, &child1);
         let child2 = MonoDataReader::<Time, S2>::new(obj_store, &child2);
@@ -365,7 +365,7 @@ pub fn visit_type_data_4<
     let child3 = FieldName::from(child3);
     let child4 = FieldName::from(child4);
 
-    if obj_store.mono {
+    if obj_store.mono() {
         let primary = obj_store.get_mono::<T>(field_name)?;
         let child1 = MonoDataReader::<Time, S1>::new(obj_store, &child1);
         let child2 = MonoDataReader::<Time, S2>::new(obj_store, &child2);

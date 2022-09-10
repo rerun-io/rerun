@@ -32,7 +32,7 @@ impl<Time: 'static + Copy + Ord> TimeLineStore<Time> {
         self.objects.get(obj_path)
     }
 
-    pub fn insert_individual<T: DataTrait>(
+    pub fn insert_mono<T: DataTrait>(
         &mut self,
         obj_path: ObjPath,
         field_name: FieldName,
@@ -43,7 +43,7 @@ impl<Time: 'static + Copy + Ord> TimeLineStore<Time> {
         self.objects
             .entry(obj_path)
             .or_default()
-            .insert_individual(field_name, time, msg_id, value)
+            .insert_mono(field_name, time, msg_id, value)
     }
 
     pub fn insert_batch<T: DataTrait>(

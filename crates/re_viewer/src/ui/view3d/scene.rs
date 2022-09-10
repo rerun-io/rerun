@@ -71,15 +71,16 @@ impl Scene {
             .collect_vec();
         let gamma_lut = &gamma_lut[0..256]; // saves us bounds checks later.
 
-        let boost_size_on_hover = |props: &re_data_store::ObjectProps<'_>, radius: f32| {
-            if hovered_instance_id_hash.is_obj_props(props) {
+        let boost_size_on_hover = |props: &re_data_store::InstanceProps<'_>, radius: f32| {
+            if hovered_instance_id_hash.is_instance(props) {
                 1.5 * radius
             } else {
                 radius
             }
         };
-        let object_color = |ctx: &mut ViewerContext<'_>, props: &re_data_store::ObjectProps<'_>| {
-            let [r, g, b, a] = if hovered_instance_id_hash.is_obj_props(props) {
+        let object_color = |ctx: &mut ViewerContext<'_>,
+                            props: &re_data_store::InstanceProps<'_>| {
+            let [r, g, b, a] = if hovered_instance_id_hash.is_instance(props) {
                 [255; 4]
             } else if let Some(color) = props.color {
                 color

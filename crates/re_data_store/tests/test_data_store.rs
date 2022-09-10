@@ -69,7 +69,7 @@ fn test_singular() -> re_data_store::Result<()> {
 
     let mut store = TimeLineStore::default();
 
-    store.insert_individual::<[f32; 3]>(
+    store.insert_mono::<[f32; 3]>(
         obj_data_path("left", 0),
         "pos".into(),
         Time(1),
@@ -77,7 +77,7 @@ fn test_singular() -> re_data_store::Result<()> {
         [1.0, 1.0, 1.0],
     )?;
 
-    store.insert_individual::<[f32; 3]>(
+    store.insert_mono::<[f32; 3]>(
         obj_data_path("left", 0),
         "pos".into(),
         Time(3),
@@ -85,7 +85,7 @@ fn test_singular() -> re_data_store::Result<()> {
         [3.0, 3.0, 3.0],
     )?;
 
-    store.insert_individual::<f32>(
+    store.insert_mono::<f32>(
         obj_data_path("left", 0),
         "radius".into(),
         Time(2),
@@ -93,7 +93,7 @@ fn test_singular() -> re_data_store::Result<()> {
         1.0,
     )?;
 
-    store.insert_individual::<[f32; 3]>(
+    store.insert_mono::<[f32; 3]>(
         obj_data_path("left", 1),
         "pos".into(),
         Time(4),

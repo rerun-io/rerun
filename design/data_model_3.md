@@ -1,5 +1,5 @@
 # Data Model 3
-Proposal for the third iteration of the data model.
+The core of the third iteration of the data model and data store.
 
 ## Problems with previous model
 

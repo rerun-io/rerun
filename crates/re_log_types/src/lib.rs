@@ -251,15 +251,15 @@ pub fn data_msg(
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum LoggedData {
-    /// A single data value
+    /// A single data value, for "mono-objects".
     Single(Data),
 
-    /// Log multiple values at once.
+    /// Log multiple values at once to a "multi-object".
     ///
     /// The index becomes an "instance index" that, togher with the object-path, forms an "instance".
     Batch { indices: Vec<Index>, data: DataVec },
 
-    /// Log the same value for all instances.
+    /// Log the same value for all instances of a mult-object.
     ///
     /// You can only use this for optional fields such as `color`, `space` etc.
     /// You can NOT use it for primary fields such as `pos`.
