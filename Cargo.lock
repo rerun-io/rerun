@@ -1824,8 +1824,9 @@ dependencies = [
 
 [[package]]
 name = "log-once"
-version = "0.3.1"
-source = "git+https://github.com/rerun-io/log-once?rev=73c56ce9b059118cb549fb5eeaad708ec5cdc503#73c56ce9b059118cb549fb5eeaad708ec5cdc503"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ae8737764ac12e9cfc5ab42a9ec2bdb7e2b376ce9694a4dffc92b7adee09cb5"
 dependencies = [
  "log",
 ]
