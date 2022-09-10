@@ -21,3 +21,6 @@ eframe      = { git = "https://github.com/emilk/egui", rev = "5500895845e4dc1cb1
 egui        = { git = "https://github.com/emilk/egui", rev = "5500895845e4dc1cb1d702d8334c45bc8a525c4e" }
 egui_extras = { git = "https://github.com/emilk/egui", rev = "5500895845e4dc1cb1d702d8334c45bc8a525c4e" }
 egui_glow   = { git = "https://github.com/emilk/egui", rev = "5500895845e4dc1cb1d702d8334c45bc8a525c4e" }
+
+# 2022-09-10: support captured identifiers in log strings. See https://github.com/Luthaf/log-once/pull/2
+log-once = { git = "https://github.com/rerun-io/log-once", rev = "73c56ce9b059118cb549fb5eeaad708ec5cdc503" }

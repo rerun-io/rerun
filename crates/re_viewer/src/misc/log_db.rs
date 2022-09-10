@@ -93,18 +93,13 @@ impl LogDb {
             let valid_members = obj_type.members();
             if !valid_members.contains(&field_name.as_str()) {
                 log_once::warn_once!(
-                    "Logged to {}.{}, but the parent object ({:?}) does not have that field. Expected one of: {}",
-                    obj_type_path,
-                    field_name,
-                    obj_type,
+                    "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
                     valid_members.iter().format(", ")
                 );
             }
         } else {
             log_once::warn_once!(
-                "Logging to {}.{} without first registering object type",
-                obj_type_path,
-                field_name,
+                "Logging to {obj_type_path}.{field_name} without first registering object type"
             );
         }
 

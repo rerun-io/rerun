@@ -740,8 +740,7 @@ fn as_vec_of_vec2<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32;
         Some(vec)
     } else {
         log_once::warn_once!(
-            "Expected {} to be Vec<Vec2>, got Vec<{:?}>",
-            what,
+            "Expected {what} to be Vec<Vec2>, got Vec<{:?}>",
             data_vec.element_data_type()
         );
         None
@@ -753,8 +752,7 @@ fn as_vec_of_vec3<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32;
         Some(vec)
     } else {
         log_once::warn_once!(
-            "Expected {} to be Vec<Vec3>, got Vec<{:?}>",
-            what,
+            "Expected {what} to be Vec<Vec3>, got Vec<{:?}>",
             data_vec.element_data_type()
         );
         None

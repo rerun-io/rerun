@@ -41,8 +41,7 @@ glow = "0.11"
 image = { version = "0.23", default-features = false, features = ["png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
-log = "0.4"  # TODO(emilk): tracing-specific crate instead
-log-once = "0.3" # TODO(emilk): tracing-specific crate instead
+log-once = "0.3"
 macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
 nohash-hasher = "0.2"

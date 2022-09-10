@@ -1825,8 +1825,7 @@ dependencies = [
 [[package]]
 name = "log-once"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aba6f00890254f37df9778e2df6042249f543ab1789cbe001c50b4debe264a8c"
+source = "git+https://github.com/rerun-io/log-once?rev=73c56ce9b059118cb549fb5eeaad708ec5cdc503#73c56ce9b059118cb549fb5eeaad708ec5cdc503"
 dependencies = [
  "log",
 ]
@@ -2689,13 +2688,13 @@ dependencies = [
  "ahash 0.8.0",
  "criterion",
  "itertools",
- "log",
  "log-once",
  "mimalloc",
  "nohash-hasher",
  "puffin",
  "re_log_types",
  "serde",
+ "thiserror",
  "tracing",
 ]
 
@@ -2790,7 +2789,6 @@ dependencies = [
  "image",
  "instant",
  "itertools",
- "log",
  "log-once",
  "macaw",
  "mint",
