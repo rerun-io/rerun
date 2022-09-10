@@ -13,11 +13,28 @@ pub(crate) fn view_object(
     obj_path: &ObjPath,
     preview: Preview,
 ) -> Option<()> {
+    view_instance(
+        ctx,
+        ui,
+        &InstanceId {
+            obj_path: obj_path.clone(),
+            multi_index: None,
+        },
+        preview,
+    )
+}
+
+pub(crate) fn view_instance(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    instance_id: &InstanceId,
+    preview: Preview,
+) -> Option<()> {
     let store = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
-    let obj_store = store.get(obj_path)?;
+    let obj_store = store.get(&instance_id.obj_path)?;
 
-    egui::Grid::new("object")
+    egui::Grid::new("object_instance")
         .striped(true)
         .num_columns(2)
         .show(ui, |ui| {
@@ -25,10 +42,11 @@ pub(crate) fn view_object(
                 ctx.data_path_button_to(
                     ui,
                     field_name.to_string(),
-                    &DataPath::new(obj_path.clone(), *field_name),
+                    &DataPath::new(instance_id.obj_path.clone(), *field_name),
                 );
 
-                let (time_msgid_index, data_vec) = field_store.query_field_to_datavec(&time_query);
+                let (time_msgid_index, data_vec) = field_store
+                    .query_field_to_datavec(&time_query, instance_id.multi_index.as_ref());
 
                 if data_vec.len() == 1 {
                     let data = data_vec.last().unwrap();
@@ -45,15 +63,6 @@ pub(crate) fn view_object(
     Some(())
 }
 
-pub(crate) fn view_instance(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    instance_id: &InstanceId,
-    preview: Preview,
-) -> Option<()> {
-    view_object(ctx, ui, &instance_id.obj_path, preview) // TODO: view isntance id
-}
-
 pub(crate) fn view_data(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -66,7 +75,7 @@ pub(crate) fn view_data(
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(obj_path)?;
     let field_store = obj_store.get(field_name)?;
-    let (time_msgid_index, data_vec) = field_store.query_field_to_datavec(&time_query);
+    let (time_msgid_index, data_vec) = field_store.query_field_to_datavec(&time_query, None);
 
     if data_vec.len() == 1 {
         let data = data_vec.last().unwrap();

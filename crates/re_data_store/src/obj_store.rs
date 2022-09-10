@@ -97,18 +97,6 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         mono.history.insert(time, (msg_id, value));
         Ok(())
     }
-
-    /// Typed-erased query of the contents of one field of this object.
-    ///
-    /// Returns vectors of equal length.
-    pub fn query_field_to_datavec(
-        &self,
-        field_name: &FieldName,
-        time_query: &TimeQuery<Time>,
-    ) -> (Vec<(Time, MsgId, Option<Index>)>, DataVec) {
-        let store = self.fields.get(field_name).unwrap();
-        store.query_field_to_datavec(time_query)
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -202,16 +190,22 @@ impl<Time: 'static + Copy + Ord> DataStoreTypeErased<Time> {
 
     /// Typed-erased query of the contents of one field of this object.
     ///
+    /// If `multi_index` is `None`, all instances are returned.
+    /// If `multi_index` is `Some`, only those instances that match will be returned.
+    ///
     /// Returns vectors of equal length.
     pub fn query_field_to_datavec(
         &self,
         time_query: &TimeQuery<Time>,
+        multi_index: Option<&Index>,
     ) -> (Vec<(Time, MsgId, Option<Index>)>, DataVec) {
+        // TODO(emilk): proper error handling in this function
         macro_rules! handle_type(
             ($enum_variant: ident, $typ: ty) => {{
                 let mut time_msgid_index = vec![];
                 let mut values = vec![];
                 if self.mono {
+                    assert!(multi_index.is_none());
                     let mono = self.get_mono::<$typ>().unwrap();
                     mono.query(time_query, |time, msg_id, value| {
                         time_msgid_index.push((*time, *msg_id, None));
@@ -227,6 +221,12 @@ impl<Time: 'static + Copy + Ord> DataStoreTypeErased<Time> {
                             }
                             BatchOrSplat::Batch(batch) => {
                                 for (index_hash, index) in batch.indices() {
+                                    if let Some(multi_index) = multi_index {
+                                        if index != multi_index {
+                                            continue;
+                                        }
+                                    }
+
                                     let value = batch.get(index_hash).unwrap();
                                     time_msgid_index.push((*time, *msg_id, Some(index.clone())));
                                     values.push(value.clone());
