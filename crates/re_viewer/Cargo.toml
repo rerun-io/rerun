@@ -19,7 +19,7 @@ puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin"]
 
 
 [dependencies]
-re_data_store = { path = "../re_data_store", features = ["puffin"] }
+re_data_store = {path = "../re_data_store_3", features = ["puffin"], package = "re_data_store_3"}
 re_error = { path = "../re_error" }
 re_log_types = { path = "../re_log_types", features = ["save", "load"] }
 re_string_interner = { path = "../re_string_interner" }

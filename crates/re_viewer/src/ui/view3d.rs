@@ -12,7 +12,7 @@ use scene::*;
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
-use re_log_types::{ObjPath, ObjPathHash};
+use re_log_types::ObjPath;
 
 use crate::{
     misc::{HoveredSpace, Selection},
@@ -380,11 +380,11 @@ pub(crate) fn view_3d(
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &eye));
 
-    if let Some((obj_path_hash, point)) = hovered {
+    if let Some((instance_id, point)) = hovered {
         state.hovered_obj_path = ctx
             .log_db
             .data_store
-            .obj_path_from_hash(&obj_path_hash)
+            .obj_path_from_hash(&instance_id.obj_path_hash)
             .cloned();
         state.hovered_point = Some(point);
     } else {
@@ -405,7 +405,7 @@ pub(crate) fn view_3d(
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
             scene.points.push(Point {
-                obj_path_hash: re_log_types::ObjPathHash::NONE,
+                instance_id: InstanceId::NONE,
                 pos: orbit_eye.orbit_center.to_array(),
                 radius: orbit_eye.orbit_radius * 0.01,
                 color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
@@ -465,7 +465,7 @@ fn show_projections_from_2d_space(
                         crate::math::line_segment_distance_to_point_3d([origin, end], eye_pos);
                     let radius = 2.0 * scene.line_radius_from_distance * distance;
                     scene.line_segments.push(LineSegments {
-                        obj_path_hash: ObjPathHash::NONE,
+                        instance_id: InstanceId::NONE,
                         segments: vec![[origin.into(), end.into()]],
                         radius,
                         color: [255; 4],
@@ -474,7 +474,7 @@ fn show_projections_from_2d_space(
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
                         scene.points.push(Point {
-                            obj_path_hash: ObjPathHash::NONE,
+                            instance_id: InstanceId::NONE,
                             pos: pos.into(),
                             radius: radius * 3.0,
                             color: [255; 4],

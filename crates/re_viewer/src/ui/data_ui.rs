@@ -12,27 +12,26 @@ pub(crate) fn view_object(
     obj_path: &ObjPath,
     preview: Preview,
 ) -> Option<()> {
-    let (_, store) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let store = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
-    let obj_store = store.get(obj_path.obj_type_path())?;
+    let obj_store = store.get(obj_path)?;
 
     egui::Grid::new("object")
         .striped(true)
         .num_columns(2)
         .show(ui, |ui| {
-            for (field_name, data_store) in obj_store.iter() {
+            for (field_name, field_store) in obj_store.iter() {
                 ctx.data_path_button_to(
                     ui,
                     field_name.to_string(),
                     &DataPath::new(obj_path.clone(), *field_name),
                 );
 
-                let (_times, msg_ids, data_vec) =
-                    data_store.query_object(obj_path.index_path().clone(), &time_query);
+                let (time_msgid_index, data_vec) = field_store.query_field_to_datavec(&time_query);
 
                 if data_vec.len() == 1 {
                     let data = data_vec.last().unwrap();
-                    let msg_id = &msg_ids[0];
+                    let (_, msg_id, _) = &time_msgid_index[0];
                     crate::data_ui::ui_data(ctx, ui, msg_id, &data, preview);
                 } else {
                     ui_data_vec(ui, &data_vec);
@@ -53,17 +52,15 @@ pub(crate) fn view_data(
     let obj_path = data_path.obj_path();
     let field_name = data_path.field_name();
 
-    let (_, store) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let store = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
-    let obj_store = store.get(obj_path.obj_type_path())?;
-    let data_store = obj_store.get_field(field_name)?;
-
-    let (_times, msg_ids, data_vec) =
-        data_store.query_object(obj_path.index_path().clone(), &time_query);
+    let obj_store = store.get(obj_path)?;
+    let field_store = obj_store.get(field_name)?;
+    let (time_msgid_index, data_vec) = field_store.query_field_to_datavec(&time_query);
 
     if data_vec.len() == 1 {
         let data = data_vec.last().unwrap();
-        let msg_id = &msg_ids[0];
+        let (_, msg_id, _) = &time_msgid_index[0];
         show_detailed_data(ctx, ui, msg_id, &data);
     } else {
         ui_data_vec(ui, &data_vec);
