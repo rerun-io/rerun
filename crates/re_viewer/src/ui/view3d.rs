@@ -6,13 +6,14 @@ mod scene;
 pub use mesh_cache::CpuMeshCache;
 
 use eye::*;
+use re_data_store::{InstanceId, InstanceIdHash};
 use rendering::*;
 use scene::*;
 
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
-use re_log_types::{ObjPath, ObjPathHash};
+use re_log_types::ObjPath;
 
 use crate::{
     misc::{HoveredSpace, Selection},
@@ -29,7 +30,7 @@ pub(crate) struct State3D {
 
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
-    hovered_obj_path: Option<ObjPath>,
+    hovered_instance: Option<InstanceId>,
 
     /// Where in world space the mouse is hovering (from previous frame)
     #[serde(skip)]
@@ -51,7 +52,7 @@ impl Default for State3D {
         Self {
             orbit_eye: Default::default(),
             eye_interpolation: Default::default(),
-            hovered_obj_path: Default::default(),
+            hovered_instance: Default::default(),
             hovered_point: Default::default(),
             scene_bbox: macaw::BoundingBox::nothing(),
             spin: false,
@@ -271,18 +272,18 @@ impl SpaceSpecs {
 
 /// If the path to a camera is selected, we follow that camera.
 fn tracking_camera(ctx: &ViewerContext<'_>, objects: &re_data_store::Objects<'_>) -> Option<Eye> {
-    if let Selection::ObjPath(selected_obj_path) = &ctx.rec_cfg.selection {
-        find_camera(objects, selected_obj_path)
+    if let Selection::Instance(selected) = &ctx.rec_cfg.selection {
+        find_camera(objects, selected)
     } else {
         None
     }
 }
 
-fn find_camera(objects: &re_data_store::Objects<'_>, needle_obj_path: &ObjPath) -> Option<Eye> {
+fn find_camera(objects: &re_data_store::Objects<'_>, needle: &InstanceId) -> Option<Eye> {
     let mut found_camera = None;
 
     for (props, camera) in objects.camera.iter() {
-        if props.obj_path == needle_obj_path {
+        if needle.is_instance(props) {
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {
@@ -298,11 +299,11 @@ fn click_object(
     ctx: &mut ViewerContext<'_>,
     objects: &re_data_store::Objects<'_>,
     state: &mut State3D,
-    obj_path: &ObjPath,
+    instance_id: &InstanceId,
 ) {
-    ctx.rec_cfg.selection = crate::Selection::ObjPath(obj_path.clone());
+    ctx.rec_cfg.selection = crate::Selection::Instance(instance_id.clone());
 
-    if let Some(camera) = find_camera(objects, obj_path) {
+    if let Some(camera) = find_camera(objects, instance_id) {
         state.interpolate_to_eye(camera);
     } else if let Some(clicked_point) = state.hovered_point {
         // center camera on what we click on
@@ -347,22 +348,22 @@ pub(crate) fn view_3d(
         }
     }
 
-    let mut hovered_obj_path = state.hovered_obj_path.clone();
+    let mut hovered_instance = state.hovered_instance.clone();
     if ui.input().pointer.any_click() {
-        if let Some(hovered_obj_path) = &hovered_obj_path {
-            click_object(ctx, objects, state, hovered_obj_path);
+        if let Some(hovered_instance) = &hovered_instance {
+            click_object(ctx, objects, state, hovered_instance);
         }
     } else if ui.input().pointer.any_down() {
-        hovered_obj_path = None;
+        hovered_instance = None;
     }
 
-    if let Some(obj_path) = &hovered_obj_path {
+    if let Some(instance_id) = &hovered_instance {
         egui::containers::popup::show_tooltip_at_pointer(
             ui.ctx(),
             egui::Id::new("3d_tooltip"),
             |ui| {
-                ctx.obj_path_button(ui, obj_path);
-                crate::ui::data_ui::view_object(ctx, ui, obj_path, crate::ui::Preview::Medium);
+                ctx.instance_id_button(ui, instance_id);
+                crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Medium);
             },
         );
     }
@@ -372,7 +373,7 @@ pub(crate) fn view_3d(
         &state.scene_bbox,
         rect.size(),
         &eye,
-        hovered_obj_path.as_ref(),
+        hovered_instance.as_ref(),
         objects,
     );
 
@@ -380,16 +381,13 @@ pub(crate) fn view_3d(
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &eye));
 
-    if let Some((obj_path_hash, point)) = hovered {
-        state.hovered_obj_path = ctx
-            .log_db
-            .data_store
-            .obj_path_from_hash(&obj_path_hash)
-            .cloned();
-        state.hovered_point = Some(point);
-    } else {
-        state.hovered_obj_path = None;
-        state.hovered_point = None;
+    state.hovered_instance = None;
+    state.hovered_point = None;
+    if let Some((instance_id, point)) = hovered {
+        if let Some(instance_id) = instance_id.resolve(&ctx.log_db.data_store) {
+            state.hovered_instance = Some(instance_id);
+            state.hovered_point = Some(point);
+        }
     }
 
     project_onto_other_spaces(ctx, state, space, &response, orbit_eye, objects);
@@ -405,7 +403,7 @@ pub(crate) fn view_3d(
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
             scene.points.push(Point {
-                obj_path_hash: re_log_types::ObjPathHash::NONE,
+                instance_id: InstanceIdHash::NONE,
                 pos: orbit_eye.orbit_center.to_array(),
                 radius: orbit_eye.orbit_radius * 0.01,
                 color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
@@ -465,7 +463,7 @@ fn show_projections_from_2d_space(
                         crate::math::line_segment_distance_to_point_3d([origin, end], eye_pos);
                     let radius = 2.0 * scene.line_radius_from_distance * distance;
                     scene.line_segments.push(LineSegments {
-                        obj_path_hash: ObjPathHash::NONE,
+                        instance_id: InstanceIdHash::NONE,
                         segments: vec![[origin.into(), end.into()]],
                         radius,
                         color: [255; 4],
@@ -474,7 +472,7 @@ fn show_projections_from_2d_space(
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
                         scene.points.push(Point {
-                            obj_path_hash: ObjPathHash::NONE,
+                            instance_id: InstanceIdHash::NONE,
                             pos: pos.into(),
                             radius: radius * 3.0,
                             color: [255; 4],

@@ -80,14 +80,6 @@ impl ObjPathImpl {
 
         Self::new(ObjTypePath::new(obj_type_path), IndexPath::new(index_path))
     }
-
-    /// Replace last [`Index::Placeholder`] with the given key.
-    #[must_use]
-    pub fn replace_last_placeholder_with(self, key: Index) -> Self {
-        let (type_path, mut index_path) = self.into_type_path_and_index_path();
-        index_path.replace_last_placeholder_with(key);
-        Self::new(type_path, index_path)
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -153,8 +145,6 @@ pub enum ObjPathComponentRef<'a> {
 
     /// Array/table/map member. Each member must be of the same type (homogenous).
     Index(&'a Index),
-
-    IndexPlaceholder,
 }
 
 impl<'a> ObjPathComponentRef<'a> {
@@ -162,7 +152,6 @@ impl<'a> ObjPathComponentRef<'a> {
         match self {
             Self::String(name) => ObjPathComp::String(**name),
             Self::Index(index) => ObjPathComp::Index((*index).clone()),
-            Self::IndexPlaceholder => ObjPathComp::Index(Index::Placeholder),
         }
     }
 }
@@ -172,7 +161,6 @@ impl<'a> std::fmt::Display for ObjPathComponentRef<'a> {
         match self {
             Self::String(name) => name.fmt(f),
             Self::Index(index) => index.fmt(f),
-            Self::IndexPlaceholder => '_'.fmt(f),
         }
     }
 }
@@ -188,10 +176,7 @@ impl<'a> Iterator for Iter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.obj_type_path.next()? {
             TypePathComp::String(name) => Some(ObjPathComponentRef::String(name)),
-            TypePathComp::Index => match self.index_path.next() {
-                Some(index) => Some(ObjPathComponentRef::Index(index)),
-                None => Some(ObjPathComponentRef::IndexPlaceholder),
-            },
+            TypePathComp::Index => Some(ObjPathComponentRef::Index(self.index_path.next()?)),
         }
     }
 }

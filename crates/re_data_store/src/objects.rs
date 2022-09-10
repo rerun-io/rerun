@@ -1,24 +1,28 @@
 use std::collections::BTreeMap;
 
-use re_log_types::{DataVec, FieldName, MsgId, ObjPath};
+use nohash_hasher::IntMap;
+use re_log_types::{objects::*, DataVec, FieldName, IndexHash, MsgId, ObjPath, ObjTypePath};
 
-pub use re_log_types::objects::*;
+use crate::{query::*, ObjStore, TimeLineStore, TimeQuery};
 
-use crate::{storage::ObjStore, type_path_query::*, ObjTypePath, TimeQuery, TypePathDataStore};
-
+/// Common properties of an object instance.
 #[derive(Copy, Clone, Debug)]
-pub struct ObjectProps<'s> {
+pub struct InstanceProps<'s> {
     pub msg_id: &'s MsgId,
     pub space: Option<&'s ObjPath>,
     pub color: Option<[u8; 4]>,
 
     /// Use this to test if the object should be visible, etc.
     pub obj_path: &'s ObjPath,
+
+    /// If it is a multi-object, this is the instance index,
+    /// else it is [`IndexHash::NONE`].
+    pub instance_index: IndexHash,
 }
 
 #[derive(Copy, Clone, Debug)]
 struct Object<'s, T: Copy + Clone + std::fmt::Debug> {
-    pub props: ObjectProps<'s>,
+    pub props: InstanceProps<'s>,
     pub data: T,
 }
 
@@ -40,19 +44,19 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
         self.0.is_empty()
     }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&ObjectProps<'s>, &T)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&InstanceProps<'s>, &T)> {
         self.0.iter().map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn first(&self) -> Option<(&ObjectProps<'s>, &T)> {
+    pub fn first(&self) -> Option<(&InstanceProps<'s>, &T)> {
         self.0.first().map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn last(&self) -> Option<(&ObjectProps<'s>, &T)> {
+    pub fn last(&self) -> Option<(&InstanceProps<'s>, &T)> {
         self.0.last().map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn filter(&self, keep: &impl Fn(&ObjectProps<'_>) -> bool) -> Self {
+    pub fn filter(&self, keep: &impl Fn(&InstanceProps<'_>) -> bool) -> Self {
         crate::profile_function!();
         Self(
             self.0
@@ -78,6 +82,7 @@ pub struct Image<'s> {
 
 impl<'s> Image<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -89,18 +94,19 @@ impl<'s> Image<'s> {
             &FieldName::from("tensor"),
             time_query,
             ("space", "color", "meter"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              tensor: &re_log_types::Tensor,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              meter: Option<&f32>| {
                 out.image.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Image {
                         tensor,
@@ -120,6 +126,7 @@ pub struct Point2D<'s> {
 
 impl<'s> Point2D<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -131,18 +138,19 @@ impl<'s> Point2D<'s> {
             &FieldName::from("pos"),
             time_query,
             ("space", "color", "radius"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              pos: &[f32; 2],
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
                 out.point2d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Point2D {
                         pos,
@@ -162,6 +170,7 @@ pub struct Point3D<'s> {
 
 impl<'s> Point3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -173,18 +182,19 @@ impl<'s> Point3D<'s> {
             &FieldName::from("pos"),
             time_query,
             ("space", "color", "radius"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              pos: &[f32; 3],
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
                 out.point3d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Point3D {
                         pos,
@@ -205,6 +215,7 @@ pub struct BBox2D<'s> {
 
 impl<'s> BBox2D<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -216,7 +227,7 @@ impl<'s> BBox2D<'s> {
             &FieldName::from("bbox"),
             time_query,
             ("space", "color", "stroke_width", "label"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              bbox: &re_log_types::BBox2D,
              space: Option<&ObjPath>,
@@ -224,11 +235,12 @@ impl<'s> BBox2D<'s> {
              stroke_width: Option<&f32>,
              label: Option<&String>| {
                 out.bbox2d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: BBox2D {
                         bbox,
@@ -249,6 +261,7 @@ pub struct Box3D<'s> {
 
 impl<'s> Box3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -260,18 +273,19 @@ impl<'s> Box3D<'s> {
             &FieldName::from("obb"),
             time_query,
             ("space", "color", "stroke_width"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              obb: &re_log_types::Box3,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
                 out.box3d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Box3D {
                         obb,
@@ -291,6 +305,7 @@ pub struct Path3D<'s> {
 
 impl<'s> Path3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -302,7 +317,7 @@ impl<'s> Path3D<'s> {
             &FieldName::from("points"),
             time_query,
             ("space", "color", "stroke_width"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
@@ -310,11 +325,12 @@ impl<'s> Path3D<'s> {
              stroke_width: Option<&f32>| {
                 if let Some(points) = as_vec_of_vec3("Path3D::points", points) {
                     out.path3d.0.push(Object {
-                        props: ObjectProps {
+                        props: InstanceProps {
                             msg_id,
                             space,
                             color: color.copied(),
                             obj_path,
+                            instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                         },
                         data: Path3D {
                             points,
@@ -336,6 +352,7 @@ pub struct LineSegments2D<'s> {
 
 impl<'s> LineSegments2D<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -347,7 +364,7 @@ impl<'s> LineSegments2D<'s> {
             &FieldName::from("points"),
             time_query,
             ("space", "color", "stroke_width"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
@@ -355,11 +372,12 @@ impl<'s> LineSegments2D<'s> {
              stroke_width: Option<&f32>| {
                 if let Some(points) = as_vec_of_vec2("LineSegments2D::points", points) {
                     out.line_segments2d.0.push(Object {
-                        props: ObjectProps {
+                        props: InstanceProps {
                             msg_id,
                             space,
                             color: color.copied(),
                             obj_path,
+                            instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                         },
                         data: LineSegments2D {
                             points,
@@ -381,6 +399,7 @@ pub struct LineSegments3D<'s> {
 
 impl<'s> LineSegments3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -392,7 +411,7 @@ impl<'s> LineSegments3D<'s> {
             &FieldName::from("points"),
             time_query,
             ("space", "color", "stroke_width"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
@@ -400,11 +419,12 @@ impl<'s> LineSegments3D<'s> {
              stroke_width: Option<&f32>| {
                 if let Some(points) = as_vec_of_vec3("LineSegments3D::points", points) {
                     out.line_segments3d.0.push(Object {
-                        props: ObjectProps {
+                        props: InstanceProps {
                             msg_id,
                             space,
                             color: color.copied(),
                             obj_path,
+                            instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                         },
                         data: LineSegments3D {
                             points,
@@ -424,6 +444,7 @@ pub struct Mesh3D<'s> {
 
 impl<'s> Mesh3D<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -435,17 +456,18 @@ impl<'s> Mesh3D<'s> {
             &FieldName::from("mesh"),
             time_query,
             ("space", "color"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              mesh: &re_log_types::Mesh3D,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.mesh3d.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Mesh3D { mesh },
                 });
@@ -462,6 +484,7 @@ pub struct Camera<'s> {
 
 impl<'s> Camera<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -473,17 +496,18 @@ impl<'s> Camera<'s> {
             &FieldName::from("camera"),
             time_query,
             ("space", "color"),
-            |obj_path: &ObjPath,
+            |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
              camera: &re_log_types::Camera,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.camera.0.push(Object {
-                    props: ObjectProps {
+                    props: InstanceProps {
                         msg_id,
                         space,
                         color: color.copied(),
                         obj_path,
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Camera { camera },
                 });
@@ -500,6 +524,7 @@ pub struct Space<'s> {
 
 impl<'s> Space<'s> {
     fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
         out: &mut Objects<'s>,
@@ -510,7 +535,7 @@ impl<'s> Space<'s> {
             obj_store,
             &FieldName::from("up"),
             time_query,
-            |obj_path: &ObjPath, _msg_id: &MsgId, up: &[f32; 3]| {
+            |_instance_index: Option<&IndexHash>, _msg_id: &MsgId, up: &[f32; 3]| {
                 out.space.insert(obj_path, Space { up });
             },
         );
@@ -536,35 +561,48 @@ pub struct Objects<'s> {
 }
 
 impl<'s> Objects<'s> {
-    pub fn query_object<Time: 'static + Copy + Ord>(
+    pub fn query<Time: 'static + Copy + Ord>(
         &mut self,
-        store: &'s TypePathDataStore<Time>,
-        time_query: &TimeQuery<Time>,
-        obj_type_path: &ObjTypePath,
-        obj_type: ObjectType,
+        store: &'s TimeLineStore<Time>,
+        time_query: &'_ TimeQuery<Time>,
+        obj_types: &IntMap<ObjTypePath, ObjectType>,
     ) {
         crate::profile_function!();
 
-        if let Some(obj_store) = store.get(obj_type_path) {
-            let query_fn = match obj_type {
-                ObjectType::Space => Space::query,
-                ObjectType::Image => Image::query,
-                ObjectType::Point2D => Point2D::query,
-                ObjectType::BBox2D => BBox2D::query,
-                ObjectType::LineSegments2D => LineSegments2D::query,
-                ObjectType::Point3D => Point3D::query,
-                ObjectType::Box3D => Box3D::query,
-                ObjectType::Path3D => Path3D::query,
-                ObjectType::LineSegments3D => LineSegments3D::query,
-                ObjectType::Mesh3D => Mesh3D::query,
-                ObjectType::Camera => Camera::query,
-            };
-
-            query_fn(obj_store, time_query, self);
+        for (obj_path, obj_store) in store.iter() {
+            if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
+                self.query_object(obj_store, time_query, obj_path, obj_type);
+            } else {
+                log_once::warn_once!("Missing ObjectType for {:?}", obj_path.obj_type_path());
+            }
         }
     }
 
-    pub fn filter(&self, keep: impl Fn(&ObjectProps<'_>) -> bool) -> Self {
+    pub fn query_object<Time: 'static + Copy + Ord>(
+        &mut self,
+        obj_store: &'s ObjStore<Time>,
+        time_query: &'_ TimeQuery<Time>,
+        obj_path: &'s ObjPath,
+        obj_type: &ObjectType,
+    ) {
+        let query_fn = match obj_type {
+            ObjectType::Space => Space::query,
+            ObjectType::Image => Image::query,
+            ObjectType::Point2D => Point2D::query,
+            ObjectType::BBox2D => BBox2D::query,
+            ObjectType::LineSegments2D => LineSegments2D::query,
+            ObjectType::Point3D => Point3D::query,
+            ObjectType::Box3D => Box3D::query,
+            ObjectType::Path3D => Path3D::query,
+            ObjectType::LineSegments3D => LineSegments3D::query,
+            ObjectType::Mesh3D => Mesh3D::query,
+            ObjectType::Camera => Camera::query,
+        };
+
+        query_fn(obj_path, obj_store, time_query, self);
+    }
+
+    pub fn filter(&self, keep: impl Fn(&InstanceProps<'_>) -> bool) -> Self {
         crate::profile_function!();
 
         Self {
@@ -702,8 +740,7 @@ fn as_vec_of_vec2<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32;
         Some(vec)
     } else {
         log_once::warn_once!(
-            "Expected {} to be Vec<Vec2>, got Vec<{:?}>",
-            what,
+            "Expected {what} to be Vec<Vec2>, got Vec<{:?}>",
             data_vec.element_data_type()
         );
         None
@@ -715,8 +752,7 @@ fn as_vec_of_vec3<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32;
         Some(vec)
     } else {
         log_once::warn_once!(
-            "Expected {} to be Vec<Vec3>, got Vec<{:?}>",
-            what,
+            "Expected {what} to be Vec<Vec3>, got Vec<{:?}>",
             data_vec.element_data_type()
         );
         None

@@ -17,19 +17,13 @@ fn time_source() -> TimeSource {
 
 fn do_query<'s>(
     obj_types: &IntMap<ObjTypePath, ObjectType>,
-    data_store: &'s LogDataStore,
+    data_store: &'s DataStore,
 ) -> Objects<'s> {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
-
-    let (_, store) = data_store.get(&time_source()).unwrap();
-
     let mut objects = Objects::default();
-    for (obj_type_path, obj_type) in obj_types {
-        objects.query_object(store, &time_query, obj_type_path, *obj_type);
-    }
-
+    let timeline_store = data_store.get(&time_source()).unwrap();
+    objects.query(timeline_store, &time_query, obj_types);
     assert_eq!(objects.point3d.len(), NUM_POINTS as usize);
-
     objects
 }
 
@@ -78,7 +72,7 @@ fn batch_data_messages() -> Vec<DataMsg> {
         let mut time_point = TimePoint::default();
         time_point.0.insert(time_source(), TimeInt::from(frame_idx));
 
-        let obj_path = obj_path!("points", Index::Placeholder);
+        let obj_path = obj_path!("points");
 
         messages.push(DataMsg {
             msg_id: MsgId::random(),
@@ -109,12 +103,12 @@ fn batch_data_messages() -> Vec<DataMsg> {
     messages
 }
 
-fn insert_data(data_messages: &[DataMsg]) -> LogDataStore {
-    let mut data_store = LogDataStore::default();
+fn insert_data(data_messages: &[DataMsg]) -> DataStore {
+    let mut store = DataStore::default();
     for msg in data_messages {
-        data_store.insert(msg).unwrap();
+        store.insert(msg).unwrap();
     }
-    data_store
+    store
 }
 
 fn obj_mono_points(c: &mut Criterion) {
@@ -142,9 +136,9 @@ fn obj_mono_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("obj_mono_points");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let data_store = insert_data(&data_messages);
+        let store = insert_data(&data_messages);
         group.bench_function("query", |b| {
-            b.iter(|| do_query(&obj_types, &data_store));
+            b.iter(|| do_query(&obj_types, &store));
         });
     }
 }
@@ -154,10 +148,7 @@ fn obj_batch_points(c: &mut Criterion) {
 
     let mut obj_types = IntMap::default();
     obj_types.insert(
-        ObjTypePath::new(vec![
-            TypePathComp::String("points".into()),
-            TypePathComp::Index,
-        ]),
+        ObjTypePath::new(vec![TypePathComp::String("points".into())]),
         ObjectType::Point3D,
     );
 
@@ -174,9 +165,9 @@ fn obj_batch_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("obj_batch_points");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let data_store = insert_data(&data_messages);
+        let store = insert_data(&data_messages);
         group.bench_function("query", |b| {
-            b.iter(|| do_query(&obj_types, &data_store));
+            b.iter(|| do_query(&obj_types, &store));
         });
     }
 }

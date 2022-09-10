@@ -56,13 +56,17 @@ impl TrackingAllocator {
     }
 }
 
-fn obj_path(camera: u64, index: u64) -> ObjPath {
+fn obj_path_mono(camera: u64, index: u64) -> ObjPath {
     obj_path!(
         "camera",
         Index::Sequence(camera),
         "point",
         Index::Sequence(index),
     )
+}
+
+fn obj_path_batch(camera: u64) -> ObjPath {
+    obj_path!("camera", Index::Sequence(camera), "points",)
 }
 
 const BYTES_PER_POINT: usize = 16 + 24; // IndexPathKey + [f32; 3]
@@ -77,12 +81,12 @@ fn tracking_points() {
 
     let mut num_points = 0;
 
-    let mut store = TypePathDataStore::default();
+    let mut store = TimeLineStore::default();
     for frame in 0..NUM_FRAMES {
         for offset in 0..OVERLAP {
             store
-                .insert_individual::<[f32; 3]>(
-                    obj_path(0, (frame + offset) as _),
+                .insert_mono::<[f32; 3]>(
+                    obj_path_mono(0, (frame + offset) as _),
                     "pos".into(),
                     frame,
                     MsgId::random(),
@@ -108,15 +112,15 @@ fn big_clouds() {
     const NUM_FRAMES: usize = 100;
     const NUM_POINTS_PER_CAMERA: usize = 1_000;
 
-    let mut store = TypePathDataStore::default();
+    let mut store = TimeLineStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {
         for camera in 0..NUM_CAMERAS {
             for point in 0..NUM_POINTS_PER_CAMERA {
                 store
-                    .insert_individual::<[f32; 3]>(
-                        obj_path(camera as _, point as _),
+                    .insert_mono::<[f32; 3]>(
+                        obj_path_mono(camera as _, point as _),
                         "pos".into(),
                         frame,
                         MsgId::random(),
@@ -150,18 +154,15 @@ fn big_clouds_batched() {
     let point: [f32; 3] = [1.0, 2.0, 3.0];
     let positions = vec![point; NUM_POINTS_PER_CAMERA];
 
-    let mut store = TypePathDataStore::default();
+    let mut store = TimeLineStore::default();
     let mut frame = 0;
     let mut num_points = 0;
     while frame < NUM_FRAMES {
         for camera in 0..NUM_CAMERAS {
-            let batch = std::sync::Arc::new(Batch::new(&indices, &positions));
-            let (obj_type_path, index_path) =
-                obj_path(camera as _, 0).into_type_path_and_index_path();
-            let (index_path_prefix, _) = index_path.replace_last_with_placeholder();
+            let batch = BatchOrSplat::new_batch(&indices, &positions).unwrap();
             store
                 .insert_batch::<[f32; 3]>(
-                    &ObjPath::new(obj_type_path, index_path_prefix),
+                    obj_path_batch(camera as _),
                     "pos".into(),
                     frame,
                     MsgId::random(),

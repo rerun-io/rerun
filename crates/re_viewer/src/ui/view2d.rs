@@ -1,6 +1,7 @@
 use eframe::emath::RectTransform;
 use egui::*;
 
+use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::*;
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
@@ -10,7 +11,7 @@ use crate::{misc::HoveredSpace, Selection, ViewerContext};
 pub(crate) struct State2D {
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
-    hovered_obj: Option<ObjPath>,
+    hovered_instance: Option<InstanceId>,
 
     /// Estimated bounding box of all data. Accumulated.
     ///
@@ -22,7 +23,7 @@ pub(crate) struct State2D {
 impl Default for State2D {
     fn default() -> Self {
         Self {
-            hovered_obj: Default::default(),
+            hovered_instance: Default::default(),
             scene_bbox_accum: epaint::Rect::NOTHING,
         }
     }
@@ -64,13 +65,13 @@ pub(crate) fn view_2d(
 
     // ------------------------------------------------------------------------
 
-    if let Some(obj_path) = &state.hovered_obj {
+    if let Some(instance_id) = &state.hovered_instance {
         if response.clicked() {
-            ctx.rec_cfg.selection = Selection::ObjPath(obj_path.clone());
+            ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
         }
         egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
-            ctx.obj_path_button(ui, obj_path);
-            crate::ui::data_ui::view_object(ctx, ui, obj_path, crate::ui::Preview::Small);
+            ctx.instance_id_button(ui, instance_id);
+            crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
         });
     }
 
@@ -94,22 +95,32 @@ pub(crate) fn view_2d(
     let hover_radius = 5.0; // TODO(emilk): from egui?
 
     let mut closest_dist = hover_radius;
-    let mut closest_obj_path = None;
+    let mut closest_instance_id_hash = InstanceIdHash::NONE;
     let pointer_pos = response.hover_pos();
 
-    let mut check_hovering = |obj_path: &ObjPath, dist: f32| {
+    let mut check_hovering = |props: &re_data_store::InstanceProps<'_>, dist: f32| {
         if dist <= closest_dist {
             closest_dist = dist;
-            closest_obj_path = Some(obj_path.clone());
+            closest_instance_id_hash = InstanceIdHash::from_props(props);
         }
     };
 
     let mut depths_at_pointer = vec![];
 
+    let hovered_instance_id_hash = state
+        .hovered_instance
+        .as_ref()
+        .map_or(InstanceIdHash::NONE, InstanceId::hash);
+
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
         let re_data_store::Image { tensor, meter } = obj;
-        let paint_props =
-            paint_properties(ctx, &state.hovered_obj, props, DefaultColor::White, &None);
+        let paint_props = paint_properties(
+            ctx,
+            &hovered_instance_id_hash,
+            props,
+            DefaultColor::White,
+            &None,
+        );
 
         if tensor.shape.len() < 2 {
             continue; // not an image. don't know how to display this!
@@ -142,11 +153,9 @@ pub(crate) fn view_2d(
         if let Some(pointer_pos) = pointer_pos {
             let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
-            check_hovering(props.obj_path, dist);
+            check_hovering(props, dist);
 
-            if Some(props.obj_path) == state.hovered_obj.as_ref()
-                && rect_in_ui.contains(pointer_pos)
-            {
+            if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
                 let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
                 response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
                     ui,
@@ -180,7 +189,7 @@ pub(crate) fn view_2d(
         } = obj;
         let paint_props = paint_properties(
             ctx,
-            &state.hovered_obj,
+            &hovered_instance_id_hash,
             props,
             DefaultColor::Random,
             stroke_width,
@@ -231,7 +240,7 @@ pub(crate) fn view_2d(
             }
         }
 
-        check_hovering(props.obj_path, hover_dist);
+        check_hovering(props, hover_dist);
     }
 
     for (props, obj) in objects.line_segments2d.iter() {
@@ -241,7 +250,7 @@ pub(crate) fn view_2d(
         } = obj;
         let paint_props = paint_properties(
             ctx,
-            &state.hovered_obj,
+            &hovered_instance_id_hash,
             props,
             DefaultColor::Random,
             stroke_width,
@@ -262,13 +271,18 @@ pub(crate) fn view_2d(
             }
         }
 
-        check_hovering(props.obj_path, min_dist_sq.sqrt());
+        check_hovering(props, min_dist_sq.sqrt());
     }
 
     for (props, obj) in objects.point2d.iter() {
         let re_data_store::Point2D { pos, radius } = obj;
-        let paint_props =
-            paint_properties(ctx, &state.hovered_obj, props, DefaultColor::Random, &None);
+        let paint_props = paint_properties(
+            ctx,
+            &hovered_instance_id_hash,
+            props,
+            DefaultColor::Random,
+            &None,
+        );
 
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
@@ -286,7 +300,7 @@ pub(crate) fn view_2d(
         ));
 
         if let Some(pointer_pos) = pointer_pos {
-            check_hovering(props.obj_path, pos_in_ui.distance(pointer_pos));
+            check_hovering(props, pos_in_ui.distance(pointer_pos));
         }
     }
 
@@ -304,7 +318,7 @@ pub(crate) fn view_2d(
 
     painter.extend(shapes);
 
-    state.hovered_obj = closest_obj_path;
+    state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.data_store);
 
     response
 }
@@ -413,8 +427,8 @@ enum DefaultColor {
 
 fn paint_properties(
     ctx: &mut ViewerContext<'_>,
-    hovered: &Option<ObjPath>,
-    props: &re_data_store::ObjectProps<'_>,
+    hovered: &InstanceIdHash,
+    props: &re_data_store::InstanceProps<'_>,
     default_color: DefaultColor,
     stroke_width: &Option<f32>,
 ) -> ObjectPaintProperties {
@@ -429,7 +443,7 @@ fn paint_properties(
         },
         to_egui_color,
     );
-    let is_hovered = Some(props.obj_path) == hovered.as_ref();
+    let is_hovered = &InstanceIdHash::from_props(props) == hovered;
     let fg_color = if is_hovered { Color32::WHITE } else { color };
     let stroke_width = stroke_width.unwrap_or(1.5);
     let stoke_width = if is_hovered {

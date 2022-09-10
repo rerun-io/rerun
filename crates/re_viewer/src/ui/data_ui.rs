@@ -1,5 +1,6 @@
 use egui::Vec2;
 
+use re_data_store::InstanceId;
 pub use re_log_types::*;
 
 use crate::misc::ViewerContext;
@@ -12,30 +13,57 @@ pub(crate) fn view_object(
     obj_path: &ObjPath,
     preview: Preview,
 ) -> Option<()> {
-    let (_, store) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
-    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
-    let obj_store = store.get(obj_path.obj_type_path())?;
+    view_instance(
+        ctx,
+        ui,
+        &InstanceId {
+            obj_path: obj_path.clone(),
+            instance_index: None,
+        },
+        preview,
+    )
+}
 
-    egui::Grid::new("object")
+pub(crate) fn view_instance(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    instance_id: &InstanceId,
+    preview: Preview,
+) -> Option<()> {
+    let store = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
+    let obj_store = store.get(&instance_id.obj_path)?;
+
+    egui::Grid::new("object_instance")
         .striped(true)
         .num_columns(2)
         .show(ui, |ui| {
-            for (field_name, data_store) in obj_store.iter() {
+            for (field_name, field_store) in obj_store.iter() {
                 ctx.data_path_button_to(
                     ui,
                     field_name.to_string(),
-                    &DataPath::new(obj_path.clone(), *field_name),
+                    &DataPath::new(instance_id.obj_path.clone(), *field_name),
                 );
 
-                let (_times, msg_ids, data_vec) =
-                    data_store.query_object(obj_path.index_path().clone(), &time_query);
-
-                if data_vec.len() == 1 {
-                    let data = data_vec.last().unwrap();
-                    let msg_id = &msg_ids[0];
-                    crate::data_ui::ui_data(ctx, ui, msg_id, &data, preview);
-                } else {
-                    ui_data_vec(ui, &data_vec);
+                match field_store
+                    .query_field_to_datavec(&time_query, instance_id.instance_index.as_ref())
+                {
+                    Ok((time_msgid_index, data_vec)) => {
+                        if data_vec.len() == 1 {
+                            let data = data_vec.last().unwrap();
+                            let (_, msg_id, _) = &time_msgid_index[0];
+                            crate::data_ui::ui_data(ctx, ui, msg_id, &data, preview);
+                        } else {
+                            ui_data_vec(ui, &data_vec);
+                        }
+                    }
+                    Err(err) => {
+                        log_once::warn_once!("Bad data for {instance_id}: {err}");
+                        ui.colored_label(
+                            ui.visuals().error_fg_color,
+                            format!("Data error: {:?}", err),
+                        );
+                    }
                 }
 
                 ui.end_row();
@@ -53,20 +81,27 @@ pub(crate) fn view_data(
     let obj_path = data_path.obj_path();
     let field_name = data_path.field_name();
 
-    let (_, store) = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let store = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
-    let obj_store = store.get(obj_path.obj_type_path())?;
-    let data_store = obj_store.get_field(field_name)?;
-
-    let (_times, msg_ids, data_vec) =
-        data_store.query_object(obj_path.index_path().clone(), &time_query);
-
-    if data_vec.len() == 1 {
-        let data = data_vec.last().unwrap();
-        let msg_id = &msg_ids[0];
-        show_detailed_data(ctx, ui, msg_id, &data);
-    } else {
-        ui_data_vec(ui, &data_vec);
+    let obj_store = store.get(obj_path)?;
+    let field_store = obj_store.get(field_name)?;
+    match field_store.query_field_to_datavec(&time_query, None) {
+        Ok((time_msgid_index, data_vec)) => {
+            if data_vec.len() == 1 {
+                let data = data_vec.last().unwrap();
+                let (_, msg_id, _) = &time_msgid_index[0];
+                show_detailed_data(ctx, ui, msg_id, &data);
+            } else {
+                ui_data_vec(ui, &data_vec);
+            }
+        }
+        Err(err) => {
+            log_once::warn_once!("Bad data for {data_path}: {err}");
+            ui.colored_label(
+                ui.visuals().error_fg_color,
+                format!("Data error: {:?}", err),
+            );
+        }
     }
 
     Some(())

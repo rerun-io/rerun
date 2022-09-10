@@ -4,7 +4,8 @@ use egui::util::hash;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
-use re_log_types::{Box3, Mesh3D, ObjPath, ObjPathHash};
+use re_data_store::{InstanceId, InstanceIdHash};
+use re_log_types::{Box3, Mesh3D};
 
 use crate::{
     math::line_segment_distance_sq_to_point_2d, misc::mesh_loader::CpuMesh, misc::ViewerContext,
@@ -13,14 +14,14 @@ use crate::{
 use super::eye::Eye;
 
 pub struct Point {
-    pub obj_path_hash: ObjPathHash,
+    pub instance_id: InstanceIdHash,
     pub pos: [f32; 3],
     pub radius: f32,
     pub color: [u8; 4],
 }
 
 pub struct LineSegments {
-    pub obj_path_hash: ObjPathHash,
+    pub instance_id: InstanceIdHash,
     pub segments: Vec<[[f32; 3]; 2]>,
     pub radius: f32,
     pub color: [u8; 4],
@@ -33,7 +34,7 @@ pub enum MeshSourceData {
 }
 
 pub struct MeshSource {
-    pub obj_path_hash: ObjPathHash,
+    pub instance_id: InstanceIdHash,
     pub mesh_id: u64,
     pub world_from_mesh: glam::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
@@ -57,11 +58,12 @@ impl Scene {
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         eye: &Eye,
-        hovered_obj: Option<&ObjPath>,
+        hovered_instance_id: Option<&InstanceId>,
         objects: &re_data_store::Objects<'_>,
     ) -> Self {
         crate::profile_function!();
-        let hovered_obj_hash = hovered_obj.map_or(ObjPathHash::NONE, |obj| *obj.hash());
+        let hovered_instance_id_hash =
+            hovered_instance_id.map_or(InstanceIdHash::NONE, |id| id.hash());
 
         // HACK because three-d handles colors wrong. TODO(emilk): fix three-d
         let gamma_lut = (0..=255)
@@ -69,15 +71,16 @@ impl Scene {
             .collect_vec();
         let gamma_lut = &gamma_lut[0..256]; // saves us bounds checks later.
 
-        let boost_size_on_hover = |props: &re_data_store::ObjectProps<'_>, radius: f32| {
-            if Some(props.obj_path) == hovered_obj {
+        let boost_size_on_hover = |props: &re_data_store::InstanceProps<'_>, radius: f32| {
+            if hovered_instance_id_hash.is_instance(props) {
                 1.5 * radius
             } else {
                 radius
             }
         };
-        let object_color = |ctx: &mut ViewerContext<'_>, props: &re_data_store::ObjectProps<'_>| {
-            let [r, g, b, a] = if *props.obj_path.hash() == hovered_obj_hash {
+        let object_color = |ctx: &mut ViewerContext<'_>,
+                            props: &re_data_store::InstanceProps<'_>| {
+            let [r, g, b, a] = if hovered_instance_id_hash.is_instance(props) {
                 [255; 4]
             } else if let Some(color) = props.color {
                 color
@@ -126,7 +129,7 @@ impl Scene {
                 let radius = boost_size_on_hover(props, radius);
 
                 scene.points.push(Point {
-                    obj_path_hash: *props.obj_path.hash(),
+                    instance_id: InstanceIdHash::from_props(props),
                     pos: *pos,
                     radius,
                     color: object_color(ctx, props),
@@ -148,7 +151,7 @@ impl Scene {
                 );
                 let line_radius = boost_size_on_hover(props, line_radius);
                 let color = object_color(ctx, props);
-                scene.add_box(props.obj_path, color, line_radius, obb);
+                scene.add_box(InstanceIdHash::from_props(props), color, line_radius, obb);
             }
         }
 
@@ -179,7 +182,7 @@ impl Scene {
                     .collect();
 
                 scene.line_segments.push(LineSegments {
-                    obj_path_hash: *props.obj_path.hash(),
+                    instance_id: InstanceIdHash::from_props(props),
                     segments,
                     radius: line_radius,
                     color,
@@ -208,7 +211,7 @@ impl Scene {
                 let color = object_color(ctx, props);
 
                 scene.line_segments.push(LineSegments {
-                    obj_path_hash: *props.obj_path.hash(),
+                    instance_id: InstanceIdHash::from_props(props),
                     segments: bytemuck::allocation::pod_collect_to_vec(points),
                     radius: line_radius,
                     color,
@@ -228,7 +231,7 @@ impl Scene {
                 ) {
                     // TODO(emilk): props.color
                     scene.meshes.push(MeshSource {
-                        obj_path_hash: *props.obj_path.hash(),
+                        instance_id: InstanceIdHash::from_props(props),
                         mesh_id,
                         world_from_mesh: glam::Affine3A::IDENTITY,
                         cpu_mesh,
@@ -241,6 +244,8 @@ impl Scene {
             crate::profile_scope!("camera");
             for (props, obj) in objects.camera.iter() {
                 let re_data_store::Camera { camera } = *obj;
+
+                let instance_id = InstanceIdHash::from_props(props);
 
                 let world_from_view = crate::misc::cam::world_from_view(camera);
 
@@ -267,7 +272,7 @@ impl Scene {
                         &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
                     ) {
                         scene.meshes.push(MeshSource {
-                            obj_path_hash: *props.obj_path.hash(),
+                            instance_id,
                             mesh_id,
                             world_from_mesh,
                             cpu_mesh,
@@ -290,7 +295,7 @@ impl Scene {
                         let axis_end =
                             world_from_view.transform_point3(scale * glam::Vec3::from(*dir));
                         scene.line_segments.push(LineSegments {
-                            obj_path_hash: *props.obj_path.hash(),
+                            instance_id,
                             segments: vec![[center.into(), axis_end.into()]],
                             radius,
                             color,
@@ -299,7 +304,7 @@ impl Scene {
                 }
 
                 let line_radius = dist_to_eye * line_radius_from_distance;
-                scene.add_camera_frustum(camera, scene_bbox, props.obj_path, line_radius, color);
+                scene.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, color);
             }
         }
 
@@ -311,7 +316,7 @@ impl Scene {
         &mut self,
         cam: &re_log_types::Camera,
         scene_bbox: &macaw::BoundingBox,
-        obj_path: &ObjPath,
+        instance_id: InstanceIdHash,
         line_radius: f32,
         color: [u8; 4],
     ) {
@@ -352,7 +357,7 @@ impl Scene {
             ];
 
             self.line_segments.push(LineSegments {
-                obj_path_hash: *obj_path.hash(),
+                instance_id,
                 segments,
                 radius: line_radius,
                 color,
@@ -360,7 +365,13 @@ impl Scene {
         }
     }
 
-    fn add_box(&mut self, obj_path: &ObjPath, color: [u8; 4], line_radius: f32, box3: &Box3) {
+    fn add_box(
+        &mut self,
+        instance_id: InstanceIdHash,
+        color: [u8; 4],
+        line_radius: f32,
+        box3: &Box3,
+    ) {
         let Box3 {
             rotation,
             translation,
@@ -404,7 +415,7 @@ impl Scene {
         ];
 
         self.line_segments.push(LineSegments {
-            obj_path_hash: *obj_path.hash(),
+            instance_id,
             segments,
             radius: line_radius,
             color,
@@ -416,7 +427,7 @@ impl Scene {
         pointer_in_ui: egui::Pos2,
         rect: &egui::Rect,
         eye: &Eye,
-    ) -> Option<(ObjPathHash, glam::Vec3)> {
+    ) -> Option<(InstanceIdHash, glam::Vec3)> {
         crate::profile_function!();
 
         let ui_from_world = eye.ui_from_world(rect);
@@ -443,12 +454,12 @@ impl Scene {
         let mut closest_z = f32::INFINITY;
         // in points
         let mut closest_side_dist_sq = max_side_dist_sq;
-        let mut closest_obj_path_hash = None;
+        let mut closest_instance_id = None;
 
         {
             crate::profile_scope!("points");
             for point in points {
-                if point.obj_path_hash != ObjPathHash::NONE {
+                if point.instance_id.is_some() {
                     // TODO(emilk): take point radius into account
                     let pos_in_ui = ui_from_world.project_point3(point.pos.into());
                     if pos_in_ui.z < 0.0 {
@@ -460,7 +471,7 @@ impl Scene {
                         if t < closest_z || dist_sq < closest_side_dist_sq {
                             closest_z = t;
                             closest_side_dist_sq = dist_sq;
-                            closest_obj_path_hash = Some(point.obj_path_hash);
+                            closest_instance_id = Some(point.instance_id);
                         }
                     }
                 }
@@ -470,7 +481,7 @@ impl Scene {
         {
             crate::profile_scope!("line_segments");
             for line_segments in line_segments {
-                if line_segments.obj_path_hash != ObjPathHash::NONE {
+                if line_segments.instance_id.is_some() {
                     // TODO(emilk): take line segment radius into account
                     use egui::pos2;
 
@@ -487,7 +498,7 @@ impl Scene {
                             if t < closest_z || dist_sq < closest_side_dist_sq {
                                 closest_z = t;
                                 closest_side_dist_sq = dist_sq;
-                                closest_obj_path_hash = Some(line_segments.obj_path_hash);
+                                closest_instance_id = Some(line_segments.instance_id);
                             }
                         }
                     }
@@ -498,7 +509,7 @@ impl Scene {
         {
             crate::profile_scope!("meshes");
             for mesh in meshes {
-                if mesh.obj_path_hash != ObjPathHash::NONE {
+                if mesh.instance_id.is_some() {
                     let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
                     let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.cpu_mesh.bbox());
 
@@ -507,20 +518,20 @@ impl Scene {
                         if t < closest_z || dist_sq < closest_side_dist_sq {
                             closest_z = t; // TODO(emilk): I think this is wrong
                             closest_side_dist_sq = dist_sq;
-                            closest_obj_path_hash = Some(mesh.obj_path_hash);
+                            closest_instance_id = Some(mesh.instance_id);
                         }
                     }
                 }
             }
         }
 
-        if let Some(closest_obj_path_hash) = closest_obj_path_hash {
+        if let Some(closest_instance_id) = closest_instance_id {
             let closest_point = world_from_ui.project_point3(Vec3::new(
                 pointer_in_ui.x,
                 pointer_in_ui.y,
                 closest_z,
             ));
-            Some((closest_obj_path_hash, closest_point))
+            Some((closest_instance_id, closest_point))
         } else {
             None
         }

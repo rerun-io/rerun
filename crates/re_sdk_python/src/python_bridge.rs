@@ -538,17 +538,9 @@ fn log_rects(
 
     let mut sdk = Sdk::global();
 
-    let root_path = parse_obj_path_comps(obj_path)?;
-    let obj_path = {
-        let mut obj_path = root_path.clone();
-        obj_path.push(ObjPathComp::Index(Index::Placeholder));
-        ObjPath::from(obj_path)
-    };
+    let obj_path = parse_obj_path(obj_path)?;
 
-    let mut type_path = ObjPath::from(root_path).obj_type_path().clone();
-    type_path.push(TypePathComp::Index);
-
-    sdk.register_type(&type_path, ObjectType::BBox2D);
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
     let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
 
@@ -640,18 +632,10 @@ fn log_points(
 
     let mut sdk = Sdk::global();
 
-    let root_path = parse_obj_path_comps(obj_path)?;
-    let obj_path = {
-        let mut obj_path = root_path.clone();
-        obj_path.push(ObjPathComp::Index(Index::Placeholder));
-        ObjPath::from(obj_path)
-    };
-
-    let mut type_path = ObjPath::from(root_path).obj_type_path().clone();
-    type_path.push(TypePathComp::Index);
+    let obj_path = parse_obj_path(obj_path)?;
 
     sdk.register_type(
-        &type_path,
+        obj_path.obj_type_path(),
         if dim == 2 {
             ObjectType::Point2D
         } else {

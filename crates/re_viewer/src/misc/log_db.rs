@@ -20,7 +20,7 @@ pub(crate) struct LogDb {
     pub obj_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
-    pub data_store: re_data_store::LogDataStore,
+    pub data_store: re_data_store::DataStore,
 
     /// All known spaces
     spaces: IntMap<ObjPathHash, ObjPath>,
@@ -93,18 +93,13 @@ impl LogDb {
             let valid_members = obj_type.members();
             if !valid_members.contains(&field_name.as_str()) {
                 log_once::warn_once!(
-                    "Logged to {}.{}, but the parent object ({:?}) does not have that field. Expected one of: {}",
-                    obj_type_path,
-                    field_name,
-                    obj_type,
+                    "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
                     valid_members.iter().format(", ")
                 );
             }
         } else {
             log_once::warn_once!(
-                "Logging to {}.{} without first registering object type",
-                obj_type_path,
-                field_name,
+                "Logging to {obj_type_path}.{field_name} without first registering object type"
             );
         }
 
@@ -214,23 +209,10 @@ impl ObjectTree {
                         .add_path(rest, field_name, msg);
                 }
                 ObjPathComp::Index(index) => {
-                    let slow_but_accurate = false; // TODO(emilk): ths is way too slow, though it is the only way to get toggling of batches to work. We need to do something else.
-                    if index == &Index::Placeholder && slow_but_accurate {
-                        if let LoggedData::Batch { indices, .. } = &msg.data {
-                            crate::profile_scope!("object_tree_batch");
-                            for index in indices {
-                                self.index_children
-                                    .entry(index.clone())
-                                    .or_default()
-                                    .add_path(rest, field_name, msg);
-                            }
-                        }
-                    } else {
-                        self.index_children
-                            .entry(index.clone())
-                            .or_default()
-                            .add_path(rest, field_name, msg);
-                    }
+                    self.index_children
+                        .entry(index.clone())
+                        .or_default()
+                        .add_path(rest, field_name, msg);
                 }
             },
         }

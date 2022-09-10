@@ -1,15 +1,44 @@
-mod log_store;
-pub mod obj_path_query;
+mod batch;
+mod data_store;
+mod field_store;
+mod instance;
+mod obj_store;
 pub mod objects;
-mod storage;
-pub mod type_path_query;
+pub mod query;
+mod timeline_store;
 
-pub use log_store::*;
-pub use objects::*;
-pub use storage::*;
-pub use type_path_query::*;
+pub use batch::*;
+pub use data_store::*;
+pub use field_store::*;
+pub use instance::*;
+pub use obj_store::*;
+pub use objects::{InstanceProps, Objects, ObjectsBySpace, *};
+pub use timeline_store::*;
+
+use re_log_types::DataType;
 
 pub use re_log_types::{Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, TypePathComp};
+
+// ----------------------------------------------------------------------------
+
+#[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    #[error("Batch had differing number of indices and data.")]
+    BadBatch,
+
+    #[error("Using an object both as mono and multi.")]
+    MixingMonoAndMulti,
+
+    #[error(
+        "Logging different types to the same field. Existing: {existing:?}, expected: {expected:?}"
+    )]
+    MixingTypes {
+        existing: DataType,
+        expected: DataType,
+    },
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 // ----------------------------------------------------------------------------
 

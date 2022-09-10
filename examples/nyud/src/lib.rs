@@ -39,7 +39,7 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
         ObjectType::Image,
     ));
     logger.log(TypeMsg::obj_type(
-        ObjTypePath::from("points") / TypePathComp::Index,
+        ObjTypePath::from("points"),
         ObjectType::Point3D,
     ));
     logger.log(TypeMsg::obj_type(
@@ -76,7 +76,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
     let mut depth_images_counter = 0;
     const DEPTH_IMAGE_INTERVAL: usize = 8;
 
-    let points_obj_path = obj_path_vec!("points", Index::Placeholder);
+    let points_obj_path = obj_path_vec!("points");
 
     {
         // TODO(emilk): better way to do "forever and always"
