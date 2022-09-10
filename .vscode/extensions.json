@@ -4,6 +4,7 @@
 	"recommendations": [
 		"ms-vsliveshare.vsliveshare", // Live Share
 		"rust-lang.rust-analyzer", // Rust-analyzer
+		"tamasfe.even-better-toml", // automatic toml formatting
 		"vadimcn.vscode-lldb", // CodeLLDB
 		"wayou.vscode-todo-highlight", // TODO Highlight
 		"webfreak.debug", // Native Debug
