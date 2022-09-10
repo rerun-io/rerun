@@ -29,7 +29,7 @@ impl InstanceId {
     pub fn from_props(props: &ObjectProps<'_>) -> Self {
         Self {
             obj_path_hash: *props.obj_path.hash(),
-            multi_index_hash: props.multi_index.copied().unwrap_or(IndexHash::NONE),
+            multi_index_hash: props.multi_index,
         }
     }
 

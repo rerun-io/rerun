@@ -2711,6 +2711,7 @@ dependencies = [
  "nohash-hasher",
  "puffin",
  "re_log_types",
+ "serde",
  "tracing",
 ]
 

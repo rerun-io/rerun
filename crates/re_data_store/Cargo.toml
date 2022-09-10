@@ -26,10 +26,10 @@ criterion = "0.3"
 mimalloc = "0.1"
 
 
-[[bench]]
-name = "data_benchmark"
-harness = false
+# [[bench]]
+# name = "data_benchmark"
+# harness = false
 
-[[bench]]
-name = "obj_query_benchmark"
-harness = false
+# [[bench]]
+# name = "obj_query_benchmark"
+# harness = false

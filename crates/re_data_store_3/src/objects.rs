@@ -14,8 +14,9 @@ pub struct ObjectProps<'s> {
     /// Use this to test if the object should be visible, etc.
     pub obj_path: &'s ObjPath,
 
-    /// If it is a multi-object, this is the instance index.
-    pub multi_index: Option<&'s IndexHash>,
+    /// If it is a multi-object, this is the instance index,
+    /// else it is [`IndexHash::NONE`].
+    pub multi_index: IndexHash,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -104,7 +105,7 @@ impl<'s> Image<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index,
+                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Image {
                         tensor,
@@ -148,7 +149,7 @@ impl<'s> Point2D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index,
+                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Point2D {
                         pos,
@@ -192,7 +193,7 @@ impl<'s> Point3D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index,
+                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Point3D {
                         pos,
@@ -238,7 +239,7 @@ impl<'s> BBox2D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index,
+                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: BBox2D {
                         bbox,
@@ -283,7 +284,7 @@ impl<'s> Box3D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index,
+                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Box3D {
                         obb,
@@ -328,7 +329,7 @@ impl<'s> Path3D<'s> {
                             space,
                             color: color.copied(),
                             obj_path,
-                            multi_index,
+                            multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                         },
                         data: Path3D {
                             points,
@@ -375,7 +376,7 @@ impl<'s> LineSegments2D<'s> {
                             space,
                             color: color.copied(),
                             obj_path,
-                            multi_index,
+                            multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                         },
                         data: LineSegments2D {
                             points,
@@ -422,7 +423,7 @@ impl<'s> LineSegments3D<'s> {
                             space,
                             color: color.copied(),
                             obj_path,
-                            multi_index,
+                            multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                         },
                         data: LineSegments3D {
                             points,
@@ -465,7 +466,7 @@ impl<'s> Mesh3D<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index,
+                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Mesh3D { mesh },
                 });
@@ -505,7 +506,7 @@ impl<'s> Camera<'s> {
                         space,
                         color: color.copied(),
                         obj_path,
-                        multi_index,
+                        multi_index: multi_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: Camera { camera },
                 });

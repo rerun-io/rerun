@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use re_log_types::{Index, IndexHash, ObjPath, ObjPathHash};
 
 use crate::{LogDataStore, ObjectProps};
@@ -14,6 +16,7 @@ pub struct InstanceId {
 }
 
 impl InstanceId {
+    #[inline]
     pub fn hash(&self) -> InstanceIdHash {
         InstanceIdHash {
             obj_path_hash: *self.obj_path.hash(),
@@ -21,12 +24,13 @@ impl InstanceId {
         }
     }
 
+    #[inline]
     pub fn is_obj_props(&self, obj_props: &ObjectProps<'_>) -> bool {
         &self.obj_path == obj_props.obj_path
-            && match (&self.multi_index, obj_props.multi_index) {
-                (Some(_), None) | (None, Some(_)) => false,
-                (None, None) => true,
-                (Some(a), Some(b)) => &a.hash() == b,
+            && if let Some(index) = &self.multi_index {
+                index.hash() == obj_props.multi_index
+            } else {
+                obj_props.multi_index.is_none()
             }
     }
 
@@ -62,10 +66,11 @@ impl InstanceIdHash {
         multi_index_hash: IndexHash::NONE,
     };
 
+    #[inline]
     pub fn from_props(props: &ObjectProps<'_>) -> Self {
         Self {
             obj_path_hash: *props.obj_path.hash(),
-            multi_index_hash: props.multi_index.copied().unwrap_or(IndexHash::NONE),
+            multi_index_hash: props.multi_index,
         }
     }
 

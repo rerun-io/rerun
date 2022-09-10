@@ -85,6 +85,16 @@ impl IndexHash {
     }
 
     #[inline]
+    pub fn is_none(&self) -> bool {
+        self.0 == Hash128::ZERO
+    }
+
+    #[inline]
+    pub fn is_some(&self) -> bool {
+        self.0 != Hash128::ZERO
+    }
+
+    #[inline]
     pub fn hash64(&self) -> u64 {
         self.0.hash64()
     }
