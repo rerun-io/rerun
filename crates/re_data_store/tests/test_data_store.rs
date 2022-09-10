@@ -38,7 +38,7 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
 fn batch<T: Clone, const N: usize>(batch: &[(Index, T); N]) -> BatchOrSplat<T> {
     let indices = batch.iter().map(|(index, _)| index.clone()).collect_vec();
     let values = batch.iter().map(|(_, value)| value.clone()).collect_vec();
-    BatchOrSplat::new_batch(&indices, &values)
+    BatchOrSplat::new_batch(&indices, &values).unwrap()
 }
 
 fn id() -> MsgId {

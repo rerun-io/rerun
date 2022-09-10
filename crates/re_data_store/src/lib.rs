@@ -23,6 +23,9 @@ pub use re_log_types::{Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, Type
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
+    /// Batch had differing number of indices and data.
+    BadBatch,
+
     /// Using an object both as mono and multi.
     MixingMonoAndMulti,
 

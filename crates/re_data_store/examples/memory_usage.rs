@@ -159,7 +159,7 @@ fn big_clouds_batched() {
     let mut num_points = 0;
     while frame < NUM_FRAMES {
         for camera in 0..NUM_CAMERAS {
-            let batch = BatchOrSplat::new_batch(&indices, &positions);
+            let batch = BatchOrSplat::new_batch(&indices, &positions).unwrap();
             store
                 .insert_batch::<[f32; 3]>(
                     obj_path_batch(camera as _),

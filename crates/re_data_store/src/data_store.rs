@@ -4,7 +4,7 @@ use re_log_types::{
     DataMsg, DataPath, Index, IndexHash, LoggedData, ObjPath, ObjPathHash, TimeSource, TimeType,
 };
 
-use crate::{ArcBatch, Batch, BatchOrSplat, Result, TimeLineStore};
+use crate::{ArcBatch, BadBatchError, Batch, BatchOrSplat, Result, TimeLineStore};
 
 /// Stores all timelines of all objects.
 #[derive(Default)]
@@ -76,7 +76,9 @@ impl DataStore {
                 }
                 LoggedData::Batch { indices, data } => {
                     re_log_types::data_vec_map!(data, |vec| {
-                        let batch = batcher.batch(indices, vec);
+                        let batch = batcher
+                            .batch(indices, vec)
+                            .map_err(|BadBatchError| crate::Error::BadBatch)?;
                         self.register_batch_indices(batch.as_ref());
                         let store = self.entry(time_source, time_source.typ());
                         store.insert_batch(
@@ -129,13 +131,13 @@ impl Batcher {
         &mut self,
         indices: &[re_log_types::Index],
         data: &[T],
-    ) -> ArcBatch<T> {
+    ) -> std::result::Result<ArcBatch<T>, BadBatchError> {
         if let Some(batch) = &self.batch {
-            batch.downcast_ref::<ArcBatch<T>>().unwrap().clone()
+            Ok(batch.downcast_ref::<ArcBatch<T>>().unwrap().clone())
         } else {
-            let batch = std::sync::Arc::new(Batch::new(indices, data));
+            let batch = std::sync::Arc::new(Batch::new(indices, data)?);
             self.batch = Some(Box::new(batch.clone()));
-            batch
+            Ok(batch)
         }
     }
 }

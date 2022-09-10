@@ -4,6 +4,10 @@ use nohash_hasher::IntMap;
 
 use re_log_types::{Index, IndexHash};
 
+/// The number indices and data were of different lengths.
+#[derive(Clone, Copy, Debug)]
+pub struct BadBatchError;
+
 pub type ArcBatch<T> = Arc<Batch<T>>;
 
 /// The value of a multi-object field at some time point.
@@ -17,8 +21,8 @@ pub enum BatchOrSplat<T> {
 }
 
 impl<T: Clone> BatchOrSplat<T> {
-    pub fn new_batch(indices: &[re_log_types::Index], data: &[T]) -> Self {
-        Self::Batch(Arc::new(Batch::new(indices, data)))
+    pub fn new_batch(indices: &[re_log_types::Index], data: &[T]) -> Result<Self, BadBatchError> {
+        Ok(Self::Batch(Arc::new(Batch::new(indices, data)?)))
     }
 }
 
@@ -34,10 +38,13 @@ pub struct Batch<T> {
 
 impl<T: Clone> Batch<T> {
     #[inline(never)]
-    pub fn new(indices: &[re_log_types::Index], data: &[T]) -> Self {
+    pub fn new(indices: &[re_log_types::Index], data: &[T]) -> Result<Self, BadBatchError> {
         crate::profile_function!(std::any::type_name::<T>());
 
-        assert_eq!(indices.len(), data.len()); // TODO: return Result instead
+        if indices.len() != data.len() {
+            return Err(BadBatchError);
+        }
+
         let mut hashed_indices = Vec::with_capacity(indices.len());
         let map = itertools::izip!(indices, data)
             .map(|(index, value)| {
@@ -46,10 +53,10 @@ impl<T: Clone> Batch<T> {
                 (index_hash, value.clone())
             })
             .collect();
-        Self {
+        Ok(Self {
             map,
             hashed_indices,
-        }
+        })
     }
 }
 
