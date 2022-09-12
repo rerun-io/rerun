@@ -178,10 +178,10 @@ impl StringInterner {
 #[macro_export]
 macro_rules! declare_new_type {
     (
-        $(#[$outer:meta])*
+        $(#[$meta:meta])* // capture docstrings; see https://stackoverflow.com/questions/33999341/generating-documentation-in-macros
         $vis:vis struct $StructName:ident;
     ) => {
-        // ($StructName: ident) => {
+        $(#[$meta])*
         #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
         #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
         pub struct $StructName($crate::InternedString);
