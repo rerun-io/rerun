@@ -22,6 +22,7 @@ re_string_interner::declare_new_type!(
 
 // ----------------------------------------------------------------------------
 
+/// The different parts that make up an [`ObjPath`].
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjPathComp {
@@ -73,6 +74,7 @@ impl From<Index> for ObjPathComp {
 
 // ----------------------------------------------------------------------------
 
+/// The different parts that make up a [`ObjTypePath`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TypePathComp {

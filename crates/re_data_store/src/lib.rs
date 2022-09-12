@@ -1,26 +1,43 @@
+//! This is how we store and index logging data.
+//!
+//! We partion the data in this order:
+//! * [`TimeSource`]
+//! * [`ObjPath`]
+//! * [`FieldName`]
+//! * [`TimeInt`]
+//!
+//! The stores are in order:
+//! * [`DataStore`], which maps [`TimeSource`] to…
+//! * [`TimeLineStore`], which maps [`ObjPath`] to…
+//! * [`ObjStore`], which maps [`FieldName`] to…
+//! * [`FieldStore`], which maps [`TimeInt`] to values.
+//!
+//! (in fact, most stores are generic on what the time type is, but in practice it is [`TimeInt`]).
+
 mod batch;
-mod data_store;
-mod field_store;
 mod instance;
-mod obj_store;
 pub mod objects;
 pub mod query;
-mod timeline_store;
+mod stores;
 
 pub use batch::*;
-pub use data_store::*;
-pub use field_store::*;
 pub use instance::*;
-pub use obj_store::*;
-pub use objects::{InstanceProps, Objects, ObjectsBySpace, *};
-pub use timeline_store::*;
+pub use objects::*;
+pub use stores::*;
 
 use re_log_types::DataType;
 
-pub use re_log_types::{Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, TypePathComp};
+pub use re_log_types::{
+    FieldName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, TimeInt, TimeSource,
+    TypePathComp,
+};
 
 // ----------------------------------------------------------------------------
 
+/// The errors that can occur when misuing the data store.
+///
+/// Most of these indicate a problem with either the logging SDK,
+/// or how the loggign SDK is being used (PEBKAC).
 #[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     #[error("Batch had differing number of indices and data.")]
