@@ -47,6 +47,11 @@ impl std::fmt::Debug for IndexPathHash {
 
 // ----------------------------------------------------------------------------
 
+/// The [`Index`]es in an [`crate::ObjPath`].
+///
+/// An [`crate::ObjPath`] like `camera/"left"/points/#42` can be split up into:
+/// * [`TypePath`]: `camera/*/points/*`
+/// * [`IndexPath`]: `*/"left"/*/#42`
 #[derive(Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct IndexPath {

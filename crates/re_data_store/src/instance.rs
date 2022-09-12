@@ -6,6 +6,7 @@ use crate::{DataStore, InstanceProps};
 
 // ----------------------------------------------------------------------------
 
+/// A specific instance of a multi-object, or the (only) instance of a mono-object.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct InstanceId {
@@ -54,6 +55,7 @@ impl std::fmt::Display for InstanceId {
 
 // ----------------------------------------------------------------------------
 
+/// Hashes of the components of an [`InstanceId`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct InstanceIdHash {
     pub obj_path_hash: ObjPathHash,
