@@ -88,19 +88,19 @@ async fn accept_connection(
     tcp_stream: TcpStream,
     history: Arc<Mutex<Vec<Arc<[u8]>>>>,
 ) {
-    // let span = tracing::span!(
-    //     tracing::Level::INFO,
+    // let span = re_log::span!(
+    //     re_log::Level::INFO,
     //     "Connection",
     //     peer = _peer.to_string().as_str()
     // );
     // let _enter = span.enter();
 
-    tracing::info!("New WebSocket connection");
+    re_log::info!("New WebSocket connection");
 
     if let Err(e) = handle_connection(log_stream, tcp_stream, history).await {
         match e {
             Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
-            err => tracing::error!("Error processing connection: {err}"),
+            err => re_log::error!("Error processing connection: {err}"),
         }
     }
 }
@@ -130,10 +130,10 @@ async fn handle_connection(
             ws_msg = ws_receiver.next() => {
                 match ws_msg {
                     Some(Ok(msg)) => {
-                        tracing::debug!("Received message: {:?}", msg);
+                        re_log::debug!("Received message: {:?}", msg);
                     }
                     Some(Err(err)) => {
-                        tracing::warn!("Error message: {err:?}");
+                        re_log::warn!("Error message: {err:?}");
                         break;
                     }
                     None => {

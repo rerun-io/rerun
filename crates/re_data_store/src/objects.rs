@@ -573,7 +573,7 @@ impl<'s> Objects<'s> {
             if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
                 self.query_object(obj_store, time_query, obj_path, obj_type);
             } else {
-                log_once::warn_once!("Missing ObjectType for {:?}", obj_path.obj_type_path());
+                re_log::warn_once!("Missing ObjectType for {:?}", obj_path.obj_type_path());
             }
         }
     }
@@ -739,7 +739,7 @@ fn as_vec_of_vec2<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32;
     if let DataVec::Vec2(vec) = data_vec {
         Some(vec)
     } else {
-        log_once::warn_once!(
+        re_log::warn_once!(
             "Expected {what} to be Vec<Vec2>, got Vec<{:?}>",
             data_vec.element_data_type()
         );
@@ -751,7 +751,7 @@ fn as_vec_of_vec3<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32;
     if let DataVec::Vec3(vec) = data_vec {
         Some(vec)
     } else {
-        log_once::warn_once!(
+        re_log::warn_once!(
             "Expected {what} to be Vec<Vec3>, got Vec<{:?}>",
             data_vec.element_data_type()
         );

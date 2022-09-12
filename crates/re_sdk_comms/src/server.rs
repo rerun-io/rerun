@@ -24,7 +24,7 @@ pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<Receiver<LogM
                         spawn_client(stream, tx);
                     }
                     Err(err) => {
-                        tracing::warn!("Failed to accept incoming SDK client: {err:?}");
+                        re_log::warn!("Failed to accept incoming SDK client: {err:?}");
                     }
                 }
             }
@@ -41,10 +41,10 @@ fn spawn_client(stream: std::net::TcpStream, tx: Sender<LogMsg>) {
             stream.peer_addr()
         ))
         .spawn(move || {
-            tracing::info!("New SDK client connected: {:?}", stream.peer_addr());
+            re_log::info!("New SDK client connected: {:?}", stream.peer_addr());
 
             if let Err(err) = run_client(stream, &tx) {
-                tracing::warn!("Closing connection to client: {err:?}");
+                re_log::warn!("Closing connection to client: {err:?}");
             }
         })
         .expect("Failed to spawn thread");
@@ -87,7 +87,7 @@ fn run_client(mut stream: std::net::TcpStream, tx: &Sender<LogMsg>) -> anyhow::R
         packet.resize(packet_size as usize, 0_u8);
         stream.read_exact(&mut packet)?;
 
-        tracing::trace!("Received log message of size {packet_size}.");
+        re_log::trace!("Received log message of size {packet_size}.");
 
         let msg = crate::decode_log_msg(&packet)?;
 

@@ -65,7 +65,7 @@ async fn main() {
             let bind_addr = format!("127.0.0.1:{}", args.port);
             match re_sdk_comms::serve(&bind_addr) {
                 Ok(rx) => {
-                    tracing::info!("Hosting SDK server on {bind_addr}");
+                    re_log::info!("Hosting SDK server on {bind_addr}");
                     re_viewer::run_native_viewer_with_rx(rx);
                 }
                 Err(err) => {

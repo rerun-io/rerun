@@ -19,13 +19,13 @@ impl Profiler {
         let bind_addr = format!("0.0.0.0:{}", PORT);
         self.server = match puffin_http::Server::new(&bind_addr) {
             Ok(puffin_server) => {
-                tracing::info!(
+                re_log::info!(
                         "Started puffin profiling server. View with:  cargo install puffin_viewer && puffin_viewer"
                     );
                 Some(puffin_server)
             }
             Err(err) => {
-                tracing::warn!(
+                re_log::warn!(
                     "Failed to start puffin profiling server: {}",
                     re_error::format(&err)
                 );
@@ -45,9 +45,7 @@ fn start_puffin_viewer() {
     if let Err(err) = child {
         let cmd = format!("cargo install puffin_viewer && puffin_viewer --url {url}",);
         crate::Clipboard::with(|cliboard| cliboard.set_text(cmd.clone()));
-        tracing::warn!(
-            "Failed to start puffin_viewer: {err}. Try connecting manually with:  {cmd}"
-        );
+        re_log::warn!("Failed to start puffin_viewer: {err}. Try connecting manually with:  {cmd}");
 
         rfd::MessageDialog::new()
             .set_level(rfd::MessageLevel::Info)

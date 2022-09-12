@@ -38,7 +38,7 @@ impl Service<Request<Body>> for Svc {
             "/re_viewer_bg.wasm" => &include_bytes!("../../../web_viewer/re_viewer_bg.wasm")[..],
             "/re_viewer.js" => &include_bytes!("../../../web_viewer/re_viewer.js")[..],
             _ => {
-                tracing::warn!("404 path: {}", req.uri().path());
+                re_log::warn!("404 path: {}", req.uri().path());
                 let body = Body::from(Vec::new());
                 let rsp = rsp.status(404).body(body).unwrap();
                 return future::ok(rsp);

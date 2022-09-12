@@ -32,7 +32,7 @@ impl ContextPanel {
                 let msg = if let Some(msg) = ctx.log_db.get_log_msg(msg_id) {
                     msg
                 } else {
-                    tracing::warn!("Unknown msg_id selected. Resetting selection");
+                    re_log::warn!("Unknown msg_id selected. Resetting selection");
                     ctx.rec_cfg.selection = Selection::None;
                     return;
                 };

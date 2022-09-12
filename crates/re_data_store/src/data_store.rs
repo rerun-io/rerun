@@ -45,7 +45,7 @@ impl DataStore {
             }
             std::collections::hash_map::Entry::Occupied(entry) => {
                 if entry.get().0 != time_type {
-                    tracing::warn!("Time source {time_source:?} has multiple time types");
+                    re_log::warn!("Time source {time_source:?} has multiple time types");
                 }
                 &mut entry.into_mut().1
             }

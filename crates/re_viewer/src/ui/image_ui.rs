@@ -330,10 +330,10 @@ fn image_options(
                     match dynamic_image.save(&path) {
                         // TODO(emilk): show a popup instead of logging result
                         Ok(()) => {
-                            tracing::info!("Image saved to {path:?}");
+                            re_log::info!("Image saved to {path:?}");
                         }
                         Err(err) => {
-                            tracing::error!("Failed saving image to {path:?}: {err}");
+                            re_log::error!("Failed saving image to {path:?}: {err}");
                         }
                     }
                 }
@@ -345,10 +345,10 @@ fn image_options(
                 {
                     match write_binary(&path, bytes) {
                         Ok(()) => {
-                            tracing::info!("Image saved to {path:?}");
+                            re_log::info!("Image saved to {path:?}");
                         }
                         Err(err) => {
-                            tracing::error!(
+                            re_log::error!(
                                 "Failed saving image to {path:?}: {}",
                                 re_error::format(&err)
                             );

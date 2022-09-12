@@ -46,7 +46,7 @@ impl Sdk {
                 remote.set_addr(addr);
             }
             Sender::Buffered(messages) => {
-                tracing::debug!("Connecting to remote…");
+                re_log::debug!("Connecting to remote…");
                 let mut client = re_sdk_comms::Client::new(addr);
                 for msg in messages.drain(..) {
                     client.send(msg);
@@ -60,7 +60,7 @@ impl Sdk {
     #[allow(unused)] // only used with "re_viewer" feature
     pub fn disconnect(&mut self) {
         if !matches!(&self.sender, &Sender::Buffered(_)) {
-            tracing::debug!("Switching to buffered.");
+            re_log::debug!("Switching to buffered.");
             self.sender = Sender::Buffered(Default::default());
         }
     }
@@ -86,7 +86,7 @@ impl Sdk {
     pub fn register_type(&mut self, obj_type_path: &ObjTypePath, typ: ObjectType) {
         if let Some(prev_type) = self.registered_types.get(obj_type_path) {
             if *prev_type != typ {
-                tracing::warn!("Registering different types to the same object type path: {obj_type_path:?}. First you used {prev_type:?}, then {typ:?}");
+                re_log::warn!("Registering different types to the same object type path: {obj_type_path:?}. First you used {prev_type:?}, then {typ:?}");
             }
         } else {
             self.registered_types.insert(obj_type_path.clone(), typ);
@@ -102,7 +102,7 @@ impl Sdk {
     pub fn send(&mut self, log_msg: LogMsg) {
         if !self.has_sent_begin_recording_msg {
             if let Some(recording_id) = self.recording_id {
-                tracing::debug!("Beginning new recording with recording id {recording_id}");
+                re_log::debug!("Beginning new recording with recording id {recording_id}");
                 self.sender.send(
                     BeginRecordingMsg {
                         msg_id: MsgId::random(),

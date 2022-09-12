@@ -44,7 +44,7 @@ fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
                     break;
                 }
             }
-            tracing::debug!("Shutting down ui_waker thread");
+            re_log::debug!("Shutting down ui_waker thread");
         })
         .unwrap();
     new_rx
