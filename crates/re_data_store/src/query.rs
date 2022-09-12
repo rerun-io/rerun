@@ -108,7 +108,7 @@ fn get_primary_batch<'a, T>(
 ) -> Option<&'a Batch<T>> {
     match batch_or_splat {
         BatchOrSplat::Splat(_) => {
-            tracing::error!("Primary field {field_name:?} was a batch-splat.");
+            re_log::error!("Primary field {field_name:?} was a batch-splat.");
             None
         }
         BatchOrSplat::Batch(batch) => Some(batch),

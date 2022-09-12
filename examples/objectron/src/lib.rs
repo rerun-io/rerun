@@ -124,7 +124,7 @@ fn log_annotation_pbdata(
                 world_space.clone(),
             ));
         } else {
-            tracing::error!("Unsupported type: {}", object.r#type);
+            re_log::error!("Unsupported type: {}", object.r#type);
         }
 
         logger.log(data_msg(

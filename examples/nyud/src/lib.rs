@@ -68,7 +68,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
     let file = std::fs::File::open(path).unwrap();
     let mut archive = zip::ZipArchive::new(file).unwrap();
     let dir = select_first_dir(&mut archive);
-    tracing::info!("Logging dir {dir:?}…");
+    re_log::info!("Logging dir {dir:?}…");
 
     let mut file_contents = vec![];
 
@@ -105,7 +105,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
             && file_name.starts_with(&dir)
             && (file_name.ends_with(".pgm") || file_name.ends_with(".ppm"))
         {
-            tracing::debug!("{:?}…", file_name);
+            re_log::debug!("{:?}…", file_name);
             drop(file);
             let mut file = archive.by_index(i).unwrap();
 
@@ -233,7 +233,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
         }
     }
 
-    tracing::info!("Done logging {dir:?}.");
+    re_log::info!("Done logging {dir:?}.");
 }
 
 fn select_first_dir<R: std::io::Read + std::io::Seek>(archive: &mut zip::ZipArchive<R>) -> String {

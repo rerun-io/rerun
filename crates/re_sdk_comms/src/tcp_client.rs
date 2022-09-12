@@ -36,7 +36,7 @@ impl TcpClient {
         if self.stream.is_some() {
             Ok(())
         } else {
-            tracing::debug!("Connecting to {:?}…", self.addrs);
+            re_log::debug!("Connecting to {:?}…", self.addrs);
             match TcpStream::connect(&self.addrs[..]) {
                 Ok(mut stream) => {
                     if let Err(err) = stream.write(&crate::PROTOCOL_VERSION.to_le_bytes()) {
@@ -66,7 +66,7 @@ impl TcpClient {
         self.connect()?;
 
         if let Some(stream) = &mut self.stream {
-            tracing::trace!("Sending a packet of size {}…", packet.len());
+            re_log::trace!("Sending a packet of size {}…", packet.len());
             if let Err(err) = stream.write(&(packet.len() as u32).to_le_bytes()) {
                 self.stream = None;
                 anyhow::bail!(
@@ -93,9 +93,9 @@ impl TcpClient {
     pub fn flush(&mut self) {
         if let Some(stream) = &mut self.stream {
             if let Err(err) = stream.flush() {
-                tracing::warn!("Failed to flush: {err:?}");
+                re_log::warn!("Failed to flush: {err:?}");
             }
         }
-        tracing::trace!("TCP stream flushed.");
+        re_log::trace!("TCP stream flushed.");
     }
 }

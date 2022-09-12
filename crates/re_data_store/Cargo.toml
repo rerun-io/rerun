@@ -15,15 +15,14 @@ serde = ["dep:serde", "re_log_types/serde"]
 
 
 [dependencies]
+re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 
 ahash = "0.8"
 itertools = "0.10"
-log-once = "0.4"
 nohash-hasher = "0.2"
 serde = { version = "1", features = ["derive", "rc"], optional = true }
 thiserror = "1.0"
-tracing = "0.1"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

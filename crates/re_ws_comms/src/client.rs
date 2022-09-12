@@ -15,45 +15,45 @@ impl Connection {
         url: String,
         on_log_msg: impl Fn(LogMsg) -> ControlFlow<()> + Send + 'static,
     ) -> Result<Self> {
-        tracing::info!("Connecting to {url:?}…");
+        re_log::info!("Connecting to {url:?}…");
         let sender = ewebsock::ws_connect(
             url,
             Box::new(move |event: WsEvent| match event {
                 WsEvent::Opened => {
-                    tracing::info!("Connection established");
+                    re_log::info!("Connection established");
                     ControlFlow::Continue(())
                 }
                 WsEvent::Message(message) => match message {
                     WsMessage::Binary(binary) => match decode_log_msg(&binary) {
                         Ok(log_msg) => on_log_msg(log_msg),
                         Err(err) => {
-                            tracing::error!("Failed to parse message: {}", re_error::format(&err));
+                            re_log::error!("Failed to parse message: {}", re_error::format(&err));
                             ControlFlow::Break(())
                         }
                     },
                     WsMessage::Text(text) => {
-                        tracing::warn!("Unexpected text message: {:?}", text);
+                        re_log::warn!("Unexpected text message: {:?}", text);
                         ControlFlow::Continue(())
                     }
                     WsMessage::Unknown(text) => {
-                        tracing::warn!("Unknown message: {:?}", text);
+                        re_log::warn!("Unknown message: {:?}", text);
                         ControlFlow::Continue(())
                     }
                     WsMessage::Ping(_data) => {
-                        tracing::warn!("Unexpected PING");
+                        re_log::warn!("Unexpected PING");
                         ControlFlow::Continue(())
                     }
                     WsMessage::Pong(_data) => {
-                        tracing::warn!("Unexpected PONG");
+                        re_log::warn!("Unexpected PONG");
                         ControlFlow::Continue(())
                     }
                 },
                 WsEvent::Error(error) => {
-                    tracing::error!("Connection error: {}", error);
+                    re_log::error!("Connection error: {}", error);
                     ControlFlow::Break(())
                 }
                 WsEvent::Closed => {
-                    tracing::info!("Connection to server closed.");
+                    re_log::info!("Connection to server closed.");
                     ControlFlow::Break(())
                 }
             }),

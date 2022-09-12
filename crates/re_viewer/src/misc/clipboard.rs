@@ -17,9 +17,9 @@ impl Clipboard {
     pub fn set_text(&mut self, text: String) {
         if let Some(clipboard) = &mut self.arboard {
             if let Err(err) = clipboard.set_text(text) {
-                tracing::error!("Failed to copy image to clipboard: {err}",);
+                re_log::error!("Failed to copy image to clipboard: {err}",);
             } else {
-                tracing::info!("Image copied to clipboard");
+                re_log::info!("Image copied to clipboard");
             }
         }
     }
@@ -36,9 +36,9 @@ impl Clipboard {
             };
             // TODO(emilk): show a quick popup in gui instead of logging
             if let Err(err) = clipboard.set_image(image_data) {
-                tracing::error!("Failed to copy image to clipboard: {err}");
+                re_log::error!("Failed to copy image to clipboard: {err}");
             } else {
-                tracing::info!("Image copied to clipboard");
+                re_log::info!("Image copied to clipboard");
             }
         }
     }
@@ -62,7 +62,7 @@ fn init_arboard() -> Option<arboard::Clipboard> {
     match arboard::Clipboard::new() {
         Ok(clipboard) => Some(clipboard),
         Err(err) => {
-            tracing::error!("Failed to initialize clipboard: {err}");
+            re_log::error!("Failed to initialize clipboard: {err}");
             None
         }
     }

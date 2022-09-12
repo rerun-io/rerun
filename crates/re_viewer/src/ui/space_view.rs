@@ -327,7 +327,7 @@ impl SpaceStates {
         });
 
         if objects.has_any_2d() && objects.has_any_3d() {
-            log_once::warn_once!("Space {:?} has both 2D and 3D objects", space_name(space));
+            re_log::warn_once!("Space {:?} has both 2D and 3D objects", space_name(space));
         }
 
         if objects.has_any_2d() {

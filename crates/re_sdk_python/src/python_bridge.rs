@@ -238,7 +238,7 @@ fn show() -> Result<(), PyErr> {
     drop(sdk);
 
     if log_messages.is_empty() {
-        tracing::info!("Nothing logged, so nothing to show");
+        re_log::info!("Nothing logged, so nothing to show");
     } else {
         let (tx, rx) = std::sync::mpsc::channel();
         for log_msg in log_messages {
@@ -252,7 +252,7 @@ fn show() -> Result<(), PyErr> {
 
 #[pyfunction]
 fn save(path: &str) -> Result<(), PyErr> {
-    tracing::trace!("Saving file to {path:?}…");
+    re_log::trace!("Saving file to {path:?}…");
 
     let mut sdk = Sdk::global();
     if sdk.is_connected() {
@@ -265,11 +265,11 @@ fn save(path: &str) -> Result<(), PyErr> {
     drop(sdk);
 
     if log_messages.is_empty() {
-        tracing::info!("Nothing logged, so nothing to save");
+        re_log::info!("Nothing logged, so nothing to save");
     }
 
     if !path.ends_with(".rrd") {
-        tracing::warn!("Expected path to end with .rrd, got {path:?}");
+        re_log::warn!("Expected path to end with .rrd, got {path:?}");
     }
 
     match std::fs::File::create(path) {
@@ -279,7 +279,7 @@ fn save(path: &str) -> Result<(), PyErr> {
                     "Failed to write to file at {path:?}: {err}",
                 )))
             } else {
-                tracing::info!("Rerurn data file saved to {path:?}");
+                re_log::info!("Rerurn data file saved to {path:?}");
                 Ok(())
             }
         }

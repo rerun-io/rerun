@@ -52,7 +52,7 @@ impl Client {
             .name("msg_encoder".into())
             .spawn(move || {
                 msg_encode(&msg_rx, &encode_quit_rx, &packet_tx);
-                tracing::debug!("Shutting down msg encoder thread");
+                re_log::debug!("Shutting down msg encoder thread");
             })
             .expect("Failed to spawn thread");
 
@@ -60,12 +60,12 @@ impl Client {
             .name("tcp_sender".into())
             .spawn(move || {
                 tcp_sender(addr, &packet_rx, &send_quit_rx, &flushed_tx);
-                tracing::debug!("Shutting down TCP sender thread");
+                re_log::debug!("Shutting down TCP sender thread");
             })
             .expect("Failed to spawn thread");
 
         ctrlc::set_handler(move || {
-            tracing::debug!("Ctrl-C detected - Aborting before everything has been sent");
+            re_log::debug!("Ctrl-C detected - Aborting before everything has been sent");
             encode_quit_tx.send(QuitMsg).ok();
             send_quit_tx.send(QuitMsg).ok();
         })
@@ -84,16 +84,16 @@ impl Client {
 
     /// Stall untill all messages so far has been sent.
     pub fn flush(&mut self) {
-        tracing::debug!("Flushing message queue…");
+        re_log::debug!("Flushing message queue…");
         self.send_msg_msg(MsgMsg::Flush);
 
         match self.flushed_rx.recv() {
             Ok(FlushedMsg) => {
-                tracing::debug!("Flush complete.");
+                re_log::debug!("Flush complete.");
             }
             Err(_) => {
                 // This can happen on Ctrl-C
-                tracing::warn!("Failed to flush pipeline - not all messages were sent (Ctrl-C).");
+                re_log::warn!("Failed to flush pipeline - not all messages were sent (Ctrl-C).");
             }
         }
     }
@@ -108,7 +108,7 @@ impl Drop for Client {
     /// Wait until everything has been sent.
     fn drop(&mut self) {
         self.flush();
-        tracing::debug!("Sender has shut down.");
+        re_log::debug!("Sender has shut down.");
     }
 }
 
@@ -124,7 +124,7 @@ fn msg_encode(
                     let packet_msg = match msg_msg {
                         MsgMsg::LogMsg(log_msg) => {
                             let packet = crate::encode_log_msg(&log_msg);
-                            tracing::trace!("Encoded message of size {}", packet.len());
+                            re_log::trace!("Encoded message of size {}", packet.len());
                             PacketMsg::Packet(packet)
                         }
                         MsgMsg::SetAddr(new_addr) => PacketMsg::SetAddr(new_addr),
@@ -190,7 +190,7 @@ fn send_until_success(
     quit_rx: &Receiver<QuitMsg>,
 ) -> Option<QuitMsg> {
     if let Err(err) = tcp_client.send(packet) {
-        tracing::warn!("Failed to send message: {err}");
+        re_log::warn!("Failed to send message: {err}");
 
         let mut sleep_ms = 100;
 
@@ -202,7 +202,7 @@ fn send_until_success(
                 default(std::time::Duration::from_millis(sleep_ms)) => {
                     if let Err(new_err) = tcp_client.send(packet) {
                         if new_err.to_string() != err.to_string() {
-                            tracing::warn!("Failed to send message: {err}");
+                            re_log::warn!("Failed to send message: {err}");
                         }
                         sleep_ms = (sleep_ms * 2).min(3000);
                     } else {

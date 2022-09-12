@@ -31,7 +31,7 @@ impl RemoteViewerApp {
                     egui_ctx_clone.request_repaint(); // Wake up UI thread
                     std::ops::ControlFlow::Continue(())
                 } else {
-                    tracing::info!("Failed to send log message to viewer - closing");
+                    re_log::info!("Failed to send log message to viewer - closing");
                     std::ops::ControlFlow::Break(())
                 }
             },

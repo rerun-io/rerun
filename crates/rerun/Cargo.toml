@@ -16,6 +16,7 @@ server = ["dep:re_sdk_comms"]
 
 
 [dependencies]
+re_log = { path = "../re_log" }
 re_viewer = { path = "../re_viewer", features = ["puffin"] }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
@@ -24,7 +25,6 @@ puffin = { version = "0.13" }
 ## Optional dependencies
 puffin_http = { version = "0.10", optional = true }
 re_sdk_comms = { path = "../re_sdk_comms", optional=true, features = ["server"] }
-tracing = "0.1"
 
 ## Native dependencies
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

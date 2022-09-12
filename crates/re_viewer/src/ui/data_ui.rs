@@ -58,7 +58,7 @@ pub(crate) fn view_instance(
                         }
                     }
                     Err(err) => {
-                        log_once::warn_once!("Bad data for {instance_id}: {err}");
+                        re_log::warn_once!("Bad data for {instance_id}: {err}");
                         ui.colored_label(
                             ui.visuals().error_fg_color,
                             format!("Data error: {:?}", err),
@@ -96,7 +96,7 @@ pub(crate) fn view_data(
             }
         }
         Err(err) => {
-            log_once::warn_once!("Bad data for {data_path}: {err}");
+            re_log::warn_once!("Bad data for {data_path}: {err}");
             ui.colored_label(
                 ui.visuals().error_fg_color,
                 format!("Data error: {:?}", err),

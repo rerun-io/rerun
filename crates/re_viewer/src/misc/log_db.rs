@@ -68,7 +68,7 @@ impl LogDb {
 
         if let Some(previous_value) = previous_value {
             if previous_value != msg.obj_type {
-                tracing::warn!(
+                re_log::warn!(
                     "Object {} changed type from {:?} to {:?}",
                     msg.type_path,
                     previous_value,
@@ -76,7 +76,7 @@ impl LogDb {
                 );
             }
         } else {
-            tracing::debug!(
+            re_log::debug!(
                 "Registered object type {}: {:?}",
                 msg.type_path,
                 msg.obj_type
@@ -92,19 +92,19 @@ impl LogDb {
         if let Some(obj_type) = self.obj_types.get(obj_type_path) {
             let valid_members = obj_type.members();
             if !valid_members.contains(&field_name.as_str()) {
-                log_once::warn_once!(
+                re_log::warn_once!(
                     "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
                     valid_members.iter().format(", ")
                 );
             }
         } else {
-            log_once::warn_once!(
+            re_log::warn_once!(
                 "Logging to {obj_type_path}.{field_name} without first registering object type"
             );
         }
 
         if let Err(err) = self.data_store.insert(msg) {
-            tracing::warn!("Failed to add data to data_store: {err:?}");
+            re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 
         self.time_points.insert(&msg.time_point);

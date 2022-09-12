@@ -75,7 +75,7 @@ impl App {
             let egui_ctx = _egui_ctx.clone();
 
             ctrlc::set_handler(move || {
-                tracing::debug!("Ctrl-C detected - Closing viewer.");
+                re_log::debug!("Ctrl-C detected - Closing viewer.");
                 ctrl_c.store(true, std::sync::atomic::Ordering::SeqCst);
                 egui_ctx.request_repaint(); // so that we notice that we should close
             })
@@ -124,7 +124,7 @@ impl eframe::App for App {
             let start = instant::Instant::now();
             while let Ok(msg) = rx.try_recv() {
                 if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    tracing::info!("Begginning a new recording: {:?}", msg.info);
+                    re_log::info!("Begginning a new recording: {:?}", msg.info);
                     self.state.selected_rec_id = msg.info.recording_id;
                 }
 
@@ -510,11 +510,11 @@ fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
     match save_to_file_impl(log_db, path) {
         // TODO(emilk): show a popup instead of logging result
         Ok(()) => {
-            tracing::info!("Data saved to {:?}", path);
+            re_log::info!("Data saved to {:?}", path);
         }
         Err(err) => {
             let msg = format!("Failed saving data to {path:?}: {}", re_error::format(&err));
-            tracing::error!("{msg}");
+            re_log::error!("{msg}");
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
                 .set_description(&msg)
@@ -550,16 +550,16 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
         load_rrd(file)
     }
 
-    tracing::info!("Loading {path:?}…");
+    re_log::info!("Loading {path:?}…");
 
     match load_file_path_impl(path) {
         Ok(new_log_db) => {
-            tracing::info!("Loaded {path:?}");
+            re_log::info!("Loaded {path:?}");
             Some(new_log_db)
         }
         Err(err) => {
             let msg = format!("Failed loading {path:?}: {}", re_error::format(&err));
-            tracing::error!("{msg}");
+            re_log::error!("{msg}");
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
                 .set_description(&msg)
@@ -573,12 +573,12 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
 fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
     match load_rrd(read) {
         Ok(log_db) => {
-            tracing::info!("Loaded {name:?}");
+            re_log::info!("Loaded {name:?}");
             Some(log_db)
         }
         Err(err) => {
             let msg = format!("Failed loading {name:?}: {}", re_error::format(&err));
-            tracing::error!("{msg}");
+            re_log::error!("{msg}");
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
                 .set_description(&msg)
