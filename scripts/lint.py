@@ -23,6 +23,12 @@ def lint_line(line):
     if 'HACK' in line:
         return 'we prefer TODO over HACK'
 
+    if 'todo!()' in line:
+        return 'todo!() should be written as todo!("$details")'
+
+    if 'unimplemented!' in line:
+        return 'unimplemented!(): either implement this, or rewrite it as a todo!()'
+
     if todo_pattern.search(line):
         return 'TODO:s should be written as `TODO(yourname): what to do`'
 
@@ -44,6 +50,9 @@ def test_lint():
         'HACK',
         'TODO',
         'TODO:',
+        'todo!()'
+        'unimplemented!()',
+        'unimplemented!("even with text!")',
     ]
 
     for line in should_pass:
