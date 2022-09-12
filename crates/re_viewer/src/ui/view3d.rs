@@ -138,7 +138,7 @@ impl State3D {
                 target_eye: Some(target),
             });
         } else {
-            // self.orbit_camera = todo!()
+            // shouldn't really happen (`self.orbit_eye` is only `None` for the first frame).
         }
     }
 
