@@ -3,8 +3,10 @@
 # Rust compile target directory:
 **/target
 
-# python virtual environment:
+# Python virtual environment:
 /env
 
-/media
-/objectron/dataset
+# Python build artifacts:
+__pycache__
+*.pyc
+*.so
