@@ -10,3 +10,4 @@ source crates/re_sdk_python/setup_build_env.sh
 pip install "crates/re_sdk_python[tests]"
 mypy crates/re_sdk_python
 pytest crates/re_sdk_python
+pytest scripts/lint.py

@@ -65,7 +65,7 @@ impl Scene {
         let hovered_instance_id_hash =
             hovered_instance_id.map_or(InstanceIdHash::NONE, |id| id.hash());
 
-        // HACK because three-d handles colors wrong. TODO(emilk): fix three-d
+        // hack because three-d handles colors wrong. TODO(emilk): fix three-d
         let gamma_lut = (0..=255)
             .map(|c| ((c as f32 / 255.0).powf(2.2) * 255.0).round() as u8)
             .collect_vec();
