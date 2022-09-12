@@ -35,10 +35,23 @@ You can view higher log levels with `export RUST_LOG=debug` or `export RUST_LOG=
 
 ## Rust code
 
+### Error handling and logging
+* An error should never happen in silence.
+* Validate code invariants using `assert!`.
+* Validate user data and return errors using [`thiserror`](https://crates.io/crates/thiserror).
+* Attach context to errors as they bubble up the stack using [`anyhow`](https://crates.io/crates/anyhow).
+* Log errors using `log::error!` or `log_once::error_once!`.
+* If a problem is recoverable, use `tracing::warn!` or `log_once::warn_once!`.
+* If an event is of interest to the user, log it using `tracing::info!` or `log_once::info_once!`.
+* The code should only panic if there is a bug in the code.
+* Never ignore an error: either pass it on, or log it.
+* Handle each error exactly once. If you log it, don't pass it on. If you pass it on, don't log it.
+
+
 ### Libraries
 We use [`tracing`](https://crates.io/crates/tracing/) for logging.
 
-We use [`thiserrors`](https://crates.io/crates/thiserror) for errors in our libraries, and [`anyhow`](https://crates.io/crates/anyhow) for type-erased errors in applications.
+We use [`thiserror`](https://crates.io/crates/thiserror) for errors in our libraries, and [`anyhow`](https://crates.io/crates/anyhow) for type-erased errors in applications.
 
 ### Style
 We follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/about.html).
