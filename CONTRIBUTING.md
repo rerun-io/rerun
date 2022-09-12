@@ -53,6 +53,10 @@ We use [`tracing`](https://crates.io/crates/tracing/) for logging.
 
 We use [`thiserror`](https://crates.io/crates/thiserror) for errors in our libraries, and [`anyhow`](https://crates.io/crates/anyhow) for type-erased errors in applications.
 
+For faster hashing, we use [`ahash`](https://crates.io/crates/ahash) (`ahash::HashMap`, …).
+
+When the hashmap key is high-entropy we use [`nohash-hasher`](https://crates.io/crates/nohash-hasher) (`nohash_hasher::IntMap`).
+
 ### Style
 We follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/about.html).
 
