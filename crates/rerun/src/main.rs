@@ -1,3 +1,7 @@
+//! The main Rerun binary.
+//!
+//! This can act either as a server, a viewer, or both, depending on which options you use when you start it.
+
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
