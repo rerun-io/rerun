@@ -1,3 +1,5 @@
+//! Helpers for error handling.
+
 /// Format an error, including its chain of sources.
 ///
 /// Always use this when displaying an error.

@@ -36,13 +36,20 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
         self.high_water_mark_bytes
             .store(self.high_water_mark_bytes.load(SeqCst).max(used), SeqCst);
 
-        self.allocator.alloc(layout)
+        // SAFETY:
+        // We use the underlying allocator as it is meant to be used.
+        unsafe { self.allocator.alloc(layout) }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
         self.cumul_free_count.fetch_add(1, SeqCst);
         self.cumul_free_size.fetch_add(layout.size(), SeqCst);
-        self.allocator.dealloc(ptr, layout);
+
+        // SAFETY:
+        // We use the underlying allocator as it is meant to be used.
+        unsafe {
+            self.allocator.dealloc(ptr, layout);
+        }
     }
 }
 

@@ -11,7 +11,9 @@ env:
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
   RUSTFLAGS: --cfg=web_sys_unstable_apis -D warnings
-  RUSTDOCFLAGS: -D warnings
+
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: -D warnings -D rustdoc::missing_crate_level_docs
 
 jobs:
   check_wasm:
@@ -82,11 +84,11 @@ jobs:
         with:
           command: test
           args: --doc --all-features
-      - name: cargo doc --lib
+      - name: cargo doc
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --lib --no-deps --all-features
+          args: --no-deps --all-features
       - name: cargo doc --document-private-items
         uses: actions-rs/cargo@v1
         with:
