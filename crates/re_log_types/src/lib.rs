@@ -1,4 +1,16 @@
 //! Types used for the log data.
+//!
+//! Rerun is based around _objects_ and _data_.
+//!
+//! Example objects includes points, rectangles, images, … (see [`ObjectType`] for more).
+//! Each of these has many _fields_. For instance, a point
+//! has fields `pos`, `radius`, `color`, etc.
+//!
+//! When you log an object, you log each field seperatedly,
+//! as [`Data`].
+//!
+//! Each object is logged to a specific [`ObjPath`] -
+//! check out module-level documentation for [`path`] for more on this.
 
 #![allow(clippy::manual_range_contains)]
 
@@ -9,7 +21,7 @@ mod data;
 pub mod hash;
 mod index;
 pub mod objects;
-mod path;
+pub mod path;
 mod time;
 
 pub use data::*;
@@ -112,6 +124,7 @@ impl std::str::FromStr for RecordingId {
 
 // ----------------------------------------------------------------------------
 
+/// The most general log message sent from the SDK to the server.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -121,7 +134,7 @@ pub enum LogMsg {
     /// Should usually be the first message sent.
     BeginRecordingMsg(BeginRecordingMsg),
 
-    /// Log type-into to a [`ObjTypePath`].
+    /// Log type-info ([`ObjectType`]) to a [`ObjTypePath`].
     TypeMsg(TypeMsg),
 
     /// Log some data to a [`DataPath`].
@@ -188,6 +201,7 @@ impl std::fmt::Display for RecordingSource {
 
 // ----------------------------------------------------------------------------
 
+/// The message sent to specify the [`ObjectType`] of all objects at a specific [`ObjTypePath`].
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -214,6 +228,7 @@ impl TypeMsg {
 
 // ----------------------------------------------------------------------------
 
+/// The message sent to specify the data of a single field of an object.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

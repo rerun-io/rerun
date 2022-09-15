@@ -1,6 +1,8 @@
 use crate::path::{FieldName, ObjPath};
 
-/// `camera / "left" / points / #42` / "pos"
+/// A [`ObjPath`] plus a [`FieldName`].
+///
+/// Example: `camera / "left" / points / #42`.`pos`
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DataPath {

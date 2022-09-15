@@ -11,6 +11,12 @@ The main crates are found in the `crates/` folder, with examples in the `example
 
 Read about individual examples for details on how to run them.
 
+To get an overview of the crates, read their documentation with:
+
+```
+cargo doc --no-deps --open
+```
+
 To learn about the viewer, run:
 
 ```

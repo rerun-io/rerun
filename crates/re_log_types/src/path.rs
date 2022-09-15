@@ -1,3 +1,20 @@
+//! Every logged object in Rerun is logged to a [`ObjPath`].
+//!
+//! The path is made up out of several [`ObjPathComp`],
+//! each of which is either a name ([`ObjPathComp::String`])
+//! or an [`Index`].
+//!
+//! The [`Index`]es are for tables, arrays etc.
+//! You can split an [`ObjPath`] into the names and the indices,
+//! and then you get a [`ObjTypePath`] and an [`IndexPath`], like so:
+//!
+//! * [`ObjPath`]:     `camera / "left" / points / #42`
+//! * [`ObjTypePath`]: `camera / *      / points / *`
+//! * [`IndexPath`]:   `       / "left" /       / #42`
+//!
+//! Every object with the same [`ObjTypePath`] have
+//! the same [`crate::ObjectType`] (hence the name).
+
 mod data_path;
 mod index_path;
 mod obj_path;
@@ -16,7 +33,7 @@ use re_string_interner::InternedString;
 use crate::Index;
 
 re_string_interner::declare_new_type!(
-    /// The name of a object field, e.g. "pos" or "color".
+    /// The name of an object field, e.g. `pos` or `color`.
     pub struct FieldName;
 );
 

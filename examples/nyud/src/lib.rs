@@ -1,8 +1,8 @@
 //! Example application based on <https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html>.
 //!
 //! Uses the raw Rust communication primitives.
-//!
-//! TODO(emilk): translate this to use the Python SDK instead
+
+// TODO(emilk): translate this to use the Python SDK instead
 
 #![allow(clippy::manual_range_contains)]
 

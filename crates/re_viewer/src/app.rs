@@ -14,6 +14,7 @@ const WATERMARK: bool = false; // Nice for recording media material
 
 // ----------------------------------------------------------------------------
 
+/// The Rerun viewer as an [`eframe`] application.
 pub struct App {
     rx: Option<Receiver<LogMsg>>,
 

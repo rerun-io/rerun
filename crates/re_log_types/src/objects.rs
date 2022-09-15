@@ -1,19 +1,32 @@
+/// The built-in object types supported by Rerun.
+///
+/// In the future we will extend this to support user-defined types aswell.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjectType {
     /// Information about a space (up axis etc).
     Space,
 
+    /// An image. Could be gray, RGB, a depth map, ….
     Image,
+    /// A point in 2D space.
     Point2D,
+    /// 2D rectangle.
     BBox2D,
+    /// Many 2D line segments.
     LineSegments2D,
 
+    /// A point in 3D space.
     Point3D,
+    /// 3D oriented bounding box (OBB).
     Box3D,
+    /// A path through 3D space.
     Path3D,
+    /// Many 3D line segments.
     LineSegments3D,
+    /// A 3D mesh.
     Mesh3D,
+    /// Camera extrinsics and intrinsics.
     Camera,
 }
 

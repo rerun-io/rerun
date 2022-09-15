@@ -6,7 +6,7 @@ use crate::{
 
 // ----------------------------------------------------------------------------
 
-/// A 128 bit hash of [`ObjPath`] with negligible chance of collision.
+/// A 128 bit hash of [`ObjPath`] with negligible risk of collision.
 #[derive(Copy, Clone, Eq)]
 pub struct ObjPathHash(Hash128);
 
@@ -183,7 +183,7 @@ impl<'de> serde::Deserialize<'de> for ObjPath {
 impl std::cmp::PartialEq for ObjPath {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash // much faster, and low chance of collision
+        self.hash == other.hash // much faster, and low risk of collision
     }
 }
 

@@ -52,7 +52,7 @@ impl From<&str> for Index {
 
 // ----------------------------------------------------------------------------
 
-/// A 128 bit hash of [`Index`] with negligible chance of collision.
+/// A 128 bit hash of [`Index`] with negligible risk of collision.
 #[derive(Copy, Clone, Eq)]
 pub struct IndexHash(Hash128);
 

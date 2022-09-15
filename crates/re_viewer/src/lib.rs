@@ -1,4 +1,7 @@
-//! rerun viewer.
+//! Rerun Viewer GUI.
+//!
+//! This crate contains all the GUI code for the Rerun Viewer,
+//! including all 2D and 3D visualization code.
 
 mod app;
 pub mod math;

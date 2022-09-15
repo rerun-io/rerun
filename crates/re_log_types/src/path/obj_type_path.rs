@@ -75,7 +75,7 @@ impl<'de> serde::Deserialize<'de> for ObjTypePath {
 impl std::cmp::PartialEq for ObjTypePath {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash // much faster, and low chance of collision
+        self.hash == other.hash // much faster, and low risk of collision
     }
 }
 

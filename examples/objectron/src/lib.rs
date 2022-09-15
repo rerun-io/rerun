@@ -1,8 +1,8 @@
 //! Example application based on the [Objectron Dataset](https://github.com/google-research-datasets/Objectron).
 //!
 //! Uses the raw Rust communication primitives.
-//!
-//! TODO(emilk): translate this to use the Python SDK instead
+
+// TODO(emilk): translate this to use the Python SDK instead
 
 pub mod protos;
 

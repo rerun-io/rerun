@@ -1,4 +1,4 @@
-//! Communications between server and viewer
+//! Communications between server and viewer.
 
 #[cfg(feature = "client")]
 mod client;
