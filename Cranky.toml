@@ -100,6 +100,7 @@ warn = [
     "rust_2021_prelude_collisions",
     "semicolon_in_expressions_from_macros",
     "trivial_numeric_casts",
+    "unsafe_op_in_unsafe_fn", # This may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
     "unused_extern_crates",
     "unused_import_braces",
     "unused_lifetimes",
