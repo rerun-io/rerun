@@ -8,8 +8,16 @@ use nohash_hasher::IntMap;
 use re_data_store::*;
 use re_log_types::*;
 
+#[cfg(not(debug_assertions))]
 const NUM_FRAMES: i64 = 1_000;
+#[cfg(not(debug_assertions))]
 const NUM_POINTS: i64 = 1_000;
+
+// `cargo test` also runs the benchmark setup code, so make sure they run quickly:
+#[cfg(debug_assertions)]
+const NUM_FRAMES: i64 = 1;
+#[cfg(debug_assertions)]
+const NUM_POINTS: i64 = 1;
 
 fn time_source() -> TimeSource {
     TimeSource::new("frame", TimeType::Sequence)
