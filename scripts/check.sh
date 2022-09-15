@@ -7,7 +7,7 @@ cd "$script_path/.."
 set -x
 
 export RUSTFLAGS="-D warnings"
-export RUSTDOCFLAGS="-D warnings" # https://github.com/emilk/egui/pull/1454
+export RUSTDOCFLAGS="-D warnings -D rustdoc::missing_crate_level_docs" # https://github.com/ericseppanen/cargo-cranky/issues/8
 
 cargo check --all-targets --all-features
 cargo check -p re_viewer --all-features --lib --target wasm32-unknown-unknown
