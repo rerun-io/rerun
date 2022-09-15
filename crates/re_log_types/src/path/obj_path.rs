@@ -213,7 +213,7 @@ impl std::cmp::PartialOrd for ObjPath {
 // ----------------------------------------------------------------------------
 
 pub use super::obj_path_impl::Iter;
-pub use super::obj_path_impl::ObjPathComponentRef;
+pub use super::obj_path_impl::ObjPathCompRef;
 
 // ----------------------------------------------------------------------------
 

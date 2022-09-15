@@ -160,8 +160,8 @@ impl LogDb {
 /// Tree of data paths.
 #[derive(Default)]
 pub(crate) struct ObjectTree {
-    /// Children of type [`ObjPathComp::String`].
-    pub string_children: BTreeMap<InternedString, ObjectTree>,
+    /// Children of type [`ObjPathComp::Name`].
+    pub named_children: BTreeMap<InternedString, ObjectTree>,
 
     /// Children of type [`ObjPathComp::Index`].
     pub index_children: BTreeMap<Index, ObjectTree>,
@@ -178,7 +178,7 @@ pub(crate) struct ObjectTree {
 impl ObjectTree {
     /// Has no child objects.
     pub fn is_leaf(&self) -> bool {
-        self.string_children.is_empty() && self.index_children.is_empty()
+        self.named_children.is_empty() && self.index_children.is_empty()
     }
 
     pub fn add_data_msg(&mut self, msg: &DataMsg) {
@@ -202,9 +202,9 @@ impl ObjectTree {
                 self.fields.entry(field_name).or_default().add(msg);
             }
             [first, rest @ ..] => match first {
-                ObjPathComp::String(string) => {
-                    self.string_children
-                        .entry(*string)
+                ObjPathComp::Name(name) => {
+                    self.named_children
+                        .entry(*name)
                         .or_default()
                         .add_path(rest, field_name, msg);
                 }

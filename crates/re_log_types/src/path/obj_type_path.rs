@@ -45,7 +45,7 @@ impl ObjTypePath {
         self.components
             .iter()
             .filter(|c| match c {
-                TypePathComp::String(_) => false,
+                TypePathComp::Name(_) => false,
                 TypePathComp::Index => true,
             })
             .count()
@@ -148,7 +148,7 @@ impl std::fmt::Display for ObjTypePath {
 impl From<&str> for ObjTypePath {
     #[inline]
     fn from(component: &str) -> Self {
-        Self::new(vec![TypePathComp::String(component.into())])
+        Self::new(vec![TypePathComp::Name(component.into())])
     }
 }
 
@@ -183,7 +183,7 @@ impl std::ops::Div<&str> for ObjTypePath {
 
     #[inline]
     fn div(mut self, rhs: &str) -> Self::Output {
-        self.push(TypePathComp::String(rhs.into()));
+        self.push(TypePathComp::Name(rhs.into()));
         self
     }
 }

@@ -246,8 +246,8 @@ impl RecordingConfig {
             let prop = prop.with_child(&rec_cfg.individual_object_properties.get(&obj_path));
             rec_cfg.projected_object_properties.set(obj_path, prop);
 
-            for (name, child) in &tree.string_children {
-                path.push(ObjPathComp::String(*name));
+            for (name, child) in &tree.named_children {
+                path.push(ObjPathComp::Name(*name));
                 project_tree(rec_cfg, path, prop, child);
                 path.pop();
             }

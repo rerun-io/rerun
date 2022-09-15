@@ -1,7 +1,7 @@
 //! Every logged object in Rerun is logged to a [`ObjPath`].
 //!
 //! The path is made up out of several [`ObjPathComp`],
-//! each of which is either a name ([`ObjPathComp::String`])
+//! each of which is either a name ([`ObjPathComp::Name`])
 //! or an [`Index`].
 //!
 //! The [`Index`]es are for tables, arrays etc.
@@ -44,7 +44,7 @@ re_string_interner::declare_new_type!(
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjPathComp {
     /// Struct member. Each member can have a different type.
-    String(InternedString),
+    Name(InternedString),
 
     /// Array/table/map member. Each member must be of the same type (homogenous).
     Index(Index),
@@ -53,7 +53,7 @@ pub enum ObjPathComp {
 impl ObjPathComp {
     pub fn to_type_path_comp(&self) -> TypePathComp {
         match self {
-            Self::String(name) => TypePathComp::String(*name),
+            Self::Name(name) => TypePathComp::Name(*name),
             Self::Index(_) => TypePathComp::Index,
         }
     }
@@ -62,7 +62,7 @@ impl ObjPathComp {
 impl std::fmt::Display for ObjPathComp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(string) => f.write_str(string),
+            Self::Name(name) => f.write_str(name),
             Self::Index(index) => index.fmt(f),
         }
     }
@@ -71,14 +71,14 @@ impl std::fmt::Display for ObjPathComp {
 impl From<&str> for ObjPathComp {
     #[inline]
     fn from(comp: &str) -> Self {
-        Self::String(comp.into())
+        Self::Name(comp.into())
     }
 }
 
 impl From<String> for ObjPathComp {
     #[inline]
     fn from(comp: String) -> Self {
-        Self::String(comp.into())
+        Self::Name(comp.into())
     }
 }
 
@@ -96,7 +96,7 @@ impl From<Index> for ObjPathComp {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TypePathComp {
     /// Struct member
-    String(InternedString),
+    Name(InternedString),
 
     /// Table (array/map) member.
     /// Tables are homogenous, so it is the same type path for all.
@@ -106,7 +106,7 @@ pub enum TypePathComp {
 impl std::fmt::Display for TypePathComp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(string) => string.fmt(f),
+            Self::Name(name) => name.fmt(f),
             Self::Index => '*'.fmt(f),
         }
     }

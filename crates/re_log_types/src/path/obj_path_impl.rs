@@ -93,8 +93,8 @@ where
         let mut index_path = vec![];
         for comp in path {
             match comp {
-                ObjPathComp::String(name) => {
-                    obj_type_path.push(TypePathComp::String(*name));
+                ObjPathComp::Name(name) => {
+                    obj_type_path.push(TypePathComp::Name(*name));
                 }
                 ObjPathComp::Index(index) => {
                     obj_type_path.push(TypePathComp::Index);
@@ -138,28 +138,29 @@ impl std::cmp::PartialOrd for ObjPathImpl {
 
 // ----------------------------------------------------------------------------
 
+/// A reference to a [`ObjPathComp`].
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum ObjPathComponentRef<'a> {
+pub enum ObjPathCompRef<'a> {
     /// Struct member. Each member can have a different type.
-    String(&'a re_string_interner::InternedString),
+    Name(&'a re_string_interner::InternedString),
 
     /// Array/table/map member. Each member must be of the same type (homogenous).
     Index(&'a Index),
 }
 
-impl<'a> ObjPathComponentRef<'a> {
+impl<'a> ObjPathCompRef<'a> {
     fn to_owned(&self) -> ObjPathComp {
         match self {
-            Self::String(name) => ObjPathComp::String(**name),
+            Self::Name(name) => ObjPathComp::Name(**name),
             Self::Index(index) => ObjPathComp::Index((*index).clone()),
         }
     }
 }
 
-impl<'a> std::fmt::Display for ObjPathComponentRef<'a> {
+impl<'a> std::fmt::Display for ObjPathCompRef<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(name) => name.fmt(f),
+            Self::Name(name) => name.fmt(f),
             Self::Index(index) => index.fmt(f),
         }
     }
@@ -171,12 +172,12 @@ pub struct Iter<'a> {
 }
 
 impl<'a> Iterator for Iter<'a> {
-    type Item = ObjPathComponentRef<'a>;
+    type Item = ObjPathCompRef<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.obj_type_path.next()? {
-            TypePathComp::String(name) => Some(ObjPathComponentRef::String(name)),
-            TypePathComp::Index => Some(ObjPathComponentRef::Index(self.index_path.next()?)),
+            TypePathComp::Name(name) => Some(ObjPathCompRef::Name(name)),
+            TypePathComp::Index => Some(ObjPathCompRef::Index(self.index_path.next()?)),
         }
     }
 }

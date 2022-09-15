@@ -92,7 +92,7 @@ fn parse_component(s: &str) -> Result<ObjPathComp, PathParseError> {
     } else if let Ok(uuid) = uuid::Uuid::parse_str(s) {
         Ok(ObjPathComp::Index(Index::Uuid(uuid)))
     } else {
-        Ok(ObjPathComp::String(s.into()))
+        Ok(ObjPathComp::Name(s.into()))
     }
 }
 
