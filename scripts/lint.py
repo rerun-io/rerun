@@ -32,6 +32,9 @@ def lint_line(line):
     if todo_pattern.search(line):
         return 'TODO:s should be written as `TODO(yourname): what to do`'
 
+    if 'rerurn' in line.lower():
+        return "Emil: you put an extra 'r' in 'Rerun' again!"
+
     return None
 
 

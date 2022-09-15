@@ -280,7 +280,7 @@ fn save(path: &str) -> Result<(), PyErr> {
                     "Failed to write to file at {path:?}: {err}",
                 )))
             } else {
-                re_log::info!("Rerurn data file saved to {path:?}");
+                re_log::info!("Rerun data file saved to {path:?}");
                 Ok(())
             }
         }
