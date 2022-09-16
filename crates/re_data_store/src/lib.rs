@@ -23,6 +23,7 @@ mod stores;
 
 pub use batch::*;
 pub use instance::*;
+pub use log_db::LogDb;
 pub use objects::*;
 pub use stores::*;
 
