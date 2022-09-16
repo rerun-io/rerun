@@ -2694,6 +2694,7 @@ dependencies = [
  "puffin",
  "re_log",
  "re_log_types",
+ "re_string_interner",
  "serde",
  "thiserror",
 ]

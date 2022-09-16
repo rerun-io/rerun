@@ -1,7 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod clipboard;
 pub(crate) mod image_cache;
-pub(crate) mod log_db;
 pub(crate) mod mesh_loader;
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub(crate) mod profiler;
@@ -16,7 +15,6 @@ mod viewer_context;
 pub(crate) use clipboard::Clipboard;
 
 use image_cache::ImageCache;
-pub(crate) use log_db::LogDb;
 pub(crate) use time_control::{TimeControl, TimeView};
 pub(crate) use time_range::{TimeRange, TimeRangeF};
 pub(crate) use time_real::TimeReal;

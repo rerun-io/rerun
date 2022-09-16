@@ -3,14 +3,15 @@ use std::{
     ops::RangeInclusive,
 };
 
-use crate::{
-    log_db::ObjectTree, misc::time_control::TimeSelectionType, time_axis::TimeSourceAxis,
-    Selection, TimeControl, TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
-};
-
 use egui::*;
-use re_data_store::InstanceId;
+
+use re_data_store::{log_db::ObjectTree, InstanceId};
 use re_log_types::*;
+
+use crate::{
+    misc::time_control::TimeSelectionType, time_axis::TimeSourceAxis, Selection, TimeControl,
+    TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
+};
 
 /// A column where we should button to hide/show a propery.
 const PROPERY_COLUMN_WIDTH: f32 = 14.0;

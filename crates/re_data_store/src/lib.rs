@@ -16,6 +16,7 @@
 
 mod batch;
 mod instance;
+pub mod log_db;
 pub mod objects;
 pub mod query;
 mod stores;

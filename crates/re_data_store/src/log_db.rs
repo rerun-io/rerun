@@ -24,7 +24,7 @@ impl TimePoints {
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
 #[derive(Default)]
-pub(crate) struct LogDb {
+pub struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<MsgId>,
     log_messages: IntMap<MsgId, LogMsg>,
@@ -34,7 +34,7 @@ pub(crate) struct LogDb {
     pub obj_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
-    pub data_store: re_data_store::DataStore,
+    pub data_store: crate::DataStore,
 
     /// All known spaces
     spaces: IntMap<ObjPathHash, ObjPath>,
@@ -173,7 +173,7 @@ impl LogDb {
 
 /// Tree of data paths.
 #[derive(Default)]
-pub(crate) struct ObjectTree {
+pub struct ObjectTree {
     /// Children of type [`ObjPathComp::Name`].
     pub named_children: BTreeMap<InternedString, ObjectTree>,
 
@@ -237,7 +237,7 @@ impl ObjectTree {
 
 /// Column transform of [`Data`].
 #[derive(Default)]
-pub(crate) struct DataColumns {
+pub struct DataColumns {
     /// When do we have data?
     pub times: BTreeMap<TimeSource, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
     pub per_type: HashMap<DataType, BTreeSet<MsgId>>,
