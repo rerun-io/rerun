@@ -237,6 +237,10 @@ pub struct DataMsg {
     pub msg_id: MsgId,
 
     /// Time information (when it was logged, when it was received, …)
+    ///
+    /// If this is empty, the data is _timeless_.
+    /// Timeless data will show up on all timelines, past and future,
+    /// and will hit all time queris. In other words, it is always there.
     pub time_point: TimePoint,
 
     /// What the data is targeting.
@@ -391,6 +395,10 @@ impl std::hash::Hash for TimeSource {
 /// A point in time.
 ///
 /// It can be represented by [`Time`], a sequence index, or a mix of several things.
+///
+/// If this is empty, the data is _timeless_.
+/// Timeless data will show up on all timelines, past and future,
+/// and will hit all time queris. In other words, it is always there.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(pub BTreeMap<TimeSource, TimeInt>);
@@ -436,6 +444,11 @@ impl TimeType {
 pub struct TimeInt(i64);
 
 impl TimeInt {
+    /// The beinning of time.
+    ///
+    /// Special value used for timeless data.
+    pub const MIN: TimeInt = TimeInt(i64::MIN);
+
     #[inline]
     pub fn as_i64(&self) -> i64 {
         self.0
