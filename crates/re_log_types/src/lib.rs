@@ -434,9 +434,13 @@ impl TimeType {
     }
 
     pub fn format(&self, time_int: TimeInt) -> String {
-        match self {
-            Self::Time => Time::from(time_int).format(),
-            Self::Sequence => format!("#{}", time_int.0),
+        if time_int <= TimeInt::BEGINNING {
+            "-∞".into()
+        } else {
+            match self {
+                Self::Time => Time::from(time_int).format(),
+                Self::Sequence => format!("#{}", time_int.0),
+            }
         }
     }
 }
