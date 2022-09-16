@@ -7,13 +7,6 @@ use crate::{
     TimeQuery,
 };
 
-struct TimelessData {
-    data_path: DataPath,
-    msg_id: MsgId,
-    data: LoggedData,
-    batch: Option<TypeErasedBatch>,
-}
-
 /// Stores all timelines of all objects.
 #[derive(Default)]
 pub struct DataStore {
@@ -25,11 +18,6 @@ pub struct DataStore {
 
     /// In many places we just store the hashes, so we need a way to translate back.
     index_from_hash: IntMap<IndexHash, Index>,
-
-    /// Copies of all timeless data.
-    ///
-    /// This is inserted into any new timeline that is created.
-    timeless_data: Vec<TimelessData>, // TODO(emilk): avoid cloning the data
 }
 
 impl DataStore {
@@ -47,43 +35,16 @@ impl DataStore {
         self.index_from_hash.get(index_hash)
     }
 
-    fn entry(
-        &mut self,
-        time_source: &TimeSource,
-        time_type: TimeType,
-    ) -> Result<&mut TimeLineStore<i64>> {
+    fn entry(&mut self, time_source: &TimeSource, time_type: TimeType) -> &mut TimeLineStore<i64> {
         match self.store_from_time_source.entry(*time_source) {
             std::collections::hash_map::Entry::Vacant(entry) => {
-                let new_store = &mut entry
-                    .insert((time_source.typ(), TimeLineStore::default()))
-                    .1;
-
-                re_log::debug!("A new timeline was created: {time_source:?}. Inserting {} timeless data into it.", self.timeless_data.len());
-
-                for TimelessData {
-                    data_path,
-                    msg_id,
-                    data,
-                    batch,
-                } in &self.timeless_data
-                {
-                    insert_msg_into_timeline_store(
-                        new_store,
-                        data_path,
-                        *msg_id,
-                        TimeInt::MIN.as_i64(),
-                        data,
-                        batch.as_ref(),
-                    )?;
-                }
-
-                Ok(new_store)
+                &mut entry.insert((time_type, TimeLineStore::default())).1
             }
             std::collections::hash_map::Entry::Occupied(entry) => {
                 if entry.get().0 != time_type {
                     re_log::warn!("Time source {time_source:?} has multiple time types");
                 }
-                Ok(&mut entry.into_mut().1)
+                &mut entry.into_mut().1
             }
         }
     }
@@ -138,41 +99,17 @@ impl DataStore {
             None
         };
 
-        let timeless = time_point.0.is_empty();
+        for (time_source, time_int) in &time_point.0 {
+            let store = self.entry(time_source, time_source.typ());
 
-        if timeless {
-            // Add it to all existing timelines:
-            for (_, timeline_store) in self.store_from_time_source.values_mut() {
-                insert_msg_into_timeline_store(
-                    timeline_store,
-                    data_path,
-                    msg_id,
-                    TimeInt::MIN.as_i64(),
-                    data,
-                    batch.as_ref(),
-                )?;
-            }
-
-            // Remember it in case we add more timelines in the future:
-            self.timeless_data.push(TimelessData {
-                data_path: data_path.clone(),
+            insert_msg_into_timeline_store(
+                store,
+                data_path,
                 msg_id,
-                data: data.clone(),
-                batch,
-            });
-        } else {
-            for (time_source, time_int) in &time_point.0 {
-                let store = self.entry(time_source, time_source.typ())?;
-
-                insert_msg_into_timeline_store(
-                    store,
-                    data_path,
-                    msg_id,
-                    time_int.as_i64(),
-                    data,
-                    batch.as_ref(),
-                )?;
-            }
+                time_int.as_i64(),
+                data,
+                batch.as_ref(),
+            )?;
         }
 
         Ok(())
