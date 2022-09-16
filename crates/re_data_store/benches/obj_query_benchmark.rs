@@ -114,7 +114,7 @@ fn batch_data_messages() -> Vec<DataMsg> {
 fn insert_data(data_messages: &[DataMsg]) -> DataStore {
     let mut store = DataStore::default();
     for msg in data_messages {
-        store.insert(msg).unwrap();
+        store.insert_data_msg(msg).unwrap();
     }
     store
 }

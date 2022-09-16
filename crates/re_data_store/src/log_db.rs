@@ -117,7 +117,7 @@ impl LogDb {
             );
         }
 
-        if let Err(err) = self.data_store.insert(msg) {
+        if let Err(err) = self.data_store.insert_data_msg(msg) {
             re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 

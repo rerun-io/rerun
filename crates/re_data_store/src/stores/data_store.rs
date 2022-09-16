@@ -64,7 +64,7 @@ impl DataStore {
         Some(field_store.query_field_to_datavec(time_query, None))
     }
 
-    pub fn insert(&mut self, data_msg: &DataMsg) -> Result<()> {
+    pub fn insert_data_msg(&mut self, data_msg: &DataMsg) -> Result<()> {
         crate::profile_function!();
 
         let DataMsg {
@@ -74,6 +74,16 @@ impl DataStore {
             data,
         } = data_msg;
 
+        self.insert_data(*msg_id, time_point, data_path, data)
+    }
+
+    pub fn insert_data(
+        &mut self,
+        msg_id: MsgId,
+        time_point: &TimePoint,
+        data_path: &DataPath,
+        data: &LoggedData,
+    ) -> Result<()> {
         self.register_obj_path(&data_path.obj_path);
 
         // We de-duplicate batches so we don't create one per timeline:
@@ -95,7 +105,7 @@ impl DataStore {
             insert_msg_into_timeline_store(
                 store,
                 data_path,
-                *msg_id,
+                msg_id,
                 time_int.as_i64(),
                 data,
                 batch.as_ref(),
