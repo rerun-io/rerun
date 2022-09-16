@@ -67,7 +67,15 @@ impl LogDb {
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
             LogMsg::TypeMsg(msg) => self.add_type_msg(msg),
-            LogMsg::DataMsg(msg) => self.add_data_msg(msg),
+            LogMsg::DataMsg(msg) => {
+                let DataMsg {
+                    msg_id,
+                    time_point,
+                    data_path,
+                    data,
+                } = msg;
+                self.add_data_msg(*msg_id, time_point, data_path, data);
+            }
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
@@ -98,37 +106,50 @@ impl LogDb {
         }
     }
 
-    fn add_data_msg(&mut self, msg: &DataMsg) {
+    fn add_data_msg(
+        &mut self,
+        msg_id: MsgId,
+        time_point: &TimePoint,
+        data_path: &DataPath,
+        data: &LoggedData,
+    ) {
         crate::profile_function!();
 
-        let obj_type_path = &msg.data_path.obj_path.obj_type_path();
-        let field_name = &msg.data_path.field_name;
-        if let Some(obj_type) = self.obj_types.get(obj_type_path) {
-            let valid_members = obj_type.members();
-            if !valid_members.contains(&field_name.as_str()) {
-                re_log::warn_once!(
+        // Validate:
+        {
+            let obj_type_path = &data_path.obj_path.obj_type_path();
+            let field_name = &data_path.field_name;
+            if let Some(obj_type) = self.obj_types.get(obj_type_path) {
+                let valid_members = obj_type.members();
+                if !valid_members.contains(&field_name.as_str()) {
+                    re_log::warn_once!(
                     "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
                     valid_members.iter().format(", ")
                 );
+                }
+            } else {
+                re_log::warn_once!(
+                    "Logging to {obj_type_path}.{field_name} without first registering object type"
+                );
             }
-        } else {
-            re_log::warn_once!(
-                "Logging to {obj_type_path}.{field_name} without first registering object type"
-            );
         }
 
-        if let Err(err) = self.data_store.insert(msg) {
+        if let Err(err) = self
+            .data_store
+            .insert_data(msg_id, time_point, data_path, data)
+        {
             re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 
-        self.time_points.insert(&msg.time_point);
+        self.time_points.insert(time_point);
 
-        self.data_tree.add_data_msg(msg);
+        self.data_tree
+            .add_data_msg(msg_id, time_point, data_path, data);
 
-        self.register_spaces(msg);
+        self.register_spaces(data);
     }
 
-    fn register_spaces(&mut self, msg: &DataMsg) {
+    fn register_spaces(&mut self, data: &LoggedData) {
         let mut register_space = |space: &ObjPath| {
             self.spaces
                 .entry(*space.hash())
@@ -137,7 +158,7 @@ impl LogDb {
 
         // This is a bit hacky, and I don't like it,
         // but we nned a single place to find all the spaces (ignoring time).
-        match &msg.data {
+        match data {
             LoggedData::Single(Data::Space(space)) | LoggedData::BatchSplat(Data::Space(space)) => {
                 register_space(space);
             }
@@ -195,38 +216,60 @@ impl ObjectTree {
         self.named_children.is_empty() && self.index_children.is_empty()
     }
 
-    pub fn add_data_msg(&mut self, msg: &DataMsg) {
+    pub fn add_data_msg(
+        &mut self,
+        msg_id: MsgId,
+        time_point: &TimePoint,
+        data_path: &DataPath,
+        data: &LoggedData,
+    ) {
         crate::profile_function!();
-        let obj_path = msg.data_path.obj_path.to_components();
-        self.add_path(obj_path.as_slice(), msg.data_path.field_name, msg);
+        let obj_path = data_path.obj_path.to_components();
+        self.add_path(
+            obj_path.as_slice(),
+            data_path.field_name,
+            msg_id,
+            time_point,
+            data,
+        );
     }
 
-    fn add_path(&mut self, path: &[ObjPathComp], field_name: FieldName, msg: &DataMsg) {
-        for (time_source, time_value) in &msg.time_point.0 {
+    fn add_path(
+        &mut self,
+        path: &[ObjPathComp],
+        field_name: FieldName,
+        msg_id: MsgId,
+        time_point: &TimePoint,
+        data: &LoggedData,
+    ) {
+        for (time_source, time_value) in &time_point.0 {
             self.prefix_times
                 .entry(*time_source)
                 .or_default()
                 .entry(*time_value)
                 .or_default()
-                .insert(msg.msg_id);
+                .insert(msg_id);
         }
 
         match path {
             [] => {
-                self.fields.entry(field_name).or_default().add(msg);
+                self.fields
+                    .entry(field_name)
+                    .or_default()
+                    .add(msg_id, time_point, data);
             }
             [first, rest @ ..] => match first {
                 ObjPathComp::Name(name) => {
                     self.named_children
                         .entry(*name)
                         .or_default()
-                        .add_path(rest, field_name, msg);
+                        .add_path(rest, field_name, msg_id, time_point, data);
                 }
                 ObjPathComp::Index(index) => {
                     self.index_children
                         .entry(index.clone())
                         .or_default()
-                        .add_path(rest, field_name, msg);
+                        .add_path(rest, field_name, msg_id, time_point, data);
                 }
             },
         }
@@ -244,20 +287,20 @@ pub struct DataColumns {
 }
 
 impl DataColumns {
-    pub fn add(&mut self, msg: &DataMsg) {
-        for (time_source, time_value) in &msg.time_point.0 {
+    pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: &LoggedData) {
+        for (time_source, time_value) in &time_point.0 {
             self.times
                 .entry(*time_source)
                 .or_default()
                 .entry(*time_value)
                 .or_default()
-                .insert(msg.msg_id);
+                .insert(msg_id);
         }
 
         self.per_type
-            .entry(msg.data.data_type())
+            .entry(data.data_type())
             .or_default()
-            .insert(msg.msg_id);
+            .insert(msg_id);
     }
 
     pub fn summary(&self) -> String {
