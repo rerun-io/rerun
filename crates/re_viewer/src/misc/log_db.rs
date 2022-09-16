@@ -6,7 +6,21 @@ use nohash_hasher::IntMap;
 use re_log_types::*;
 use re_string_interner::InternedString;
 
-use crate::misc::TimePoints;
+// ----------------------------------------------------------------------------
+
+/// An aggregate of [`TimePoint`]:s.
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
+
+impl TimePoints {
+    pub fn insert(&mut self, time_point: &TimePoint) {
+        for (time_source, value) in &time_point.0 {
+            self.0.entry(*time_source).or_default().insert(*value);
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
 #[derive(Default)]

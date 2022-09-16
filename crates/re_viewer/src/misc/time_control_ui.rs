@@ -4,7 +4,7 @@ use egui::NumExt as _;
 
 use re_log_types::*;
 
-use super::{time_control::*, TimePoints, TimeRangeF, TimeReal};
+use super::{log_db::TimePoints, time_control::*, TimeRangeF, TimeReal};
 
 impl TimeControl {
     pub fn time_source_selector_ui(&mut self, time_source_axes: &TimePoints, ui: &mut egui::Ui) {

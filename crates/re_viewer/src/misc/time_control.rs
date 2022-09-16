@@ -4,7 +4,7 @@ use egui::NumExt as _;
 use re_data_store::TimeQuery;
 use re_log_types::*;
 
-use super::{TimePoints, TimeRange, TimeRangeF, TimeReal};
+use super::{log_db::TimePoints, TimeRange, TimeRangeF, TimeReal};
 
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
