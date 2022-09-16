@@ -405,10 +405,15 @@ pub struct TimePoint(pub BTreeMap<TimeSource, TimeInt>);
 
 impl TimePoint {
     /// Logging to this time means the data will show upp in all timelines,
-    /// past and future. The time will be [`TimeInt::MIN`], meaning it will
+    /// past and future. The time will be [`TimeInt::BEGINNING`], meaning it will
     /// always be in range for any time query.
     pub fn timeless() -> Self {
         Self::default()
+    }
+
+    #[inline]
+    pub fn is_timeless(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
