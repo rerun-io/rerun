@@ -6,11 +6,25 @@ use nohash_hasher::IntMap;
 use re_log_types::*;
 use re_string_interner::InternedString;
 
-use crate::misc::TimePoints;
+// ----------------------------------------------------------------------------
+
+/// An aggregate of [`TimePoint`]:s.
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
+
+impl TimePoints {
+    pub fn insert(&mut self, time_point: &TimePoint) {
+        for (time_source, value) in &time_point.0 {
+            self.0.entry(*time_source).or_default().insert(*value);
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
 #[derive(Default)]
-pub(crate) struct LogDb {
+pub struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<MsgId>,
     log_messages: IntMap<MsgId, LogMsg>,
@@ -20,7 +34,7 @@ pub(crate) struct LogDb {
     pub obj_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
-    pub data_store: re_data_store::DataStore,
+    pub data_store: crate::DataStore,
 
     /// All known spaces
     spaces: IntMap<ObjPathHash, ObjPath>,
@@ -159,7 +173,7 @@ impl LogDb {
 
 /// Tree of data paths.
 #[derive(Default)]
-pub(crate) struct ObjectTree {
+pub struct ObjectTree {
     /// Children of type [`ObjPathComp::Name`].
     pub named_children: BTreeMap<InternedString, ObjectTree>,
 
@@ -223,7 +237,7 @@ impl ObjectTree {
 
 /// Column transform of [`Data`].
 #[derive(Default)]
-pub(crate) struct DataColumns {
+pub struct DataColumns {
     /// When do we have data?
     pub times: BTreeMap<TimeSource, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
     pub per_type: HashMap<DataType, BTreeSet<MsgId>>,

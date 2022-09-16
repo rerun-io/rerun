@@ -1,6 +1,7 @@
+use re_data_store::log_db::LogDb;
 use re_log_types::LogMsg;
 
-use crate::{data_ui::*, LogDb, Preview, Selection, ViewerContext};
+use crate::{data_ui::*, Preview, Selection, ViewerContext};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]

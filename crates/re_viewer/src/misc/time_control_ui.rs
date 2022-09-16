@@ -2,9 +2,10 @@ use std::collections::BTreeSet;
 
 use egui::NumExt as _;
 
+use re_data_store::log_db::TimePoints;
 use re_log_types::*;
 
-use super::{time_control::*, TimePoints, TimeRangeF, TimeReal};
+use super::{time_control::*, TimeRangeF, TimeReal};
 
 impl TimeControl {
     pub fn time_source_selector_ui(&mut self, time_source_axes: &TimePoints, ui: &mut egui::Ui) {
