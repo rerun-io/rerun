@@ -456,7 +456,12 @@ impl TimeInt {
     /// The beinning of time.
     ///
     /// Special value used for timeless data.
-    pub const MIN: TimeInt = TimeInt(i64::MIN);
+    ///
+    /// NOTE: this is not necessarily [`i64::MIN`].
+    // The reason we don't use i64::MIN us because we want some buffer
+    // when we do operations, so that we can pan to before
+    // the beginning of time in the viewer, for instance.
+    pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
 
     #[inline]
     pub fn as_i64(&self) -> i64 {
