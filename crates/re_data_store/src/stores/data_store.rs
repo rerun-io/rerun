@@ -251,11 +251,10 @@ impl TypeErasedBatch {
 #[test]
 fn test_timeless_data() {
     fn insert_timeless(store: &mut DataStore, data_path: &DataPath, what: &str) {
-        let time_point = TimePoint::default(); // timeless
         store
             .insert_data_msg(&DataMsg {
                 msg_id: MsgId::random(),
-                time_point,
+                time_point: TimePoint::timeless(),
                 data_path: data_path.clone(),
                 data: Data::String(what.into()).into(),
             })

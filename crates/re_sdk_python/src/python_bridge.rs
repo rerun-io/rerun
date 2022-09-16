@@ -330,10 +330,8 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) -> PyResult<()> {
     let space_obj_path = parse_obj_path(space_obj_path)?;
     sdk.register_type(space_obj_path.obj_type_path(), ObjectType::Space);
 
-    let time_point = ThreadInfo::thread_now();
-
     sdk.send_data(
-        &time_point,
+        &TimePoint::timeless(),
         (&space_obj_path, "up"),
         LoggedData::Single(Data::Vec3(up)),
     );

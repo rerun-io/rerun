@@ -403,6 +403,15 @@ impl std::hash::Hash for TimeSource {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(pub BTreeMap<TimeSource, TimeInt>);
 
+impl TimePoint {
+    /// Logging to this time means the data will show upp in all timelines,
+    /// past and future. The time will be [`TimeInt::MIN`], meaning it will
+    /// always be in range for any time query.
+    pub fn timeless() -> Self {
+        Self::default()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// The type of a [`TimeInt`].
