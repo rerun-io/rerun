@@ -240,7 +240,7 @@ pub struct DataMsg {
     ///
     /// If this is empty, the data is _timeless_.
     /// Timeless data will show up on all timelines, past and future,
-    /// and will hit all time queris. In other words, it is always there.
+    /// and will hit all time queries. In other words, it is always there.
     pub time_point: TimePoint,
 
     /// What the data is targeting.
@@ -398,7 +398,7 @@ impl std::hash::Hash for TimeSource {
 ///
 /// If this is empty, the data is _timeless_.
 /// Timeless data will show up on all timelines, past and future,
-/// and will hit all time queris. In other words, it is always there.
+/// and will hit all time queries. In other words, it is always there.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(pub BTreeMap<TimeSource, TimeInt>);
@@ -462,14 +462,14 @@ impl TimeType {
 pub struct TimeInt(i64);
 
 impl TimeInt {
-    /// The beinning of time.
+    /// The beginning of time.
     ///
     /// Special value used for timeless data.
     ///
     /// NOTE: this is not necessarily [`i64::MIN`].
-    // The reason we don't use i64::MIN us because we want some buffer
-    // when we do operations, so that we can pan to before
-    // the beginning of time in the viewer, for instance.
+    // The reason we don't use i64::MIN is because in the time panel we need
+    // to be able to pan to before the `TimeInt::BEGINNING`, and so we need
+    // a bit of leeway.
     pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
 
     #[inline]
