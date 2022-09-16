@@ -1,11 +1,11 @@
 use nohash_hasher::IntMap;
 
-use re_log_types::{
-    DataMsg, DataPath, Index, IndexHash, LoggedData, MsgId, ObjPath, ObjPathHash, TimeSource,
-    TimeType,
-};
+use re_log_types::*;
 
-use crate::{ArcBatch, BadBatchError, Batch, BatchOrSplat, Result, TimeLineStore};
+use crate::{
+    ArcBatch, BadBatchError, Batch, BatchOrSplat, FieldQueryOutput, Result, TimeLineStore,
+    TimeQuery,
+};
 
 /// Stores all timelines of all objects.
 #[derive(Default)]
@@ -35,11 +35,7 @@ impl DataStore {
         self.index_from_hash.get(index_hash)
     }
 
-    pub fn entry(
-        &mut self,
-        time_source: &TimeSource,
-        time_type: TimeType,
-    ) -> &mut TimeLineStore<i64> {
+    fn entry(&mut self, time_source: &TimeSource, time_type: TimeType) -> &mut TimeLineStore<i64> {
         match self.store_from_time_source.entry(*time_source) {
             std::collections::hash_map::Entry::Vacant(entry) => {
                 &mut entry.insert((time_type, TimeLineStore::default())).1
@@ -51,6 +47,21 @@ impl DataStore {
                 &mut entry.into_mut().1
             }
         }
+    }
+
+    /// Query a specific data path.
+    ///
+    /// Return `None` if there were no such timeline, object, or field.
+    pub fn query_data_path(
+        &self,
+        time_source: &TimeSource,
+        time_query: &TimeQuery<i64>,
+        data_path: &DataPath,
+    ) -> Option<Result<FieldQueryOutput<i64>>> {
+        let store = self.get(time_source)?;
+        let obj_store = store.get(&data_path.obj_path)?;
+        let field_store = obj_store.get(&data_path.field_name)?;
+        Some(field_store.query_field_to_datavec(time_query, None))
     }
 
     pub fn insert(&mut self, data_msg: &DataMsg) -> Result<()> {

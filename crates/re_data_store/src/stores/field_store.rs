@@ -6,6 +6,12 @@ use crate::{BatchOrSplat, Error, Result, TimeQuery};
 
 // ----------------------------------------------------------------------------
 
+/// Two equally long vectors.
+///
+/// First has time, message id, and the multi-index (if any).
+/// Second has the matching data.
+pub type FieldQueryOutput<Time> = (Vec<(Time, MsgId, Option<Index>)>, DataVec);
+
 /// Stores data for a specific [`re_log_types::FieldName`] of a specific [`ObjPath`] on a specific [`re_log_types::TimeSource`].
 pub struct FieldStore<Time> {
     data_store: Box<dyn std::any::Any>,
@@ -99,12 +105,11 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
     /// If `instance_index` is `Some`, only those instances that match will be returned.
     ///
     /// Returns vectors of equal length.
-    #[allow(clippy::type_complexity)]
     pub fn query_field_to_datavec(
         &self,
         time_query: &TimeQuery<Time>,
         instance_index: Option<&Index>,
-    ) -> Result<(Vec<(Time, MsgId, Option<Index>)>, DataVec)> {
+    ) -> Result<FieldQueryOutput<Time>> {
         macro_rules! handle_type(
             ($enum_variant: ident, $typ: ty) => {{
                 let mut time_msgid_index = vec![];

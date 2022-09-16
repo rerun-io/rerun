@@ -78,14 +78,14 @@ pub(crate) fn view_data(
     ui: &mut egui::Ui,
     data_path: &DataPath,
 ) -> Option<()> {
-    let obj_path = data_path.obj_path();
-    let field_name = data_path.field_name();
-
-    let store = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let time_source = ctx.rec_cfg.time_ctrl.source();
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
-    let obj_store = store.get(obj_path)?;
-    let field_store = obj_store.get(field_name)?;
-    match field_store.query_field_to_datavec(&time_query, None) {
+
+    match ctx
+        .log_db
+        .data_store
+        .query_data_path(time_source, &time_query, data_path)?
+    {
         Ok((time_msgid_index, data_vec)) => {
             if data_vec.len() == 1 {
                 let data = data_vec.last().unwrap();
