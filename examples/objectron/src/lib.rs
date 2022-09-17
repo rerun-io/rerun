@@ -75,13 +75,8 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
 
 fn configure_world_space(logger: &Logger<'_>) {
     let world_space = ObjPath::from("world");
-    // TODO(emilk): what time point should we use?
-    let time_point = time_point([
-        ("frame", TimeType::Sequence, 0.into()),
-        ("time", TimeType::Time, 0.into()),
-    ]);
     logger.log(data_msg(
-        &time_point,
+        &TimePoint::timeless(),
         world_space,
         "up",
         Data::Vec3([0.0, 1.0, 0.0]),
@@ -101,11 +96,7 @@ fn log_annotation_pbdata(
     let image_space = ObjPath::from("image");
 
     for object in &sequence.objects {
-        // TODO(emilk): what time point should we use?
-        let time_point = time_point([
-            ("frame", TimeType::Sequence, 0.into()),
-            ("time", TimeType::Time, 0.into()),
-        ]);
+        let time_point = TimePoint::timeless(); // Objects don't come with a time
 
         let data_path = obj_path_vec!("objects", Index::Integer(object.id as _));
 
