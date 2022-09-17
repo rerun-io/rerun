@@ -41,6 +41,9 @@ for cam in cameras:
         rerun.log_rect(f'camera/"{cam.id}"/detection/#{i}', detection.top_left, detection.bottom_right)
 ```
 
+## Timeless data
+The logging functions all have `timeless = False` parameters. Timeless objects belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer. This is useful for object that aren't part of normal data capture, but set the scene for how they are shown. For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be timeless.
+
 
 ## Inline viewer
 If you prefer, you can open the viewer directly from Python (blocking the Python process).
