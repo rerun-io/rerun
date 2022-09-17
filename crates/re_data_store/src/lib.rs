@@ -65,7 +65,11 @@ pub enum TimeQuery<Time> {
     /// Get the latest version of the data available at this time.
     LatestAt(Time),
 
-    /// Get all the data within this time interval.
+    /// Get all the data within this time interval, plus the latest
+    /// one before the start of the interval.
+    ///
+    /// Motivation: all data is considered alive untl the next logging
+    /// to the same data path.
     Range(std::ops::RangeInclusive<Time>),
 }
 
