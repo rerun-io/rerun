@@ -11,14 +11,64 @@ fn latest_at<'data, Time: Copy + Ord, T>(
     data_over_time.range(..=query_time).rev().next()
 }
 
-fn values_in_range<'data, Time: Copy + Ord, T>(
+struct OnePastEnd<'d, Time, T, I>
+where
+    Time: 'static + Copy + Ord,
+    T: 'static,
+    I: Iterator<Item = (&'d Time, &'d T)>,
+{
+    start_time: Time,
+    has_passed_start: bool,
+    iter: I,
+}
+
+impl<'d, Time, I, T> Iterator for OnePastEnd<'d, Time, T, I>
+where
+    Time: 'static + Copy + Ord,
+    T: 'static,
+    I: Iterator<Item = (&'d Time, &'d T)>,
+{
+    type Item = (&'d Time, &'d T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.has_passed_start {
+            None
+        } else {
+            let (time, val) = self.iter.next()?;
+            self.has_passed_start = *time <= self.start_time;
+            Some((time, val))
+        }
+    }
+}
+
+fn values_in_range<'data, Time: 'static + Copy + Ord, T: 'static>(
     data_over_time: &'data BTreeMap<Time, T>,
     time_range: &'_ std::ops::RangeInclusive<Time>,
 ) -> impl Iterator<Item = (&'data Time, &'data T)> {
-    data_over_time.range(time_range.start()..=time_range.end())
+    let iter = data_over_time.range(..=time_range.end()).rev();
+    OnePastEnd {
+        iter,
+        start_time: *time_range.start(),
+        has_passed_start: false,
+    }
 }
 
-pub(crate) fn query<'data, Time: Copy + Ord, T>(
+#[test]
+fn test_values_in_range() {
+    use itertools::Itertools as _;
+    let map = BTreeMap::from([(0, 0.0), (10, 10.0), (20, 20.0), (30, 30.0), (40, 40.0)]);
+
+    let q = |range| {
+        let mut v = values_in_range(&map, &range).collect_vec();
+        v.sort_by_key(|(time, _)| *time);
+        v
+    };
+
+    assert_eq!(q(10..=30), vec![(&10, &10.0), (&20, &20.0), (&30, &30.0)]);
+    assert_eq!(q(15..=35), vec![(&10, &10.0), (&20, &20.0), (&30, &30.0)]);
+}
+
+pub(crate) fn query<'data, Time: 'static + Copy + Ord, T: 'static>(
     data_over_time: &'data BTreeMap<Time, T>,
     time_query: &TimeQuery<Time>,
     mut visit: impl FnMut(&Time, &'data T),
@@ -26,7 +76,7 @@ pub(crate) fn query<'data, Time: Copy + Ord, T>(
     match time_query {
         TimeQuery::LatestAt(query_time) => {
             if let Some((_data_time, data)) = latest_at(data_over_time, query_time) {
-                // we use `query_time` here instead of a`data_time`
+                // we use `query_time` here instead of `data_time`
                 // because we want to also query for the latest color, not the latest color at the time of the position.
                 visit(query_time, data);
             }

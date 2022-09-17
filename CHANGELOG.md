@@ -2,6 +2,8 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-09-17: Time selection will now also include the latest data before the selection ([#98](https://github.com/rerun-io/rerun/pull/98)).
+* 2022-09-10: Fix toggling visibility of point clouds ([#88](https://github.com/rerun-io/rerun/pull/88)).
 * 2022-09-07: Python SDK: add `log_rects` ([#86](https://github.com/rerun-io/rerun/pull/86)).
 * 2022-09-07: Python SDK: `log_rect` has changed signature to allow you to select your preferred rectangle format ([#85](https://github.com/rerun-io/rerun/pull/85)).
 * 2022-09-06: Viewer: rearrange different space views by resizing and drag-dropping tabs ([#82](https://github.com/rerun-io/rerun/pull/82)).
