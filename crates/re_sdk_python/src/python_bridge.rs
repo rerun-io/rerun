@@ -169,6 +169,14 @@ fn vec_from_np_array<T: numpy::Element, D: numpy::ndarray::Dimension>(
     }
 }
 
+fn time(timeless: bool) -> TimePoint {
+    if timeless {
+        TimePoint::timeless()
+    } else {
+        ThreadInfo::thread_now()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[pyfunction]
@@ -330,10 +338,8 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) -> PyResult<()> {
     let space_obj_path = parse_obj_path(space_obj_path)?;
     sdk.register_type(space_obj_path.obj_type_path(), ObjectType::Space);
 
-    let time_point = ThreadInfo::thread_now();
-
     sdk.send_data(
-        &time_point,
+        &TimePoint::timeless(),
         (&space_obj_path, "up"),
         LoggedData::Single(Data::Vec3(up)),
     );
@@ -362,6 +368,7 @@ fn log_camera(
     rotation_q: re_log_types::Quaternion,
     position: [f32; 3],
     camera_space_convention: &str,
+    timeless: bool,
     space: Option<String>,
     target_space: Option<String>,
 ) -> PyResult<()> {
@@ -397,7 +404,7 @@ fn log_camera(
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Camera);
 
-    let time_point = ThreadInfo::thread_now();
+    let time_point = time(timeless);
 
     sdk.send_data(
         &time_point,
@@ -469,6 +476,7 @@ fn log_rect(
     r: [f32; 4],
     color: Option<Vec<u8>>,
     label: Option<String>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
@@ -479,7 +487,7 @@ fn log_rect(
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
-    let time_point = ThreadInfo::thread_now();
+    let time_point = time(timeless);
 
     sdk.send_data(
         &time_point,
@@ -521,6 +529,7 @@ fn log_rects(
     rects: numpy::PyReadonlyArray2<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `rects.empty()`, beacause logging
@@ -545,7 +554,7 @@ fn log_rects(
 
     let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
 
-    let time_point = ThreadInfo::thread_now();
+    let time_point = time(timeless);
 
     if !colors.is_empty() {
         let color_data = color_batch(&indices, colors)?;
@@ -616,6 +625,7 @@ fn log_points(
     obj_path: &str,
     positions: numpy::PyReadonlyArray2<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `positions.empty()`, beacause logging
@@ -646,7 +656,7 @@ fn log_points(
 
     let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
 
-    let time_point = ThreadInfo::thread_now();
+    let time_point = time(timeless);
 
     if !colors.is_empty() {
         let color_data = color_batch(&indices, colors)?;
@@ -748,6 +758,7 @@ fn log_path(
     positions: numpy::PyReadonlyArray2<'_, f32>,
     stroke_width: Option<f32>,
     color: Option<Vec<u8>>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
     if !matches!(positions.shape(), [_, 3]) {
@@ -762,7 +773,7 @@ fn log_path(
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Path3D);
 
-    let time_point = ThreadInfo::thread_now();
+    let time_point = time(timeless);
 
     let positions = pod_collect_to_vec(&vec_from_np_array(&positions));
 
@@ -805,6 +816,7 @@ fn log_line_segments(
     positions: numpy::PyReadonlyArray2<'_, f32>,
     stroke_width: Option<f32>,
     color: Option<Vec<u8>>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
     let num_points = positions.shape()[0];
@@ -845,7 +857,7 @@ fn log_line_segments(
     };
     sdk.register_type(obj_path.obj_type_path(), obj_type);
 
-    let time_point = ThreadInfo::thread_now();
+    let time_point = time(timeless);
 
     sdk.send_data(
         &time_point,
@@ -887,9 +899,10 @@ fn log_tensor_u8(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, u8>,
     meter: Option<f32>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, space)
+    log_tensor(obj_path, img, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -899,9 +912,10 @@ fn log_tensor_u16(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, u16>,
     meter: Option<f32>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, space)
+    log_tensor(obj_path, img, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -911,9 +925,10 @@ fn log_tensor_f32(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
     meter: Option<f32>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, space)
+    log_tensor(obj_path, img, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -921,6 +936,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, T>,
     meter: Option<f32>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -928,7 +944,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
-    let time_point = ThreadInfo::thread_now();
+    let time_point = time(timeless);
 
     sdk.send_data(
         &time_point,
@@ -974,6 +990,7 @@ fn log_mesh_file(
     mesh_format: &str,
     bytes: &[u8],
     transform: numpy::PyReadonlyArray2<'_, f32>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
@@ -1018,7 +1035,7 @@ fn log_mesh_file(
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
 
-    let time_point = ThreadInfo::thread_now();
+    let time_point = time(timeless);
 
     sdk.send_data(
         &time_point,

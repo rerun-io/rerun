@@ -20,6 +20,9 @@ def log_dummy_data(args):
     """Log a few frames of generated dummy data to show how the Rerun SDK is used."""
     NUM_FRAMES = 40
 
+    # Set our preferred up-axis on the space that we will log the points to:
+    rerun.set_space_up("projected_space", [0, -1, 0])
+
     for sample in generate_dummy_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a "time source" called `frame_nr`.
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
@@ -31,9 +34,7 @@ def log_dummy_data(args):
         rerun.log_rect("bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
 
         # Lets log the projected points into a separate "space", called 'projected_space'.
-        # We also set its up-axis.
         # The default spaces are "2D" and "3D" (based on what you log).
-        rerun.set_space_up("projected_space", [0, -1, 0])
         rerun.log_points("points", sample.point_cloud, space="projected_space")
 
         rerun.log_camera("rgbd_camera",

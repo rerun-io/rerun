@@ -60,10 +60,8 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
 }
 
 fn configure_world_space(logger: &Logger<'_>) {
-    // TODO(emilk): what time point should we use?
-    let time_point = time_point([("time", TimeType::Time, 0.into())]);
     logger.log(data_msg(
-        &time_point,
+        &TimePoint::timeless(),
         ObjPath::from("world"),
         "up",
         Data::Vec3([0.0, -1.0, 0.0]),
@@ -85,11 +83,8 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
     let points_obj_path = obj_path_vec!("points");
 
     {
-        // TODO(emilk): better way to do "forever and always"
-        let time_point = time_point([("time", TimeType::Time, 0.into())]);
-
         logger.log(data_msg(
-            &time_point,
+            &TimePoint::timeless(),
             points_obj_path.clone(),
             "space",
             LoggedData::BatchSplat(Data::Space(ObjPath::from("world"))),
@@ -97,7 +92,7 @@ fn log_dataset_zip(path: &Path, logger: &Logger<'_>) {
 
         // TODO(emilk): base color on depth?
         logger.log(data_msg(
-            &time_point,
+            &TimePoint::timeless(),
             points_obj_path.clone(),
             "color",
             LoggedData::BatchSplat(Data::Color([255_u8; 4])),

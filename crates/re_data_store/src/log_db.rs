@@ -12,14 +12,6 @@ use re_string_interner::InternedString;
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
 
-impl TimePoints {
-    pub fn insert(&mut self, time_point: &TimePoint) {
-        for (time_source, value) in &time_point.0 {
-            self.0.entry(*time_source).or_default().insert(*value);
-        }
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
@@ -28,6 +20,11 @@ pub struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<MsgId>,
     log_messages: IntMap<MsgId, LogMsg>,
+
+    /// Data that was logged with [`TimePoint::timeless`].
+    /// We need to re-insert those in any new timelines
+    /// that are created after they were logged.
+    timeless_message_ids: Vec<MsgId>,
 
     recording_info: Option<RecordingInfo>,
 
@@ -115,6 +112,27 @@ impl LogDb {
     ) {
         crate::profile_function!();
 
+        if time_point.is_timeless() {
+            // Timeless data should be added to all existing timelines,
+            // as well to all future timelines,
+            // so we special-case it here.
+            // See https://linear.app/rerun/issue/PRO-97
+
+            // Remember to add it to future timelines:
+            self.timeless_message_ids.push(msg_id);
+
+            if !self.time_points.0.is_empty() {
+                // Add to existing timelines (if any):
+                let mut time_point = TimePoint::default();
+                for &time_source in self.time_points.0.keys() {
+                    time_point.0.insert(time_source, TimeInt::BEGINNING);
+                }
+                self.add_data_msg(msg_id, &time_point, data_path, data);
+            }
+
+            return; // done
+        }
+
         // Validate:
         {
             let obj_type_path = &data_path.obj_path.obj_type_path();
@@ -141,12 +159,39 @@ impl LogDb {
             re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 
-        self.time_points.insert(time_point);
-
         self.data_tree
             .add_data_msg(msg_id, time_point, data_path, data);
 
         self.register_spaces(data);
+
+        {
+            let mut new_timelines = TimePoint::default();
+
+            for (time_source, value) in &time_point.0 {
+                match self.time_points.0.entry(*time_source) {
+                    std::collections::btree_map::Entry::Vacant(entry) => {
+                        re_log::debug!("New timeline added: {time_source:?}");
+                        new_timelines.0.insert(*time_source, TimeInt::BEGINNING);
+                        entry.insert(Default::default())
+                    }
+                    std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
+                }
+                .insert(*value);
+            }
+
+            if !new_timelines.0.is_empty() {
+                let timeless_data_messages = self
+                    .timeless_message_ids
+                    .iter()
+                    .filter_map(|msg_id| self.log_messages.get(msg_id).cloned())
+                    .collect_vec();
+                for msg in &timeless_data_messages {
+                    if let LogMsg::DataMsg(msg) = msg {
+                        self.add_data_msg(msg.msg_id, &new_timelines, &msg.data_path, &msg.data);
+                    }
+                }
+            }
+        }
     }
 
     fn register_spaces(&mut self, data: &LoggedData) {
