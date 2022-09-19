@@ -1,9 +1,7 @@
 [workspace]
 resolver = "2"
-members = [
-    "crates/*",
-    "examples/*",
-]
+members = ["crates/*", "examples/*"]
+exclude = ["examples/nyud"]
 
 
 [profile.dev]

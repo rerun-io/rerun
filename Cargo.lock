@@ -2210,28 +2210,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nyud"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "clap 3.2.20",
- "glam",
- "image",
- "itertools",
- "mimalloc",
- "re_log",
- "re_log_types",
- "re_viewer",
- "re_web_server",
- "re_ws_comms",
- "tokio",
- "tracing-subscriber",
- "webbrowser",
- "zip",
-]
-
-[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4218,18 +4196,6 @@ dependencies = [
  "proc-macro2",
  "syn",
  "synstructure",
-]
-
-[[package]]
-name = "zip"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf225bcf73bb52cbb496e70475c7bd7a3f769df699c0020f6c7bd9a96dcf0b8d"
-dependencies = [
- "byteorder",
- "crc32fast",
- "crossbeam-utils",
- "flate2",
 ]
 
 [[package]]
