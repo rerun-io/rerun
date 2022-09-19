@@ -125,6 +125,8 @@ def set_time_sequence(time_source: str, sequence: Optional[int]):
     For instance: `set_time_sequence("frame_nr", frame_nr)`.
 
     You can remove a time source again using `set_time_sequence("frame_nr", None)`.
+
+    There is no requirement of monoticity. You can move the time backwards if you like.
     """
     return rerun_rs.set_time_sequence(time_source, sequence)
 
@@ -144,6 +146,8 @@ def set_time_seconds(time_source: str, seconds: Optional[float]):
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
     The rerun_sdk has a built-in time which is `log_time`, and is logged as seconds since unix epoch.
+
+    There is no requirement of monoticity. You can move the time backwards if you like.
     """
     return rerun_rs.set_time_seconds(time_source, seconds)
 
@@ -163,6 +167,8 @@ def set_time_nanos(time_source: str, nanos: Optional[int]):
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
     The rerun_sdk has a built-in time which is `log_time`, and is logged as nanos since unix epoch.
+
+    There is no requirement of monoticity. You can move the time backwards if you like.
     """
     return rerun_rs.set_time_nanos(time_source, nanos)
 
