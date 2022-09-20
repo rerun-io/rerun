@@ -16,8 +16,8 @@ members = [
 debug = true
 
 [patch.crates-io]
-# 2022-09-06: make sure app state is saved on Cmd-Q (https://github.com/emilk/egui/pull/2013)
-eframe      = { git = "https://github.com/emilk/egui", rev = "5500895845e4dc1cb1d702d8334c45bc8a525c4e" }
-egui        = { git = "https://github.com/emilk/egui", rev = "5500895845e4dc1cb1d702d8334c45bc8a525c4e" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "5500895845e4dc1cb1d702d8334c45bc8a525c4e" }
-egui_glow   = { git = "https://github.com/emilk/egui", rev = "5500895845e4dc1cb1d702d8334c45bc8a525c4e" }
+# 2022-09-20
+eframe      = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
+egui        = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
+egui_glow   = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
