@@ -73,7 +73,7 @@ def log_image(path: str):
 def log_camera(cam: ARCamera):
     world_from_cam = np.asarray(cam.transform).reshape((4, 4)).T
     translation = world_from_cam[3][:3]
-    intrinsics = np.asarray(cam.intrinsics).reshape((3, 3)).T
+    intrinsics = np.asarray(cam.intrinsics).reshape((3, 3))
     (w, h) = (cam.image_resolution_width, cam.image_resolution_height)
 
     from scipy.spatial.transform import Rotation as R
@@ -88,7 +88,6 @@ def log_camera(cam: ARCamera):
     rot = rot * axis
     (w, h) = (h, w)
 
-    ## TODO: something fishy going on with those quaternions
     rerun.log_camera("camera",
                      resolution=[w, h],
                      intrinsics=intrinsics,
@@ -162,12 +161,10 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             path = f"objects/{obj_ann.object_id}"
 
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
-            keypoint_pos2s = [[kp.point_2d.x, kp.point_2d.y] for kp in obj_ann.keypoints]
-            ## TODO: what should we do with this?
-            ## TODO(emilk): remove hack
-            keypoint_pos2s = [[p[0] * 1440.0, p[1] * 1920.0] for p in keypoint_pos2s]
-
-            # print(keypoint_pos2s)
+            keypoint_pos2s = np.array([[kp.point_2d.x, kp.point_2d.y]
+                                        for kp in obj_ann.keypoints])
+            ## NOTE: These are normalized points, so we need to bring them back to image space
+            keypoint_pos2s *= [1440.0, 1920.0]
 
             if len(keypoint_pos2s) == 9:
                 path = f"{path}/bbox2d"
