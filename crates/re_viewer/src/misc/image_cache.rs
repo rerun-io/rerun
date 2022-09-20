@@ -6,38 +6,97 @@ use re_log_types::*;
 
 #[derive(Default)]
 pub struct ImageCache {
-    images: nohash_hasher::IntMap<MsgId, (DynamicImage, RetainedImage)>,
+    images: nohash_hasher::IntMap<MsgId, CachedImage>,
+    memory_used: u64,
+    generation: u64,
 }
 
 impl ImageCache {
-    pub fn get_pair(&mut self, msg_id: &MsgId, tensor: &Tensor) -> &(DynamicImage, RetainedImage) {
-        self.images
-            .entry(*msg_id)
-            .or_insert_with(|| tensor_to_image_pair(format!("{msg_id:?}"), tensor))
-        // TODO(emilk): better debug name
+    pub fn get_pair(&mut self, msg_id: &MsgId, tensor: &Tensor) -> (&DynamicImage, &RetainedImage) {
+        let ci = self.images.entry(*msg_id).or_insert_with(|| {
+            // TODO(emilk): proper debug name for images
+            let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor);
+            self.memory_used += ci.memory_used;
+            ci
+        });
+        ci.last_use_generation = self.generation;
+        (&ci.dynamic_img, &ci.retained_img)
     }
 
     pub fn get(&mut self, msg_id: &MsgId, tensor: &Tensor) -> &RetainedImage {
-        &self.get_pair(msg_id, tensor).1
+        self.get_pair(msg_id, tensor).1
     }
 
-    // pub fn get_dynamic_image(&mut self, msg_id: &MsgId, image: &Image) -> &DynamicImage {
-    //     &self.get_pair(msg_id, image).0
-    // }
+    /// Call once per frame to (potentially) flush the cache.
+    pub fn new_frame(&mut self, max_memory_use: u64) {
+        if self.memory_used > max_memory_use {
+            let before = self.memory_used;
+            self.flush();
+            re_log::debug!(
+                "Flushed image cache. Before: {:.2} GB. After: {:.2} GB",
+                before as f64 / 1e9,
+                self.memory_used as f64 / 1e9,
+            );
+        }
+
+        self.generation += 1;
+    }
+
+    fn flush(&mut self) {
+        crate::profile_function!();
+        // Very agressively flush everything not used in this frame
+        self.images.retain(|_, ci| {
+            let retain = ci.last_use_generation == self.generation;
+            if !retain {
+                self.memory_used -= ci.memory_used;
+            }
+            retain
+        });
+    }
 }
 
-fn tensor_to_image_pair(debug_name: String, tensor: &Tensor) -> (DynamicImage, RetainedImage) {
-    crate::profile_function!();
-    let dynamic_image = match tensor_to_dynamic_image(tensor) {
-        Ok(dynamic_image) => dynamic_image,
-        Err(err) => {
-            re_log::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
-            DynamicImage::ImageRgb8(image::RgbImage::from_pixel(1, 1, image::Rgb([255, 0, 255])))
+struct CachedImage {
+    /// For egui
+    retained_img: RetainedImage,
+
+    /// For easily zooming into it in the UI
+    dynamic_img: DynamicImage,
+
+    /// Total memory used by this image.
+    memory_used: u64,
+
+    /// When [`ImageCache::generation`] was we last used?
+    last_use_generation: u64,
+}
+
+impl CachedImage {
+    fn from_tensor(debug_name: String, tensor: &Tensor) -> Self {
+        crate::profile_function!();
+        let dynamic_img = match tensor_to_dynamic_image(tensor) {
+            Ok(dynamic_image) => dynamic_image,
+            Err(err) => {
+                re_log::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
+                DynamicImage::ImageRgb8(image::RgbImage::from_pixel(
+                    1,
+                    1,
+                    image::Rgb([255, 0, 255]),
+                ))
+            }
+        };
+        let egui_color_image = dynamic_image_to_egui_color_image(&dynamic_img);
+
+        let memory_used = egui_color_image.pixels.len() * std::mem::size_of::<egui::Color32>()
+            + dynamic_img.as_bytes().len();
+
+        let retained_img = RetainedImage::from_color_image(debug_name, egui_color_image);
+
+        Self {
+            dynamic_img,
+            retained_img,
+            memory_used: memory_used as u64,
+            last_use_generation: 0,
         }
-    };
-    let egui_color_image = dynamic_image_to_egui_color_image(&dynamic_image);
-    let retrained_iamge = RetainedImage::from_color_image(debug_name, egui_color_image);
-    (dynamic_image, retrained_iamge)
+    }
 }
 
 fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
