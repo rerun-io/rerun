@@ -76,11 +76,8 @@ impl CachedImage {
             Ok(dynamic_image) => dynamic_image,
             Err(err) => {
                 re_log::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
-                DynamicImage::ImageRgb8(image::RgbImage::from_pixel(
-                    1,
-                    1,
-                    image::Rgb([255, 0, 255]),
-                ))
+                let error_img = image::RgbImage::from_pixel(1, 1, image::Rgb([255, 0, 255]));
+                DynamicImage::ImageRgb8(error_img)
             }
         };
         let egui_color_image = dynamic_image_to_egui_color_image(&dynamic_img);
