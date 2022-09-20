@@ -1,26 +1,38 @@
 #!/usr/bin/env python3
 
-"""Example of using the Rerun SDK to log the Objectron dataset."""
+"""
+Example of using the Rerun SDK to log the Objectron dataset.
+
+
+Setup:
+```sh
+(cd examples/objectron && ./setup.sh)
+```
+
+Run:
+```sh
+## assuming your virtual env is up
+python3 examples/objectron/main.py examples/objectron/dataset/bike/batch-8/16/
+```
+"""
 
 import argparse
 import math
-import numpy as np
 import os
+import sys
 
-from pathlib import Path
-from typing import List
-
+import numpy as np
 import rerun_sdk as rerun
 
-from proto.objectron.proto import ARFrame, ARCamera, ARPointCloud, Sequence, Object, ObjectType, FrameAnnotation
+from pathlib import Path
+from typing import List, Final
 
-## TODO: how does all of this fits in John's work on CI, autofmt and stuff?
+from proto.objectron.proto import \
+    ARFrame, ARCamera, ARPointCloud, Sequence, Object, ObjectType, FrameAnnotation
+
+IMAGE_RESOLUTION: Final = (1440, 1920)
 
 ## ---
-
-def relpath(path: Path):
-    return os.path.join(os.path.abspath(os.path.dirname(__file__)), path)
-
 
 def log_dir(dirpath: Path, nb_frames: int):
     rerun.set_space_up("world", [0, 1, 0])
@@ -30,7 +42,7 @@ def log_dir(dirpath: Path, nb_frames: int):
 ## --- geometry ---
 
 def log_geometry(dirpath: Path, nb_frames: int) -> List[float]:
-    path = os.path.join(relpath(dirpath), 'geometry.pbdata')
+    path = os.path.join(dirpath, 'geometry.pbdata')
     print(f"logging geometry: {path}")
 
     frame_idx = 0
@@ -59,15 +71,14 @@ def log_geometry(dirpath: Path, nb_frames: int) -> List[float]:
 
 
 def log_image(path: str):
+    ## TODO(cmc): reading the image seems to be catastrophically slow for some reason?
     print(f"logging image: {path}")
 
     from PIL import Image
-
-    ## TODO: reading the image seems to be ## catastrophically slow for some reason?
     img = Image.open(path)
     assert img.mode == 'RGB'
 
-    rerun.log_image("video", np.array(img), space="image")
+    rerun.log_image("video", np.asarray(img), space="image")
 
 
 def log_camera(cam: ARCamera):
@@ -78,13 +89,13 @@ def log_camera(cam: ARCamera):
 
     from scipy.spatial.transform import Rotation as R
     rot = R.from_matrix(world_from_cam[0:3,][..., 0:3])
-    ## TODO: not sure why its last component is incorrectly negated?
+    ## TODO(cmc): not sure why its last component is incorrectly negated?
     rot = R.from_quat(rot.as_quat() * [1.0, 1.0, 1.0, -1.0])
 
     ## Because the dataset was collected in portrait:
     swizzle_x_y = np.asarray([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
     intrinsics = swizzle_x_y.dot(intrinsics.dot(swizzle_x_y))
-    axis = R.from_rotvec((math.tau / 4.0) * np.array([0.0, 0.0, 1.0]))
+    axis = R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
     rot = rot * axis
     (w, h) = (h, w)
 
@@ -101,11 +112,11 @@ def log_camera(cam: ARCamera):
 def log_point_cloud(point_cloud: ARPointCloud):
     count = point_cloud.count
 
-    ## TODO: that would be ideal, but labeling in batches is not supported for now
-    # points = np.array([[p.x, p.y, p.z] for p in point_cloud.point])
+    ## TODO(PRO-144): that would be ideal, but labeling in batches is not supported for now
+    # points = [[p.x, p.y, p.z] for p in point_cloud.point]
     # rerun.log_points("points",
     #                  points,
-    #                  colors=np.array([255, 255, 255, 255]),
+    #                  colors=np.asarray([255, 255, 255, 255]),
     #                  space="world")
 
     for i in range(count):
@@ -114,15 +125,15 @@ def log_point_cloud(point_cloud: ARPointCloud):
         path = f"points/{ident}"
 
         rerun.log_points(path,
-                         np.array([[point.x, point.y, point.z]]),
-                         colors=np.array([255, 255, 255, 255]),
+                         [[point.x, point.y, point.z]],
+                         colors=np.asarray([255, 255, 255, 255]),
                          space="world")
 
 
 ## --- annotations ---
 
 def log_annotations(dirpath: Path, frame_times: List[float]):
-    path = os.path.join(relpath(dirpath), 'annotation.pbdata')
+    path = os.path.join(dirpath, 'annotation.pbdata')
     print(f"logging annotations: {path}")
 
     data = Path(path).read_bytes()
@@ -135,7 +146,7 @@ def log_annotations(dirpath: Path, frame_times: List[float]):
 def log_objects(objects: List[Object]):
     for obj in objects:
         if obj.type != ObjectType.BOUNDING_BOX:
-            ## TODO: error logging in python?
+            ## TODO(cmc): error logging in python?
             print(f"err: object type not supported: {obj.type}")
             continue
 
@@ -144,7 +155,7 @@ def log_objects(objects: List[Object]):
         trans = np.asarray(obj.translation)
         half_size = np.asarray(obj.scale)
 
-        ## TODO: implement support 3D bboxes first
+        ## TODO(PRO-104): gotta implement support for 3D bboxes first
 
 
 def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]):
@@ -161,57 +172,55 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             path = f"objects/{obj_ann.object_id}"
 
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
-            keypoint_pos2s = np.array([[kp.point_2d.x, kp.point_2d.y]
+            keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y]
                                         for kp in obj_ann.keypoints])
             ## NOTE: These are normalized points, so we need to bring them back to image space
-            keypoint_pos2s *= [1440.0, 1920.0]
+            keypoint_pos2s *= IMAGE_RESOLUTION
 
             if len(keypoint_pos2s) == 9:
                 path = f"{path}/bbox2d"
-                ## NOTE: since we don't yet support projecting arbitrary 3D stuff onto 2D views,
-                ## we manually draw a 3D bounding box by rendering line segmnents using the
+                ## NOTE: we don't yet support projecting arbitrary 3D stuff onto 2D views, so
+                ## we manually render a 3D bounding box by drawing line segmnents using the
                 ## already projected coordinates.
-                ## Try commenting 2 out of the 3 blocks if this doesn't make sense, that'll make
-                ## everything clearer.
+                ## Try commenting 2 out of the 3 blocks and running the whole thing again if
+                ## this doesn't make sense, that'll make everything clearer.
                 ##
-                ## TODO: replace with with native support for 3D-to-2D projection.
-                segments = np.array([
-                    keypoint_pos2s[1], keypoint_pos2s[2],
-                    keypoint_pos2s[1], keypoint_pos2s[3],
-                    keypoint_pos2s[4], keypoint_pos2s[2],
-                    keypoint_pos2s[4], keypoint_pos2s[3],
+                ## TODO: replace once we can project 3D bboxes on 2D views
+                segments = [keypoint_pos2s[1], keypoint_pos2s[2],
+                            keypoint_pos2s[1], keypoint_pos2s[3],
+                            keypoint_pos2s[4], keypoint_pos2s[2],
+                            keypoint_pos2s[4], keypoint_pos2s[3],
 
-                    keypoint_pos2s[5], keypoint_pos2s[6],
-                    keypoint_pos2s[5], keypoint_pos2s[7],
-                    keypoint_pos2s[8], keypoint_pos2s[6],
-                    keypoint_pos2s[8], keypoint_pos2s[7],
+                            keypoint_pos2s[5], keypoint_pos2s[6],
+                            keypoint_pos2s[5], keypoint_pos2s[7],
+                            keypoint_pos2s[8], keypoint_pos2s[6],
+                            keypoint_pos2s[8], keypoint_pos2s[7],
 
-                    keypoint_pos2s[1], keypoint_pos2s[5],
-                    keypoint_pos2s[2], keypoint_pos2s[6],
-                    keypoint_pos2s[3], keypoint_pos2s[7],
-                    keypoint_pos2s[4], keypoint_pos2s[8],
-                ])
+                            keypoint_pos2s[1], keypoint_pos2s[5],
+                            keypoint_pos2s[2], keypoint_pos2s[6],
+                            keypoint_pos2s[3], keypoint_pos2s[7],
+                            keypoint_pos2s[4], keypoint_pos2s[8]]
                 rerun.log_line_segments(path,
                                         segments,
                                         space="image",
                                         color=[130, 160, 250, 255])
             else:
-                ## TODO: that would be ideal, but labeling in batches is not supported for now
-                # points = np.array([[p.x, p.y, p.z] for p in point_cloud.point])
+                ## TODO(PRO-144): that would be ideal, but labeling in batches is not supported for now
+                # points = [[p.x, p.y, p.z] for p in point_cloud.point]
                 # rerun.log_points("points",
                 #                  keypoint_pos2s,
-                #                  colors=np.array([130, 160, 250, 255]),
+                #                  colors=np.asarray([130, 160, 250, 255]),
                 #                  space="world")
 
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
                     path = f"{path}/bbox2d/{id}"
                     rerun.log_points(path,
-                                     np.array([pos2]),
-                                     colors=np.array([130, 160, 250, 255]),
+                                     [pos2],
+                                     colors=np.asarray([130, 160, 250, 255]),
                                      space="image")
 
 
-## ---
+## --- CLI ---
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -224,11 +233,17 @@ if __name__ == '__main__':
                         help='Connect to this ip:port')
     parser.add_argument('--save', type=str, default=None,
                         help='Save data to a .rrd file at this path')
-    parser.add_argument('--frames', type=int, default=2**32-1,
+    parser.add_argument('--frames', type=int, default=sys.maxsize,
                         help='If specifies, limits the number of frames logged')
     parser.add_argument('dir', type=Path, nargs='+',
                         help='Directories to log (e.g. `dataset/bike/batch-8/16/`)')
     args = parser.parse_args()
+
+    if args.connect:
+        # Send logging data to separate `rerun` process.
+        # You can ommit the argument to connect to the default address,
+        # which is `127.0.0.1:9876`.
+        rerun.connect(args.addr)
 
     for dirpath in args.dir:
         log_dir(dirpath, args.frames)
@@ -238,6 +253,4 @@ if __name__ == '__main__':
     elif args.headless:
         pass
     elif not args.connect:
-        # Show the logged data inside the Python process:
-        # TODO: this seem to crash when quitting?
         rerun.show()
