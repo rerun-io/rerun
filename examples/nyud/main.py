@@ -69,17 +69,17 @@ def back_project(depth_image: np.ndarray) -> np.ndarray:
 
 def read_image_rgb(buf: bytes) -> np.ndarray:
     """Decode an image provided in `buf`, and interpret it as RGB data."""
-    np_buf = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
+    np_buf: np.ndarray = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
     # OpenCV reads images in BGR rather than RGB format
     img_bgr = cv2.imdecode(np_buf, cv2.IMREAD_COLOR)
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    img_rgb: np.ndarray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     return img_rgb
 
 
 def read_image(buf: bytes) -> np.ndarray:
     """Decode an image provided in `buf`."""
-    np_buf = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
-    img = cv2.imdecode(np_buf, cv2.IMREAD_UNCHANGED)
+    np_buf: np.ndarray = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
+    img: np.ndarray = cv2.imdecode(np_buf, cv2.IMREAD_UNCHANGED)
     return img
 
 
