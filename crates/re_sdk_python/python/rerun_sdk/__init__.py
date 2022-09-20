@@ -81,7 +81,7 @@ def set_recording_id(value: str):
 
 def connect(addr: Optional[str] = None):
     """
-    Connect to a remote rerun viewer on the given ip:port.
+    Connect to a remote Rerun Viewer on the given ip:port.
     """
     return rerun_rs.connect(addr)
 
