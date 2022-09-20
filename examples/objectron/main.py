@@ -14,7 +14,6 @@ import rerun_sdk as rerun
 
 from proto.objectron.proto import ARFrame, ARCamera, ARPointCloud, Sequence, Object, ObjectType, FrameAnnotation
 
-## TODO: this is _extremely_ sloooooow
 ## TODO: how does all of this fits in John's work on CI, autofmt and stuff?
 
 ## ---
@@ -63,11 +62,12 @@ def log_image(path: str):
     print(f"logging image: {path}")
 
     from PIL import Image
+
+    ## TODO: reading the image seems to be ## catastrophically slow for some reason?
     img = Image.open(path)
     assert img.mode == 'RGB'
 
-    rgb = np.asarray(img)
-    rerun.log_image("video", rgb, space="image")
+    rerun.log_image("video", np.array(img), space="image")
 
 
 def log_camera(cam: ARCamera):
