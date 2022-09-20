@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{impl_into_enum, ObjPath};
 
 use self::data_types::Vec3;
@@ -474,7 +476,7 @@ impl CameraSpaceConvention {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Mesh3D {
     Encoded(EncodedMesh3D),
-    Raw(RawMesh3D),
+    Raw(Arc<RawMesh3D>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -572,18 +574,22 @@ impl TensorElement {
 ///
 /// NOTE: `PartialEq` takes into account _how_ the data is stored,
 /// which can be surprising! As of 2022-08-15, `PartialEq` is only used by tests.
+///
+/// [`TensorDataStore`] uses [`Arc`] internally so that cloning a [`Tensor`] is cheap
+/// and memory efficient.
+/// This is crucial, since we clone data for different timelines in the data store.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorDataStore {
     /// Densely packed tensor
-    Dense(Vec<u8>),
+    Dense(Arc<[u8]>),
 
     /// A JPEG image.
     ///
     /// This can only represent tensors with [`TensorDataType::U8`]
     /// of dimensions `[h, w, 3]` (RGB) or `[h, w]` (grayscale).
-    Jpeg(Vec<u8>),
+    Jpeg(Arc<[u8]>),
 }
 
 impl std::fmt::Debug for TensorDataStore {

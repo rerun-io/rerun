@@ -1,10 +1,11 @@
 use nohash_hasher::IntMap;
 
-use re_log_types::{
-    DataMsg, DataPath, Index, IndexHash, LoggedData, ObjPath, ObjPathHash, TimeSource, TimeType,
-};
+use re_log_types::*;
 
-use crate::{ArcBatch, BadBatchError, Batch, BatchOrSplat, Result, TimeLineStore};
+use crate::{
+    ArcBatch, BadBatchError, Batch, BatchOrSplat, FieldQueryOutput, Result, TimeLineStore,
+    TimeQuery,
+};
 
 /// Stores all timelines of all objects.
 #[derive(Default)]
@@ -34,11 +35,7 @@ impl DataStore {
         self.index_from_hash.get(index_hash)
     }
 
-    pub fn entry(
-        &mut self,
-        time_source: &TimeSource,
-        time_type: TimeType,
-    ) -> &mut TimeLineStore<i64> {
+    fn entry(&mut self, time_source: &TimeSource, time_type: TimeType) -> &mut TimeLineStore<i64> {
         match self.store_from_time_source.entry(*time_source) {
             std::collections::hash_map::Entry::Vacant(entry) => {
                 &mut entry.insert((time_type, TimeLineStore::default())).1
@@ -52,52 +49,67 @@ impl DataStore {
         }
     }
 
-    pub fn insert(&mut self, data_msg: &DataMsg) -> Result<()> {
+    /// Query a specific data path.
+    ///
+    /// Return `None` if there were no such timeline, object, or field.
+    pub fn query_data_path(
+        &self,
+        time_source: &TimeSource,
+        time_query: &TimeQuery<i64>,
+        data_path: &DataPath,
+    ) -> Option<Result<FieldQueryOutput<i64>>> {
+        let store = self.get(time_source)?;
+        let obj_store = store.get(&data_path.obj_path)?;
+        let field_store = obj_store.get(&data_path.field_name)?;
+        Some(field_store.query_field_to_datavec(time_query, None))
+    }
+
+    pub fn insert_data_msg(&mut self, data_msg: &DataMsg) -> Result<()> {
         crate::profile_function!();
 
-        let mut batcher = Batcher::default();
+        let DataMsg {
+            msg_id,
+            time_point,
+            data_path,
+            data,
+        } = data_msg;
 
-        for (time_source, time_int) in &data_msg.time_point.0 {
-            let time_i64 = time_int.as_i64();
-            let msg_id = data_msg.msg_id;
+        self.insert_data(*msg_id, time_point, data_path, data)
+    }
 
-            let DataPath {
-                obj_path,
-                field_name,
-            } = data_msg.data_path.clone();
+    pub fn insert_data(
+        &mut self,
+        msg_id: MsgId,
+        time_point: &TimePoint,
+        data_path: &DataPath,
+        data: &LoggedData,
+    ) -> Result<()> {
+        self.register_obj_path(&data_path.obj_path);
 
-            self.register_obj_path(&obj_path);
+        // We de-duplicate batches so we don't create one per timeline:
+        let batch = if let LoggedData::Batch { indices, data } = data {
+            Some(re_log_types::data_vec_map!(data, |vec| {
+                let batch = std::sync::Arc::new(
+                    Batch::new(indices, vec).map_err(|BadBatchError| crate::Error::BadBatch)?,
+                );
+                self.register_batch_indices(batch.as_ref());
+                TypeErasedBatch::new(batch)
+            }))
+        } else {
+            None
+        };
 
-            match &data_msg.data {
-                LoggedData::Single(data) => {
-                    let store = self.entry(time_source, time_source.typ());
-                    re_log_types::data_map!(data.clone(), |data| store
-                        .insert_mono(obj_path, field_name, time_i64, msg_id, data))
-                }
-                LoggedData::Batch { indices, data } => {
-                    re_log_types::data_vec_map!(data, |vec| {
-                        let batch = batcher
-                            .batch(indices, vec)
-                            .map_err(|BadBatchError| crate::Error::BadBatch)?;
-                        self.register_batch_indices(batch.as_ref());
-                        let store = self.entry(time_source, time_source.typ());
-                        store.insert_batch(
-                            obj_path,
-                            field_name,
-                            time_i64,
-                            msg_id,
-                            BatchOrSplat::Batch(batch),
-                        )
-                    })
-                }
-                LoggedData::BatchSplat(data) => {
-                    let store = self.entry(time_source, time_source.typ());
-                    re_log_types::data_map!(data.clone(), |data| {
-                        let batch = crate::BatchOrSplat::Splat(data);
-                        store.insert_batch(obj_path, field_name, time_i64, msg_id, batch)
-                    })
-                }
-            }?;
+        for (time_source, time_int) in &time_point.0 {
+            let store = self.entry(time_source, time_source.typ());
+
+            insert_msg_into_timeline_store(
+                store,
+                data_path,
+                msg_id,
+                time_int.as_i64(),
+                data,
+                batch.as_ref(),
+            )?;
         }
 
         Ok(())
@@ -120,24 +132,53 @@ impl DataStore {
     }
 }
 
-/// Converts data to a batch ONCE, then reuses that batch for other time sources
-#[derive(Default)]
-struct Batcher {
-    batch: Option<Box<dyn std::any::Any>>,
+fn insert_msg_into_timeline_store(
+    timeline_store: &mut TimeLineStore<i64>,
+    data_path: &DataPath,
+    msg_id: MsgId,
+    time_i64: i64,
+    data: &LoggedData,
+    batch: Option<&TypeErasedBatch>,
+) -> Result<()> {
+    let DataPath {
+        obj_path,
+        field_name,
+    } = data_path.clone();
+
+    match data {
+        LoggedData::Single(data) => {
+            re_log_types::data_map!(data.clone(), |data| timeline_store
+                .insert_mono(obj_path, field_name, time_i64, msg_id, data))
+        }
+        LoggedData::Batch { data, .. } => {
+            re_log_types::data_vec_map!(data, |vec| {
+                let batch = batch.as_ref().unwrap().downcast(vec);
+                timeline_store.insert_batch(
+                    obj_path,
+                    field_name,
+                    time_i64,
+                    msg_id,
+                    BatchOrSplat::Batch(batch),
+                )
+            })
+        }
+        LoggedData::BatchSplat(data) => {
+            re_log_types::data_map!(data.clone(), |data| {
+                let batch = crate::BatchOrSplat::Splat(data);
+                timeline_store.insert_batch(obj_path, field_name, time_i64, msg_id, batch)
+            })
+        }
+    }
 }
 
-impl Batcher {
-    pub fn batch<T: 'static + Clone>(
-        &mut self,
-        indices: &[re_log_types::Index],
-        data: &[T],
-    ) -> std::result::Result<ArcBatch<T>, BadBatchError> {
-        if let Some(batch) = &self.batch {
-            Ok(batch.downcast_ref::<ArcBatch<T>>().unwrap().clone())
-        } else {
-            let batch = std::sync::Arc::new(Batch::new(indices, data)?);
-            self.batch = Some(Box::new(batch.clone()));
-            Ok(batch)
-        }
+struct TypeErasedBatch(Box<dyn std::any::Any>);
+
+impl TypeErasedBatch {
+    fn new<T: 'static>(batch: ArcBatch<T>) -> Self {
+        Self(Box::new(batch))
+    }
+
+    fn downcast<T: 'static>(&self, _only_used_for_type_inference: &[T]) -> ArcBatch<T> {
+        self.0.downcast_ref::<ArcBatch<T>>().unwrap().clone()
     }
 }

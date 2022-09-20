@@ -75,13 +75,8 @@ pub fn log_dataset(path: &Path, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
 
 fn configure_world_space(logger: &Logger<'_>) {
     let world_space = ObjPath::from("world");
-    // TODO(emilk): what time point should we use?
-    let time_point = time_point([
-        ("frame", TimeType::Sequence, 0.into()),
-        ("time", TimeType::Time, 0.into()),
-    ]);
     logger.log(data_msg(
-        &time_point,
+        &TimePoint::timeless(),
         world_space,
         "up",
         Data::Vec3([0.0, 1.0, 0.0]),
@@ -101,11 +96,7 @@ fn log_annotation_pbdata(
     let image_space = ObjPath::from("image");
 
     for object in &sequence.objects {
-        // TODO(emilk): what time point should we use?
-        let time_point = time_point([
-            ("frame", TimeType::Sequence, 0.into()),
-            ("time", TimeType::Time, 0.into()),
-        ]);
+        let time_point = TimePoint::timeless(); // Objects don't come with a time
 
         let data_path = obj_path_vec!("objects", Index::Integer(object.id as _));
 
@@ -376,7 +367,7 @@ fn log_image(path: &PathBuf, time_point: &TimePoint, logger: &Logger<'_>) -> any
     let tensor = re_log_types::Tensor {
         shape: vec![h as _, w as _, 3],
         dtype: TensorDataType::U8,
-        data: TensorDataStore::Jpeg(jpeg_bytes),
+        data: TensorDataStore::Jpeg(jpeg_bytes.into()),
     };
 
     let obj_path = obj_path!("video");
@@ -463,7 +454,7 @@ fn log_plane_anchor(
             time_point,
             plane_path.clone(),
             "mesh",
-            Mesh3D::Raw(mesh),
+            Mesh3D::Raw(mesh.into()),
         ));
         logger.log(data_msg(
             time_point,

@@ -81,7 +81,7 @@ def set_recording_id(value: str):
 
 def connect(addr: Optional[str] = None):
     """
-    Connect to a remote rerun viewer on the given ip:port.
+    Connect to a remote Rerun Viewer on the given ip:port.
     """
     return rerun_rs.connect(addr)
 
@@ -125,6 +125,8 @@ def set_time_sequence(time_source: str, sequence: Optional[int]):
     For instance: `set_time_sequence("frame_nr", frame_nr)`.
 
     You can remove a time source again using `set_time_sequence("frame_nr", None)`.
+
+    There is no requirement of monoticity. You can move the time backwards if you like.
     """
     return rerun_rs.set_time_sequence(time_source, sequence)
 
@@ -144,6 +146,8 @@ def set_time_seconds(time_source: str, seconds: Optional[float]):
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
     The rerun_sdk has a built-in time which is `log_time`, and is logged as seconds since unix epoch.
+
+    There is no requirement of monoticity. You can move the time backwards if you like.
     """
     return rerun_rs.set_time_seconds(time_source, seconds)
 
@@ -163,6 +167,8 @@ def set_time_nanos(time_source: str, nanos: Optional[int]):
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
     The rerun_sdk has a built-in time which is `log_time`, and is logged as nanos since unix epoch.
+
+    There is no requirement of monoticity. You can move the time backwards if you like.
     """
     return rerun_rs.set_time_nanos(time_source, nanos)
 
@@ -204,6 +210,7 @@ def log_rect(
     rect_format: RectFormat = RectFormat.XYWH,
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
+    timeless: bool = False,
     space: Optional[str] = None,
 ):
     """
@@ -221,6 +228,7 @@ def log_rect(
                       _to_sequence(rect),
                       color,
                       label,
+                      timeless,
                       space)
 
 
@@ -231,6 +239,7 @@ def log_rects(
     rect_format: RectFormat = RectFormat.XYWH,
     colors: Optional[np.ndarray] = None,
     labels: Optional[Sequence[str]] = None,
+    timeless: bool = False,
     space: Optional[str] = None,
 ):
     """
@@ -261,6 +270,7 @@ def log_rects(
                        rects,
                        colors,
                        labels,
+                       timeless,
                        space)
 
 
@@ -269,6 +279,7 @@ def log_points(
         positions: np.ndarray,
         *,
         colors: Optional[np.ndarray] = None,
+        timeless: bool = False,
         space: Optional[str] = None):
     """
     Log 2D or 3D points, with optional colors.
@@ -290,7 +301,7 @@ def log_points(
     positions = np.require(positions, dtype='float32')
     colors = _normalize_colors(colors)
 
-    rerun_rs.log_points(obj_path, positions, colors, space)
+    rerun_rs.log_points(obj_path, positions, colors, timeless, space)
 
 
 def _normalize_colors(colors: Optional[np.ndarray] = None):
@@ -314,6 +325,7 @@ def log_camera(obj_path: str,
                intrinsics: ArrayLike,
                resolution: ArrayLike,
                camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+               timeless: bool = False,
                space: Optional[str] = None,
                target_space: Optional[str] = None):
     """Log a perspective camera model.
@@ -333,7 +345,7 @@ def log_camera(obj_path: str,
         _to_sequence(rotation_q),
         _to_sequence(position),
         camera_space_convention.value,
-        space,
+        timeless, space,
         target_space)
 
 
@@ -343,6 +355,7 @@ def log_path(
         *,
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
+        timeless: bool = False,
         space: Optional[str] = None):
     """
     Log a 3D path.
@@ -363,7 +376,7 @@ def log_path(
     If no `space` is given, the space name "3D" will be used.
     """
     positions = np.require(positions, dtype='float32')
-    rerun_rs.log_path(obj_path, positions, stroke_width, color, space)
+    rerun_rs.log_path(obj_path, positions, stroke_width, color, timeless, space)
 
 
 def log_line_segments(
@@ -372,6 +385,7 @@ def log_line_segments(
         *,
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
+        timeless: bool = False,
         space: Optional[str] = None):
     """
     Log many 2D or 3D line segments.
@@ -390,10 +404,10 @@ def log_line_segments(
     If no `space` is given, the space name "3D" will be used.
     """
     positions = np.require(positions, dtype='float32')
-    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, space)
+    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless, space)
 
 
-def log_image(obj_path: str, image: np.ndarray, *, space: Optional[str] = None):
+def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space: Optional[str] = None):
     """
     Log a gray or color image.
 
@@ -416,10 +430,10 @@ def log_image(obj_path: str, image: np.ndarray, *, space: Optional[str] = None):
             raise TypeError(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}")
 
-    _log_tensor(obj_path, image, space=space)
+    _log_tensor(obj_path, image, timeless=timeless, space=space)
 
 
-def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, space: Optional[str] = None):
+def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None):
     """
     Log a depth image.
 
@@ -436,27 +450,26 @@ def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] 
         raise TypeError(
             f"Expected 2D depth image, got array of shape {image.shape}")
 
-    _log_tensor(obj_path, image, meter=meter, space=space)
+    _log_tensor(obj_path, image, meter=meter, timeless=timeless, space=space)
 
 
-def _log_tensor(obj_path: str, tensor: np.ndarray, *, meter: Optional[float] = None, space: Optional[str] = None):
+def _log_tensor(obj_path: str, tensor: np.ndarray, *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None):
     """
     If no `space` is given, the space name "2D" will be used.
     """
     if tensor.dtype == 'uint8':
-        rerun_rs.log_tensor_u8(obj_path, tensor, meter, space)
+        rerun_rs.log_tensor_u8(obj_path, tensor, meter, timeless, space)
     elif tensor.dtype == 'uint16':
-        rerun_rs.log_tensor_u16(obj_path, tensor, meter, space)
+        rerun_rs.log_tensor_u16(obj_path, tensor, meter, timeless, space)
     elif tensor.dtype == 'float32':
-        rerun_rs.log_tensor_f32(obj_path, tensor, meter, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor, meter, timeless, space)
     elif tensor.dtype == 'float64':
-        rerun_rs.log_tensor_f32(
-            obj_path, tensor.astype('float32'), meter, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor.astype('float32'), meter, timeless, space)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
 
-def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, transform: np.ndarray = None, space: Optional[str] = None):
+def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, transform: np.ndarray = None, timeless: bool = False, space: Optional[str] = None):
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
 
@@ -477,7 +490,7 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, t
         transform = np.require(transform, dtype='float32')
 
     rerun_rs.log_mesh_file(obj_path, mesh_format.value,
-                           mesh_file, transform, space)
+                           mesh_file, transform, timeless, space)
 
 
 def _to_sequence(array: ArrayLike) -> Sequence:

@@ -1,10 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use egui::NumExt as _;
-use re_data_store::TimeQuery;
+
+use re_data_store::{log_db::TimePoints, TimeQuery};
 use re_log_types::*;
 
-use super::{TimePoints, TimeRange, TimeRangeF, TimeReal};
+use super::{TimeRange, TimeRangeF, TimeReal};
 
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
@@ -448,7 +449,7 @@ impl TimeControl {
     /// This is either based on a time selection, or it is the latest message at the current time.
     pub fn selected_objects<'db>(
         &self,
-        log_db: &'db crate::log_db::LogDb,
+        log_db: &'db re_data_store::log_db::LogDb,
     ) -> re_data_store::Objects<'db> {
         crate::profile_function!();
 

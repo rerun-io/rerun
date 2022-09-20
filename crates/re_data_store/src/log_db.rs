@@ -6,21 +6,32 @@ use nohash_hasher::IntMap;
 use re_log_types::*;
 use re_string_interner::InternedString;
 
-use crate::misc::TimePoints;
+// ----------------------------------------------------------------------------
+
+/// An aggregate of [`TimePoint`]:s.
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
+
+// ----------------------------------------------------------------------------
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
 #[derive(Default)]
-pub(crate) struct LogDb {
+pub struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<MsgId>,
     log_messages: IntMap<MsgId, LogMsg>,
+
+    /// Data that was logged with [`TimePoint::timeless`].
+    /// We need to re-insert those in any new timelines
+    /// that are created after they were logged.
+    timeless_message_ids: Vec<MsgId>,
 
     recording_info: Option<RecordingInfo>,
 
     pub obj_types: IntMap<ObjTypePath, ObjectType>,
     pub time_points: TimePoints,
     pub data_tree: ObjectTree,
-    pub data_store: re_data_store::DataStore,
+    pub data_store: crate::DataStore,
 
     /// All known spaces
     spaces: IntMap<ObjPathHash, ObjPath>,
@@ -53,7 +64,15 @@ impl LogDb {
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
             LogMsg::TypeMsg(msg) => self.add_type_msg(msg),
-            LogMsg::DataMsg(msg) => self.add_data_msg(msg),
+            LogMsg::DataMsg(msg) => {
+                let DataMsg {
+                    msg_id,
+                    time_point,
+                    data_path,
+                    data,
+                } = msg;
+                self.add_data_msg(*msg_id, time_point, data_path, data);
+            }
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
@@ -84,37 +103,98 @@ impl LogDb {
         }
     }
 
-    fn add_data_msg(&mut self, msg: &DataMsg) {
+    fn add_data_msg(
+        &mut self,
+        msg_id: MsgId,
+        time_point: &TimePoint,
+        data_path: &DataPath,
+        data: &LoggedData,
+    ) {
         crate::profile_function!();
 
-        let obj_type_path = &msg.data_path.obj_path.obj_type_path();
-        let field_name = &msg.data_path.field_name;
-        if let Some(obj_type) = self.obj_types.get(obj_type_path) {
-            let valid_members = obj_type.members();
-            if !valid_members.contains(&field_name.as_str()) {
-                re_log::warn_once!(
+        if time_point.is_timeless() {
+            // Timeless data should be added to all existing timelines,
+            // as well to all future timelines,
+            // so we special-case it here.
+            // See https://linear.app/rerun/issue/PRO-97
+
+            // Remember to add it to future timelines:
+            self.timeless_message_ids.push(msg_id);
+
+            if !self.time_points.0.is_empty() {
+                // Add to existing timelines (if any):
+                let mut time_point = TimePoint::default();
+                for &time_source in self.time_points.0.keys() {
+                    time_point.0.insert(time_source, TimeInt::BEGINNING);
+                }
+                self.add_data_msg(msg_id, &time_point, data_path, data);
+            }
+
+            return; // done
+        }
+
+        // Validate:
+        {
+            let obj_type_path = &data_path.obj_path.obj_type_path();
+            let field_name = &data_path.field_name;
+            if let Some(obj_type) = self.obj_types.get(obj_type_path) {
+                let valid_members = obj_type.members();
+                if !valid_members.contains(&field_name.as_str()) {
+                    re_log::warn_once!(
                     "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
                     valid_members.iter().format(", ")
                 );
+                }
+            } else {
+                re_log::warn_once!(
+                    "Logging to {obj_type_path}.{field_name} without first registering object type"
+                );
             }
-        } else {
-            re_log::warn_once!(
-                "Logging to {obj_type_path}.{field_name} without first registering object type"
-            );
         }
 
-        if let Err(err) = self.data_store.insert(msg) {
+        if let Err(err) = self
+            .data_store
+            .insert_data(msg_id, time_point, data_path, data)
+        {
             re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 
-        self.time_points.insert(&msg.time_point);
+        self.data_tree
+            .add_data_msg(msg_id, time_point, data_path, data);
 
-        self.data_tree.add_data_msg(msg);
+        self.register_spaces(data);
 
-        self.register_spaces(msg);
+        {
+            let mut new_timelines = TimePoint::default();
+
+            for (time_source, value) in &time_point.0 {
+                match self.time_points.0.entry(*time_source) {
+                    std::collections::btree_map::Entry::Vacant(entry) => {
+                        re_log::debug!("New timeline added: {time_source:?}");
+                        new_timelines.0.insert(*time_source, TimeInt::BEGINNING);
+                        entry.insert(Default::default())
+                    }
+                    std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
+                }
+                .insert(*value);
+            }
+
+            if !new_timelines.0.is_empty() {
+                let timeless_data_messages = self
+                    .timeless_message_ids
+                    .iter()
+                    .filter_map(|msg_id| self.log_messages.get(msg_id).cloned())
+                    .collect_vec();
+                for msg in &timeless_data_messages {
+                    if let LogMsg::DataMsg(msg) = msg {
+                        self.add_data_msg(msg.msg_id, &new_timelines, &msg.data_path, &msg.data);
+                    }
+                }
+            }
+        }
     }
 
-    fn register_spaces(&mut self, msg: &DataMsg) {
+    fn register_spaces(&mut self, data: &LoggedData) {
         let mut register_space = |space: &ObjPath| {
             self.spaces
                 .entry(*space.hash())
@@ -123,7 +203,7 @@ impl LogDb {
 
         // This is a bit hacky, and I don't like it,
         // but we nned a single place to find all the spaces (ignoring time).
-        match &msg.data {
+        match data {
             LoggedData::Single(Data::Space(space)) | LoggedData::BatchSplat(Data::Space(space)) => {
                 register_space(space);
             }
@@ -159,7 +239,7 @@ impl LogDb {
 
 /// Tree of data paths.
 #[derive(Default)]
-pub(crate) struct ObjectTree {
+pub struct ObjectTree {
     /// Children of type [`ObjPathComp::Name`].
     pub named_children: BTreeMap<InternedString, ObjectTree>,
 
@@ -181,38 +261,60 @@ impl ObjectTree {
         self.named_children.is_empty() && self.index_children.is_empty()
     }
 
-    pub fn add_data_msg(&mut self, msg: &DataMsg) {
+    pub fn add_data_msg(
+        &mut self,
+        msg_id: MsgId,
+        time_point: &TimePoint,
+        data_path: &DataPath,
+        data: &LoggedData,
+    ) {
         crate::profile_function!();
-        let obj_path = msg.data_path.obj_path.to_components();
-        self.add_path(obj_path.as_slice(), msg.data_path.field_name, msg);
+        let obj_path = data_path.obj_path.to_components();
+        self.add_path(
+            obj_path.as_slice(),
+            data_path.field_name,
+            msg_id,
+            time_point,
+            data,
+        );
     }
 
-    fn add_path(&mut self, path: &[ObjPathComp], field_name: FieldName, msg: &DataMsg) {
-        for (time_source, time_value) in &msg.time_point.0 {
+    fn add_path(
+        &mut self,
+        path: &[ObjPathComp],
+        field_name: FieldName,
+        msg_id: MsgId,
+        time_point: &TimePoint,
+        data: &LoggedData,
+    ) {
+        for (time_source, time_value) in &time_point.0 {
             self.prefix_times
                 .entry(*time_source)
                 .or_default()
                 .entry(*time_value)
                 .or_default()
-                .insert(msg.msg_id);
+                .insert(msg_id);
         }
 
         match path {
             [] => {
-                self.fields.entry(field_name).or_default().add(msg);
+                self.fields
+                    .entry(field_name)
+                    .or_default()
+                    .add(msg_id, time_point, data);
             }
             [first, rest @ ..] => match first {
                 ObjPathComp::Name(name) => {
                     self.named_children
                         .entry(*name)
                         .or_default()
-                        .add_path(rest, field_name, msg);
+                        .add_path(rest, field_name, msg_id, time_point, data);
                 }
                 ObjPathComp::Index(index) => {
                     self.index_children
                         .entry(index.clone())
                         .or_default()
-                        .add_path(rest, field_name, msg);
+                        .add_path(rest, field_name, msg_id, time_point, data);
                 }
             },
         }
@@ -223,27 +325,27 @@ impl ObjectTree {
 
 /// Column transform of [`Data`].
 #[derive(Default)]
-pub(crate) struct DataColumns {
+pub struct DataColumns {
     /// When do we have data?
     pub times: BTreeMap<TimeSource, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
     pub per_type: HashMap<DataType, BTreeSet<MsgId>>,
 }
 
 impl DataColumns {
-    pub fn add(&mut self, msg: &DataMsg) {
-        for (time_source, time_value) in &msg.time_point.0 {
+    pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: &LoggedData) {
+        for (time_source, time_value) in &time_point.0 {
             self.times
                 .entry(*time_source)
                 .or_default()
                 .entry(*time_value)
                 .or_default()
-                .insert(msg.msg_id);
+                .insert(msg_id);
         }
 
         self.per_type
-            .entry(msg.data.data_type())
+            .entry(data.data_type())
             .or_default()
-            .insert(msg.msg_id);
+            .insert(msg_id);
     }
 
     pub fn summary(&self) -> String {

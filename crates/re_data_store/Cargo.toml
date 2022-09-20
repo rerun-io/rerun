@@ -17,6 +17,7 @@ serde = ["dep:serde", "re_log_types/serde"]
 [dependencies]
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
+re_string_interner = { path = "../re_string_interner" }
 
 ahash = "0.8"
 itertools = "0.10"

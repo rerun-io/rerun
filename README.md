@@ -20,8 +20,8 @@ If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarc
 rustup set default-host aarch64-apple-darwin && rustup install 1.63
 ```
 
-## Installing the Rerun viewer
-After running the setup above, you can build and install the rerun viewer with:
+## Installing the Rerun Viewer
+After running the setup above, you can build and install the Rerun Viewer with:
 
 ```sh
 cargo install --path ./crates/rerun/ --all-features

@@ -237,6 +237,10 @@ pub struct DataMsg {
     pub msg_id: MsgId,
 
     /// Time information (when it was logged, when it was received, …)
+    ///
+    /// If this is empty, the data is _timeless_.
+    /// Timeless data will show up on all timelines, past and future,
+    /// and will hit all time queries. In other words, it is always there.
     pub time_point: TimePoint,
 
     /// What the data is targeting.
@@ -391,9 +395,27 @@ impl std::hash::Hash for TimeSource {
 /// A point in time.
 ///
 /// It can be represented by [`Time`], a sequence index, or a mix of several things.
+///
+/// If this is empty, the data is _timeless_.
+/// Timeless data will show up on all timelines, past and future,
+/// and will hit all time queries. In other words, it is always there.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(pub BTreeMap<TimeSource, TimeInt>);
+
+impl TimePoint {
+    /// Logging to this time means the data will show upp in all timelines,
+    /// past and future. The time will be [`TimeInt::BEGINNING`], meaning it will
+    /// always be in range for any time query.
+    pub fn timeless() -> Self {
+        Self::default()
+    }
+
+    #[inline]
+    pub fn is_timeless(&self) -> bool {
+        self.0.is_empty()
+    }
+}
 
 // ----------------------------------------------------------------------------
 
@@ -417,9 +439,13 @@ impl TimeType {
     }
 
     pub fn format(&self, time_int: TimeInt) -> String {
-        match self {
-            Self::Time => Time::from(time_int).format(),
-            Self::Sequence => format!("#{}", time_int.0),
+        if time_int <= TimeInt::BEGINNING {
+            "-∞".into()
+        } else {
+            match self {
+                Self::Time => Time::from(time_int).format(),
+                Self::Sequence => format!("#{}", time_int.0),
+            }
         }
     }
 }
@@ -436,6 +462,16 @@ impl TimeType {
 pub struct TimeInt(i64);
 
 impl TimeInt {
+    /// The beginning of time.
+    ///
+    /// Special value used for timeless data.
+    ///
+    /// NOTE: this is not necessarily [`i64::MIN`].
+    // The reason we don't use i64::MIN is because in the time panel we need
+    // to be able to pan to before the `TimeInt::BEGINNING`, and so we need
+    // a bit of leeway.
+    pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
+
     #[inline]
     pub fn as_i64(&self) -> i64 {
         self.0

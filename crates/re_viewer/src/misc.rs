@@ -1,7 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod clipboard;
 pub(crate) mod image_cache;
-pub(crate) mod log_db;
 pub(crate) mod mesh_loader;
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub(crate) mod profiler;
@@ -16,7 +15,6 @@ mod viewer_context;
 pub(crate) use clipboard::Clipboard;
 
 use image_cache::ImageCache;
-pub(crate) use log_db::LogDb;
 pub(crate) use time_control::{TimeControl, TimeView};
 pub(crate) use time_range::{TimeRange, TimeRangeF};
 pub(crate) use time_real::TimeReal;
@@ -24,23 +22,9 @@ pub(crate) use viewer_context::*;
 
 // ----------------------------------------------------------------------------
 
-use std::collections::{BTreeMap, BTreeSet};
-
 use egui::emath;
 
-use re_log_types::{CameraSpaceConvention, TimeInt, TimePoint, TimeSource};
-
-/// An aggregate of [`TimePoint`]:s.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
-
-impl TimePoints {
-    pub fn insert(&mut self, time_point: &TimePoint) {
-        for (time_source, value) in &time_point.0 {
-            self.0.entry(*time_source).or_default().insert(*value);
-        }
-    }
-}
+// ----------------------------------------------------------------------------
 
 pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
     ui.add(
@@ -180,7 +164,6 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
 // ----------------------------------------------------------------------------
 
 pub mod cam {
-    use super::*;
     use glam::*;
     use macaw::Ray3;
 
@@ -188,6 +171,8 @@ pub mod cam {
     /// This creates a transform from the Rerun view-space
     /// to the parent space of the camera.
     pub fn world_from_view(cam: &re_log_types::Camera) -> macaw::IsoTransform {
+        use re_log_types::CameraSpaceConvention;
+
         let rotation = Quat::from_slice(&cam.rotation);
         let translation = Vec3::from_slice(&cam.position);
 

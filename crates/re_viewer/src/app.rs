@@ -3,12 +3,10 @@ use std::sync::mpsc::Receiver;
 use egui_extras::RetainedImage;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+use re_data_store::log_db::LogDb;
 use re_log_types::*;
 
-use crate::{
-    misc::{Caches, Options, RecordingConfig, ViewerContext},
-    LogDb,
-};
+use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -109,6 +107,11 @@ impl App {
 }
 
 impl eframe::App for App {
+    #[cfg(target_arch = "wasm32")]
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        &mut *self
+    }
+
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, &self.state);
     }
@@ -119,6 +122,8 @@ impl eframe::App for App {
             frame.close();
             return;
         }
+
+        self.state.cache.new_frame();
 
         if let Some(rx) = &mut self.rx {
             crate::profile_scope!("receive_messages");

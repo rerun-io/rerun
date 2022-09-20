@@ -1,8 +1,10 @@
 use macaw::Ray3;
-use re_data_store::{InstanceId, ObjTypePath};
-use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource};
 
-use crate::{log_db::LogDb, misc::log_db::ObjectTree};
+use re_data_store::{
+    log_db::{LogDb, ObjectTree},
+    InstanceId, ObjTypePath,
+};
+use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource};
 
 /// Common things needed by many parts of the viewer.
 pub(crate) struct ViewerContext<'a> {
@@ -275,6 +277,14 @@ pub(crate) struct Caches {
 
     /// Auto-generated colors.
     object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,
+}
+
+impl Caches {
+    /// Call once per frame to potentially flush the cache(s).
+    pub fn new_frame(&mut self) {
+        let max_image_cache_use = 1_000_000_000;
+        self.image.new_frame(max_image_cache_use);
+    }
 }
 
 // ----------------------------------------------------------------------------
