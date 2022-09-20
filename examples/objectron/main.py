@@ -12,15 +12,20 @@ from typing import List
 
 import rerun_sdk as rerun
 
-from proto.research.compvideo.arcapture import ARFrame, ARCamera, ARPointCloud
+from proto.objectron.proto import ARFrame, ARCamera, ARPointCloud, Sequence, Object, ObjectType, FrameAnnotation
+
+## ---
 
 def relpath(path: Path):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), path)
 
+
 def log_dir(dirpath: Path, nb_frames: int):
     rerun.set_space_up("world", [0, 1, 0])
     frame_times = log_geometry(dirpath, nb_frames)
-    print(frame_times)
+    log_annotations(dirpath, frame_times)
+
+## --- geometry ---
 
 def log_geometry(dirpath: Path, nb_frames: int) -> List[float]:
     path = os.path.join(relpath(dirpath), 'geometry.pbdata')
@@ -102,7 +107,7 @@ def log_camera(cam: ARCamera):
 def log_point_cloud(point_cloud: ARPointCloud):
     count = point_cloud.count
 
-    ## TODO: that would be ideal, but how does one specify their identifiers in that case?
+    ## TODO: that would be ideal, but labeling in batches is not supported for now
     # points = np.array([[p.x, p.y, p.z] for p in point_cloud.point])
     # rerun.log_points("points",
     #                  points,
@@ -119,6 +124,102 @@ def log_point_cloud(point_cloud: ARPointCloud):
                          colors=np.array([255, 255, 255, 255]),
                          space="world")
 
+
+## --- annotations ---
+
+def log_annotations(dirpath: Path, frame_times: List[float]):
+    path = os.path.join(relpath(dirpath), 'annotation.pbdata')
+    print(f"logging annotations: {path}")
+
+    data = Path(path).read_bytes()
+    seq = Sequence().parse(data)
+
+    log_objects(seq.objects)
+    log_frame_annotations(frame_times, seq.frame_annotations)
+
+
+def log_objects(objects: List[Object]):
+    for obj in objects:
+        if obj.type != ObjectType.BOUNDING_BOX:
+            ## TODO: error logging in python?
+            print(f"err: object type not supported: {obj.type}")
+            continue
+
+        from scipy.spatial.transform import Rotation as R
+        rot = R.from_matrix(np.asarray(obj.rotation).reshape((3, 3)))
+        trans = np.asarray(obj.translation)
+        half_size = np.asarray(obj.scale)
+
+        ## TODO: implement support 3D bboxes first
+
+
+def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]):
+    for frame_ann in frame_annotations:
+        frame_idx = frame_ann.frame_id
+        if frame_idx >= len(frame_times):
+            continue
+
+        time = frame_times[frame_idx]
+        rerun.set_time_sequence("frame", frame_idx)
+        rerun.set_time_seconds("time", time)
+
+        for obj_ann in frame_ann.annotations:
+            path = f"objects/{obj_ann.object_id}"
+
+            keypoint_ids = [kp.id for kp in obj_ann.keypoints]
+            keypoint_pos2s = [[kp.point_2d.x, kp.point_2d.y] for kp in obj_ann.keypoints]
+            ## TODO: what should we do with this?
+            ## TODO(emilk): remove hack
+            keypoint_pos2s = [[p[0] * 1440.0, p[1] * 1920.0] for p in keypoint_pos2s]
+
+            # print(keypoint_pos2s)
+
+            if len(keypoint_pos2s) == 9:
+                path = f"{path}/bbox2d"
+                ## NOTE: since we don't yet support projecting arbitrary 3D stuff onto 2D views,
+                ## we manually draw a 3D bounding box by rendering line segmnents using the
+                ## already projected coordinates.
+                ## Try commenting 2 out of the 3 blocks if this doesn't make sense, that'll make
+                ## everything clearer.
+                ##
+                ## TODO: replace with with native support for 3D-to-2D projection.
+                segments = np.array([
+                    keypoint_pos2s[1], keypoint_pos2s[2],
+                    keypoint_pos2s[1], keypoint_pos2s[3],
+                    keypoint_pos2s[4], keypoint_pos2s[2],
+                    keypoint_pos2s[4], keypoint_pos2s[3],
+
+                    keypoint_pos2s[5], keypoint_pos2s[6],
+                    keypoint_pos2s[5], keypoint_pos2s[7],
+                    keypoint_pos2s[8], keypoint_pos2s[6],
+                    keypoint_pos2s[8], keypoint_pos2s[7],
+
+                    keypoint_pos2s[1], keypoint_pos2s[5],
+                    keypoint_pos2s[2], keypoint_pos2s[6],
+                    keypoint_pos2s[3], keypoint_pos2s[7],
+                    keypoint_pos2s[4], keypoint_pos2s[8],
+                ])
+                rerun.log_line_segments(path,
+                                        segments,
+                                        space="image",
+                                        color=[130, 160, 250, 255])
+            else:
+                ## TODO: that would be ideal, but labeling in batches is not supported for now
+                # points = np.array([[p.x, p.y, p.z] for p in point_cloud.point])
+                # rerun.log_points("points",
+                #                  keypoint_pos2s,
+                #                  colors=np.array([130, 160, 250, 255]),
+                #                  space="world")
+
+                for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
+                    path = f"{path}/bbox2d/{id}"
+                    rerun.log_points(path,
+                                     np.array([pos2]),
+                                     colors=np.array([130, 160, 250, 255]),
+                                     space="image")
+
+
+## ---
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
