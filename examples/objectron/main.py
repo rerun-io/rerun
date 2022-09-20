@@ -14,6 +14,9 @@ import rerun_sdk as rerun
 
 from proto.objectron.proto import ARFrame, ARCamera, ARPointCloud, Sequence, Object, ObjectType, FrameAnnotation
 
+## TODO: this is _extremely_ sloooooow
+## TODO: how does all of this fits in John's work on CI, autofmt and stuff?
+
 ## ---
 
 def relpath(path: Path):
@@ -74,24 +77,16 @@ def log_camera(cam: ARCamera):
     (w, h) = (cam.image_resolution_width, cam.image_resolution_height)
 
     from scipy.spatial.transform import Rotation as R
-    rot = R.from_euler("YXZ", [
-        cam.euler_angles.yaw,
-        cam.euler_angles.pitch,
-        cam.euler_angles.roll,
-    ])
-    # rot = R.from_matrix(np.resize(world_from_cam, (3, 3)))
+    rot = R.from_matrix(world_from_cam[0:3,][..., 0:3])
+    ## TODO: not sure why its last component is incorrectly negated?
+    rot = R.from_quat(rot.as_quat() * [1.0, 1.0, 1.0, -1.0])
 
     ## Because the dataset was collected in portrait:
     swizzle_x_y = np.asarray([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
     intrinsics = swizzle_x_y.dot(intrinsics.dot(swizzle_x_y))
-    axis = R.from_rotvec((math.tau / 4.0) * np.array([0.0, 0.0, -1.0]))
+    axis = R.from_rotvec((math.tau / 4.0) * np.array([0.0, 0.0, 1.0]))
     rot = rot * axis
     (w, h) = (h, w)
-
-    # print(rot.as_quat())
-    # print(translation)
-    # print(intrinsics)
-    # print(w, h)
 
     ## TODO: something fishy going on with those quaternions
     rerun.log_camera("camera",
@@ -224,6 +219,8 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Logs Objectron data using the Rerun SDK.')
+    parser.add_argument('--headless', action='store_true',
+                        help="Don't show GUI")
     parser.add_argument('--connect', dest='connect', action='store_true',
                         help='Connect to an external viewer')
     parser.add_argument('--addr', type=str, default=None,
@@ -241,6 +238,8 @@ if __name__ == '__main__':
 
     if args.save is not None:
         rerun.save(args.save)
+    elif args.headless:
+        pass
     elif not args.connect:
         # Show the logged data inside the Python process:
         # TODO: this seem to crash when quitting?
