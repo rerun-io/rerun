@@ -8,18 +8,21 @@ import numpy as np
 import os
 
 from pathlib import Path
+from typing import List
 
 import rerun_sdk as rerun
 
-from proto.research.compvideo.arcapture import ARFrame, ARCamera
+from proto.research.compvideo.arcapture import ARFrame, ARCamera, ARPointCloud
 
 def relpath(path: Path):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), path)
 
 def log_dir(dirpath: Path, nb_frames: int):
-    log_geometry(dirpath, nb_frames)
+    rerun.set_space_up("world", [0, 1, 0])
+    frame_times = log_geometry(dirpath, nb_frames)
+    print(frame_times)
 
-def log_geometry(dirpath: Path, nb_frames: int):
+def log_geometry(dirpath: Path, nb_frames: int) -> List[float]:
     path = os.path.join(relpath(dirpath), 'geometry.pbdata')
     print(f"logging geometry: {path}")
 
@@ -37,11 +40,15 @@ def log_geometry(dirpath: Path, nb_frames: int):
 
         rerun.set_time_sequence("frame", frame_idx)
         rerun.set_time_seconds("time", frame.timestamp)
+        frame_times.append(frame.timestamp)
 
         log_image(os.path.join(dirpath, f"video/{frame_idx}.jpg"))
         log_camera(frame.camera)
+        log_point_cloud(frame.raw_feature_points)
 
         frame_idx += 1
+
+    return frame_times
 
 
 def log_image(path: str):
@@ -76,10 +83,10 @@ def log_camera(cam: ARCamera):
     rot = rot * axis
     (w, h) = (h, w)
 
-    print(rot.as_quat())
-    print(translation)
-    print(intrinsics)
-    print(w, h)
+    # print(rot.as_quat())
+    # print(translation)
+    # print(intrinsics)
+    # print(w, h)
 
     ## TODO: something fishy going on with those quaternions
     rerun.log_camera("camera",
@@ -90,6 +97,27 @@ def log_camera(cam: ARCamera):
                      camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
                      space="world",
                      target_space="image")
+
+
+def log_point_cloud(point_cloud: ARPointCloud):
+    count = point_cloud.count
+
+    ## TODO: that would be ideal, but how does one specify their identifiers in that case?
+    # points = np.array([[p.x, p.y, p.z] for p in point_cloud.point])
+    # rerun.log_points("points",
+    #                  points,
+    #                  colors=np.array([255, 255, 255, 255]),
+    #                  space="world")
+
+    for i in range(count):
+        point = point_cloud.point[i]
+        ident = point_cloud.identifier[i]
+        path = f"points/{ident}"
+
+        rerun.log_points(path,
+                         np.array([[point.x, point.y, point.z]]),
+                         colors=np.array([255, 255, 255, 255]),
+                         space="world")
 
 
 if __name__ == '__main__':
