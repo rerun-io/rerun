@@ -52,6 +52,11 @@ impl RemoteViewerApp {
 }
 
 impl eframe::App for RemoteViewerApp {
+    #[cfg(target_arch = "wasm32")]
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        &mut *self
+    }
+
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         if let Some((_, app)) = &mut self.app {
             app.save(storage);
