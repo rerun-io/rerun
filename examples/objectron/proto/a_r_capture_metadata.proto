@@ -1,0 +1,621 @@
+syntax = "proto2";
+
+package research.compvideo.arcapture;
+
+option objc_class_prefix = "XNOPB";
+
+// Info about the camera characteristics used to capture images and depth data.
+message AVCameraCalibrationData {
+  // 3x3 row-major matrix relating a camera's internal properties to an ideal
+  // pinhole-camera model.
+  repeated float intrinsic_matrix = 1 [packed = true];
+
+  // The image dimensions to which the intrinsic_matrix values are relative.
+  optional float intrinsic_matrix_reference_dimension_width = 2;
+  optional float intrinsic_matrix_reference_dimension_height = 3;
+
+  // 3x4 row-major matrix relating a camera's position and orientation to a
+  // world or scene coordinate system. Consists of a unitless 3x3 rotation
+  // matrix (R) on the left and a translation (t) 3x1 vector on the right. The
+  // translation vector's units are millimeters. For example:
+  //
+  //            |r1,1  r2,1  r3,1 | t1|
+  //  [R | t] = |r1,2  r2,2  r3,2 | t2|
+  //            |r1,3  r2,3  r3,3 | t3|
+  //
+  //  is stored as [r11, r21, r31, t1, r12, r22, r32, t2, ...]
+  repeated float extrinsic_matrix = 4 [packed = true];
+
+  // The size, in millimeters, of one image pixel.
+  optional float pixel_size = 5;
+
+  // A list of floating-point values describing radial distortions imparted by
+  // the camera lens, for use in rectifying camera images.
+  repeated float lens_distortion_lookup_values = 6 [packed = true];
+
+  // A list of floating-point values describing radial distortions for use in
+  // reapplying camera geometry to a rectified image.
+  repeated float inverse_lens_distortion_lookup_values = 7 [packed = true];
+
+  // The offset of the distortion center of the camera lens from the top-left
+  // corner of the image.
+  optional float lens_distortion_center_x = 8;
+  optional float lens_distortion_center_y = 9;
+}
+
+// Container for depth data information.
+message AVDepthData {
+  // PNG representation of the grayscale depth data map. See discussion about
+  // depth_data_map_original_minimum_value, below, for information about how
+  // to interpret the pixel values.
+  optional bytes depth_data_map = 1;
+
+  // Pixel format type of the original captured depth data.
+  optional string depth_data_type = 2;
+
+  // Indicates the general accuracy of the depth_data_map.
+  enum Accuracy {
+    UNDEFINED_ACCURACY = 0;
+    // Values in the depth map are usable for foreground/background separation
+    // but are not absolutely accurate in the physical world.
+    RELATIVE = 1;
+    // Values in the depth map are absolutely accurate in the physical world.
+    ABSOLUTE = 2;
+  }
+  optional Accuracy depth_data_accuracy = 3 [default = RELATIVE];
+
+  // Indicates whether the depth_data_map contains temporally smoothed data.
+  optional bool depth_data_filtered = 4;
+
+  // Quality of the depth_data_map.
+  enum Quality {
+    UNDEFINED_QUALITY = 0;
+    HIGH = 1;
+    LOW = 2;
+  }
+  optional Quality depth_data_quality = 5;
+
+  // Associated calibration data for the depth_data_map.
+  optional AVCameraCalibrationData camera_calibration_data = 6;
+
+  // The original range of values expressed by the depth_data_map, before
+  // grayscale normalization. For example, if the minimum and maximum values
+  // indicate a range of [0.5, 2.2], and the depth_data_type value indicates
+  // it was a depth map, then white pixels (255, 255, 255) will map to 0.5 and
+  // black pixels (0, 0, 0) will map to 2.2 with the grayscale range linearly
+  // interpolated inbetween. Conversely, if the depth_data_type value indicates
+  // it was a disparity map, then white pixels will map to 2.2 and black pixels
+  // will map to 0.5.
+  optional float depth_data_map_original_minimum_value = 7;
+  optional float depth_data_map_original_maximum_value = 8;
+
+  // The width of the depth buffer map.
+  optional int32 depth_data_map_width = 9;
+
+  // The height of the depth buffer map.
+  optional int32 depth_data_map_height = 10;
+
+  // The row-major flattened array of the depth buffer map pixels. This will be
+  // either a float32 or float16 byte array, depending on 'depth_data_type'.
+  optional bytes depth_data_map_raw_values = 11;
+}
+
+// Estimated scene lighting information associated with a captured video frame.
+message ARLightEstimate {
+  // The estimated intensity, in lumens, of ambient light throughout the scene.
+  optional double ambient_intensity = 1;
+
+  // The estimated color temperature, in degrees Kelvin, of ambient light
+  // throughout the scene.
+  optional double ambient_color_temperature = 2;
+
+  // Data describing the estimated lighting environment in all directions.
+  // Second-level spherical harmonics in separate red, green, and blue data
+  // planes. Thus, this buffer contains 3 sets of 9 coefficients, or a total of
+  // 27 values.
+  repeated float spherical_harmonics_coefficients = 3 [packed = true];
+
+  message DirectionVector {
+    optional float x = 1;
+    optional float y = 2;
+    optional float z = 3;
+  }
+  // A vector indicating the orientation of the strongest directional light
+  // source, normalized in the world-coordinate space.
+  optional DirectionVector primary_light_direction = 4;
+
+  // The estimated intensity, in lumens, of the strongest directional light
+  // source in the scene.
+  optional float primary_light_intensity = 5;
+}
+
+// Information about the camera position and imaging characteristics for a
+// captured video frame.
+message ARCamera {
+  // The general quality of position tracking available when the camera captured
+  // a frame.
+  enum TrackingState {
+    UNDEFINED_TRACKING_STATE = 0;
+    // Camera position tracking is not available.
+    UNAVAILABLE = 1;
+    // Tracking is available, but the quality of results is questionable.
+    LIMITED = 2;
+    // Camera position tracking is providing optimal results.
+    NORMAL = 3;
+  }
+  optional TrackingState tracking_state = 1 [default = UNAVAILABLE];
+
+  // A possible diagnosis for limited position tracking quality as of when the
+  // frame was captured.
+  enum TrackingStateReason {
+    UNDEFINED_TRACKING_STATE_REASON = 0;
+    // The current tracking state is not limited.
+    NONE = 1;
+    // Not yet enough camera or motion data to provide tracking information.
+    INITIALIZING = 2;
+    // The device is moving too fast for accurate image-based position tracking.
+    EXCESSIVE_MOTION = 3;
+    // Not enough distinguishable features for image-based position tracking.
+    INSUFFICIENT_FEATURES = 4;
+    // Tracking is limited due to a relocalization in progress.
+    RELOCALIZING = 5;
+  }
+  optional TrackingStateReason tracking_state_reason = 2 [default = NONE];
+
+  // 4x4 row-major matrix expressing position and orientation of the camera in
+  // world coordinate space.
+  repeated float transform = 3 [packed = true];
+
+  // The orientation of the camera, expressed as roll, pitch, and yaw values.
+  message EulerAngles {
+    optional float roll = 1;
+    optional float pitch = 2;
+    optional float yaw = 3;
+  }
+  optional EulerAngles euler_angles = 4;
+
+  // The width and height, in pixels, of the captured camera image.
+  optional int32 image_resolution_width = 5;
+  optional int32 image_resolution_height = 6;
+
+  // 3x3 row-major matrix that converts between the 2D camera plane and 3D world
+  // coordinate space.
+  repeated float intrinsics = 7 [packed = true];
+
+  // 4x4 row-major transform matrix appropriate for rendering 3D content to
+  // match the image captured by the camera.
+  repeated float projection_matrix = 8 [packed = true];
+
+  // 4x4 row-major transform matrix appropriate for converting from world-space
+  // to camera space. Relativized for the captured_image orientation (i.e.
+  // UILandscapeOrientationRight).
+  repeated float view_matrix = 9 [packed = true];
+}
+
+// Container for a 3D mesh describing face topology.
+message ARFaceGeometry {
+  // Each vertex represents a 3D point in the face mesh, in the face coordinate
+  // space.
+  message Vertex {
+    optional float x = 1;
+    optional float y = 2;
+    optional float z = 3;
+  }
+  repeated Vertex vertices = 1;
+
+  // The number of elements in the vertices list.
+  optional int32 vertex_count = 2;
+
+  // Each texture coordinate represents UV texture coordinates for the vertex at
+  // the corresponding index in the vertices buffer.
+  message TextureCoordinate {
+    optional float u = 1;
+    optional float v = 2;
+  }
+  repeated TextureCoordinate texture_coordinates = 3;
+
+  // The number of elements in the texture_coordinates list.
+  optional int32 texture_coordinate_count = 4;
+
+  // Each integer value in this ordered list represents an index into the
+  // vertices and texture_coordinates lists. Each set of three indices
+  // identifies the vertices comprising a single triangle in the mesh. Each set
+  // of three indices forms a triangle, so the number of indices in the
+  // triangle_indices buffer is three times the triangle_count value.
+  repeated int32 triangle_indices = 5 [packed = true];
+
+  // The number of triangles described by the triangle_indices buffer.
+  optional int32 triangle_count = 6;
+}
+
+// Contains a list of blend shape entries wherein each item maps a specific
+// blend shape location to its associated coefficient.
+message ARBlendShapeMap {
+  message MapEntry {
+    // Identifier for the specific facial feature.
+    optional string blend_shape_location = 1;
+
+    // Indicates the current position of the feature relative to its neutral
+    // configuration, ranging from 0.0 (neutral) to 1.0 (maximum movement).
+    optional float blend_shape_coefficient = 2;
+  }
+  repeated MapEntry entries = 1;
+}
+
+// Information about the pose, topology, and expression of a detected face.
+message ARFaceAnchor {
+  // A coarse triangle mesh representing the topology of the detected face.
+  optional ARFaceGeometry geometry = 1;
+
+  // A map of named coefficients representing the detected facial expression in
+  // terms of the movement of specific facial features.
+  optional ARBlendShapeMap blend_shapes = 2;
+
+  // 4x4 row-major matrix encoding the position, orientation, and scale of the
+  // anchor relative to the world coordinate space.
+  repeated float transform = 3;
+
+  // Indicates whether the anchor's transform is valid. Frames that have a face
+  // anchor with this value set to NO should probably be ignored.
+  optional bool is_tracked = 4;
+}
+
+// Container for a 3D mesh.
+message ARPlaneGeometry {
+  message Vertex {
+    optional float x = 1;
+    optional float y = 2;
+    optional float z = 3;
+  }
+
+  // Each texture coordinate represents UV texture coordinates for the vertex at
+  // the corresponding index in the vertices buffer.
+  message TextureCoordinate {
+    optional float u = 1;
+    optional float v = 2;
+  }
+
+  // A buffer of vertex positions for each point in the plane mesh.
+  repeated Vertex vertices = 1;
+
+  // The number of elements in the vertices buffer.
+  optional int32 vertex_count = 2;
+
+  // A buffer of texture coordinate values for each point in the plane mesh.
+  repeated TextureCoordinate texture_coordinates = 3;
+
+  // The number of elements in the texture_coordinates buffer.
+  optional int32 texture_coordinate_count = 4;
+
+  // Each integer value in this ordered list represents an index into the
+  // vertices and texture_coordinates lists. Each set of three indices
+  // identifies the vertices comprising a single triangle in the mesh. Each set
+  // of three indices forms a triangle, so the number of indices in the
+  // triangle_indices buffer is three times the triangle_count value.
+  repeated int32 triangle_indices = 5 [packed = true];
+
+  // Each set of three indices forms a triangle, so the number of indices in the
+  // triangle_indices buffer is three times the triangle_count value.
+  optional int32 triangle_count = 6;
+
+  // Each value in this buffer represents the position of a vertex along the
+  // boundary polygon of the estimated plane. The owning plane anchor's
+  // transform matrix defines the coordinate system for these points.
+  repeated Vertex boundary_vertices = 7;
+
+  // The number of elements in the boundary_vertices buffer.
+  optional int32 boundary_vertex_count = 8;
+}
+
+// Information about the position and orientation of a real-world flat surface.
+message ARPlaneAnchor {
+  enum Alignment {
+    UNDEFINED = 0;
+    // The plane is perpendicular to gravity.
+    HORIZONTAL = 1;
+    // The plane is parallel to gravity.
+    VERTICAL = 2;
+  }
+
+  // Wrapper for a 3D point / vector within the plane. See extent and center
+  // values for more information.
+  message PlaneVector {
+    optional float x = 1;
+    optional float y = 2;
+    optional float z = 3;
+  }
+
+  enum PlaneClassification {
+    NONE = 0;
+    WALL = 1;
+    FLOOR = 2;
+    CEILING = 3;
+    TABLE = 4;
+    SEAT = 5;
+  }
+
+  // The classification status for the plane.
+  enum PlaneClassificationStatus {
+    // The classfication process for the plane anchor has completed but the
+    // result is inconclusive.
+    UNKNOWN = 0;
+    // No classication information can be provided (set on error or if the
+    // device does not support plane classification).
+    UNAVAILABLE = 1;
+    // The classification process has not completed.
+    UNDETERMINED = 2;
+    // The classfication process for the plane anchor has completed.
+    KNOWN = 3;
+  }
+
+  // The ID of the plane.
+  optional string identifier = 1;
+
+  // 4x4 row-major matrix encoding the position, orientation, and scale of the
+  // anchor relative to the world coordinate space.
+  repeated float transform = 2;
+
+  // The general orientation of the detected plane with respect to gravity.
+  optional Alignment alignment = 3;
+
+  // A coarse triangle mesh representing the general shape of the detected
+  // plane.
+  optional ARPlaneGeometry geometry = 4;
+
+  // The center point of the plane relative to its anchor position.
+  // Although the type of this property is a 3D vector, a plane anchor is always
+  // two-dimensional, and is always positioned in only the x and z directions
+  // relative to its transform position. (That is, the y-component of this
+  // vector is always zero.)
+  optional PlaneVector center = 5;
+
+  // The estimated width and length of the detected plane.
+  optional PlaneVector extent = 6;
+
+  // A Boolean value that indicates whether plane classification is available on
+  // the current device. On devices without plane classification support, all
+  // plane anchors report a classification value of NONE
+  // and a classification_status value of UNAVAILABLE.
+  optional bool classification_supported = 7;
+
+  // A general characterization of what kind of real-world surface the plane
+  // anchor represents.
+  optional PlaneClassification classification = 8;
+
+  // The current state of process for classifying the plane anchor.
+  // When this property's value is KNOWN, the classification property represents
+  // characterization of the real-world surface corresponding to the
+  // plane anchor.
+  optional PlaneClassificationStatus classification_status = 9;
+}
+
+// A collection of points in the world coordinate space.
+message ARPointCloud {
+  message Point {
+    optional float x = 1;
+    optional float y = 2;
+    optional float z = 3;
+  }
+
+  // The number of points in the cloud.
+  optional int32 count = 1;
+
+  // The list of detected points.
+  repeated Point point = 2;
+
+  // A list of unique identifiers corresponding to detected feature points.
+  // Each identifier in this list corresponds to the point at the same index
+  // in the points array.
+  repeated int64 identifier = 3 [packed = true];
+}
+
+// A 3D vector
+message CMVector {
+  optional double x = 1;
+  optional double y = 2;
+  optional double z = 3;
+}
+
+// Represents calibrated magnetic field data and accuracy estimate of it.
+message CMCalibratedMagneticField {
+  // Indicates the calibration accuracy of a magnetic field estimate.
+  enum CalibrationAccuracy {
+    UNCALIBRATED = 0;
+    LOW = 1;
+    MEDIUM = 2;
+    HIGH = 3;
+  }
+
+  // Vector of magnetic field estimate.
+  optional CMVector field = 1;
+
+  // Calibration accuracy of a magnetic field estimate.
+  optional CalibrationAccuracy calibration_accuracy = 2;
+}
+
+// A sample of device motion data.
+// Encapsulates measurements of the attitude, rotation rate, magnetic field, and
+// acceleration of the device. Core Media applies different algorithms of
+// bias-reduction and stabilization to rotation rate, magnetic field and
+// acceleration values. For raw values check correspondent fields in
+// CMMotionManagerSnapshot object.
+message CMDeviceMotion {
+  message Quaternion {
+    optional double x = 1;
+    optional double y = 2;
+    optional double z = 3;
+    optional double w = 4;
+  }
+
+  // The device motion data object timestamp. May differ from the frame
+  // timestamp value since the data may be collected at higher rate.
+  optional double timestamp = 1;
+
+  // The quaternion representing the device’s orientation relative to a known
+  // frame of reference at a point in time.
+  optional Quaternion attitude_quaternion = 2;
+
+  // The gravity acceleration vector expressed in the device's reference frame.
+  optional CMVector gravity = 3;
+
+  // The acceleration that the user is giving to the device.
+  optional CMVector user_acceleration = 4;
+
+  // Returns the magnetic field vector filtered with respect to the device bias.
+  optional CMCalibratedMagneticField magnetic_field = 5;
+
+  // The rotation rate of the device adjusted by bias-removing Core Motion
+  // algoriths.
+  optional CMVector rotation_rate = 6;
+}
+
+// A sample of raw accelerometer data.
+message CMAccelerometerData {
+  // The accelerometer data object timestamp. May differ from the frame
+  // timestamp value since the data may be collected at higher rate.
+  optional double timestamp = 1;
+
+  // Raw acceleration measured by the accelerometer which effectively is a sum
+  // of gravity and user_acceleration of CMDeviceMotion object.
+  optional CMVector acceleration = 2;
+}
+
+// A sample of raw gyroscope data.
+message CMGyroData {
+  // The gyroscope data object timestamp. May differ from the frame
+  // timestamp value since the data may be collected at higher rate.
+  optional double timestamp = 1;
+
+  // Raw rotation rate as measured by the gyroscope.
+  optional CMVector rotation_rate = 2;
+}
+
+// A sample of raw magnetometer data.
+message CMMagnetometerData {
+  // The magnetometer data object timestamp. May differ from the frame
+  // timestamp value since the data may be collected at higher rate.
+  optional double timestamp = 1;
+
+  // Raw magnetic field measured by the magnetometer.
+  optional CMVector magnetic_field = 2;
+}
+
+// Contains most recent snapshots of device motion data
+message CMMotionManagerSnapshot {
+  // Most recent samples of device motion data.
+  repeated CMDeviceMotion device_motion = 1;
+
+  // Most recent samples of raw accelerometer data.
+  repeated CMAccelerometerData accelerometer_data = 2;
+
+  // Most recent samples of raw gyroscope data.
+  repeated CMGyroData gyro_data = 3;
+
+  // Most recent samples of raw magnetometer data.
+  repeated CMMagnetometerData magnetometer_data = 4;
+}
+
+// Video image and face position tracking information.
+message ARFrame {
+  // The timestamp for the frame.
+  optional double timestamp = 1;
+
+  // The depth data associated with the frame. Not all frames have depth data.
+  optional AVDepthData depth_data = 2;
+
+  // The depth data object timestamp associated with the frame. May differ from
+  // the frame timestamp value. Is only set when the frame has depth_data.
+  optional double depth_data_timestamp = 3;
+
+  // Camera information associated with the frame.
+  optional ARCamera camera = 4;
+
+  // Light information associated with the frame.
+  optional ARLightEstimate light_estimate = 5;
+
+  // Face anchor information associated with the frame. Not all frames have an
+  // active face anchor.
+  optional ARFaceAnchor face_anchor = 6;
+
+  // Plane anchors associated with the frame. Not all frames have a plane
+  // anchor. Plane anchors and face anchors are mutually exclusive.
+  repeated ARPlaneAnchor plane_anchor = 7;
+
+  // The current intermediate results of the scene analysis used to perform
+  // world tracking.
+  optional ARPointCloud raw_feature_points = 8;
+
+  // Snapshot of Core Motion CMMotionManager object containing most recent
+  // motion data associated with the frame. Since motion data capture rates can
+  // be higher than rates of AR capture, the entities of this object reflect all
+  // of the aggregated events which have occurred since the last ARFrame was
+  // recorded.
+  optional CMMotionManagerSnapshot motion_manager_snapshot = 9;
+}
+
+// Mesh geometry data stored in an array-based format.
+message ARMeshGeometry {
+  message Vertex {
+    optional float x = 1;
+    optional float y = 2;
+    optional float z = 3;
+  }
+
+  message Face {
+    /// Indices of vertices defining the face from correspondent array of parent
+    /// message. A typical face is triangular.
+    repeated int32 vertex_indices = 1 [packed = true];
+  }
+
+  // Type of objects
+  enum MeshClassification {
+    NONE = 0;
+    WALL = 1;
+    FLOOR = 2;
+    CEILING = 3;
+    TABLE = 4;
+    SEAT = 5;
+    WINDOW = 6;
+    DOOR = 7;
+  }
+
+  // The vertices of the mesh.
+  repeated Vertex vertices = 1;
+
+  // The faces of the mesh.
+  repeated Face faces = 2;
+
+  // Rays that define which direction is outside for each face.
+  // Normals contain 'rays that define which direction is outside for each
+  // face', in practice the normals count is always identical to vertices count
+  // which looks like vertices normals and not faces normals.
+  repeated Vertex normals = 3;
+
+  // Classification for each face in the mesh.
+  repeated MeshClassification classification = 4;
+}
+
+// A subdividision of the reconstructed, real-world scene surrounding the user.
+message ARMeshAnchor {
+  // The ID of the mesh.
+  optional string identifier = 1;
+
+  // 4x4 row-major matrix encoding the position, orientation, and scale of the
+  // anchor relative to the world coordinate space.
+  repeated float transform = 2 [packed = true];
+
+  // 3D information about the mesh such as its shape and classifications.
+  optional ARMeshGeometry geometry = 3;
+}
+
+// Container object for mesh data of real-world scene surrounding the user.
+// Even though each ARFrame may have a set of ARMeshAnchors associated with it,
+// only a single frame's worth of mesh data is written separately at the end of
+// each recording due to concerns regarding latency and memory bloat.
+message ARMeshData {
+  // The timestamp for the data.
+  optional double timestamp = 1;
+
+  // Set of mesh anchors containing the mesh data.
+  repeated ARMeshAnchor mesh_anchor = 2;
+}
