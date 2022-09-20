@@ -476,7 +476,7 @@ impl CameraSpaceConvention {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Mesh3D {
     Encoded(EncodedMesh3D),
-    Raw(RawMesh3D),
+    Raw(Arc<RawMesh3D>),
 }
 
 #[derive(Clone, Debug, PartialEq)]

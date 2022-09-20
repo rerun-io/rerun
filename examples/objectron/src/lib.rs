@@ -454,7 +454,7 @@ fn log_plane_anchor(
             time_point,
             plane_path.clone(),
             "mesh",
-            Mesh3D::Raw(mesh),
+            Mesh3D::Raw(mesh.into()),
         ));
         logger.log(data_msg(
             time_point,
