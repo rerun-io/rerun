@@ -1,0 +1,21 @@
+[[tool.poetry.source]]
+name = 'robovision'
+url = 'https://devpi.services.robovision.ai/root/rv-obfuscated/+simple'
+secondary = true
+
+[tool.poetry]
+name = "r3"
+version = "0.1.0"
+description = ""
+authors = ["Robbert Van Cauteren <robbert.vancauteren@robovision.eu>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.11"
+rerun-sdk = {path = "../crates/re_sdk_python"}
+robovision-data = "^0.9.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
