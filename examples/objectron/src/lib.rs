@@ -367,7 +367,7 @@ fn log_image(path: &PathBuf, time_point: &TimePoint, logger: &Logger<'_>) -> any
     let tensor = re_log_types::Tensor {
         shape: vec![h as _, w as _, 3],
         dtype: TensorDataType::U8,
-        data: TensorDataStore::Jpeg(jpeg_bytes),
+        data: TensorDataStore::Jpeg(jpeg_bytes.into()),
     };
 
     let obj_path = obj_path!("video");

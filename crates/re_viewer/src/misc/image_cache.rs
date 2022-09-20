@@ -79,7 +79,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
             match (depth, tensor.dtype) {
                 (1, TensorDataType::U8) => {
                     // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
-                    image::GrayImage::from_raw(width, height, bytes.clone())
+                    image::GrayImage::from_raw(width, height, bytes.to_vec())
                         .context("Bad Luminance8")
                         .map(DynamicImage::ImageLuma8)
                 }
@@ -145,7 +145,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
                     }
                 }
 
-                (3, TensorDataType::U8) => image::RgbImage::from_raw(width, height, bytes.clone())
+                (3, TensorDataType::U8) => image::RgbImage::from_raw(width, height, bytes.to_vec())
                     .context("Bad RGB8")
                     .map(DynamicImage::ImageRgb8),
                 (3, TensorDataType::U16) => {
@@ -169,9 +169,11 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
                         .map(DynamicImage::ImageRgb8)
                 }
 
-                (4, TensorDataType::U8) => image::RgbaImage::from_raw(width, height, bytes.clone())
-                    .context("Bad RGBA8")
-                    .map(DynamicImage::ImageRgba8),
+                (4, TensorDataType::U8) => {
+                    image::RgbaImage::from_raw(width, height, bytes.to_vec())
+                        .context("Bad RGBA8")
+                        .map(DynamicImage::ImageRgba8)
+                }
                 (4, TensorDataType::U16) => {
                     Rgba16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                         .context("Bad RGBA16 image")
