@@ -185,7 +185,7 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
                 ## Try commenting 2 out of the 3 blocks and running the whole thing again if
                 ## this doesn't make sense, that'll make everything clearer.
                 ##
-                ## TODO: replace once we can project 3D bboxes on 2D views
+                ## TODO(cmc): replace once we can project 3D bboxes on 2D views
                 segments = [keypoint_pos2s[1], keypoint_pos2s[2],
                             keypoint_pos2s[1], keypoint_pos2s[3],
                             keypoint_pos2s[4], keypoint_pos2s[2],
