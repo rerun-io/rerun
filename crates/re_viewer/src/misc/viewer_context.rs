@@ -279,6 +279,14 @@ pub(crate) struct Caches {
     object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,
 }
 
+impl Caches {
+    /// Call once per frame to potentially flush the cache(s).
+    pub fn new_frame(&mut self) {
+        let max_image_cache_use = 1_000_000_000;
+        self.image.new_frame(max_image_cache_use);
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]

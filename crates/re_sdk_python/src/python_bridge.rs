@@ -973,14 +973,16 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
 fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     img: &numpy::PyReadonlyArrayDyn<'_, T>,
 ) -> Tensor {
+    // TODO(emilk): fewer memory allocations here.
     let vec = img.to_owned_array().into_raw_vec();
     let vec = bytemuck::allocation::try_cast_vec(vec)
         .unwrap_or_else(|(_err, vec)| bytemuck::allocation::pod_collect_to_vec(&vec));
+    let arc = std::sync::Arc::from(vec);
 
     Tensor {
         shape: img.shape().iter().map(|&d| d as u64).collect(),
         dtype: T::DTYPE,
-        data: TensorDataStore::Dense(vec),
+        data: TensorDataStore::Dense(arc),
     }
 }
 

@@ -123,6 +123,8 @@ impl eframe::App for App {
             return;
         }
 
+        self.state.cache.new_frame();
+
         if let Some(rx) = &mut self.rx {
             crate::profile_scope!("receive_messages");
             let start = instant::Instant::now();
