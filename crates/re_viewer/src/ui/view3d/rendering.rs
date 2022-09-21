@@ -365,6 +365,7 @@ pub fn paint_with_three_d(
     rendering.gpu_scene.set(three_d, scene);
 
     // -------------------
+
     let mut objects: Vec<&dyn Object> = vec![];
 
     if dark_mode {
@@ -380,22 +381,11 @@ pub fn paint_with_three_d(
 
     rendering.gpu_scene.collect_objects(&mut objects);
 
+    let (width, height) = (info.viewport.width() as u32, info.viewport.height() as u32);
+
     let render_target = painter.intermediate_fbo().map_or_else(
-        || {
-            RenderTarget::screen(
-                three_d,
-                info.viewport.width() as u32,
-                info.viewport.height() as u32,
-            )
-        },
-        |fbo| {
-            RenderTarget::from_framebuffer(
-                three_d,
-                info.viewport.width() as u32,
-                info.viewport.height() as u32,
-                fbo,
-            )
-        },
+        || RenderTarget::screen(three_d, width, height),
+        |fbo| RenderTarget::from_framebuffer(three_d, width, height, fbo),
     );
 
     crate::profile_scope!("render");
