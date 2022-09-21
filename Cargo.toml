@@ -14,8 +14,8 @@ exclude = ["examples/nyud"]
 debug = true
 
 [patch.crates-io]
-# 2022-09-20
-eframe      = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
-egui        = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
-egui_glow   = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
+# 2022-09-21 (updated arboard)
+eframe      = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
+egui        = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
+egui_glow   = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }

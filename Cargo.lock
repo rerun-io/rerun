@@ -89,17 +89,18 @@ dependencies = [
 
 [[package]]
 name = "arboard"
-version = "2.1.1"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc120354d1b5ec6d7aaf4876b602def75595937b5e15d356eb554ab5177e08bb"
+checksum = "79e8af4eff708b72e371acd4625ad3d01a88c946b9e8d6868cb5bb6e4d0d923c"
 dependencies = [
  "clipboard-win",
  "core-graphics",
- "image 0.23.14",
+ "image 0.24.3",
  "log",
  "objc",
  "objc-foundation",
  "objc_id",
+ "once_cell",
  "parking_lot",
  "thiserror",
  "winapi",
@@ -860,7 +861,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66cae5d0a029e2f19dc60b9010872aa25db#311eb66cae5d0a029e2f19dc60b9010872aa25db"
+source = "git+https://github.com/emilk/egui?rev=12dc61ed0f1a23b45e336799005d62e0a6f47e4f#12dc61ed0f1a23b45e336799005d62e0a6f47e4f"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -885,7 +886,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66cae5d0a029e2f19dc60b9010872aa25db#311eb66cae5d0a029e2f19dc60b9010872aa25db"
+source = "git+https://github.com/emilk/egui?rev=12dc61ed0f1a23b45e336799005d62e0a6f47e4f#12dc61ed0f1a23b45e336799005d62e0a6f47e4f"
 dependencies = [
  "ahash 0.8.0",
  "epaint",
@@ -898,7 +899,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66cae5d0a029e2f19dc60b9010872aa25db#311eb66cae5d0a029e2f19dc60b9010872aa25db"
+source = "git+https://github.com/emilk/egui?rev=12dc61ed0f1a23b45e336799005d62e0a6f47e4f#12dc61ed0f1a23b45e336799005d62e0a6f47e4f"
 dependencies = [
  "arboard",
  "egui",
@@ -923,7 +924,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66cae5d0a029e2f19dc60b9010872aa25db#311eb66cae5d0a029e2f19dc60b9010872aa25db"
+source = "git+https://github.com/emilk/egui?rev=12dc61ed0f1a23b45e336799005d62e0a6f47e4f#12dc61ed0f1a23b45e336799005d62e0a6f47e4f"
 dependencies = [
  "egui",
  "tracing",
@@ -932,7 +933,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66cae5d0a029e2f19dc60b9010872aa25db#311eb66cae5d0a029e2f19dc60b9010872aa25db"
+source = "git+https://github.com/emilk/egui?rev=12dc61ed0f1a23b45e336799005d62e0a6f47e4f#12dc61ed0f1a23b45e336799005d62e0a6f47e4f"
 dependencies = [
  "bytemuck",
  "egui",
@@ -954,7 +955,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66cae5d0a029e2f19dc60b9010872aa25db#311eb66cae5d0a029e2f19dc60b9010872aa25db"
+source = "git+https://github.com/emilk/egui?rev=12dc61ed0f1a23b45e336799005d62e0a6f47e4f#12dc61ed0f1a23b45e336799005d62e0a6f47e4f"
 dependencies = [
  "bytemuck",
  "serde",
@@ -963,7 +964,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66cae5d0a029e2f19dc60b9010872aa25db#311eb66cae5d0a029e2f19dc60b9010872aa25db"
+source = "git+https://github.com/emilk/egui?rev=12dc61ed0f1a23b45e336799005d62e0a6f47e4f#12dc61ed0f1a23b45e336799005d62e0a6f47e4f"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.0",
@@ -1624,7 +1625,6 @@ dependencies = [
  "num-rational 0.3.2",
  "num-traits",
  "png 0.16.8",
- "tiff",
 ]
 
 [[package]]
@@ -1640,6 +1640,7 @@ dependencies = [
  "num-rational 0.4.1",
  "num-traits",
  "png 0.17.6",
+ "tiff",
 ]
 
 [[package]]
@@ -1926,16 +1927,6 @@ dependencies = [
 
 [[package]]
 name = "miniz_oxide"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a92518e98c078586bc6c934028adcca4c92a53d6a958196de835170a01d84e4b"
-dependencies = [
- "adler",
- "autocfg",
-]
-
-[[package]]
-name = "miniz_oxide"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96590ba8f175222643a85693f33d26e9c8a015f599c216509b1a6894af675d34"
@@ -2067,19 +2058,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21d83ec9c63ec5bf950200a8e508bdad6659972187b625469f58ef8c08e29046"
 dependencies = [
  "jni-sys",
-]
-
-[[package]]
-name = "nix"
-version = "0.22.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4916f159ed8e5de0082076562152a76b7a1f64a01fd9d1e0fea002c37624faf"
-dependencies = [
- "bitflags",
- "cc",
- "cfg-if",
- "libc",
- "memoffset",
 ]
 
 [[package]]
@@ -3363,12 +3341,12 @@ dependencies = [
 
 [[package]]
 name = "tiff"
-version = "0.6.1"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a53f4706d65497df0c4349241deddf35f84cee19c87ed86ea8ca590f4464437"
+checksum = "7259662e32d1e219321eb309d5f9d898b779769d81b76e762c07c8e5d38fcb65"
 dependencies = [
- "jpeg-decoder 0.1.22",
- "miniz_oxide 0.4.4",
+ "flate2",
+ "jpeg-decoder 0.2.6",
  "weezl",
 ]
 
@@ -4168,14 +4146,24 @@ dependencies = [
 
 [[package]]
 name = "x11rb"
-version = "0.9.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e99be55648b3ae2a52342f9a870c0e138709a3493261ce9b469afe6e4df6d8a"
+checksum = "592b4883219f345e712b3209c62654ebda0bb50887f330cbd018d0f654bfd507"
 dependencies = [
  "gethostname",
- "nix 0.22.3",
+ "nix 0.24.2",
  "winapi",
  "winapi-wsapoll",
+ "x11rb-protocol",
+]
+
+[[package]]
+name = "x11rb-protocol"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56b245751c0ac9db0e006dc812031482784e434630205a93c73cfefcaabeac67"
+dependencies = [
+ "nix 0.24.2",
 ]
 
 [[package]]
