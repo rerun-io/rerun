@@ -157,7 +157,7 @@ jobs:
         with:
           maturin-version: "0.13.1"
           command: build
-          args: -m crates/re_sdk_python/Cargo.toml -o dist
+          args: -m py-rerun/Cargo.toml -o dist
 
   maturin-macos:
     name: Maturin MacOS
@@ -176,4 +176,4 @@ jobs:
         with:
           maturin-version: "0.13.1"
           command: build
-          args: -m crates/re_sdk_python/Cargo.toml  -o dist --universal2
+          args: -m py-rerun/Cargo.toml  -o dist --universal2
