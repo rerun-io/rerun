@@ -407,6 +407,38 @@ def log_line_segments(
     rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless, space)
 
 
+def log_obb(
+            obj_path: str,
+            half_size: ArrayLike,
+            position: ArrayLike,
+            rotation_q: ArrayLike,
+            timeless: bool = False,
+            color: Optional[Sequence[int]] = None,
+            label: Optional[str] = None,
+            stroke_width: Optional[float] = None,
+            space: Optional[str] = None):
+    """
+    Log a 3D oriented bounding box, defined by its half size.
+
+    `half_size`: Array with [x, y, z] half dimensions of the OBB.
+    `position`: Array with [x, y, z] position of the OBB in world space.
+    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
+    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    `label` is an optional text to show inside the OBB.
+    `stroke_width`: width of the OBB edges.
+    `space`: The 3D space the OBB is in. Will default to "3D".
+    """
+    rerun_rs.log_obb(obj_path,
+                     _to_sequence(half_size),
+                     _to_sequence(position),
+                     _to_sequence(rotation_q),
+                     timeless,
+                     color,
+                     stroke_width,
+                     label,
+                     space)
+
+
 def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space: Optional[str] = None):
     """
     Log a gray or color image.

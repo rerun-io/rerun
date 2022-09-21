@@ -97,6 +97,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_points, m)?)?;
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
+    m.add_function(wrap_pyfunction!(log_obb, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
@@ -883,6 +884,76 @@ fn log_line_segments(
     }
 
     let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
+/// Log a 3D oriented bounding box, defined by its half size.
+///
+/// Optionally give it a label.
+/// If no `space` is given, the space name "3D" will be used.
+#[pyfunction]
+fn log_obb(
+    obj_path: &str,
+    half_size: [f32; 3],
+    position: [f32; 3],
+    rotation_q: re_log_types::Quaternion,
+    timeless: bool,
+    color: Option<Vec<u8>>,
+    label: Option<String>,
+    stroke_width: Option<f32>,
+    space: Option<String>,
+) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Box3D);
+
+    let time_point = time(timeless);
+
+    let obb = re_log_types::Box3 {
+        rotation: rotation_q,
+        translation: position,
+        half_size,
+    };
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "obb"),
+        LoggedData::Single(Data::Box3(obb)),
+    );
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
+    }
+
+    if let Some(label) = label {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "label"),
+            LoggedData::Single(Data::String(label)),
+        );
+    }
+
+    if let Some(stroke_width) = stroke_width {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "stroke_width"),
+            LoggedData::Single(Data::F32(stroke_width)),
+        );
+    }
+
+    let space = space.unwrap_or_else(|| "3D".to_owned());
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
