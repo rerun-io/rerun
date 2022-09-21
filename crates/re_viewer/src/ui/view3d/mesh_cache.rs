@@ -64,17 +64,12 @@ impl GpuMeshCache {
             });
     }
 
-    pub fn set_instances(
-        &mut self,
-        mesh_id: u64,
-        instances: &three_d::Instances,
-    ) -> three_d::ThreeDResult<()> {
+    pub fn set_instances(&mut self, mesh_id: u64, instances: &three_d::Instances) {
         if let Some(Some(gpu_mesh)) = self.0.get_mut(&mesh_id) {
             for model in &mut gpu_mesh.meshes {
-                model.set_instances(instances)?;
+                model.set_instances(instances);
             }
         }
-        Ok(())
     }
 
     pub fn get(&self, mesh_id: u64) -> Option<&GpuMesh> {

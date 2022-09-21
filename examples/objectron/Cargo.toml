@@ -20,7 +20,7 @@ re_viewer = { path = "../../crates/re_viewer" }
 anyhow = "1"
 clap = { version = "3.1.6", features = ["derive"] }
 glam = "0.20" # to convert rotation matrices to quaternions
-image = { version = "0.23", default-features = false, features = ["jpeg"] }
+image = { version = "0.24", default-features = false, features = ["jpeg"] }
 itertools = "0.10"
 mimalloc = "0.1.29"
 prost = "0.10"

@@ -39,7 +39,7 @@ egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
 glow = "0.11"
-image = { version = "0.23", default-features = false, features = ["png"] }
+image = { version = "0.24", default-features = false, features = ["jpeg", "png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
 macaw = { version = "0.17", features = ["with_serde"] }
@@ -49,18 +49,20 @@ rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-three-d = { version = "0.12.2", default-features = false }
-typenum = "1.15"
-three-d-asset = { version = "0.1.0", default-features = false, features = [
+three-d = { version = "0.13.0", default-features = false }
+three-d-asset = { version = "0.3.0", default-features = false, features = [
     "gltf",
     "image",
+    "jpeg",
     "obj",
+    "png",
 ] }
+typenum = "1.15"
 vec1 = "1.8"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-arboard = { version = "2.1", default-features = false, features = [
+arboard = { version = "3.1", default-features = false, features = [
     "image-data",
 ] }
 ctrlc = { version = "3.0", features = ["termination"] }

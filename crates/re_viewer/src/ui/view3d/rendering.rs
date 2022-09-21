@@ -4,6 +4,8 @@ use super::{eye::Eye, mesh_cache::GpuMeshCache, scene::*};
 
 type LineMaterial = three_d::ColorMaterial;
 
+type ThreeDResult<T> = Result<T, three_d::CoreError>;
+
 pub struct RenderingContext {
     three_d: three_d::Context,
     skybox_dark: three_d::Skybox,
@@ -15,11 +17,11 @@ pub struct RenderingContext {
 }
 
 impl RenderingContext {
-    pub fn new(gl: &std::sync::Arc<glow::Context>) -> three_d::ThreeDResult<Self> {
+    pub fn new(gl: &std::sync::Arc<glow::Context>) -> ThreeDResult<Self> {
         let three_d = three_d::Context::from_gl_context(gl.clone())?;
 
-        let skybox_dark = load_skybox_texture(&three_d, skybox_dark).unwrap();
-        let skybox_light = load_skybox_texture(&three_d, skybox_light).unwrap();
+        let skybox_dark = load_skybox_texture(&three_d, skybox_dark);
+        let skybox_light = load_skybox_texture(&three_d, skybox_light);
 
         let ambient_light_intensity = 5.0;
         let ambient_dark = three_d::AmbientLight::new_with_environment(
@@ -27,15 +29,13 @@ impl RenderingContext {
             ambient_light_intensity,
             three_d::Color::WHITE,
             skybox_dark.texture(),
-        )
-        .unwrap();
+        );
         let ambient_light = three_d::AmbientLight::new_with_environment(
             &three_d,
             ambient_light_intensity,
             three_d::Color::WHITE,
             skybox_light.texture(),
-        )
-        .unwrap();
+        );
 
         let gpu_scene = GpuScene::new(&three_d);
 
@@ -65,16 +65,14 @@ impl GpuScene {
             Default::default(),
             &three_d::CpuMesh::sphere(3), // fast
             default_material(),
-        )
-        .unwrap();
+        );
 
         let lines_cache = three_d::Gm::new(
             three_d::InstancedMesh::new(
                 three_d,
                 &Default::default(),
                 &three_d::CpuMesh::cylinder(10),
-            )
-            .unwrap(),
+            ),
             Default::default(),
         );
 
@@ -98,11 +96,10 @@ impl GpuScene {
             line_radius_from_distance: _,
         } = scene;
 
-        self.points.set_instances(allocate_points(points)).unwrap();
+        self.points.set_instances(allocate_points(points));
 
         self.lines
-            .set_instances(&allocate_line_segments(line_segments))
-            .unwrap();
+            .set_instances(&allocate_line_segments(line_segments));
 
         self.mesh_instances.clear();
 
@@ -127,7 +124,7 @@ impl GpuScene {
         }
 
         for (mesh_id, instances) in &self.mesh_instances {
-            self.gpu_meshes.set_instances(*mesh_id, instances).unwrap();
+            self.gpu_meshes.set_instances(*mesh_id, instances);
         }
     }
 
@@ -157,7 +154,7 @@ impl GpuScene {
 fn load_skybox_texture(
     three_d: &three_d::Context,
     color_from_dir: fn(glam::Vec3) -> [u8; 3],
-) -> three_d::ThreeDResult<three_d::Skybox> {
+) -> three_d::Skybox {
     crate::profile_function!();
 
     let resolution = 64;
@@ -314,7 +311,8 @@ pub fn paint_with_three_d(
     scene: &Scene,
     dark_mode: bool,
     show_axes: bool, // TODO(emilk): less bool arguments
-) -> three_d::ThreeDResult<()> {
+    painter: &egui_glow::Painter,
+) {
     crate::profile_function!();
     use three_d::*;
     let three_d = &rendering.three_d;
@@ -329,12 +327,12 @@ pub fn paint_with_three_d(
 
     // Respect the egui clip region (e.g. if we are inside an `egui::ScrollArea`).
     let clip_rect = info.clip_rect_in_pixels();
-    three_d.set_scissor(ScissorBox {
+    let scissor_box = ScissorBox {
         x: clip_rect.left_px.round() as _,
         y: clip_rect.from_bottom_px.round() as _,
         width: clip_rect.width_px.round() as _,
         height: clip_rect.height_px.round() as _,
-    });
+    };
     three_d.set_blend(three_d::Blend::TRANSPARENCY);
 
     let position = eye.world_from_view.translation();
@@ -342,7 +340,6 @@ pub fn paint_with_three_d(
     let up = eye.world_from_view.transform_vector3(glam::Vec3::Y);
     let far = 100_000.0; // TODO(emilk): infinity (https://github.com/rustgd/cgmath/pull/547)
     let three_d_camera = three_d::Camera::new_perspective(
-        three_d,
         viewport,
         mint::Vector3::from(position).into(),
         mint::Vector3::from(target).into(),
@@ -350,7 +347,7 @@ pub fn paint_with_three_d(
         radians(eye.fov_y),
         eye.near(),
         far,
-    )?;
+    );
 
     // -------------------
 
@@ -359,8 +356,8 @@ pub fn paint_with_three_d(
     } else {
         &rendering.ambient_light
     };
-    let directional0 = DirectionalLight::new(three_d, 5.0, Color::WHITE, &vec3(-1.0, -1.0, -1.0))?;
-    let directional1 = DirectionalLight::new(three_d, 5.0, Color::WHITE, &vec3(1.0, 1.0, 1.0))?;
+    let directional0 = DirectionalLight::new(three_d, 5.0, Color::WHITE, &vec3(-1.0, -1.0, -1.0));
+    let directional1 = DirectionalLight::new(three_d, 5.0, Color::WHITE, &vec3(1.0, 1.0, 1.0));
     let lights: &[&dyn Light] = &[ambient, &directional0, &directional1];
 
     // -------------------
@@ -377,17 +374,22 @@ pub fn paint_with_three_d(
         objects.push(&rendering.skybox_light);
     }
 
-    let axes = three_d::Axes::new(three_d, 0.01, 1.0).unwrap();
+    let axes = three_d::Axes::new(three_d, 0.01, 1.0);
     if show_axes {
         objects.push(&axes);
     }
 
     rendering.gpu_scene.collect_objects(&mut objects);
 
-    crate::profile_scope!("render_pass");
-    render_pass(&three_d_camera, &objects, lights)?;
+    let (width, height) = (info.viewport.width() as u32, info.viewport.height() as u32);
 
-    Ok(())
+    let render_target = painter.intermediate_fbo().map_or_else(
+        || RenderTarget::screen(three_d, width, height),
+        |fbo| RenderTarget::from_framebuffer(three_d, width, height, fbo),
+    );
+
+    crate::profile_scope!("render");
+    render_target.render_partially(scissor_box, &three_d_camera, &objects, lights);
 }
 
 fn color_to_three_d([r, g, b, a]: [u8; 4]) -> three_d::Color {
