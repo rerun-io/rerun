@@ -5,8 +5,7 @@ pub(crate) fn apply_design_tokens(ctx: &egui::Context) {
     let json: serde_json::Value = serde_json::from_str(include_str!("../data/design_tokens.json"))
         .expect("Failed to parse data/design_tokens.json");
 
-    let typography_default: Typography =
-        get_alias(&json, &["Alias", "Typography", "Default", "value"]);
+    let typography_default: Typography = get_alias(&json, "{Alias.Typography.Default.value}");
 
     if apply_font {
         assert_eq!(typography_default.fontFamily, "Inter");
@@ -42,53 +41,44 @@ pub(crate) fn apply_design_tokens(ctx: &egui::Context) {
     }
 
     egui_style.visuals.widgets.noninteractive.bg_fill =
-        get_aliased_color(&json, &["Alias", "Color", "Surface", "Default", "value"]);
+        get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
     // TODO(emilk): window top bars
 
     egui_style.visuals.widgets.inactive.bg_fill =
-        get_aliased_color(&json, &["Alias", "Color", "Action", "Default", "value"]);
+        get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
 
     egui_style.visuals.widgets.hovered.bg_fill =
-        get_aliased_color(&json, &["Alias", "Color", "Action", "Hovered", "value"]);
+        get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
 
     egui_style.visuals.widgets.noninteractive.fg_stroke.color =
-        get_aliased_color(&json, &["Alias", "Color", "Text", "Default", "value"]);
+        get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
     egui_style.visuals.widgets.active.fg_stroke.color =
-        get_aliased_color(&json, &["Alias", "Color", "Text", "Strong", "value"]);
+        get_aliased_color(&json, "{Alias.Color.Text.Strong.value}");
     // egui_style.visuals.widgets.inactive.fg_stroke.color =
-    //     get_aliased_color(&json, &["Alias", "Color", "Icon", "Default", "value"]);
+    //     get_aliased_color(&json, "{Alias.Color.Icon.Default.value}");
     // TODO(emilk): weak text color
 
     ctx.set_style(egui_style);
 }
 
-fn get_aliased_color(json: &serde_json::Value, path: &[&str]) -> egui::Color32 {
-    parse_color(get_alias_str(json, path))
+fn get_aliased_color(json: &serde_json::Value, json_path: &str) -> egui::Color32 {
+    parse_color(get_alias_str(json, json_path))
 }
 
-fn get_alias_str<'json>(json: &'json serde_json::Value, path: &[&str]) -> &'json str {
-    let global_path = get(json, path).as_str().unwrap();
-    look_up_or_die(json, global_path).as_str().unwrap()
+fn get_alias_str<'json>(json: &'json serde_json::Value, json_path: &str) -> &'json str {
+    let global_path = follow_path_or_die(json, json_path).as_str().unwrap();
+    follow_path_and_alias(json, global_path).as_str().unwrap()
 }
 
-fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, path: &[&str]) -> T {
-    let global_path = get(json, path).as_str().unwrap();
-    let global_value = look_up_or_die(json, global_path);
+fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, json_path: &str) -> T {
+    let global_path = follow_path_or_die(json, json_path).as_str().unwrap();
+    let global_value = follow_path_and_alias(json, global_path);
     serde_json::from_value(global_value.clone()).unwrap_or_else(|err| {
         panic!(
             "Failed to convert {global_path:?} to {}: {err}. Json: {json:?}",
             std::any::type_name::<T>()
         )
     })
-}
-
-fn get<'json>(mut json: &'json serde_json::Value, path: &[&str]) -> &'json serde_json::Value {
-    for component in path {
-        json = json
-            .get(component)
-            .unwrap_or_else(|| panic!("Failed to follow json path {path:?}"));
-    }
-    json
 }
 
 #[allow(non_snake_case)]
@@ -101,13 +91,23 @@ struct Typography {
     // letterSpacing: String, // TODO(emilk)
 }
 
-fn look_up_or_die<'json>(value: &'json serde_json::Value, path: &str) -> &'json serde_json::Value {
-    let json =
-        look_up(value, path).unwrap_or_else(|| panic!("Failed to find {path:?} in design tokens"));
+fn follow_path_and_alias<'json>(
+    value: &'json serde_json::Value,
+    path: &str,
+) -> &'json serde_json::Value {
+    let json = follow_path(value, path)
+        .unwrap_or_else(|| panic!("Failed to find {path:?} in design tokens"));
     json.get("value").unwrap()
 }
 
-fn look_up<'json>(
+fn follow_path_or_die<'json>(
+    json: &'json serde_json::Value,
+    json_path: &str,
+) -> &'json serde_json::Value {
+    follow_path(json, json_path).unwrap_or_else(|| panic!("Failed to find {json_path:?}"))
+}
+
+fn follow_path<'json>(
     mut value: &'json serde_json::Value,
     path: &str,
 ) -> Option<&'json serde_json::Value> {
@@ -117,19 +117,6 @@ fn look_up<'json>(
         value = value.get(component)?;
     }
     Some(value)
-}
-
-#[test]
-fn test_design_tokens() {
-    let ctx = egui::Context::default();
-    apply_design_tokens(&ctx);
-
-    // Make sure it works:
-    let _ = ctx.run(Default::default(), |ctx| {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Hello Test!");
-        });
-    });
 }
 
 fn parse_px(pixels: &str) -> f32 {
@@ -160,4 +147,19 @@ fn parse_color(color: &str) -> egui::Color32 {
     } else {
         panic!()
     }
+}
+
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_design_tokens() {
+    let ctx = egui::Context::default();
+    apply_design_tokens(&ctx);
+
+    // Make sure it works:
+    let _ = ctx.run(Default::default(), |ctx| {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.label("Hello Test!");
+        });
+    });
 }
