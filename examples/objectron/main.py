@@ -152,10 +152,14 @@ def log_objects(objects: List[Object]):
 
         from scipy.spatial.transform import Rotation as R
         rot = R.from_matrix(np.asarray(obj.rotation).reshape((3, 3)))
-        trans = np.asarray(obj.translation)
-        half_size = np.asarray(obj.scale)
 
-        ## TODO(PRO-104): gotta implement support for 3D bboxes first
+        # rerun.log_obb(f"objects/{obj.id}/bbox3d",
+        #               obj.scale,
+        #               obj.translation,
+        #               rot.as_quat(),
+        #               timeless=True,
+        #               color=[130, 160, 250, 255],
+        #               space="world")
 
 
 def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]):

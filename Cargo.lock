@@ -2239,27 +2239,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "objectron"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap 3.2.20",
- "glam",
- "image",
- "itertools",
- "mimalloc",
- "prost",
- "re_log",
- "re_log_types",
- "re_viewer",
- "re_web_server",
- "re_ws_comms",
- "tokio",
- "tracing-subscriber",
- "webbrowser",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2460,29 +2439,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a2ca2c61bc9f3d74d2886294ab7b9853abd9c1ad903a3ac7815c58989bb7bab"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "prost"
-version = "0.10.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71adf41db68aa0daaefc69bb30bcd68ded9b9abaad5d1fbb6304c4fb390e083e"
-dependencies = [
- "bytes",
- "prost-derive",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b670f45da57fb8542ebdbb6105a925fe571b67f9e7ed9f47a06a84e72b4e7cc"
-dependencies = [
- "anyhow",
- "itertools",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
