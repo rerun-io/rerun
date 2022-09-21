@@ -412,10 +412,9 @@ def log_obb(
             half_size: ArrayLike,
             position: ArrayLike,
             rotation_q: ArrayLike,
-            timeless: bool = False,
             color: Optional[Sequence[int]] = None,
-            label: Optional[str] = None,
             stroke_width: Optional[float] = None,
+            timeless: bool = False,
             space: Optional[str] = None):
     """
     Log a 3D oriented bounding box, defined by its half size.
@@ -424,7 +423,6 @@ def log_obb(
     `position`: Array with [x, y, z] position of the OBB in world space.
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
     `color` is optional RGB or RGBA triplet in 0-255 sRGB.
-    `label` is an optional text to show inside the OBB.
     `stroke_width`: width of the OBB edges.
     `space`: The 3D space the OBB is in. Will default to "3D".
     """
@@ -435,7 +433,6 @@ def log_obb(
                      timeless,
                      color,
                      stroke_width,
-                     label,
                      space)
 
 

@@ -904,10 +904,9 @@ fn log_obb(
     half_size: [f32; 3],
     position: [f32; 3],
     rotation_q: re_log_types::Quaternion,
-    timeless: bool,
     color: Option<Vec<u8>>,
-    label: Option<String>,
     stroke_width: Option<f32>,
+    timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -935,14 +934,6 @@ fn log_obb(
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
-        );
-    }
-
-    if let Some(label) = label {
-        sdk.send_data(
-            &time_point,
-            (&obj_path, "label"),
-            LoggedData::Single(Data::String(label)),
         );
     }
 
