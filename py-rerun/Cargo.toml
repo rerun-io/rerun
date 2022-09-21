@@ -6,8 +6,6 @@ publish = false
 rust-version = "1.63"
 version = "0.1.0"
 
-[package.metadata.maturin]
-python-source = "python"
 
 
 [lib]

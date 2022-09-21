@@ -36,7 +36,7 @@ locked = true
 profile = "black"
 
 [tool.mypy]
-files = ["python", "tests", "examples"]
+files = ["rerun_sdk", "tests", "examples"]
 namespace_packages = true
 show_error_codes = true
 strict = true

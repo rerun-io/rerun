@@ -1,1 +1,3 @@
 maturin==0.13,<0.14
+pytest==7.1.3
+pytest-cov==3.0.0
