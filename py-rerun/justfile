@@ -2,7 +2,7 @@ RE_SDK_PYTHON := "crates/re_sdk_python"
 PYTHON_BIN := "venv/bin"
 
 ## Set up virtual environment
-venv:
+venv mode="--release":
     #!/usr/bin/env bash
     set -euxo pipefail
     python -m venv venv
@@ -11,21 +11,23 @@ venv:
     venv/bin/pip install -r requirements-lint.txt
     unset CONDA_PREFIX && \
         source venv/bin/activate && \
-        maturin develop
+        maturin develop {{mode}} --extras="examples,tests"
 
-## Run autoformatting and linting
-pre-commit: venv
+## Run autoformatting
+format: venv
 	isort .
 	black .
 	blackdoc .
 	pyupgrade --py37-plus `find examples/ rerun_sdk/ tests/ -name "*.py" -type f`
+	cargo fmt --all
+
+## Run linting
+lint: venv
 	mypy
 	flake8
-	cargo fmt --all
 
 ## Run fast unittests
 test: venv
-	#maturin develop
 	python -m pytest tests/unit/
 
 ## Run all tests

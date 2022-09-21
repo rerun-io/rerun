@@ -49,7 +49,7 @@ def log_dummy_data(args):
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
 
-    with open('crates/re_viewer/data/camera.glb', mode='rb') as file:
+    with open('examples/data/camera.glb', mode='rb') as file:
         mesh_file = file.read()
         # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
         transform = [
@@ -267,7 +267,7 @@ def generate_dummy_data(num_frames: int) -> Iterator[SampleFrame]:
         car.drive_one_step()
 
 
-if __name__ == '__main__':
+def main() -> None:
     parser = argparse.ArgumentParser(
         description='Logs rich data using the Rerun SDK.')
     parser.add_argument('--connect', dest='connect', action='store_true',
@@ -279,3 +279,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     log_dummy_data(args)
+
+
+if __name__ == '__main__':
+    main()

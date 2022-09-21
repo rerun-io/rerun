@@ -23,6 +23,10 @@ dependencies = ["numpy"]
 tests = ["mypy==0.971", "pytest==7.1.2"]
 examples = ["opencv-python~=4.6.0"]
 
+[project.scripts]
+example_dummy = "examples.dummy:main"
+example_multiprocessing = "examples.multiprocessing:main"
+
 [project.urls]
 homepage = "https://www.rerun.io/"
 documentation = "https://github.com/rerun-io/rerun"
