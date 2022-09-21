@@ -897,6 +897,7 @@ fn log_line_segments(
 ///
 /// Optionally give it a label.
 /// If no `space` is given, the space name "3D" will be used.
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn log_obb(
     obj_path: &str,
