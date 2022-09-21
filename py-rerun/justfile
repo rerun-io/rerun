@@ -1,0 +1,23 @@
+RE_SDK_PYTHON := "crates/re_sdk_python"
+PYTHON_BIN := "venv/bin"
+
+venv:  ## Set up virtual environment
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    python -m venv venv
+    venv/bin/pip install --upgrade pip
+    venv/bin/pip install -r requirements-build.txt
+    venv/bin/pip install -r requirements-lint.txt
+    unset CONDA_PREFIX && \
+        source venv/bin/activate && \
+        maturin develop
+
+pre-commit: venv  ## Run autoformatting and linting
+	{{PYTHON_BIN}}/isort .
+	{{PYTHON_BIN}}/black .
+	{{PYTHON_BIN}}/blackdoc .
+	{{PYTHON_BIN}}/pyupgrade --py37-plus `find examples/ rerun_sdk/ tests/ -name "*.py" -type f`
+	{{PYTHON_BIN}}/mypy
+	{{PYTHON_BIN}}/flake8
+	make -C .. fmt_toml
+	cargo fmt --all
