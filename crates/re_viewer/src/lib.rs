@@ -4,6 +4,7 @@
 //! including all 2D and 3D visualization code.
 
 mod app;
+mod design_tokens;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
@@ -58,6 +59,6 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
-pub(crate) fn customize_egui(_ctx: &egui::Context) {
-    // perhaps we want to use a different font, or change the theme
+pub(crate) fn customize_egui(ctx: &egui::Context) {
+    design_tokens::apply_design_tokens(ctx);
 }
