@@ -11,12 +11,14 @@ Setup:
 
 Run:
 ```sh
-## assuming your virtual env is up
+# assuming your virtual env is up
 python3 examples/objectron/main.py examples/objectron/dataset/bike/batch-8/16/
 ```
 """
 
+
 import argparse
+import logging
 import math
 import os
 import sys
@@ -24,57 +26,96 @@ import sys
 import numpy as np
 import rerun_sdk as rerun
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Final
+from typing import List, Final, Iterator, Iterable
 
+from PIL import Image
+from scipy.spatial.transform import Rotation as R
 from proto.objectron.proto import \
     ARFrame, ARCamera, ARPointCloud, Sequence, Object, ObjectType, FrameAnnotation
 
+
 IMAGE_RESOLUTION: Final = (1440, 1920)
+GEOMETRY_FILENAME: Final = "geometry.pbdata"
+ANNOTATIONS_FILENAME: Final = "annotation.pbdata"
 
-## ---
 
-def log_dir(dirpath: Path, nb_frames: int):
-    rerun.set_space_up("world", [0, 1, 0])
-    frame_times = log_geometry(dirpath, nb_frames)
-    log_annotations(dirpath, frame_times)
+@dataclass
+class SampleARFrame:
+    """An `ARFrame` sample and associated relevant metadata."""
+    index: int
+    timestamp: float
+    dirpath: Path
+    frame: ARFrame
 
-## --- geometry ---
 
-def log_geometry(dirpath: Path, nb_frames: int) -> List[float]:
-    path = os.path.join(dirpath, 'geometry.pbdata')
-    print(f"logging geometry: {path}")
+def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
+    """
+    Loads up to `nb_frames` consecutive ARFrames from the given path on disk.
 
-    frame_idx = 0
-    frame_times = []
+    `dirpath` should be of the form `dataset/bike/batch-8/16/`.
+    """
 
+    path = os.path.join(dirpath, GEOMETRY_FILENAME)
+    print(f"loading ARFrame: {path}")
     data = Path(path).read_bytes()
 
+    frame_idx = 0
     while len(data) > 0 and frame_idx < nb_frames:
         next_len = int.from_bytes(data[:4], byteorder='little', signed=False)
         data = data[4:]
 
         frame = ARFrame().parse(data[:next_len])
+
+        yield SampleARFrame(index=frame_idx,
+                            timestamp=frame.timestamp,
+                            dirpath=dirpath,
+                            frame=frame)
+
         data = data[next_len:]
-
-        rerun.set_time_sequence("frame", frame_idx)
-        rerun.set_time_seconds("time", frame.timestamp)
-        frame_times.append(frame.timestamp)
-
-        log_image(os.path.join(dirpath, f"video/{frame_idx}.jpg"))
-        log_camera(frame.camera)
-        log_point_cloud(frame.raw_feature_points)
-
         frame_idx += 1
 
-    return frame_times
+
+def read_annotations(dirpath: Path) -> Sequence:
+    """
+    Loads the annotations from the given path on disk.
+
+    `dirpath` should be of the form `dataset/bike/batch-8/16/`.
+    """
+
+    path = os.path.join(dirpath, ANNOTATIONS_FILENAME)
+    print(f"loading annotations: {path}")
+    data = Path(path).read_bytes()
+
+    seq = Sequence().parse(data)
+
+    return seq
+
+
+def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
+    """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
+
+    rerun.set_space_up("world", [0, 1, 0])
+
+    frame_times = []
+    for sample in samples:
+        rerun.set_time_sequence("frame", sample.index)
+        rerun.set_time_seconds("time", sample.timestamp)
+        frame_times.append(sample.timestamp)
+
+        log_image(os.path.join(sample.dirpath, f"video/{sample.index}.jpg"))
+        log_camera(sample.frame.camera)
+        log_point_cloud(sample.frame.raw_feature_points)
+
+    log_objects(seq.objects)
+    log_frame_annotations(frame_times, seq.frame_annotations)
 
 
 def log_image(path: str):
-    ## TODO(cmc): reading the image seems to be catastrophically slow for some reason?
+    # TODO(cmc): implement support for `log_img_file`
     print(f"logging image: {path}")
 
-    from PIL import Image
     img = Image.open(path)
     assert img.mode == 'RGB'
 
@@ -87,12 +128,11 @@ def log_camera(cam: ARCamera):
     intrinsics = np.asarray(cam.intrinsics).reshape((3, 3))
     (w, h) = (cam.image_resolution_width, cam.image_resolution_height)
 
-    from scipy.spatial.transform import Rotation as R
     rot = R.from_matrix(world_from_cam[0:3,][..., 0:3])
-    ## TODO(cmc): not sure why its last component is incorrectly negated?
+    # TODO(cmc): not sure why its last component is incorrectly negated?
     rot = R.from_quat(rot.as_quat() * [1.0, 1.0, 1.0, -1.0])
 
-    ## Because the dataset was collected in portrait:
+    # Because the dataset was collected in portrait:
     swizzle_x_y = np.asarray([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
     intrinsics = swizzle_x_y.dot(intrinsics.dot(swizzle_x_y))
     axis = R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
@@ -112,7 +152,9 @@ def log_camera(cam: ARCamera):
 def log_point_cloud(point_cloud: ARPointCloud):
     count = point_cloud.count
 
-    ## TODO(PRO-144): that would be ideal, but labeling in batches is not supported for now
+    # TODO(cmc): that would be ideal, but specifying individual paths within
+    # batches is not supported for now.
+    #
     # points = [[p.x, p.y, p.z] for p in point_cloud.point]
     # rerun.log_points("points",
     #                  points,
@@ -130,32 +172,26 @@ def log_point_cloud(point_cloud: ARPointCloud):
                          space="world")
 
 
-## --- annotations ---
+def log_annotations(seq: Sequence):
+    """Logs a sequence of annotations with the Rerun SDK."""
 
-def log_annotations(dirpath: Path, frame_times: List[float]):
-    path = os.path.join(dirpath, 'annotation.pbdata')
-    print(f"logging annotations: {path}")
-
-    data = Path(path).read_bytes()
-    seq = Sequence().parse(data)
+    rerun.set_space_up("world", [0, 1, 0])
 
     log_objects(seq.objects)
     log_frame_annotations(frame_times, seq.frame_annotations)
 
 
-def log_objects(objects: List[Object]):
-    for obj in objects:
-        if obj.type != ObjectType.BOUNDING_BOX:
-            ## TODO(cmc): error logging in python?
-            print(f"err: object type not supported: {obj.type}")
+def log_objects(bboxes: Iterable[Object]):
+    for bbox in bboxes:
+        if bbox.type != ObjectType.BOUNDING_BOX:
+            logging.error(f"err: object type not supported: {bbox.type}")
             continue
 
-        from scipy.spatial.transform import Rotation as R
-        rot = R.from_matrix(np.asarray(obj.rotation).reshape((3, 3)))
+        # rot = R.from_matrix(np.asarray(obj.rotation).reshape((3, 3)))
 
         # rerun.log_obb(f"objects/{obj.id}/bbox3d",
-        #               obj.scale,
-        #               obj.translation,
+        #               bbox.scale,
+        #               bbox.translation,
         #               rot.as_quat(),
         #               timeless=True,
         #               color=[130, 160, 250, 255],
@@ -177,39 +213,16 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
 
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
             keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y]
-                                        for kp in obj_ann.keypoints])
-            ## NOTE: These are normalized points, so we need to bring them back to image space
+                                         for kp in obj_ann.keypoints])
+            # NOTE: These are normalized points, so we need to bring them back to image space
             keypoint_pos2s *= IMAGE_RESOLUTION
 
             if len(keypoint_pos2s) == 9:
-                path = f"{path}/bbox2d"
-                ## NOTE: we don't yet support projecting arbitrary 3D stuff onto 2D views, so
-                ## we manually render a 3D bounding box by drawing line segmnents using the
-                ## already projected coordinates.
-                ## Try commenting 2 out of the 3 blocks and running the whole thing again if
-                ## this doesn't make sense, that'll make everything clearer.
-                ##
-                ## TODO(cmc): replace once we can project 3D bboxes on 2D views
-                segments = [keypoint_pos2s[1], keypoint_pos2s[2],
-                            keypoint_pos2s[1], keypoint_pos2s[3],
-                            keypoint_pos2s[4], keypoint_pos2s[2],
-                            keypoint_pos2s[4], keypoint_pos2s[3],
-
-                            keypoint_pos2s[5], keypoint_pos2s[6],
-                            keypoint_pos2s[5], keypoint_pos2s[7],
-                            keypoint_pos2s[8], keypoint_pos2s[6],
-                            keypoint_pos2s[8], keypoint_pos2s[7],
-
-                            keypoint_pos2s[1], keypoint_pos2s[5],
-                            keypoint_pos2s[2], keypoint_pos2s[6],
-                            keypoint_pos2s[3], keypoint_pos2s[7],
-                            keypoint_pos2s[4], keypoint_pos2s[8]]
-                rerun.log_line_segments(path,
-                                        segments,
-                                        space="image",
-                                        color=[130, 160, 250, 255])
+                log_projected_bbox(f"{path}/bbox2d", keypoint_pos2s)
             else:
-                ## TODO(PRO-144): that would be ideal, but labeling in batches is not supported for now
+                # TODO(cmc): that would be ideal, but specifying individual paths within
+                # batches is not supported for now.
+                #
                 # points = [[p.x, p.y, p.z] for p in point_cloud.point]
                 # rerun.log_points("points",
                 #                  keypoint_pos2s,
@@ -224,7 +237,39 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
                                      space="image")
 
 
-## --- CLI ---
+def log_projected_bbox(path: str, keypoints: np.ndarray):
+    """
+    Projects the 3D bounding box described by the keypoints of an `ObjectAnnotation`
+    to a 2D plane, using line segments.
+    """
+
+    # NOTE: we don't yet support projecting arbitrary 3D stuff onto 2D views, so
+    # we manually render a 3D bounding box by drawing line segments using the
+    # already projected coordinates.
+    # Try commenting 2 out of the 3 blocks and running the whole thing again if
+    # this doesn't make sense, that'll make everything clearer.
+    #
+    # TODO(cmc): replace once we can project 3D bboxes on 2D views
+    segments = [keypoints[1], keypoints[2],
+                keypoints[1], keypoints[3],
+                keypoints[4], keypoints[2],
+                keypoints[4], keypoints[3],
+
+                keypoints[5], keypoints[6],
+                keypoints[5], keypoints[7],
+                keypoints[8], keypoints[6],
+                keypoints[8], keypoints[7],
+
+                keypoints[1], keypoints[5],
+                keypoints[2], keypoints[6],
+                keypoints[3], keypoints[7],
+                keypoints[4], keypoints[8]]
+
+    rerun.log_line_segments(path,
+                            segments,
+                            space="image",
+                            color=[130, 160, 250, 255])
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -250,7 +295,9 @@ if __name__ == '__main__':
         rerun.connect(args.addr)
 
     for dirpath in args.dir:
-        log_dir(dirpath, args.frames)
+        samples = read_ar_frames(dirpath, args.frames)
+        seq = read_annotations(dirpath)
+        log_ar_frames(samples, seq)
 
     if args.save is not None:
         rerun.save(args.save)

@@ -15,7 +15,7 @@ debug = true
 
 [patch.crates-io]
 # 2022-09-20
-eframe = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
-egui = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
+eframe      = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
+egui        = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
 egui_extras = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
+egui_glow   = { git = "https://github.com/emilk/egui", rev = "311eb66cae5d0a029e2f19dc60b9010872aa25db" }
