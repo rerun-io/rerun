@@ -150,35 +150,17 @@ def log_camera(cam: ARCamera):
 
 
 def log_point_cloud(point_cloud: ARPointCloud):
-    count = point_cloud.count
-
-    # TODO(cmc): that would be ideal, but specifying individual paths within
-    # batches is not supported for now.
-    #
-    # points = [[p.x, p.y, p.z] for p in point_cloud.point]
-    # rerun.log_points("points",
-    #                  points,
-    #                  colors=np.asarray([255, 255, 255, 255]),
-    #                  space="world")
-
-    for i in range(count):
+    for i in range(point_cloud.count):
         point = point_cloud.point[i]
         ident = point_cloud.identifier[i]
-        path = f"points/{ident}"
-
-        rerun.log_points(path,
+        rerun.log_points(f"points/{ident}",
                          [[point.x, point.y, point.z]],
                          colors=np.asarray([255, 255, 255, 255]),
                          space="world")
-
-
-def log_annotations(seq: Sequence):
-    """Logs a sequence of annotations with the Rerun SDK."""
-
-    rerun.set_space_up("world", [0, 1, 0])
-
-    log_objects(seq.objects)
-    log_frame_annotations(frame_times, seq.frame_annotations)
+        # rerun.log_point(f"points/{ident}",
+        #                 [point.x, point.y, point.z],
+        #                 color=[255, 255, 255, 255],
+        #                 space="world")
 
 
 def log_objects(bboxes: Iterable[Object]):
@@ -220,21 +202,15 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             if len(keypoint_pos2s) == 9:
                 log_projected_bbox(f"{path}/bbox2d", keypoint_pos2s)
             else:
-                # TODO(cmc): that would be ideal, but specifying individual paths within
-                # batches is not supported for now.
-                #
-                # points = [[p.x, p.y, p.z] for p in point_cloud.point]
-                # rerun.log_points("points",
-                #                  keypoint_pos2s,
-                #                  colors=np.asarray([130, 160, 250, 255]),
-                #                  space="world")
-
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
-                    path = f"{path}/bbox2d/{id}"
-                    rerun.log_points(path,
+                    rerun.log_points(f"{path}/bbox2d/{id}",
                                      [pos2],
                                      colors=np.asarray([130, 160, 250, 255]),
                                      space="image")
+                    # rerun.log_point(f"{path}/bbox2d/{id}",
+                    #                 pos2,
+                    #                 color=[130, 160, 250, 255],
+                    #                 space="image")
 
 
 def log_projected_bbox(path: str, keypoints: np.ndarray):
