@@ -25,12 +25,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
-name = "adler32"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
-
-[[package]]
 name = "ahash"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -95,7 +89,7 @@ checksum = "79e8af4eff708b72e371acd4625ad3d01a88c946b9e8d6868cb5bb6e4d0d923c"
 dependencies = [
  "clipboard-win",
  "core-graphics",
- "image 0.24.3",
+ "image",
  "log",
  "objc",
  "objc-foundation",
@@ -180,12 +174,6 @@ name = "az"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b7e4c2464d97fe331d41de9d5db0def0a96f4d823b8b32a2efd503578988973"
-
-[[package]]
-name = "base64"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
 name = "base64"
@@ -783,16 +771,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deflate"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73770f8e1fe7d64df17ca66ad28994a0a623ea497fa69486e14984e715c5d174"
-dependencies = [
- "adler32",
- "byteorder",
-]
-
-[[package]]
 name = "digest"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1035,7 +1013,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f82b0f4c27ad9f8bfd1f3208d882da2b09c301bc1c828fd3a00d0216d2fbbff6"
 dependencies = [
  "crc32fast",
- "miniz_oxide 0.5.4",
+ "miniz_oxide",
 ]
 
 [[package]]
@@ -1335,21 +1313,20 @@ dependencies = [
 [[package]]
 name = "gltf"
 version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00e0a0eace786193fc83644907097285396360e9e82e30f81a21e9b1ba836a3e"
+source = "git+https://github.com/rerun-io/gltf?rev=3c14ded73755d1ce9e47010edb06db63cb7e2cca#3c14ded73755d1ce9e47010edb06db63cb7e2cca"
 dependencies = [
- "base64 0.12.3",
+ "base64",
  "byteorder",
  "gltf-json",
- "image 0.23.14",
+ "image",
  "lazy_static",
+ "urlencoding",
 ]
 
 [[package]]
 name = "gltf-derive"
 version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdd53d6e284bb2bf02a6926e4cc4984978c1990914d6cd9deae4e31cf37cd113"
+source = "git+https://github.com/rerun-io/gltf?rev=3c14ded73755d1ce9e47010edb06db63cb7e2cca#3c14ded73755d1ce9e47010edb06db63cb7e2cca"
 dependencies = [
  "inflections",
  "proc-macro2",
@@ -1360,8 +1337,7 @@ dependencies = [
 [[package]]
 name = "gltf-json"
 version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9949836a9ec5e7f83f76fb9bbcbc77f254a577ebbdb0820867bc11979ef97cad"
+source = "git+https://github.com/rerun-io/gltf?rev=3c14ded73755d1ce9e47010edb06db63cb7e2cca#3c14ded73755d1ce9e47010edb06db63cb7e2cca"
 dependencies = [
  "gltf-derive",
  "serde",
@@ -1613,22 +1589,6 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.23.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24ffcb7e7244a9bf19d35bf2883b9c080c4ced3c07a9895572178cdb8f13f6a1"
-dependencies = [
- "bytemuck",
- "byteorder",
- "color_quant",
- "jpeg-decoder 0.1.22",
- "num-iter",
- "num-rational 0.3.2",
- "num-traits",
- "png 0.16.8",
-]
-
-[[package]]
-name = "image"
 version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e30ca2ecf7666107ff827a8e481de6a132a9b687ed3bb20bb1c144a36c00964"
@@ -1636,10 +1596,10 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "color_quant",
- "jpeg-decoder 0.2.6",
- "num-rational 0.4.1",
+ "jpeg-decoder",
+ "num-rational",
  "num-traits",
- "png 0.17.6",
+ "png",
  "tiff",
 ]
 
@@ -1726,12 +1686,6 @@ checksum = "af25a77299a7f711a01975c35a6a424eb6862092cc2d6c72c4ed6cbc56dfc1fa"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "jpeg-decoder"
-version = "0.1.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "229d53d58899083193af11e15917b5640cd40b29ff475a1fe4ef725deb02d0f2"
 
 [[package]]
 name = "jpeg-decoder"
@@ -1915,15 +1869,6 @@ name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
-
-[[package]]
-name = "miniz_oxide"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "791daaae1ed6889560f8c4359194f56648355540573244a5448a83ba1ecc7435"
-dependencies = [
- "adler32",
-]
 
 [[package]]
 name = "miniz_oxide"
@@ -2120,28 +2065,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-iter"
-version = "0.1.43"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d03e6c028c5dc5cac6e2dec0efda81fc887605bb3d884578bb6d6bf7514e252"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
 name = "num-rational"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2244,7 +2167,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.20",
  "glam",
- "image 0.24.3",
+ "image",
  "itertools",
  "mimalloc",
  "prost",
@@ -2389,18 +2312,6 @@ dependencies = [
 
 [[package]]
 name = "png"
-version = "0.16.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c3287920cb847dee3de33d301c463fba14dda99db24214ddf93f83d3021f4c6"
-dependencies = [
- "bitflags",
- "crc32fast",
- "deflate",
- "miniz_oxide 0.3.7",
-]
-
-[[package]]
-name = "png"
 version = "0.17.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f0e7f4c94ec26ff209cee506314212639d6c91b80afb82984819fafce9df01c"
@@ -2408,7 +2319,7 @@ dependencies = [
  "bitflags",
  "crc32fast",
  "flate2",
- "miniz_oxide 0.5.4",
+ "miniz_oxide",
 ]
 
 [[package]]
@@ -2771,7 +2682,7 @@ dependencies = [
  "fixed",
  "glam",
  "glow",
- "image 0.24.3",
+ "image",
  "instant",
  "itertools",
  "macaw",
@@ -2950,7 +2861,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "300a51053b1cb55c80b7a9fde4120726ddf25ca241a1cbb926626f62fb136bff"
 dependencies = [
- "base64 0.13.0",
+ "base64",
  "bitflags",
  "serde",
 ]
@@ -3333,7 +3244,7 @@ dependencies = [
  "cgmath",
  "gltf",
  "half 1.8.2",
- "image 0.24.3",
+ "image",
  "thiserror",
  "wavefront_obj",
  "web-sys",
@@ -3346,7 +3257,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7259662e32d1e219321eb309d5f9d898b779769d81b76e762c07c8e5d38fcb65"
 dependencies = [
  "flate2",
- "jpeg-decoder 0.2.6",
+ "jpeg-decoder",
  "weezl",
 ]
 
@@ -3371,7 +3282,7 @@ dependencies = [
  "arrayvec",
  "bytemuck",
  "cfg-if",
- "png 0.17.6",
+ "png",
  "safe_arch",
  "tiny-skia-path",
 ]
@@ -3584,7 +3495,7 @@ version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e27992fd6a8c29ee7eef28fc78349aa244134e10ad447ce3b9f0ac0ed0fa4ce0"
 dependencies = [
- "base64 0.13.0",
+ "base64",
  "byteorder",
  "bytes",
  "http",
@@ -3672,6 +3583,12 @@ dependencies = [
  "matches",
  "percent-encoding",
 ]
+
+[[package]]
+name = "urlencoding"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8db7427f936968176eaa7cdf81b7f98b980b18495ec28f1b5791ac3bfe3eea9"
 
 [[package]]
 name = "utf-8"
