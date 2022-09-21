@@ -329,7 +329,7 @@ pub struct SphereInstances {
 impl SphereInstances {
     pub fn validate(&self) {
         if let Some(colors) = &self.colors {
-            debug_assert_eq!(colors.len(), self.translations_and_scale.len());
+            assert_eq!(colors.len(), self.translations_and_scale.len());
         }
     }
 
