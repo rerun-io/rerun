@@ -662,7 +662,7 @@ fn log_point(
         );
     }
 
-    let position = position.as_slice()?;
+    let position = vec_from_np_array(&position);
     let pos_data = match dim {
         2 => Data::Vec2([position[0], position[1]]),
         3 => Data::Vec3([position[0], position[1], position[2]]),
