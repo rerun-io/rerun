@@ -12,7 +12,7 @@ elif [ -x "$(command -v dnf)" ];   then sudo dnf install clang clang-devel clang
 fi
 
 # Needed to compile and check the code:
-rustup install 1.63.0
+rustup install 1.64.0
 ./scripts/setup_web.sh
 ./scripts/build_web.sh # We bake the wasm into some binaries, so we need to build the WASM at least once!
 
