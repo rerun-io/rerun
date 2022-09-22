@@ -563,7 +563,7 @@ def log_image_file(obj_path: str,
                    timeless: bool = False,
                    space: Optional[str] = None):
     """
-    Log the contents of an image file (only jpeg supported for now).
+    Log the contents of an image file (only JPEGs supported for now).
 
     If no `img_format` is specified, we will try and guess it.
     If no `space` is given, the space name "2D" will be used.

@@ -1127,25 +1127,6 @@ fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
 
 // ----------------------------------------------------------------------------
 
-// #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
-// enum MeshFormat {
-//     JPEG,
-// }
-
-// impl MeshFormat {
-//     fn parse(mesh_format: &str) -> PyResult<MeshFormat> {
-//         match mesh_format {
-//             "GLB" => MeshFormat::Glb,
-//             "GLTF" => MeshFormat::Gltf,
-//             "OBJ" => MeshFormat::Obj,
-//             _ => Err(PyTypeError::new_err(format!(
-//                 "Unknown MeshFormat: {mesh_format:?}. \
-//                 Expected one of: GLB, GLTF, OBJ"
-//             ))),
-//         }
-//     }
-// }
-
 #[pyfunction]
 fn log_mesh_file(
     obj_path: &str,
