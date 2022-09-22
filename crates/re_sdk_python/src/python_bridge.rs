@@ -6,6 +6,8 @@ use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
+use std::io::Cursor;
+use std::path::PathBuf;
 
 use re_log_types::{LoggedData, *};
 
@@ -104,6 +106,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_tensor_f32, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
+    m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
 
     Ok(())
 }
@@ -1049,6 +1052,27 @@ fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     }
 }
 
+// ----------------------------------------------------------------------------
+
+// #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
+// enum MeshFormat {
+//     JPEG,
+// }
+
+// impl MeshFormat {
+//     fn parse(mesh_format: &str) -> PyResult<MeshFormat> {
+//         match mesh_format {
+//             "GLB" => MeshFormat::Glb,
+//             "GLTF" => MeshFormat::Gltf,
+//             "OBJ" => MeshFormat::Obj,
+//             _ => Err(PyTypeError::new_err(format!(
+//                 "Unknown MeshFormat: {mesh_format:?}. \
+//                 Expected one of: GLB, GLTF, OBJ"
+//             ))),
+//         }
+//     }
+// }
+
 #[pyfunction]
 fn log_mesh_file(
     obj_path: &str,
@@ -1065,7 +1089,8 @@ fn log_mesh_file(
         "OBJ" => MeshFormat::Obj,
         _ => {
             return Err(PyTypeError::new_err(format!(
-                "Unknown mesh format {mesh_format:?}. Expected one of: GLB, GLTF, OBJ"
+                "Unknown mesh format {mesh_format:?}. \
+                Expected one of: GLB, GLTF, OBJ"
             )));
         }
     };
@@ -1112,6 +1137,81 @@ fn log_mesh_file(
         }))),
     );
 
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
+/// Log an image file given its path on disk.
+///
+/// If no `img_format` is specified, we will try and guess it.
+/// If no `space` is given, the space name "2D" will be used.
+#[pyfunction]
+fn log_image_file(
+    obj_path: &str,
+    img_path: PathBuf,
+    img_format: Option<&str>,
+    timeless: bool,
+    space: Option<String>,
+) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let img_bytes = std::fs::read(img_path)?;
+    let img_format = match img_format {
+        Some(img_format) => image::ImageFormat::from_extension(img_format)
+            .expect("`ImageFormat` as declared in __init.py__ only contains valid values"),
+        None => {
+            image::guess_format(&img_bytes).map_err(|err| PyTypeError::new_err(err.to_string()))?
+        }
+    };
+
+    use image::ImageDecoder;
+    let (w, h) = match img_format {
+        image::ImageFormat::Jpeg => {
+            use image::codecs::jpeg::JpegDecoder;
+            let jpeg = JpegDecoder::new(Cursor::new(&img_bytes))
+                .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+
+            let color_format = jpeg.color_type();
+            if !matches!(color_format, image::ColorType::Rgb8) {
+                // TODO(emilk): support gray-scale jpeg aswell
+                return Err(PyTypeError::new_err(format!(
+                    "Unsupported color format {color_format:?}. \
+                    Expected one of: RGB8"
+                )));
+            }
+
+            jpeg.dimensions()
+        }
+        _ => {
+            return Err(PyTypeError::new_err(format!(
+                "Unsupported image format {img_format:?}. \
+                Expected one of: JPEG"
+            )))
+        }
+    };
+
+    let mut sdk = Sdk::global();
+
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "tensor"),
+        LoggedData::Single(Data::Tensor(re_log_types::Tensor {
+            shape: vec![h as _, w as _, 3],
+            dtype: TensorDataType::U8,
+            data: TensorDataStore::Jpeg(img_bytes.into()),
+        })),
+    );
+
+    let space = space.unwrap_or_else(|| "2D".to_owned());
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
