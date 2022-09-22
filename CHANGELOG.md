@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-09-21: Python SDK: add `log_point` ([#106](https://github.com/rerun-io/rerun/pull/106)).
 * 2022-09-21: Python SDK: add `log_obb` ([#103](https://github.com/rerun-io/rerun/pull/103)).
 * 2022-09-20: Reduce memory use for image intensive applications ([#100](https://github.com/rerun-io/rerun/pull/100)).
 * 2022-09-17: Add 'timeless' data ([#96](https://github.com/rerun-io/rerun/pull/96)).

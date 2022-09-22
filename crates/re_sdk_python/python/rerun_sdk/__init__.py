@@ -274,6 +274,33 @@ def log_rects(
                        space)
 
 
+def log_point(
+        obj_path: str,
+        position: np.ndarray,
+        color: Optional[Sequence[int]] = None,
+        timeless: bool = False,
+        space: Optional[str] = None):
+    """
+    Log a 2D or 3D point, with optional color.
+    Logging again to the same `obj_path` will replace the previous point.
+
+    `position`: 2x1 or 3x1 array
+
+    Colors should either be in 0-255 gamma space or in 0-1 linear space.
+    Colors can be RGB or RGBA. You can supply no colors, one color,
+    or one color per point in a Nx3 or Nx4 numpy array.
+
+    Supported `dtype`s for `colors`:
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
+    * float32/float64: all color components should be in 0-1 linear space.
+
+    If no `space` is given, the space name "2D" or "3D" will be used,
+    depending on the dimensionality of the data.
+    """
+    position = np.require(position, dtype='float32')
+    rerun_rs.log_point(obj_path, position, color, timeless, space)
+
+
 def log_points(
         obj_path: str,
         positions: np.ndarray,
