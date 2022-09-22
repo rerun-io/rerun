@@ -1224,7 +1224,7 @@ fn log_image_file(
     };
 
     use image::ImageDecoder;
-    let (w, h) = match img_format {
+    let ((w, h), data) = match img_format {
         image::ImageFormat::Jpeg => {
             use image::codecs::jpeg::JpegDecoder;
             let jpeg = JpegDecoder::new(Cursor::new(&img_bytes))
@@ -1239,7 +1239,7 @@ fn log_image_file(
                 )));
             }
 
-            jpeg.dimensions()
+            (jpeg.dimensions(), TensorDataStore::Jpeg(img_bytes.into()))
         }
         _ => {
             return Err(PyTypeError::new_err(format!(
@@ -1261,7 +1261,7 @@ fn log_image_file(
         LoggedData::Single(Data::Tensor(re_log_types::Tensor {
             shape: vec![h as _, w as _, 3],
             dtype: TensorDataType::U8,
-            data: TensorDataStore::Jpeg(img_bytes.into()),
+            data,
         })),
     );
 
