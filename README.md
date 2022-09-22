@@ -33,13 +33,14 @@ You should now be able to run `rerun --help` in any terminal.
 
 ```
 python3 -m pip install --upgrade pip
-pip3 install "crates/re_sdk_python[tests,examples]"
+pip3 install "py-rerun[tests,examples]"
 ```
 Note: If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip3 install` command.
 
+
 ### Run the example
 ```sh
-python3 crates/re_sdk_python/example.py
+example_dummy
 ```
 
 ### Using the Rerun Python SDK

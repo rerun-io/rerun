@@ -20,12 +20,12 @@ requires-python = ">=3.7"
 dependencies = ["numpy"]
 
 [project.optional-dependencies]
-tests = ["mypy==0.971", "pytest==7.1.2"]
+tests = ["pytest==7.1.2"]
 examples = ["opencv-python~=4.6.0"]
 
 [project.scripts]
-example_dummy = "examples.dummy:main"
-example_multiprocessing = "examples.multiprocessing:main"
+example_dummy = "rerun_sdk.examples.dummy:main"
+example_multiprocessing = "rerun_sdk.examples.multiprocessing:main"
 
 [project.urls]
 homepage = "https://www.rerun.io/"
@@ -40,7 +40,7 @@ locked = true
 profile = "black"
 
 [tool.mypy]
-files = ["rerun_sdk", "tests", "examples"]
+files = ["rerun_sdk", "tests"]
 namespace_packages = true
 show_error_codes = true
 strict = true

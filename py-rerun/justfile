@@ -1,37 +1,37 @@
 RE_SDK_PYTHON := "crates/re_sdk_python"
 PYTHON_BIN := "venv/bin"
 
-## Set up virtual environment
-venv mode="--release":
+# Set up virtual environment for development
+develop-env:
     #!/usr/bin/env bash
-    set -euxo pipefail
+    echo "Setting up Python virtual environment in venv"
+    # set -euxo pipefail
     python -m venv venv
     venv/bin/pip install --upgrade pip
     venv/bin/pip install -r requirements-build.txt
     venv/bin/pip install -r requirements-lint.txt
+    echo "Do 'source venv/bin/activate' to use the virtual environment!"
+
+# Build and install the package into the venv
+build mode="release":
+    #!/usr/bin/env bash
     unset CONDA_PREFIX && \
         source venv/bin/activate && \
-        maturin develop {{mode}} --extras="examples,tests"
+        maturin develop  --extras="examples,tests" {{ if mode == "debug" { "" } else { "--release" } }}
 
-## Run autoformatting
-format: venv
-	isort .
-	black .
-	blackdoc .
-	pyupgrade --py37-plus `find examples/ rerun_sdk/ tests/ -name "*.py" -type f`
-	cargo fmt --all
+# Run autoformatting
+format:
+    isort .
+    black .
+    blackdoc .
+    pyupgrade --py37-plus `find rerun_sdk/ tests/ -name "*.py" -type f`
+    cargo fmt --all
 
-## Run linting
-lint: venv
-	mypy
-	flake8
+# Run linting
+lint:
+    mypy
+    flake8
 
-## Run fast unittests
-test: venv
-	python -m pytest tests/unit/
-
-## Run all tests
-test-all: venv
-	maturin develop
-	python -m pytest
-	python tests/docs/run_doc_examples.py
+# Run fast unittests
+test:
+    python -m pytest tests/unit/
