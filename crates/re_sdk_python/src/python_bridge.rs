@@ -6,6 +6,7 @@ use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
+use std::borrow::Cow;
 
 use re_log_types::{LoggedData, *};
 
@@ -160,14 +161,14 @@ fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
     parse_obj_path_comps(obj_path).map(ObjPath::from)
 }
 
-fn vec_from_np_array<T: numpy::Element, D: numpy::ndarray::Dimension>(
-    array: &numpy::PyReadonlyArray<'_, T, D>,
-) -> Vec<T> {
+fn vec_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
+    array: &'a numpy::PyReadonlyArray<'_, T, D>,
+) -> Cow<'a, [T]> {
     let array = array.as_array();
     if let Some(slice) = array.to_slice() {
-        slice.to_vec()
+        Cow::Borrowed(slice)
     } else {
-        array.iter().cloned().collect()
+        Cow::Owned(array.iter().cloned().collect())
     }
 }
 
