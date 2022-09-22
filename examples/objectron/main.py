@@ -169,15 +169,14 @@ def log_objects(bboxes: Iterable[Object]):
             logging.error(f"err: object type not supported: {bbox.type}")
             continue
 
-        # rot = R.from_matrix(np.asarray(obj.rotation).reshape((3, 3)))
-
-        # rerun.log_obb(f"objects/{obj.id}/bbox3d",
-        #               bbox.scale,
-        #               bbox.translation,
-        #               rot.as_quat(),
-        #               timeless=True,
-        #               color=[130, 160, 250, 255],
-        #               space="world")
+        rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
+        rerun.log_obb(f"objects/{bbox.id}/bbox3d",
+                      bbox.scale,
+                      bbox.translation,
+                      rot.as_quat(),
+                      color=[130, 160, 250, 255],
+                      timeless=True,
+                      space="world")
 
 
 def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]):

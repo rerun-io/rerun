@@ -430,9 +430,9 @@ def log_obb(
                      _to_sequence(half_size),
                      _to_sequence(position),
                      _to_sequence(rotation_q),
-                     timeless,
                      color,
                      stroke_width,
+                     timeless,
                      space)
 
 
