@@ -1,6 +1,3 @@
-RE_SDK_PYTHON := "crates/re_sdk_python"
-PYTHON_BIN := "venv/bin"
-
 # Set up virtual environment for development
 develop-env:
     #!/usr/bin/env bash
