@@ -274,6 +274,33 @@ def log_rects(
                        space)
 
 
+def log_point(
+        obj_path: str,
+        position: np.ndarray,
+        color: Optional[Sequence[int]] = None,
+        timeless: bool = False,
+        space: Optional[str] = None):
+    """
+    Log a 2D or 3D point, with optional color.
+    Logging again to the same `obj_path` will replace the previous point.
+
+    `position`: 2x1 or 3x1 array
+
+    Colors should either be in 0-255 gamma space or in 0-1 linear space.
+    Colors can be RGB or RGBA. You can supply no colors, one color,
+    or one color per point in a Nx3 or Nx4 numpy array.
+
+    Supported `dtype`s for `colors`:
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
+    * float32/float64: all color components should be in 0-1 linear space.
+
+    If no `space` is given, the space name "2D" or "3D" will be used,
+    depending on the dimensionality of the data.
+    """
+    position = np.require(position, dtype='float32')
+    rerun_rs.log_point(obj_path, position, color, timeless, space)
+
+
 def log_points(
         obj_path: str,
         positions: np.ndarray,
@@ -405,6 +432,35 @@ def log_line_segments(
     """
     positions = np.require(positions, dtype='float32')
     rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless, space)
+
+
+def log_obb(
+            obj_path: str,
+            half_size: ArrayLike,
+            position: ArrayLike,
+            rotation_q: ArrayLike,
+            color: Optional[Sequence[int]] = None,
+            stroke_width: Optional[float] = None,
+            timeless: bool = False,
+            space: Optional[str] = None):
+    """
+    Log a 3D oriented bounding box, defined by its half size.
+
+    `half_size`: Array with [x, y, z] half dimensions of the OBB.
+    `position`: Array with [x, y, z] position of the OBB in world space.
+    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
+    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    `stroke_width`: width of the OBB edges.
+    `space`: The 3D space the OBB is in. Will default to "3D".
+    """
+    rerun_rs.log_obb(obj_path,
+                     _to_sequence(half_size),
+                     _to_sequence(position),
+                     _to_sequence(rotation_q),
+                     timeless,
+                     color,
+                     stroke_width,
+                     space)
 
 
 def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space: Optional[str] = None):

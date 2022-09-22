@@ -6,6 +6,7 @@ use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
+use std::borrow::Cow;
 
 use re_log_types::{LoggedData, *};
 
@@ -94,9 +95,11 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_camera, m)?)?;
+    m.add_function(wrap_pyfunction!(log_point, m)?)?;
     m.add_function(wrap_pyfunction!(log_points, m)?)?;
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
+    m.add_function(wrap_pyfunction!(log_obb, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
@@ -158,14 +161,14 @@ fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
     parse_obj_path_comps(obj_path).map(ObjPath::from)
 }
 
-fn vec_from_np_array<T: numpy::Element, D: numpy::ndarray::Dimension>(
-    array: &numpy::PyReadonlyArray<'_, T, D>,
-) -> Vec<T> {
+fn vec_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
+    array: &'a numpy::PyReadonlyArray<'_, T, D>,
+) -> Cow<'a, [T]> {
     let array = array.as_array();
     if let Some(slice) = array.to_slice() {
-        slice.to_vec()
+        Cow::Borrowed(slice)
     } else {
-        array.iter().cloned().collect()
+        Cow::Owned(array.iter().cloned().collect())
     }
 }
 
@@ -613,6 +616,77 @@ fn log_rects(
 
 // ----------------------------------------------------------------------------
 
+/// Log a 2D or 3D point.
+///
+/// `position` is either 2x1 or 3x1.
+///
+/// If no `space` is given, the space name "2D" or "3D" will be used,
+/// depending on the dimensionality of the data.
+#[pyfunction]
+fn log_point(
+    obj_path: &str,
+    position: numpy::PyReadonlyArray1<'_, f32>,
+    color: Option<Vec<u8>>,
+    timeless: bool,
+    space: Option<String>,
+) -> PyResult<()> {
+    let dim = match position.shape() {
+        [2] => 2,
+        [3] => 3,
+        shape => {
+            return Err(PyTypeError::new_err(format!(
+                "Expected either a 2D or 3D position; got {shape:?}"
+            )));
+        }
+    };
+
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+
+    sdk.register_type(
+        obj_path.obj_type_path(),
+        if dim == 2 {
+            ObjectType::Point2D
+        } else {
+            ObjectType::Point3D
+        },
+    );
+
+    let time_point = time(timeless);
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
+    }
+
+    let position = vec_from_np_array(&position);
+    let pos_data = match dim {
+        2 => Data::Vec2([position[0], position[1]]),
+        3 => Data::Vec3([position[0], position[1], position[2]]),
+        _ => unreachable!(),
+    };
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "pos"),
+        LoggedData::Single(pos_data),
+    );
+
+    let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
 /// positions: Nx2 or Nx3 array
 /// * `colors.len() == 0`: no colors
 /// * `colors.len() == 1`: same color for all points
@@ -883,6 +957,68 @@ fn log_line_segments(
     }
 
     let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
+/// Log a 3D oriented bounding box, defined by its half size.
+///
+/// Optionally give it a label.
+/// If no `space` is given, the space name "3D" will be used.
+#[allow(clippy::too_many_arguments)]
+#[pyfunction]
+fn log_obb(
+    obj_path: &str,
+    half_size: [f32; 3],
+    position: [f32; 3],
+    rotation_q: re_log_types::Quaternion,
+    color: Option<Vec<u8>>,
+    stroke_width: Option<f32>,
+    timeless: bool,
+    space: Option<String>,
+) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Box3D);
+
+    let time_point = time(timeless);
+
+    let obb = re_log_types::Box3 {
+        rotation: rotation_q,
+        translation: position,
+        half_size,
+    };
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "obb"),
+        LoggedData::Single(Data::Box3(obb)),
+    );
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
+    }
+
+    if let Some(stroke_width) = stroke_width {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "stroke_width"),
+            LoggedData::Single(Data::F32(stroke_width)),
+        );
+    }
+
+    let space = space.unwrap_or_else(|| "3D".to_owned());
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
