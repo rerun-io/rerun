@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import List, Final, Iterator, Iterable
 
 from PIL import Image
+from rerun_sdk import ImageFormat
 from scipy.spatial.transform import Rotation as R
 from proto.objectron.proto import \
     ARFrame, ARCamera, ARPointCloud, Sequence, Object, ObjectType, FrameAnnotation
@@ -66,6 +67,9 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
         next_len = int.from_bytes(data[:4], byteorder='little', signed=False)
         data = data[4:]
 
+        import timeit
+        t = timeit.timeit(lambda: ARFrame().parse(data[:next_len]), number=1)
+        print(f"decoding took {t*1000.0} ms :<")
         frame = ARFrame().parse(data[:next_len])
 
         yield SampleARFrame(index=frame_idx,
@@ -104,7 +108,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
         rerun.set_time_seconds("time", sample.timestamp)
         frame_times.append(sample.timestamp)
 
-        log_image(os.path.join(sample.dirpath, f"video/{sample.index}.jpg"))
+        log_image(Path(os.path.join(sample.dirpath, f"video/{sample.index}.jpg")))
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
@@ -112,14 +116,14 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
     log_frame_annotations(frame_times, seq.frame_annotations)
 
 
-def log_image(path: str):
-    # TODO(cmc): implement support for `log_img_file`
-    print(f"logging image: {path}")
+def log_image(img_path: Path):
+    print(f"logging image: {img_path}")
 
-    img = Image.open(path)
+    # rerun.log_image_file("video", img_path, img_format=ImageFormat.JPEG, space="image")
+
+    rerun.log_image_file("video", img_path, space="iamge")
+    img = Image.open(img_path)
     assert img.mode == 'RGB'
-
-    rerun.log_image("video", np.asarray(img), space="image")
 
 
 def log_camera(cam: ARCamera):
