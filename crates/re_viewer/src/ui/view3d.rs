@@ -419,7 +419,9 @@ pub(crate) fn view_3d(
         rect,
         callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
             with_three_d_context(painter.gl(), |rendering| {
-                paint_with_three_d(rendering, &eye, &info, &scene, dark_mode, show_axes).unwrap();
+                paint_with_three_d(
+                    rendering, &eye, &info, &scene, dark_mode, show_axes, painter,
+                );
             });
         })),
     };

@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
 use three_d::*;
 
@@ -134,7 +134,7 @@ impl CpuMesh {
 
         let mut materials = Vec::new();
         for m in &self.materials {
-            materials.push(PhysicalMaterial::new(three_d, m).map_err(|err| anyhow!("{}", err))?);
+            materials.push(PhysicalMaterial::new(three_d, m));
         }
 
         let mut meshes = Vec::new();
@@ -146,8 +146,7 @@ impl CpuMesh {
                 .clone();
 
             let gm = Gm::new(
-                InstancedMesh::new(three_d, &Default::default(), mesh)
-                    .map_err(|err| anyhow!("{}", err))?,
+                InstancedMesh::new(three_d, &Default::default(), mesh),
                 material,
             );
             meshes.push(gm);

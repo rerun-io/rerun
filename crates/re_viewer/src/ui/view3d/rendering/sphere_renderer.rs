@@ -20,11 +20,11 @@ impl<M: Material> InstancedSpheres<M> {
         instances: SphereInstances,
         cpu_mesh: &CpuMesh,
         material: M,
-    ) -> ThreeDResult<Self> {
-        Ok(Self {
-            geometry: InstancedSperesGeom::new(context, instances, cpu_mesh)?,
+    ) -> Self {
+        Self {
+            geometry: InstancedSperesGeom::new(context, instances, cpu_mesh),
             material,
-        })
+        }
     }
 }
 
@@ -38,18 +38,18 @@ impl<M: Material> Geometry for InstancedSpheres<M> {
         material: &dyn Material,
         camera: &Camera,
         lights: &[&dyn Light],
-    ) -> ThreeDResult<()> {
-        self.geometry.render_with_material(material, camera, lights)
+    ) {
+        self.geometry.render_with_material(material, camera, lights);
     }
 }
 
 impl<M: Material> Object for InstancedSpheres<M> {
-    fn render(&self, camera: &Camera, lights: &[&dyn Light]) -> ThreeDResult<()> {
-        self.render_with_material(&self.material, camera, lights)
+    fn render(&self, camera: &Camera, lights: &[&dyn Light]) {
+        self.render_with_material(&self.material, camera, lights);
     }
 
-    fn is_transparent(&self) -> bool {
-        self.material.is_transparent()
+    fn material_type(&self) -> MaterialType {
+        self.material.material_type()
     }
 }
 
@@ -81,42 +81,37 @@ pub struct InstancedSperesGeom {
 }
 
 impl InstancedSperesGeom {
-    pub fn new(
-        context: &Context,
-        instances: SphereInstances,
-        cpu_mesh: &CpuMesh,
-    ) -> ThreeDResult<Self> {
+    pub fn new(context: &Context, instances: SphereInstances, cpu_mesh: &CpuMesh) -> Self {
         let mut model = Self {
             context: context.clone(),
-            index_buffer: index_buffer_from_mesh(context, cpu_mesh)?,
-            vertex_buffers: vertex_buffers_from_mesh(context, cpu_mesh)?,
-            translation_scale_buffer: InstanceBuffer::new(context)?,
-            color_buffer: InstanceBuffer::new(context)?,
+            index_buffer: index_buffer_from_mesh(context, cpu_mesh),
+            vertex_buffers: vertex_buffers_from_mesh(context, cpu_mesh),
+            translation_scale_buffer: InstanceBuffer::new(context),
+            color_buffer: InstanceBuffer::new(context),
             aabb: AxisAlignedBoundingBox::EMPTY,
             transformation: Mat4::identity(),
             instances: Default::default(),
         };
-        model.set_instances(instances)?;
-        Ok(model)
+        model.set_instances(instances);
+        model
     }
 
     pub fn instance_count(&self) -> u32 {
         self.instances.count()
     }
 
-    pub fn set_instances(&mut self, instances: SphereInstances) -> ThreeDResult<()> {
+    pub fn set_instances(&mut self, instances: SphereInstances) {
         crate::profile_function!();
-        instances.validate()?;
+        instances.validate();
 
         self.translation_scale_buffer
-            .fill(&instances.translations_and_scale)?;
+            .fill(&instances.translations_and_scale);
 
         if let Some(instance_colors) = &instances.colors {
-            self.color_buffer.fill(instance_colors)?;
+            self.color_buffer.fill(instance_colors);
         }
         self.instances = instances;
         self.update_aabb();
-        Ok(())
     }
 
     fn update_aabb(&mut self) {
@@ -137,13 +132,13 @@ impl InstancedSperesGeom {
         ]);
     }
 
-    fn vertex_shader_source(&self, fragment_shader_source: &str) -> ThreeDResult<String> {
+    fn vertex_shader_source(&self, fragment_shader_source: &str) -> String {
         crate::profile_function!();
         let use_positions = fragment_shader_source.contains("in vec3 pos;");
         let use_normals = fragment_shader_source.contains("in vec3 nor;");
         let use_tangents = fragment_shader_source.contains("in vec3 tang;");
         let use_colors = fragment_shader_source.contains("in vec4 col;");
-        Ok(format!(
+        format!(
             "{}{}{}{}{}",
             if use_positions {
                 "#define USE_POSITIONS\n"
@@ -156,9 +151,10 @@ impl InstancedSperesGeom {
                 ""
             },
             if use_tangents {
-                if fragment_shader_source.contains("in vec3 bitang;") {
-                    return Err(CoreError::MissingBitangent.into());
-                }
+                assert!(
+                    !fragment_shader_source.contains("in vec3 bitang;"),
+                    "Missing bitangent"
+                );
                 "#define USE_TANGENTS\n"
             } else {
                 ""
@@ -243,7 +239,7 @@ void main()
 #endif
 }
             "#,
-        ))
+        )
     }
 }
 
@@ -257,63 +253,67 @@ impl Geometry for InstancedSperesGeom {
         material: &dyn Material,
         camera: &Camera,
         lights: &[&dyn Light],
-    ) -> ThreeDResult<()> {
+    ) {
         crate::profile_function!();
         let fragment_shader_source = material.fragment_shader_source(
             self.vertex_buffers.contains_key("color") || self.instances.colors.is_some(),
             lights,
         );
-        self.context.program(
-            &self.vertex_shader_source(&fragment_shader_source)?,
-            &fragment_shader_source,
-            |program| {
-                crate::profile_scope!("rendering");
-                material.use_uniforms(program, camera, lights)?;
-                program.use_uniform("viewProjection", camera.projection() * camera.view())?;
-                program.use_uniform("modelMatrix", &self.transformation)?;
-                program.use_uniform_if_required(
-                    "normalMatrix",
-                    &self.transformation.invert().unwrap().transpose(),
-                )?;
+        self.context
+            .program(
+                &self.vertex_shader_source(&fragment_shader_source),
+                &fragment_shader_source,
+                |program| {
+                    crate::profile_scope!("rendering");
+                    material.use_uniforms(program, camera, lights);
+                    program.use_uniform("viewProjection", camera.projection() * camera.view());
+                    program.use_uniform("modelMatrix", &self.transformation);
+                    program.use_uniform_if_required(
+                        "normalMatrix",
+                        &self.transformation.invert().unwrap().transpose(),
+                    );
 
-                for attribute_name in ["position", "normal", "tangent", "color", "uv_coordinates"] {
-                    if program.requires_attribute(attribute_name) {
-                        program.use_vertex_attribute(
-                            attribute_name,
-                            self.vertex_buffers.get(attribute_name).ok_or_else(|| {
-                                CoreError::MissingMeshBuffer(attribute_name.to_owned())
-                            })?,
-                        )?;
+                    for attribute_name in
+                        ["position", "normal", "tangent", "color", "uv_coordinates"]
+                    {
+                        if program.requires_attribute(attribute_name) {
+                            program.use_vertex_attribute(
+                                attribute_name,
+                                self.vertex_buffers
+                                    .get(attribute_name)
+                                    .unwrap_or_else(|| panic!("Missing {attribute_name:?}")),
+                            );
+                        }
                     }
-                }
 
-                if program.requires_attribute("instance_translation_scale") {
-                    program.use_instance_attribute(
-                        "instance_translation_scale",
-                        &self.translation_scale_buffer,
-                    )?;
-                }
-                if program.requires_attribute("instance_color") {
-                    program.use_instance_attribute("instance_color", &self.color_buffer)?;
-                }
+                    if program.requires_attribute("instance_translation_scale") {
+                        program.use_instance_attribute(
+                            "instance_translation_scale",
+                            &self.translation_scale_buffer,
+                        );
+                    }
+                    if program.requires_attribute("instance_color") {
+                        program.use_instance_attribute("instance_color", &self.color_buffer);
+                    }
 
-                if let Some(ref index_buffer) = self.index_buffer {
-                    program.draw_elements_instanced(
-                        material.render_states(),
-                        camera.viewport(),
-                        index_buffer,
-                        self.instances.count(),
-                    )
-                } else {
-                    program.draw_arrays_instanced(
-                        material.render_states(),
-                        camera.viewport(),
-                        self.vertex_buffers.get("position").unwrap().vertex_count(),
-                        self.instances.count(),
-                    )
-                }
-            },
-        )
+                    if let Some(ref index_buffer) = self.index_buffer {
+                        program.draw_elements_instanced(
+                            material.render_states(),
+                            camera.viewport(),
+                            index_buffer,
+                            self.instances.count(),
+                        );
+                    } else {
+                        program.draw_arrays_instanced(
+                            material.render_states(),
+                            camera.viewport(),
+                            self.vertex_buffers.get("position").unwrap().vertex_count(),
+                            self.instances.count(),
+                        );
+                    }
+                },
+            )
+            .unwrap();
     }
 }
 
@@ -327,19 +327,10 @@ pub struct SphereInstances {
 }
 
 impl SphereInstances {
-    pub fn validate(&self) -> ThreeDResult<()> {
+    pub fn validate(&self) {
         if let Some(colors) = &self.colors {
-            if colors.len() != self.translations_and_scale.len() {
-                return Err(CoreError::InvalidBufferLength(
-                    "colors".to_owned(),
-                    self.translations_and_scale.len(),
-                    colors.len(),
-                )
-                .into());
-            }
+            assert_eq!(colors.len(), self.translations_and_scale.len());
         }
-
-        Ok(())
     }
 
     pub fn count(&self) -> u32 {
@@ -350,25 +341,25 @@ impl SphereInstances {
 fn vertex_buffers_from_mesh(
     context: &Context,
     cpu_mesh: &CpuMesh,
-) -> ThreeDResult<HashMap<String, VertexBuffer>> {
+) -> HashMap<String, VertexBuffer> {
     #[cfg(debug_assertions)]
-    cpu_mesh.validate()?;
+    cpu_mesh.validate().unwrap();
 
     let mut buffers = HashMap::new();
     buffers.insert(
         "position".to_owned(),
-        VertexBuffer::new_with_data(context, &cpu_mesh.positions.to_f32())?,
+        VertexBuffer::new_with_data(context, &cpu_mesh.positions.to_f32()),
     );
     if let Some(ref normals) = cpu_mesh.normals {
         buffers.insert(
             "normal".to_owned(),
-            VertexBuffer::new_with_data(context, normals)?,
+            VertexBuffer::new_with_data(context, normals),
         );
     };
     if let Some(ref tangents) = cpu_mesh.tangents {
         buffers.insert(
             "tangent".to_owned(),
-            VertexBuffer::new_with_data(context, tangents)?,
+            VertexBuffer::new_with_data(context, tangents),
         );
     };
     if let Some(ref uvs) = cpu_mesh.uvs {
@@ -379,29 +370,22 @@ fn vertex_buffers_from_mesh(
                 &uvs.iter()
                     .map(|uv| vec2(uv.x, 1.0 - uv.y))
                     .collect::<Vec<_>>(),
-            )?,
+            ),
         );
     };
     if let Some(ref colors) = cpu_mesh.colors {
         buffers.insert(
             "color".to_owned(),
-            VertexBuffer::new_with_data(context, colors)?,
+            VertexBuffer::new_with_data(context, colors),
         );
     };
-    Ok(buffers)
+    buffers
 }
 
-fn index_buffer_from_mesh(
-    context: &Context,
-    cpu_mesh: &CpuMesh,
-) -> ThreeDResult<Option<ElementBuffer>> {
-    Ok(if let Some(ref indices) = cpu_mesh.indices {
-        Some(match indices {
-            Indices::U8(ind) => ElementBuffer::new_with_data(context, ind)?,
-            Indices::U16(ind) => ElementBuffer::new_with_data(context, ind)?,
-            Indices::U32(ind) => ElementBuffer::new_with_data(context, ind)?,
-        })
-    } else {
-        None
+fn index_buffer_from_mesh(context: &Context, cpu_mesh: &CpuMesh) -> Option<ElementBuffer> {
+    cpu_mesh.indices.as_ref().map(|indices| match indices {
+        Indices::U8(ind) => ElementBuffer::new_with_data(context, ind),
+        Indices::U16(ind) => ElementBuffer::new_with_data(context, ind),
+        Indices::U32(ind) => ElementBuffer::new_with_data(context, ind),
     })
 }
