@@ -1,14 +1,18 @@
+#!/usr/bin/env python3
+
 """Shows how to use the rerun SDK."""
 
 from dataclasses import dataclass
-from typing import Iterator, Tuple
+from typing import Final, Iterator, Tuple
 
 import argparse
 import cv2  # type: ignore
 import numpy as np
+from importlib import resources
 
 import rerun_sdk as rerun
 
+PACKAGE_FILES: Final = resources.files("rerun_sdk")
 
 def log_dummy_data(args):
     if args.connect:
@@ -49,23 +53,23 @@ def log_dummy_data(args):
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
 
-    with open('examples/data/camera.glb', mode='rb') as file:
-        mesh_file = file.read()
-        # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
-        transform = [
-            [2, 0, 0, 0],
-            [0, 2, 0, 0],
-            [0, 0, 2, 0],
-        ]
-        rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB,
-                            mesh_file, transform=transform)
+    mesh_data = PACKAGE_FILES.joinpath("examples/data/camera.glb").read_bytes()
 
-    rerun.log_path("a_box", [
+    # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
+    transform = np.array([
+        [2, 0, 0, 0],
+        [0, 2, 0, 0],
+        [0, 0, 2, 0],
+    ])
+    rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
+
+    rerun.log_path("a_box", np.array([
         [0, 0, 0],
         [0, 1, 0],
         [1, 1, 0],
         [1, 0, 0],
-        [0, 0, 0]])
+        [0, 0, 0]]
+    ))
 
     if args.save is not None:
         rerun.save(args.save)

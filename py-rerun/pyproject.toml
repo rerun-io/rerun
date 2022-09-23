@@ -24,8 +24,8 @@ tests = ["pytest==7.1.2"]
 examples = ["opencv-python~=4.6.0"]
 
 [project.scripts]
-example_dummy = "rerun_sdk.examples.dummy:main"
-example_multiprocessing = "rerun_sdk.examples.multiprocessing:main"
+example_dummy = "rerun_sdk.examples.example_dummy:main"
+example_multiprocessing = "rerun_sdk.examples.example_multiprocessing:main"
 
 [project.urls]
 homepage = "https://www.rerun.io/"
