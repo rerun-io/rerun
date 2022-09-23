@@ -1,16 +1,19 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
 import atexit
 from enum import Enum
+import ntpath
 import numpy as np
 from typing import Optional, Sequence, Union, Iterable
 from pathlib import Path
+import numpy.typing as npt
+from typing import Optional, Sequence, TypeVar, Union
 from dataclasses import dataclass
 
-from rerun_sdk import rerun_sdk as rerun_rs # type: ignore
+from rerun_sdk import rerun_sdk as rerun_rs # type: ignore[attr-defined]
 from rerun_sdk.color_conversion import linear_to_gamma_u8_pixel
 
 
-def rerun_shutdown():
+def rerun_shutdown() -> None:
     rerun_rs.flush()
 
 
@@ -19,7 +22,8 @@ atexit.register(rerun_shutdown)
 # -----------------------------------------------------------------------------
 
 ArrayLike = Union[np.ndarray, Sequence]
-
+ColorDtype = Union[np.uint8, np.float32, np.float64]
+Colors = npt.NDArray[ColorDtype]
 
 class MeshFormat(Enum):
     # Needs some way of logging materials too, or adding some default material to the viewer.
@@ -69,9 +73,9 @@ def get_recording_id() -> str:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    return rerun_rs.get_recording_id()
+    return str(rerun_rs.get_recording_id())
 
-def set_recording_id(value: str):
+def set_recording_id(value: str) -> None:
     """
     Set the recording ID that this process is logging to, as a UUIDv4.
 
@@ -87,11 +91,11 @@ def set_recording_id(value: str):
     rerun_rs.set_recording_id(str)
 
 
-def connect(addr: Optional[str] = None):
+def connect(addr: Optional[str] = None) -> None:
     """
     Connect to a remote Rerun Viewer on the given ip:port.
     """
-    return rerun_rs.connect(addr)
+    rerun_rs.connect(addr)
 
 
 def serve():
@@ -103,12 +107,12 @@ def serve():
     return rerun_rs.serve()
 
 
-def disconnect():
+def disconnect() -> None:
     """ Disconnect from the remote rerun server (if any). """
-    return rerun_rs.disconnect()
+    rerun_rs.disconnect()
 
 
-def show():
+def show() -> None:
     """
     Show previously logged data.
 
@@ -118,10 +122,10 @@ def show():
 
     NOTE: There is a bug which causes this function to only work once on some platforms.
     """
-    return rerun_rs.show()
+    rerun_rs.show()
 
 
-def save(path: str):
+def save(path: str) -> None:
     """
     Save previously logged data to a file.
 
@@ -129,10 +133,10 @@ def save(path: str):
 
     This will clear the logged data after saving.
     """
-    return rerun_rs.save(path)
+    rerun_rs.save(path)
 
 
-def set_time_sequence(time_source: str, sequence: Optional[int]):
+def set_time_sequence(time_source: str, sequence: Optional[int]) -> None:
     """
     Set the current time for this thread.
 
@@ -145,10 +149,10 @@ def set_time_sequence(time_source: str, sequence: Optional[int]):
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    return rerun_rs.set_time_sequence(time_source, sequence)
+    rerun_rs.set_time_sequence(time_source, sequence)
 
 
-def set_time_seconds(time_source: str, seconds: Optional[float]):
+def set_time_seconds(time_source: str, seconds: Optional[float]) -> None:
     """
     Set the current time for this thread.
 
@@ -166,10 +170,10 @@ def set_time_seconds(time_source: str, seconds: Optional[float]):
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    return rerun_rs.set_time_seconds(time_source, seconds)
+    rerun_rs.set_time_seconds(time_source, seconds)
 
 
-def set_time_nanos(time_source: str, nanos: Optional[int]):
+def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
     """
     Set the current time for this thread.
 
@@ -187,16 +191,16 @@ def set_time_nanos(time_source: str, nanos: Optional[int]):
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    return rerun_rs.set_time_nanos(time_source, nanos)
+    rerun_rs.set_time_nanos(time_source, nanos)
 
 
-def set_space_up(space: str, up: Sequence[float]):
+def set_space_up(space: str, up: Sequence[float]) -> None:
     """ Set the preferred up-axis in the viewer for a given 3D space.
 
     - space: The name of the space
     - up: The (x, y, z) values of the up-axis
     """
-    return rerun_rs.set_space_up(space, up)
+    rerun_rs.set_space_up(space, up)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
@@ -229,7 +233,7 @@ def log_rect(
     label: Optional[str] = None,
     timeless: bool = False,
     space: Optional[str] = None,
-):
+) -> None:
     """
     Log a 2D rectangle.
 
@@ -254,11 +258,11 @@ def log_rects(
     rects: ArrayLike,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    colors: Optional[np.ndarray] = None,
+    colors: Optional[Colors] = None,
     labels: Optional[Sequence[str]] = None,
     timeless: bool = False,
     space: Optional[str] = None,
-):
+) -> None:
     """
     Log multiple 2D rectangles.
     Logging again to the same `obj_path` will replace all the previous rectangles.
@@ -293,10 +297,10 @@ def log_rects(
 
 def log_point(
         obj_path: str,
-        position: np.ndarray,
+        position: npt.NDArray[np.float32],
         color: Optional[Sequence[int]] = None,
         timeless: bool = False,
-        space: Optional[str] = None):
+        space: Optional[str] = None) -> None:
     """
     Log a 2D or 3D point, with optional color.
     Logging again to the same `obj_path` will replace the previous point.
@@ -320,11 +324,11 @@ def log_point(
 
 def log_points(
         obj_path: str,
-        positions: np.ndarray,
+        positions: npt.NDArray[np.float32],
         *,
-        colors: Optional[np.ndarray] = None,
+        colors: Optional[Colors] = None,
         timeless: bool = False,
-        space: Optional[str] = None):
+        space: Optional[str] = None) -> None:
     """
     Log 2D or 3D points, with optional colors.
     Logging again to the same `obj_path` will replace all the previous points.
@@ -347,8 +351,7 @@ def log_points(
 
     rerun_rs.log_points(obj_path, positions, colors, timeless, space)
 
-
-def _normalize_colors(colors: Optional[np.ndarray] = None):
+def _normalize_colors(colors: Optional[Colors] = None) -> npt.NDArray[np.uint8]:
     if colors is None:
         # An empty array represents no colors.
         colors = np.array((), dtype=np.uint8)
@@ -371,7 +374,7 @@ def log_camera(obj_path: str,
                camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
                timeless: bool = False,
                space: Optional[str] = None,
-               target_space: Optional[str] = None):
+               target_space: Optional[str] = None) -> None:
     """Log a perspective camera model.
 
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
@@ -400,7 +403,7 @@ def log_path(
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
         timeless: bool = False,
-        space: Optional[str] = None):
+        space: Optional[str] = None) -> None:
     """
     Log a 3D path.
     A path is a list of points connected by line segments.
@@ -430,7 +433,7 @@ def log_line_segments(
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
         timeless: bool = False,
-        space: Optional[str] = None):
+        space: Optional[str] = None) -> None:
     """
     Log many 2D or 3D line segments.
 
@@ -459,7 +462,7 @@ def log_obb(
             color: Optional[Sequence[int]] = None,
             stroke_width: Optional[float] = None,
             timeless: bool = False,
-            space: Optional[str] = None):
+            space: Optional[str] = None) -> None:
     """
     Log a 3D oriented bounding box, defined by its half size.
 
@@ -480,7 +483,7 @@ def log_obb(
                      space)
 
 
-def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space: Optional[str] = None):
+def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space: Optional[str] = None) -> None:
     """
     Log a gray or color image.
 
@@ -506,7 +509,7 @@ def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space
     log_tensor(obj_path, image, timeless=timeless, space=space)
 
 
-def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None):
+def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None) -> None:
     """
     Log a depth image.
 
@@ -531,7 +534,7 @@ def log_tensor(obj_path: str,
                names: Optional[Iterable] = None,
                meter: Optional[float] = None,
                timeless: bool = False,
-               space: Optional[str] = None):
+               space: Optional[str] = None) -> None:
     """
     If no `space` is given, the space name "2D" will be used.
     """
@@ -552,7 +555,7 @@ def log_tensor(obj_path: str,
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
 
-def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, transform: np.ndarray = None, timeless: bool = False, space: Optional[str] = None):
+def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, transform: np.ndarray = None, timeless: bool = False, space: Optional[str] = None) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
 

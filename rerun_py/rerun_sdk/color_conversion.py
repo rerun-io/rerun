@@ -2,9 +2,9 @@
 from typing import Any, Union
 
 import numpy as np
+import numpy.typing as npt
 
-
-def linear_to_gamma_u8_value(linear: np.ndarray) -> np.ndarray:
+def linear_to_gamma_u8_value(linear: Union[npt.NDArray[np.float32], npt.NDArray[np.float64]]) -> npt.NDArray[np.uint8]:
     """Transform color values from linear [0, 1] to gamma encoded [0, 255].
     Linear colors are expected to have dtype np.float32 or np.float64.
 
@@ -31,7 +31,7 @@ def linear_to_gamma_u8_value(linear: np.ndarray) -> np.ndarray:
     return gamma.astype(np.uint8)
 
 
-def linear_to_gamma_u8_pixel(linear: np.ndarray) -> np.ndarray:
+def linear_to_gamma_u8_pixel(linear: Union[npt.NDArray[np.float32], npt.NDArray[np.float64]]) -> npt.NDArray[np.uint8]:
     """Transform color pixels from linear [0, 1] to gamma encoded [0, 255].
 
     Linear colors are expected to have dtype np.float32 or np.float64.

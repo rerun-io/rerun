@@ -210,8 +210,8 @@ fn main(argv: Vec<String>) -> PyResult<()> {
 fn get_recording_id() -> String {
     let recording_id = Sdk::global()
         .recording_id()
-        .expect("module has not been initialized");
-    recording_id.to_string()
+        .ok_or(PyTypeError::new_err("module has not been initialized"))
+        .map(|recording_id| recording_id.to_string())
 }
 
 #[pyfunction]
@@ -278,7 +278,7 @@ fn disconnect() {
 /// Blocked on <https://github.com/emilk/egui/issues/1918>.
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
-fn show() -> Result<(), PyErr> {
+fn show() -> PyResult<()> {
     let mut sdk = Sdk::global();
     if sdk.is_connected() {
         return Err(PyRuntimeError::new_err(
@@ -303,7 +303,7 @@ fn show() -> Result<(), PyErr> {
 }
 
 #[pyfunction]
-fn save(path: &str) -> Result<(), PyErr> {
+fn save(path: &str) -> PyResult<()> {
     re_log::trace!("Saving file to {path:?}…");
 
     let mut sdk = Sdk::global();
