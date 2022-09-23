@@ -1692,6 +1692,9 @@ name = "jpeg-decoder"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9478aa10f73e7528198d75109c8be5cd7d15fb530238040148d5f9a22d4c5b3b"
+dependencies = [
+ "rayon",
+]
 
 [[package]]
 name = "js-sys"
@@ -2593,6 +2596,7 @@ name = "re_sdk_python"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "image",
  "itertools",
  "nohash-hasher",
  "numpy",

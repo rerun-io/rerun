@@ -28,6 +28,7 @@ re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
 re_viewer = { path = "../re_viewer", optional = true }
 
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+image = { version = "0.24", default-features = false, features = ["jpeg", "jpeg_rayon"] }
 itertools = "0.10"
 nohash-hasher = "0.2"
 numpy = "0.17"
