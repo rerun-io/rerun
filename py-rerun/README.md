@@ -9,7 +9,7 @@ To build and install the `rerun_sdk` into your *current* Python environment run:
 
 ```sh
 python3 -m pip install --upgrade pip
-pip3 install "py-rerun[tests,examples]"
+pip3 install "py-rerun"
 ```
 
 ℹ️ Notes:
