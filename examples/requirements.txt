@@ -1,4 +1,3 @@
 betterproto[compiler]
-pillow
 requests
 scipy

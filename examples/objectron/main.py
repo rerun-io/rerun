@@ -31,7 +31,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Final, Iterator, Iterable
 
-from PIL import Image
 from rerun_sdk import ImageFormat
 from scipy.spatial.transform import Rotation as R
 from proto.objectron.proto import \
