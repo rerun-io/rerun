@@ -157,14 +157,10 @@ def log_point_cloud(point_cloud: ARPointCloud):
     for i in range(point_cloud.count):
         point = point_cloud.point[i]
         ident = point_cloud.identifier[i]
-        rerun.log_points(f"points/{ident}",
-                         [[point.x, point.y, point.z]],
-                         colors=np.asarray([255, 255, 255, 255]),
-                         space="world")
-        # rerun.log_point(f"points/{ident}",
-        #                 [point.x, point.y, point.z],
-        #                 color=[255, 255, 255, 255],
-        #                 space="world")
+        rerun.log_point(f"points/{ident}",
+                        [point.x, point.y, point.z],
+                        color=[255, 255, 255, 255],
+                        space="world")
 
 
 def log_objects(bboxes: Iterable[Object]):
@@ -206,14 +202,10 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
                 log_projected_bbox(f"{path}/bbox2d", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
-                    rerun.log_points(f"{path}/bbox2d/{id}",
-                                     [pos2],
-                                     colors=np.asarray([130, 160, 250, 255]),
-                                     space="image")
-                    # rerun.log_point(f"{path}/bbox2d/{id}",
-                    #                 pos2,
-                    #                 color=[130, 160, 250, 255],
-                    #                 space="image")
+                    rerun.log_point(f"{path}/bbox2d/{id}",
+                                    pos2,
+                                    color=[130, 160, 250, 255],
+                                    space="image")
 
 
 def log_projected_bbox(path: str, keypoints: np.ndarray):
