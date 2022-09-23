@@ -22,6 +22,7 @@ import logging
 import math
 import os
 import sys
+import timeit
 
 import numpy as np
 import rerun_sdk as rerun
@@ -67,10 +68,11 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
         next_len = int.from_bytes(data[:4], byteorder='little', signed=False)
         data = data[4:]
 
-        import timeit
-        t = timeit.timeit(lambda: ARFrame().parse(data[:next_len]), number=1)
-        print(f"decoding took {t*1000.0} ms :<")
-        frame = ARFrame().parse(data[:next_len])
+        # TODO(cmc): obviously not intended to stay in past reviews.
+        frame = []
+        t = timeit.timeit(lambda: frame.append(ARFrame().parse(data[:next_len])), number=1)
+        print(f"decoding next ARFrame in {t*1000.0} ms :<")
+        frame = frame[0]
 
         yield SampleARFrame(index=frame_idx,
                             timestamp=frame.timestamp,
@@ -108,22 +110,13 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
         rerun.set_time_seconds("time", sample.timestamp)
         frame_times.append(sample.timestamp)
 
-        log_image(Path(os.path.join(sample.dirpath, f"video/{sample.index}.jpg")))
+        img_path = Path(os.path.join(sample.dirpath, f"video/{sample.index}.jpg"))
+        rerun.log_image_file("video", img_path, img_format=ImageFormat.JPEG, space="image")
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
     log_objects(seq.objects)
     log_frame_annotations(frame_times, seq.frame_annotations)
-
-
-def log_image(img_path: Path):
-    print(f"logging image: {img_path}")
-
-    # rerun.log_image_file("video", img_path, img_format=ImageFormat.JPEG, space="image")
-
-    rerun.log_image_file("video", img_path, space="iamge")
-    img = Image.open(img_path)
-    assert img.mode == 'RGB'
 
 
 def log_camera(cam: ARCamera):
