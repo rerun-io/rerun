@@ -1217,13 +1217,13 @@ fn log_image_file(
     let img_bytes = std::fs::read(img_path)?;
     let img_format = match img_format {
         Some(img_format) => image::ImageFormat::from_extension(img_format)
-            .expect("`ImageFormat` as declared in __init.py__ only contains valid values"),
+            .ok_or_else(|| PyTypeError::new_err(format!("Unknown image format {img_format:?}.")))?,
         None => {
             image::guess_format(&img_bytes).map_err(|err| PyTypeError::new_err(err.to_string()))?
         }
     };
 
-    use image::ImageDecoder;
+    use image::ImageDecoder as _;
     let ((w, h), data) = match img_format {
         image::ImageFormat::Jpeg => {
             use image::codecs::jpeg::JpegDecoder;
