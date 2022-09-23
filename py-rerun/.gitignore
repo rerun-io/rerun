@@ -1,5 +1,5 @@
-wheels/
 !Cargo.lock
+.DS_Store
 target/
 venv/
-.DS_Store
+wheels/
