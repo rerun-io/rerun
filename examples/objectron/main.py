@@ -44,7 +44,7 @@ ANNOTATIONS_FILENAME: Final = "annotation.pbdata"
 
 @dataclass
 class SampleARFrame:
-    """An `ARFrame` sample and associated relevant metadata."""
+    """An `ARFrame` sample and the relevant associated metadata."""
     index: int
     timestamp: float
     dirpath: Path
@@ -59,7 +59,7 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
     """
 
     path = os.path.join(dirpath, GEOMETRY_FILENAME)
-    print(f"loading ARFrame: {path}")
+    print(f"loading ARFrames from {path}")
     data = Path(path).read_bytes()
 
     frame_idx = 0
@@ -90,7 +90,7 @@ def read_annotations(dirpath: Path) -> Sequence:
     """
 
     path = os.path.join(dirpath, ANNOTATIONS_FILENAME)
-    print(f"loading annotations: {path}")
+    print(f"loading annotations from {path}")
     data = Path(path).read_bytes()
 
     seq = Sequence().parse(data)
@@ -114,11 +114,13 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
-    log_objects(seq.objects)
+    log_annotated_bboxes(seq.objects)
     log_frame_annotations(frame_times, seq.frame_annotations)
 
 
 def log_camera(cam: ARCamera):
+    """Logs a camera from an `ARFrame` using the Rerun SDK."""
+
     world_from_cam = np.asarray(cam.transform).reshape((4, 4)).T
     translation = world_from_cam[3][:3]
     intrinsics = np.asarray(cam.intrinsics).reshape((3, 3))
@@ -146,6 +148,8 @@ def log_camera(cam: ARCamera):
 
 
 def log_point_cloud(point_cloud: ARPointCloud):
+    """Logs a point cloud from an `ARFrame` using the Rerun SDK."""
+
     for i in range(point_cloud.count):
         point = point_cloud.point[i]
         ident = point_cloud.identifier[i]
@@ -155,7 +159,9 @@ def log_point_cloud(point_cloud: ARPointCloud):
                         space="world")
 
 
-def log_objects(bboxes: Iterable[Object]):
+def log_annotated_bboxes(bboxes: Iterable[Object]):
+    """Logs all the bounding boxes annotated in an `ARFrame` sequence using the Rerun SDK."""
+
     for bbox in bboxes:
         if bbox.type != ObjectType.BOUNDING_BOX:
             logging.error(f"err: object type not supported: {bbox.type}")
@@ -172,6 +178,8 @@ def log_objects(bboxes: Iterable[Object]):
 
 
 def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]):
+    """Maps annotations to their associated `ARFrame` then logs them using the Rerun SDK."""
+
     for frame_ann in frame_annotations:
         frame_idx = frame_ann.frame_id
         if frame_idx >= len(frame_times):
