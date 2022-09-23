@@ -44,7 +44,7 @@ example_dummy
 ```
 
 ### Using the Rerun Python SDK
-See [`crates/re_sdk_python/USAGE.md`](crates/re_sdk_python/USAGE.md).
+See [`py-rerun/USAGE.md`](py-rerun/USAGE.md).
 
 
 # Development

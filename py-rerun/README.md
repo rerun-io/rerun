@@ -21,7 +21,7 @@ See [`USAGE.md`](USAGE.md).
 
 ## Running the example code
 ```sh
-python3 rerun_sdk/dummy.py
+python rerun_sdk/examples/example_dummy.py
 ```
 
 By default, the example runs Rerun in buffered mode, in the same process as the example code. This means all logged data is buffered until `rerun_sdk.show()` is called in the end, which shows the viewer and blocks until the viewer is closed.
