@@ -3,6 +3,8 @@ import atexit
 from enum import Enum
 import numpy as np
 from typing import Optional, Sequence, Union
+from pathlib import Path
+from dataclasses import dataclass
 
 from . import rerun_sdk as rerun_rs  # type: ignore
 from .color_conversion import linear_to_gamma_u8_pixel
@@ -46,6 +48,12 @@ class CameraSpaceConvention(Enum):
     # * +Y = down
     # * +Z = forward
     X_RIGHT_Y_DOWN_Z_FWD = "XRightYDownZFwd"
+
+
+@dataclass
+class ImageFormat(Enum):
+    # """ jpeg """"
+    JPEG = "jpeg"
 
 
 def get_recording_id() -> str:
@@ -548,6 +556,20 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, t
     rerun_rs.log_mesh_file(obj_path, mesh_format.value,
                            mesh_file, transform, timeless, space)
 
+
+def log_image_file(obj_path: str,
+                   img_path: Path,
+                   img_format: Optional[ImageFormat] = None,
+                   timeless: bool = False,
+                   space: Optional[str] = None):
+    """
+    Log the contents of an image file (only JPEGs supported for now).
+
+    If no `img_format` is specified, we will try and guess it.
+    If no `space` is given, the space name "2D" will be used.
+    """
+    img_format = getattr(img_format, 'value', None)
+    rerun_rs.log_image_file(obj_path, img_path, img_format, timeless, space)
 
 def _to_sequence(array: ArrayLike) -> Sequence:
     if hasattr(array, 'tolist'):
