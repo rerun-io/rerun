@@ -24,7 +24,7 @@ tests = ["pytest==7.1.2"]
 examples = ["opencv-python~=4.6.0"]
 
 [project.scripts]
-example_dummy = "rerun_sdk.examples.example_dummy:main"
+example_car = "rerun_sdk.examples.example_car:main"
 example_multiprocessing = "rerun_sdk.examples.example_multiprocessing:main"
 
 [project.urls]

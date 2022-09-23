@@ -14,20 +14,20 @@ import rerun_sdk as rerun
 
 PACKAGE_FILES: Final = resources.files("rerun_sdk")
 
-def log_dummy_data(args):
+def log_car_data(args):
     if args.connect:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    """Log a few frames of generated dummy data to show how the Rerun SDK is used."""
+    """Log a few frames of generated data to show how the Rerun SDK is used."""
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
     rerun.set_space_up("projected_space", [0, -1, 0])
 
-    for sample in generate_dummy_data(num_frames=NUM_FRAMES):
+    for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a "time source" called `frame_nr`.
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
         rerun.set_time_sequence("frame_nr", sample.frame_idx)
@@ -282,7 +282,7 @@ def main() -> None:
                         help='Save data to a .rrd file at this path')
     args = parser.parse_args()
 
-    log_dummy_data(args)
+    log_car_data(args)
 
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ To build and install the `rerun_sdk` into your *current* Python environment run:
 
 ```sh
 python3 -m pip install --upgrade pip
-pip3 install "py-rerun"
+pip3 install "rerun_py"
 ```
 
 ℹ️ Notes:
@@ -21,7 +21,7 @@ See [`USAGE.md`](USAGE.md).
 
 ## Running the example code
 ```sh
-python rerun_sdk/examples/example_dummy.py
+python rerun_sdk/examples/example_car.py
 ```
 
 By default, the example runs Rerun in buffered mode, in the same process as the example code. This means all logged data is buffered until `rerun_sdk.show()` is called in the end, which shows the viewer and blocks until the viewer is closed.
@@ -29,7 +29,7 @@ By default, the example runs Rerun in buffered mode, in the same process as the 
 ## Development
 
 ℹ️ Note:
-- These instructions assume you're running from the `py-rerun` folder and have Python 3.7 or later available.
+- These instructions assume you're running from the `rerun_py` folder and have Python 3.7 or later available.
 - We make use of the [`just`](https://github.com/casey/just) command runner tool for repository automation. See [here](https://github.com/casey/just#installation) for installation instructions.
 
 ## Setup
@@ -63,7 +63,7 @@ just test
 just lint
 
 # Run an example
-example_dummy
+example_car
 ```
 
 ### Logging and viewing in different processes
@@ -77,7 +77,7 @@ cargo run -p rerun --release
 
 In a second terminal, run the example with the `--connect` option:
 ```sh
-example_dummy --connect
+example_car --connect
 ```
 
 ## Building an installable Python Wheel
@@ -85,8 +85,8 @@ The Python bindings to the core Rust library are built using https://github.com/
 
 To build an installable Python wheel run:
 ```
-pip install -r py-rerun/requirements-build.txt
-maturin build -m py-rerun/Cargo.toml --release
+pip install -r rerun_py/requirements-build.txt
+maturin build -m rerun_py/Cargo.toml --release
 ```
 
 By default the wheels will be built to `target/wheels` (use the `-o` flag to set a different output directory).
