@@ -1,18 +1,16 @@
 [package]
 edition = "2021"
 license = "MIT OR Apache-2.0"
-name = "re_sdk_python" # name of the rust crate
+name = "re_sdk_python"        # name of the rust crate
 publish = false
 rust-version = "1.63"
 version = "0.1.0"
 
-[package.metadata.maturin]
-python-source = "python"
 
 
 [lib]
 crate-type = ["cdylib"]
-name = "rerun_sdk" # name of the Python library
+name = "rerun_sdk"      # name of the Python library
 
 
 [features]
@@ -22,10 +20,10 @@ extension-module = ["pyo3/extension-module"]
 
 
 [dependencies]
-re_log = { path = "../re_log" }
-re_log_types = { path = "../re_log_types" }
-re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
-re_viewer = { path = "../re_viewer", optional = true }
+re_log = { path = "../crates/re_log" }
+re_log_types = { path = "../crates/re_log_types" }
+re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
+re_viewer = { path = "../crates/re_viewer", optional = true }
 
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 image = { version = "0.24", default-features = false, features = ["jpeg", "jpeg_rayon"] }

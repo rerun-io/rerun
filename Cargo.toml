@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "examples/*"]
+members = ["crates/*", "examples/*", "rerun_py"]
 exclude = ["examples/nyud"]
 
 
@@ -15,10 +15,10 @@ debug = true
 
 [patch.crates-io]
 # 2022-09-21 (updated arboard)
-eframe      = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
-egui        = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
+eframe = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
+egui = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
 egui_extras = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
-egui_glow   = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }

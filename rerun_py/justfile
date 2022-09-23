@@ -1,0 +1,34 @@
+# Set up virtual environment for development
+develop-env:
+    #!/usr/bin/env bash
+    echo "Setting up Python virtual environment in venv"
+    # set -euxo pipefail
+    python -m venv venv
+    venv/bin/pip install --upgrade pip
+    venv/bin/pip install -r requirements-build.txt
+    venv/bin/pip install -r requirements-lint.txt
+    echo "Do 'source venv/bin/activate' to use the virtual environment!"
+
+# Build and install the package into the venv
+build mode="release":
+    #!/usr/bin/env bash
+    unset CONDA_PREFIX && \
+        source venv/bin/activate && \
+        maturin develop  --extras="examples,tests" {{ if mode == "debug" { "" } else { "--release" } }}
+
+# Run autoformatting
+format:
+    isort .
+    black .
+    blackdoc .
+    pyupgrade --py37-plus `find rerun_sdk/ tests/ -name "*.py" -type f`
+    cargo fmt --all
+
+# Run linting
+lint:
+    mypy
+    flake8
+
+# Run fast unittests
+test:
+    python -m pytest tests/unit/

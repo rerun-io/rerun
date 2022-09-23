@@ -4,42 +4,67 @@ Goal: an ergonomic Python library for logging rich data, over TCP, to a rerun se
 
 ℹ️ Note: The rust crate is called `re_sdk_python`, while the Python library is called `rerun_sdk`.
 
-## Setup
-
-ℹ️ Note: these instructions all assume you're running them from the root of the Rerun repository and have set up an environment with Python 3.7 or later.
-
-To set up a new virtualenv:
-
-```sh
-python3 -m venv env
-source env/bin/activate
-python3 -m pip install --upgrade pip
-```
-
-## Build, test, and run
-### Build and install
-To build and install the `rerun_sdk` into your current Python environment run:
+## Build and install
+To build and install the `rerun_sdk` into your *current* Python environment run:
 
 ```sh
 python3 -m pip install --upgrade pip
-pip3 install "crates/re_sdk_python[tests,examples]"
+pip3 install "rerun_py"
 ```
+
 ℹ️ Notes:
 - If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip3 install` command.
 -  `[tests,examples]` here is used to specify that we also want to install the dependencies needed for running tests and examples.
 
-### Test
-```sh
-mypy crates/re_sdk_python  # Static type checking
-pytest crates/re_sdk_python  # Unit tests
-```
+## Usage
+See [`USAGE.md`](USAGE.md).
 
-### Running the example code
+## Running the example code
 ```sh
-python3 crates/re_sdk_python/example.py
+python rerun_sdk/examples/example_car.py
 ```
 
 By default, the example runs Rerun in buffered mode, in the same process as the example code. This means all logged data is buffered until `rerun_sdk.show()` is called in the end, which shows the viewer and blocks until the viewer is closed.
+
+## Development
+
+ℹ️ Note:
+- These instructions assume you're running from the `rerun_py` folder and have Python 3.7 or later available.
+- We make use of the [`just`](https://github.com/casey/just) command runner tool for repository automation. See [here](https://github.com/casey/just#installation) for installation instructions.
+
+## Setup
+
+To set up a new virtualenv for development:
+
+```sh
+just develop-venv
+# For bash/zsh users:
+source venv/bin/activate
+# Or if you're using fish:
+source venv/bin/activate.fish
+```
+
+## Build, test, and run
+
+For ease of development you can build and install in "editable" mode. This means you can edit the `rerun_sdk` Python code without having to re-build and install to see changes.
+
+```sh
+# Build the SDK and install in develop mode into the virtualenv
+# Re-run this if the Rust code has changed!
+just build
+```
+
+### Test
+```sh
+# Run the unit tests
+just test
+
+# Run the linting checks
+just lint
+
+# Run an example
+example_car
+```
 
 ### Logging and viewing in different processes
 
@@ -52,16 +77,7 @@ cargo run -p rerun --release
 
 In a second terminal, run the example with the `--connect` option:
 ```sh
-python3 crates/re_sdk_python/example.py --connect
-```
-
-## Usage
-See [`USAGE.md`](USAGE.md).
-
-## Developing
-For ease of development you can build and install in "editable" mode by passing the `-e` (or `--editable` ) flag to `pip install`. This means you can edit the `rerun_sdk` Python code without having to re-build and install to see changes.
-```sh
-pip install -e "crates/re_sdk_python[tests,examples]"
+example_car --connect
 ```
 
 ## Building an installable Python Wheel
@@ -69,8 +85,8 @@ The Python bindings to the core Rust library are built using https://github.com/
 
 To build an installable Python wheel run:
 ```
-pip install -r crates/re_sdk_python/requirements-build.txt
-maturin build -m ./crates/re_sdk_python/Cargo.toml --release
+pip install -r rerun_py/requirements-build.txt
+maturin build -m rerun_py/Cargo.toml --release
 ```
 
 By default the wheels will be built to `target/wheels` (use the `-o` flag to set a different output directory).
