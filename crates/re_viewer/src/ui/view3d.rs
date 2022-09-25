@@ -1,13 +1,17 @@
 mod eye;
-mod mesh_cache;
-mod rendering;
 mod scene;
 
+#[cfg(feature = "glow")]
+mod glow_rendering;
+
+#[cfg(feature = "glow")]
+mod mesh_cache;
+
+#[cfg(feature = "glow")]
 pub use mesh_cache::CpuMeshCache;
 
 use eye::*;
 use re_data_store::{InstanceId, InstanceIdHash};
-use rendering::*;
 use scene::*;
 
 use egui::NumExt as _;
@@ -418,8 +422,8 @@ pub(crate) fn view_3d(
     let callback = egui::PaintCallback {
         rect,
         callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
-            with_three_d_context(painter.gl(), |rendering| {
-                paint_with_three_d(
+            glow_rendering::with_three_d_context(painter.gl(), |rendering| {
+                glow_rendering::paint_with_three_d(
                     rendering, &eye, &info, &scene, dark_mode, show_axes, painter,
                 );
             });
@@ -560,36 +564,4 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> Or
         up: space_spects.up,
         velocity: Vec3::ZERO,
     }
-}
-
-/// We get a [`glow::Context`] from `eframe`, but we want a [`three_d::Context`].
-///
-/// Sadly we can't just create and store a [`three_d::Context`] in the app and pass it
-/// to the [`egui::PaintCallback`] because [`three_d::Context`] isn't `Send+Sync`, which
-/// [`egui::PaintCallback`] is.
-fn with_three_d_context<R>(
-    gl: &std::sync::Arc<glow::Context>,
-    f: impl FnOnce(&mut RenderingContext) -> R,
-) -> R {
-    use std::cell::RefCell;
-    thread_local! {
-        static THREE_D: RefCell<Option<RenderingContext>> = RefCell::new(None);
-    }
-
-    #[allow(unsafe_code)]
-    // SAFETY: we should have a valid glow context here, and we _should_ be in the correct thread.
-    unsafe {
-        use glow::HasContext as _;
-        gl.enable(glow::DEPTH_TEST);
-        if !cfg!(target_arch = "wasm32") {
-            gl.disable(glow::FRAMEBUFFER_SRGB);
-        }
-        gl.clear(glow::DEPTH_BUFFER_BIT);
-    }
-
-    THREE_D.with(|three_d| {
-        let mut three_d = three_d.borrow_mut();
-        let three_d = three_d.get_or_insert_with(|| RenderingContext::new(gl).unwrap());
-        f(three_d)
-    })
 }

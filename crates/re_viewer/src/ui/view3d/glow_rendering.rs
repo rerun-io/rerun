@@ -395,3 +395,35 @@ pub fn paint_with_three_d(
 fn color_to_three_d([r, g, b, a]: [u8; 4]) -> three_d::Color {
     three_d::Color { r, g, b, a }
 }
+
+/// We get a [`glow::Context`] from `eframe`, but we want a [`three_d::Context`].
+///
+/// Sadly we can't just create and store a [`three_d::Context`] in the app and pass it
+/// to the [`egui::PaintCallback`] because [`three_d::Context`] isn't `Send+Sync`, which
+/// [`egui::PaintCallback`] is.
+pub fn with_three_d_context<R>(
+    gl: &std::sync::Arc<glow::Context>,
+    f: impl FnOnce(&mut RenderingContext) -> R,
+) -> R {
+    use std::cell::RefCell;
+    thread_local! {
+        static THREE_D: RefCell<Option<RenderingContext>> = RefCell::new(None);
+    }
+
+    #[allow(unsafe_code)]
+    // SAFETY: we should have a valid glow context here, and we _should_ be in the correct thread.
+    unsafe {
+        use glow::HasContext as _;
+        gl.enable(glow::DEPTH_TEST);
+        if !cfg!(target_arch = "wasm32") {
+            gl.disable(glow::FRAMEBUFFER_SRGB);
+        }
+        gl.clear(glow::DEPTH_BUFFER_BIT);
+    }
+
+    THREE_D.with(|three_d| {
+        let mut three_d = three_d.borrow_mut();
+        let three_d = three_d.get_or_insert_with(|| RenderingContext::new(gl).unwrap());
+        f(three_d)
+    })
+}
