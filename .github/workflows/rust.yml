@@ -99,9 +99,14 @@ jobs:
         with:
           command: test
           args: --all-features --lib
+      - name: Check wgpu support
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: -p re_viewer --no-default-features --features wgpu
 
   maturin-linux:
-    name: Maturing Wheel
+    name: Maturin Wheel
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
