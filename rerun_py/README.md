@@ -37,7 +37,7 @@ By default, the example runs Rerun in buffered mode, in the same process as the 
 To set up a new virtualenv for development:
 
 ```sh
-just develop-venv
+just develop-env
 # For bash/zsh users:
 source venv/bin/activate
 # Or if you're using fish:
@@ -68,7 +68,7 @@ example_car
 
 ### Logging and viewing in different processes
 
-Rerun can aslo be run in non-blocking mode with viewer and logger in different processes.
+Rerun can also be run in non-blocking mode with viewer and logger in different processes.
 
 In one terminal, start up a viewer with a server that the SDK can connect to:
 ```sh
