@@ -2925,6 +2925,7 @@ dependencies = [
  "tracing-wasm",
  "typenum",
  "vec1",
+ "wgpu",
 ]
 
 [[package]]

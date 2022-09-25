@@ -16,7 +16,7 @@ default = ["puffin", "glow"]
 
 # You must enable either the `glow` or `wgpu` feature.
 glow = ["eframe/glow", "dep:egui_glow", "dep:glow", "dep:three-d", "dep:three-d-asset"]
-wgpu = ["eframe/wgpu", "dep:egui-wgpu"]
+wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:wgpu"]
 
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin"]
@@ -57,7 +57,6 @@ vec1 = "1.8"
 
 # Optional dependencies:
 egui_glow   = { version = "0.19", optional = true }
-egui-wgpu   = { version = "0.19", optional = true }
 glow = { version = "0.11", optional = true }
 three-d = { version = "0.13.0", optional = true, default-features = false }
 three-d-asset = { version = "0.3.0", optional = true, default-features = false, features = [
@@ -67,6 +66,9 @@ three-d-asset = { version = "0.3.0", optional = true, default-features = false, 
     "obj",
     "png",
 ] }
+
+egui-wgpu = { version = "0.19", optional = true }
+wgpu = { version = "0.13", optional = true, features = ["webgl"] }
 
 
 # native dependencies:
