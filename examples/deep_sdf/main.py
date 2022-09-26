@@ -38,23 +38,41 @@ import math
 import os
 import sys
 
+import mesh_to_sdf
 import numpy as np
 import rerun_sdk as rerun
+import trimesh
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Final, Iterator, Iterable
+from typing import List, Final, Iterator, Iterable, Tuple
 
-from rerun_sdk import ImageFormat
+from rerun_sdk import ImageFormat, MeshFormat
 from scipy.spatial.transform import Rotation as R
+from trimesh import Trimesh
 
 
-def read_mesh(path: Path):
-    pass
+def read_mesh(path: Path) -> Tuple[Trimesh, np.ndarray, np.ndarray]:
+    print(f"loading mesh {path}...")
+    mesh = trimesh.load(path)
+    assert isinstance(mesh, Trimesh)
+    print(f"computing SDF for {path}...")
+    # TODO: is Niko interested in those gradients by any chance?
+    points, sdf, _ = mesh_to_sdf.sample_sdf_near_surface(mesh,
+                                                         number_of_points=250000,
+                                                         return_gradients=True)
+    return (mesh, points, sdf)
 
 
-def log_mesh():
-    pass
+def log_mesh(path: Path, mesh: Trimesh, points: np.ndarray, sdf: np.ndarray):
+    rerun.log_points("sdf/inside",
+                     points[sdf <= 0],
+                     colors=np.array([255, 0, 0, 255]),
+                     space="world")
+    rerun.log_points("sdf/outside",
+                     points[sdf > 0],
+                     colors=np.array([0, 255, 0, 255]),
+                     space="world")
 
 
 if __name__ == '__main__':
@@ -81,8 +99,11 @@ if __name__ == '__main__':
         rerun.connect(args.addr)
 
     for path in args.path:
-        mesh = read_mesh(path)
-        log_mesh()
+        (mesh, points, sdf) = read_mesh(path)
+        # TODO: gotta fix .obj loading on the Rust side first :(
+        # with open(path, mode='rb') as file:
+        #     rerun.log_mesh_file("mesh", MeshFormat.OBJ, file.read())
+        log_mesh(path, mesh, points, sdf)
 
     if args.save is not None:
         rerun.save(args.save)
