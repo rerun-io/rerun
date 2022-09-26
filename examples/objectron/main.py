@@ -22,7 +22,6 @@ import logging
 import math
 import os
 import sys
-import timeit
 
 import numpy as np
 import rerun_sdk as rerun
@@ -67,12 +66,7 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
         next_len = int.from_bytes(data[:4], byteorder='little', signed=False)
         data = data[4:]
 
-        # TODO(cmc): obviously not intended to stay in past reviews.
-        frame = []
-        t = timeit.timeit(lambda: frame.append(ARFrame().parse(data[:next_len])), number=1)
-        print(f"decoding next ARFrame in {t*1000.0} ms :<")
-        frame = frame[0]
-
+        frame = ARFrame().parse(data[:next_len])
         yield SampleARFrame(index=frame_idx,
                             timestamp=frame.timestamp,
                             dirpath=dirpath,
