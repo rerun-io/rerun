@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package xeno.pursuit.proto;
+package objectron.proto;
 
 // option cc_api_version = 2;
 // option java_api_version = 2;

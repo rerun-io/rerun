@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package xeno.pursuit.proto;
+package objectron.proto;
 
 import "a_r_capture_metadata.proto";
 import "object.proto";
@@ -58,7 +58,7 @@ message FrameAnnotation {
 
   // Information about the camera transformation (in the world coordinate) and
   // imaging characteristics for a captured video frame.
-  research.compvideo.arcapture.ARCamera camera = 3;
+  ARCamera camera = 3;
 
   // The timestamp for the frame.
   double timestamp = 4;
