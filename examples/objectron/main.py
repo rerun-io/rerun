@@ -121,14 +121,11 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
 def log_camera(cam: ARCamera):
     """Logs a camera from an `ARFrame` using the Rerun SDK."""
 
-    world_from_cam = np.asarray(cam.transform).reshape((4, 4)).T
+    world_from_cam = np.asarray(cam.transform).reshape((4, 4))
     translation = world_from_cam[3][:3]
     intrinsics = np.asarray(cam.intrinsics).reshape((3, 3))
+    rot = R.from_matrix(world_from_cam[..., 0:3][0:3,])
     (w, h) = (cam.image_resolution_width, cam.image_resolution_height)
-
-    rot = R.from_matrix(world_from_cam[0:3,][..., 0:3])
-    # TODO(cmc): not sure why its last component is incorrectly negated?
-    rot = R.from_quat(rot.as_quat() * [1.0, 1.0, 1.0, -1.0])
 
     # Because the dataset was collected in portrait:
     swizzle_x_y = np.asarray([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
