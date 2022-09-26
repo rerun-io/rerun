@@ -1,29 +1,33 @@
+#!/usr/bin/env python3
+
 """Shows how to use the rerun SDK."""
 
 from dataclasses import dataclass
-from typing import Iterator, Tuple
+from typing import Final, Iterator, Tuple
 
 import argparse
 import cv2  # type: ignore
 import numpy as np
+from importlib import resources
 
 import rerun_sdk as rerun
 
+PACKAGE_FILES: Final = resources.files("rerun_sdk")
 
-def log_dummy_data(args):
+def log_car_data(args):
     if args.connect:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    """Log a few frames of generated dummy data to show how the Rerun SDK is used."""
+    """Log a few frames of generated data to show how the Rerun SDK is used."""
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
     rerun.set_space_up("projected_space", [0, -1, 0])
 
-    for sample in generate_dummy_data(num_frames=NUM_FRAMES):
+    for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a "time source" called `frame_nr`.
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
         rerun.set_time_sequence("frame_nr", sample.frame_idx)
@@ -49,23 +53,23 @@ def log_dummy_data(args):
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
 
-    with open('crates/re_viewer/data/camera.glb', mode='rb') as file:
-        mesh_file = file.read()
-        # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
-        transform = [
-            [2, 0, 0, 0],
-            [0, 2, 0, 0],
-            [0, 0, 2, 0],
-        ]
-        rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB,
-                            mesh_file, transform=transform)
+    mesh_data = PACKAGE_FILES.joinpath("examples/data/camera.glb").read_bytes()
 
-    rerun.log_path("a_box", [
+    # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
+    transform = np.array([
+        [2, 0, 0, 0],
+        [0, 2, 0, 0],
+        [0, 0, 2, 0],
+    ])
+    rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
+
+    rerun.log_path("a_box", np.array([
         [0, 0, 0],
         [0, 1, 0],
         [1, 1, 0],
         [1, 0, 0],
-        [0, 0, 0]])
+        [0, 0, 0]]
+    ))
 
     if args.save is not None:
         rerun.save(args.save)
@@ -267,7 +271,7 @@ def generate_dummy_data(num_frames: int) -> Iterator[SampleFrame]:
         car.drive_one_step()
 
 
-if __name__ == '__main__':
+def main() -> None:
     parser = argparse.ArgumentParser(
         description='Logs rich data using the Rerun SDK.')
     parser.add_argument('--connect', dest='connect', action='store_true',
@@ -278,4 +282,8 @@ if __name__ == '__main__':
                         help='Save data to a .rrd file at this path')
     args = parser.parse_args()
 
-    log_dummy_data(args)
+    log_car_data(args)
+
+
+if __name__ == '__main__':
+    main()

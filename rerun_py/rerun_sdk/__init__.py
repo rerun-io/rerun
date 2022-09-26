@@ -6,8 +6,8 @@ from typing import Optional, Sequence, Union
 from pathlib import Path
 from dataclasses import dataclass
 
-from . import rerun_sdk as rerun_rs  # type: ignore
-from .color_conversion import linear_to_gamma_u8_pixel
+from rerun_sdk import rerun_sdk as rerun_rs # type: ignore
+from rerun_sdk.color_conversion import linear_to_gamma_u8_pixel
 
 
 def rerun_shutdown():
