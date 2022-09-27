@@ -100,7 +100,7 @@ if __name__ == '__main__':
         rerun.connect(args.addr)
 
     for path in args.path:
-        # TODO: gotta fix .obj loading on the Rust side first :(
+        # TODO(cmc): gotta fix .obj loading on the Rust side first :(
         # with open(path, mode='rb') as file:
         #     rerun.log_mesh_file("mesh", MeshFormat.OBJ, file.read())
         mesh = read_mesh(path)
