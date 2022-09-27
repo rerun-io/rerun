@@ -107,6 +107,8 @@ if __name__ == '__main__':
         (points, sdf) = compute_sample_sdf(mesh)
         voxvol = compute_voxel_sdf(mesh)
         log_mesh(path, mesh, points, sdf)
+        names = np.array(["w", "h", "d"])
+        rerun.log_tensor("sdf/tensor", voxvol, names=names, space="tensor")
         rerun.log_image("sdf/slice/#10", voxvol[10])
         rerun.log_image("sdf/slice/#30", voxvol[30])
         rerun.log_image("sdf/slice/#50", voxvol[50])

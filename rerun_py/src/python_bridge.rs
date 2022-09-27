@@ -4,8 +4,10 @@
 
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
-use pyo3::exceptions::PyTypeError;
+use numpy::PyArray;
 use pyo3::prelude::*;
+use pyo3::types::PyList;
+use pyo3::{exceptions::PyTypeError, types::PyString};
 use std::borrow::Cow;
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -1037,11 +1039,12 @@ fn log_obb(
 fn log_tensor_u8(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, u8>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1050,11 +1053,12 @@ fn log_tensor_u8(
 fn log_tensor_u16(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, u16>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1063,21 +1067,25 @@ fn log_tensor_u16(
 fn log_tensor_f32(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
 fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, T>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
+    dbg!(names);
+
     let mut sdk = Sdk::global();
 
     let obj_path = parse_obj_path(obj_path)?;
