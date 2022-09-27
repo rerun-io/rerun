@@ -121,6 +121,7 @@ impl CpuMesh {
         }
     }
 
+    #[allow(dead_code)]
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -129,7 +130,7 @@ impl CpuMesh {
         &self.bbox
     }
 
-    pub fn to_gpu(&self, three_d: &three_d::Context) -> anyhow::Result<GpuMesh> {
+    pub fn to_gpu(&self, three_d: &three_d::Context) -> GpuMesh {
         crate::profile_function!();
 
         let mut materials = Vec::new();
@@ -142,8 +143,8 @@ impl CpuMesh {
             let material = materials
                 .iter()
                 .find(|material| Some(&material.name) == mesh.material_name.as_ref())
-                .context("missing material")?
-                .clone();
+                .cloned()
+                .unwrap_or_default();
 
             let gm = Gm::new(
                 InstancedMesh::new(three_d, &Default::default(), mesh),
@@ -152,11 +153,11 @@ impl CpuMesh {
             meshes.push(gm);
         }
 
-        Ok(GpuMesh {
+        GpuMesh {
             name: self.name.clone(),
             meshes,
             // materials,
-        })
+        }
     }
 }
 
