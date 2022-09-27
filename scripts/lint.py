@@ -99,7 +99,7 @@ if __name__ == '__main__':
         root_dirpath = os.path.abspath(f'{script_dirpath}/..')
         os.chdir(root_dirpath)
 
-        exclude_dirs = set(['env', 'target'])
+        exclude_dirs = set(['env', 'venv', 'target'])
 
         exclude_paths = set([
             './CONTRIBUTING.md',
