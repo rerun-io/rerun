@@ -61,6 +61,8 @@ def main() -> None:
                         help='Connect to this ip:port')
     parser.add_argument('--save', type=str, default=None,
                         help='Save data to a .rrd file at this path')
+    parser.add_argument('--headless', action='store_true',
+                        help="Don't show GUI")
     args = parser.parse_args()
 
     if args.connect:
