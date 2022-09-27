@@ -133,7 +133,7 @@ pub(crate) fn view_2d(
             .texture_id(ui.ctx());
         let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
-            vec2(tensor.shape[1] as _, tensor.shape[0] as _),
+            vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
         ));
         let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
 

@@ -1119,7 +1119,15 @@ fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     let arc = std::sync::Arc::from(vec);
 
     Tensor {
-        shape: img.shape().iter().map(|&d| d as u64).collect(),
+        // TODO proper names
+        shape: img
+            .shape()
+            .iter()
+            .map(|&d| TensorDimension {
+                size: d as u64,
+                name: String::new(),
+            })
+            .collect(),
         dtype: T::DTYPE,
         data: TensorDataStore::Dense(arc),
     }
@@ -1259,7 +1267,11 @@ fn log_image_file(
         &time_point,
         (&obj_path, "tensor"),
         LoggedData::Single(Data::Tensor(re_log_types::Tensor {
-            shape: vec![h as _, w as _, 3],
+            shape: vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+                TensorDimension::depth(3),
+            ],
             dtype: TensorDataType::U8,
             data,
         })),

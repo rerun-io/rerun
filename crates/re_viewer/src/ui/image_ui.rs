@@ -160,7 +160,7 @@ fn show_zoomed_image_region(
                 }
             } else if tensor.num_dim() == 3 {
                 let mut s = "Raw values:".to_owned();
-                for c in 0..tensor.shape[2] {
+                for c in 0..tensor.shape[2].size {
                     if let Some(raw_value) = tensor.get(&[y, x, c]) {
                         use std::fmt::Write as _;
                         write!(&mut s, " {}", raw_value.as_f64()).unwrap();
