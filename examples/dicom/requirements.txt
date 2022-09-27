@@ -1,0 +1,2 @@
+dicom_numpy=0.6.2
+pydicom=2.3.0
