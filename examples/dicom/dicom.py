@@ -1,4 +1,16 @@
-#!/usr/bin/env pythong3
+#!/usr/bin/env python3
+"""Example using a vicom MRI scan.
+
+Setup:
+``` sh
+python examples/vicom/download_dataset.py
+```
+
+Run:
+``` sh
+python examples/vicom/main.py
+```
+"""
 
 import argparse
 from typing import Final, Iterable, Tuple
@@ -32,6 +44,14 @@ def list_viacom_files(dir: Path) -> Iterable[Path]:
                 yield Path(path) / f
 
 
+def read_and_log_vicom_dataset():
+    dicom_files = list_viacom_files(DATASET_DIR)
+    voxels_volume, _ = extract_voxel_data(dicom_files)
+
+    for slice_idx in range(voxels_volume.shape[-1]):
+        rerun.set_time_sequence("slice_idx", slice_idx)
+        rerun.log_image("vicom/slice", voxels_volume[:, :, slice_idx], space="mri/xy")
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description='Logs rich data using the Rerun SDK.')
@@ -43,12 +63,20 @@ def main() -> None:
                         help='Save data to a .rrd file at this path')
     args = parser.parse_args()
 
-    dicom_files = list_viacom_files(DATASET_DIR)
-    voxels_volume, _ = extract_voxel_data(dicom_files)
+    if args.connect:
+        # Send logging data to separate `rerun` process.
+        # You can ommit the argument to connect to the default address,
+        # which is `127.0.0.1:9876`.
+        rerun.connect(args.addr)
 
-    for slice_idx in range(voxels_volume.shape[-1]):
-        rerun.set_time_sequence("slice_idx", slice_idx)
-        rerun.log_image("vicom/slice", voxels_volume[:, :, slice_idx], space="mri/xy")
+    read_and_log_vicom_dataset()
+
+    if args.save is not None:
+        rerun.save(args.save)
+    elif args.headless:
+        pass
+    elif not args.connect:
+        rerun.show()
 
     rerun.show()
 
