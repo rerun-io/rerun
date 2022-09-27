@@ -301,7 +301,6 @@ pub(crate) struct SpaceStates {
     #[cfg(feature = "glow")]
     state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
 
-    #[cfg(feature = "wgpu")]
     state_tensor: ahash::HashMap<Option<ObjPath>, crate::view_tensor::TensorViewState>,
 }
 
@@ -331,17 +330,30 @@ impl SpaceStates {
                 .visible
         });
 
-        #[cfg(feature = "wgpu")]
         if objects.image.len() == 1 {
-            let image = objects.image.first().unwrap().1;
             // TODO(emilk): less hacky :)
-            // Special new tensor viewer!
-            let state_tensor = self
-                .state_tensor
-                .entry(space.cloned())
-                .or_insert_with(|| crate::ui::view_tensor::TensorViewState::create(image.tensor));
-            crate::view_tensor::view_tensor(ctx, ui, state_tensor, space, &image.tensor);
-            return hovered;
+
+            let image = objects.image.first().unwrap().1;
+            let tensor = image.tensor;
+
+            if tensor.num_dim() > 3
+                || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4
+            {
+                // Special new tensor viewer!
+                let state_tensor = self
+                    .state_tensor
+                    .entry(space.cloned())
+                    .or_insert_with(|| crate::ui::view_tensor::TensorViewState::create(tensor));
+
+                hovered |= ui
+                    .vertical(|ui| {
+                        crate::view_tensor::view_tensor(ctx, ui, state_tensor, space, tensor);
+                    })
+                    .response
+                    .hovered;
+
+                return hovered;
+            }
         }
 
         if objects.has_any_2d() && objects.has_any_3d() {

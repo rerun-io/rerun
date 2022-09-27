@@ -46,7 +46,7 @@ def read_and_log_vicom_dataset():
     dicom_files = list_dicom_files(DATASET_DIR)
     voxels_volume, _ = extract_voxel_data(dicom_files)
 
-    rerun.log_tensor("tensor", voxels_volume, space="tensor") # TODO: dimension names
+    rerun.log_tensor("tensor", voxels_volume, space="tensor", names=["right", "fwd", "up"])
 
     for slice_idx in range(voxels_volume.shape[-1]):
         rerun.set_time_sequence("slice_idx", slice_idx)

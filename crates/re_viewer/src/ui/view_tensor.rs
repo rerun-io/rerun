@@ -62,6 +62,10 @@ pub(crate) fn view_tensor(
     space: Option<&ObjPath>,
     tensor: &Tensor,
 ) {
+    ui.heading("Tensor viewer!");
+    ui.monospace(format!("shape: {:?}", tensor.shape));
+    ui.monospace(format!("dtype: {:?}", tensor.dtype));
+
     ui.collapsing("Rank Mapping", |ui| {
         rank_mapping_ui(ui, &mut state.rank_mapping);
     });
