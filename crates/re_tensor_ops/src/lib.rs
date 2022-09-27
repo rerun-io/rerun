@@ -1,3 +1,9 @@
+//! Helper used to access `re_log_types::Tensor` as an ndarray
+//!
+//! This exposes an Array *view* while using the underlying `TensorDataStore`.
+//! This is particularly helpful for performing slice-operations for
+//! dimensionality reduction.
+
 use re_log_types::{Tensor, TensorDataTypeTrait};
 
 #[derive(thiserror::Error, Debug, PartialEq)]
