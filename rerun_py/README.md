@@ -3,18 +3,19 @@
 Goal: an ergonomic Python library for logging rich data, over TCP, to a rerun server.
 
 ℹ️ Note: The rust crate is called `re_sdk_python`, while the Python library is called `rerun_sdk`.
+ℹ️ Note: These instructions assume you're running from the `rerun_py` folder and have Python 3.7 or later available.
 
 ## Build and install
 To build and install the `rerun_sdk` into your *current* Python environment run:
 
 ```sh
 python3 -m pip install --upgrade pip
-pip3 install "rerun_py"
+pip3 install ".[tests]"
 ```
 
 ℹ️ Notes:
 - If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip3 install` command.
--  `[tests,examples]` here is used to specify that we also want to install the dependencies needed for running tests and examples.
+-  `[tests]` here is used to specify that we also want to install the dependencies needed for running tests.
 
 ## Usage
 See [`USAGE.md`](USAGE.md).
@@ -28,9 +29,7 @@ By default, the example runs Rerun in buffered mode, in the same process as the 
 
 ## Development
 
-ℹ️ Note:
-- These instructions assume you're running from the `rerun_py` folder and have Python 3.7 or later available.
-- We make use of the [`just`](https://github.com/casey/just) command runner tool for repository automation. See [here](https://github.com/casey/just#installation) for installation instructions.
+ℹ️ Note: We make use of the [`just`](https://github.com/casey/just) command runner tool for repository automation. See [here](https://github.com/casey/just#installation) for installation instructions.
 
 ## Setup
 
