@@ -3,12 +3,12 @@
 
 Setup:
 ``` sh
-python examples/vicom/download_dataset.py
+python3 examples/vicom/download_dataset.py
 ```
 
 Run:
 ``` sh
-python examples/vicom/main.py
+python3 examples/vicom/main.py
 ```
 """
 
@@ -25,19 +25,17 @@ import rerun_sdk as rerun
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 
-# extract voxel data
 def extract_voxel_data(dicom_files: Iterable[Path]) -> Tuple[npt.NDArray[np.int16], npt.NDArray[np.float32]]:
     slices = [dicom.read_file(f) for f in dicom_files]
     try:
         voxel_ndarray, ijk_to_xyz = dicom_numpy.combine_slices(slices, rescale=True)
     except dicom_numpy.DicomImportException as e:
-    # invalid DICOM data
-        raise
+        raise # invalid DICOM data
 
     return voxel_ndarray, ijk_to_xyz
 
 
-def list_viacom_files(dir: Path) -> Iterable[Path]:
+def list_dicom_files(dir: Path) -> Iterable[Path]:
     for path, _, files in os.walk(dir):
         for f in files:
             if f.endswith(".dcm"):
@@ -45,7 +43,7 @@ def list_viacom_files(dir: Path) -> Iterable[Path]:
 
 
 def read_and_log_vicom_dataset():
-    dicom_files = list_viacom_files(DATASET_DIR)
+    dicom_files = list_dicom_files(DATASET_DIR)
     voxels_volume, _ = extract_voxel_data(dicom_files)
 
     for slice_idx in range(voxels_volume.shape[-1]):
