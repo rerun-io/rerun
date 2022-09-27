@@ -68,7 +68,7 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             dtype: TensorDataType::U16,
-            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&vec![0_u16; 60]).into()),
+            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&[0_u16; 60]).into()),
         };
 
         let n = as_ndarray::<u16>(&t).unwrap();
@@ -85,7 +85,7 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             dtype: TensorDataType::F32,
-            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&vec![0_f32; 60]).into()),
+            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&[0_f32; 60]).into()),
         };
 
         let n = as_ndarray::<f32>(&t).unwrap();
