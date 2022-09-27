@@ -1,15 +1,16 @@
 use re_log_types::{Tensor, TensorDataTypeTrait};
 
-use thiserror::Error;
-
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorCastError {
     #[error("ndarray type mismatch with tensor storage")]
     TypeMismatch,
     #[error("tensor storage cannot be converted to ndarray")]
     UnsupportedTensorStorage,
     #[error("tensor shape did not match storage length")]
-    BadTensorShape,
+    BadTensorShape {
+        #[from]
+        source: ndarray::ShapeError,
+    },
     #[error("unknown data store error")]
     Unknown,
 }
@@ -31,7 +32,7 @@ pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
             .as_slice()
             .ok_or(TensorCastError::UnsupportedTensorStorage)?,
     )
-    .map_err(|_| TensorCastError::BadTensorShape)
+    .map_err(|err| TensorCastError::BadTensorShape { source: err })
 }
 
 #[cfg(test)]
@@ -108,7 +109,12 @@ mod tests {
 
         let n = as_ndarray::<u8>(&t);
 
-        assert_eq!(n, Err(TensorCastError::BadTensorShape));
+        assert_eq!(
+            n,
+            Err(TensorCastError::BadTensorShape {
+                source: ndarray::ShapeError::from_kind(ndarray::ErrorKind::OutOfBounds)
+            })
+        );
     }
 
     #[test]
