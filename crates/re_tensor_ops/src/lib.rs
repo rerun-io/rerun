@@ -4,13 +4,16 @@ use re_log_types::{Tensor, TensorDataTypeTrait};
 pub enum TensorCastError {
     #[error("ndarray type mismatch with tensor storage")]
     TypeMismatch,
+
     #[error("tensor storage cannot be converted to ndarray")]
     UnsupportedTensorStorage,
+
     #[error("tensor shape did not match storage length")]
     BadTensorShape {
         #[from]
         source: ndarray::ShapeError,
     },
+
     #[error("unknown data store error")]
     Unknown,
 }
