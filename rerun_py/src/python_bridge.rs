@@ -1090,10 +1090,16 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
 
     let time_point = time(timeless);
 
+    let names: Option<Vec<String>> =
+        names.map(|names| names.iter().map(|n| n.to_string()).collect());
+
     sdk.send_data(
         &time_point,
         (&obj_path, "tensor"),
-        LoggedData::Single(Data::Tensor(to_rerun_tensor(&img, names)?)),
+        LoggedData::Single(Data::Tensor(
+            re_tensor_ops::to_rerun_tensor(&img.as_array(), names)
+                .map_err(|err| PyTypeError::new_err(err.to_string()))?,
+        )),
     );
 
     let space = space.unwrap_or_else(|| "2D".to_owned());
@@ -1112,45 +1118,6 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     }
 
     Ok(())
-}
-
-fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
-    data: &numpy::PyReadonlyArrayDyn<'_, T>,
-    names: Option<&PyList>,
-) -> PyResult<Tensor> {
-    // TODO(emilk): fewer memory allocations here.
-    let vec = data.to_owned_array().into_raw_vec();
-    let vec = bytemuck::allocation::try_cast_vec(vec)
-        .unwrap_or_else(|(_err, vec)| bytemuck::allocation::pod_collect_to_vec(&vec));
-    let arc = std::sync::Arc::from(vec);
-
-    let shape = if let Some(names) = names {
-        if names.len() != data.shape().len() {
-            return Err(PyTypeError::new_err(format!(
-                "Number of names doesn't match number of dimensions. \
-                Expected {}, got {}",
-                data.shape().len(),
-                names.len(),
-            )));
-        }
-
-        data.shape()
-            .iter()
-            .zip(names)
-            .map(|(&d, name)| TensorDimension::named(d as _, name.to_string()))
-            .collect()
-    } else {
-        data.shape()
-            .iter()
-            .map(|&d| TensorDimension::unnamed(d as _))
-            .collect()
-    };
-
-    Ok(Tensor {
-        shape,
-        dtype: T::DTYPE,
-        data: TensorDataStore::Dense(arc),
-    })
 }
 
 // ----------------------------------------------------------------------------

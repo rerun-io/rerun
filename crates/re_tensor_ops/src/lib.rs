@@ -4,7 +4,7 @@
 //! This is particularly helpful for performing slice-operations for
 //! dimensionality reduction.
 
-use re_log_types::{Tensor, TensorDataTypeTrait};
+use re_log_types::{Tensor, TensorDataStore, TensorDataTypeTrait, TensorDimension};
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorCastError {
@@ -19,6 +19,9 @@ pub enum TensorCastError {
         #[from]
         source: ndarray::ShapeError,
     },
+
+    #[error("wrong number of names")]
+    BadNamesLength,
 
     #[error("unknown data store error")]
     Unknown,
@@ -42,6 +45,44 @@ pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
             .ok_or(TensorCastError::UnsupportedTensorStorage)?,
     )
     .map_err(|err| TensorCastError::BadTensorShape { source: err })
+}
+
+pub fn to_rerun_tensor<A: ndarray::Data + ndarray::RawData, D: ndarray::Dimension>(
+    data: &ndarray::ArrayBase<A, D>,
+    names: Option<Vec<String>>,
+) -> Result<Tensor, TensorCastError>
+where
+    <A as ndarray::RawData>::Elem: TensorDataTypeTrait + bytemuck::Pod,
+{
+    // TODO(emilk): fewer memory allocations here.
+    let vec = data.to_owned().into_raw_vec();
+    let vec = bytemuck::allocation::try_cast_vec(vec)
+        .unwrap_or_else(|(_err, vec)| bytemuck::allocation::pod_collect_to_vec(&vec));
+
+    let arc = std::sync::Arc::from(vec);
+
+    let shape = if let Some(names) = names {
+        if names.len() != data.shape().len() {
+            return Err(TensorCastError::BadNamesLength);
+        }
+
+        data.shape()
+            .iter()
+            .zip(names)
+            .map(|(&d, name)| TensorDimension::named(d as _, name))
+            .collect()
+    } else {
+        data.shape()
+            .iter()
+            .map(|&d| TensorDimension::unnamed(d as _))
+            .collect()
+    };
+
+    Ok(Tensor {
+        shape,
+        dtype: A::Elem::DTYPE,
+        data: TensorDataStore::Dense(arc),
+    })
 }
 
 #[cfg(test)]
@@ -99,6 +140,26 @@ mod tests {
         let n = as_ndarray::<f32>(&t).unwrap();
 
         assert_eq!(n.shape(), &[3, 4, 5]);
+    }
+
+    #[test]
+    fn convert_ndarray_u8_to_tensor() {
+        let n = ndarray::array![[1., 2., 3.], [4., 5., 6.]];
+        let t = to_rerun_tensor(&n, Some(vec!["height".to_owned(), "width".to_owned()])).unwrap();
+
+        assert_eq!(
+            t.shape,
+            vec![TensorDimension::height(2), TensorDimension::width(3)]
+        );
+    }
+
+    #[test]
+    fn convert_ndarray_slice_to_tensor() {
+        let n = ndarray::array![[1., 2., 3.], [4., 5., 6.]];
+        let n = &n.slice(s![.., 1]);
+        let t = to_rerun_tensor(n, Some(vec!["height".to_owned()])).unwrap();
+
+        assert_eq!(t.shape, vec![TensorDimension::height(2)]);
     }
 
     #[test]
