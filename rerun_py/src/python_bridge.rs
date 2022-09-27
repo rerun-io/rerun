@@ -4,10 +4,9 @@
 
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
-use numpy::PyArray;
+use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyList;
-use pyo3::{exceptions::PyTypeError, types::PyString};
 use std::borrow::Cow;
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -1138,18 +1137,12 @@ fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
         data.shape()
             .iter()
             .zip(names)
-            .map(|(&d, name)| TensorDimension {
-                size: d as u64,
-                name: name.to_string(),
-            })
+            .map(|(&d, name)| TensorDimension::named(d as _, name.to_string()))
             .collect()
     } else {
         data.shape()
             .iter()
-            .map(|&d| TensorDimension {
-                size: d as u64,
-                name: String::new(),
-            })
+            .map(|&d| TensorDimension::unnamed(d as _))
             .collect()
     };
 

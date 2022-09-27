@@ -579,7 +579,7 @@ impl TensorElement {
 /// and memory efficient.
 /// This is crucial, since we clone data for different timelines in the data store.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorDataStore {
     /// Densely packed tensor
@@ -605,7 +605,7 @@ impl std::fmt::Debug for TensorDataStore {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TensorDimension {
     /// Number of elements on this dimension.
@@ -622,40 +622,33 @@ impl TensorDimension {
     const DEFAULT_NAME_DEPTH: &'static str = "depth";
 
     pub fn height(size: u64) -> Self {
-        Self {
-            size,
-            name: String::from(Self::DEFAULT_NAME_HEIGHT),
-        }
+        Self::named(size, String::from(Self::DEFAULT_NAME_HEIGHT))
     }
 
     pub fn width(size: u64) -> Self {
-        Self {
-            size,
-            name: String::from(Self::DEFAULT_NAME_WIDTH),
-        }
+        Self::named(size, String::from(Self::DEFAULT_NAME_WIDTH))
     }
 
     pub fn depth(size: u64) -> Self {
+        Self::named(size, String::from(Self::DEFAULT_NAME_DEPTH))
+    }
+
+    pub fn named(size: u64, name: String) -> Self {
+        Self { size, name }
+    }
+
+    pub fn unnamed(size: u64) -> Self {
         Self {
             size,
-            name: String::from(Self::DEFAULT_NAME_DEPTH),
+            name: String::new(),
         }
-    }
-}
-
-impl std::fmt::Debug for TensorDimension {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TensorDimension")
-            .field("size", &self.size)
-            .field("name", &self.name)
-            .finish()
     }
 }
 
 /// An N-dimensional colelction of numbers.
 ///
 /// Most often used to describe image pixels.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tensor {
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.

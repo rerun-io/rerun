@@ -107,7 +107,7 @@ if __name__ == '__main__':
         (points, sdf) = compute_sample_sdf(mesh)
         voxvol = compute_voxel_sdf(mesh)
         log_mesh(path, mesh, points, sdf)
-        names = ["width", "h", "d"]
+        names = ["width", "height", "depth"]
         rerun.log_tensor("sdf/tensor", voxvol, names=names, space="tensor")
 
     if args.save is not None:
