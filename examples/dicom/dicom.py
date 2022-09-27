@@ -46,9 +46,12 @@ def read_and_log_vicom_dataset():
     dicom_files = list_dicom_files(DATASET_DIR)
     voxels_volume, _ = extract_voxel_data(dicom_files)
 
+    rerun.log_tensor("tensor", voxels_volume, space="tensor") # TODO: dimension names
+
     for slice_idx in range(voxels_volume.shape[-1]):
         rerun.set_time_sequence("slice_idx", slice_idx)
         rerun.log_image("vicom/slice", voxels_volume[:, :, slice_idx], space="mri/xy")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
