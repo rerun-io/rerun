@@ -121,6 +121,7 @@ impl CpuMesh {
         }
     }
 
+    #[allow(dead_code)]
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -129,7 +130,7 @@ impl CpuMesh {
         &self.bbox
     }
 
-    pub fn to_gpu(&self, three_d: &three_d::Context) -> anyhow::Result<GpuMesh> {
+    pub fn to_gpu(&self, three_d: &three_d::Context) -> GpuMesh {
         crate::profile_function!();
 
         let mut materials = Vec::new();
@@ -152,11 +153,11 @@ impl CpuMesh {
             meshes.push(gm);
         }
 
-        Ok(GpuMesh {
+        GpuMesh {
             name: self.name.clone(),
             meshes,
             // materials,
-        })
+        }
     }
 }
 
