@@ -233,7 +233,7 @@ class SimpleDepthCamera:
         )
 
 
-def generate_dummy_data(num_frames: int) -> Iterator[SampleFrame]:
+def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
     """This function generates dummy data to log."""
     # Generate some fake data
     im_w = 480
