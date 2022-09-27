@@ -2839,6 +2839,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_tensor_ops"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "ndarray",
+ "re_log_types",
+ "thiserror",
+]
+
+[[package]]
 name = "re_viewer"
 version = "0.1.0"
 dependencies = [
