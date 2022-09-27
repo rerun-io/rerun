@@ -1,0 +1,2 @@
+rerun_sdk
+opencv-python~=4.6.0

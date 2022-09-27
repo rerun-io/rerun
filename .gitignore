@@ -4,7 +4,7 @@
 **/target
 
 # Python virtual environment:
-/env
+/venv
 
 # Python build artifacts:
 __pycache__

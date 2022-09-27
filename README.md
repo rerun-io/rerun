@@ -33,7 +33,7 @@ You should now be able to run `rerun --help` in any terminal.
 
 ```
 python3 -m pip install --upgrade pip
-pip3 install "rerun_py[tests,examples]"
+pip3 install "./rerun_py"
 ```
 Note: If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip3 install` command.
 

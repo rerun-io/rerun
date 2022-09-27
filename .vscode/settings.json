@@ -11,5 +11,6 @@
         "env/**": true,
         "target/**": true
     },
-    "files.autoGuessEncoding": true
+    "files.autoGuessEncoding": true,
+    "python.formatting.provider": "black"
 }
