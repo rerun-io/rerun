@@ -31,7 +31,7 @@ class MeshFormat(Enum):
 
     # Needs some way of logging materials too, or adding some default material to the viewer.
     # """ Wavefront .obj """
-    # OBJ = "OBJ"
+    OBJ = "OBJ"
 
 
 class CameraSpaceConvention(Enum):

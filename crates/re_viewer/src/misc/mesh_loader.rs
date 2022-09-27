@@ -142,8 +142,8 @@ impl CpuMesh {
             let material = materials
                 .iter()
                 .find(|material| Some(&material.name) == mesh.material_name.as_ref())
-                .context("missing material")?
-                .clone();
+                .cloned()
+                .unwrap_or_default();
 
             let gm = Gm::new(
                 InstancedMesh::new(three_d, &Default::default(), mesh),
