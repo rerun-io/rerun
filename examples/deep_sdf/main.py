@@ -33,6 +33,7 @@ python3 examples/deep_sdf/main.py examples/deep_sdf/dataset/buddha/buddha.obj
 
 
 import argparse
+import os
 import sys
 
 import mesh_to_sdf
@@ -52,13 +53,14 @@ def read_mesh(path: Path) -> Trimesh:
     mesh = trimesh.load(path)
     return cast(Trimesh, mesh)
 
-
 def compute_voxel_sdf(mesh: Trimesh) -> np.ndarray:
+    print("computing voxel-based SDF")
     voxvol = mesh_to_sdf.mesh_to_voxels(mesh, voxel_resolution=64)
     return voxvol
 
 
 def compute_sample_sdf(mesh: Trimesh) -> Tuple[np.ndarray, np.ndarray]:
+    print("computing sample-based SDF")
     points, sdf, _ = mesh_to_sdf.sample_sdf_near_surface(mesh,
                                                          number_of_points=250000,
                                                          return_gradients=True)
@@ -99,17 +101,46 @@ if __name__ == '__main__':
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
+    cachedir = f"cache"
+    os.makedirs(cachedir, exist_ok=True)
+
     for path in args.path:
-        # TODO(cmc): gotta fix .obj loading on the Rust side first :(
+        # TODO(cmc): gotta match the mesh center with the point cloud center first
         # with open(path, mode='rb') as file:
         #     rerun.log_mesh_file("mesh", MeshFormat.OBJ, file.read())
+
+        basename = os.path.basename(path)
+        points_path = f"{cachedir}/{basename}.points.npy"
+        sdf_path = f"{cachedir}/{basename}.sdf.npy"
+        voxvol_path = f"{cachedir}/{basename}.voxvol.npy"
+
         mesh = read_mesh(path)
-        (points, sdf) = compute_sample_sdf(mesh)
-        voxvol = compute_voxel_sdf(mesh)
+
+        try:
+            with open(sdf_path, 'rb') as f:
+                sdf = np.load(sdf_path)
+            with open(points_path, 'rb') as f:
+                points = np.load(points_path)
+        except:
+            (points, sdf) = compute_sample_sdf(mesh)
+
+        try:
+            with open(voxvol_path, 'rb') as f:
+                voxvol = np.load(voxvol_path)
+        except:
+            voxvol = compute_voxel_sdf(mesh)
+
         log_mesh(path, mesh, points, sdf)
-        rerun.log_image("sdf/slice/#10", voxvol[10])
-        rerun.log_image("sdf/slice/#30", voxvol[30])
-        rerun.log_image("sdf/slice/#50", voxvol[50])
+
+        names = ["width", "height", "depth"]
+        rerun.log_tensor("sdf/tensor", voxvol, names=names, space="tensor")
+
+        with open(points_path, 'wb+') as f:
+            np.save(f, points)
+        with open(sdf_path, 'wb+') as f:
+            np.save(f, sdf)
+        with open(voxvol_path, 'wb+') as f:
+            np.save(f, voxvol)
 
     if args.save is not None:
         rerun.save(args.save)

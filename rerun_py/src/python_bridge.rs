@@ -6,6 +6,7 @@ use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
+use pyo3::types::PyList;
 use std::borrow::Cow;
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -1037,11 +1038,12 @@ fn log_obb(
 fn log_tensor_u8(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, u8>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1050,11 +1052,12 @@ fn log_tensor_u8(
 fn log_tensor_u16(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, u16>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1063,17 +1066,19 @@ fn log_tensor_u16(
 fn log_tensor_f32(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
 fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, T>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
@@ -1088,7 +1093,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     sdk.send_data(
         &time_point,
         (&obj_path, "tensor"),
-        LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
+        LoggedData::Single(Data::Tensor(to_rerun_tensor(&img, names)?)),
     );
 
     let space = space.unwrap_or_else(|| "2D".to_owned());
@@ -1110,19 +1115,42 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
 }
 
 fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
-    img: &numpy::PyReadonlyArrayDyn<'_, T>,
-) -> Tensor {
+    data: &numpy::PyReadonlyArrayDyn<'_, T>,
+    names: Option<&PyList>,
+) -> PyResult<Tensor> {
     // TODO(emilk): fewer memory allocations here.
-    let vec = img.to_owned_array().into_raw_vec();
+    let vec = data.to_owned_array().into_raw_vec();
     let vec = bytemuck::allocation::try_cast_vec(vec)
         .unwrap_or_else(|(_err, vec)| bytemuck::allocation::pod_collect_to_vec(&vec));
     let arc = std::sync::Arc::from(vec);
 
-    Tensor {
-        shape: img.shape().iter().map(|&d| d as u64).collect(),
+    let shape = if let Some(names) = names {
+        if names.len() != data.shape().len() {
+            return Err(PyTypeError::new_err(format!(
+                "Number of names doesn't match number of dimensions. \
+                Expected {}, got {}",
+                data.shape().len(),
+                names.len(),
+            )));
+        }
+
+        data.shape()
+            .iter()
+            .zip(names)
+            .map(|(&d, name)| TensorDimension::named(d as _, name.to_string()))
+            .collect()
+    } else {
+        data.shape()
+            .iter()
+            .map(|&d| TensorDimension::unnamed(d as _))
+            .collect()
+    };
+
+    Ok(Tensor {
+        shape,
         dtype: T::DTYPE,
         data: TensorDataStore::Dense(arc),
-    }
+    })
 }
 
 // ----------------------------------------------------------------------------
@@ -1259,7 +1287,11 @@ fn log_image_file(
         &time_point,
         (&obj_path, "tensor"),
         LoggedData::Single(Data::Tensor(re_log_types::Tensor {
-            shape: vec![h as _, w as _, 3],
+            shape: vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+                TensorDimension::depth(3),
+            ],
             dtype: TensorDataType::U8,
             data,
         })),
