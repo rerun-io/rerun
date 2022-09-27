@@ -37,6 +37,7 @@ pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
 
 #[cfg(test)]
 mod tests {
+    use ndarray::s;
     use re_log_types::{TensorDataStore, TensorDataType, TensorDimension};
 
     use super::*;
@@ -55,7 +56,6 @@ mod tests {
 
         let n = as_ndarray::<u8>(&t).unwrap();
 
-        println!("{:?}", n.shape());
         assert_eq!(n.shape(), &[3, 4, 5]);
     }
 
@@ -73,7 +73,6 @@ mod tests {
 
         let n = as_ndarray::<u16>(&t).unwrap();
 
-        println!("{:?}", n.shape());
         assert_eq!(n.shape(), &[3, 4, 5]);
     }
 
@@ -86,13 +85,46 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             dtype: TensorDataType::F32,
-            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&vec![0.0_f32; 60]).into()),
+            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&vec![0_f32; 60]).into()),
         };
 
         let n = as_ndarray::<f32>(&t).unwrap();
 
-        println!("{:?}", n.shape());
         assert_eq!(n.shape(), &[3, 4, 5]);
+    }
+
+    #[test]
+    fn check_slices() {
+        let t = Tensor {
+            shape: vec![
+                TensorDimension::unnamed(3),
+                TensorDimension::unnamed(4),
+                TensorDimension::unnamed(5),
+            ],
+            dtype: TensorDataType::U16,
+            data: TensorDataStore::Dense(
+                bytemuck::pod_collect_to_vec(&(0..60).map(|x| x as i16).collect::<Vec<i16>>())
+                    .into(),
+            ),
+        };
+
+        let n = as_ndarray::<u16>(&t).unwrap();
+
+        // First element shold be 0
+        assert_eq!(n[[0, 0, 0]], 0);
+        // Last element should be 59
+        assert_eq!(n[[2, 3, 4]], 59);
+
+        // Slice the tensor
+        let sl: ndarray::ArrayBase<ndarray::ViewRepr<&u16>, ndarray::Ix2> = n.slice(s![.., 1, ..]);
+
+        // New slice is missing the middle dimension
+        assert_eq!(sl.shape(), &[3, 5]);
+
+        // Equivalent to (0,1,0) = 0*20 + 1*5 + 0 = 5
+        assert_eq!(sl[[0, 0]], 5);
+        // Equivalent to (1,1,3) = 1*20 + 1*5 + 3 = 28
+        assert_eq!(sl[[1, 3]], 28);
     }
 
     #[test]
