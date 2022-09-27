@@ -14,7 +14,7 @@ build mode="release":
     #!/usr/bin/env bash
     unset CONDA_PREFIX && \
         source venv/bin/activate && \
-        maturin develop  --extras="examples,tests" {{ if mode == "debug" { "" } else { "--release" } }}
+        maturin develop  --extras="tests" {{ if mode == "debug" { "" } else { "--release" } }}
 
 # Run autoformatting
 format:
