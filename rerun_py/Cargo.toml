@@ -23,6 +23,7 @@ extension-module = ["pyo3/extension-module"]
 re_log = { path = "../crates/re_log" }
 re_log_types = { path = "../crates/re_log_types" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
+re_tensor_ops = { path = "../crates/re_tensor_ops" }
 re_viewer = { path = "../crates/re_viewer", optional = true }
 
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }

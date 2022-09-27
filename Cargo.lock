@@ -2822,6 +2822,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_sdk_comms",
+ "re_tensor_ops",
  "re_viewer",
  "tracing-subscriber",
  "uuid",
