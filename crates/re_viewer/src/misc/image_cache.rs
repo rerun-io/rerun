@@ -108,10 +108,10 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
     );
 
     let [height, width] = [
-        u32::try_from(shape[0]).context("tensor too large")?,
-        u32::try_from(shape[1]).context("tensor too large")?,
+        u32::try_from(shape[0].size).context("tensor too large")?,
+        u32::try_from(shape[1].size).context("tensor too large")?,
     ];
-    let depth = if shape.len() == 2 { 1 } else { shape[2] };
+    let depth = if shape.len() == 2 { 1 } else { shape[2].size };
 
     anyhow::ensure!(
         depth == 1 || depth == 3 || depth == 4,
