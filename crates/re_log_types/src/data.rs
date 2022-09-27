@@ -614,7 +614,7 @@ impl std::fmt::Debug for TensorDataStore {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TensorDimension {
     /// Number of elements on this dimension.
@@ -654,10 +654,20 @@ impl TensorDimension {
     }
 }
 
+impl std::fmt::Debug for TensorDimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.name.is_empty() {
+            self.size.fmt(f)
+        } else {
+            write!(f, "{}={}", self.name, self.size)
+        }
+    }
+}
+
 /// An N-dimensional colelction of numbers.
 ///
 /// Most often used to describe image pixels.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tensor {
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
@@ -676,16 +686,6 @@ pub struct Tensor {
 
     /// The actual contents of the tensor.
     pub data: TensorDataStore,
-}
-
-impl std::fmt::Debug for Tensor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Tensor")
-            .field("shape", &self.shape)
-            .field("dtype", &self.dtype)
-            .field("data", &self.data)
-            .finish()
-    }
 }
 
 impl Tensor {
