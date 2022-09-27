@@ -1084,8 +1084,6 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    dbg!(names);
-
     let mut sdk = Sdk::global();
 
     let obj_path = parse_obj_path(obj_path)?;
@@ -1096,7 +1094,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     sdk.send_data(
         &time_point,
         (&obj_path, "tensor"),
-        LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
+        LoggedData::Single(Data::Tensor(to_rerun_tensor(&img, names)?)),
     );
 
     let space = space.unwrap_or_else(|| "2D".to_owned());
@@ -1118,27 +1116,48 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
 }
 
 fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
-    img: &numpy::PyReadonlyArrayDyn<'_, T>,
-) -> Tensor {
+    data: &numpy::PyReadonlyArrayDyn<'_, T>,
+    names: Option<&PyList>,
+) -> PyResult<Tensor> {
     // TODO(emilk): fewer memory allocations here.
-    let vec = img.to_owned_array().into_raw_vec();
+    let vec = data.to_owned_array().into_raw_vec();
     let vec = bytemuck::allocation::try_cast_vec(vec)
         .unwrap_or_else(|(_err, vec)| bytemuck::allocation::pod_collect_to_vec(&vec));
     let arc = std::sync::Arc::from(vec);
 
-    Tensor {
-        // TODO proper names
-        shape: img
-            .shape()
+    let shape = if let Some(names) = names {
+        if names.len() != data.shape().len() {
+            return Err(PyTypeError::new_err(format!(
+                "Number of names doesn't match number of dimensions. \
+                Expected {}, got {}",
+                data.shape().len(),
+                names.len(),
+            )));
+        }
+
+        data.shape()
+            .iter()
+            .zip(names)
+            .map(|(&d, name)| TensorDimension {
+                size: d as u64,
+                name: name.to_string(),
+            })
+            .collect()
+    } else {
+        data.shape()
             .iter()
             .map(|&d| TensorDimension {
                 size: d as u64,
                 name: String::new(),
             })
-            .collect(),
+            .collect()
+    };
+
+    Ok(Tensor {
+        shape,
         dtype: T::DTYPE,
         data: TensorDataStore::Dense(arc),
-    }
+    })
 }
 
 // ----------------------------------------------------------------------------
