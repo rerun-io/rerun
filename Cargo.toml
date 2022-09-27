@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/*", "examples/*", "rerun_py"]
-exclude = ["examples/nyud", "examples/objectron"]
+exclude = ["examples/nyud", "examples/objectron", "examples/deep_sdf"]
 
 [profile.dev]
 # opt-level = 1 # Speed up debug builds
