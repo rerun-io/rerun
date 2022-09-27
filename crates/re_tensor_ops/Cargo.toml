@@ -10,7 +10,7 @@ publish = false
 
 [dependencies]
 ndarray = "0.15"
-bytemuck = "1.12"
+bytemuck = {version = "1.12", features = ["extern_crate_alloc"]}
 thiserror = "1.0"
 re_log_types = { path = "../re_log_types" }
 

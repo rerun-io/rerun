@@ -2,7 +2,7 @@ use re_log_types::{Tensor, TensorDataTypeTrait};
 
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum TensorCastError {
     #[error("ndarray type mismatch with tensor storage")]
     TypeMismatch,
@@ -14,12 +14,9 @@ pub enum TensorCastError {
     Unknown,
 }
 
-//fn to_shape<'a>(shape: Vec<TensorDimension>) -> ndarray
-
-// TODO: should this be a trait on Tensor?
-pub fn as_ndarray<'a, A: bytemuck::Pod + TensorDataTypeTrait>(
-    tensor: &'a Tensor,
-) -> Result<ndarray::ArrayViewD<'a, A>, TensorCastError> {
+pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
+    tensor: &Tensor,
+) -> Result<ndarray::ArrayViewD<'_, A>, TensorCastError> {
     let shape: Vec<_> = tensor.shape.iter().map(|d| d.size as usize).collect();
     let shape = ndarray::IxDyn(shape.as_slice());
 
@@ -44,7 +41,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn convert_tensor_to_ndarray() {
+    fn convert_tensor_to_ndarray_u8() {
         let t = Tensor {
             shape: vec![
                 TensorDimension::unnamed(3),
@@ -56,6 +53,42 @@ mod tests {
         };
 
         let n = as_ndarray::<u8>(&t).unwrap();
+
+        println!("{:?}", n.shape());
+        assert_eq!(n.shape(), &[3, 4, 5]);
+    }
+
+    #[test]
+    fn convert_tensor_to_ndarray_u16() {
+        let t = Tensor {
+            shape: vec![
+                TensorDimension::unnamed(3),
+                TensorDimension::unnamed(4),
+                TensorDimension::unnamed(5),
+            ],
+            dtype: TensorDataType::U16,
+            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&vec![0_u16; 60]).into()),
+        };
+
+        let n = as_ndarray::<u16>(&t).unwrap();
+
+        println!("{:?}", n.shape());
+        assert_eq!(n.shape(), &[3, 4, 5]);
+    }
+
+    #[test]
+    fn convert_tensor_to_ndarray_f32() {
+        let t = Tensor {
+            shape: vec![
+                TensorDimension::unnamed(3),
+                TensorDimension::unnamed(4),
+                TensorDimension::unnamed(5),
+            ],
+            dtype: TensorDataType::F32,
+            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&vec![0.0_f32; 60]).into()),
+        };
+
+        let n = as_ndarray::<f32>(&t).unwrap();
 
         println!("{:?}", n.shape());
         assert_eq!(n.shape(), &[3, 4, 5]);
