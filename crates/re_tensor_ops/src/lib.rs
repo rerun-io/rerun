@@ -1,0 +1,97 @@
+use re_log_types::{Tensor, TensorDataTypeTrait};
+
+use thiserror::Error;
+
+#[derive(Error, Debug, PartialEq)]
+pub enum TensorCastError {
+    #[error("ndarray type mismatch with tensor storage")]
+    TypeMismatch,
+    #[error("tensor storage cannot be converted to ndarray")]
+    UnsupportedTensorStorage,
+    #[error("tensor shape did not match storage length")]
+    BadTensorShape,
+    #[error("unknown data store error")]
+    Unknown,
+}
+
+//fn to_shape<'a>(shape: Vec<TensorDimension>) -> ndarray
+
+// TODO: should this be a trait on Tensor?
+pub fn as_ndarray<'a, A: bytemuck::Pod + TensorDataTypeTrait>(
+    tensor: &'a Tensor,
+) -> Result<ndarray::ArrayViewD<'a, A>, TensorCastError> {
+    let shape: Vec<_> = tensor.shape.iter().map(|d| d.size as usize).collect();
+    let shape = ndarray::IxDyn(shape.as_slice());
+
+    if A::DTYPE != tensor.dtype {
+        return Err(TensorCastError::TypeMismatch);
+    }
+
+    ndarray::ArrayViewD::from_shape(
+        shape,
+        tensor
+            .data
+            .as_slice()
+            .ok_or(TensorCastError::UnsupportedTensorStorage)?,
+    )
+    .map_err(|_| TensorCastError::BadTensorShape)
+}
+
+#[cfg(test)]
+mod tests {
+    use re_log_types::{TensorDataStore, TensorDataType, TensorDimension};
+
+    use super::*;
+
+    #[test]
+    fn convert_tensor_to_ndarray() {
+        let t = Tensor {
+            shape: vec![
+                TensorDimension::unnamed(3),
+                TensorDimension::unnamed(4),
+                TensorDimension::unnamed(5),
+            ],
+            dtype: TensorDataType::U8,
+            data: TensorDataStore::Dense(vec![0; 60].into()),
+        };
+
+        let n = as_ndarray::<u8>(&t).unwrap();
+
+        println!("{:?}", n.shape());
+        assert_eq!(n.shape(), &[3, 4, 5]);
+    }
+
+    #[test]
+    fn check_tensor_shape_error() {
+        let t = Tensor {
+            shape: vec![
+                TensorDimension::unnamed(3),
+                TensorDimension::unnamed(4),
+                TensorDimension::unnamed(5),
+            ],
+            dtype: TensorDataType::U8,
+            data: TensorDataStore::Dense(vec![0; 59].into()),
+        };
+
+        let n = as_ndarray::<u8>(&t);
+
+        assert_eq!(n, Err(TensorCastError::BadTensorShape));
+    }
+
+    #[test]
+    fn check_tensor_type_error() {
+        let t = Tensor {
+            shape: vec![
+                TensorDimension::unnamed(3),
+                TensorDimension::unnamed(4),
+                TensorDimension::unnamed(5),
+            ],
+            dtype: TensorDataType::U16,
+            data: TensorDataStore::Dense(vec![0; 60].into()),
+        };
+
+        let n = as_ndarray::<u8>(&t);
+
+        assert_eq!(n, Err(TensorCastError::TypeMismatch));
+    }
+}

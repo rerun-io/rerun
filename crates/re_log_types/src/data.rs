@@ -592,6 +592,15 @@ pub enum TensorDataStore {
     Jpeg(Arc<[u8]>),
 }
 
+impl TensorDataStore {
+    pub fn as_slice<T: bytemuck::Pod>(&self) -> Option<&[T]> {
+        match self {
+            TensorDataStore::Dense(bytes) => Some(bytemuck::cast_slice(bytes)),
+            TensorDataStore::Jpeg(_) => None,
+        }
+    }
+}
+
 impl std::fmt::Debug for TensorDataStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
