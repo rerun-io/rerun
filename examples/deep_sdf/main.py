@@ -49,7 +49,7 @@ from trimesh import Trimesh
 
 
 def read_mesh(path: Path) -> Trimesh:
-    print(f"loading mesh {path}...")
+    print(f"loading mesh {path}…")
     mesh = trimesh.load(path)
     return cast(Trimesh, mesh)
 
