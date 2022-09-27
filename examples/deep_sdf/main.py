@@ -33,9 +33,6 @@ python3 examples/deep_sdf/main.py examples/deep_sdf/dataset/buddha/buddha.obj
 
 
 import argparse
-import logging
-import math
-import os
 import sys
 
 import mesh_to_sdf
@@ -43,25 +40,29 @@ import numpy as np
 import rerun_sdk as rerun
 import trimesh
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Final, Iterator, Iterable, Tuple
+from typing import Tuple, cast
 
-from rerun_sdk import ImageFormat, MeshFormat
 from scipy.spatial.transform import Rotation as R
 from trimesh import Trimesh
 
 
-def read_mesh(path: Path) -> Tuple[Trimesh, np.ndarray, np.ndarray]:
+def read_mesh(path: Path) -> Trimesh:
     print(f"loading mesh {path}...")
     mesh = trimesh.load(path)
-    assert isinstance(mesh, Trimesh)
-    print(f"computing SDF for {path}...")
-    # TODO: is Niko interested in those gradients by any chance?
+    return cast(Trimesh, mesh)
+
+
+def compute_voxel_sdf(mesh: Trimesh) -> np.ndarray:
+    voxvol = mesh_to_sdf.mesh_to_voxels(mesh, voxel_resolution=64)
+    return voxvol
+
+
+def compute_sample_sdf(mesh: Trimesh) -> Tuple[np.ndarray, np.ndarray]:
     points, sdf, _ = mesh_to_sdf.sample_sdf_near_surface(mesh,
                                                          number_of_points=250000,
                                                          return_gradients=True)
-    return (mesh, points, sdf)
+    return (points, sdf)
 
 
 def log_mesh(path: Path, mesh: Trimesh, points: np.ndarray, sdf: np.ndarray):
@@ -99,11 +100,16 @@ if __name__ == '__main__':
         rerun.connect(args.addr)
 
     for path in args.path:
-        (mesh, points, sdf) = read_mesh(path)
         # TODO: gotta fix .obj loading on the Rust side first :(
         # with open(path, mode='rb') as file:
         #     rerun.log_mesh_file("mesh", MeshFormat.OBJ, file.read())
+        mesh = read_mesh(path)
+        (points, sdf) = compute_sample_sdf(mesh)
+        voxvol = compute_voxel_sdf(mesh)
         log_mesh(path, mesh, points, sdf)
+        rerun.log_image("sdf/slice/#10", voxvol[10])
+        rerun.log_image("sdf/slice/#30", voxvol[30])
+        rerun.log_image("sdf/slice/#50", voxvol[50])
 
     if args.save is not None:
         rerun.save(args.save)
