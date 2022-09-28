@@ -46,7 +46,6 @@ pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
 
 #[cfg(test)]
 mod tests {
-    use ndarray::s;
     use re_log_types::{TensorDataStore, TensorDataType, TensorDimension};
 
     use super::*;
@@ -134,7 +133,7 @@ mod tests {
         }
 
         // Slice the tensor
-        let sl: ndarray::ArrayBase<ndarray::ViewRepr<&u16>, ndarray::Ix2> = n.slice(s![.., 1, ..]);
+        let sl: ndarray::ArrayView2<'_, u16> = n.slice(ndarray::s![.., 1, ..]);
 
         // New slice is missing the middle dimension
         assert_eq!(sl.shape(), &[3, 5]);
