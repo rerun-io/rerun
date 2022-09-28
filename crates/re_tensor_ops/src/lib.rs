@@ -55,7 +55,7 @@ where
     <A as ndarray::RawData>::Elem: TensorDataTypeTrait + bytemuck::Pod,
 {
     // TODO(emilk): fewer memory allocations here.
-    let vec = data.to_owned().into_raw_vec();
+    let vec: Vec<_> = data.iter().cloned().collect();
     let vec = bytemuck::allocation::try_cast_vec(vec)
         .unwrap_or_else(|(_err, vec)| bytemuck::allocation::pod_collect_to_vec(&vec));
 
