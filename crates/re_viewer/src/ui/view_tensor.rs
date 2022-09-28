@@ -1,10 +1,7 @@
-use re_data_store::ObjPath;
-use re_log_types::Tensor;
+use re_log_types::{Tensor, TensorDataType};
 
 use egui::{Color32, ColorImage};
 use itertools::Itertools as _;
-
-use crate::misc::ViewerContext;
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct TensorViewState {
@@ -61,13 +58,7 @@ fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping) {
 
 // ----------------------------------------------------------------------------
 
-pub(crate) fn view_tensor(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    state: &mut TensorViewState,
-    space: Option<&ObjPath>,
-    tensor: &Tensor,
-) {
+pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
     ui.heading("Tensor viewer!");
     ui.monospace(format!("shape: {:?}", tensor.shape));
     ui.monospace(format!("dtype: {:?}", tensor.dtype));
@@ -78,21 +69,76 @@ pub(crate) fn view_tensor(
 
     selectors_ui(ui, state, tensor);
 
-    if let Ok(tensor) = re_tensor_ops::as_ndarray::<f32>(tensor) {
-        let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
-        ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
-        let color_from_value = |value: f32| {
-            let lum = egui::remap(value, tensor_min..=tensor_max, 0.0..=255.0).round() as u8;
-            Color32::from_gray(lum)
-        };
+    match tensor.dtype {
+        TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
+            Ok(tensor) => {
+                let color_from_value = Color32::from_gray;
+                let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
+                slice_ui(ui, &state.rank_mapping, &slice, color_from_value);
+            }
+            Err(err) => {
+                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+            }
+        },
 
-        let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
-        ui.monospace(format!("Slice shape: {:?}", slice.shape()));
+        TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = tensor_range_u16(&tensor);
+                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+                let color_from_value = |value: u16| {
+                    let lum = egui::remap(
+                        value as f32,
+                        tensor_min as f32..=tensor_max as f32,
+                        0.0..=255.0,
+                    )
+                    .round() as u8;
+                    Color32::from_gray(lum)
+                };
 
-        if slice.ndim() == 2 {
-            let image = into_image(&state.rank_mapping, &slice, color_from_value);
-            image_ui(ui, image);
-        }
+                let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
+                slice_ui(ui, &state.rank_mapping, &slice, color_from_value);
+            }
+            Err(err) => {
+                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+            }
+        },
+
+        TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
+                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+                let color_from_value = |value: f32| {
+                    let lum =
+                        egui::remap(value, tensor_min..=tensor_max, 0.0..=255.0).round() as u8;
+                    Color32::from_gray(lum)
+                };
+
+                let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
+                slice_ui(ui, &state.rank_mapping, &slice, color_from_value);
+            }
+            Err(err) => {
+                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+            }
+        },
+    }
+}
+
+fn slice_ui<T: Copy>(
+    ui: &mut egui::Ui,
+    rank_mapping: &RankMapping,
+    slice: &ndarray::ArrayViewD<'_, T>,
+    color_from_value: impl Fn(T) -> Color32,
+) {
+    ui.monospace(format!("Slice shape: {:?}", slice.shape()));
+
+    if slice.ndim() == 2 {
+        let image = into_image(rank_mapping, slice, color_from_value);
+        image_ui(ui, image);
+    } else {
+        ui.colored_label(
+            ui.visuals().error_fg_color,
+            "Only 2D slices supported at the moment",
+        );
     }
 }
 
@@ -154,6 +200,16 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
 fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
     let mut min = f32::INFINITY;
     let mut max = f32::NEG_INFINITY;
+    for &value in tensor {
+        min = min.min(value);
+        max = max.max(value);
+    }
+    (min, max)
+}
+
+fn tensor_range_u16(tensor: &ndarray::ArrayViewD<'_, u16>) -> (u16, u16) {
+    let mut min = u16::MAX;
+    let mut max = u16::MIN;
     for &value in tensor {
         min = min.min(value);
         max = max.max(value);

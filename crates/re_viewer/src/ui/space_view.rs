@@ -347,7 +347,7 @@ impl SpaceStates {
 
                 hovered |= ui
                     .vertical(|ui| {
-                        crate::view_tensor::view_tensor(ctx, ui, state_tensor, space, tensor);
+                        crate::view_tensor::view_tensor(ui, state_tensor, tensor);
                     })
                     .response
                     .hovered;
