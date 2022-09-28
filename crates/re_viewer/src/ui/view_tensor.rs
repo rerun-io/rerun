@@ -101,6 +101,7 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
 // ----------------------------------------------------------------------------
 
 pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
+    crate::profile_function!();
     ui.heading("Tensor viewer!");
     ui.monospace(format!("shape: {:?}", tensor.shape));
     ui.monospace(format!("dtype: {:?}", tensor.dtype));
@@ -195,12 +196,14 @@ fn into_image<T: Copy>(
     slice: &ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) -> ColorImage {
+    crate::profile_function!();
     assert_eq!(slice.ndim(), 2);
     // what is height or what is width depends on the rank-mapping
     if rank_mapping.height < rank_mapping.width {
         let (height, width) = (slice.shape()[0], slice.shape()[1]);
         let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
         assert_eq!(image.pixels.len(), slice.iter().count());
+        crate::profile_scope!("color_mapper");
         for (pixel, value) in itertools::izip!(&mut image.pixels, slice) {
             *pixel = color_from_value(*value);
         }
@@ -210,6 +213,7 @@ fn into_image<T: Copy>(
         let (width, height) = (slice.shape()[0], slice.shape()[1]);
         let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
         assert_eq!(image.pixels.len(), slice.iter().count());
+        crate::profile_scope!("color_mapper_transposed");
         for y in 0..height {
             for x in 0..width {
                 image[(x, y)] = color_from_value(slice[[x, y]]);
@@ -220,6 +224,7 @@ fn into_image<T: Copy>(
 }
 
 fn image_ui(ui: &mut egui::Ui, image: ColorImage) {
+    crate::profile_function!();
     // TODO(emilk): cache texture - don't create a new texture every frame
     let texture = ui
         .ctx()
@@ -246,6 +251,7 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
 }
 
 fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
+    crate::profile_function!();
     let mut min = f32::INFINITY;
     let mut max = f32::NEG_INFINITY;
     for &value in tensor {
@@ -256,6 +262,7 @@ fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
 }
 
 fn tensor_range_u16(tensor: &ndarray::ArrayViewD<'_, u16>) -> (u16, u16) {
+    crate::profile_function!();
     let mut min = u16::MAX;
     let mut max = u16::MIN;
     for &value in tensor {
