@@ -28,7 +28,7 @@ DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 def extract_voxel_data(dicom_files: Iterable[Path]) -> Tuple[npt.NDArray[np.int16], npt.NDArray[np.float32]]:
     slices = [dicom.read_file(f) for f in dicom_files]
     try:
-        voxel_ndarray, ijk_to_xyz = dicom_numpy.combine_slices(slices, rescale=True)
+        voxel_ndarray, ijk_to_xyz = dicom_numpy.combine_slices(slices)
     except dicom_numpy.DicomImportException as e:
         raise # invalid DICOM data
 
@@ -45,12 +45,14 @@ def list_dicom_files(dir: Path) -> Iterable[Path]:
 def read_and_log_vicom_dataset():
     dicom_files = list_dicom_files(DATASET_DIR)
     voxels_volume, _ = extract_voxel_data(dicom_files)
+    voxels_volume = voxels_volume.astype('uint16') # the data is i16, but in range [0, 536].
 
     rerun.log_tensor("tensor", voxels_volume, space="tensor", names=["right", "back", "up"])
 
-    for slice_idx in range(voxels_volume.shape[-1]):
-        rerun.set_time_sequence("slice_idx", slice_idx)
-        rerun.log_image("vicom/slice", voxels_volume[:, :, slice_idx], space="mri/xy")
+    if False:
+        for slice_idx in range(voxels_volume.shape[-1]):
+            rerun.set_time_sequence("slice_idx", slice_idx)
+            rerun.log_image("vicom/slice", voxels_volume[:, :, slice_idx], space="mri/xy")
 
 
 def main() -> None:
