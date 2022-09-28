@@ -1,5 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod clipboard;
+pub(crate) mod color_map;
 pub(crate) mod image_cache;
 #[cfg(feature = "glow")]
 pub(crate) mod mesh_loader;
