@@ -88,20 +88,7 @@ pub(crate) fn view_tensor(
     }
 
     if let Ok(tensor) = re_tensor_ops::as_ndarray::<f32>(tensor) {
-        let slice_info_elems = (0..tensor.ndim())
-            .map(|dim| {
-                if let Some(selector) = state.selectors.get(&dim) {
-                    ndarray::SliceInfoElem::Index(*selector as _)
-                } else {
-                    ndarray::SliceInfoElem::Slice {
-                        start: 0,
-                        end: None,
-                        step: 1,
-                    }
-                }
-            })
-            .collect_vec();
-        let slice = tensor.slice(slice_info_elems.as_slice());
+        let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
         ui.monospace(format!("Slice shape: {:?}", slice.shape()));
 
         if slice.ndim() == 2 {
@@ -135,4 +122,18 @@ pub(crate) fn view_tensor(
     }
 }
 
-// ----------------------------------------------------------------------------
+fn slicer(num_dim: usize, selectors: &ahash::HashMap<usize, u64>) -> Vec<ndarray::SliceInfoElem> {
+    (0..num_dim)
+        .map(|dim| {
+            if let Some(selector) = selectors.get(&dim) {
+                ndarray::SliceInfoElem::Index(*selector as _)
+            } else {
+                ndarray::SliceInfoElem::Slice {
+                    start: 0,
+                    end: None,
+                    step: 1,
+                }
+            }
+        })
+        .collect_vec()
+}
