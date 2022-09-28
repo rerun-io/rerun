@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-
-"""Shows how to use the rerun SDK."""
+"""Shows how to use the Rerun SDK."""
 
 from dataclasses import dataclass
 import os
