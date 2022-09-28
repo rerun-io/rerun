@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn convert_ndarray_slice_to_tensor() {
         let n = ndarray::array![[1., 2., 3.], [4., 5., 6.]];
-        let n = &n.slice(s![.., 1]);
+        let n = &n.slice(ndarray::s![.., 1]);
         let t = to_rerun_tensor(n, Some(vec!["height".to_owned()])).unwrap();
 
         assert_eq!(t.shape, vec![TensorDimension::height(2)]);
