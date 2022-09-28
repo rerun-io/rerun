@@ -40,7 +40,7 @@ struct RankMapping {
 
 impl RankMapping {
     fn create(tensor: &Tensor) -> RankMapping {
-        // TODO: a heuristic
+        // TODO(emilk): add a heuristic here for the default
         RankMapping {
             width: Some(1),
             height: Some(0),
@@ -51,7 +51,7 @@ impl RankMapping {
 }
 
 fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping) {
-    ui.label("TODO");
+    // TODO(emilk): Add a proper rank mapping GUI here
     if ui.button("transpose").clicked() {
         std::mem::swap(&mut rank_mapping.width, &mut rank_mapping.height);
     }
@@ -220,7 +220,7 @@ fn into_image<T: Copy>(
 }
 
 fn image_ui(ui: &mut egui::Ui, image: ColorImage) {
-    // TODO: cache texture - don't create a new texture every frame
+    // TODO(emilk): cache texture - don't create a new texture every frame
     let texture = ui
         .ctx()
         .load_texture("tensor_slice", image, egui::TextureFilter::Linear);
