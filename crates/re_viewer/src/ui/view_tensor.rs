@@ -53,6 +53,9 @@ impl RankMapping {
 
 fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping) {
     ui.label("TODO");
+    if ui.button("transpose").clicked() {
+        std::mem::swap(&mut rank_mapping.width, &mut rank_mapping.height);
+    }
     ui.monospace(format!("{rank_mapping:?}"));
 }
 
@@ -76,28 +79,49 @@ pub(crate) fn view_tensor(
     selectors_ui(ui, state, tensor);
 
     if let Ok(tensor) = re_tensor_ops::as_ndarray::<f32>(tensor) {
+        let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
+        ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+        let color_from_value = |value: f32| {
+            let lum = egui::remap(value, tensor_min..=tensor_max, 0.0..=255.0).round() as u8;
+            Color32::from_gray(lum)
+        };
+
         let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
         ui.monospace(format!("Slice shape: {:?}", slice.shape()));
 
         if slice.ndim() == 2 {
-            assert_eq!(slice.shape().len(), 2);
-
-            let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
-            ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
-            let color_from_value = |value: f32| {
-                let lum = egui::remap(value, tensor_min..=tensor_max, 0.0..=255.0).round() as u8;
-                Color32::from_gray(lum)
-            };
-
-            let (height, width) = (slice.shape()[0], slice.shape()[1]); // TODO: what is height or what is width should come from the rank-mapping
-            let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
-            assert_eq!(image.pixels.len(), slice.iter().count());
-            for (pixel, value) in itertools::izip!(&mut image.pixels, &slice) {
-                *pixel = color_from_value(*value);
-            }
-
+            let image = into_image(&state.rank_mapping, &slice, color_from_value);
             image_ui(ui, image);
         }
+    }
+}
+
+fn into_image<T: Copy>(
+    rank_mapping: &RankMapping,
+    slice: &ndarray::ArrayViewD<'_, T>,
+    color_from_value: impl Fn(T) -> Color32,
+) -> ColorImage {
+    assert_eq!(slice.ndim(), 2);
+    // what is height or what is width depends on the rank-mapping
+    if rank_mapping.height < rank_mapping.width {
+        let (height, width) = (slice.shape()[0], slice.shape()[1]);
+        let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
+        assert_eq!(image.pixels.len(), slice.iter().count());
+        for (pixel, value) in itertools::izip!(&mut image.pixels, slice) {
+            *pixel = color_from_value(*value);
+        }
+        image
+    } else {
+        // transpose:
+        let (width, height) = (slice.shape()[0], slice.shape()[1]);
+        let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
+        assert_eq!(image.pixels.len(), slice.iter().count());
+        for y in 0..height {
+            for x in 0..width {
+                image[(x, y)] = color_from_value(slice[[x, y]]);
+            }
+        }
+        image
     }
 }
 
