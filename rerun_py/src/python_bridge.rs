@@ -169,11 +169,17 @@ fn vec_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
     array: &'a numpy::PyReadonlyArray<'_, T, D>,
 ) -> Cow<'a, [T]> {
     let array = array.as_array();
-    if let Some(slice) = array.to_slice() {
-        Cow::Borrowed(slice)
-    } else {
-        Cow::Owned(array.iter().cloned().collect())
+
+    // Numpy has many different memory orderings.
+    // We could/should check that we have the right one here.
+    // But for now, we just check for and optimize the trivial case.
+    if array.shape().len() == 1 {
+        if let Some(slice) = array.to_slice() {
+            return Cow::Borrowed(slice); // common-case optimization
+        }
     }
+
+    Cow::Owned(array.iter().cloned().collect())
 }
 
 fn time(timeless: bool) -> TimePoint {
