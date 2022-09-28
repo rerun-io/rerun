@@ -64,7 +64,7 @@ enum DragDropAddress {
     NewSelector,
 }
 
-fn tensor_dimension_ui<'a>(
+fn tensor_dimension_ui(
     ui: &mut egui::Ui,
     bound_dim_idx: Option<usize>,
     location: DragDropAddress,
@@ -76,7 +76,7 @@ fn tensor_dimension_ui<'a>(
     let response = dimension_drop_target(ui, true, |ui| {
         ui.set_min_size(egui::vec2(80., 15.));
 
-        if let Some(dim_idx) = bound_dim_idx.to_owned() {
+        if let Some(dim_idx) = bound_dim_idx {
             let dim = &shape[dim_idx];
             // TODO: Does this need to be globally unique?
             let dim_ui_id = egui::Id::new("tensor_dimension_ui").with(dim_idx);
@@ -264,7 +264,10 @@ fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping, shape: &[T
     });
 
     // persist drag/drop
-    if drop_target != DragDropAddress::None && drop_source != DragDropAddress::None {
+    if drop_target != DragDropAddress::None
+        && drop_source != DragDropAddress::None
+        && ui.input().pointer.any_released()
+    {
         let read_from_address = |address| match address {
             DragDropAddress::None => unreachable!(),
             DragDropAddress::Width => rank_mapping.width,
@@ -364,7 +367,14 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
             Ok(tensor) => {
                 let color_from_value =
                     |value: u8| color_mapping.color_from_normalized(value as f32 / 255.0);
-                let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
+                let slice = tensor.slice(
+                    slicer(
+                        tensor.ndim(),
+                        &state.rank_mapping.selectors,
+                        &state.selectors,
+                    )
+                    .as_slice(),
+                );
                 slice_ui(ui, &state.rank_mapping, &slice, color_from_value);
             }
             Err(err) => {
@@ -384,7 +394,14 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ))
                 };
 
-                let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
+                let slice = tensor.slice(
+                    slicer(
+                        tensor.ndim(),
+                        &state.rank_mapping.selectors,
+                        &state.selectors,
+                    )
+                    .as_slice(),
+                );
                 slice_ui(ui, &state.rank_mapping, &slice, color_from_value);
             }
             Err(err) => {
@@ -404,7 +421,14 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ))
                 };
 
-                let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
+                let slice = tensor.slice(
+                    slicer(
+                        tensor.ndim(),
+                        &state.rank_mapping.selectors,
+                        &state.selectors,
+                    )
+                    .as_slice(),
+                );
                 slice_ui(ui, &state.rank_mapping, &slice, color_from_value);
             }
             Err(err) => {
@@ -428,7 +452,10 @@ fn slice_ui<T: Copy>(
     } else {
         ui.colored_label(
             ui.visuals().error_fg_color,
-            "Only 2D slices supported at the moment",
+            format!(
+                "Only 2D slices supported at the moment, but ndim {}",
+                slice.ndim()
+            ),
         );
     }
 }
@@ -514,11 +541,19 @@ fn tensor_range_u16(tensor: &ndarray::ArrayViewD<'_, u16>) -> (u16, u16) {
     (min, max)
 }
 
-fn slicer(num_dim: usize, selectors: &ahash::HashMap<usize, u64>) -> Vec<ndarray::SliceInfoElem> {
+fn slicer(
+    num_dim: usize,
+    active_selectors: &[usize],
+    selectors: &ahash::HashMap<usize, u64>,
+) -> Vec<ndarray::SliceInfoElem> {
     (0..num_dim)
         .map(|dim| {
-            if let Some(selector) = selectors.get(&dim) {
-                ndarray::SliceInfoElem::Index(*selector as _)
+            if active_selectors.contains(&dim) {
+                if let Some(selector) = selectors.get(&dim) {
+                    ndarray::SliceInfoElem::Index(*selector as _)
+                } else {
+                    unreachable!();
+                }
             } else {
                 ndarray::SliceInfoElem::Slice {
                     start: 0,
