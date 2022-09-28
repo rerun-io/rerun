@@ -73,6 +73,39 @@ pub(crate) fn view_tensor(
         rank_mapping_ui(ui, &mut state.rank_mapping);
     });
 
+    selectors_ui(ui, state, tensor);
+
+    if let Ok(tensor) = re_tensor_ops::as_ndarray::<f32>(tensor) {
+        let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
+        ui.monospace(format!("Slice shape: {:?}", slice.shape()));
+
+        if slice.ndim() == 2 {
+            assert_eq!(slice.shape().len(), 2);
+            let (height, width) = (slice.shape()[0], slice.shape()[1]); // TODO: what is height or what is width should come from the rank-mapping
+
+            let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
+
+            ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+
+            let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
+
+            assert_eq!(image.pixels.len(), slice.iter().count());
+
+            for (pixel, value) in itertools::izip!(&mut image.pixels, &slice) {
+                let lum = egui::remap(*value, tensor_min..=tensor_max, 0.0..=255.0).round() as u8;
+                *pixel = Color32::from_gray(lum);
+            }
+
+            let texture = ui
+                .ctx()
+                .load_texture("tensor_slice", image, egui::TextureFilter::Linear); // TODO: cache - don't call every frame
+
+            ui.image(texture.id(), texture.size_vec2());
+        }
+    }
+}
+
+fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
     for &dim_idx in &state.rank_mapping.selectors {
         let dim = &tensor.shape[dim_idx];
         let name = if dim.name.is_empty() {
@@ -86,40 +119,16 @@ pub(crate) fn view_tensor(
             ui.add(egui::Slider::new(slice, 0..=len - 1).text(name));
         }
     }
+}
 
-    if let Ok(tensor) = re_tensor_ops::as_ndarray::<f32>(tensor) {
-        let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
-        ui.monospace(format!("Slice shape: {:?}", slice.shape()));
-
-        if slice.ndim() == 2 {
-            assert_eq!(slice.shape().len(), 2);
-            let (height, width) = (slice.shape()[0], slice.shape()[1]); // TODO: what is height or what is width should come from the rank-mapping
-
-            let mut min = f32::INFINITY;
-            let mut max = f32::NEG_INFINITY;
-            for &value in &tensor {
-                min = min.min(value);
-                max = max.max(value);
-            }
-
-            ui.monospace(format!("Data range: [{min} - {max}]"));
-
-            let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
-
-            assert_eq!(image.pixels.len(), slice.iter().count());
-
-            for (pixel, value) in itertools::izip!(&mut image.pixels, &slice) {
-                let lum = egui::remap(*value, min..=max, 0.0..=255.0).round() as u8;
-                *pixel = Color32::from_gray(lum);
-            }
-
-            let texture = ui
-                .ctx()
-                .load_texture("tensor_slice", image, egui::TextureFilter::Linear); // TODO: cache - don't call every frame
-
-            ui.image(texture.id(), texture.size_vec2());
-        }
+fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
+    let mut min = f32::INFINITY;
+    let mut max = f32::NEG_INFINITY;
+    for &value in tensor {
+        min = min.min(value);
+        max = max.max(value);
     }
+    (min, max)
 }
 
 fn slicer(num_dim: usize, selectors: &ahash::HashMap<usize, u64>) -> Vec<ndarray::SliceInfoElem> {
