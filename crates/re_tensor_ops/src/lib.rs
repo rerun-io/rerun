@@ -119,10 +119,19 @@ mod tests {
 
         let n = as_ndarray::<u16>(&t).unwrap();
 
-        // First element shold be 0
+        // First element should be 0
         assert_eq!(n[[0, 0, 0]], 0);
         // Last element should be 59
         assert_eq!(n[[2, 3, 4]], 59);
+
+        // Try all the indices:
+        for z in 0..3 {
+            for y in 0..4 {
+                for x in 0..5 {
+                    assert_eq!(n[[z, y, x]] as usize, z * 4 * 5 + y * 5 + x);
+                }
+            }
+        }
 
         // Slice the tensor
         let sl: ndarray::ArrayBase<ndarray::ViewRepr<&u16>, ndarray::Ix2> = n.slice(s![.., 1, ..]);
