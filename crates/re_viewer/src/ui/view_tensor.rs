@@ -97,7 +97,7 @@ pub(crate) fn view_tensor(
 
             let mut min = f32::INFINITY;
             let mut max = f32::NEG_INFINITY;
-            for &value in &slice {
+            for &value in &tensor {
                 min = min.min(value);
                 max = max.max(value);
             }
