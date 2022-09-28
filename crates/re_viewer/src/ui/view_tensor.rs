@@ -120,33 +120,10 @@ pub(crate) fn view_tensor(
             let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
 
             assert_eq!(image.pixels.len(), slice.iter().count());
-            if false {
-                for (pixel, value) in itertools::izip!(&mut image.pixels, &slice) {
-                    let lum = egui::remap(*value, min..=max, 0.0..=255.0).round() as u8;
-                    *pixel = Color32::from_gray(lum);
-                }
-            } else {
-                // slower, but does range sanity checking
-                for y in 0..height {
-                    for x in 0..width {
-                        let value = slice[[y, x]];
-                        let lum = egui::remap(value, min..=max, 0.0..=255.0).round() as u8;
-                        image[(x, y)] = Color32::from_gray(lum);
-                    }
-                }
-            }
 
-            if ui.button("Save image").clicked() {
-                let image = image::RgbaImage::from_raw(
-                    width as _,
-                    height as _,
-                    bytemuck::cast_slice(&image.pixels).to_vec(),
-                )
-                .unwrap();
-                let image = image::DynamicImage::ImageRgba8(image);
-                let path = "tensor_slice.png";
-                image.save(path).unwrap();
-                re_log::info!("Saved to {path:?}");
+            for (pixel, value) in itertools::izip!(&mut image.pixels, &slice) {
+                let lum = egui::remap(*value, min..=max, 0.0..=255.0).round() as u8;
+                *pixel = Color32::from_gray(lum);
             }
 
             let texture = ui
