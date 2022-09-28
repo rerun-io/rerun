@@ -330,16 +330,20 @@ impl SpaceStates {
                 .visible
         });
 
+        // We have a special tensor viewer that only works
+        // when we only have a single tensor (and no bounding boxes etc).
+        // It is also not as great for images as the nomral 2d view (at least not yet).
+        // This is a hacky-way of detecting this special case.
+        // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
+        // so we can stack bounding boxes etc on top of it.
         if objects.image.len() == 1 {
-            // TODO(emilk): less hacky :)
-
             let image = objects.image.first().unwrap().1;
             let tensor = image.tensor;
 
+            // Ignore tensors that likely represent images.
             if tensor.num_dim() > 3
                 || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4
             {
-                // Special new tensor viewer!
                 let state_tensor = self
                     .state_tensor
                     .entry(space.cloned())

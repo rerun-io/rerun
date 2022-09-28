@@ -5,9 +5,13 @@ use itertools::Itertools as _;
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct TensorViewState {
-    /// maps dimenion to the slice of that dimension.
-    selectors: ahash::HashMap<usize, u64>,
+    /// How we select which dimensions to project the tensor onto.
     rank_mapping: RankMapping,
+
+    /// Maps dimenion to the slice of that dimension.
+    selectors: ahash::HashMap<usize, u64>,
+
+    /// How we map values to colors.
     color_mapping: ColorMapping,
 }
 
@@ -60,6 +64,7 @@ fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping) {
 
 // ----------------------------------------------------------------------------
 
+/// How we map values to colors.
 #[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
 struct ColorMapping {
     turbo: bool,
@@ -90,12 +95,17 @@ impl ColorMapping {
 }
 
 fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
-    ui.add(
-        egui::Slider::new(&mut color_mapping.gamma, 0.1..=10.0)
-            .logarithmic(true)
-            .text("Gamma"),
-    );
-    ui.checkbox(&mut color_mapping.turbo, "Turbo colormap");
+    ui.horizontal(|ui| {
+        ui.label("Color map:");
+        let mut brightness = 1.0 / color_mapping.gamma;
+        ui.add(
+            egui::Slider::new(&mut brightness, 0.1..=10.0)
+                .logarithmic(true)
+                .text("Brightness"),
+        );
+        color_mapping.gamma = 1.0 / brightness;
+        ui.checkbox(&mut color_mapping.turbo, "Turbo colormap");
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -109,9 +119,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
     ui.collapsing("Rank Mapping", |ui| {
         rank_mapping_ui(ui, &mut state.rank_mapping);
     });
-    ui.collapsing("Color Mapping", |ui| {
-        color_mapping_ui(ui, &mut state.color_mapping);
-    });
+    color_mapping_ui(ui, &mut state.color_mapping);
 
     selectors_ui(ui, state, tensor);
 

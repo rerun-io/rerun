@@ -258,6 +258,7 @@ const TURBO_SRGB_BYTES: [[u8; 3]; 256] = [
 ];
 
 /// RGB
+#[inline]
 pub fn turbo_color_map(f: f32) -> [u8; 3] {
     // TODO(emilk): interpolate
     let index = (f * 255.0 + 0.5) as usize;
