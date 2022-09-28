@@ -105,7 +105,8 @@ pub(crate) fn view_tensor(
         ui.monospace(format!("Slice shape: {:?}", slice.shape()));
 
         if slice.ndim() == 2 {
-            let (width, height) = (slice.shape()[0], slice.shape()[1]); // TODO: from the rank-mapping
+            assert_eq!(slice.shape().len(), 2);
+            let (height, width) = (slice.shape()[0], slice.shape()[1]); // TODO: what is height or what is width should come from the rank-mapping
 
             let mut min = f32::INFINITY;
             let mut max = f32::NEG_INFINITY;
@@ -116,12 +117,23 @@ pub(crate) fn view_tensor(
 
             ui.monospace(format!("Data range: [{min} - {max}]"));
 
-            let mut image = egui::ColorImage::new([width, height], Color32::TRANSPARENT);
+            let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
 
             assert_eq!(image.pixels.len(), slice.iter().count());
-            for (pixel, value) in itertools::izip!(&mut image.pixels, &slice) {
-                let lum = egui::remap(*value, min..=max, 0.0..=255.0).round() as u8;
-                *pixel = Color32::from_gray(lum);
+            if false {
+                for (pixel, value) in itertools::izip!(&mut image.pixels, &slice) {
+                    let lum = egui::remap(*value, min..=max, 0.0..=255.0).round() as u8;
+                    *pixel = Color32::from_gray(lum);
+                }
+            } else {
+                // slower, but does range sanity checking
+                for y in 0..height {
+                    for x in 0..width {
+                        let value = slice[[y, x]];
+                        let lum = egui::remap(value, min..=max, 0.0..=255.0).round() as u8;
+                        image[(x, y)] = Color32::from_gray(lum);
+                    }
+                }
             }
 
             if ui.button("Save image").clicked() {
