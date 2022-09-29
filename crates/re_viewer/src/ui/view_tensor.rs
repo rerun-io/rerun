@@ -1,8 +1,8 @@
+use ndarray::Ix2;
 use re_log_types::{Tensor, TensorDataType};
 
 use egui::{Color32, ColorImage};
 use itertools::Itertools as _;
-use ndarray::Dimension;
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct TensorViewState {
@@ -172,6 +172,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
+
                 slice_ui(ui, &state.rank_mapping, slice, color_from_value);
             }
             Err(err) => {
@@ -188,17 +189,13 @@ fn slice_ui<T: Copy>(
     color_from_value: impl Fn(T) -> Color32,
 ) {
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
-
-    if slice.ndim() == 2 {
-        let slice = slice.into_dimensionality().unwrap();
-
+    if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
+        // Transpose depending on the rank-mapping. TODO: Handle this upstream.
         let image = if rank_mapping.height < rank_mapping.width {
             into_image(&slice, color_from_value)
         } else {
-            // Transpose depending on the rank-mapping
             into_image(&slice.t(), color_from_value)
         };
-
         image_ui(ui, image);
     } else {
         ui.colored_label(
@@ -213,6 +210,8 @@ fn into_image<T: Copy>(
     color_from_value: impl Fn(T) -> Color32,
 ) -> ColorImage {
     crate::profile_function!();
+
+    use ndarray::Dimension as _;
     let (height, width) = slice.raw_dim().into_pattern();
     let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
 
