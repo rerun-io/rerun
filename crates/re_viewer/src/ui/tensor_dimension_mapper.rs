@@ -48,6 +48,7 @@ fn get_drag_source_ui_id(drag_context_id: egui::Id, dim_idx: usize) -> egui::Id 
     drag_context_id.with("tensor_dimension_ui").with(dim_idx)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn tensor_dimension_ui(
     ui: &mut egui::Ui,
     drag_context_id: egui::Id,
@@ -252,8 +253,8 @@ pub fn dimension_mapping_ui(
         && drop_source != DragDropAddress::None
         && ui.input().pointer.any_released()
     {
-        let previous_value_source = drop_source.read_from_address(&dimension_mapping);
-        let previous_value_target = drop_target.read_from_address(&dimension_mapping);
+        let previous_value_source = drop_source.read_from_address(dimension_mapping);
+        let previous_value_target = drop_target.read_from_address(dimension_mapping);
         drop_source.write_to_address(previous_value_target, dimension_mapping);
         drop_target.write_to_address(previous_value_source, dimension_mapping);
     }
