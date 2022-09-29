@@ -340,7 +340,12 @@ def main() -> None:
     log_car_data(args)
 
     if args.serve:
-        sleep(20) # give server time. TODO: wait for Ctrl-C in a nice way?
+        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
+        try:
+            sleep(100_000)
+        except:
+            pass
+
     elif args.save is not None:
         rerun.save(args.save)
     elif not args.connect:

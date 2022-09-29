@@ -69,7 +69,7 @@ impl Sdk {
                 self.sender = Sender::Remote(client);
             }
             Sender::WebViewer(_) => {
-                panic!("We are already serving, cannot connect"); // TODO: shut down the server?
+                panic!("We are already serving, cannot connect"); // TODO(emilk): shut down the server or return an error.
             }
         }
     }
@@ -211,7 +211,11 @@ impl Sender {
         match self {
             Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
-            Self::WebViewer(sender) => sender.send(msg).unwrap(), // TODO: handle error
+            Self::WebViewer(sender) => {
+                if let Err(err) = sender.send(msg) {
+                    re_log::error!("Failed to send log message to web server: {err}");
+                }
+            }
         }
     }
 }
