@@ -97,6 +97,8 @@ def connect(addr: Optional[str] = None):
 def serve():
     """
     Serve a Rerun Web Viewer.
+
+    WARNING: This is an experimental feature.
     """
     return rerun_rs.serve()
 

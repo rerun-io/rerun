@@ -319,7 +319,7 @@ def main() -> None:
         "--serve",
         dest="serve",
         action="store_true",
-        help="Serve a web viewer",
+        help="Serve a web viewer (WARNING: experimental feature)",
     )
     parser.add_argument(
         "--addr", type=str, default=None, help="Connect to this ip:port"
