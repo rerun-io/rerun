@@ -9,8 +9,10 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ndarray = "0.15"
+ahash = "0.8"
 bytemuck = {version = "1.12", features = ["extern_crate_alloc"]}
-thiserror = "1.0"
+ndarray = "0.15"
 re_log_types = { path = "../re_log_types" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "1.0"
 

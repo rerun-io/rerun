@@ -1,13 +1,15 @@
 use ndarray::Ix2;
 use re_log_types::{Tensor, TensorDataType};
+use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 use egui::{Color32, ColorImage};
-use itertools::Itertools as _;
+
+use crate::ui::tensor_dimension_mapper::dimension_mapping_ui;
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct TensorViewState {
     /// How we select which dimensions to project the tensor onto.
-    rank_mapping: RankMapping,
+    dimension_mapping: DimensionMapping,
 
     /// Maps dimenion to the slice of that dimension.
     selectors: ahash::HashMap<usize, u64>,
@@ -20,50 +22,11 @@ impl TensorViewState {
     pub(crate) fn create(tensor: &re_log_types::Tensor) -> TensorViewState {
         Self {
             selectors: Default::default(),
-            rank_mapping: RankMapping::create(tensor),
+            dimension_mapping: DimensionMapping::create(tensor),
             color_mapping: ColorMapping::default(),
         }
     }
 }
-
-// ----------------------------------------------------------------------------
-
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-struct RankMapping {
-    /// Which dimensions have selectors?
-    selectors: Vec<usize>,
-
-    // Which dim?
-    width: Option<usize>,
-
-    // Which dim?
-    height: Option<usize>,
-
-    // Which dim?
-    channel: Option<usize>,
-}
-
-impl RankMapping {
-    fn create(tensor: &Tensor) -> RankMapping {
-        // TODO(emilk): add a heuristic here for the default
-        RankMapping {
-            width: Some(1),
-            height: Some(0),
-            channel: None,
-            selectors: (2..tensor.num_dim()).collect(),
-        }
-    }
-}
-
-fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping) {
-    // TODO(emilk): Add a proper rank mapping GUI here
-    if ui.button("transpose").clicked() {
-        std::mem::swap(&mut rank_mapping.width, &mut rank_mapping.height);
-    }
-    ui.monospace(format!("{rank_mapping:?}"));
-}
-
-// ----------------------------------------------------------------------------
 
 /// How we map values to colors.
 #[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -117,8 +80,8 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
     ui.monospace(format!("shape: {:?}", tensor.shape));
     ui.monospace(format!("dtype: {:?}", tensor.dtype));
 
-    ui.collapsing("Rank Mapping", |ui| {
-        rank_mapping_ui(ui, &mut state.rank_mapping);
+    ui.collapsing("Dimension Mapping", |ui| {
+        dimension_mapping_ui(ui, &mut state.dimension_mapping, &tensor.shape);
     });
     color_mapping_ui(ui, &mut state.color_mapping);
 
@@ -131,8 +94,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
             Ok(tensor) => {
                 let color_from_value =
                     |value: u8| color_mapping.color_from_normalized(value as f32 / 255.0);
-                let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
-                slice_ui(ui, &state.rank_mapping, slice, color_from_value);
+                let slice = tensor.slice(
+                    state
+                        .dimension_mapping
+                        .slice(tensor.ndim(), &state.selectors)
+                        .as_slice(),
+                );
+                slice_ui(ui, &state.dimension_mapping, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -151,8 +119,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ))
                 };
 
-                let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
-                slice_ui(ui, &state.rank_mapping, slice, color_from_value);
+                let slice = tensor.slice(
+                    state
+                        .dimension_mapping
+                        .slice(tensor.ndim(), &state.selectors)
+                        .as_slice(),
+                );
+                slice_ui(ui, &state.dimension_mapping, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -171,9 +144,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ))
                 };
 
-                let slice = tensor.slice(slicer(tensor.ndim(), &state.selectors).as_slice());
-
-                slice_ui(ui, &state.rank_mapping, slice, color_from_value);
+                let slice = tensor.slice(
+                    state
+                        .dimension_mapping
+                        .slice(tensor.ndim(), &state.selectors)
+                        .as_slice(),
+                );
+                slice_ui(ui, &state.dimension_mapping, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -184,14 +161,15 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
 
 fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
-    rank_mapping: &RankMapping,
+    dimension_mapping: &DimensionMapping,
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
+    let ndims = slice.ndim();
     if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
         // Transpose depending on the rank-mapping. TODO(john): Handle this upstream.
-        let image = if rank_mapping.height < rank_mapping.width {
+        let image = if dimension_mapping.height < dimension_mapping.width {
             into_image(&slice, color_from_value)
         } else {
             into_image(&slice.t(), color_from_value)
@@ -200,7 +178,10 @@ fn slice_ui<T: Copy>(
     } else {
         ui.colored_label(
             ui.visuals().error_fg_color,
-            "Only 2D slices supported at the moment",
+            format!(
+                "Only 2D slices supported at the moment, but slice ndim {}",
+                ndims
+            ),
         );
     }
 }
@@ -241,7 +222,7 @@ fn image_ui(ui: &mut egui::Ui, image: ColorImage) {
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
-    for &dim_idx in &state.rank_mapping.selectors {
+    for &dim_idx in &state.dimension_mapping.selectors {
         let dim = &tensor.shape[dim_idx];
         let name = if dim.name.is_empty() {
             dim_idx.to_string()
@@ -258,38 +239,14 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
 
 fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
     crate::profile_function!();
-    let mut min = f32::INFINITY;
-    let mut max = f32::NEG_INFINITY;
-    for &value in tensor {
-        min = min.min(value);
-        max = max.max(value);
-    }
-    (min, max)
+    tensor.fold((f32::INFINITY, f32::NEG_INFINITY), |cur, &value| {
+        (cur.0.min(value), cur.1.max(value))
+    })
 }
 
 fn tensor_range_u16(tensor: &ndarray::ArrayViewD<'_, u16>) -> (u16, u16) {
     crate::profile_function!();
-    let mut min = u16::MAX;
-    let mut max = u16::MIN;
-    for &value in tensor {
-        min = min.min(value);
-        max = max.max(value);
-    }
-    (min, max)
-}
-
-fn slicer(num_dim: usize, selectors: &ahash::HashMap<usize, u64>) -> Vec<ndarray::SliceInfoElem> {
-    (0..num_dim)
-        .map(|dim| {
-            if let Some(selector) = selectors.get(&dim) {
-                ndarray::SliceInfoElem::Index(*selector as _)
-            } else {
-                ndarray::SliceInfoElem::Slice {
-                    start: 0,
-                    end: None,
-                    step: 1,
-                }
-            }
-        })
-        .collect_vec()
+    tensor.fold((u16::MAX, u16::MIN), |cur, &value| {
+        (cur.0.min(value), cur.1.max(value))
+    })
 }
