@@ -49,11 +49,6 @@ def read_and_log_vicom_dataset():
 
     rerun.log_tensor("tensor", voxels_volume, space="tensor", names=["right", "back", "up"])
 
-    if False:
-        for slice_idx in range(voxels_volume.shape[-1]):
-            rerun.set_time_sequence("slice_idx", slice_idx)
-            rerun.log_image("vicom/slice", voxels_volume[:, :, slice_idx], space="mri/xy")
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(
