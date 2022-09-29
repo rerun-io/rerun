@@ -11,8 +11,9 @@ pub struct TensorViewState {
     /// How we select which dimensions to project the tensor onto.
     dimension_mapping: DimensionMapping,
 
-    /// Maps dimenion to the slice of that dimension.
-    selectors: ahash::HashMap<Axis, u64>,
+    /// Selected value of every selector mapping (in order of DimensionMapping::selectors)
+    /// I.e. selector_values[i] gives you the selected index for the dimension specified by DimensionMapping::selectors[i]
+    selector_values: Vec<u64>,
 
     /// How we map values to colors.
     color_mapping: ColorMapping,
@@ -21,7 +22,7 @@ pub struct TensorViewState {
 impl TensorViewState {
     pub(crate) fn create(tensor: &re_log_types::Tensor) -> TensorViewState {
         Self {
-            selectors: Default::default(),
+            selector_values: Default::default(),
             dimension_mapping: DimensionMapping::create(tensor),
             color_mapping: ColorMapping::default(),
         }
@@ -94,13 +95,8 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
             Ok(tensor) => {
                 let color_from_value =
                     |value: u8| color_mapping.color_from_normalized(value as f32 / 255.0);
-                let slice = tensor.slice(
-                    state
-                        .dimension_mapping
-                        .slice(tensor.ndim(), &state.selectors)
-                        .as_slice(),
-                );
-                slice_ui(ui, &state.dimension_mapping, slice, color_from_value);
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ui, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -119,13 +115,8 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ))
                 };
 
-                let slice = tensor.slice(
-                    state
-                        .dimension_mapping
-                        .slice(tensor.ndim(), &state.selectors)
-                        .as_slice(),
-                );
-                slice_ui(ui, &state.dimension_mapping, slice, color_from_value);
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ui, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -144,29 +135,8 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ))
                 };
 
-                let mut x = vec![
-                    state.dimension_mapping.width.unwrap(),
-                    state.dimension_mapping.height.unwrap(),
-                ];
-                x.extend(state.dimension_mapping.selectors.iter());
-
-                tensor
-                    .view()
-                    .permuted_axes(x.as_slice())
-                    .slice_each_axis_inplace(|axis_desc| {
-                        if let Some(selector) = state.selectors.get(&axis_desc.axis) {
-                            ndarray::SliceInfoElem::Index(*selector as isize)
-                        } else {
-                        }
-                    });
-
-                let slice = tensor.slice(
-                    state
-                        .dimension_mapping
-                        .slice(tensor.ndim(), &state.selectors)
-                        .as_slice(),
-                );
-                slice_ui(ui, &state.dimension_mapping, slice, color_from_value);
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ui, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -175,29 +145,44 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
     }
 }
 
+fn selected_tensor_slice<'a, T: Copy>(
+    state: &TensorViewState,
+    tensor: &'a ndarray::ArrayViewD<'_, T>,
+) -> ndarray::ArrayViewD<'a, T> {
+    // TODO(andreas) - shouldn't just give up here
+    if state.dimension_mapping.width.is_none() || state.dimension_mapping.height.is_none() {
+        return tensor.view();
+    }
+
+    let mut axes = vec![
+        state.dimension_mapping.width.unwrap(),
+        state.dimension_mapping.height.unwrap(),
+    ];
+    axes.extend(state.dimension_mapping.selectors.iter());
+    let mut slice = tensor.view().permuted_axes(axes.as_slice());
+    for selector_value in state.selector_values.iter() {
+        // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
+        slice.index_axis_inplace(Axis(2), *selector_value as _);
+    }
+    if state.dimension_mapping.flip_height {
+        slice.invert_axis(Axis(0));
+    }
+    if state.dimension_mapping.flip_width {
+        slice.invert_axis(Axis(1));
+    }
+
+    slice
+}
+
 fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
-    dimension_mapping: &DimensionMapping,
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
     let ndims = slice.ndim();
-    if let Ok(mut slice) = slice.into_dimensionality::<Ix2>() {
-        // Transpose depending on the rank-mapping. TODO(john): Handle this upstream.
-        let image = if dimension_mapping.height < dimension_mapping.width {
-            if dimension_mapping.flip_height {
-                slice.invert_axis(Axis(0));
-            }
-
-            if dimension_mapping.flip_width {
-                slice.invert_axis(Axis(1));
-            }
-
-            into_image(&slice, color_from_value)
-        } else {
-            into_image(&slice.t(), color_from_value)
-        };
+    if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
+        let image = into_image(&slice, color_from_value);
         image_ui(ui, image);
     } else {
         ui.colored_label(
@@ -246,17 +231,24 @@ fn image_ui(ui: &mut egui::Ui, image: ColorImage) {
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
-    for &dim_idx in &state.dimension_mapping.selectors {
+    state
+        .selector_values
+        .resize(state.dimension_mapping.selectors.len(), 0);
+
+    for (&dim_idx, selector_value) in state
+        .dimension_mapping
+        .selectors
+        .iter()
+        .zip(state.selector_values.iter_mut())
+    {
         let dim = &tensor.shape[dim_idx];
         let name = if dim.name.is_empty() {
             dim_idx.to_string()
         } else {
             dim.name.clone()
         };
-        let len = dim.size;
-        if len > 1 {
-            let slice = state.selectors.entry(dim_idx).or_default();
-            ui.add(egui::Slider::new(slice, 0..=len - 1).text(name));
+        if dim.size > 1 {
+            ui.add(egui::Slider::new(selector_value, 0..=dim.size - 1).text(name));
         }
     }
 }
