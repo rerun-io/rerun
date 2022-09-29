@@ -222,11 +222,11 @@ fn slice_ui<T: Copy>(
     if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
         let dimension_labels = [
             (
-                dimenion_name(tensor_shape, dimension_mapping.width.unwrap()),
+                dimension_name(tensor_shape, dimension_mapping.width.unwrap()),
                 dimension_mapping.invert_width,
             ),
             (
-                dimenion_name(tensor_shape, dimension_mapping.height.unwrap()),
+                dimension_name(tensor_shape, dimension_mapping.height.unwrap()),
                 dimension_mapping.invert_height,
             ),
         ];
@@ -244,7 +244,7 @@ fn slice_ui<T: Copy>(
     }
 }
 
-fn dimenion_name(shape: &[TensorDimension], dim_idx: usize) -> String {
+fn dimension_name(shape: &[TensorDimension], dim_idx: usize) -> String {
     let dim = &shape[dim_idx];
     if dim.name.is_empty() {
         format!("Dimension {} ({})", dim_idx, dim.size)
