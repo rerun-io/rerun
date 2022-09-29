@@ -75,31 +75,36 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
 
 pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
     crate::profile_function!();
-    ui.heading("Tensor viewer!");
-    ui.monospace(format!("shape: {:?}", tensor.shape));
-    ui.monospace(format!("dtype: {:?}", tensor.dtype));
 
     ui.collapsing("Dimension Mapping", |ui| {
+        ui.monospace(format!("shape: {:?}", tensor.shape));
+        ui.monospace(format!("dtype: {:?}", tensor.dtype));
+
         dimension_mapping_ui(ui, &mut state.dimension_mapping, &tensor.shape);
     });
-    color_mapping_ui(ui, &mut state.color_mapping);
 
     selectors_ui(ui, state, tensor);
 
-    let color_mapping = &state.color_mapping;
     let tensor_shape = &tensor.shape;
 
     match tensor.dtype {
         TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
             Ok(tensor) => {
-                let color_from_value =
-                    |value: u8| color_mapping.color_from_normalized(value as f32 / 255.0);
                 let slice = tensor.slice(
                     state
                         .dimension_mapping
                         .slice(tensor.ndim(), &state.selectors)
                         .as_slice(),
                 );
+
+                color_mapping_ui(ui, &mut state.color_mapping);
+
+                let color_from_value = |value: u8| {
+                    state
+                        .color_mapping
+                        .color_from_normalized(value as f32 / 255.0)
+                };
+
                 slice_ui(
                     ui,
                     tensor_shape,
@@ -116,9 +121,14 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
         TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
             Ok(tensor) => {
                 let (tensor_min, tensor_max) = tensor_range_u16(&tensor);
-                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+
+                ui.group(|ui| {
+                    ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+                    color_mapping_ui(ui, &mut state.color_mapping);
+                });
+
                 let color_from_value = |value: u16| {
-                    color_mapping.color_from_normalized(egui::remap(
+                    state.color_mapping.color_from_normalized(egui::remap(
                         value as f32,
                         tensor_min as f32..=tensor_max as f32,
                         0.0..=1.0,
@@ -147,9 +157,14 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
         TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
             Ok(tensor) => {
                 let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
-                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+
+                ui.group(|ui| {
+                    ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+                    color_mapping_ui(ui, &mut state.color_mapping);
+                });
+
                 let color_from_value = |value: f32| {
-                    color_mapping.color_from_normalized(egui::remap(
+                    state.color_mapping.color_from_normalized(egui::remap(
                         value,
                         tensor_min..=tensor_max,
                         0.0..=1.0,
@@ -184,8 +199,6 @@ fn slice_ui<T: Copy>(
     slice: &ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
-    ui.monospace(format!("Slice shape: {:?}", slice.shape()));
-
     if slice.ndim() == 2 {
         let dimension_names = [
             dimenion_name(tensor_shape, dimension_mapping.width.unwrap()),
@@ -295,19 +308,31 @@ fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_names: [String; 2]) 
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
-    for &dim_idx in &state.dimension_mapping.selectors {
-        let dim = &tensor.shape[dim_idx];
-        let name = if dim.name.is_empty() {
-            dim_idx.to_string()
-        } else {
-            dim.name.clone()
-        };
-        let len = dim.size;
-        if len > 1 {
-            let slice = state.selectors.entry(dim_idx).or_default();
-            ui.add(egui::Slider::new(slice, 0..=len - 1).text(name));
-        }
+    if state.dimension_mapping.selectors.is_empty() {
+        return;
     }
+
+    ui.group(|ui| {
+        if state.dimension_mapping.selectors.len() == 1 {
+            ui.label("Slice selector:");
+        } else {
+            ui.label("Slice selectors:");
+        }
+
+        for &dim_idx in &state.dimension_mapping.selectors {
+            let dim = &tensor.shape[dim_idx];
+            let name = if dim.name.is_empty() {
+                dim_idx.to_string()
+            } else {
+                dim.name.clone()
+            };
+            let len = dim.size;
+            if len > 1 {
+                let slice = state.selectors.entry(dim_idx).or_default();
+                ui.add(egui::Slider::new(slice, 0..=len - 1).text(name));
+            }
+        }
+    });
 }
 
 fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
