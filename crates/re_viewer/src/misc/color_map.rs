@@ -257,10 +257,10 @@ const TURBO_SRGB_BYTES: [[u8; 3]; 256] = [
     [122, 4, 3],
 ];
 
-/// RGB
+/// Given a value in [0, 1], output sRGB.
 #[inline]
-pub fn turbo_color_map(f: f32) -> [u8; 3] {
-    // TODO(emilk): interpolate
-    let index = (f * 255.0 + 0.5) as usize;
+pub fn turbo_color_map(t: f32) -> [u8; 3] {
+    // TODO(emilk): interpolate, or use a polynomial approximation (https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7)
+    let index = (t * 255.0 + 0.5) as usize;
     TURBO_SRGB_BYTES[index]
 }
