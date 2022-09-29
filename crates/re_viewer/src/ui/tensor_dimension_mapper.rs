@@ -75,7 +75,11 @@ fn tensor_dimension_ui(
             };
 
             drag_source_ui(ui, dim_ui_id, |ui| {
-                ui.label(format!("▓ {} ({})", display_name, dim.size));
+                // TODO(emilk): make these buttons respond on hover.
+                ui.colored_label(
+                    ui.visuals().widgets.inactive.fg_stroke.color,
+                    format!("▓ {} ({})", display_name, dim.size),
+                );
             });
 
             if ui.memory().is_being_dragged(dim_ui_id) {
