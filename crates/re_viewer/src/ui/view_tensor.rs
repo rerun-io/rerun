@@ -190,7 +190,7 @@ fn slice_ui<T: Copy>(
 ) {
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
     if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
-        // Transpose depending on the rank-mapping. TODO: Handle this upstream.
+        // Transpose depending on the rank-mapping. TODO(john): Handle this upstream.
         let image = if rank_mapping.height < rank_mapping.width {
             into_image(&slice, color_from_value)
         } else {
