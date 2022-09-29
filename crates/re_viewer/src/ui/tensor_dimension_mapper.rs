@@ -12,6 +12,10 @@ enum DragDropAddress {
 }
 
 impl DragDropAddress {
+    fn is_some(&self) -> bool {
+        *self != DragDropAddress::None
+    }
+
     fn read_from_address(&self, dimension_mapping: &DimensionMapping) -> Option<usize> {
         match self {
             DragDropAddress::None => unreachable!(),
@@ -25,7 +29,7 @@ impl DragDropAddress {
         }
     }
 
-    fn write_to_address(&self, dim_idx: Option<usize>, dimension_mapping: &mut DimensionMapping) {
+    fn write_to_address(&self, dimension_mapping: &mut DimensionMapping, dim_idx: Option<usize>) {
         match self {
             DragDropAddress::None => unreachable!(),
             DragDropAddress::Width => dimension_mapping.width = dim_idx,
@@ -44,7 +48,7 @@ impl DragDropAddress {
     }
 }
 
-fn get_drag_source_ui_id(drag_context_id: egui::Id, dim_idx: usize) -> egui::Id {
+fn drag_source_ui_id(drag_context_id: egui::Id, dim_idx: usize) -> egui::Id {
     drag_context_id.with("tensor_dimension_ui").with(dim_idx)
 }
 
@@ -64,7 +68,7 @@ fn tensor_dimension_ui(
 
         if let Some(dim_idx) = bound_dim_idx {
             let dim = &shape[dim_idx];
-            let dim_ui_id = get_drag_source_ui_id(drag_context_id, dim_idx);
+            let dim_ui_id = drag_source_ui_id(drag_context_id, dim_idx);
 
             let tmp: String;
             let display_name = if dim.name.is_empty() {
@@ -184,7 +188,7 @@ pub fn dimension_mapping_ui(
     let drag_context_id = ui.id();
     let can_accept_dragged = (0..shape.len()).any(|dim_idx| {
         ui.memory()
-            .is_being_dragged(get_drag_source_ui_id(drag_context_id, dim_idx))
+            .is_being_dragged(drag_source_ui_id(drag_context_id, dim_idx))
     });
 
     ui.columns(2, |columns| {
@@ -219,6 +223,7 @@ pub fn dimension_mapping_ui(
         {
             let ui = &mut columns[1];
             ui.heading("Selectors:");
+            // Use Grid instead of Vertical layout to match styling of the parallel Grid for
             egui::Grid::new("selectiongrid")
                 .num_columns(1)
                 .show(ui, |ui| {
@@ -253,13 +258,10 @@ pub fn dimension_mapping_ui(
     });
 
     // persist drag/drop
-    if drop_target != DragDropAddress::None
-        && drop_source != DragDropAddress::None
-        && ui.input().pointer.any_released()
-    {
+    if drop_target.is_some() && drop_source.is_some() && ui.input().pointer.any_released() {
         let previous_value_source = drop_source.read_from_address(dimension_mapping);
         let previous_value_target = drop_target.read_from_address(dimension_mapping);
-        drop_source.write_to_address(previous_value_target, dimension_mapping);
-        drop_target.write_to_address(previous_value_source, dimension_mapping);
+        drop_source.write_to_address(dimension_mapping, previous_value_target);
+        drop_target.write_to_address(dimension_mapping, previous_value_source);
     }
 }

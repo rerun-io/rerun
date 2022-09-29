@@ -173,7 +173,7 @@ fn slice_ui<T: Copy>(
         ui.colored_label(
             ui.visuals().error_fg_color,
             format!(
-                "Only 2D slices supported at the moment, but ndim {}",
+                "Only 2D slices supported at the moment, but slice ndim {}",
                 slice.ndim()
             ),
         );
