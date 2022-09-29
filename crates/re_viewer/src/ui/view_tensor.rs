@@ -1,7 +1,7 @@
-use re_log_types::{Tensor, TensorDataType};
+use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
-use egui::{Color32, ColorImage};
+use egui::{epaint::TextShape, Color32, ColorImage};
 
 use crate::ui::tensor_dimension_mapper::dimension_mapping_ui;
 
@@ -87,6 +87,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
     selectors_ui(ui, state, tensor);
 
     let color_mapping = &state.color_mapping;
+    let tensor_shape = &tensor.shape;
 
     match tensor.dtype {
         TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
@@ -99,7 +100,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                         .slice(tensor.ndim(), &state.selectors)
                         .as_slice(),
                 );
-                slice_ui(ui, &state.dimension_mapping, &slice, color_from_value);
+                slice_ui(
+                    ui,
+                    tensor_shape,
+                    &state.dimension_mapping,
+                    &slice,
+                    color_from_value,
+                );
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -124,7 +131,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                         .slice(tensor.ndim(), &state.selectors)
                         .as_slice(),
                 );
-                slice_ui(ui, &state.dimension_mapping, &slice, color_from_value);
+                slice_ui(
+                    ui,
+                    tensor_shape,
+                    &state.dimension_mapping,
+                    &slice,
+                    color_from_value,
+                );
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -149,7 +162,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                         .slice(tensor.ndim(), &state.selectors)
                         .as_slice(),
                 );
-                slice_ui(ui, &state.dimension_mapping, &slice, color_from_value);
+                slice_ui(
+                    ui,
+                    tensor_shape,
+                    &state.dimension_mapping,
+                    &slice,
+                    color_from_value,
+                );
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -160,6 +179,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
 
 fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
+    tensor_shape: &[TensorDimension],
     dimension_mapping: &DimensionMapping,
     slice: &ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
@@ -167,8 +187,12 @@ fn slice_ui<T: Copy>(
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
 
     if slice.ndim() == 2 {
+        let dimension_names = [
+            dimenion_name(tensor_shape, dimension_mapping.width.unwrap()),
+            dimenion_name(tensor_shape, dimension_mapping.height.unwrap()),
+        ];
         let image = into_image(dimension_mapping, slice, color_from_value);
-        image_ui(ui, image);
+        image_ui(ui, image, dimension_names);
     } else {
         ui.colored_label(
             ui.visuals().error_fg_color,
@@ -177,6 +201,15 @@ fn slice_ui<T: Copy>(
                 slice.ndim()
             ),
         );
+    }
+}
+
+fn dimenion_name(shape: &[TensorDimension], dim_idx: usize) -> String {
+    let dim = &shape[dim_idx];
+    if dim.name.is_empty() {
+        format!("Dimension {} ({})", dim_idx, dim.size)
+    } else {
+        format!("{} ({})", dim.name, dim.size)
     }
 }
 
@@ -212,14 +245,52 @@ fn into_image<T: Copy>(
     }
 }
 
-fn image_ui(ui: &mut egui::Ui, image: ColorImage) {
+fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_names: [String; 2]) {
+    use egui::*;
+
     crate::profile_function!();
     // TODO(emilk): cache texture - don't create a new texture every frame
     let texture = ui
         .ctx()
         .load_texture("tensor_slice", image, egui::TextureFilter::Linear);
     egui::ScrollArea::both().show(ui, |ui| {
-        ui.image(texture.id(), texture.size_vec2());
+        let font_id = TextStyle::Body.resolve(ui.style());
+
+        let margin = Vec2::splat(font_id.size + 2.0);
+
+        let desired_size = texture.size_vec2() + margin;
+        let (response, painter) = ui.allocate_painter(desired_size, Sense::hover());
+        let rect = response.rect;
+
+        let image_rect = Rect::from_min_max(rect.min + margin, rect.max);
+
+        let mut mesh = egui::Mesh::with_texture(texture.id());
+        let uv = egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+        mesh.add_rect_with_uv(image_rect, uv, Color32::WHITE);
+        painter.add(mesh);
+
+        let [width_name, height_name] = dimension_names;
+
+        let text_color = ui.visuals().text_color();
+
+        // Label for X axis, on top:
+        painter.text(
+            image_rect.right_top(),
+            Align2::RIGHT_BOTTOM,
+            format!("➡ {width_name}"),
+            font_id.clone(),
+            text_color,
+        );
+
+        // Label for Y axis, on the left:
+        let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
+        painter.add(TextShape {
+            pos: image_rect.left_bottom() - vec2(galley.size().y, 0.0),
+            galley,
+            angle: -std::f32::consts::TAU / 4.0,
+            underline: Default::default(),
+            override_text_color: None,
+        });
     });
 }
 
