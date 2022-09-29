@@ -12,10 +12,10 @@ pub struct DimensionMapping {
     pub height: Option<usize>,
 
     /// Flip the width
-    pub flip_width: bool,
+    pub invert_width: bool,
 
     /// Flip the height
-    pub flip_height: bool,
+    pub invert_height: bool,
 
     // Which dim?
     pub channel: Option<usize>,
@@ -29,8 +29,8 @@ impl DimensionMapping {
             height: Some(0),
             channel: None,
             selectors: (2..tensor.num_dim()).collect(),
-            flip_width: false,
-            flip_height: false,
+            invert_width: false,
+            invert_height: false,
         }
     }
 }

@@ -166,10 +166,10 @@ fn selected_tensor_slice<'a, T: Copy>(
         // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
         slice.index_axis_inplace(Axis(2), *selector_value as _);
     }
-    if state.dimension_mapping.flip_height {
+    if state.dimension_mapping.invert_height {
         slice.invert_axis(Axis(0));
     }
-    if state.dimension_mapping.flip_width {
+    if state.dimension_mapping.invert_width {
         slice.invert_axis(Axis(1));
     }
 
