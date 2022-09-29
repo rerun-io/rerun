@@ -1,3 +1,5 @@
+### Python
+
 # Set up a Pythonvirtual environment for development
 py-dev-env:
     #!/usr/bin/env bash
@@ -34,3 +36,13 @@ py-lint:
 # Run fast unittests
 py-test:
     python -m pytest rerun_py/tests/unit/
+
+
+### Rust
+
+# Generate and open the documentation for Rerun and all of its Rust dependencies.
+#
+# `--keep-going` makes sure we don't to abort the build process in case of errors.
+# This is an unstable flag, available only on nightly.
+rs-doc:
+    cargo +nightly doc --all --open --keep-going --all-features -Zunstable-options
