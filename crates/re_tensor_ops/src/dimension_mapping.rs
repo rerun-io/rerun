@@ -11,6 +11,12 @@ pub struct DimensionMapping {
     // Which dim?
     pub height: Option<usize>,
 
+    /// Flip the width
+    pub invert_width: bool,
+
+    /// Flip the height
+    pub invert_height: bool,
+
     // Which dim?
     pub channel: Option<usize>,
 }
@@ -23,26 +29,8 @@ impl DimensionMapping {
             height: Some(0),
             channel: None,
             selectors: (2..tensor.num_dim()).collect(),
+            invert_width: false,
+            invert_height: false,
         }
-    }
-
-    pub fn slice(
-        &self,
-        num_dim: usize,
-        selector_values: &ahash::HashMap<usize, u64>,
-    ) -> Vec<ndarray::SliceInfoElem> {
-        (0..num_dim)
-            .map(|dim| {
-                if self.selectors.contains(&dim) {
-                    ndarray::SliceInfoElem::Index(*selector_values.get(&dim).unwrap_or(&0) as _)
-                } else {
-                    ndarray::SliceInfoElem::Slice {
-                        start: 0,
-                        end: None,
-                        step: 1,
-                    }
-                }
-            })
-            .collect()
     }
 }
