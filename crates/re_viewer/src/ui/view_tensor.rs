@@ -12,7 +12,7 @@ pub struct TensorViewState {
     dimension_mapping: DimensionMapping,
 
     /// Selected value of every selector mapping (in order of DimensionMapping::selectors)
-    /// I.e. selector_values[i] gives you the selected index for the dimension specified by DimensionMapping::selectors[i]
+    /// I.e. selector_values gives you the selected index for the dimension specified by DimensionMapping::selectors
     selector_values: Vec<u64>,
 
     /// How we map values to colors.
@@ -154,13 +154,15 @@ fn selected_tensor_slice<'a, T: Copy>(
         return tensor.view();
     }
 
-    let mut axes = vec![
+    let axis = [
         state.dimension_mapping.width.unwrap(),
         state.dimension_mapping.height.unwrap(),
-    ];
-    axes.extend(state.dimension_mapping.selectors.iter());
-    let mut slice = tensor.view().permuted_axes(axes.as_slice());
-    for selector_value in state.selector_values.iter() {
+    ]
+    .into_iter()
+    .chain(state.dimension_mapping.selectors.iter().copied())
+    .collect::<Vec<_>>();
+    let mut slice = tensor.view().permuted_axes(axis);
+    for selector_value in &state.selector_values {
         // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
         slice.index_axis_inplace(Axis(2), *selector_value as _);
     }
