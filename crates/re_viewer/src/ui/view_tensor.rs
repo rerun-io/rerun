@@ -1,6 +1,8 @@
 use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
+use ndarray::Ix2;
+
 use egui::{epaint::TextShape, Color32, ColorImage};
 
 use crate::ui::tensor_dimension_mapper::dimension_mapping_ui;
@@ -110,7 +112,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ui,
                     tensor_shape,
                     &state.dimension_mapping,
-                    &slice,
+                    slice,
                     color_from_value,
                 );
             }
@@ -146,7 +148,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ui,
                     tensor_shape,
                     &state.dimension_mapping,
-                    &slice,
+                    slice,
                     color_from_value,
                 );
             }
@@ -182,7 +184,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ui,
                     tensor_shape,
                     &state.dimension_mapping,
-                    &slice,
+                    slice,
                     color_from_value,
                 );
             }
@@ -197,22 +199,30 @@ fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
     tensor_shape: &[TensorDimension],
     dimension_mapping: &DimensionMapping,
-    slice: &ndarray::ArrayViewD<'_, T>,
+    slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
-    if slice.ndim() == 2 {
+    ui.monospace(format!("Slice shape: {:?}", slice.shape()));
+    let ndims = slice.ndim();
+    if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
         let dimension_names = [
             dimenion_name(tensor_shape, dimension_mapping.width.unwrap()),
             dimenion_name(tensor_shape, dimension_mapping.height.unwrap()),
         ];
-        let image = into_image(dimension_mapping, slice, color_from_value);
+
+        // Transpose depending on the rank-mapping. TODO(john): Handle this upstream.
+        let image = if dimension_mapping.height < dimension_mapping.width {
+            into_image(&slice, color_from_value)
+        } else {
+            into_image(&slice.t(), color_from_value)
+        };
         image_ui(ui, image, dimension_names);
     } else {
         ui.colored_label(
             ui.visuals().error_fg_color,
             format!(
                 "Only 2D slices supported at the moment, but slice ndim {}",
-                slice.ndim()
+                ndims
             ),
         );
     }
@@ -228,35 +238,27 @@ fn dimenion_name(shape: &[TensorDimension], dim_idx: usize) -> String {
 }
 
 fn into_image<T: Copy>(
-    dimension_mapping: &DimensionMapping,
-    slice: &ndarray::ArrayViewD<'_, T>,
+    slice: &ndarray::ArrayView2<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) -> ColorImage {
     crate::profile_function!();
-    assert_eq!(slice.ndim(), 2);
-    // what is height or what is width depends on the dimension-mapping
-    if dimension_mapping.height < dimension_mapping.width {
-        let (height, width) = (slice.shape()[0], slice.shape()[1]);
-        let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
-        assert_eq!(image.pixels.len(), slice.iter().count());
-        crate::profile_scope!("color_mapper");
-        for (pixel, value) in itertools::izip!(&mut image.pixels, slice) {
+
+    use ndarray::Dimension as _;
+    let (height, width) = slice.raw_dim().into_pattern();
+    let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
+
+    let image_view =
+        ndarray::ArrayViewMut2::from_shape(slice.raw_dim(), image.pixels.as_mut_slice())
+            .expect("Mismatched length.");
+
+    crate::profile_scope!("color_mapper");
+    ndarray::Zip::from(image_view)
+        .and(slice)
+        .for_each(|pixel, value| {
             *pixel = color_from_value(*value);
-        }
-        image
-    } else {
-        // transpose:
-        let (width, height) = (slice.shape()[0], slice.shape()[1]);
-        let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
-        assert_eq!(image.pixels.len(), slice.iter().count());
-        crate::profile_scope!("color_mapper_transposed");
-        for y in 0..height {
-            for x in 0..width {
-                image[(x, y)] = color_from_value(slice[[x, y]]);
-            }
-        }
-        image
-    }
+        });
+
+    image
 }
 
 fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_names: [String; 2]) {
