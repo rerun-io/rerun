@@ -197,6 +197,7 @@ enum Sender {
     Buffered(Vec<LogMsg>),
 
     /// Send it to the web viewer over WebSockets
+    #[allow(unused)] // only used with `#[cfg(feature = "web")]`
     WebViewer(std::sync::mpsc::Sender<LogMsg>),
 }
 
