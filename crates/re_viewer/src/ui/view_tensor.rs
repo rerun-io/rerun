@@ -189,8 +189,8 @@ fn selected_tensor_slice<'a, T: Copy>(
     }
 
     let axis = [
-        state.dimension_mapping.width.unwrap(),
         state.dimension_mapping.height.unwrap(),
+        state.dimension_mapping.width.unwrap(),
     ]
     .into_iter()
     .chain(state.dimension_mapping.selectors.iter().copied())
@@ -220,13 +220,19 @@ fn slice_ui<T: Copy>(
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
     let ndims = slice.ndim();
     if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
-        let dimension_names = [
-            dimenion_name(tensor_shape, dimension_mapping.width.unwrap()),
-            dimenion_name(tensor_shape, dimension_mapping.height.unwrap()),
+        let dimension_labels = [
+            (
+                dimenion_name(tensor_shape, dimension_mapping.width.unwrap()),
+                dimension_mapping.invert_width,
+            ),
+            (
+                dimenion_name(tensor_shape, dimension_mapping.height.unwrap()),
+                dimension_mapping.invert_height,
+            ),
         ];
 
         let image = into_image(&slice, color_from_value);
-        image_ui(ui, image, dimension_names);
+        image_ui(ui, image, dimension_labels);
     } else {
         ui.colored_label(
             ui.visuals().error_fg_color,
@@ -271,7 +277,7 @@ fn into_image<T: Copy>(
     image
 }
 
-fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_names: [String; 2]) {
+fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_labels: [(String, bool); 2]) {
     use egui::*;
 
     crate::profile_function!();
@@ -295,28 +301,49 @@ fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_names: [String; 2]) 
         mesh.add_rect_with_uv(image_rect, uv, Color32::WHITE);
         painter.add(mesh);
 
-        let [width_name, height_name] = dimension_names;
+        let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
 
         let text_color = ui.visuals().text_color();
 
         // Label for X axis, on top:
-        painter.text(
-            image_rect.right_top(),
-            Align2::RIGHT_BOTTOM,
-            format!("➡ {width_name}"),
-            font_id.clone(),
-            text_color,
-        );
+        if invert_width {
+            painter.text(
+                image_rect.left_top(),
+                Align2::LEFT_BOTTOM,
+                format!("{width_name} ⬅"),
+                font_id.clone(),
+                text_color,
+            );
+        } else {
+            painter.text(
+                image_rect.right_top(),
+                Align2::RIGHT_BOTTOM,
+                format!("➡ {width_name}"),
+                font_id.clone(),
+                text_color,
+            );
+        }
 
         // Label for Y axis, on the left:
-        let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
-        painter.add(TextShape {
-            pos: image_rect.left_bottom() - vec2(galley.size().y, 0.0),
-            galley,
-            angle: -std::f32::consts::TAU / 4.0,
-            underline: Default::default(),
-            override_text_color: None,
-        });
+        if invert_height {
+            let galley = painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
+            painter.add(TextShape {
+                pos: image_rect.left_top() - vec2(galley.size().y, -galley.size().x),
+                galley,
+                angle: -std::f32::consts::TAU / 4.0,
+                underline: Default::default(),
+                override_text_color: None,
+            });
+        } else {
+            let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
+            painter.add(TextShape {
+                pos: image_rect.left_bottom() - vec2(galley.size().y, 0.0),
+                galley,
+                angle: -std::f32::consts::TAU / 4.0,
+                underline: Default::default(),
+                override_text_color: None,
+            });
+        }
     });
 }
 
