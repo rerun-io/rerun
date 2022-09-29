@@ -195,28 +195,50 @@ pub fn dimension_mapping_ui(
         ui.vertical(|ui| {
             ui.heading("Image:");
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
-                for (label, location, bound_dim) in [
-                    ("Width:", DragDropAddress::Width, dimension_mapping.width),
-                    ("Height:", DragDropAddress::Height, dimension_mapping.height),
-                    (
-                        "Channel:",
-                        DragDropAddress::Channel,
-                        dimension_mapping.channel,
-                    ),
-                ] {
-                    ui.label(label);
-                    tensor_dimension_ui(
-                        ui,
-                        drag_context_id,
-                        can_accept_dragged,
-                        bound_dim,
-                        location,
-                        shape,
-                        &mut drop_source,
-                        &mut drop_target,
-                    );
-                    ui.end_row();
-                }
+                ui.horizontal(|ui| {
+                    ui.label("Width:");
+                    ui.toggle_value(&mut dimension_mapping.invert_width, "Flip");
+                });
+                tensor_dimension_ui(
+                    ui,
+                    drag_context_id,
+                    can_accept_dragged,
+                    dimension_mapping.width,
+                    DragDropAddress::Width,
+                    shape,
+                    &mut drop_source,
+                    &mut drop_target,
+                );
+                ui.end_row();
+
+                ui.horizontal(|ui| {
+                    ui.label("Height:");
+                    ui.toggle_value(&mut dimension_mapping.invert_height, "Flip");
+                });
+                tensor_dimension_ui(
+                    ui,
+                    drag_context_id,
+                    can_accept_dragged,
+                    dimension_mapping.height,
+                    DragDropAddress::Height,
+                    shape,
+                    &mut drop_source,
+                    &mut drop_target,
+                );
+                ui.end_row();
+
+                ui.label("Channel:");
+                tensor_dimension_ui(
+                    ui,
+                    drag_context_id,
+                    can_accept_dragged,
+                    dimension_mapping.channel,
+                    DragDropAddress::Channel,
+                    shape,
+                    &mut drop_source,
+                    &mut drop_target,
+                );
+                ui.end_row();
             });
         });
 

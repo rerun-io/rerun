@@ -1,7 +1,6 @@
+use ndarray::{Axis, Ix2};
 use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
-
-use ndarray::Ix2;
 
 use egui::{epaint::TextShape, Color32, ColorImage};
 
@@ -12,8 +11,9 @@ pub struct TensorViewState {
     /// How we select which dimensions to project the tensor onto.
     dimension_mapping: DimensionMapping,
 
-    /// Maps dimenion to the slice of that dimension.
-    selectors: ahash::HashMap<usize, u64>,
+    /// Selected value of every selector mapping (in order of DimensionMapping::selectors)
+    /// I.e. selector_values gives you the selected index for the dimension specified by DimensionMapping::selectors
+    selector_values: Vec<u64>,
 
     /// How we map values to colors.
     color_mapping: ColorMapping,
@@ -22,7 +22,7 @@ pub struct TensorViewState {
 impl TensorViewState {
     pub(crate) fn create(tensor: &re_log_types::Tensor) -> TensorViewState {
         Self {
-            selectors: Default::default(),
+            selector_values: Default::default(),
             dimension_mapping: DimensionMapping::create(tensor),
             color_mapping: ColorMapping::default(),
         }
@@ -93,13 +93,6 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
     match tensor.dtype {
         TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
             Ok(tensor) => {
-                let slice = tensor.slice(
-                    state
-                        .dimension_mapping
-                        .slice(tensor.ndim(), &state.selectors)
-                        .as_slice(),
-                );
-
                 color_mapping_ui(ui, &mut state.color_mapping);
 
                 let color_from_value = |value: u8| {
@@ -108,6 +101,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                         .color_from_normalized(value as f32 / 255.0)
                 };
 
+                let slice = selected_tensor_slice(state, &tensor);
                 slice_ui(
                     ui,
                     tensor_shape,
@@ -138,12 +132,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ))
                 };
 
-                let slice = tensor.slice(
-                    state
-                        .dimension_mapping
-                        .slice(tensor.ndim(), &state.selectors)
-                        .as_slice(),
-                );
+                let slice = selected_tensor_slice(state, &tensor);
                 slice_ui(
                     ui,
                     tensor_shape,
@@ -174,12 +163,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ))
                 };
 
-                let slice = tensor.slice(
-                    state
-                        .dimension_mapping
-                        .slice(tensor.ndim(), &state.selectors)
-                        .as_slice(),
-                );
+                let slice = selected_tensor_slice(state, &tensor);
                 slice_ui(
                     ui,
                     tensor_shape,
@@ -193,6 +177,37 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
             }
         },
     }
+}
+
+fn selected_tensor_slice<'a, T: Copy>(
+    state: &TensorViewState,
+    tensor: &'a ndarray::ArrayViewD<'_, T>,
+) -> ndarray::ArrayViewD<'a, T> {
+    // TODO(andreas) - shouldn't just give up here
+    if state.dimension_mapping.width.is_none() || state.dimension_mapping.height.is_none() {
+        return tensor.view();
+    }
+
+    let axis = [
+        state.dimension_mapping.width.unwrap(),
+        state.dimension_mapping.height.unwrap(),
+    ]
+    .into_iter()
+    .chain(state.dimension_mapping.selectors.iter().copied())
+    .collect::<Vec<_>>();
+    let mut slice = tensor.view().permuted_axes(axis);
+    for selector_value in &state.selector_values {
+        // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
+        slice.index_axis_inplace(Axis(2), *selector_value as _);
+    }
+    if state.dimension_mapping.invert_height {
+        slice.invert_axis(Axis(0));
+    }
+    if state.dimension_mapping.invert_width {
+        slice.invert_axis(Axis(1));
+    }
+
+    slice
 }
 
 fn slice_ui<T: Copy>(
@@ -210,12 +225,7 @@ fn slice_ui<T: Copy>(
             dimenion_name(tensor_shape, dimension_mapping.height.unwrap()),
         ];
 
-        // Transpose depending on the rank-mapping. TODO(john): Handle this upstream.
-        let image = if dimension_mapping.height < dimension_mapping.width {
-            into_image(&slice, color_from_value)
-        } else {
-            into_image(&slice.t(), color_from_value)
-        };
+        let image = into_image(&slice, color_from_value);
         image_ui(ui, image, dimension_names);
     } else {
         ui.colored_label(
@@ -314,6 +324,9 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
     if state.dimension_mapping.selectors.is_empty() {
         return;
     }
+    state
+        .selector_values
+        .resize(state.dimension_mapping.selectors.len(), 0);
 
     ui.group(|ui| {
         if state.dimension_mapping.selectors.len() == 1 {
@@ -322,17 +335,20 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
             ui.label("Slice selectors:");
         }
 
-        for &dim_idx in &state.dimension_mapping.selectors {
+        for (&dim_idx, selector_value) in state
+            .dimension_mapping
+            .selectors
+            .iter()
+            .zip(state.selector_values.iter_mut())
+        {
             let dim = &tensor.shape[dim_idx];
             let name = if dim.name.is_empty() {
                 dim_idx.to_string()
             } else {
                 dim.name.clone()
             };
-            let len = dim.size;
-            if len > 1 {
-                let slice = state.selectors.entry(dim_idx).or_default();
-                ui.add(egui::Slider::new(slice, 0..=len - 1).text(name));
+            if dim.size > 1 {
+                ui.add(egui::Slider::new(selector_value, 0..=dim.size - 1).text(name));
             }
         }
     });
