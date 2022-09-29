@@ -369,13 +369,11 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
             .zip(state.selector_values.iter_mut())
         {
             let dim = &tensor.shape[dim_idx];
-            let name = if dim.name.is_empty() {
-                dim_idx.to_string()
-            } else {
-                dim.name.clone()
-            };
             if dim.size > 1 {
-                ui.add(egui::Slider::new(selector_value, 0..=dim.size - 1).text(name));
+                ui.add(
+                    egui::Slider::new(selector_value, 0..=dim.size - 1)
+                        .text(dimension_name(&tensor.shape, dim_idx)),
+                );
             }
         }
     });
