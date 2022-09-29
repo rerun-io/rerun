@@ -29,7 +29,6 @@ impl Default for State2D {
     }
 }
 
-/// messages: latest version of each object (of all spaces).
 pub(crate) fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
