@@ -1,4 +1,4 @@
-use ndarray::Ix2;
+use ndarray::{Axis, Ix2};
 use re_log_types::{Tensor, TensorDataType};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
@@ -12,7 +12,7 @@ pub struct TensorViewState {
     dimension_mapping: DimensionMapping,
 
     /// Maps dimenion to the slice of that dimension.
-    selectors: ahash::HashMap<usize, u64>,
+    selectors: ahash::HashMap<Axis, u64>,
 
     /// How we map values to colors.
     color_mapping: ColorMapping,
@@ -144,6 +144,22 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     ))
                 };
 
+                let mut x = vec![
+                    state.dimension_mapping.width.unwrap(),
+                    state.dimension_mapping.height.unwrap(),
+                ];
+                x.extend(state.dimension_mapping.selectors.iter());
+
+                tensor
+                    .view()
+                    .permuted_axes(x.as_slice())
+                    .slice_each_axis_inplace(|axis_desc| {
+                        if let Some(selector) = state.selectors.get(&axis_desc.axis) {
+                            ndarray::SliceInfoElem::Index(*selector as isize)
+                        } else {
+                        }
+                    });
+
                 let slice = tensor.slice(
                     state
                         .dimension_mapping
@@ -167,9 +183,17 @@ fn slice_ui<T: Copy>(
 ) {
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
     let ndims = slice.ndim();
-    if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
+    if let Ok(mut slice) = slice.into_dimensionality::<Ix2>() {
         // Transpose depending on the rank-mapping. TODO(john): Handle this upstream.
         let image = if dimension_mapping.height < dimension_mapping.width {
+            if dimension_mapping.flip_height {
+                slice.invert_axis(Axis(0));
+            }
+
+            if dimension_mapping.flip_width {
+                slice.invert_axis(Axis(1));
+            }
+
             into_image(&slice, color_from_value)
         } else {
             into_image(&slice.t(), color_from_value)
