@@ -6,6 +6,8 @@
 
 use re_log_types::{Tensor, TensorDataStore, TensorDataTypeTrait, TensorDimension};
 
+pub mod dimension_mapping;
+
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorCastError {
     #[error("ndarray type mismatch with tensor storage")]

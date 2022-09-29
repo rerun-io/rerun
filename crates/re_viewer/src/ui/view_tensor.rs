@@ -1,12 +1,12 @@
 use re_log_types::{Tensor, TensorDataType, TensorDimension};
+use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 use egui::{Color32, ColorImage};
-use itertools::Itertools as _;
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct TensorViewState {
     /// How we select which dimensions to project the tensor onto.
-    rank_mapping: RankMapping,
+    dimension_mapping: DimensionMapping,
 
     /// Maps dimenion to the slice of that dimension.
     selectors: ahash::HashMap<usize, u64>,
@@ -19,40 +19,13 @@ impl TensorViewState {
     pub(crate) fn create(tensor: &re_log_types::Tensor) -> TensorViewState {
         Self {
             selectors: Default::default(),
-            rank_mapping: RankMapping::create(tensor),
+            dimension_mapping: DimensionMapping::create(tensor),
             color_mapping: ColorMapping::default(),
         }
     }
 }
 
 // ----------------------------------------------------------------------------
-
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-struct RankMapping {
-    /// Which dimensions have selectors?
-    selectors: Vec<usize>,
-
-    // Which dim?
-    width: Option<usize>,
-
-    // Which dim?
-    height: Option<usize>,
-
-    // Which dim?
-    channel: Option<usize>,
-}
-
-impl RankMapping {
-    fn create(tensor: &Tensor) -> RankMapping {
-        // TODO(emilk): add a heuristic here for the default
-        RankMapping {
-            width: Some(1),
-            height: Some(0),
-            channel: None,
-            selectors: (2..tensor.num_dim()).collect(),
-        }
-    }
-}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DragDropAddress {
@@ -72,7 +45,7 @@ fn tensor_dimension_ui(
     drop_source: &mut DragDropAddress,
     drop_target: &mut DragDropAddress,
 ) {
-    // TODO: don't accept everythingp
+    // TODO: don't accept everything
     let response = dimension_drop_target(ui, true, |ui| {
         ui.set_min_size(egui::vec2(80., 15.));
 
@@ -139,7 +112,6 @@ pub fn drag_source(ui: &mut egui::Ui, id: egui::Id, body: impl FnOnce(&mut egui:
 }
 
 // Draws rectangle for a drop landing zone for dimensions
-// TODO: We should make this code reusable.
 pub fn dimension_drop_target<R>(
     ui: &mut egui::Ui,
     can_accept_what_is_being_dragged: bool,
@@ -185,10 +157,11 @@ pub fn dimension_drop_target<R>(
     egui::InnerResponse::new(ret, response)
 }
 
-fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping, shape: &[TensorDimension]) {
-    ui.label("TODO");
-    ui.monospace(format!("{rank_mapping:?}"));
-
+fn dimension_mapping_ui(
+    ui: &mut egui::Ui,
+    dimension_mapping: &mut DimensionMapping,
+    shape: &[TensorDimension],
+) {
     let mut drop_source = DragDropAddress::None;
     let mut drop_target = DragDropAddress::None;
 
@@ -200,7 +173,7 @@ fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping, shape: &[T
                 ui.label("Width:");
                 tensor_dimension_ui(
                     ui,
-                    rank_mapping.width,
+                    dimension_mapping.width,
                     DragDropAddress::Width,
                     shape,
                     &mut drop_source,
@@ -211,7 +184,7 @@ fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping, shape: &[T
                 ui.label("Height:");
                 tensor_dimension_ui(
                     ui,
-                    rank_mapping.height,
+                    dimension_mapping.height,
                     DragDropAddress::Height,
                     shape,
                     &mut drop_source,
@@ -222,7 +195,7 @@ fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping, shape: &[T
                 ui.label("Channel:");
                 tensor_dimension_ui(
                     ui,
-                    rank_mapping.channel,
+                    dimension_mapping.channel,
                     DragDropAddress::Channel,
                     shape,
                     &mut drop_source,
@@ -238,7 +211,7 @@ fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping, shape: &[T
                 .num_columns(1)
                 .show(ui, |ui| {
                     for (selector_idx, &mut dim_idx) in
-                        rank_mapping.selectors.iter_mut().enumerate()
+                        dimension_mapping.selectors.iter_mut().enumerate()
                     {
                         tensor_dimension_ui(
                             ui,
@@ -270,10 +243,12 @@ fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping, shape: &[T
     {
         let read_from_address = |address| match address {
             DragDropAddress::None => unreachable!(),
-            DragDropAddress::Width => rank_mapping.width,
-            DragDropAddress::Height => rank_mapping.height,
-            DragDropAddress::Channel => rank_mapping.channel,
-            DragDropAddress::Selector(selector_idx) => Some(rank_mapping.selectors[selector_idx]),
+            DragDropAddress::Width => dimension_mapping.width,
+            DragDropAddress::Height => dimension_mapping.height,
+            DragDropAddress::Channel => dimension_mapping.channel,
+            DragDropAddress::Selector(selector_idx) => {
+                Some(dimension_mapping.selectors[selector_idx])
+            }
             DragDropAddress::NewSelector => None,
         };
         let previous_value_source = read_from_address(drop_source);
@@ -281,18 +256,18 @@ fn rank_mapping_ui(ui: &mut egui::Ui, rank_mapping: &mut RankMapping, shape: &[T
 
         let mut write_to_address = |address, dim_idx| match address {
             DragDropAddress::None => unreachable!(),
-            DragDropAddress::Width => rank_mapping.width = dim_idx,
-            DragDropAddress::Height => rank_mapping.height = dim_idx,
-            DragDropAddress::Channel => rank_mapping.channel = dim_idx,
+            DragDropAddress::Width => dimension_mapping.width = dim_idx,
+            DragDropAddress::Height => dimension_mapping.height = dim_idx,
+            DragDropAddress::Channel => dimension_mapping.channel = dim_idx,
             DragDropAddress::Selector(selector_idx) => {
                 if let Some(dim_idx) = dim_idx {
-                    rank_mapping.selectors[selector_idx] = dim_idx;
+                    dimension_mapping.selectors[selector_idx] = dim_idx;
                 } else {
-                    rank_mapping.selectors.remove(selector_idx);
+                    dimension_mapping.selectors.remove(selector_idx);
                 }
             }
             // NewSelector can only be a drop *target*, therefore dim_idx can't be None!
-            DragDropAddress::NewSelector => rank_mapping.selectors.push(dim_idx.unwrap()),
+            DragDropAddress::NewSelector => dimension_mapping.selectors.push(dim_idx.unwrap()),
         };
         write_to_address(drop_source, previous_value_target);
         write_to_address(drop_target, previous_value_source);
@@ -353,8 +328,8 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
     ui.monospace(format!("shape: {:?}", tensor.shape));
     ui.monospace(format!("dtype: {:?}", tensor.dtype));
 
-    ui.collapsing("Rank Mapping", |ui| {
-        rank_mapping_ui(ui, &mut state.rank_mapping, &tensor.shape);
+    ui.collapsing("Dimension Mapping", |ui| {
+        dimension_mapping_ui(ui, &mut state.dimension_mapping, &tensor.shape);
     });
     color_mapping_ui(ui, &mut state.color_mapping);
 
@@ -368,14 +343,12 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 let color_from_value =
                     |value: u8| color_mapping.color_from_normalized(value as f32 / 255.0);
                 let slice = tensor.slice(
-                    slicer(
-                        tensor.ndim(),
-                        &state.rank_mapping.selectors,
-                        &state.selectors,
-                    )
-                    .as_slice(),
+                    state
+                        .dimension_mapping
+                        .slice(tensor.ndim(), &state.selectors)
+                        .as_slice(),
                 );
-                slice_ui(ui, &state.rank_mapping, &slice, color_from_value);
+                slice_ui(ui, &state.dimension_mapping, &slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -395,14 +368,12 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = tensor.slice(
-                    slicer(
-                        tensor.ndim(),
-                        &state.rank_mapping.selectors,
-                        &state.selectors,
-                    )
-                    .as_slice(),
+                    state
+                        .dimension_mapping
+                        .slice(tensor.ndim(), &state.selectors)
+                        .as_slice(),
                 );
-                slice_ui(ui, &state.rank_mapping, &slice, color_from_value);
+                slice_ui(ui, &state.dimension_mapping, &slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -422,14 +393,12 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = tensor.slice(
-                    slicer(
-                        tensor.ndim(),
-                        &state.rank_mapping.selectors,
-                        &state.selectors,
-                    )
-                    .as_slice(),
+                    state
+                        .dimension_mapping
+                        .slice(tensor.ndim(), &state.selectors)
+                        .as_slice(),
                 );
-                slice_ui(ui, &state.rank_mapping, &slice, color_from_value);
+                slice_ui(ui, &state.dimension_mapping, &slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -440,14 +409,14 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
 
 fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
-    rank_mapping: &RankMapping,
+    dimension_mapping: &DimensionMapping,
     slice: &ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
 
     if slice.ndim() == 2 {
-        let image = into_image(rank_mapping, slice, color_from_value);
+        let image = into_image(dimension_mapping, slice, color_from_value);
         image_ui(ui, image);
     } else {
         ui.colored_label(
@@ -461,14 +430,14 @@ fn slice_ui<T: Copy>(
 }
 
 fn into_image<T: Copy>(
-    rank_mapping: &RankMapping,
+    dimension_mapping: &DimensionMapping,
     slice: &ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) -> ColorImage {
     crate::profile_function!();
     assert_eq!(slice.ndim(), 2);
-    // what is height or what is width depends on the rank-mapping
-    if rank_mapping.height < rank_mapping.width {
+    // what is height or what is width depends on the dimension-mapping
+    if dimension_mapping.height < dimension_mapping.width {
         let (height, width) = (slice.shape()[0], slice.shape()[1]);
         let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
         assert_eq!(image.pixels.len(), slice.iter().count());
@@ -504,7 +473,7 @@ fn image_ui(ui: &mut egui::Ui, image: ColorImage) {
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
-    for &dim_idx in &state.rank_mapping.selectors {
+    for &dim_idx in &state.dimension_mapping.selectors {
         let dim = &tensor.shape[dim_idx];
         let name = if dim.name.is_empty() {
             dim_idx.to_string()
@@ -539,28 +508,4 @@ fn tensor_range_u16(tensor: &ndarray::ArrayViewD<'_, u16>) -> (u16, u16) {
         max = max.max(value);
     }
     (min, max)
-}
-
-fn slicer(
-    num_dim: usize,
-    active_selectors: &[usize],
-    selectors: &ahash::HashMap<usize, u64>,
-) -> Vec<ndarray::SliceInfoElem> {
-    (0..num_dim)
-        .map(|dim| {
-            if active_selectors.contains(&dim) {
-                if let Some(selector) = selectors.get(&dim) {
-                    ndarray::SliceInfoElem::Index(*selector as _)
-                } else {
-                    unreachable!();
-                }
-            } else {
-                ndarray::SliceInfoElem::Slice {
-                    start: 0,
-                    end: None,
-                    step: 1,
-                }
-            }
-        })
-        .collect_vec()
 }

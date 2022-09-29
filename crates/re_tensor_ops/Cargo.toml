@@ -13,4 +13,6 @@ ndarray = "0.15"
 bytemuck = {version = "1.12", features = ["extern_crate_alloc"]}
 thiserror = "1.0"
 re_log_types = { path = "../re_log_types" }
+serde = { version = "1", features = ["derive"] }
+ahash = "0.8"
 

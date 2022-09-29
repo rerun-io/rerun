@@ -2843,9 +2843,11 @@ dependencies = [
 name = "re_tensor_ops"
 version = "0.1.0"
 dependencies = [
+ "ahash 0.8.0",
  "bytemuck",
  "ndarray",
  "re_log_types",
+ "serde",
  "thiserror",
 ]
 
