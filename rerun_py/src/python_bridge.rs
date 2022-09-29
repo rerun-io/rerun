@@ -81,6 +81,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
+    m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
 
     #[cfg(feature = "re_viewer")]
@@ -233,6 +234,16 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     };
     Sdk::global().connect(addr);
     Ok(())
+}
+
+/// Server a web-viewer
+#[pyfunction]
+fn serve() {
+    #[cfg(feature = "web")]
+    Sdk::global().serve();
+
+    #[cfg(not(feature = "web"))]
+    panic!("The Rerun SDK was not compiled with the 'web' feature");
 }
 
 /// Wait until all logged data have been sent to the remove server (if any).

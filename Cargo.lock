@@ -972,7 +972,7 @@ dependencies = [
  "serde",
  "smithay-clipboard",
  "tracing",
- "webbrowser",
+ "webbrowser 0.8.0",
  "winit",
 ]
 
@@ -2842,10 +2842,13 @@ dependencies = [
  "re_sdk_comms",
  "re_tensor_ops",
  "re_viewer",
+ "re_web_server",
+ "re_ws_comms",
  "rerun",
  "tokio",
  "tracing-subscriber",
  "uuid",
+ "webbrowser 0.7.1",
 ]
 
 [[package]]
@@ -3018,7 +3021,7 @@ dependencies = [
  "re_ws_comms",
  "tokio",
  "tracing-subscriber",
- "webbrowser",
+ "webbrowser 0.8.0",
 ]
 
 [[package]]
@@ -4085,12 +4088,26 @@ dependencies = [
 
 [[package]]
 name = "webbrowser"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc6a3cffdb686fbb24d9fb8f03a213803277ed2300f11026a3afe1f108dc021b"
+dependencies = [
+ "jni",
+ "ndk-glue 0.6.2",
+ "url",
+ "web-sys",
+ "widestring",
+ "winapi",
+]
+
+[[package]]
+name = "webbrowser"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01d62aa75495ab67cdc273d0b95cc76bcedfea2ba28338a4cf9b4137949dfac5"
 dependencies = [
  "jni",
- "ndk-glue 0.6.2",
+ "ndk-glue 0.7.0",
  "objc",
  "raw-window-handle 0.5.0",
  "url",

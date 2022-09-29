@@ -5,9 +5,10 @@ use re_log_types::{
     RecordingInfo, Time, TimePoint, TypeMsg,
 };
 
-#[derive(Default)]
 pub struct Sdk {
-    // TODO(emilk): also support sending over `mpsc::Sender`.
+    #[cfg(feature = "web")]
+    tokio_rt: tokio::runtime::Runtime,
+
     sender: Sender,
 
     // TODO(emilk): just store `ObjTypePathHash`
@@ -19,12 +20,26 @@ pub struct Sdk {
 }
 
 impl Sdk {
+    fn new() -> Self {
+        Self {
+            #[cfg(feature = "web")]
+            tokio_rt: tokio::runtime::Runtime::new().unwrap(),
+
+            sender: Default::default(),
+            registered_types: Default::default(),
+            recording_id: None,
+            has_sent_begin_recording_msg: false,
+        }
+    }
+}
+
+impl Sdk {
     /// Access the global [`Sdk`]. This is a singleton.
     pub fn global() -> std::sync::MutexGuard<'static, Self> {
         use once_cell::sync::OnceCell;
         use std::sync::Mutex;
         static INSTANCE: OnceCell<Mutex<Sdk>> = OnceCell::new();
-        let mutex = INSTANCE.get_or_init(Default::default);
+        let mutex = INSTANCE.get_or_init(|| Mutex::new(Sdk::new()));
         mutex.lock().unwrap()
     }
 
@@ -53,7 +68,45 @@ impl Sdk {
                 }
                 self.sender = Sender::Remote(client);
             }
+            Sender::WebViewer(_) => {
+                panic!("We are already serving, cannot connect"); // TODO: shut down the server?
+            }
         }
+    }
+
+    #[cfg(feature = "web")]
+    pub fn serve(&mut self) {
+        let (rerun_tx, rerun_rx) = std::sync::mpsc::channel();
+        self.sender = Sender::WebViewer(rerun_tx);
+
+        self.tokio_rt.spawn(async {
+            let server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
+                .await
+                .unwrap();
+            let server_handle = tokio::spawn(server.listen(rerun_rx));
+
+            let web_port = 9090;
+
+            let web_server_handle = tokio::spawn(async move {
+                re_web_server::WebServer::new(web_port)
+                    .serve()
+                    .await
+                    .unwrap();
+            });
+
+            let pub_sub_url = re_ws_comms::default_server_url();
+            let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, pub_sub_url);
+            let open = true;
+            if open {
+                tokio::time::sleep(std::time::Duration::from_millis(1000)).await; // give web server time to start
+                webbrowser::open(&viewer_url).ok();
+            } else {
+                println!("Web server is running - view it at {}", viewer_url);
+            }
+
+            server_handle.await.unwrap().unwrap();
+            web_server_handle.await.unwrap();
+        });
     }
 
     #[cfg(feature = "re_viewer")]
@@ -78,7 +131,7 @@ impl Sdk {
 
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
-            Sender::Remote(_) => vec![],
+            Sender::Remote(_) | Sender::WebViewer(_) => vec![],
             Sender::Buffered(log_messages) => std::mem::take(log_messages),
         }
     }
@@ -142,6 +195,9 @@ enum Sender {
 
     #[allow(unused)] // only used with `#[cfg(feature = "re_viewer")]`
     Buffered(Vec<LogMsg>),
+
+    /// Send it to the web viewer over WebSockets
+    WebViewer(std::sync::mpsc::Sender<LogMsg>),
 }
 
 impl Default for Sender {
@@ -155,6 +211,7 @@ impl Sender {
         match self {
             Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
+            Self::WebViewer(sender) => sender.send(msg).unwrap(), // TODO: handle error
         }
     }
 }

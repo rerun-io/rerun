@@ -26,7 +26,7 @@ re_viewer = ["dep:re_viewer"]
 extension-module = ["pyo3/extension-module"]
 
 ## Support serving a web viewer over HTTP.
-web = ["rerun/web"]
+web = ["rerun/web", "re_ws_comms", "re_web_server", "webbrowser"]
 
 
 [dependencies]
@@ -49,6 +49,12 @@ rand = { version = "0.8", features = ["std_rng"] }
 tokio = { version = "1.16", features = ["rt-multi-thread"] }
 tracing-subscriber = "0.3"
 uuid = "1.1"
+
+
+# Optional:
+re_ws_comms = { path = "../crates/re_ws_comms", optional = true, features = ["server"] }
+re_web_server = { path = "../crates/re_web_server", optional = true }
+webbrowser = { version = "0.7", optional = true }
 
 
 [build-dependencies]
