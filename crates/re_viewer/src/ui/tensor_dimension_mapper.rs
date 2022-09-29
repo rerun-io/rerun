@@ -191,9 +191,8 @@ pub fn dimension_mapping_ui(
             .is_being_dragged(drag_source_ui_id(drag_context_id, dim_idx))
     });
 
-    ui.columns(2, |columns| {
-        {
-            let ui = &mut columns[0];
+    ui.horizontal(|ui| {
+        ui.vertical(|ui| {
             ui.heading("Image:");
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
                 for (label, location, bound_dim) in [
@@ -219,9 +218,11 @@ pub fn dimension_mapping_ui(
                     ui.end_row();
                 }
             });
-        }
-        {
-            let ui = &mut columns[1];
+        });
+
+        ui.add_space(24.0);
+
+        ui.vertical(|ui| {
             ui.heading("Selectors:");
             // Use Grid instead of Vertical layout to match styling of the parallel Grid for
             egui::Grid::new("selectiongrid")
@@ -254,7 +255,7 @@ pub fn dimension_mapping_ui(
                     );
                     ui.end_row();
                 });
-        }
+        });
     });
 
     // persist drag/drop

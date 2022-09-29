@@ -77,8 +77,9 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
     crate::profile_function!();
 
     ui.collapsing("Dimension Mapping", |ui| {
-        ui.monospace(format!("shape: {:?}", tensor.shape));
-        ui.monospace(format!("dtype: {:?}", tensor.dtype));
+        ui.label(format!("shape: {:?}", tensor.shape));
+        ui.label(format!("dtype: {:?}", tensor.dtype));
+        ui.add_space(12.0);
 
         dimension_mapping_ui(ui, &mut state.dimension_mapping, &tensor.shape);
     });
