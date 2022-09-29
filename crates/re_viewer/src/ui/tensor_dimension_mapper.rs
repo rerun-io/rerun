@@ -11,10 +11,6 @@ enum DragDropAddress {
     NewSelector,
 }
 
-fn get_drag_source_ui_id(ui_id: egui::Id, dim_idx: usize) -> egui::Id {
-    ui_id.with("tensor_dimension_ui").with(dim_idx)
-}
-
 impl DragDropAddress {
     fn read_from_address(&self, dimension_mapping: &DimensionMapping) -> Option<usize> {
         match self {
@@ -48,10 +44,15 @@ impl DragDropAddress {
     }
 }
 
+fn get_drag_source_ui_id(drag_context_id: egui::Id, dim_idx: usize) -> egui::Id {
+    drag_context_id.with("tensor_dimension_ui").with(dim_idx)
+}
+
 fn tensor_dimension_ui(
     ui: &mut egui::Ui,
+    drag_context_id: egui::Id,
     can_accept_dragged: bool,
-    bound_dim: Option<(usize, egui::Id)>,
+    bound_dim_idx: Option<usize>,
     location: DragDropAddress,
     shape: &[TensorDimension],
     drop_source: &mut DragDropAddress,
@@ -60,8 +61,9 @@ fn tensor_dimension_ui(
     let response = drop_target_ui(ui, can_accept_dragged, |ui| {
         ui.set_min_size(egui::vec2(80., 15.));
 
-        if let Some((dim_idx, dim_ui_id)) = bound_dim {
+        if let Some(dim_idx) = bound_dim_idx {
             let dim = &shape[dim_idx];
+            let dim_ui_id = get_drag_source_ui_id(drag_context_id, dim_idx);
 
             let tmp: String;
             let display_name = if dim.name.is_empty() {
@@ -185,48 +187,28 @@ pub fn dimension_mapping_ui(
             let ui = &mut columns[0];
             ui.heading("Image:");
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
-                ui.label("Width:");
-
-                tensor_dimension_ui(
-                    ui,
-                    can_accept_dragged,
-                    dimension_mapping
-                        .width
-                        .map(|dim_idx| (dim_idx, get_drag_source_ui_id(drag_context_id, dim_idx))),
-                    DragDropAddress::Width,
-                    shape,
-                    &mut drop_source,
-                    &mut drop_target,
-                );
-                ui.end_row();
-
-                ui.label("Height:");
-                tensor_dimension_ui(
-                    ui,
-                    can_accept_dragged,
-                    dimension_mapping
-                        .height
-                        .map(|dim_idx| (dim_idx, get_drag_source_ui_id(drag_context_id, dim_idx))),
-                    DragDropAddress::Height,
-                    shape,
-                    &mut drop_source,
-                    &mut drop_target,
-                );
-                ui.end_row();
-
-                ui.label("Channel:");
-                tensor_dimension_ui(
-                    ui,
-                    can_accept_dragged,
-                    dimension_mapping
-                        .channel
-                        .map(|dim_idx| (dim_idx, get_drag_source_ui_id(drag_context_id, dim_idx))),
-                    DragDropAddress::Channel,
-                    shape,
-                    &mut drop_source,
-                    &mut drop_target,
-                );
-                ui.end_row();
+                for (label, location, bound_dim) in [
+                    ("Width:", DragDropAddress::Width, dimension_mapping.width),
+                    ("Height:", DragDropAddress::Height, dimension_mapping.height),
+                    (
+                        "Channel:",
+                        DragDropAddress::Channel,
+                        dimension_mapping.channel,
+                    ),
+                ] {
+                    ui.label(label);
+                    tensor_dimension_ui(
+                        ui,
+                        drag_context_id,
+                        can_accept_dragged,
+                        bound_dim,
+                        location,
+                        shape,
+                        &mut drop_source,
+                        &mut drop_target,
+                    );
+                    ui.end_row();
+                }
             });
         }
         {
@@ -240,8 +222,9 @@ pub fn dimension_mapping_ui(
                     {
                         tensor_dimension_ui(
                             ui,
+                            drag_context_id,
                             can_accept_dragged,
-                            Some((dim_idx, get_drag_source_ui_id(drag_context_id, dim_idx))),
+                            Some(dim_idx),
                             DragDropAddress::Selector(selector_idx),
                             shape,
                             &mut drop_source,
@@ -251,6 +234,7 @@ pub fn dimension_mapping_ui(
                     }
                     tensor_dimension_ui(
                         ui,
+                        drag_context_id,
                         can_accept_dragged,
                         None,
                         DragDropAddress::NewSelector,
