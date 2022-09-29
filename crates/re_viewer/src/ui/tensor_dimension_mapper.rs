@@ -25,8 +25,7 @@ fn tensor_dimension_ui(
 
         if let Some(dim_idx) = bound_dim_idx {
             let dim = &shape[dim_idx];
-            // TODO: Does this need to be globally unique?
-            let dim_ui_id = egui::Id::new("tensor_dimension_ui").with(dim_idx);
+            let dim_ui_id = ui.id().with("tensor_dimension_ui").with(dim_idx);
 
             let tmp: String;
             let display_name = if dim.name.is_empty() {
