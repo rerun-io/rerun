@@ -241,22 +241,14 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
 
 fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
     crate::profile_function!();
-    let mut min = f32::INFINITY;
-    let mut max = f32::NEG_INFINITY;
-    for &value in tensor {
-        min = min.min(value);
-        max = max.max(value);
-    }
-    (min, max)
+    tensor.fold((f32::INFINITY, f32::NEG_INFINITY), |cur, &value| {
+        (cur.0.min(value), cur.1.max(value))
+    })
 }
 
 fn tensor_range_u16(tensor: &ndarray::ArrayViewD<'_, u16>) -> (u16, u16) {
     crate::profile_function!();
-    let mut min = u16::MAX;
-    let mut max = u16::MIN;
-    for &value in tensor {
-        min = min.min(value);
-        max = max.max(value);
-    }
-    (min, max)
+    tensor.fold((u16::MAX, u16::MIN), |cur, &value| {
+        (cur.0.min(value), cur.1.max(value))
+    })
 }
