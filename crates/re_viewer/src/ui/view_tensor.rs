@@ -183,27 +183,29 @@ fn selected_tensor_slice<'a, T: Copy>(
     state: &TensorViewState,
     tensor: &'a ndarray::ArrayViewD<'_, T>,
 ) -> ndarray::ArrayViewD<'a, T> {
+    let dim_mapping = &state.dimension_mapping;
+
     // TODO(andreas) - shouldn't just give up here
-    if state.dimension_mapping.width.is_none() || state.dimension_mapping.height.is_none() {
+    if dim_mapping.width.is_none() || dim_mapping.height.is_none() {
         return tensor.view();
     }
 
-    let axis = [
-        state.dimension_mapping.height.unwrap(),
-        state.dimension_mapping.width.unwrap(),
-    ]
-    .into_iter()
-    .chain(state.dimension_mapping.selectors.iter().copied())
-    .collect::<Vec<_>>();
+    let axis = dim_mapping
+        .height
+        .into_iter()
+        .chain(dim_mapping.width.into_iter())
+        .chain(dim_mapping.channel.into_iter())
+        .chain(dim_mapping.selectors.iter().copied())
+        .collect::<Vec<_>>();
     let mut slice = tensor.view().permuted_axes(axis);
     for selector_value in &state.selector_values {
         // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
         slice.index_axis_inplace(Axis(2), *selector_value as _);
     }
-    if state.dimension_mapping.invert_height {
+    if dim_mapping.invert_height {
         slice.invert_axis(Axis(0));
     }
-    if state.dimension_mapping.invert_width {
+    if dim_mapping.invert_width {
         slice.invert_axis(Axis(1));
     }
 
