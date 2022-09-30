@@ -1,8 +1,8 @@
 use ndarray::{Axis, Ix2};
-use re_log_types::{Tensor, TensorDataType};
+use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
-use egui::{Color32, ColorImage};
+use egui::{epaint::TextShape, Color32, ColorImage};
 
 use crate::ui::tensor_dimension_mapper::dimension_mapping_ui;
 
@@ -77,26 +77,38 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
 
 pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
     crate::profile_function!();
-    ui.heading("Tensor viewer!");
-    ui.monospace(format!("shape: {:?}", tensor.shape));
-    ui.monospace(format!("dtype: {:?}", tensor.dtype));
 
     ui.collapsing("Dimension Mapping", |ui| {
+        ui.label(format!("shape: {:?}", tensor.shape));
+        ui.label(format!("dtype: {:?}", tensor.dtype));
+        ui.add_space(12.0);
+
         dimension_mapping_ui(ui, &mut state.dimension_mapping, &tensor.shape);
     });
-    color_mapping_ui(ui, &mut state.color_mapping);
 
     selectors_ui(ui, state, tensor);
 
-    let color_mapping = &state.color_mapping;
+    let tensor_shape = &tensor.shape;
 
     match tensor.dtype {
         TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
             Ok(tensor) => {
-                let color_from_value =
-                    |value: u8| color_mapping.color_from_normalized(value as f32 / 255.0);
+                color_mapping_ui(ui, &mut state.color_mapping);
+
+                let color_from_value = |value: u8| {
+                    state
+                        .color_mapping
+                        .color_from_normalized(value as f32 / 255.0)
+                };
+
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, slice, color_from_value);
+                slice_ui(
+                    ui,
+                    tensor_shape,
+                    &state.dimension_mapping,
+                    slice,
+                    color_from_value,
+                );
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -106,9 +118,14 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
         TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
             Ok(tensor) => {
                 let (tensor_min, tensor_max) = tensor_range_u16(&tensor);
-                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+
+                ui.group(|ui| {
+                    ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+                    color_mapping_ui(ui, &mut state.color_mapping);
+                });
+
                 let color_from_value = |value: u16| {
-                    color_mapping.color_from_normalized(egui::remap(
+                    state.color_mapping.color_from_normalized(egui::remap(
                         value as f32,
                         tensor_min as f32..=tensor_max as f32,
                         0.0..=1.0,
@@ -116,7 +133,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, slice, color_from_value);
+                slice_ui(
+                    ui,
+                    tensor_shape,
+                    &state.dimension_mapping,
+                    slice,
+                    color_from_value,
+                );
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -126,9 +149,14 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
         TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
             Ok(tensor) => {
                 let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
-                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+
+                ui.group(|ui| {
+                    ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+                    color_mapping_ui(ui, &mut state.color_mapping);
+                });
+
                 let color_from_value = |value: f32| {
-                    color_mapping.color_from_normalized(egui::remap(
+                    state.color_mapping.color_from_normalized(egui::remap(
                         value,
                         tensor_min..=tensor_max,
                         0.0..=1.0,
@@ -136,7 +164,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, slice, color_from_value);
+                slice_ui(
+                    ui,
+                    tensor_shape,
+                    &state.dimension_mapping,
+                    slice,
+                    color_from_value,
+                );
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -155,8 +189,8 @@ fn selected_tensor_slice<'a, T: Copy>(
     }
 
     let axis = [
-        state.dimension_mapping.width.unwrap(),
         state.dimension_mapping.height.unwrap(),
+        state.dimension_mapping.width.unwrap(),
     ]
     .into_iter()
     .chain(state.dimension_mapping.selectors.iter().copied())
@@ -178,14 +212,27 @@ fn selected_tensor_slice<'a, T: Copy>(
 
 fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
+    tensor_shape: &[TensorDimension],
+    dimension_mapping: &DimensionMapping,
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
     let ndims = slice.ndim();
     if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
+        let dimension_labels = [
+            (
+                dimension_name(tensor_shape, dimension_mapping.width.unwrap()),
+                dimension_mapping.invert_width,
+            ),
+            (
+                dimension_name(tensor_shape, dimension_mapping.height.unwrap()),
+                dimension_mapping.invert_height,
+            ),
+        ];
+
         let image = into_image(&slice, color_from_value);
-        image_ui(ui, image);
+        image_ui(ui, image, dimension_labels);
     } else {
         ui.colored_label(
             ui.visuals().error_fg_color,
@@ -194,6 +241,15 @@ fn slice_ui<T: Copy>(
                 ndims
             ),
         );
+    }
+}
+
+fn dimension_name(shape: &[TensorDimension], dim_idx: usize) -> String {
+    let dim = &shape[dim_idx];
+    if dim.name.is_empty() {
+        format!("Dimension {} ({})", dim_idx, dim.size)
+    } else {
+        format!("{} ({})", dim.name, dim.size)
     }
 }
 
@@ -221,38 +277,106 @@ fn into_image<T: Copy>(
     image
 }
 
-fn image_ui(ui: &mut egui::Ui, image: ColorImage) {
+fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_labels: [(String, bool); 2]) {
+    use egui::*;
+
     crate::profile_function!();
     // TODO(emilk): cache texture - don't create a new texture every frame
     let texture = ui
         .ctx()
         .load_texture("tensor_slice", image, egui::TextureFilter::Linear);
     egui::ScrollArea::both().show(ui, |ui| {
-        ui.image(texture.id(), texture.size_vec2());
+        let font_id = TextStyle::Body.resolve(ui.style());
+
+        let margin = Vec2::splat(font_id.size + 2.0);
+
+        let desired_size = texture.size_vec2() + margin;
+        let (response, painter) = ui.allocate_painter(desired_size, Sense::hover());
+        let rect = response.rect;
+
+        let image_rect = Rect::from_min_max(rect.min + margin, rect.max);
+
+        let mut mesh = egui::Mesh::with_texture(texture.id());
+        let uv = egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+        mesh.add_rect_with_uv(image_rect, uv, Color32::WHITE);
+        painter.add(mesh);
+
+        let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
+
+        let text_color = ui.visuals().text_color();
+
+        // Label for X axis, on top:
+        if invert_width {
+            painter.text(
+                image_rect.left_top(),
+                Align2::LEFT_BOTTOM,
+                format!("{width_name} ⬅"),
+                font_id.clone(),
+                text_color,
+            );
+        } else {
+            painter.text(
+                image_rect.right_top(),
+                Align2::RIGHT_BOTTOM,
+                format!("➡ {width_name}"),
+                font_id.clone(),
+                text_color,
+            );
+        }
+
+        // Label for Y axis, on the left:
+        if invert_height {
+            let galley = painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
+            painter.add(TextShape {
+                pos: image_rect.left_top() - vec2(galley.size().y, -galley.size().x),
+                galley,
+                angle: -std::f32::consts::TAU / 4.0,
+                underline: Default::default(),
+                override_text_color: None,
+            });
+        } else {
+            let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
+            painter.add(TextShape {
+                pos: image_rect.left_bottom() - vec2(galley.size().y, 0.0),
+                galley,
+                angle: -std::f32::consts::TAU / 4.0,
+                underline: Default::default(),
+                override_text_color: None,
+            });
+        }
     });
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
+    if state.dimension_mapping.selectors.is_empty() {
+        return;
+    }
     state
         .selector_values
         .resize(state.dimension_mapping.selectors.len(), 0);
 
-    for (&dim_idx, selector_value) in state
-        .dimension_mapping
-        .selectors
-        .iter()
-        .zip(state.selector_values.iter_mut())
-    {
-        let dim = &tensor.shape[dim_idx];
-        let name = if dim.name.is_empty() {
-            dim_idx.to_string()
+    ui.group(|ui| {
+        if state.dimension_mapping.selectors.len() == 1 {
+            ui.label("Slice selector:");
         } else {
-            dim.name.clone()
-        };
-        if dim.size > 1 {
-            ui.add(egui::Slider::new(selector_value, 0..=dim.size - 1).text(name));
+            ui.label("Slice selectors:");
         }
-    }
+
+        for (&dim_idx, selector_value) in state
+            .dimension_mapping
+            .selectors
+            .iter()
+            .zip(state.selector_values.iter_mut())
+        {
+            let dim = &tensor.shape[dim_idx];
+            if dim.size > 1 {
+                ui.add(
+                    egui::Slider::new(selector_value, 0..=dim.size - 1)
+                        .text(dimension_name(&tensor.shape, dim_idx)),
+                );
+            }
+        }
+    });
 }
 
 fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
