@@ -1,4 +1,7 @@
+use std::collections::BTreeMap;
+
 use ndarray::{Axis, Ix2};
+
 use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
@@ -11,9 +14,8 @@ pub struct TensorViewState {
     /// How we select which dimensions to project the tensor onto.
     dimension_mapping: DimensionMapping,
 
-    /// Selected value of every selector mapping (in order of DimensionMapping::selectors)
-    /// I.e. selector_values gives you the selected index for the dimension specified by DimensionMapping::selectors
-    selector_values: Vec<u64>,
+    /// Selected value of every dimension (iff they are in [`DimensionMapping::selectors`]).
+    selector_values: BTreeMap<usize, u64>,
 
     /// How we map values to colors.
     color_mapping: ColorMapping,
@@ -183,27 +185,36 @@ fn selected_tensor_slice<'a, T: Copy>(
     state: &TensorViewState,
     tensor: &'a ndarray::ArrayViewD<'_, T>,
 ) -> ndarray::ArrayViewD<'a, T> {
+    let dim_mapping = &state.dimension_mapping;
+
     // TODO(andreas) - shouldn't just give up here
-    if state.dimension_mapping.width.is_none() || state.dimension_mapping.height.is_none() {
+    if dim_mapping.width.is_none() || dim_mapping.height.is_none() {
         return tensor.view();
     }
 
-    let axis = [
-        state.dimension_mapping.height.unwrap(),
-        state.dimension_mapping.width.unwrap(),
-    ]
-    .into_iter()
-    .chain(state.dimension_mapping.selectors.iter().copied())
-    .collect::<Vec<_>>();
+    let axis = dim_mapping
+        .height
+        .into_iter()
+        .chain(dim_mapping.width.into_iter())
+        .chain(dim_mapping.channel.into_iter())
+        .chain(dim_mapping.selectors.iter().copied())
+        .collect::<Vec<_>>();
     let mut slice = tensor.view().permuted_axes(axis);
-    for selector_value in &state.selector_values {
+
+    for dim_idx in &dim_mapping.selectors {
+        let selector_value = state
+            .selector_values
+            .get(dim_idx)
+            .copied()
+            .unwrap_or_default();
         // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
-        slice.index_axis_inplace(Axis(2), *selector_value as _);
+        // This call removes Axis(2), so the next iteration of the loop does the right thing again.
+        slice.index_axis_inplace(Axis(2), selector_value as _);
     }
-    if state.dimension_mapping.invert_height {
+    if dim_mapping.invert_height {
         slice.invert_axis(Axis(0));
     }
-    if state.dimension_mapping.invert_width {
+    if dim_mapping.invert_width {
         slice.invert_axis(Axis(1));
     }
 
@@ -351,9 +362,6 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
     if state.dimension_mapping.selectors.is_empty() {
         return;
     }
-    state
-        .selector_values
-        .resize(state.dimension_mapping.selectors.len(), 0);
 
     ui.group(|ui| {
         if state.dimension_mapping.selectors.len() == 1 {
@@ -362,14 +370,11 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
             ui.label("Slice selectors:");
         }
 
-        for (&dim_idx, selector_value) in state
-            .dimension_mapping
-            .selectors
-            .iter()
-            .zip(state.selector_values.iter_mut())
-        {
+        for &dim_idx in &state.dimension_mapping.selectors {
             let dim = &tensor.shape[dim_idx];
             if dim.size > 1 {
+                let selector_value = state.selector_values.entry(dim_idx).or_default();
+
                 ui.add(
                     egui::Slider::new(selector_value, 0..=dim.size - 1)
                         .text(dimension_name(&tensor.shape, dim_idx)),
