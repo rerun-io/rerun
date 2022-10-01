@@ -433,7 +433,7 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
                             TimeType::Sequence => {
                                 ui.monospace(format!(
                                     "[{} - {})",
-                                    time_type.format(range.min.floor()),
+                                    time_type.format(range.min.ceil()),
                                     time_type.format(range.max.floor())
                                 ));
                             }
@@ -1442,12 +1442,9 @@ fn paint_time_range_ticks(
     time_area_painter: &egui::Painter,
     rect: &Rect,
     time_type: TimeType,
-    range: &TimeRangeF,
+    time_range: &TimeRangeF,
 ) {
     let font_id = egui::TextStyle::Body.resolve(ui.style());
-
-    // TODO: fix precision issues here
-    let (min, max) = (range.min.round().as_i64(), range.max.round().as_i64());
 
     let shapes = match time_type {
         TimeType::Time => {
@@ -1497,7 +1494,7 @@ fn paint_time_range_ticks(
                 &font_id,
                 rect,
                 &ui.clip_rect(),
-                (min, max), // ns
+                time_range, // ns
                 1_000,
                 next_grid_tick_magnitude_ns,
                 grid_text_from_ns,
@@ -1513,7 +1510,7 @@ fn paint_time_range_ticks(
                 &font_id,
                 rect,
                 &ui.clip_rect(),
-                (min, max),
+                time_range,
                 1,
                 next_power_of_10,
                 |seq| format!("#{seq}"),
@@ -1531,11 +1528,14 @@ fn paint_ticks(
     font_id: &egui::FontId,
     canvas: &Rect,
     clip_rect: &Rect,
-    (min_time, max_time): (i64, i64),
+    // (min_time, max_time): (i64, i64),
+    time_range: &TimeRangeF,
     min_grid_spacing_time: i64,
     next_time_step: fn(i64) -> i64,
     format_tick: fn(i64) -> String,
 ) -> Vec<egui::Shape> {
+    crate::profile_function!();
+
     let color_from_alpha = |alpha: f32| -> Color32 {
         if dark_mode {
             Rgba::from_white_alpha(alpha * alpha).into()
@@ -1545,7 +1545,8 @@ fn paint_ticks(
     };
 
     let x_from_time = |time: i64| -> f32 {
-        let t = time.saturating_sub(min_time) as f32 / max_time.saturating_sub(min_time) as f32;
+        let t = (TimeReal::from(time) - time_range.min).as_f32()
+            / (time_range.max - time_range.min).as_f32();
         lerp(canvas.x_range(), t)
     };
 
@@ -1556,8 +1557,8 @@ fn paint_ticks(
         return shapes;
     }
 
-    let width_time = max_time - min_time;
-    let points_per_time = canvas.width() / width_time as f32;
+    let width_time = (time_range.max - time_range.min).as_f32();
+    let points_per_time = canvas.width() / width_time;
     let minimum_small_line_spacing = 4.0;
     let expected_text_width = 60.0;
 
@@ -1582,7 +1583,7 @@ fn paint_ticks(
 
     let max_small_lines = canvas.width() / minimum_small_line_spacing;
     let mut small_spacing_time = min_grid_spacing_time;
-    while width_time as f32 / (small_spacing_time as f32) > max_small_lines {
+    while width_time / (small_spacing_time as f32) > max_small_lines {
         small_spacing_time = next_time_step(small_spacing_time);
     }
     let medium_spacing_time = next_time_step(small_spacing_time);
@@ -1597,8 +1598,9 @@ fn paint_ticks(
     let medium_text_color = text_color_from_spacing(medium_spacing_time);
     let small_text_color = text_color_from_spacing(small_spacing_time);
 
-    let mut current_time = min_time / small_spacing_time * small_spacing_time; // TODO(emilk): start at visible_rect.left()
-    while current_time <= max_time {
+    let mut current_time =
+        time_range.min.floor().as_i64() / small_spacing_time * small_spacing_time; // TODO(emilk): start at visible_rect.left()
+    while current_time <= time_range.max.ceil().as_i64() {
         let line_x = x_from_time(current_time);
 
         if visible_rect.min.x <= line_x && line_x <= visible_rect.max.x {
