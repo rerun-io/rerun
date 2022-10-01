@@ -19,7 +19,7 @@ default = ["extension-module", "re_viewer"]
 extension-module = ["pyo3/extension-module"]
 
 ## Support serving a web viewer over HTTP.
-web = ["rerun/server"]
+web = ["rerun/web"]
 
 
 [dependencies]
