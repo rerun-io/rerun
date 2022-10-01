@@ -2980,17 +2980,21 @@ checksum = "f1382d1f0a252c4bf97dc20d979a2fdd05b024acd7c2ed0f7595d7817666a157"
 name = "rerun"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap 3.2.20",
  "mimalloc",
  "puffin",
  "puffin_http",
  "re_error",
  "re_log",
+ "re_log_types",
  "re_sdk_comms",
  "re_viewer",
+ "re_web_server",
  "re_ws_comms",
  "tokio",
  "tracing-subscriber",
+ "webbrowser",
 ]
 
 [[package]]

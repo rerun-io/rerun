@@ -525,7 +525,7 @@ fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
 }
 
 #[allow(unused_mut)]
-fn load_rrd(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
+fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
     crate::profile_function!();
 
     #[cfg(target_arch = "wasm32")]
@@ -548,7 +548,7 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
         crate::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::open(path).context("Failed to open file")?;
-        load_rrd(file)
+        load_rrd_to_log_db(file)
     }
 
     re_log::info!("Loading {path:?}…");
@@ -572,7 +572,7 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
 
 #[must_use]
 fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
-    match load_rrd(read) {
+    match load_rrd_to_log_db(read) {
         Ok(log_db) => {
             re_log::info!("Loaded {name:?}");
             Some(log_db)
