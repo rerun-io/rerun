@@ -7,6 +7,7 @@ pub fn encode<'a>(
     messages: impl Iterator<Item = &'a LogMsg>,
     mut write: impl std::io::Write,
 ) -> anyhow::Result<()> {
+    crate::profile_function!();
     use anyhow::Context as _;
     use std::io::Write as _;
 
@@ -46,6 +47,7 @@ pub struct Decoder<'r, R: std::io::BufRead> {
 #[cfg(not(target_arch = "wasm32"))]
 impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
     pub fn new(mut read: R) -> anyhow::Result<Self> {
+        crate::profile_function!();
         use anyhow::Context as _;
 
         let mut header = [0_u8; 4];
@@ -67,6 +69,7 @@ impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
 impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
     type Item = anyhow::Result<LogMsg>;
     fn next(&mut self) -> Option<Self::Item> {
+        crate::profile_function!();
         use std::io::Read as _;
 
         let mut len = [0_u8; 8];
@@ -74,10 +77,15 @@ impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
         let len = u64::from_le_bytes(len) as usize;
 
         self.buffer.resize(len, 0);
-        if let Err(err) = self.zdecoder.read_exact(&mut self.buffer) {
-            return Some(Err(anyhow::anyhow!("zstd: {err}")));
+
+        {
+            crate::profile_scope!("zstd");
+            if let Err(err) = self.zdecoder.read_exact(&mut self.buffer) {
+                return Some(Err(anyhow::anyhow!("zstd: {err}")));
+            }
         }
 
+        crate::profile_scope!("MsgPack deser");
         match rmp_serde::from_read(&mut self.buffer.as_slice()) {
             Ok(msg) => Some(Ok(msg)),
             Err(err) => Some(Err(anyhow::anyhow!("MessagePack: {err}"))),
@@ -99,6 +107,7 @@ pub struct Decoder<'r> {
 #[cfg(target_arch = "wasm32")]
 impl<'r> Decoder<'r> {
     pub fn new(read: &'r mut dyn std::io::Read) -> anyhow::Result<Self> {
+        crate::profile_function!();
         use anyhow::Context as _;
 
         let mut header = [0_u8; 4];
@@ -121,6 +130,7 @@ impl<'r> Decoder<'r> {
 impl<'r> Iterator for Decoder<'r> {
     type Item = anyhow::Result<LogMsg>;
     fn next(&mut self) -> Option<Self::Item> {
+        crate::profile_function!();
         use std::io::Read as _;
 
         let mut len = [0_u8; 8];
@@ -128,10 +138,15 @@ impl<'r> Iterator for Decoder<'r> {
         let len = u64::from_le_bytes(len) as usize;
 
         self.buffer.resize(len, 0);
-        if let Err(err) = self.zdecoder.read_exact(&mut self.buffer) {
-            return Some(Err(anyhow::anyhow!("ruzstd: {err}")));
+
+        {
+            crate::profile_scope!("ruzstd");
+            if let Err(err) = self.zdecoder.read_exact(&mut self.buffer) {
+                return Some(Err(anyhow::anyhow!("ruzstd: {err}")));
+            }
         }
 
+        crate::profile_scope!("MsgPack deser");
         match rmp_serde::from_read(&mut self.buffer.as_slice()) {
             Ok(msg) => Some(Ok(msg)),
             Err(err) => Some(Err(anyhow::anyhow!("MessagePack: {err}"))),

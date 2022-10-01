@@ -2785,6 +2785,7 @@ dependencies = [
  "bytemuck",
  "chrono",
  "nohash-hasher",
+ "puffin",
  "re_string_interner",
  "rmp-serde",
  "ruzstd",

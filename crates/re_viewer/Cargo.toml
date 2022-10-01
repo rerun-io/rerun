@@ -19,7 +19,7 @@ glow = ["eframe/glow", "dep:egui_glow", "dep:glow", "dep:three-d", "dep:three-d-
 wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:wgpu"]
 
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
-puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin"]
+puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin", "re_log_types/puffin"]
 
 
 [dependencies]
