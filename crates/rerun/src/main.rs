@@ -55,32 +55,15 @@ async fn main() {
     }
 
     // Where do we get the data from?
-    let (_connection, rx) = if let Some(url_or_path) = &args.url_or_path {
+    let rx = if let Some(url_or_path) = &args.url_or_path {
         let path = std::path::Path::new(url_or_path).to_path_buf();
         if path.exists() || url_or_path.ends_with(".rrd") {
             re_log::info!("Loading {path:?}…");
-            let rx = load_file_to_channel(&path)
-                .unwrap_or_else(|err| panic!("Failed to load {path:?}: {}", re_error::format(err)));
-            (None, rx)
+            load_file_to_channel(&path)
+                .unwrap_or_else(|err| panic!("Failed to load {path:?}: {}", re_error::format(err)))
         } else {
-            let mut url = url_or_path.clone();
-            // let url = re_ws_comms::default_server_url();
-            if !url.contains("://") {
-                url = format!("{}://{url}", re_ws_comms::PROTOCOL);
-            }
-
-            if args.web_viewer {
-                let (connection, rx) = connect_to_ws_server(url);
-                (Some(connection), rx)
-            } else {
-                // By using RemoteViewerApp we let the user change the server they are connected to.
-                re_viewer::run_native_app(Box::new(move |cc| {
-                    let mut app = re_viewer::RemoteViewerApp::new(&cc.egui_ctx, cc.storage, url);
-                    app.set_profiler(profiler);
-                    Box::new(app)
-                }));
-                return;
-            }
+            connect_to_ws_url(&args, profiler, url_or_path.clone()).await;
+            return;
         }
     } else {
         #[cfg(feature = "server")]
@@ -89,8 +72,8 @@ async fn main() {
             let rx = re_sdk_comms::serve(&bind_addr).unwrap_or_else(|err| {
                 panic!("Failed to host: {}", re_error::format(err));
             });
-            re_log::info!("Hosting SDK server on {bind_addr}");
-            (None, rx)
+            re_log::info!("Hosting a SDK server over TCP at {bind_addr}");
+            rx
         }
 
         #[cfg(not(feature = "server"))]
@@ -100,7 +83,19 @@ async fn main() {
     // Now what do we do with the data?
     if args.web_viewer {
         #[cfg(feature = "web")]
-        host_web_viewer(rx).await;
+        {
+            // This is the server which the web viewer will talk to:
+            re_log::info!("Starting a Rerun WebSocket Server…");
+            let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
+                .await
+                .unwrap();
+            let server_handle = tokio::spawn(ws_server.listen(rx));
+
+            let rerun_ws_server_url = re_ws_comms::default_server_url();
+            host_web_viewer(rerun_ws_server_url).await;
+
+            server_handle.await.unwrap().unwrap();
+        }
 
         #[cfg(not(feature = "web"))]
         panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
@@ -108,6 +103,28 @@ async fn main() {
         re_viewer::run_native_app(Box::new(move |cc| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(&cc.egui_ctx, cc.storage, rx);
+            app.set_profiler(profiler);
+            Box::new(app)
+        }));
+    }
+}
+
+async fn connect_to_ws_url(
+    args: &Args,
+    profiler: re_viewer::Profiler,
+    mut rerun_server_ws_url: String,
+) {
+    if !rerun_server_ws_url.contains("://") {
+        rerun_server_ws_url = format!("{}://{rerun_server_ws_url}", re_ws_comms::PROTOCOL);
+    }
+
+    if args.web_viewer {
+        host_web_viewer(rerun_server_ws_url).await;
+    } else {
+        // By using RemoteViewerApp we let the user change the server they are connected to.
+        re_viewer::run_native_app(Box::new(move |cc| {
+            let mut app =
+                re_viewer::RemoteViewerApp::new(&cc.egui_ctx, cc.storage, rerun_server_ws_url);
             app.set_profiler(profiler);
             Box::new(app)
         }));
@@ -133,33 +150,10 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
     Ok(rx)
 }
 
-fn connect_to_ws_server(url: String) -> (re_ws_comms::Connection, Receiver<LogMsg>) {
-    re_log::info!("Connecting to WS server at {url:?}…");
-    let (tx, rx) = std::sync::mpsc::channel();
-    let connection = re_ws_comms::Connection::viewer_to_server(url, move |log_msg| {
-        if tx.send(log_msg).is_ok() {
-            std::ops::ControlFlow::Continue(())
-        } else {
-            re_log::info!("Failed to send log message - closing connection to SDK WS server");
-            std::ops::ControlFlow::Break(())
-        }
-    })
-    .unwrap();
-    (connection, rx)
-}
-
 #[cfg(feature = "web")]
-async fn host_web_viewer(rx: Receiver<LogMsg>) {
+async fn host_web_viewer(rerun_ws_server_url: String) {
     let web_port = 9090;
-    let pub_sub_url = re_ws_comms::default_server_url();
-    let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, pub_sub_url);
-
-    re_log::info!("Hosting web viewer at {viewer_url:?}…");
-
-    let server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
-        .await
-        .unwrap();
-    let server_handle = tokio::spawn(server.listen(rx));
+    let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, rerun_ws_server_url);
 
     let web_server = re_web_server::WebServer::new(web_port);
     let web_server_handle = tokio::spawn(async move {
@@ -170,9 +164,13 @@ async fn host_web_viewer(rx: Receiver<LogMsg>) {
     if open {
         webbrowser::open(&viewer_url).ok();
     } else {
-        println!("Web server is running - view it at {}", viewer_url);
+        println!("Hosting Rerurn Web Viewer at {viewer_url}.");
     }
 
-    server_handle.await.unwrap().unwrap();
     web_server_handle.await.unwrap();
+}
+
+#[cfg(not(feature = "web"))]
+async fn host_web_viewer(rerun_ws_server_url: String) {
+    panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
 }
