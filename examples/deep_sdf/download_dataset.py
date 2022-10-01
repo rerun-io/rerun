@@ -3,6 +3,7 @@
 import io
 import os
 import requests
+from pathlib import Path
 import zipfile
 
 
@@ -25,7 +26,7 @@ def download_and_extract(url, path):
 def download_dataset(name):
     url = f"https://casual-effects.com/g3d/data10/research/model/{name}/{name}.zip"
 
-    dir = f"dataset"
+    dir = Path(os.path.dirname(__file__)).joinpath("dataset")
     os.makedirs(dir, exist_ok=True)
 
     download_and_extract(url, f"{dir}/{name}")
