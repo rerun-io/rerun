@@ -200,9 +200,7 @@ fn main(argv: Vec<String>) {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(async {
-            rerun::run(argv).await;
-        });
+        .block_on(rerun::run(argv));
 }
 
 #[pyfunction]
