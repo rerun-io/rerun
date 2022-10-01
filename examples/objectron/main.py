@@ -123,7 +123,7 @@ def log_camera(cam: ARCamera):
 
     # Because the dataset was collected in portrait:
     swizzle_x_y = np.asarray([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
-    intrinsics = swizzle_x_y.dot(intrinsics.dot(swizzle_x_y))
+    intrinsics = swizzle_x_y @ intrinsics @ swizzle_x_y
     axis = R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
     rot = rot * axis
     (w, h) = (h, w)
