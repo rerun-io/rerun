@@ -420,13 +420,24 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
 
                 ui.vertical_centered(|ui| {
                     if range.min == range.max {
-                        ui.monospace(time_type.format(range.min.into()));
+                        ui.monospace(time_type.format(range.min.floor())); // floor makes sense for "latest at" queries
                     } else {
-                        ui.monospace(format!(
-                            "{} - {}",
-                            time_type.format(range.min.into()),
-                            time_type.format(range.max.into())
-                        ));
+                        match time_type {
+                            TimeType::Time => {
+                                ui.monospace(format!(
+                                    "{} - {}",
+                                    time_type.format(range.min.round()),
+                                    time_type.format(range.max.round())
+                                ));
+                            }
+                            TimeType::Sequence => {
+                                ui.monospace(format!(
+                                    "[{} - {})",
+                                    time_type.format(range.min.floor()),
+                                    time_type.format(range.max.floor())
+                                ));
+                            }
+                        }
                     }
                 });
             }
@@ -1009,7 +1020,7 @@ fn time_selection_ui(
 pub fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
     match time_typ {
         TimeType::Time => Duration::from(duration).to_string(),
-        TimeType::Sequence => duration.as_i64().to_string(),
+        TimeType::Sequence => duration.round().as_i64().to_string(), // TODO: show real part?
     }
 }
 
@@ -1411,7 +1422,8 @@ fn paint_time_range_ticks(
 ) {
     let font_id = egui::TextStyle::Body.resolve(ui.style());
 
-    let (min, max) = (range.min.as_i64(), range.max.as_i64());
+    // TODO: fix precision issues here
+    let (min, max) = (range.min.round().as_i64(), range.max.round().as_i64());
 
     let shapes = match time_type {
         TimeType::Time => {
