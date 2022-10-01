@@ -13,7 +13,7 @@ pub(crate) fn apply_design_tokens(ctx: &egui::Context) {
         let mut font_definitions = egui::FontDefinitions::default();
         font_definitions.font_data.insert(
             "Inter-Medium".into(),
-            egui::FontData::from_static(include_bytes!("../data/Inter-Medium.ttf")),
+            egui::FontData::from_static(include_bytes!("../data/Inter-Medium.otf")),
         );
         font_definitions
             .families
