@@ -164,7 +164,7 @@ async fn host_web_viewer(rerun_ws_server_url: String) {
     if open {
         webbrowser::open(&viewer_url).ok();
     } else {
-        println!("Hosting Rerurn Web Viewer at {viewer_url}.");
+        println!("Hosting Rerun Web Viewer at {viewer_url}.");
     }
 
     web_server_handle.await.unwrap();
