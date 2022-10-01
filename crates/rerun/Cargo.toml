@@ -14,7 +14,7 @@ default = ["server"]
 ## Run a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["dep:re_sdk_comms"]
 
-# Support serving a web viewer
+## Support serving a web viewer over HTTP.
 web = ["re_ws_comms/server", "dep:re_web_server", "dep:webbrowser"]
 
 
