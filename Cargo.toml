@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/*", "rerun_py"]
 
 [profile.dev]
-# opt-level = 1 # Speed up debug builds
+opt-level = 1 # Make debug builds run faster
 
 [profile.release]
 # debug = true # good for profilers
