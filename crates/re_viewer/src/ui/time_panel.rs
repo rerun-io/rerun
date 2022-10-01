@@ -1020,7 +1020,7 @@ fn time_selection_ui(
 pub fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
     match time_typ {
         TimeType::Time => Duration::from(duration).to_string(),
-        TimeType::Sequence => duration.round().as_i64().to_string(), // TODO: show real part?
+        TimeType::Sequence => duration.round().as_i64().to_string(), // TODO(emilk): show real part?
     }
 }
 
