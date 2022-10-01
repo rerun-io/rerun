@@ -67,15 +67,12 @@ async fn main() {
         #[cfg(feature = "server")]
         {
             let bind_addr = format!("127.0.0.1:{}", args.port);
-            match re_sdk_comms::serve(&bind_addr) {
-                Ok(rx) => {
-                    re_log::info!("Hosting SDK server on {bind_addr}");
-                    re_viewer::run_native_viewer_with_rx(rx);
-                }
-                Err(err) => {
-                    panic!("Failed to host: {err}");
-                }
-            }
+            let rx = re_sdk_comms::serve(&bind_addr).unwrap_or_else(|err| {
+                panic!("Failed to host: {}", re_error::format(err));
+            });
+
+            re_log::info!("Hosting SDK server on {bind_addr}");
+            re_viewer::run_native_viewer_with_rx(rx);
         }
 
         #[cfg(not(feature = "server"))]

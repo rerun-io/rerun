@@ -16,6 +16,7 @@ server = ["dep:re_sdk_comms"]
 
 
 [dependencies]
+re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_viewer = { path = "../re_viewer", features = ["puffin"] }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
