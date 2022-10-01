@@ -161,13 +161,13 @@ async fn host_web_viewer(rx: Receiver<LogMsg>) {
         .unwrap();
     let server_handle = tokio::spawn(server.listen(rx));
 
+    let web_server = re_web_server::WebServer::new(web_port);
     let web_server_handle = tokio::spawn(async move {
-        re_web_server::run(web_port).await.unwrap();
+        web_server.serve().await.unwrap();
     });
 
     let open = true;
     if open {
-        tokio::time::sleep(std::time::Duration::from_millis(1000)).await; // give web server time to start
         webbrowser::open(&viewer_url).ok();
     } else {
         println!("Web server is running - view it at {}", viewer_url);

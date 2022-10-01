@@ -134,7 +134,7 @@ impl eframe::App for App {
                 log_db.add(msg);
                 if start.elapsed() > instant::Duration::from_millis(10) {
                     egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                    break;
+                    break; // don't block the main thread for too long
                 }
             }
         }

@@ -7,11 +7,11 @@
 use std::task::{Context, Poll};
 
 use futures_util::future;
-use hyper::service::Service;
+use hyper::{server::conn::AddrIncoming, service::Service};
 use hyper::{Body, Request, Response};
 
 #[derive(Debug)]
-pub struct Svc;
+struct Svc;
 
 impl Service<Request<Body>> for Svc {
     type Response = Response<Body>;
@@ -51,7 +51,7 @@ impl Service<Request<Body>> for Svc {
     }
 }
 
-pub struct MakeSvc;
+struct MakeSvc;
 
 impl<T> Service<T> for MakeSvc {
     type Response = Svc;
@@ -67,10 +67,21 @@ impl<T> Service<T> for MakeSvc {
     }
 }
 
-pub async fn run(port: u16) -> Result<(), Box<dyn std::error::Error>> {
-    let bind_addr = format!("127.0.0.1:{}", port).parse().unwrap();
-    let server = hyper::Server::bind(&bind_addr).serve(MakeSvc);
-    println!("Serving viewer on http://{}", bind_addr);
-    server.await?;
-    Ok(())
+// ----------------------------------------------------------------------------
+
+pub struct WebServer {
+    server: hyper::Server<AddrIncoming, MakeSvc>,
+}
+
+impl WebServer {
+    pub fn new(port: u16) -> Self {
+        let bind_addr = format!("127.0.0.1:{}", port).parse().unwrap();
+        let server = hyper::Server::bind(&bind_addr).serve(MakeSvc);
+        Self { server }
+    }
+
+    pub async fn serve(self) -> Result<(), Box<dyn std::error::Error>> {
+        self.server.await?;
+        Ok(())
+    }
 }
