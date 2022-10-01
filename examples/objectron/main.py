@@ -116,7 +116,7 @@ def log_camera(cam: ARCamera):
     """Logs a camera from an `ARFrame` using the Rerun SDK."""
 
     world_from_cam = np.asarray(cam.transform).reshape((4, 4))
-    translation = world_from_cam[3][:3]
+    translation = [world_from_cam[0][3], world_from_cam[1][3], world_from_cam[2][3]]
     intrinsics = np.asarray(cam.intrinsics).reshape((3, 3))
     rot = R.from_matrix(world_from_cam[..., 0:3][0:3,])
     (w, h) = (cam.image_resolution_width, cam.image_resolution_height)
