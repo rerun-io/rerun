@@ -50,13 +50,13 @@ pub(crate) fn apply_design_tokens(ctx: &egui::Context) {
     egui_style.visuals.widgets.hovered.bg_fill =
         get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
 
-    egui_style.visuals.widgets.noninteractive.fg_stroke.color =
-        get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
-    egui_style.visuals.widgets.active.fg_stroke.color =
-        get_aliased_color(&json, "{Alias.Color.Text.Strong.value}");
-    // egui_style.visuals.widgets.inactive.fg_stroke.color =
-    //     get_aliased_color(&json, "{Alias.Color.Icon.Default.value}");
-    // TODO(emilk): weak text color
+    let subudued = get_aliased_color(&json, "{Alias.Color.Text.Subdued.value}");
+    let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
+    let strong = get_aliased_color(&json, "{Alias.Color.Text.Strong.value}");
+
+    egui_style.visuals.widgets.noninteractive.fg_stroke.color = subudued; // non-interactive text
+    egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
+    egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
 
     ctx.set_style(egui_style);
 }
