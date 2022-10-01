@@ -106,6 +106,7 @@ async fn main() {
         panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
     } else {
         re_viewer::run_native_app(Box::new(move |cc| {
+            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(&cc.egui_ctx, cc.storage, rx);
             app.set_profiler(profiler);
             Box::new(app)

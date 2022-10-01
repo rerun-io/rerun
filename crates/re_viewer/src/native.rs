@@ -40,7 +40,7 @@ pub fn run_native_viewer_with_rx(rx: Receiver<LogMsg>) {
     }));
 }
 
-fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
+pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: Receiver<T>,
     ctx: egui::Context,
 ) -> Receiver<T> {
