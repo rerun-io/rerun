@@ -1164,7 +1164,7 @@ struct Segment {
     x: RangeInclusive<f32>,
 
     /// Matches [`Self::x`] (linear transform).
-    time: TimeRange,
+    time: TimeRangeF,
 
     /// does NOT match any of the above. Instead this is a tight bound.
     tight_time: TimeRange,
@@ -1235,10 +1235,10 @@ impl TimeRangesUi {
                 let x_range = (*x_range.start() - expansion)..=(*x_range.end() + expansion);
 
                 let range = if range.min == range.max {
-                    *range // don't expand zero-width segments (e.g. `TimeInt::BEGINNING`).
+                    TimeRangeF::from(*range) // don't expand zero-width segments (e.g. `TimeInt::BEGINNING`).
                 } else {
                     let time_expansion = TimeReal::from(expansion / points_per_time);
-                    TimeRange::new(range.min - time_expansion, range.max + time_expansion)
+                    TimeRangeF::new(range.min - time_expansion, range.max + time_expansion)
                 };
 
                 Segment {
@@ -1271,7 +1271,7 @@ impl TimeRangesUi {
     fn snap_time(&self, value: TimeReal) -> TimeReal {
         for segment in &self.segments {
             if value < segment.time.min {
-                return segment.time.min.into();
+                return segment.time.min;
             } else if value <= segment.time.max {
                 return value;
             }
@@ -1323,7 +1323,7 @@ impl TimeRangesUi {
                 let t = TimeRangeF::new(last_time, segment.time.min).inverse_lerp(needle_time);
                 return Some(lerp(last_x..=*segment.x.start(), t));
             } else if needle_time <= segment.time.max {
-                let t = TimeRangeF::from(segment.time).inverse_lerp(needle_time);
+                let t = segment.time.inverse_lerp(needle_time);
                 return Some(lerp(segment.x.clone(), t));
             } else {
                 last_x = *segment.x.end();
@@ -1351,7 +1351,7 @@ impl TimeRangesUi {
                 return Some(TimeRangeF::new(last_time, segment.time.min).lerp(t));
             } else if needle_x <= *segment.x.end() {
                 let t = remap(needle_x, segment.x.clone(), 0.0..=1.0);
-                return Some(TimeRangeF::from(segment.time).lerp(t));
+                return Some(segment.time.lerp(t));
             } else {
                 last_x = *segment.x.end();
                 last_time = segment.time.max;
@@ -1407,7 +1407,7 @@ fn paint_time_range_ticks(
     time_area_painter: &egui::Painter,
     rect: &Rect,
     time_type: TimeType,
-    range: &TimeRange,
+    range: &TimeRangeF,
 ) {
     let font_id = egui::TextStyle::Body.resolve(ui.style());
 

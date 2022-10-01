@@ -13,11 +13,8 @@ pub(crate) struct TimeRange {
 
 impl TimeRange {
     #[inline]
-    pub fn new(min: impl Into<TimeInt>, max: impl Into<TimeInt>) -> Self {
-        Self {
-            min: min.into(),
-            max: max.into(),
-        }
+    pub fn new(min: TimeInt, max: TimeInt) -> Self {
+        Self { min, max }
     }
 
     #[inline]
@@ -27,11 +24,6 @@ impl TimeRange {
             min: value,
             max: value,
         }
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.min == self.max
     }
 
     /// The amount of time or sequences covered by this range.
@@ -131,12 +123,6 @@ impl From<&TimeRangeF> for RangeInclusive<TimeReal> {
 
 impl From<TimeRange> for TimeRangeF {
     fn from(range: TimeRange) -> Self {
-        Self::new(range.min, range.max)
-    }
-}
-
-impl From<TimeRangeF> for TimeRange {
-    fn from(range: TimeRangeF) -> Self {
         Self::new(range.min, range.max)
     }
 }
