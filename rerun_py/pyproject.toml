@@ -28,7 +28,6 @@ documentation = "https://github.com/rerun-io/rerun"
 repository = "https://github.com/rerun-io/rerun"
 
 [tool.maturin]
-all-features = true
 locked = true
 
 [tool.isort]
