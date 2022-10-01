@@ -15,7 +15,7 @@ default = ["server"]
 server = ["dep:re_sdk_comms"]
 
 # Support serving a web viewer
-web = ["re_ws_comms/server", "re_web_server", "webbrowser"]
+web = ["re_ws_comms/server", "dep:re_web_server", "dep:webbrowser"]
 
 
 [dependencies]
