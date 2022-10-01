@@ -20,7 +20,7 @@ cargo doc --no-deps --open
 To learn about the viewer, run:
 
 ```
-cargo run --release -p rerun -- --help
+cargo run -p rerun -- --help
 ```
 
 ## Tools
