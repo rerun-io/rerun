@@ -21,7 +21,7 @@ results. log the Objectron dataset.
 
 Setup:
 ```sh
-(cd examples/deep_sdf && ./download_dataset.py)
+./examples/deep_sdf/download_dataset.py
 ```
 
 Run:
@@ -101,7 +101,7 @@ if __name__ == '__main__':
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    cachedir = f"cache"
+    cachedir = Path(os.path.dirname(__file__)).joinpath("cache")
     os.makedirs(cachedir, exist_ok=True)
 
     for path in args.path:
