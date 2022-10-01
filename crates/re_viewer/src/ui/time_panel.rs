@@ -1275,6 +1275,30 @@ impl TimeRangesUi {
             }
         }
 
+        // sanity check:
+        #[cfg(debug_assertions)]
+        for segment in &slf.segments {
+            let pixel_precision = 0.5;
+
+            debug_assert_eq!(
+                slf.time_from_x(*segment.x.start()).unwrap(),
+                segment.time.min
+            );
+            debug_assert_eq!(slf.time_from_x(*segment.x.end()).unwrap(), segment.time.max);
+
+            if segment.time.is_empty() {
+                let x = slf.x_from_time(segment.time.min).unwrap();
+                let mid_x = lerp(segment.x.clone(), 0.5);
+                debug_assert!((mid_x - x).abs() < pixel_precision);
+            } else {
+                let min_x = slf.x_from_time(segment.time.min).unwrap();
+                debug_assert!((min_x - *segment.x.start()).abs() < pixel_precision);
+
+                let max_x = slf.x_from_time(segment.time.max).unwrap();
+                debug_assert!((max_x - *segment.x.end()).abs() < pixel_precision);
+            }
+        }
+
         slf
     }
 
