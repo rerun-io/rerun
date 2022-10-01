@@ -29,6 +29,11 @@ impl TimeRange {
         }
     }
 
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.min == self.max
+    }
+
     /// The amount of time or sequences covered by this range.
     #[inline]
     pub fn length(&self) -> TimeInt {
@@ -97,9 +102,12 @@ impl TimeRangeF {
     }
 
     pub fn lerp(&self, t: f32) -> TimeReal {
-        let t = t as f64;
-        let (min, max) = (self.min.as_f64(), self.max.as_f64());
-        TimeReal::from(min + t * (max - min))
+        self.min + (self.max - self.min) * t as f64
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.min == self.max
     }
 
     /// The amount of time or sequences covered by this range.

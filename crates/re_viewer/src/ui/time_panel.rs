@@ -826,7 +826,7 @@ fn time_selection_ui(
             };
             time_area_painter.rect_filled(rect, 1.0, main_color);
 
-            if is_active {
+            if is_active && !selected_range.is_empty() {
                 let range_text =
                     format_duration(time_ctrl.time_type(), selected_range.length().abs());
                 if !range_text.is_empty() {
@@ -1233,8 +1233,14 @@ impl TimeRangesUi {
                 // Also gives zero-width segments some width!
                 let expansion = gap_width / 3.0;
                 let x_range = (*x_range.start() - expansion)..=(*x_range.end() + expansion);
-                let time_expansion = TimeReal::from(expansion / points_per_time);
-                let range = TimeRange::new(range.min - time_expansion, range.max + time_expansion);
+
+                let range = if range.min == range.max {
+                    *range // don't expand zero-width segments (e.g. `TimeInt::BEGINNING`).
+                } else {
+                    let time_expansion = TimeReal::from(expansion / points_per_time);
+                    TimeRange::new(range.min - time_expansion, range.max + time_expansion)
+                };
+
                 Segment {
                     x: x_range,
                     time: range,
@@ -1307,7 +1313,7 @@ impl TimeRangesUi {
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
 
-        if needle_time <= last_time {
+        if needle_time < last_time {
             // extrapolate:
             return Some(last_x - self.points_per_time * (last_time - needle_time).as_f32());
         }
@@ -1334,7 +1340,7 @@ impl TimeRangesUi {
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
 
-        if needle_x <= last_x {
+        if needle_x < last_x {
             // extrapolate:
             return Some(last_time + TimeReal::from((needle_x - last_x) / self.points_per_time));
         }
