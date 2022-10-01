@@ -61,18 +61,20 @@ pub(crate) fn apply_design_tokens(ctx: &egui::Context) {
     ctx.set_style(egui_style);
 }
 
-fn get_aliased_color(json: &serde_json::Value, json_path: &str) -> egui::Color32 {
-    parse_color(get_alias_str(json, json_path))
+// ----------------------------------------------------------------------------
+
+fn get_aliased_color(json: &serde_json::Value, alias_path: &str) -> egui::Color32 {
+    parse_color(get_alias_str(json, alias_path))
 }
 
-fn get_alias_str<'json>(json: &'json serde_json::Value, json_path: &str) -> &'json str {
-    let global_path = follow_path_or_die(json, json_path).as_str().unwrap();
-    follow_path_and_alias(json, global_path).as_str().unwrap()
+fn get_alias_str<'json>(json: &'json serde_json::Value, alias_path: &str) -> &'json str {
+    let global_path = follow_path_or_die(json, alias_path).as_str().unwrap();
+    global_path_value(json, global_path).as_str().unwrap()
 }
 
-fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, json_path: &str) -> T {
-    let global_path = follow_path_or_die(json, json_path).as_str().unwrap();
-    let global_value = follow_path_and_alias(json, global_path);
+fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, alias_path: &str) -> T {
+    let global_path = follow_path_or_die(json, alias_path).as_str().unwrap();
+    let global_value = global_path_value(json, global_path);
     serde_json::from_value(global_value.clone()).unwrap_or_else(|err| {
         panic!(
             "Failed to convert {global_path:?} to {}: {err}. Json: {json:?}",
@@ -81,23 +83,11 @@ fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, json_path
     })
 }
 
-#[allow(non_snake_case)]
-#[derive(serde::Deserialize)]
-struct Typography {
-    fontSize: String,
-    fontWeight: String,
-    fontFamily: String,
-    // lineHeight: String,  // TODO(emilk)
-    // letterSpacing: String, // TODO(emilk)
-}
-
-fn follow_path_and_alias<'json>(
+fn global_path_value<'json>(
     value: &'json serde_json::Value,
-    path: &str,
+    global_path: &str,
 ) -> &'json serde_json::Value {
-    let json = follow_path(value, path)
-        .unwrap_or_else(|| panic!("Failed to find {path:?} in design tokens"));
-    json.get("value").unwrap()
+    follow_path_or_die(value, global_path).get("value").unwrap()
 }
 
 fn follow_path_or_die<'json>(
@@ -117,6 +107,18 @@ fn follow_path<'json>(
         value = value.get(component)?;
     }
     Some(value)
+}
+
+// ----------------------------------------------------------------------------
+
+#[allow(non_snake_case)]
+#[derive(serde::Deserialize)]
+struct Typography {
+    fontSize: String,
+    fontWeight: String,
+    fontFamily: String,
+    // lineHeight: String,  // TODO(emilk)
+    // letterSpacing: String, // TODO(emilk)
 }
 
 fn parse_px(pixels: &str) -> f32 {
