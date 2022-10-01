@@ -195,7 +195,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, &state, tensor_shape, slice, color_from_value);
+                slice_ui(ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -220,7 +220,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, &state, tensor_shape, slice, color_from_value);
+                slice_ui(ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -245,7 +245,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, &state, tensor_shape, slice, color_from_value);
+                slice_ui(ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
