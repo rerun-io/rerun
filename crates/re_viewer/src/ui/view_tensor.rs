@@ -23,7 +23,7 @@ pub struct TensorViewState {
     /// How we map values to colors.
     color_mapping: ColorMapping,
 
-    /// Should we scale the rendered texture, and if so, how?
+    /// Scaling, filtering, aspect ratio, etc for the rendered texture.
     texture_settings: TextureSettings,
 }
 
@@ -88,29 +88,47 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
 
 /// Should we scale the rendered texture, and if so, how?
 #[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-enum TextureSettings {
+enum TextureScaling {
     /// No scaling, texture size will match the tensor's width/height dimensions.
     None,
-    /// Scale the texture with the given filter to fill the remaining space.
-    Fill(egui::TextureFilter),
+    /// Scale the texture to fill the remaining space in the UI container.
+    Fill,
+}
+
+impl Default for TextureScaling {
+    fn default() -> Self {
+        Self::Fill
+    }
+}
+
+impl Display for TextureScaling {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            TextureScaling::None => "None",
+            TextureScaling::Fill => "Fill",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+/// Scaling, filtering, aspect ratio, etc for the rendered texture.
+#[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+struct TextureSettings {
+    /// Should the aspect ratio of the tensor be kept when scaling?
+    keep_aspect_ratio: bool,
+    /// Should we scale the texture when rendering?
+    scaling: TextureScaling,
+    /// Specifies the sampling filter used to render the texture.
+    filter: egui::TextureFilter,
 }
 
 impl Default for TextureSettings {
     fn default() -> Self {
-        Self::Fill(egui::TextureFilter::Nearest)
-    }
-}
-
-impl Display for TextureSettings {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            TextureSettings::None => "None",
-            TextureSettings::Fill(filter) => match filter {
-                egui::TextureFilter::Nearest => "Fill (Nearest)",
-                egui::TextureFilter::Linear => "Fill (Linear)",
-            },
-        };
-        write!(f, "{}", s)
+        Self {
+            keep_aspect_ratio: false,
+            scaling: TextureScaling::default(),
+            filter: egui::TextureFilter::Nearest,
+        }
     }
 }
 
@@ -122,17 +140,24 @@ impl TextureSettings {
         margin: Vec2,
         image: ColorImage,
     ) -> (egui::Painter, egui::Rect) {
-        let desired_size = match self {
-            TextureSettings::None => egui::vec2(image.size[0] as _, image.size[1] as _) + margin,
-            TextureSettings::Fill(_) => ui.available_size() - margin,
-        };
-        let filter = match *self {
-            TextureSettings::None => egui::TextureFilter::Nearest,
-            TextureSettings::Fill(filter) => filter,
+        let img_size = egui::vec2(image.size[0] as _, image.size[1] as _);
+        let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
+        let desired_size = match self.scaling {
+            TextureScaling::None => img_size + margin,
+            TextureScaling::Fill => {
+                let desired_size = ui.available_size() - margin;
+                if self.keep_aspect_ratio {
+                    let ar = img_size.x / img_size.y;
+                    let scale = (desired_size / img_size).min_elem();
+                    img_size * ar * scale
+                } else {
+                    desired_size
+                }
+            }
         };
 
         // TODO(cmc): don't recreate texture unless necessary
-        let texture = ui.ctx().load_texture("tensor_slice", image, filter);
+        let texture = ui.ctx().load_texture("tensor_slice", image, self.filter);
 
         let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
         let rect = response.rect;
@@ -151,15 +176,34 @@ impl TextureSettings {
 // ui
 impl TextureSettings {
     fn show(&mut self, ui: &mut egui::Ui) {
+        // TODO(cmc): probably should be provided by egui?
+        let tf_to_string = |tf: egui::TextureFilter| match tf {
+            egui::TextureFilter::Nearest => "Nearest",
+            egui::TextureFilter::Linear => "Linear",
+        };
+
         ui.group(|ui| {
-            egui::ComboBox::from_label("Texture scaling")
-                .selected_text(self.to_string())
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_label("Texture scaling")
+                    .selected_text(self.scaling.to_string())
+                    .show_ui(ui, |ui| {
+                        let mut selectable_value = |ui: &mut egui::Ui, e| {
+                            ui.selectable_value(&mut self.scaling, e, e.to_string())
+                        };
+                        selectable_value(ui, TextureScaling::None);
+                        selectable_value(ui, TextureScaling::Fill);
+                    });
+                ui.checkbox(&mut self.keep_aspect_ratio, "Keep aspect ratio");
+            });
+
+            egui::ComboBox::from_label("Texture filter")
+                .selected_text(tf_to_string(self.filter))
                 .show_ui(ui, |ui| {
-                    let mut selectable_value =
-                        |ui: &mut egui::Ui, e| ui.selectable_value(self, e, e.to_string());
-                    selectable_value(ui, Self::None);
-                    selectable_value(ui, Self::Fill(egui::TextureFilter::Linear));
-                    selectable_value(ui, Self::Fill(egui::TextureFilter::Nearest));
+                    let mut selectable_value = |ui: &mut egui::Ui, e| {
+                        ui.selectable_value(&mut self.filter, e, tf_to_string(e))
+                    };
+                    selectable_value(ui, egui::TextureFilter::Linear);
+                    selectable_value(ui, egui::TextureFilter::Nearest);
                 });
         });
     }
