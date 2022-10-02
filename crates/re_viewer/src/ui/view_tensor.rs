@@ -24,7 +24,7 @@ pub struct TensorViewState {
     color_mapping: ColorMapping,
 
     /// Should we scale the rendered texture, and if so, how?
-    texture_scaling: TextureScaling,
+    texture_settings: TextureSettings,
 }
 
 impl TensorViewState {
@@ -33,7 +33,7 @@ impl TensorViewState {
             selector_values: Default::default(),
             dimension_mapping: DimensionMapping::create(tensor),
             color_mapping: ColorMapping::default(),
-            texture_scaling: TextureScaling::default(),
+            texture_settings: TextureSettings::default(),
         }
     }
 }
@@ -88,24 +88,24 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
 
 /// Should we scale the rendered texture, and if so, how?
 #[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-enum TextureScaling {
+enum TextureSettings {
     /// No scaling, texture size will match the tensor's width/height dimensions.
     None,
     /// Scale the texture with the given filter to fill the remaining space.
     Fill(egui::TextureFilter),
 }
 
-impl Default for TextureScaling {
+impl Default for TextureSettings {
     fn default() -> Self {
         Self::Fill(egui::TextureFilter::Nearest)
     }
 }
 
-impl Display for TextureScaling {
+impl Display for TextureSettings {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            TextureScaling::None => "None",
-            TextureScaling::Fill(filter) => match filter {
+            TextureSettings::None => "None",
+            TextureSettings::Fill(filter) => match filter {
                 egui::TextureFilter::Nearest => "Fill (Nearest)",
                 egui::TextureFilter::Linear => "Fill (Linear)",
             },
@@ -115,7 +115,7 @@ impl Display for TextureScaling {
 }
 
 // helpers
-impl TextureScaling {
+impl TextureSettings {
     fn paint_image(
         &self,
         ui: &mut egui::Ui,
@@ -123,12 +123,12 @@ impl TextureScaling {
         image: ColorImage,
     ) -> (egui::Painter, egui::Rect) {
         let desired_size = match self {
-            TextureScaling::None => egui::vec2(image.size[0] as _, image.size[1] as _) + margin,
-            TextureScaling::Fill(_) => ui.available_size() - margin,
+            TextureSettings::None => egui::vec2(image.size[0] as _, image.size[1] as _) + margin,
+            TextureSettings::Fill(_) => ui.available_size() - margin,
         };
         let filter = match *self {
-            TextureScaling::None => egui::TextureFilter::Nearest,
-            TextureScaling::Fill(filter) => filter,
+            TextureSettings::None => egui::TextureFilter::Nearest,
+            TextureSettings::Fill(filter) => filter,
         };
 
         // TODO(cmc): don't recreate texture unless necessary
@@ -149,7 +149,7 @@ impl TextureScaling {
 }
 
 // ui
-impl TextureScaling {
+impl TextureSettings {
     fn show(&mut self, ui: &mut egui::Ui) {
         ui.group(|ui| {
             egui::ComboBox::from_label("Texture scaling")
@@ -178,7 +178,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
         dimension_mapping_ui(ui, &mut state.dimension_mapping, &tensor.shape);
     });
 
-    state.texture_scaling.show(ui);
+    state.texture_settings.show(ui);
     selectors_ui(ui, state, tensor);
 
     let tensor_shape = &tensor.shape;
@@ -378,7 +378,7 @@ fn image_ui(
         let font_id = egui::TextStyle::Body.resolve(ui.style());
         let margin = Vec2::splat(font_id.size + 2.0);
 
-        let (painter, image_rect) = view_state.texture_scaling.paint_image(ui, margin, image);
+        let (painter, image_rect) = view_state.texture_settings.paint_image(ui, margin, image);
 
         let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
         let text_color = ui.visuals().text_color();
