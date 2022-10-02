@@ -11,7 +11,7 @@ default-run = "rerun"
 [features]
 default = ["server"]
 
-## Run a HTTP server that listens to incoming log messages from a Rerun SDK.
+## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["dep:re_sdk_comms"]
 
 ## Support serving a web viewer.
