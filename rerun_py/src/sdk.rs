@@ -68,8 +68,11 @@ impl Sdk {
                 }
                 self.sender = Sender::Remote(client);
             }
-            Sender::WebViewer(_) => {
-                panic!("We are already serving, cannot connect"); // TODO(emilk): shut down the server or return an error.
+            #[cfg(feature = "web")]
+            Sender::WebViewer(web_server, _) => {
+                re_log::info!("Shutting down web server.");
+                web_server.abort();
+                self.sender = Sender::Remote(re_sdk_comms::Client::new(addr));
             }
         }
     }
@@ -77,9 +80,8 @@ impl Sdk {
     #[cfg(feature = "web")]
     pub fn serve(&mut self) {
         let (rerun_tx, rerun_rx) = std::sync::mpsc::channel();
-        self.sender = Sender::WebViewer(rerun_tx);
 
-        self.tokio_rt.spawn(async {
+        let web_server_join_handle = self.tokio_rt.spawn(async {
             let server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
                 .await
                 .unwrap();
@@ -104,6 +106,8 @@ impl Sdk {
             server_handle.await.unwrap().unwrap();
             web_server_handle.await.unwrap();
         });
+
+        self.sender = Sender::WebViewer(web_server_join_handle, rerun_tx);
     }
 
     #[cfg(feature = "re_viewer")]
@@ -128,8 +132,10 @@ impl Sdk {
 
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
-            Sender::Remote(_) | Sender::WebViewer(_) => vec![],
+            Sender::Remote(_) => vec![],
             Sender::Buffered(log_messages) => std::mem::take(log_messages),
+            #[cfg(feature = "web")]
+            Sender::WebViewer(_, _) => vec![],
         }
     }
 
@@ -194,8 +200,8 @@ enum Sender {
     Buffered(Vec<LogMsg>),
 
     /// Send it to the web viewer over WebSockets
-    #[allow(unused)] // only used with `#[cfg(feature = "web")]`
-    WebViewer(std::sync::mpsc::Sender<LogMsg>),
+    #[cfg(feature = "web")]
+    WebViewer(tokio::task::JoinHandle<()>, std::sync::mpsc::Sender<LogMsg>),
 }
 
 impl Default for Sender {
@@ -209,7 +215,9 @@ impl Sender {
         match self {
             Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
-            Self::WebViewer(sender) => {
+
+            #[cfg(feature = "web")]
+            Self::WebViewer(_, sender) => {
                 if let Err(err) = sender.send(msg) {
                     re_log::error!("Failed to send log message to web server: {err}");
                 }
