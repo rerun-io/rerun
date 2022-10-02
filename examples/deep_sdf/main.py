@@ -27,15 +27,13 @@ Setup:
 Run:
 ```sh
 # assuming your virtual env is up
-# TODO(cmc): use a glb example asap
-python3 examples/deep_sdf/main.py examples/deep_sdf/dataset/buddha/buddha.obj
+python3 examples/deep_sdf/main.py examples/deep_sdf/dataset/avocado.glb
 ```
 """
 
 
 import argparse
 import os
-import sys
 
 import mesh_to_sdf
 import numpy as np
@@ -47,6 +45,21 @@ from typing import Tuple, cast
 
 from scipy.spatial.transform import Rotation as R
 from trimesh import Trimesh
+from rerun_sdk import MeshFormat
+
+
+# TODO(cmc): This really should be the job of the SDK.
+def get_mesh_format(mesh: Trimesh) -> MeshFormat:
+    ext = Path(mesh.metadata['file_name']).suffix.lower()
+    match ext:
+        case ".glb":
+            return MeshFormat.GLB
+        # case ".gltf":
+        #     return MeshFormat.GLTF
+        case ".obj":
+            return MeshFormat.OBJ
+        case _:
+            raise ValueError(f"unknown file extension: {ext}")
 
 
 def read_mesh(path: Path) -> Trimesh:
@@ -61,16 +74,33 @@ def compute_voxel_sdf(mesh: Trimesh, resolution: int) -> np.ndarray:
     return voxvol
 
 
-def compute_sample_sdf(mesh: Trimesh) -> Tuple[np.ndarray, np.ndarray]:
+def compute_sample_sdf(mesh: Trimesh, num_points: int) -> Tuple[np.ndarray, np.ndarray]:
     print("computing sample-based SDF")
     points, sdf, _ = mesh_to_sdf.sample_sdf_near_surface(mesh,
-                                                         number_of_points=250000,
+                                                         number_of_points=num_points,
                                                          return_gradients=True)
     return (points, sdf)
 
 
-def log_mesh(path: Path, mesh: Trimesh, points: np.ndarray, sdf: np.ndarray):
-    rerun.set_space_up("world", [0, 1, 0])
+def log_mesh(path: Path, mesh: Trimesh):
+    # Internally, `mesh_to_sdf` will normalize everything to a unit sphere centered around the
+    # center of mass.
+    # We need to compute a proper transform to map the mesh we're logging with the point clouds
+    # that `mesh_to_sdf` returns.
+    bs1 = mesh.bounding_sphere
+    bs2 = mesh_to_sdf.scale_to_unit_sphere(mesh).bounding_sphere
+
+    with open(path, mode='rb') as file:
+        scale = bs2.scale / bs1.scale
+        center = bs2.center - bs1.center * scale
+        rerun.log_mesh_file("mesh", mesh_format, file.read(), space="world",
+                            transform=np.array([[scale, 0, 0, center[0]],
+                                                [0, scale, 0, center[1]],
+                                                [0, 0, scale, center[2]]]))
+
+
+def log_sampled_sdf(points: np.ndarray, sdf: np.ndarray):
+    rerun.set_space_up("world", [0, 1, 0]) # TODO: depends on the mesh really
     rerun.log_points("sdf/inside",
                      points[sdf <= 0],
                      colors=np.array([255, 0, 0, 255]),
@@ -79,6 +109,11 @@ def log_mesh(path: Path, mesh: Trimesh, points: np.ndarray, sdf: np.ndarray):
                      points[sdf > 0],
                      colors=np.array([0, 255, 0, 255]),
                      space="world")
+
+
+def log_volumetric_sdf(voxvol: np.ndarray):
+    names = ["width", "height", "depth"]
+    rerun.log_tensor("sdf/tensor", voxvol, names=names, space="tensor")
 
 
 if __name__ == '__main__':
@@ -94,8 +129,10 @@ if __name__ == '__main__':
                         help='Save data to a .rrd file at this path')
     parser.add_argument('--resolution', type=int, default=128,
                         help='Specifies the resolution of the voxel volume')
-    parser.add_argument('path', type=Path, nargs='+',
-                        help='Mesh(es) to log (e.g. `dataset/buddha/buddha.obj`)')
+    parser.add_argument('--points', type=int, default=250_000,
+                        help='Specifies the number of points for the point cloud')
+    parser.add_argument('path', type=Path,
+                        help='Mesh to log (e.g. `dataset/avocado.glb`)')
     args = parser.parse_args()
 
     if args.connect:
@@ -107,43 +144,39 @@ if __name__ == '__main__':
     cachedir = Path(os.path.dirname(__file__)).joinpath("cache")
     os.makedirs(cachedir, exist_ok=True)
 
-    for path in args.path:
-        # TODO(cmc): gotta match the mesh center with the point cloud center first
-        # with open(path, mode='rb') as file:
-        #     rerun.log_mesh_file("mesh", MeshFormat.OBJ, file.read())
+    path = args.path
+    mesh = read_mesh(path)
+    mesh_format = get_mesh_format(mesh)
 
-        basename = os.path.basename(path)
-        points_path = f"{cachedir}/{basename}.points.npy"
-        sdf_path = f"{cachedir}/{basename}.sdf.npy"
-        voxvol_path = f"{cachedir}/{basename}.voxvol.{args.resolution}.npy"
+    basename = os.path.basename(path)
+    points_path = f"{cachedir}/{basename}.points.{args.points}.npy"
+    sdf_path = f"{cachedir}/{basename}.sdf.npy"
+    voxvol_path = f"{cachedir}/{basename}.voxvol.{args.resolution}.npy"
 
-        mesh = read_mesh(path)
+    try:
+        with open(sdf_path, 'rb') as f:
+            sdf = np.load(sdf_path)
+        with open(points_path, 'rb') as f:
+            points = np.load(points_path)
+    except:
+        (points, sdf) = compute_sample_sdf(mesh, args.points)
 
-        try:
-            with open(sdf_path, 'rb') as f:
-                sdf = np.load(sdf_path)
-            with open(points_path, 'rb') as f:
-                points = np.load(points_path)
-        except:
-            (points, sdf) = compute_sample_sdf(mesh)
+    try:
+        with open(voxvol_path, 'rb') as f:
+            voxvol = np.load(voxvol_path)
+    except:
+        voxvol = compute_voxel_sdf(mesh, args.resolution)
 
-        try:
-            with open(voxvol_path, 'rb') as f:
-                voxvol = np.load(voxvol_path)
-        except:
-            voxvol = compute_voxel_sdf(mesh, args.resolution)
+    log_mesh(path, mesh)
+    log_sampled_sdf(points, sdf)
+    log_volumetric_sdf(voxvol)
 
-        log_mesh(path, mesh, points, sdf)
-
-        names = ["width", "height", "depth"]
-        rerun.log_tensor("sdf/tensor", voxvol, names=names, space="tensor")
-
-        with open(points_path, 'wb+') as f:
-            np.save(f, points)
-        with open(sdf_path, 'wb+') as f:
-            np.save(f, sdf)
-        with open(voxvol_path, 'wb+') as f:
-            np.save(f, voxvol)
+    with open(points_path, 'wb+') as f:
+        np.save(f, points)
+    with open(sdf_path, 'wb+') as f:
+        np.save(f, sdf)
+    with open(voxvol_path, 'wb+') as f:
+        np.save(f, voxvol)
 
     if args.save is not None:
         rerun.save(args.save)

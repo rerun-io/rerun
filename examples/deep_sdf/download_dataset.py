@@ -53,3 +53,4 @@ def download_glb_sample(name):
 
 
 download_glb_sample("Avocado")
+download_glb_sample("Lantern")
