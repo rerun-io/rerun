@@ -972,7 +972,7 @@ dependencies = [
  "serde",
  "smithay-clipboard",
  "tracing",
- "webbrowser 0.8.0",
+ "webbrowser",
  "winit",
 ]
 
@@ -3016,7 +3016,7 @@ dependencies = [
  "re_ws_comms",
  "tokio",
  "tracing-subscriber",
- "webbrowser 0.7.1",
+ "webbrowser",
 ]
 
 [[package]]
@@ -4079,20 +4079,6 @@ checksum = "ed055ab27f941423197eb86b2035720b1a3ce40504df082cac2ecc6ed73335a1"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "webbrowser"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc6a3cffdb686fbb24d9fb8f03a213803277ed2300f11026a3afe1f108dc021b"
-dependencies = [
- "jni",
- "ndk-glue 0.6.2",
- "url",
- "web-sys",
- "widestring",
- "winapi",
 ]
 
 [[package]]
