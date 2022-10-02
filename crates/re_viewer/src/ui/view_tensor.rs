@@ -114,7 +114,7 @@ impl Display for TextureScaling {
 }
 
 /// Scaling, filtering, aspect ratio, etc for the rendered texture.
-#[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
 struct TextureSettings {
     /// Should the aspect ratio of the tensor be kept when scaling?
     keep_aspect_ratio: bool,
@@ -125,6 +125,14 @@ struct TextureSettings {
 
     /// `true` if the settings have been modified during the current frame.
     dirty: bool,
+}
+
+impl PartialEq for TextureSettings {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.keep_aspect_ratio == rhs.keep_aspect_ratio
+            && self.scaling == rhs.scaling
+            && self.filter == rhs.filter
+    }
 }
 
 impl Default for TextureSettings {
@@ -239,7 +247,7 @@ impl TextureSettings {
                 });
         });
 
-        self.dirty = *self == current;
+        self.dirty = *self != current;
     }
 }
 
