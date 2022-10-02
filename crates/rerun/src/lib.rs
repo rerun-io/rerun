@@ -1,6 +1,10 @@
 //! The main Rerun binary.
 //!
 //! This can act either as a server, a viewer, or both, depending on which options you use when you start it.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 use std::sync::mpsc::Receiver;
 

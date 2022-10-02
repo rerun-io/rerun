@@ -13,7 +13,7 @@ default = []
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = ["dep:puffin", "re_log_types/puffin"]
 
-# Enable (de)serialization using serde.
+## Enable (de)serialization using serde.
 serde = ["dep:serde", "re_log_types/serde"]
 
 
@@ -23,12 +23,13 @@ re_log_types = { path = "../re_log_types" }
 re_string_interner = { path = "../re_string_interner" }
 
 ahash = "0.8"
+document-features = "0.2"
 itertools = "0.10"
 nohash-hasher = "0.2"
 serde = { version = "1", features = ["derive", "rc"], optional = true }
 thiserror = "1.0"
 
-# native:
+# Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin = { version = "0.13", optional = true }
 

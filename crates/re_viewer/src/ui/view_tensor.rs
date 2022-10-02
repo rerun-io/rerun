@@ -1,13 +1,16 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Display};
 
+use eframe::emath::Align2;
 use ndarray::{Axis, Ix2};
 
 use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
-use egui::{epaint::TextShape, Color32, ColorImage};
+use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
 
 use crate::ui::tensor_dimension_mapper::dimension_mapping_ui;
+
+// ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct TensorViewState {
@@ -19,6 +22,9 @@ pub struct TensorViewState {
 
     /// How we map values to colors.
     color_mapping: ColorMapping,
+
+    /// Scaling, filtering, aspect ratio, etc for the rendered texture.
+    texture_settings: TextureSettings,
 }
 
 impl TensorViewState {
@@ -27,9 +33,12 @@ impl TensorViewState {
             selector_values: Default::default(),
             dimension_mapping: DimensionMapping::create(tensor),
             color_mapping: ColorMapping::default(),
+            texture_settings: TextureSettings::default(),
         }
     }
 }
+
+// ----------------------------------------------------------------------------
 
 /// How we map values to colors.
 #[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -77,6 +86,129 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
 
 // ----------------------------------------------------------------------------
 
+/// Should we scale the rendered texture, and if so, how?
+#[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+enum TextureScaling {
+    /// No scaling, texture size will match the tensor's width/height dimensions.
+    None,
+    /// Scale the texture to fill the remaining space in the UI container.
+    Fill,
+}
+
+impl Default for TextureScaling {
+    fn default() -> Self {
+        Self::Fill
+    }
+}
+
+impl Display for TextureScaling {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TextureScaling::None => "None".fmt(f),
+            TextureScaling::Fill => "Fill".fmt(f),
+        }
+    }
+}
+
+/// Scaling, filtering, aspect ratio, etc for the rendered texture.
+#[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+struct TextureSettings {
+    /// Should the aspect ratio of the tensor be kept when scaling?
+    keep_aspect_ratio: bool,
+    /// Should we scale the texture when rendering?
+    scaling: TextureScaling,
+    /// Specifies the sampling filter used to render the texture.
+    filter: egui::TextureFilter,
+}
+
+impl Default for TextureSettings {
+    fn default() -> Self {
+        Self {
+            keep_aspect_ratio: false,
+            scaling: TextureScaling::default(),
+            filter: egui::TextureFilter::Nearest,
+        }
+    }
+}
+
+// helpers
+impl TextureSettings {
+    fn paint_image(
+        &self,
+        ui: &mut egui::Ui,
+        margin: Vec2,
+        image: ColorImage,
+    ) -> (egui::Painter, egui::Rect) {
+        let img_size = egui::vec2(image.size[0] as _, image.size[1] as _);
+        let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
+        let desired_size = match self.scaling {
+            TextureScaling::None => img_size + margin,
+            TextureScaling::Fill => {
+                let desired_size = ui.available_size() - margin;
+                if self.keep_aspect_ratio {
+                    let ar = img_size.x / img_size.y;
+                    let scale = (desired_size / img_size).min_elem();
+                    img_size * ar * scale
+                } else {
+                    desired_size
+                }
+            }
+        };
+
+        // TODO(cmc): don't recreate texture unless necessary
+        let texture = ui.ctx().load_texture("tensor_slice", image, self.filter);
+
+        let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+        let rect = response.rect;
+        let image_rect = egui::Rect::from_min_max(rect.min + margin, rect.max);
+
+        let mut mesh = egui::Mesh::with_texture(texture.id());
+        let uv = egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0));
+        mesh.add_rect_with_uv(image_rect, uv, Color32::WHITE);
+
+        painter.add(mesh);
+
+        (painter, image_rect)
+    }
+}
+
+// ui
+impl TextureSettings {
+    fn show(&mut self, ui: &mut egui::Ui) {
+        let tf_to_string = |tf: egui::TextureFilter| match tf {
+            egui::TextureFilter::Nearest => "Nearest",
+            egui::TextureFilter::Linear => "Linear",
+        };
+
+        ui.group(|ui| {
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_label("Texture scaling")
+                    .selected_text(self.scaling.to_string())
+                    .show_ui(ui, |ui| {
+                        let mut selectable_value = |ui: &mut egui::Ui, e| {
+                            ui.selectable_value(&mut self.scaling, e, e.to_string())
+                        };
+                        selectable_value(ui, TextureScaling::None);
+                        selectable_value(ui, TextureScaling::Fill);
+                    });
+                ui.checkbox(&mut self.keep_aspect_ratio, "Keep aspect ratio");
+            });
+
+            egui::ComboBox::from_label("Texture filter")
+                .selected_text(tf_to_string(self.filter))
+                .show_ui(ui, |ui| {
+                    let mut selectable_value = |ui: &mut egui::Ui, e| {
+                        ui.selectable_value(&mut self.filter, e, tf_to_string(e))
+                    };
+                    selectable_value(ui, egui::TextureFilter::Linear);
+                    selectable_value(ui, egui::TextureFilter::Nearest);
+                });
+        });
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
     crate::profile_function!();
 
@@ -88,6 +220,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
         dimension_mapping_ui(ui, &mut state.dimension_mapping, &tensor.shape);
     });
 
+    state.texture_settings.show(ui);
     selectors_ui(ui, state, tensor);
 
     let tensor_shape = &tensor.shape;
@@ -104,13 +237,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(
-                    ui,
-                    tensor_shape,
-                    &state.dimension_mapping,
-                    slice,
-                    color_from_value,
-                );
+                slice_ui(ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -135,13 +262,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(
-                    ui,
-                    tensor_shape,
-                    &state.dimension_mapping,
-                    slice,
-                    color_from_value,
-                );
+                slice_ui(ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -166,13 +287,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(
-                    ui,
-                    tensor_shape,
-                    &state.dimension_mapping,
-                    slice,
-                    color_from_value,
-                );
+                slice_ui(ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
                 ui.colored_label(ui.visuals().error_fg_color, err.to_string());
@@ -223,27 +338,32 @@ fn selected_tensor_slice<'a, T: Copy>(
 
 fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
+    view_state: &TensorViewState,
     tensor_shape: &[TensorDimension],
-    dimension_mapping: &DimensionMapping,
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
+    crate::profile_function!();
+
     ui.monospace(format!("Slice shape: {:?}", slice.shape()));
     let ndims = slice.ndim();
     if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
-        let dimension_labels = [
-            (
-                dimension_name(tensor_shape, dimension_mapping.width.unwrap()),
-                dimension_mapping.invert_width,
-            ),
-            (
-                dimension_name(tensor_shape, dimension_mapping.height.unwrap()),
-                dimension_mapping.invert_height,
-            ),
-        ];
+        let dimension_labels = {
+            let dm = &view_state.dimension_mapping;
+            [
+                (
+                    dimension_name(tensor_shape, dm.width.unwrap()),
+                    dm.invert_width,
+                ),
+                (
+                    dimension_name(tensor_shape, dm.height.unwrap()),
+                    dm.invert_height,
+                ),
+            ]
+        };
 
         let image = into_image(&slice, color_from_value);
-        image_ui(ui, image, dimension_labels);
+        image_ui(ui, view_state, image, dimension_labels);
     } else {
         ui.colored_label(
             ui.visuals().error_fg_color,
@@ -288,32 +408,21 @@ fn into_image<T: Copy>(
     image
 }
 
-fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_labels: [(String, bool); 2]) {
-    use egui::*;
-
+fn image_ui(
+    ui: &mut egui::Ui,
+    view_state: &TensorViewState,
+    image: ColorImage,
+    dimension_labels: [(String, bool); 2],
+) {
     crate::profile_function!();
-    // TODO(emilk): cache texture - don't create a new texture every frame
-    let texture = ui
-        .ctx()
-        .load_texture("tensor_slice", image, egui::TextureFilter::Linear);
-    egui::ScrollArea::both().show(ui, |ui| {
-        let font_id = TextStyle::Body.resolve(ui.style());
 
+    egui::ScrollArea::both().show(ui, |ui| {
+        let font_id = egui::TextStyle::Body.resolve(ui.style());
         let margin = Vec2::splat(font_id.size + 2.0);
 
-        let desired_size = texture.size_vec2() + margin;
-        let (response, painter) = ui.allocate_painter(desired_size, Sense::hover());
-        let rect = response.rect;
-
-        let image_rect = Rect::from_min_max(rect.min + margin, rect.max);
-
-        let mut mesh = egui::Mesh::with_texture(texture.id());
-        let uv = egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-        mesh.add_rect_with_uv(image_rect, uv, Color32::WHITE);
-        painter.add(mesh);
+        let (painter, image_rect) = view_state.texture_settings.paint_image(ui, margin, image);
 
         let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
-
         let text_color = ui.visuals().text_color();
 
         // Label for X axis, on top:
@@ -339,7 +448,7 @@ fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_labels: [(String, bo
         if invert_height {
             let galley = painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
             painter.add(TextShape {
-                pos: image_rect.left_top() - vec2(galley.size().y, -galley.size().x),
+                pos: image_rect.left_top() - egui::vec2(galley.size().y, -galley.size().x),
                 galley,
                 angle: -std::f32::consts::TAU / 4.0,
                 underline: Default::default(),
@@ -348,7 +457,7 @@ fn image_ui(ui: &mut egui::Ui, image: ColorImage, dimension_labels: [(String, bo
         } else {
             let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
             painter.add(TextShape {
-                pos: image_rect.left_bottom() - vec2(galley.size().y, 0.0),
+                pos: image_rect.left_bottom() - egui::vec2(galley.size().y, 0.0),
                 galley,
                 angle: -std::f32::consts::TAU / 4.0,
                 underline: Default::default(),

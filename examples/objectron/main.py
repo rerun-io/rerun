@@ -116,14 +116,14 @@ def log_camera(cam: ARCamera):
     """Logs a camera from an `ARFrame` using the Rerun SDK."""
 
     world_from_cam = np.asarray(cam.transform).reshape((4, 4))
-    translation = world_from_cam[3][:3]
+    translation = world_from_cam[0:3, 3]
     intrinsics = np.asarray(cam.intrinsics).reshape((3, 3))
-    rot = R.from_matrix(world_from_cam[..., 0:3][0:3,])
+    rot = R.from_matrix(world_from_cam[0:3, 0:3])
     (w, h) = (cam.image_resolution_width, cam.image_resolution_height)
 
     # Because the dataset was collected in portrait:
     swizzle_x_y = np.asarray([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
-    intrinsics = swizzle_x_y.dot(intrinsics.dot(swizzle_x_y))
+    intrinsics = swizzle_x_y @ intrinsics @ swizzle_x_y
     axis = R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
     rot = rot * axis
     (w, h) = (h, w)

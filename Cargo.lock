@@ -880,6 +880,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "document-features"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3267e1ade4f1f6ddd35fed44a04b6514e244ffeda90c6a14a9ee30f9c9fd7a1"
+dependencies = [
+ "litrs",
+]
+
+[[package]]
 name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1925,6 +1934,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "litrs"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9275e0933cf8bb20f008924c0cb07a0692fe54d8064996520bf998de9eb79aa"
+
+[[package]]
 name = "lock_api"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2750,6 +2765,7 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.8.0",
  "criterion",
+ "document-features",
  "itertools",
  "mimalloc",
  "nohash-hasher",
@@ -2784,6 +2800,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "chrono",
+ "document-features",
  "nohash-hasher",
  "puffin",
  "re_string_interner",
@@ -2803,6 +2820,7 @@ dependencies = [
  "bincode",
  "crossbeam",
  "ctrlc",
+ "document-features",
  "re_log",
  "re_log_types",
 ]
@@ -2812,6 +2830,7 @@ name = "re_sdk_python"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "document-features",
  "image",
  "itertools",
  "nohash-hasher",
@@ -2865,6 +2884,7 @@ dependencies = [
  "cgmath",
  "console_error_panic_hook",
  "ctrlc",
+ "document-features",
  "eframe",
  "egui",
  "egui-wgpu",
@@ -2906,6 +2926,7 @@ dependencies = [
 name = "re_web_server"
 version = "0.1.0"
 dependencies = [
+ "document-features",
  "futures-util",
  "glob",
  "hyper",
@@ -2920,6 +2941,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
+ "document-features",
  "ewebsock",
  "futures-channel",
  "futures-util",
@@ -2985,6 +3007,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap 3.2.20",
+ "document-features",
  "mimalloc",
  "puffin",
  "puffin_http",

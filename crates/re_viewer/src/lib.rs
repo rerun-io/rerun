@@ -2,6 +2,10 @@
 //!
 //! This crate contains all the GUI code for the Rerun Viewer,
 //! including all 2D and 3D visualization code.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 mod app;
 pub mod math;

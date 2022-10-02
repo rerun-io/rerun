@@ -1,4 +1,8 @@
-//! Communications between server and viewer
+//! Communications between server and viewer.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 #[cfg(feature = "client")]
 pub(crate) mod tcp_client;
