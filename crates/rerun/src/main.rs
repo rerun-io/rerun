@@ -175,6 +175,6 @@ async fn host_web_viewer(rerun_ws_server_url: String) {
 }
 
 #[cfg(not(feature = "web"))]
-async fn host_web_viewer(rerun_ws_server_url: String) {
+async fn host_web_viewer(_rerun_ws_server_url: String) {
     panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
 }
