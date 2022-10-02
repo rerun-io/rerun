@@ -14,12 +14,16 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["puffin", "glow"]
 
-# You must enable either the `glow` or `wgpu` feature.
-glow = ["eframe/glow", "dep:egui_glow", "dep:glow", "dep:three-d", "dep:three-d-asset"]
-wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:wgpu"]
-
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin", "re_log_types/puffin"]
+
+#! #### Rendering backends
+#! You must enable either `glow` or `wgpu`.
+## Enable the [`glow`](https://crates.io/crates/glow) renderer.
+glow = ["eframe/glow", "dep:egui_glow", "dep:glow", "dep:three-d", "dep:three-d-asset"]
+
+## Enable the [`wgpu`](https://crates.io/crates/wgpu) renderer.
+wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:wgpu"]
 
 
 [dependencies]
@@ -40,6 +44,7 @@ ahash = "0.8"
 anyhow = "1.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
+document-features = "0.2"
 egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc7471eea48df9104fe62acfc96d2b", features = ["serde"] } # 2022-09-06
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released

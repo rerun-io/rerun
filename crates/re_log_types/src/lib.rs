@@ -11,6 +11,10 @@
 //!
 //! Each object is logged to a specific [`ObjPath`] -
 //! check out module-level documentation for [`path`] for more on this.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 #![allow(clippy::manual_range_contains)]
 

@@ -7,7 +7,6 @@ rust-version = "1.63"
 version = "0.1.0"
 
 
-
 [lib]
 crate-type = ["cdylib"]
 name = "rerun_sdk"      # name of the Python library
@@ -16,6 +15,14 @@ name = "rerun_sdk"      # name of the Python library
 [features]
 default = ["extension-module", "re_viewer"]
 
+## Enable embedding the Rerun Viewer in the Python SDK.
+re_viewer = ["dep:re_viewer"]
+
+# We need to enable the `pyo3/extension-module` when building the SDK,
+# but we cannot enable it when building tests and benchmarks, so we
+# must make it an opt-in feature.
+# https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror
+# https://pyo3.rs/latest/building_and_distribution.html#building-python-extension-modules
 extension-module = ["pyo3/extension-module"]
 
 
@@ -27,6 +34,7 @@ re_tensor_ops = { path = "../crates/re_tensor_ops" }
 re_viewer = { path = "../crates/re_viewer", optional = true }
 
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+document-features = "0.2"
 image = { version = "0.24", default-features = false, features = ["jpeg", "jpeg_rayon"] }
 itertools = "0.10"
 nohash-hasher = "0.2"

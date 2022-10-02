@@ -1,4 +1,8 @@
-//! Serves the web viewer wasm/html
+//! Serves the web viewer wasm/html.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 #![forbid(unsafe_code)]
 #![warn(clippy::all, rust_2018_idioms)]
