@@ -21,7 +21,7 @@ server = [
     "tungstenite",
 ]
 
-## Enable encyroption using TLS support (`wss://`).
+## Enable encryption using TLS support (`wss://`).
 tls = [
     "ewebsock/tls",
     "tungstenite/rustls-tls-webpki-roots", # TODO(emilk): there is some problem with this. check alternative tungstenite tls features
