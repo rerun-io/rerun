@@ -237,7 +237,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     Ok(())
 }
 
-/// Server a web-viewer
+/// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 fn serve() -> PyResult<()> {

@@ -82,28 +82,29 @@ impl Sdk {
         let (rerun_tx, rerun_rx) = std::sync::mpsc::channel();
 
         let web_server_join_handle = self.tokio_rt.spawn(async {
-            let server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
+            // This is the server which the web viewer will talk to:
+            let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
                 .await
                 .unwrap();
-            let server_handle = tokio::spawn(server.listen(rerun_rx));
+            let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx));
 
+            // This is the server that serves the WASM+HTML:
             let web_port = 9090;
-
             let web_server = re_web_server::WebServer::new(web_port);
             let web_server_handle = tokio::spawn(async move {
                 web_server.serve().await.unwrap();
             });
 
-            let pub_sub_url = re_ws_comms::default_server_url();
-            let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, pub_sub_url);
+            let ws_server_url = re_ws_comms::default_server_url();
+            let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, ws_server_url);
             let open = true;
             if open {
                 webbrowser::open(&viewer_url).ok();
             } else {
-                println!("Web server is running - view it at {}", viewer_url);
+                re_log::info!("Web server is running - view it at {}", viewer_url);
             }
 
-            server_handle.await.unwrap().unwrap();
+            ws_server_handle.await.unwrap().unwrap();
             web_server_handle.await.unwrap();
         });
 

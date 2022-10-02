@@ -50,8 +50,7 @@ tokio = { version = "1.16", features = ["rt-multi-thread"] }
 tracing-subscriber = "0.3"
 uuid = "1.1"
 
-
-# Optional:
+# Optional dependencies:
 re_ws_comms = { path = "../crates/re_ws_comms", optional = true, features = ["server"] }
 re_web_server = { path = "../crates/re_web_server", optional = true }
 webbrowser = { version = "0.8", optional = true }
