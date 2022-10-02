@@ -54,7 +54,7 @@ uuid = "1.1"
 # Optional:
 re_ws_comms = { path = "../crates/re_ws_comms", optional = true, features = ["server"] }
 re_web_server = { path = "../crates/re_web_server", optional = true }
-webbrowser = { version = "0.7", optional = true }
+webbrowser = { version = "0.8", optional = true }
 
 
 [build-dependencies]
