@@ -2842,6 +2842,8 @@ dependencies = [
  "re_sdk_comms",
  "re_tensor_ops",
  "re_viewer",
+ "rerun",
+ "tokio",
  "tracing-subscriber",
  "uuid",
 ]

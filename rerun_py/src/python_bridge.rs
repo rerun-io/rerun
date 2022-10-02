@@ -75,6 +75,8 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     Sdk::global().set_recording_id(default_recording_id(py));
 
+    m.add_function(wrap_pyfunction!(main, m)?)?;
+
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
 
@@ -191,6 +193,15 @@ fn time(timeless: bool) -> TimePoint {
 }
 
 // ----------------------------------------------------------------------------
+
+#[pyfunction]
+fn main(argv: Vec<String>) {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(rerun::run(argv));
+}
 
 #[pyfunction]
 fn get_recording_id() -> String {

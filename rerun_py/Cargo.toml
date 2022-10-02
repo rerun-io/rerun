@@ -25,6 +25,9 @@ re_viewer = ["dep:re_viewer"]
 # https://pyo3.rs/latest/building_and_distribution.html#building-python-extension-modules
 extension-module = ["pyo3/extension-module"]
 
+## Support serving a web viewer over HTTP.
+web = ["rerun/web"]
+
 
 [dependencies]
 re_log = { path = "../crates/re_log" }
@@ -32,6 +35,7 @@ re_log_types = { path = "../crates/re_log_types" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
 re_tensor_ops = { path = "../crates/re_tensor_ops" }
 re_viewer = { path = "../crates/re_viewer", optional = true }
+rerun = { path = "../crates/rerun" }
 
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 document-features = "0.2"
@@ -42,6 +46,7 @@ numpy = "0.17"
 once_cell = "1.12"
 pyo3 = "0.17"
 rand = { version = "0.8", features = ["std_rng"] }
+tokio = { version = "1.16", features = ["rt-multi-thread"] }
 tracing-subscriber = "0.3"
 uuid = "1.1"
 
