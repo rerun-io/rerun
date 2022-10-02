@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 """
-Example of using DeepSDF to compute SDFs for arbitrary meshes, and the Rerun SDK to visualize the
-results. log the Objectron dataset.
+Generate SDFs for arbitrary meshes using both traditional methods as well as the one described in
+the DeepSDF paper ([1]), and visualize the results using the Rerun SDK.
 
-@InProceedings{Park_2019_CVPR,
+[1] @InProceedings{Park_2019_CVPR,
     author = {
         Park,
         Jeong Joon and Florence,
@@ -27,6 +27,7 @@ Setup:
 Run:
 ```sh
 # assuming your virtual env is up
+# TODO(cmc): use a glb example asap
 python3 examples/deep_sdf/main.py examples/deep_sdf/dataset/buddha/buddha.obj
 ```
 """
@@ -53,9 +54,10 @@ def read_mesh(path: Path) -> Trimesh:
     mesh = trimesh.load(path)
     return cast(Trimesh, mesh)
 
-def compute_voxel_sdf(mesh: Trimesh) -> np.ndarray:
+
+def compute_voxel_sdf(mesh: Trimesh, resolution: int) -> np.ndarray:
     print("computing voxel-based SDF")
-    voxvol = mesh_to_sdf.mesh_to_voxels(mesh, voxel_resolution=64)
+    voxvol = mesh_to_sdf.mesh_to_voxels(mesh, voxel_resolution=resolution)
     return voxvol
 
 
@@ -90,15 +92,15 @@ if __name__ == '__main__':
                         help='Connect to this ip:port')
     parser.add_argument('--save', type=str, default=None,
                         help='Save data to a .rrd file at this path')
-    parser.add_argument('--frames', type=int, default=sys.maxsize,
-                        help='If specifies, limits the number of frames logged')
+    parser.add_argument('--resolution', type=int, default=128,
+                        help='Specifies the resolution of the voxel volume')
     parser.add_argument('path', type=Path, nargs='+',
                         help='Mesh(es) to log (e.g. `dataset/buddha/buddha.obj`)')
     args = parser.parse_args()
 
     if args.connect:
         # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
+        # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
@@ -113,7 +115,7 @@ if __name__ == '__main__':
         basename = os.path.basename(path)
         points_path = f"{cachedir}/{basename}.points.npy"
         sdf_path = f"{cachedir}/{basename}.sdf.npy"
-        voxvol_path = f"{cachedir}/{basename}.voxvol.npy"
+        voxvol_path = f"{cachedir}/{basename}.voxvol.{args.resolution}.npy"
 
         mesh = read_mesh(path)
 
@@ -129,7 +131,7 @@ if __name__ == '__main__':
             with open(voxvol_path, 'rb') as f:
                 voxvol = np.load(voxvol_path)
         except:
-            voxvol = compute_voxel_sdf(mesh)
+            voxvol = compute_voxel_sdf(mesh, args.resolution)
 
         log_mesh(path, mesh, points, sdf)
 
