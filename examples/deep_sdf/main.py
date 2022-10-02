@@ -68,6 +68,7 @@ def compute_sample_sdf(mesh: Trimesh) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def log_mesh(path: Path, mesh: Trimesh, points: np.ndarray, sdf: np.ndarray):
+    rerun.set_space_up("world", [0, 1, 0])
     rerun.log_points("sdf/inside",
                      points[sdf <= 0],
                      colors=np.array([255, 0, 0, 255]),
