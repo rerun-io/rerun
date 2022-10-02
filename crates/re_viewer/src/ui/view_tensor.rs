@@ -162,10 +162,7 @@ impl TextureSettings {
                 // We do have an existing texture with the appropriate settings: Blit the
                 // data for the current frame into it.
 
-                // NOTE: At this point the texture size is guaranteed to exactly match the
-                // size of the tensor itself, so we only require a `nearest` filter for the copy.
-                current.set(data, egui::TextureFilter::Nearest);
-
+                current.set(data, self.filter);
                 return current.clone();
             }
         }
