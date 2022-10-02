@@ -237,13 +237,19 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 }
 
 /// Server a web-viewer
+#[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-fn serve() {
+fn serve() -> PyResult<()> {
     #[cfg(feature = "web")]
-    Sdk::global().serve();
+    {
+        Sdk::global().serve();
+        Ok(())
+    }
 
     #[cfg(not(feature = "web"))]
-    panic!("The Rerun SDK was not compiled with the 'web' feature");
+    Err(PyRuntimeError::new_err(
+        "The Rerun SDK was not compiled with the 'web' feature",
+    ))
 }
 
 /// Wait until all logged data have been sent to the remove server (if any).
