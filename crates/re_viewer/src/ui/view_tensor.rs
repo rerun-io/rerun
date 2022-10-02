@@ -103,11 +103,10 @@ impl Default for TextureScaling {
 
 impl Display for TextureScaling {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            TextureScaling::None => "None",
-            TextureScaling::Fill => "Fill",
-        };
-        write!(f, "{}", s)
+        match self {
+            TextureScaling::None => "None".fmt(f),
+            TextureScaling::Fill => "Fill".fmt(f),
+        }
     }
 }
 
@@ -176,7 +175,6 @@ impl TextureSettings {
 // ui
 impl TextureSettings {
     fn show(&mut self, ui: &mut egui::Ui) {
-        // TODO(cmc): probably should be provided by egui?
         let tf_to_string = |tf: egui::TextureFilter| match tf {
             egui::TextureFilter::Nearest => "Nearest",
             egui::TextureFilter::Linear => "Linear",
