@@ -169,8 +169,7 @@ impl TextureSettings {
 
         // Either we don't have any texture allocated yet, or the current one has become
         // inappropriate: just create one and fill it.
-        println!("bumped");
-        ui.ctx().load_texture("tensor_tex", data, dbg!(self.filter))
+        ui.ctx().load_texture("tensor_tex", data, self.filter)
     }
 
     fn paint_texture(
