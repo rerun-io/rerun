@@ -4,7 +4,7 @@
 
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyRuntimeError, PyTypeError};
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 use std::borrow::Cow;
@@ -195,12 +195,13 @@ fn time(timeless: bool) -> TimePoint {
 // ----------------------------------------------------------------------------
 
 #[pyfunction]
-fn main(argv: Vec<String>) {
+fn main(argv: Vec<String>) -> PyResult<()> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(argv));
+        .block_on(rerun::run(argv))
+        .map_err(|err| PyRuntimeError::new_err(format!("{:#}", err)))
 }
 
 #[pyfunction]

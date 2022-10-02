@@ -85,7 +85,7 @@ impl WebServer {
         Self { server }
     }
 
-    pub async fn serve(self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn serve(self) -> anyhow::Result<()> {
         self.server.await?;
         Ok(())
     }

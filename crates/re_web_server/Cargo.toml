@@ -13,6 +13,7 @@ __ci = []
 
 
 [dependencies]
+anyhow = "1.0.56"
 re_log = { path = "../re_log" }
 
 document-features = "0.2"

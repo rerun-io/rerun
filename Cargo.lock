@@ -2924,6 +2924,7 @@ dependencies = [
 name = "re_web_server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "document-features",
  "futures-util",
  "glob",
