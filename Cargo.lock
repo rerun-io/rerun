@@ -2825,16 +2825,16 @@ checksum = "2f61dcf0b917cd75d4521d7343d1ffff3d1583054133c9b5cbea3375c703c40d"
 
 [[package]]
 name = "puffin"
-version = "0.13.1"
+version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78cc1dc2f2e3e4787201dd9404c9b097967fd74b9013ba41e62448b617cb7ac2"
+checksum = "b40725b2702b9c660938b8d9c56978091252374cc50d73a83b59695b8d32ec03"
 dependencies = [
  "anyhow",
  "bincode",
  "byteorder",
  "once_cell",
  "parking_lot",
- "ruzstd",
+ "ruzstd 0.2.4",
  "serde",
  "zstd",
 ]
@@ -3054,7 +3054,7 @@ dependencies = [
  "puffin",
  "re_string_interner",
  "rmp-serde",
- "ruzstd",
+ "ruzstd 0.3.0",
  "serde",
  "thiserror",
  "uuid",
@@ -3464,6 +3464,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8cada0ef59efa6a5f4dc5e491f93d9f31e3fc7758df421ff1de8a706338e1100"
 dependencies = [
  "byteorder",
+ "twox-hash",
+]
+
+[[package]]
+name = "ruzstd"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffae8df4aa221781b715c27bbed0fac16b6f1e2643efb7af8a24dfc78d444493"
+dependencies = [
+ "byteorder",
+ "thiserror",
  "twox-hash",
 ]
 
