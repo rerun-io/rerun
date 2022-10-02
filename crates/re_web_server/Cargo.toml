@@ -8,12 +8,14 @@ publish = false
 
 
 [features]
-__ci = [] # when set: will compile despite missing wasm artifact, BUT IT WON'T RUN!
+## When set: will compile despite missing WASM artifact, BUT IT WON'T RUN!
+__ci = []
 
 
 [dependencies]
 re_log = { path = "../re_log" }
 
+document-features = "0.2"
 futures-util = "0.3"
 hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "1.0.0", default-features = false, features = [

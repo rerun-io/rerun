@@ -1,4 +1,8 @@
 //! Communications between server and viewer.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 #[cfg(feature = "client")]
 mod client;

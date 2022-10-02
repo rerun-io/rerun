@@ -13,6 +13,10 @@
 //! * [`FieldStore`], which maps [`TimeInt`] to values.
 //!
 //! (in fact, most stores are generic on what the time type is, but in practice it is [`TimeInt`]).
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 mod batch;
 mod instance;
