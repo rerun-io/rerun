@@ -154,27 +154,26 @@ impl TextureSettings {
         current: Option<&mut egui::TextureHandle>,
         data: ColorImage,
     ) -> egui::TextureHandle {
-        // We don't have any texture allocated yet: just create one and fill it.
-        if current.is_none() {
-            return ui.ctx().load_texture("tensor_tex", data, self.filter);
+        if let Some(current) = current {
+            // We do have an existing texture, although it might not fulfill our needs anymore
+
+            let data_size = egui::vec2(data.width() as _, data.height() as _);
+            if !self.dirty && current.size_vec2() == data_size {
+                // We do have an existing texture with the appropriate settings: Blit the
+                // data for the current frame into it.
+
+                // NOTE: At this point the texture size is guaranteed to exactly match the
+                // size of the tensor itself, so we only require a `nearest` filter for the copy.
+                current.set(data, egui::TextureFilter::Nearest);
+
+                return current.clone();
+            }
         }
 
-        let current = current.unwrap();
-        let data_size = egui::vec2(data.width() as _, data.height() as _);
-        let dirty = self.dirty | (current.size_vec2() != data_size);
-
-        // We do have an existing texture, although it doesn't fulfill our needs anymore:
-        // once again, create a new one and fill it.
-        if dirty {
-            return ui.ctx().load_texture("tensor_tex", data, self.filter);
-        }
-
-        // We do have an existing texture with the approriate settings: blit the data for the
-        // current frame into it.
-        // NOTE: At this point the texture size is guaranteed to exactly match the size of the
-        // tensor itself, so we only require a `nearest` filter for the copy.
-        current.set(data, egui::TextureFilter::Nearest);
-        current.clone()
+        // Either we don't have any texture allocated yet, or the current one has become
+        // inappropriate: just create one and fill it.
+        println!("bumped");
+        ui.ctx().load_texture("tensor_tex", data, dbg!(self.filter))
     }
 
     fn paint_texture(
