@@ -87,18 +87,15 @@ impl Sdk {
 
             let web_port = 9090;
 
+            let web_server = re_web_server::WebServer::new(web_port);
             let web_server_handle = tokio::spawn(async move {
-                re_web_server::WebServer::new(web_port)
-                    .serve()
-                    .await
-                    .unwrap();
+                web_server.serve().await.unwrap();
             });
 
             let pub_sub_url = re_ws_comms::default_server_url();
             let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, pub_sub_url);
             let open = true;
             if open {
-                tokio::time::sleep(std::time::Duration::from_millis(1000)).await; // give web server time to start
                 webbrowser::open(&viewer_url).ok();
             } else {
                 println!("Web server is running - view it at {}", viewer_url);
