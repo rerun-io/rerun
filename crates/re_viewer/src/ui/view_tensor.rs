@@ -12,7 +12,7 @@ use crate::ui::tensor_dimension_mapper::dimension_mapping_ui;
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct TensorViewState {
     /// How we select which dimensions to project the tensor onto.
     dimension_mapping: DimensionMapping,
@@ -25,6 +25,8 @@ pub struct TensorViewState {
 
     /// Scaling, filtering, aspect ratio, etc for the rendered texture.
     texture_settings: TextureSettings,
+    #[serde(skip)]
+    texture: Option<egui::TextureHandle>,
 }
 
 impl TensorViewState {
@@ -34,6 +36,7 @@ impl TensorViewState {
             dimension_mapping: DimensionMapping::create(tensor),
             color_mapping: ColorMapping::default(),
             texture_settings: TextureSettings::default(),
+            texture: None,
         }
     }
 }
@@ -119,6 +122,9 @@ struct TextureSettings {
     scaling: TextureScaling,
     /// Specifies the sampling filter used to render the texture.
     filter: egui::TextureFilter,
+
+    /// `true` if the settings have been modified during the current frame.
+    dirty: bool,
 }
 
 impl Default for TextureSettings {
@@ -127,42 +133,68 @@ impl Default for TextureSettings {
             keep_aspect_ratio: false,
             scaling: TextureScaling::default(),
             filter: egui::TextureFilter::Nearest,
+            dirty: false,
         }
     }
 }
 
 // helpers
 impl TextureSettings {
-    fn paint_image(
+    fn update_texture(
+        &self,
+        ui: &mut egui::Ui,
+        current: Option<&mut egui::TextureHandle>,
+        data: ColorImage,
+    ) -> egui::TextureHandle {
+        // We don't have any texture allocated yet: just create one and fill it.
+        if current.is_none() {
+            return ui.ctx().load_texture("tensor_tex", data, self.filter);
+        }
+
+        let current = current.unwrap();
+        let data_size = egui::vec2(data.width() as _, data.height() as _);
+        let dirty = self.dirty | (current.size_vec2() != data_size);
+
+        // We do have an existing texture, although it doesn't fulfill our needs anymore:
+        // once again, create a new one and fill it.
+        if dirty {
+            return ui.ctx().load_texture("tensor_tex", data, self.filter);
+        }
+
+        // We do have an existing texture with the approriate settings: blit the data for the
+        // current frame into it.
+        // NOTE: At this point the texture size is guaranteed to exactly match the size of the
+        // tensor itself, so we only require a `nearest` filter for the copy.
+        current.set(data, egui::TextureFilter::Nearest);
+        current.clone()
+    }
+
+    fn paint_texture(
         &self,
         ui: &mut egui::Ui,
         margin: Vec2,
-        image: ColorImage,
+        tex: &egui::TextureHandle,
     ) -> (egui::Painter, egui::Rect) {
-        let img_size = egui::vec2(image.size[0] as _, image.size[1] as _);
-        let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
+        let tex_size = Vec2::max(Vec2::splat(1.0), tex.size_vec2()); // better safe than sorry
         let desired_size = match self.scaling {
-            TextureScaling::None => img_size + margin,
+            TextureScaling::None => tex_size + margin,
             TextureScaling::Fill => {
                 let desired_size = ui.available_size() - margin;
                 if self.keep_aspect_ratio {
-                    let ar = img_size.x / img_size.y;
-                    let scale = (desired_size / img_size).min_elem();
-                    img_size * ar * scale
+                    let ar = tex_size.x / tex_size.y;
+                    let scale = (desired_size / tex_size).min_elem();
+                    tex_size * ar * scale
                 } else {
                     desired_size
                 }
             }
         };
 
-        // TODO(cmc): don't recreate texture unless necessary
-        let texture = ui.ctx().load_texture("tensor_slice", image, self.filter);
-
         let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
         let rect = response.rect;
         let image_rect = egui::Rect::from_min_max(rect.min + margin, rect.max);
 
-        let mut mesh = egui::Mesh::with_texture(texture.id());
+        let mut mesh = egui::Mesh::with_texture(tex.id());
         let uv = egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0));
         mesh.add_rect_with_uv(image_rect, uv, Color32::WHITE);
 
@@ -175,6 +207,8 @@ impl TextureSettings {
 // ui
 impl TextureSettings {
     fn show(&mut self, ui: &mut egui::Ui) {
+        let current = *self;
+
         let tf_to_string = |tf: egui::TextureFilter| match tf {
             egui::TextureFilter::Nearest => "Nearest",
             egui::TextureFilter::Linear => "Linear",
@@ -204,6 +238,8 @@ impl TextureSettings {
                     selectable_value(ui, egui::TextureFilter::Nearest);
                 });
         });
+
+        self.dirty = *self == current;
     }
 }
 
@@ -230,10 +266,9 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
             Ok(tensor) => {
                 color_mapping_ui(ui, &mut state.color_mapping);
 
-                let color_from_value = |value: u8| {
-                    state
-                        .color_mapping
-                        .color_from_normalized(value as f32 / 255.0)
+                let color_from_value = {
+                    let cm = state.color_mapping;
+                    move |value: u8| cm.color_from_normalized(value as f32 / 255.0)
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
@@ -253,12 +288,15 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     color_mapping_ui(ui, &mut state.color_mapping);
                 });
 
-                let color_from_value = |value: u16| {
-                    state.color_mapping.color_from_normalized(egui::remap(
-                        value as f32,
-                        tensor_min as f32..=tensor_max as f32,
-                        0.0..=1.0,
-                    ))
+                let color_from_value = {
+                    let cm = state.color_mapping;
+                    move |value: u16| {
+                        cm.color_from_normalized(egui::remap(
+                            value as f32,
+                            tensor_min as f32..=tensor_max as f32,
+                            0.0..=1.0,
+                        ))
+                    }
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
@@ -278,12 +316,15 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
                     color_mapping_ui(ui, &mut state.color_mapping);
                 });
 
-                let color_from_value = |value: f32| {
-                    state.color_mapping.color_from_normalized(egui::remap(
-                        value,
-                        tensor_min..=tensor_max,
-                        0.0..=1.0,
-                    ))
+                let color_from_value = {
+                    let cm = state.color_mapping;
+                    move |value: f32| {
+                        cm.color_from_normalized(egui::remap(
+                            value,
+                            tensor_min..=tensor_max,
+                            0.0..=1.0,
+                        ))
+                    }
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
@@ -338,7 +379,7 @@ fn selected_tensor_slice<'a, T: Copy>(
 
 fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
-    view_state: &TensorViewState,
+    view_state: &mut TensorViewState,
     tensor_shape: &[TensorDimension],
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
@@ -410,7 +451,7 @@ fn into_image<T: Copy>(
 
 fn image_ui(
     ui: &mut egui::Ui,
-    view_state: &TensorViewState,
+    view_state: &mut TensorViewState,
     image: ColorImage,
     dimension_labels: [(String, bool); 2],
 ) {
@@ -420,7 +461,15 @@ fn image_ui(
         let font_id = egui::TextStyle::Body.resolve(ui.style());
         let margin = Vec2::splat(font_id.size + 2.0);
 
-        let (painter, image_rect) = view_state.texture_settings.paint_image(ui, margin, image);
+        view_state.texture = view_state
+            .texture_settings
+            .update_texture(ui, view_state.texture.as_mut(), image)
+            .into();
+        let (painter, image_rect) = view_state.texture_settings.paint_texture(
+            ui,
+            margin,
+            view_state.texture.as_ref().unwrap(),
+        );
 
         let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
         let text_color = ui.visuals().text_color();
