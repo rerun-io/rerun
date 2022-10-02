@@ -100,7 +100,7 @@ def log_mesh(path: Path, mesh: Trimesh):
 
 
 def log_sampled_sdf(points: np.ndarray, sdf: np.ndarray):
-    rerun.set_space_up("world", [0, 1, 0]) # TODO: depends on the mesh really
+    rerun.set_space_up("world", [0, 1, 0]) # TODO(cmc): depends on the mesh really
     rerun.log_points("sdf/inside",
                      points[sdf <= 0],
                      colors=np.array([255, 0, 0, 255]),
