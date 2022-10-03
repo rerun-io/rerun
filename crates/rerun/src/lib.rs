@@ -10,9 +10,6 @@ use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
 
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 /// The Rerun Viewer and Server
 ///
 /// Features:
