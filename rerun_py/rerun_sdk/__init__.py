@@ -220,6 +220,21 @@ class RectFormat(Enum):
     XCYCW2H2 = "XCYCW2H2"
 
 
+# TODO(cmc): what about structured logging?
+def log_msg(obj_path: str,
+            text: str,
+            level: Optional[str] = None,
+            timeless: bool = False,
+            space: Optional[str] = None):
+    """
+    Log a logging message, with optional level.
+
+    If no `level` is given, it will default to `info`.
+    If no `space` is given, the space name "logs" will be used.
+    """
+    rerun_rs.log_msg(obj_path, text, level, timeless, space)
+
+
 def log_rect(
     obj_path: str,
     rect: ArrayLike,

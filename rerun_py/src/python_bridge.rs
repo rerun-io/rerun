@@ -98,6 +98,8 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
 
+    m.add_function(wrap_pyfunction!(log_msg, m)?)?;
+
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
 
@@ -456,6 +458,50 @@ fn log_camera(
     );
 
     let space = space.unwrap_or_else(|| "3D".to_owned());
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
+// ----------------------------------------------------------------------------
+
+/// Log a logging message.
+///
+/// If no `level` is given, it will default to `info`.
+/// If no `space` is given, the space name "logs" will be used.
+#[pyfunction]
+fn log_msg(
+    obj_path: &str,
+    text: &str,
+    level: Option<&str>,
+    timeless: bool,
+    space: Option<String>,
+) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::LogMessage);
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "text"),
+        LoggedData::Single(Data::String(text.to_owned())),
+    );
+
+    let level = level.map_or_else(|| "info".to_owned(), ToOwned::to_owned);
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "level"),
+        LoggedData::Single(Data::String(level)),
+    );
+
+    let space = space.unwrap_or_else(|| "logs".to_owned());
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
