@@ -1181,6 +1181,9 @@ struct Segment {
     tight_time: TimeRange,
 }
 
+/// Represents a compressed view of time.
+/// It does so by breaking up the timeline in linear segments.
+///
 /// Recreated each frame.
 struct TimeRangesUi {
     /// The total x-range we are viewing
@@ -1272,30 +1275,6 @@ impl TimeRangesUi {
             let x_translate = *x_range.start() - time_start_x;
             for segment in &mut slf.segments {
                 segment.x = (*segment.x.start() + x_translate)..=(*segment.x.end() + x_translate);
-            }
-        }
-
-        // sanity check:
-        #[cfg(debug_assertions)]
-        for segment in &slf.segments {
-            let pixel_precision = 0.5;
-
-            debug_assert_eq!(
-                slf.time_from_x(*segment.x.start()).unwrap(),
-                segment.time.min
-            );
-            debug_assert_eq!(slf.time_from_x(*segment.x.end()).unwrap(), segment.time.max);
-
-            if segment.time.is_empty() {
-                let x = slf.x_from_time(segment.time.min).unwrap();
-                let mid_x = lerp(segment.x.clone(), 0.5);
-                debug_assert!((mid_x - x).abs() < pixel_precision);
-            } else {
-                let min_x = slf.x_from_time(segment.time.min).unwrap();
-                debug_assert!((min_x - *segment.x.start()).abs() < pixel_precision);
-
-                let max_x = slf.x_from_time(segment.time.max).unwrap();
-                debug_assert!((max_x - *segment.x.end()).abs() < pixel_precision);
             }
         }
 
@@ -1776,4 +1755,48 @@ fn fade_mesh(rect: Rect, [left_color, right_color]: [Color32; 2]) -> egui::Mesh 
     });
 
     mesh
+}
+
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_time_ranges_ui() {
+    let time_range_ui = TimeRangesUi::new(
+        100.0..=1000.0,
+        TimeView {
+            min: TimeReal::from(0.5),
+            time_spanned: 14.2,
+        },
+        &[
+            TimeRange::new(TimeInt::from(0), TimeInt::from(0)),
+            TimeRange::new(TimeInt::from(1), TimeInt::from(5)),
+            TimeRange::new(TimeInt::from(10), TimeInt::from(100)),
+        ],
+    );
+
+    // Santiy check round-tripping:
+    for segment in &time_range_ui.segments {
+        let pixel_precision = 0.5;
+
+        assert_eq!(
+            time_range_ui.time_from_x(*segment.x.start()).unwrap(),
+            segment.time.min
+        );
+        assert_eq!(
+            time_range_ui.time_from_x(*segment.x.end()).unwrap(),
+            segment.time.max
+        );
+
+        if segment.time.is_empty() {
+            let x = time_range_ui.x_from_time(segment.time.min).unwrap();
+            let mid_x = lerp(segment.x.clone(), 0.5);
+            assert!((mid_x - x).abs() < pixel_precision);
+        } else {
+            let min_x = time_range_ui.x_from_time(segment.time.min).unwrap();
+            assert!((min_x - *segment.x.start()).abs() < pixel_precision);
+
+            let max_x = time_range_ui.x_from_time(segment.time.max).unwrap();
+            assert!((max_x - *segment.x.end()).abs() < pixel_precision);
+        }
+    }
 }
