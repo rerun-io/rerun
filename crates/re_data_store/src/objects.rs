@@ -670,16 +670,30 @@ impl<'s> Objects<'s> {
 
         let mut partitioner = SpacePartitioner::default();
 
-        for obj in self.image.0 {
+        let Self {
+            space: _, // yes, this is intentional
+            image,
+            point2d,
+            bbox2d,
+            line_segments2d,
+            point3d,
+            box3d,
+            path3d,
+            line_segments3d,
+            mesh3d,
+            camera,
+        } = self;
+
+        for obj in image.0 {
             partitioner.slot(obj.props.space).image.0.push(obj);
         }
-        for obj in self.point2d.0 {
+        for obj in point2d.0 {
             partitioner.slot(obj.props.space).point2d.0.push(obj);
         }
-        for obj in self.bbox2d.0 {
+        for obj in bbox2d.0 {
             partitioner.slot(obj.props.space).bbox2d.0.push(obj);
         }
-        for obj in self.line_segments2d.0 {
+        for obj in line_segments2d.0 {
             partitioner
                 .slot(obj.props.space)
                 .line_segments2d
@@ -687,26 +701,26 @@ impl<'s> Objects<'s> {
                 .push(obj);
         }
 
-        for obj in self.point3d.0 {
+        for obj in point3d.0 {
             partitioner.slot(obj.props.space).point3d.0.push(obj);
         }
-        for obj in self.box3d.0 {
+        for obj in box3d.0 {
             partitioner.slot(obj.props.space).box3d.0.push(obj);
         }
-        for obj in self.path3d.0 {
+        for obj in path3d.0 {
             partitioner.slot(obj.props.space).path3d.0.push(obj);
         }
-        for obj in self.line_segments3d.0 {
+        for obj in line_segments3d.0 {
             partitioner
                 .slot(obj.props.space)
                 .line_segments3d
                 .0
                 .push(obj);
         }
-        for obj in self.mesh3d.0 {
+        for obj in mesh3d.0 {
             partitioner.slot(obj.props.space).mesh3d.0.push(obj);
         }
-        for obj in self.camera.0 {
+        for obj in camera.0 {
             partitioner.slot(obj.props.space).camera.0.push(obj);
         }
 
