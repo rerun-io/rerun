@@ -132,9 +132,17 @@ if __name__ == '__main__':
                         help='Specifies the number of points for the point cloud')
     parser.add_argument('path', type=Path,
                         help='Mesh to log (e.g. `dataset/avocado.glb`)')
+    parser.add_argument(
+        "--serve",
+        dest="serve",
+        action="store_true",
+        help="Serve a web viewer (WARNING: experimental feature)",
+    )
     args = parser.parse_args()
 
-    if args.connect:
+    if args.serve:
+        rerun.serve()
+    elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
@@ -177,7 +185,14 @@ if __name__ == '__main__':
     with open(voxvol_path, 'wb+') as f:
         np.save(f, voxvol)
 
-    if args.save is not None:
+    if args.serve:
+        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
+        try:
+            from time import sleep
+            sleep(100_000)
+        except:
+            pass
+    elif args.save is not None:
         rerun.save(args.save)
     elif args.headless:
         pass
