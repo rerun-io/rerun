@@ -542,9 +542,54 @@ impl<'s> Space<'s> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct LogMessage<'s> {
+    pub text: &'s str,
+    pub level: Option<&'s str>,
+}
+
+impl<'s> LogMessage<'s> {
+    fn query<Time: 'static + Copy + Ord>(
+        obj_path: &'s ObjPath,
+        obj_store: &'s ObjStore<Time>,
+        time_query: &TimeQuery<Time>,
+        out: &mut Objects<'s>,
+    ) {
+        crate::profile_function!();
+
+        visit_type_data_2(
+            obj_store,
+            &FieldName::from("log"),
+            time_query,
+            ("space", "level"),
+            |instance_index: Option<&IndexHash>,
+             msg_id: &MsgId,
+             text: &String,
+             space: Option<&ObjPath>,
+             level: Option<&String>| {
+                out.log_message.0.push(Object {
+                    props: InstanceProps {
+                        msg_id,
+                        space,
+                        color: None,
+                        obj_path,
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                    },
+                    data: LogMessage {
+                        text: text.as_str(),
+                        level: level.map(|s| s.as_str()),
+                    },
+                });
+            },
+        );
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Objects<'s> {
     pub space: BTreeMap<&'s ObjPath, Space<'s>>, // SPECIAL!
+
+    pub log_message: ObjectVec<'s, LogMessage<'s>>,
 
     pub image: ObjectVec<'s, Image<'s>>,
     pub point2d: ObjectVec<'s, Point2D<'s>>,
@@ -587,6 +632,7 @@ impl<'s> Objects<'s> {
     ) {
         let query_fn = match obj_type {
             ObjectType::Space => Space::query,
+            ObjectType::LogMessage => LogMessage::query,
             ObjectType::Image => Image::query,
             ObjectType::Point2D => Point2D::query,
             ObjectType::BBox2D => BBox2D::query,
@@ -607,6 +653,8 @@ impl<'s> Objects<'s> {
 
         Self {
             space: self.space.clone(), // SPECIAL - can't filter
+
+            log_message: self.log_message.filter(&keep),
 
             image: self.image.filter(&keep),
             point2d: self.point2d.filter(&keep),
