@@ -1507,7 +1507,6 @@ fn paint_ticks(
     font_id: &egui::FontId,
     canvas: &Rect,
     clip_rect: &Rect,
-    // (min_time, max_time): (i64, i64),
     time_range: &TimeRangeF,
     min_grid_spacing_time: i64,
     next_time_step: fn(i64) -> i64,
