@@ -51,15 +51,14 @@ from rerun_sdk import MeshFormat
 # TODO(cmc): This really should be the job of the SDK.
 def get_mesh_format(mesh: Trimesh) -> MeshFormat:
     ext = Path(mesh.metadata['file_name']).suffix.lower()
-    match ext:
-        case ".glb":
-            return MeshFormat.GLB
-        # case ".gltf":
-        #     return MeshFormat.GLTF
-        case ".obj":
-            return MeshFormat.OBJ
-        case _:
-            raise ValueError(f"unknown file extension: {ext}")
+    try:
+        return {
+            ".glb": MeshFormat.GLB,
+            # ".gltf": MeshFormat.GLTF,
+            ".obj": MeshFormat.OBJ,
+        }[ext]
+    except:
+        raise ValueError(f"unknown file extension: {ext}")
 
 
 def read_mesh(path: Path) -> Trimesh:
