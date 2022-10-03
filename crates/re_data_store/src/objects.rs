@@ -623,7 +623,30 @@ impl<'s> Objects<'s> {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.space.is_empty() && !self.has_any_2d() && !self.has_any_3d()
+        let Self {
+            space,
+            image,
+            point2d,
+            bbox2d,
+            line_segments2d,
+            point3d,
+            box3d,
+            path3d,
+            line_segments3d,
+            mesh3d,
+            camera,
+        } = self;
+        space.is_empty()
+            && image.is_empty()
+            && point2d.is_empty()
+            && bbox2d.is_empty()
+            && line_segments2d.is_empty()
+            && point3d.is_empty()
+            && box3d.is_empty()
+            && path3d.is_empty()
+            && line_segments3d.is_empty()
+            && mesh3d.is_empty()
+            && camera.is_empty()
     }
 
     pub fn has_any_2d(&self) -> bool {
