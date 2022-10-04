@@ -115,7 +115,7 @@ impl Default for TimeControl {
 impl TimeControl {
     /// None when not active
     pub fn active_selection_type(&self) -> Option<TimeSelectionType> {
-        self.selection_active.then(|| self.selection_type)
+        self.selection_active.then_some(self.selection_type)
     }
 
     /// None when not active

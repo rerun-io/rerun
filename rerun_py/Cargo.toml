@@ -1,11 +1,10 @@
 [package]
-edition = "2021"
-license = "MIT OR Apache-2.0"
 name = "re_sdk_python"        # name of the rust crate
+edition.workspace = true
+license.workspace = true
 publish = false
-rust-version = "1.63"
-version = "0.1.0"
-
+rust-version.workspace = true
+version.workspace = true
 
 [lib]
 crate-type = ["cdylib"]

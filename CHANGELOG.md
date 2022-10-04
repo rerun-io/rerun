@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-09-23: Update pinned rust version to 1.64 and use workspace inheritance ([#110](https://github.com/rerun-io/rerun/pull/110)).
 * 2022-09-21: Python SDK: add `log_point` ([#106](https://github.com/rerun-io/rerun/pull/106)).
 * 2022-09-21: Python SDK: add `log_obb` ([#103](https://github.com/rerun-io/rerun/pull/103)).
 * 2022-09-20: Reduce memory use for image intensive applications ([#100](https://github.com/rerun-io/rerun/pull/100)).
