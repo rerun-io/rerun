@@ -51,7 +51,7 @@ jobs:
           profile: minimal
           toolchain: 1.64.0
           override: true
-          components: rustfmt
+          components: rustfmt clippy
       - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
@@ -160,7 +160,7 @@ jobs:
           # cache: "pip"
       - uses: messense/maturin-action@v1
         with:
-          maturin-version: "0.13.1"
+          maturin-version: "0.13.5"
           command: build
           args: -m rerun_py/Cargo.toml -o dist
 
@@ -179,6 +179,6 @@ jobs:
           cache: "pip"
       - uses: messense/maturin-action@v1
         with:
-          maturin-version: "0.13.1"
+          maturin-version: "0.13.5"
           command: build
           args: -m rerun_py/Cargo.toml  -o dist --universal2
