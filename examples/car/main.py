@@ -18,12 +18,6 @@ CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath(
 
 
 def log_car_data(args):
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
-
     """Log a few frames of generated data to show how the Rerun SDK is used."""
     NUM_FRAMES = 40
 
@@ -77,12 +71,6 @@ def log_car_data(args):
     rerun.log_path(
         "a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]])
     )
-
-    if args.save is not None:
-        rerun.save(args.save)
-    elif not args.connect:
-        # Show the logged data inside the Python process:
-        rerun.show()
 
 
 class DummyCar:
@@ -334,7 +322,19 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.connect:
+        # Send logging data to separate `rerun` process.
+        # You can ommit the argument to connect to the default address,
+        # which is `127.0.0.1:9876`.
+        rerun.connect(args.addr)
+
     log_car_data(args)
+
+    if args.save is not None:
+        rerun.save(args.save)
+    elif not args.connect:
+        # Show the logged data inside the Python process:
+        rerun.show()
 
 
 if __name__ == "__main__":
