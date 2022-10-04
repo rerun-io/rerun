@@ -8,7 +8,11 @@ publish = false
 
 
 [features]
-## When set: will compile despite missing WASM artifact, BUT IT WON'T RUN!
+## ONLY FOR CI!
+##
+## When set: will skip building the Web Viewer WASM.
+## This makes the CI much faster, but the resulting web server
+## will crash if you rey to run it!
 __ci = []
 
 
