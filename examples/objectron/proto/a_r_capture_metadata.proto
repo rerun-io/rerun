@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package research.compvideo.arcapture;
+package objectron.proto;
 
 option objc_class_prefix = "XNOPB";
 

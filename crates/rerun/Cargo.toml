@@ -11,24 +11,34 @@ default-run = "rerun"
 [features]
 default = ["server"]
 
-## Run a HTTP server that listens to incoming log messages from a Rerun SDK.
-server = ["dep:re_sdk_comms"]
+## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
+server = ["re_sdk_comms/server"]
+
+## Support serving a web viewer over HTTP.
+web = ["re_ws_comms/server", "dep:re_web_server", "dep:webbrowser"]
 
 
 [dependencies]
+re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
+re_log_types = { path = "../re_log_types" }
 re_viewer = { path = "../re_viewer", features = ["puffin"] }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
+anyhow = "1.0"
+document-features = "0.2"
 puffin = { version = "0.13" }
 
-## Optional dependencies
-puffin_http = { version = "0.10", optional = true }
-re_sdk_comms = { path = "../re_sdk_comms", optional=true, features = ["server"] }
+# Optional dependencies:
+re_sdk_comms = { path = "../re_sdk_comms", optional = true }
+re_web_server = { path = "../re_web_server", optional = true }
 
-## Native dependencies
+puffin_http = { version = "0.10", optional = true }
+webbrowser = { version = "0.8", optional = true }
+
+# Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-clap = { version = "3.1.6", features = ["derive"] }
+clap = { version = "4.0", features = ["derive"] }
 mimalloc = "0.1.29"
 tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = "0.3"

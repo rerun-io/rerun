@@ -466,11 +466,13 @@ impl TimeControl {
         if self.is_time_filter_active() {
             if let Some(state) = self.states.get(&self.time_source) {
                 if let Some(range) = state.selection {
-                    return Some(TimeQuery::Range(range.min.as_i64()..=range.max.as_i64()));
+                    return Some(TimeQuery::Range(
+                        range.min.ceil().as_i64()..=range.max.floor().as_i64(),
+                    ));
                 }
             }
         }
-        Some(TimeQuery::LatestAt(self.time()?.as_i64()))
+        Some(TimeQuery::LatestAt(self.time()?.floor().as_i64()))
     }
 }
 

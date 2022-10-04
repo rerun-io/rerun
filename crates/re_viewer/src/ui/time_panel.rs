@@ -420,13 +420,24 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
 
                 ui.vertical_centered(|ui| {
                     if range.min == range.max {
-                        ui.monospace(time_type.format(range.min.into()));
+                        ui.monospace(time_type.format(range.min.floor())); // floor makes sense for "latest at" queries
                     } else {
-                        ui.monospace(format!(
-                            "{} - {}",
-                            time_type.format(range.min.into()),
-                            time_type.format(range.max.into())
-                        ));
+                        match time_type {
+                            TimeType::Time => {
+                                ui.monospace(format!(
+                                    "{} - {}",
+                                    time_type.format(range.min.round()),
+                                    time_type.format(range.max.round())
+                                ));
+                            }
+                            TimeType::Sequence => {
+                                ui.monospace(format!(
+                                    "[{} - {})",
+                                    time_type.format(range.min.ceil()),
+                                    time_type.format(range.max.floor())
+                                ));
+                            }
+                        }
                     }
                 });
             }
@@ -826,7 +837,7 @@ fn time_selection_ui(
             };
             time_area_painter.rect_filled(rect, 1.0, main_color);
 
-            if is_active {
+            if is_active && !selected_range.is_empty() {
                 let range_text =
                     format_duration(time_ctrl.time_type(), selected_range.length().abs());
                 if !range_text.is_empty() {
@@ -1009,7 +1020,7 @@ fn time_selection_ui(
 pub fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
     match time_typ {
         TimeType::Time => Duration::from(duration).to_string(),
-        TimeType::Sequence => duration.as_i64().to_string(),
+        TimeType::Sequence => duration.round().as_i64().to_string(), // TODO(emilk): show real part?
     }
 }
 
@@ -1164,12 +1175,15 @@ struct Segment {
     x: RangeInclusive<f32>,
 
     /// Matches [`Self::x`] (linear transform).
-    time: TimeRange,
+    time: TimeRangeF,
 
     /// does NOT match any of the above. Instead this is a tight bound.
     tight_time: TimeRange,
 }
 
+/// Represents a compressed view of time.
+/// It does so by breaking up the timeline in linear segments.
+///
 /// Recreated each frame.
 struct TimeRangesUi {
     /// The total x-range we are viewing
@@ -1233,8 +1247,14 @@ impl TimeRangesUi {
                 // Also gives zero-width segments some width!
                 let expansion = gap_width / 3.0;
                 let x_range = (*x_range.start() - expansion)..=(*x_range.end() + expansion);
-                let time_expansion = TimeReal::from(expansion / points_per_time);
-                let range = TimeRange::new(range.min - time_expansion, range.max + time_expansion);
+
+                let range = if range.min == range.max {
+                    TimeRangeF::from(*range) // don't expand zero-width segments (e.g. `TimeInt::BEGINNING`).
+                } else {
+                    let time_expansion = TimeReal::from(expansion / points_per_time);
+                    TimeRangeF::new(range.min - time_expansion, range.max + time_expansion)
+                };
+
                 Segment {
                     x: x_range,
                     time: range,
@@ -1265,7 +1285,7 @@ impl TimeRangesUi {
     fn snap_time(&self, value: TimeReal) -> TimeReal {
         for segment in &self.segments {
             if value < segment.time.min {
-                return segment.time.min.into();
+                return segment.time.min;
             } else if value <= segment.time.max {
                 return value;
             }
@@ -1307,7 +1327,7 @@ impl TimeRangesUi {
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
 
-        if needle_time <= last_time {
+        if needle_time < last_time {
             // extrapolate:
             return Some(last_x - self.points_per_time * (last_time - needle_time).as_f32());
         }
@@ -1317,7 +1337,7 @@ impl TimeRangesUi {
                 let t = TimeRangeF::new(last_time, segment.time.min).inverse_lerp(needle_time);
                 return Some(lerp(last_x..=*segment.x.start(), t));
             } else if needle_time <= segment.time.max {
-                let t = TimeRangeF::from(segment.time).inverse_lerp(needle_time);
+                let t = segment.time.inverse_lerp(needle_time);
                 return Some(lerp(segment.x.clone(), t));
             } else {
                 last_x = *segment.x.end();
@@ -1334,7 +1354,7 @@ impl TimeRangesUi {
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
 
-        if needle_x <= last_x {
+        if needle_x < last_x {
             // extrapolate:
             return Some(last_time + TimeReal::from((needle_x - last_x) / self.points_per_time));
         }
@@ -1345,7 +1365,7 @@ impl TimeRangesUi {
                 return Some(TimeRangeF::new(last_time, segment.time.min).lerp(t));
             } else if needle_x <= *segment.x.end() {
                 let t = remap(needle_x, segment.x.clone(), 0.0..=1.0);
-                return Some(TimeRangeF::from(segment.time).lerp(t));
+                return Some(segment.time.lerp(t));
             } else {
                 last_x = *segment.x.end();
                 last_time = segment.time.max;
@@ -1401,11 +1421,9 @@ fn paint_time_range_ticks(
     time_area_painter: &egui::Painter,
     rect: &Rect,
     time_type: TimeType,
-    range: &TimeRange,
+    time_range: &TimeRangeF,
 ) {
     let font_id = egui::TextStyle::Body.resolve(ui.style());
-
-    let (min, max) = (range.min.as_i64(), range.max.as_i64());
 
     let shapes = match time_type {
         TimeType::Time => {
@@ -1455,7 +1473,7 @@ fn paint_time_range_ticks(
                 &font_id,
                 rect,
                 &ui.clip_rect(),
-                (min, max), // ns
+                time_range, // ns
                 1_000,
                 next_grid_tick_magnitude_ns,
                 grid_text_from_ns,
@@ -1471,7 +1489,7 @@ fn paint_time_range_ticks(
                 &font_id,
                 rect,
                 &ui.clip_rect(),
-                (min, max),
+                time_range,
                 1,
                 next_power_of_10,
                 |seq| format!("#{seq}"),
@@ -1489,11 +1507,13 @@ fn paint_ticks(
     font_id: &egui::FontId,
     canvas: &Rect,
     clip_rect: &Rect,
-    (min_time, max_time): (i64, i64),
+    time_range: &TimeRangeF,
     min_grid_spacing_time: i64,
     next_time_step: fn(i64) -> i64,
     format_tick: fn(i64) -> String,
 ) -> Vec<egui::Shape> {
+    crate::profile_function!();
+
     let color_from_alpha = |alpha: f32| -> Color32 {
         if dark_mode {
             Rgba::from_white_alpha(alpha * alpha).into()
@@ -1503,7 +1523,8 @@ fn paint_ticks(
     };
 
     let x_from_time = |time: i64| -> f32 {
-        let t = time.saturating_sub(min_time) as f32 / max_time.saturating_sub(min_time) as f32;
+        let t = (TimeReal::from(time) - time_range.min).as_f32()
+            / (time_range.max - time_range.min).as_f32();
         lerp(canvas.x_range(), t)
     };
 
@@ -1514,8 +1535,8 @@ fn paint_ticks(
         return shapes;
     }
 
-    let width_time = max_time - min_time;
-    let points_per_time = canvas.width() / width_time as f32;
+    let width_time = (time_range.max - time_range.min).as_f32();
+    let points_per_time = canvas.width() / width_time;
     let minimum_small_line_spacing = 4.0;
     let expected_text_width = 60.0;
 
@@ -1540,7 +1561,7 @@ fn paint_ticks(
 
     let max_small_lines = canvas.width() / minimum_small_line_spacing;
     let mut small_spacing_time = min_grid_spacing_time;
-    while width_time as f32 / (small_spacing_time as f32) > max_small_lines {
+    while width_time / (small_spacing_time as f32) > max_small_lines {
         small_spacing_time = next_time_step(small_spacing_time);
     }
     let medium_spacing_time = next_time_step(small_spacing_time);
@@ -1555,8 +1576,9 @@ fn paint_ticks(
     let medium_text_color = text_color_from_spacing(medium_spacing_time);
     let small_text_color = text_color_from_spacing(small_spacing_time);
 
-    let mut current_time = min_time / small_spacing_time * small_spacing_time; // TODO(emilk): start at visible_rect.left()
-    while current_time <= max_time {
+    let mut current_time =
+        time_range.min.floor().as_i64() / small_spacing_time * small_spacing_time; // TODO(emilk): start at visible_rect.left()
+    while current_time <= time_range.max.ceil().as_i64() {
         let line_x = x_from_time(current_time);
 
         if visible_rect.min.x <= line_x && line_x <= visible_rect.max.x {
@@ -1732,4 +1754,48 @@ fn fade_mesh(rect: Rect, [left_color, right_color]: [Color32; 2]) -> egui::Mesh 
     });
 
     mesh
+}
+
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_time_ranges_ui() {
+    let time_range_ui = TimeRangesUi::new(
+        100.0..=1000.0,
+        TimeView {
+            min: TimeReal::from(0.5),
+            time_spanned: 14.2,
+        },
+        &[
+            TimeRange::new(TimeInt::from(0), TimeInt::from(0)),
+            TimeRange::new(TimeInt::from(1), TimeInt::from(5)),
+            TimeRange::new(TimeInt::from(10), TimeInt::from(100)),
+        ],
+    );
+
+    // Santiy check round-tripping:
+    for segment in &time_range_ui.segments {
+        let pixel_precision = 0.5;
+
+        assert_eq!(
+            time_range_ui.time_from_x(*segment.x.start()).unwrap(),
+            segment.time.min
+        );
+        assert_eq!(
+            time_range_ui.time_from_x(*segment.x.end()).unwrap(),
+            segment.time.max
+        );
+
+        if segment.time.is_empty() {
+            let x = time_range_ui.x_from_time(segment.time.min).unwrap();
+            let mid_x = lerp(segment.x.clone(), 0.5);
+            assert!((mid_x - x).abs() < pixel_precision);
+        } else {
+            let min_x = time_range_ui.x_from_time(segment.time.min).unwrap();
+            assert!((min_x - *segment.x.start()).abs() < pixel_precision);
+
+            let max_x = time_range_ui.x_from_time(segment.time.max).unwrap();
+            assert!((max_x - *segment.x.end()).abs() < pixel_precision);
+        }
+    }
 }

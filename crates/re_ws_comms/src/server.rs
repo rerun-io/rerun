@@ -6,8 +6,7 @@
 //! In the future thing will be changed to a protocol where the clients can query
 //! for specific data based on e.g. time.
 
-use std::sync::Arc;
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, sync::Arc};
 
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
@@ -66,7 +65,7 @@ fn to_broadcast_stream(
     log_rx: std::sync::mpsc::Receiver<LogMsg>,
     history: Arc<Mutex<Vec<Arc<[u8]>>>>,
 ) -> tokio::sync::broadcast::Sender<Arc<[u8]>> {
-    let (tx, _) = tokio::sync::broadcast::channel(1024);
+    let (tx, _) = tokio::sync::broadcast::channel(1024 * 1024);
     let tx1 = tx.clone();
     tokio::task::spawn_blocking(move || {
         while let Ok(log_msg) = log_rx.recv() {
@@ -112,7 +111,6 @@ async fn handle_connection(
 ) -> tungstenite::Result<()> {
     let ws_stream = accept_async(tcp_stream).await.expect("Failed to accept");
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
-    let mut interval = tokio::time::interval(Duration::from_millis(1000));
 
     // Re-sending packet history - this is not water tight, but better than nothing.
     // TODO(emilk): water-proof resending of history + streaming of new stuff, without anything missed.
@@ -145,9 +143,6 @@ async fn handle_connection(
                 let data_msg = data_msg.unwrap();
 
                 ws_sender.send(tungstenite::Message::Binary(data_msg.to_vec())).await?;
-            }
-            _ = interval.tick() => {
-                // ws_sender.send(Message::Text("tick".to_owned())).await?;
             }
         }
     }

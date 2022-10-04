@@ -51,17 +51,7 @@ impl GpuMeshCache {
         crate::profile_function!();
         self.0
             .entry(mesh_id)
-            .or_insert_with(|| match cpu_mesh.to_gpu(three_d) {
-                Ok(gpu_mesh) => Some(gpu_mesh),
-                Err(err) => {
-                    re_log::warn!(
-                        "Failed to load mesh {:?}: {}",
-                        cpu_mesh.name(),
-                        re_error::format(&err)
-                    );
-                    None
-                }
-            });
+            .or_insert_with(|| Some(cpu_mesh.to_gpu(three_d)));
     }
 
     pub fn set_instances(&mut self, mesh_id: u64, instances: &three_d::Instances) {

@@ -2,10 +2,21 @@ use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
 
+#[cfg(not(any(feature = "glow", feature = "wgpu")))]
+compile_error!("You must enable either the 'glow' or 'wgpu' feature of re_viewer.");
+
 pub fn run_native_app(app_creator: eframe::AppCreator) {
     let native_options = eframe::NativeOptions {
         depth_buffer: 24,
+
+        #[cfg(not(feature = "wgpu"))]
         multisampling: 8,
+
+        #[cfg(feature = "glow")]
+        renderer: eframe::Renderer::Glow,
+        #[cfg(not(feature = "glow"))]
+        renderer: eframe::Renderer::Wgpu,
+
         initial_window_size: Some([1600.0, 1200.0].into()),
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
@@ -29,7 +40,7 @@ pub fn run_native_viewer_with_rx(rx: Receiver<LogMsg>) {
     }));
 }
 
-fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
+pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: Receiver<T>,
     ctx: egui::Context,
 ) -> Receiver<T> {

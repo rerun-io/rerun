@@ -1,0 +1,16 @@
+[package]
+name = "re_tensor_ops"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.63"
+license = "MIT OR Apache-2.0"
+publish = false
+
+
+[dependencies]
+ahash = "0.8"
+bytemuck = {version = "1.12", features = ["extern_crate_alloc"]}
+ndarray = "0.15"
+re_log_types = { path = "../re_log_types" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "1.0"

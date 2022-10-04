@@ -6,6 +6,7 @@ use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
+use pyo3::types::PyList;
 use std::borrow::Cow;
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -73,6 +74,8 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     tracing_subscriber::fmt::init();
 
     Sdk::global().set_recording_id(default_recording_id(py));
+
+    m.add_function(wrap_pyfunction!(main, m)?)?;
 
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
@@ -168,11 +171,17 @@ fn vec_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
     array: &'a numpy::PyReadonlyArray<'_, T, D>,
 ) -> Cow<'a, [T]> {
     let array = array.as_array();
-    if let Some(slice) = array.to_slice() {
-        Cow::Borrowed(slice)
-    } else {
-        Cow::Owned(array.iter().cloned().collect())
+
+    // Numpy has many different memory orderings.
+    // We could/should check that we have the right one here.
+    // But for now, we just check for and optimize the trivial case.
+    if array.shape().len() == 1 {
+        if let Some(slice) = array.to_slice() {
+            return Cow::Borrowed(slice); // common-case optimization
+        }
     }
+
+    Cow::Owned(array.iter().cloned().collect())
 }
 
 fn time(timeless: bool) -> TimePoint {
@@ -184,6 +193,15 @@ fn time(timeless: bool) -> TimePoint {
 }
 
 // ----------------------------------------------------------------------------
+
+#[pyfunction]
+fn main(argv: Vec<String>) {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(rerun::run(argv));
+}
 
 #[pyfunction]
 fn get_recording_id() -> String {
@@ -1037,11 +1055,12 @@ fn log_obb(
 fn log_tensor_u8(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, u8>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1050,11 +1069,12 @@ fn log_tensor_u8(
 fn log_tensor_u16(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, u16>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1063,17 +1083,19 @@ fn log_tensor_u16(
 fn log_tensor_f32(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
 fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, T>,
+    names: Option<&PyList>,
     meter: Option<f32>,
     timeless: bool,
     space: Option<String>,
@@ -1085,10 +1107,16 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
 
     let time_point = time(timeless);
 
+    let names: Option<Vec<String>> =
+        names.map(|names| names.iter().map(|n| n.to_string()).collect());
+
     sdk.send_data(
         &time_point,
         (&obj_path, "tensor"),
-        LoggedData::Single(Data::Tensor(to_rerun_tensor(&img))),
+        LoggedData::Single(Data::Tensor(
+            re_tensor_ops::to_rerun_tensor(&img.as_array(), names)
+                .map_err(|err| PyTypeError::new_err(err.to_string()))?,
+        )),
     );
 
     let space = space.unwrap_or_else(|| "2D".to_owned());
@@ -1107,22 +1135,6 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     }
 
     Ok(())
-}
-
-fn to_rerun_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
-    img: &numpy::PyReadonlyArrayDyn<'_, T>,
-) -> Tensor {
-    // TODO(emilk): fewer memory allocations here.
-    let vec = img.to_owned_array().into_raw_vec();
-    let vec = bytemuck::allocation::try_cast_vec(vec)
-        .unwrap_or_else(|(_err, vec)| bytemuck::allocation::pod_collect_to_vec(&vec));
-    let arc = std::sync::Arc::from(vec);
-
-    Tensor {
-        shape: img.shape().iter().map(|&d| d as u64).collect(),
-        dtype: T::DTYPE,
-        data: TensorDataStore::Dense(arc),
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -1259,7 +1271,11 @@ fn log_image_file(
         &time_point,
         (&obj_path, "tensor"),
         LoggedData::Single(Data::Tensor(re_log_types::Tensor {
-            shape: vec![h as _, w as _, 3],
+            shape: vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+                TensorDimension::depth(3),
+            ],
             dtype: TensorDataType::U8,
             data,
         })),

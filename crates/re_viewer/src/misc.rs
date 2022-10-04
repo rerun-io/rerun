@@ -1,6 +1,8 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod clipboard;
+pub(crate) mod color_map;
 pub(crate) mod image_cache;
+#[cfg(feature = "glow")]
 pub(crate) mod mesh_loader;
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub(crate) mod profiler;
@@ -67,7 +69,7 @@ pub fn calc_bbox_2d(objects: &re_data_store::Objects<'_>) -> emath::Rect {
 
     for (_, obj) in objects.image.iter() {
         if obj.tensor.shape.len() >= 2 {
-            let [h, w] = [obj.tensor.shape[0], obj.tensor.shape[1]];
+            let [h, w] = [obj.tensor.shape[0].size, obj.tensor.shape[1].size];
             bbox.extend_with(emath::Pos2::ZERO);
             bbox.extend_with(emath::pos2(w as _, h as _));
         }
@@ -91,6 +93,7 @@ pub fn calc_bbox_2d(objects: &re_data_store::Objects<'_>) -> emath::Rect {
     bbox
 }
 
+#[cfg(feature = "glow")]
 pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox {
     crate::profile_function!();
 
@@ -163,6 +166,7 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
 
 // ----------------------------------------------------------------------------
 
+#[cfg(feature = "glow")]
 pub mod cam {
     use glam::*;
     use macaw::Ray3;

@@ -1,8 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "examples/*", "rerun_py"]
-exclude = ["examples/nyud"]
-
+members = ["crates/*", "rerun_py"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
@@ -13,7 +11,11 @@ readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 
 [profile.dev]
-# opt-level = 1 # Speed up debug builds
+opt-level = 1 # Make debug builds run faster
+
+# Optimize all dependencies even in debug builds (does not affect workspace packages):
+[profile.dev.package."*"]
+opt-level = 2
 
 [profile.release]
 # debug = true # good for profilers
@@ -22,11 +24,12 @@ repository = "https://github.com/rerun-io/rerun"
 debug = true
 
 [patch.crates-io]
-# 2022-09-21 (updated arboard)
-eframe = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
-egui = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "12dc61ed0f1a23b45e336799005d62e0a6f47e4f" }
+# 2022-10-02 - crate update
+eframe = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
+egui = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }

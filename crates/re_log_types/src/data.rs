@@ -579,7 +579,7 @@ impl TensorElement {
 /// and memory efficient.
 /// This is crucial, since we clone data for different timelines in the data store.
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorDataStore {
     /// Densely packed tensor
@@ -590,6 +590,15 @@ pub enum TensorDataStore {
     /// This can only represent tensors with [`TensorDataType::U8`]
     /// of dimensions `[h, w, 3]` (RGB) or `[h, w]` (grayscale).
     Jpeg(Arc<[u8]>),
+}
+
+impl TensorDataStore {
+    pub fn as_slice<T: bytemuck::Pod>(&self) -> Option<&[T]> {
+        match self {
+            TensorDataStore::Dense(bytes) => Some(bytemuck::cast_slice(bytes)),
+            TensorDataStore::Jpeg(_) => None,
+        }
+    }
 }
 
 impl std::fmt::Debug for TensorDataStore {
@@ -605,10 +614,60 @@ impl std::fmt::Debug for TensorDataStore {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TensorDimension {
+    /// Number of elements on this dimension.
+    /// I.e. size-1 is the maximum allowed index.
+    pub size: u64,
+
+    /// Optional name of the dimension, e.g. "color" or "width"
+    pub name: String,
+}
+
+impl TensorDimension {
+    const DEFAULT_NAME_WIDTH: &'static str = "width";
+    const DEFAULT_NAME_HEIGHT: &'static str = "height";
+    const DEFAULT_NAME_DEPTH: &'static str = "depth";
+
+    pub fn height(size: u64) -> Self {
+        Self::named(size, String::from(Self::DEFAULT_NAME_HEIGHT))
+    }
+
+    pub fn width(size: u64) -> Self {
+        Self::named(size, String::from(Self::DEFAULT_NAME_WIDTH))
+    }
+
+    pub fn depth(size: u64) -> Self {
+        Self::named(size, String::from(Self::DEFAULT_NAME_DEPTH))
+    }
+
+    pub fn named(size: u64, name: String) -> Self {
+        Self { size, name }
+    }
+
+    pub fn unnamed(size: u64) -> Self {
+        Self {
+            size,
+            name: String::new(),
+        }
+    }
+}
+
+impl std::fmt::Debug for TensorDimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.name.is_empty() {
+            self.size.fmt(f)
+        } else {
+            write!(f, "{}={}", self.name, self.size)
+        }
+    }
+}
+
 /// An N-dimensional colelction of numbers.
 ///
 /// Most often used to describe image pixels.
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tensor {
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
@@ -619,7 +678,7 @@ pub struct Tensor {
     /// An empty vector has shape `[0]`, an empty matrix shape `[0, 0]`, etc.
     ///
     /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc in most circumstances.
-    pub shape: Vec<u64>,
+    pub shape: Vec<TensorDimension>,
 
     /// The per-element data format.
     /// numpy calls this `dtype`.
@@ -629,23 +688,13 @@ pub struct Tensor {
     pub data: TensorDataStore,
 }
 
-impl std::fmt::Debug for Tensor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Tensor")
-            .field("shape", &self.shape)
-            .field("dtype", &self.dtype)
-            .field("data", &self.data)
-            .finish()
-    }
-}
-
 impl Tensor {
     /// True if the shape has a zero in it anywhere.
     ///
     /// Note that `shape=[]` means this tensor is a scalar, and thus NOT empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.shape.iter().any(|&d| d == 0)
+        self.shape.iter().any(|d| d.size == 0)
     }
 
     /// Number of elements (the product of [`Self::shape`]).
@@ -653,8 +702,8 @@ impl Tensor {
     /// NOTE: Returns `1` for scalars (shape=[]).
     pub fn len(&self) -> u64 {
         let mut len = 1;
-        for &dim in &self.shape {
-            len = dim.saturating_mul(len);
+        for dim in &self.shape {
+            len = dim.size.saturating_mul(len);
         }
         len
     }
@@ -680,7 +729,8 @@ impl Tensor {
             TensorDataStore::Dense(bytes) => {
                 let mut stride = self.dtype.size();
                 let mut offset = 0;
-                for (size, index) in self.shape.iter().zip(index).rev() {
+                for (TensorDimension { size, name: _ }, index) in self.shape.iter().zip(index).rev()
+                {
                     if size <= index {
                         return None;
                     }

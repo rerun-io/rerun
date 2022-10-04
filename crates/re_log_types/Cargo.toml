@@ -10,13 +10,16 @@ publish = false
 [features]
 default = []
 
-# Enable loading data from a file
+## Enable loading data from a file.
 load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
 
-# Enable saving data to a file
+## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
+puffin = ["dep:puffin"]
+
+## Enable saving data to a file.
 save = ["anyhow", "rmp-serde", "serde", "zstd"]
 
-# Enable (de)serialization using serde.
+## Enable (de)serialization using serde.
 serde = ["dep:serde", "re_string_interner/serde"]
 
 
@@ -24,20 +27,22 @@ serde = ["dep:serde", "re_string_interner/serde"]
 ahash = "0.8"
 bytemuck = "1.11"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
+document-features = "0.2"
 nohash-hasher = "0.2"
 re_string_interner = { path = "../re_string_interner" }
 thiserror = "1.0"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
-# Optional:
+# Optional dependencies:
 anyhow = { version = "1", optional = true }
+puffin = { version = "0.13", optional = true }
 rmp-serde = { version = "1", optional = true }
 serde = { version = "1", features = ["derive", "rc"], optional = true }
 
-# Native:
+# Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 zstd = { version = "0.10.0", optional = true } # native only
 
-# Web:
+# Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ruzstd = { version = "0.2.4", optional = true } # works on wasm

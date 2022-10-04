@@ -22,8 +22,21 @@ pub struct TimeReal(FixedI128<typenum::U64>);
 
 impl TimeReal {
     #[inline]
-    pub fn as_i64(&self) -> i64 {
-        self.0.round().lossy_into()
+    pub fn floor(&self) -> TimeInt {
+        let int: i64 = self.0.floor().lossy_into();
+        TimeInt::from(int)
+    }
+
+    #[inline]
+    pub fn round(&self) -> TimeInt {
+        let int: i64 = self.0.round().lossy_into();
+        TimeInt::from(int)
+    }
+
+    #[inline]
+    pub fn ceil(&self) -> TimeInt {
+        let int: i64 = self.0.ceil().lossy_into();
+        TimeInt::from(int)
     }
 
     #[inline]
@@ -72,13 +85,6 @@ impl From<TimeInt> for TimeReal {
     }
 }
 
-impl From<TimeReal> for TimeInt {
-    #[inline]
-    fn from(time_real: TimeReal) -> Self {
-        Self::from(time_real.as_i64())
-    }
-}
-
 impl From<re_log_types::Duration> for TimeReal {
     #[inline]
     fn from(duration: re_log_types::Duration) -> Self {
@@ -96,14 +102,14 @@ impl From<re_log_types::Time> for TimeReal {
 impl From<TimeReal> for re_log_types::Time {
     #[inline]
     fn from(int: TimeReal) -> Self {
-        Self::from_ns_since_epoch(int.as_i64())
+        Self::from_ns_since_epoch(int.round().as_i64())
     }
 }
 
 impl From<TimeReal> for re_log_types::Duration {
     #[inline]
     fn from(int: TimeReal) -> Self {
-        Self::from_nanos(int.as_i64())
+        Self::from_nanos(int.round().as_i64())
     }
 }
 

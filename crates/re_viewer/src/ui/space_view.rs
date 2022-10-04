@@ -297,7 +297,11 @@ impl SpacesPanel {
 pub(crate) struct SpaceStates {
     // per space
     state_2d: ahash::HashMap<Option<ObjPath>, crate::view2d::State2D>,
+
+    #[cfg(feature = "glow")]
     state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
+
+    state_tensor: ahash::HashMap<Option<ObjPath>, crate::view_tensor::TensorViewState>,
 }
 
 impl SpaceStates {
@@ -326,6 +330,36 @@ impl SpaceStates {
                 .visible
         });
 
+        // We have a special tensor viewer that only works
+        // when we only have a single tensor (and no bounding boxes etc).
+        // It is also not as great for images as the nomral 2d view (at least not yet).
+        // This is a hacky-way of detecting this special case.
+        // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
+        // so we can stack bounding boxes etc on top of it.
+        if objects.image.len() == 1 {
+            let image = objects.image.first().unwrap().1;
+            let tensor = image.tensor;
+
+            // Ignore tensors that likely represent images.
+            if tensor.num_dim() > 3
+                || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4
+            {
+                let state_tensor = self
+                    .state_tensor
+                    .entry(space.cloned())
+                    .or_insert_with(|| crate::ui::view_tensor::TensorViewState::create(tensor));
+
+                hovered |= ui
+                    .vertical(|ui| {
+                        crate::view_tensor::view_tensor(ui, state_tensor, tensor);
+                    })
+                    .response
+                    .hovered;
+
+                return hovered;
+            }
+        }
+
         if objects.has_any_2d() && objects.has_any_3d() {
             re_log::warn_once!("Space {:?} has both 2D and 3D objects", space_name(space));
         }
@@ -337,11 +371,21 @@ impl SpaceStates {
         }
 
         if objects.has_any_3d() {
+            #[cfg(feature = "glow")]
             ui.vertical(|ui| {
                 let state_3d = self.state_3d.entry(space.cloned()).or_default();
                 let response = crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
                 hovered |= response.hovered();
             });
+
+            #[cfg(not(feature = "glow"))]
+            ui.label(
+                egui::RichText::new(
+                    "3D view not availble (Rerun was compiled without the 'glow' feature)",
+                )
+                .size(24.0)
+                .color(ui.visuals().warn_fg_color),
+            );
         }
 
         if !hovered && ctx.rec_cfg.hovered_space.space() == space {

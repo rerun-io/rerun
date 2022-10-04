@@ -24,10 +24,12 @@ impl RemoteViewerApp {
 
         let egui_ctx_clone = egui_ctx.clone();
 
+        re_log::info!("Connecting to WS server at {:?}…", self.url);
+
         let connection = re_ws_comms::Connection::viewer_to_server(
             self.url.clone(),
-            move |data_msg: re_log_types::LogMsg| {
-                if tx.send(data_msg).is_ok() {
+            move |log_msg: re_log_types::LogMsg| {
+                if tx.send(log_msg).is_ok() {
                     egui_ctx_clone.request_repaint(); // Wake up UI thread
                     std::ops::ControlFlow::Continue(())
                 } else {

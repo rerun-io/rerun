@@ -10,7 +10,7 @@ use crate::{decode_log_msg, Result};
 pub struct Connection(WsSender);
 
 impl Connection {
-    /// Connect viewer to ser
+    /// Connect viewer to server
     pub fn viewer_to_server(
         url: String,
         on_log_msg: impl Fn(LogMsg) -> ControlFlow<()> + Send + 'static,

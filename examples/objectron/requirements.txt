@@ -1,0 +1,4 @@
+rerun_sdk
+betterproto[compiler]
+requests
+scipy

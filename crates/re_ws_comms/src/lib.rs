@@ -1,4 +1,8 @@
 //! Communications between server and viewer.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 #[cfg(feature = "client")]
 mod client;
@@ -14,7 +18,7 @@ use re_log_types::LogMsg;
 
 pub type Result<T> = anyhow::Result<T>;
 
-pub const DEFAULT_WS_SERVER_PORT: u16 = 9876;
+pub const DEFAULT_WS_SERVER_PORT: u16 = 9877;
 
 #[cfg(feature = "tls")]
 pub const PROTOCOL: &str = "wss";

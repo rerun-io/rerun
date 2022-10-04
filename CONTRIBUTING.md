@@ -20,10 +20,13 @@ cargo doc --no-deps --open
 To learn about the viewer, run:
 
 ```
-cargo run --release -p rerun -- --help
+cargo run -p rerun -- --help
 ```
 
 ## Tools
+
+We use the [`just`](https://github.com/casey/just) command runner tool for repository automation. See [here](https://github.com/casey/just#installation) for installation instructions. To see available automations, use `just --list`.
+
 We use [cargo cranky](https://github.com/ericseppanen/cargo-cranky) and specify our clippy lints in `Cranky.toml`. Usage: `cargo cranky`.
 
 We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`.

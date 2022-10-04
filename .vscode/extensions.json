@@ -8,5 +8,6 @@
 		"wayou.vscode-todo-highlight", // TODO Highlight
 		"webfreak.debug", // Native Debug
 		"zxh404.vscode-proto3", // vscode-proto3
+		"ms-python.python",
 	]
 }

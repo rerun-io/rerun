@@ -12,10 +12,18 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = ["puffin"]
+default = ["puffin", "glow"]
 
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
-puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin"]
+puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin", "re_log_types/puffin"]
+
+#! #### Rendering backends
+#! You must enable either `glow` or `wgpu`.
+## Enable the [`glow`](https://crates.io/crates/glow) renderer.
+glow = ["eframe/glow", "dep:egui_glow", "dep:glow", "dep:three-d", "dep:three-d-asset"]
+
+## Enable the [`wgpu`](https://crates.io/crates/wgpu) renderer.
+wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:wgpu"]
 
 
 [dependencies]
@@ -24,43 +32,53 @@ re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["save", "load"] }
 re_string_interner = { path = "../re_string_interner" }
+re_tensor_ops = { path = "../re_tensor_ops" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
-eframe      = { version = "0.19", default-features = false, features = ["default_fonts", "glow", "persistence"] }
+eframe      = { version = "0.19", default-features = false, features = ["default_fonts", "persistence"] }
 egui        = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { version = "0.19", features = ["tracing"] }
-egui_glow   = { version = "0.19" }
+
 
 ahash = "0.8"
 anyhow = "1.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
+document-features = "0.2"
 egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc7471eea48df9104fe62acfc96d2b", features = ["serde"] } # 2022-09-06
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
-glow = "0.11"
 image = { version = "0.24", default-features = false, features = ["jpeg", "png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
 macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
+ndarray = "0.15"
 nohash-hasher = "0.2"
 rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-three-d = { version = "0.13.0", default-features = false }
-three-d-asset = { version = "0.3.0", default-features = false, features = [
+typenum = "1.15"
+vec1 = "1.8"
+
+# Optional dependencies:
+egui_glow   = { version = "0.19", optional = true }
+glow = { version = "0.11", optional = true }
+three-d = { version = "0.13.0", optional = true, default-features = false }
+three-d-asset = { version = "0.3.0", optional = true, default-features = false, features = [
     "gltf",
     "image",
     "jpeg",
     "obj",
     "png",
 ] }
-typenum = "1.15"
-vec1 = "1.8"
 
-# native:
+egui-wgpu = { version = "0.19", optional = true }
+wgpu = { version = "0.13", optional = true, features = ["webgl"] }
+
+
+# native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 arboard = { version = "3.1", default-features = false, features = [
     "image-data",
@@ -69,7 +87,7 @@ ctrlc = { version = "3.0", features = ["termination"] }
 puffin = { version = "0.13", optional = true }
 puffin_http = { version = "0.10", optional = true }
 
-# web:
+# web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
 tracing-wasm = "0.2"

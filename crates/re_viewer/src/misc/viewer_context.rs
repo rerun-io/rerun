@@ -9,6 +9,7 @@ use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource};
 /// Common things needed by many parts of the viewer.
 pub(crate) struct ViewerContext<'a> {
     /// Global options for the whole viewer.
+    #[allow(unused)] // only used with 'glow' feature
     pub options: &'a mut Options,
 
     /// Things that need caching.
@@ -172,6 +173,7 @@ pub enum HoveredSpace {
         pos: glam::Vec3,
     },
     /// Hovering in a 3D space.
+    #[allow(unused)] // only used with 'glow' feature
     ThreeD {
         /// The 3D space with the camera(s)
         space_3d: Option<ObjPath>,
@@ -273,6 +275,7 @@ pub(crate) struct Caches {
     pub image: crate::misc::ImageCache,
 
     /// For displaying meshes efficiently in immediate mode.
+    #[cfg(feature = "glow")]
     pub cpu_mesh: crate::ui::view3d::CpuMeshCache,
 
     /// Auto-generated colors.

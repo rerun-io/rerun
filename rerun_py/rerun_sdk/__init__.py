@@ -2,7 +2,7 @@
 import atexit
 from enum import Enum
 import numpy as np
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Union, Iterable
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -31,7 +31,7 @@ class MeshFormat(Enum):
 
     # Needs some way of logging materials too, or adding some default material to the viewer.
     # """ Wavefront .obj """
-    # OBJ = "OBJ"
+    OBJ = "OBJ"
 
 
 class CameraSpaceConvention(Enum):
@@ -465,9 +465,9 @@ def log_obb(
                      _to_sequence(half_size),
                      _to_sequence(position),
                      _to_sequence(rotation_q),
-                     timeless,
                      color,
                      stroke_width,
+                     timeless,
                      space)
 
 
@@ -494,7 +494,7 @@ def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space
             raise TypeError(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}")
 
-    _log_tensor(obj_path, image, timeless=timeless, space=space)
+    log_tensor(obj_path, image, timeless=timeless, space=space)
 
 
 def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None):
@@ -514,21 +514,31 @@ def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] 
         raise TypeError(
             f"Expected 2D depth image, got array of shape {image.shape}")
 
-    _log_tensor(obj_path, image, meter=meter, timeless=timeless, space=space)
+    log_tensor(obj_path, image, meter=meter, timeless=timeless, space=space)
 
 
-def _log_tensor(obj_path: str, tensor: np.ndarray, *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None):
+def log_tensor(obj_path: str,
+               tensor: np.ndarray,
+               names: Optional[Iterable] = None,
+               meter: Optional[float] = None,
+               timeless: bool = False,
+               space: Optional[str] = None):
     """
     If no `space` is given, the space name "2D" will be used.
     """
+
+    if not names is None:
+        names = list(names)
+        assert len(tensor.shape) == len(names)
+
     if tensor.dtype == 'uint8':
-        rerun_rs.log_tensor_u8(obj_path, tensor, meter, timeless, space)
+        rerun_rs.log_tensor_u8(obj_path, tensor, names, meter, timeless, space)
     elif tensor.dtype == 'uint16':
-        rerun_rs.log_tensor_u16(obj_path, tensor, meter, timeless, space)
+        rerun_rs.log_tensor_u16(obj_path, tensor, names, meter, timeless, space)
     elif tensor.dtype == 'float32':
-        rerun_rs.log_tensor_f32(obj_path, tensor, meter, timeless, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, timeless, space)
     elif tensor.dtype == 'float64':
-        rerun_rs.log_tensor_f32(obj_path, tensor.astype('float32'), meter, timeless, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor.astype('float32'), names, meter, timeless, space)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 

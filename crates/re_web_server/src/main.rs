@@ -5,5 +5,5 @@
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    re_web_server::run(9090).await.unwrap();
+    re_web_server::WebServer::new(9090).serve().await.unwrap();
 }

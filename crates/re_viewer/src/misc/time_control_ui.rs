@@ -220,7 +220,7 @@ fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
 fn step_fwd_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
     if let Some(next) = values
         .range((
-            std::ops::Bound::Excluded(TimeInt::from(time)),
+            std::ops::Bound::Excluded(time.floor()),
             std::ops::Bound::Unbounded,
         ))
         .next()
@@ -232,7 +232,7 @@ fn step_fwd_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
 }
 
 fn step_back_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
-    if let Some(previous) = values.range(..TimeInt::from(time)).rev().next() {
+    if let Some(previous) = values.range(..time.ceil()).rev().next() {
         *previous
     } else {
         max(values)
@@ -248,8 +248,8 @@ fn step_fwd_time_looped(
         loop_range.min
     } else if let Some(next) = values
         .range((
-            std::ops::Bound::Excluded(TimeInt::from(time)),
-            std::ops::Bound::Included(TimeInt::from(loop_range.max)),
+            std::ops::Bound::Excluded(time.floor()),
+            std::ops::Bound::Included(loop_range.max.floor()),
         ))
         .next()
     {
@@ -267,7 +267,7 @@ fn step_back_time_looped(
     if time <= loop_range.min || loop_range.max < time {
         loop_range.max
     } else if let Some(previous) = values
-        .range(TimeInt::from(loop_range.min)..TimeInt::from(time))
+        .range(loop_range.min.ceil()..time.ceil())
         .rev()
         .next()
     {

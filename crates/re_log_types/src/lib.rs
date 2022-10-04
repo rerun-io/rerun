@@ -11,6 +11,10 @@
 //!
 //! Each object is logged to a specific [`ObjPath`] -
 //! check out module-level documentation for [`path`] for more on this.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 #![allow(clippy::manual_range_contains)]
 
@@ -584,4 +588,26 @@ pub fn time_point(
             .map(|(name, tt, ti)| (TimeSource::new(name, tt), ti))
             .collect(),
     )
+}
+
+// ---------------------------------------------------------------------------
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_function {
+    ($($arg: tt)*) => {
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        puffin::profile_function!($($arg)*);
+    };
+}
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_scope {
+    ($($arg: tt)*) => {
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        puffin::profile_scope!($($arg)*);
+    };
 }
