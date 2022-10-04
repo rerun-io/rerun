@@ -1,6 +1,6 @@
 use crate::ViewerContext;
 use nohash_hasher::IntMap;
-use re_data_store::{InstanceId, InstanceProps, LogMessage};
+use re_data_store::{InstanceProps, LogMessage};
 use re_log_types::*;
 
 // -----------------------------------------------------------------------------
@@ -8,22 +8,18 @@ use re_log_types::*;
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct StateLogMsg {
-    /// What the mouse is hovering (from previous frame)
-    #[serde(skip)]
-    hovered_instance: Option<InstanceId>,
+    // TODO: msg caching
 }
 
 pub(crate) fn show(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut StateLogMsg,
-    space: Option<&ObjPath>,
-    objects: &re_data_store::Objects<'_>,
-) {
+    _state: &mut StateLogMsg,
+) -> egui::Response {
     crate::profile_function!();
 
     // Gather all `LogMessage` objects across the entire time range, not just the
-    // current selection.
+    // current time selection.
     let mut objects = re_data_store::Objects::default();
     let messages = {
         let obj_types = ctx
@@ -32,14 +28,14 @@ pub(crate) fn show(
             .iter()
             .filter_map(|(obj_type_path, obj_type)| {
                 matches!(&obj_type, ObjectType::LogMessage)
-                    .then(|| (obj_type_path.clone(), obj_type.clone()))
+                    .then(|| (obj_type_path.clone(), *obj_type))
             })
             .collect::<IntMap<_, _>>();
 
-        let time_source = &ctx.rec_cfg.time_ctrl.source();
+        let time_source = ctx.rec_cfg.time_ctrl.source();
         let all_time = re_data_store::TimeQuery::<i64>::Range(i64::MIN..=i64::MAX);
 
-        if let Some(store) = ctx.log_db.data_store.get(&time_source) {
+        if let Some(store) = ctx.log_db.data_store.get(time_source) {
             objects.query(store, &all_time, &obj_types);
         }
 
@@ -50,13 +46,14 @@ pub(crate) fn show(
         ui.label(format!("{} log messages", objects.log_message.len()));
         ui.separator();
         log_table(ctx, ui, &messages);
-    });
+    })
+    .response
 }
 
 fn log_table(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    messages: &[(&InstanceProps, &LogMessage)],
+    messages: &[(&InstanceProps<'_>, &LogMessage<'_>)],
 ) {
     egui::ScrollArea::horizontal()
         .auto_shrink([false; 2])
@@ -94,6 +91,7 @@ fn log_table(
                     body.rows(ROW_HEIGHT, messages.len(), |index, mut row| {
                         let (props, msg) = messages[index];
 
+                        // TODO: extract time point
                         let inner = ctx.log_db.get_log_msg(props.msg_id);
                         if inner.is_none() {
                             // TODO: add error message inline? log warning? assert?
@@ -125,7 +123,7 @@ fn log_table(
                         row.col(|ui| {
                             ui.label(
                                 msg.level
-                                    .map_or_else(|| "-".to_owned(), |lvl| lvl.to_string()),
+                                    .map_or_else(|| "-".to_owned(), |lvl| lvl.to_owned()),
                             );
                         });
 

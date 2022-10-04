@@ -393,12 +393,10 @@ impl SpaceStates {
             );
         }
 
-        // dbg!(objects.has_any_log_messages());
-        if objects.has_any_log_messages() {
-            let state_logs = self.state_logs.entry(space.cloned()).or_default();
-            let response = crate::log_msg_view::show(ctx, ui, state_logs, space, &objects);
-            // hovered |= response.hovered();
-        }
+        // TODO: caching and check (.. and naming)
+        let state_logs = self.state_logs.entry(space.cloned()).or_default();
+        let response = crate::log_msg_view::show(ctx, ui, state_logs);
+        hovered |= response.hovered();
 
         if !hovered && ctx.rec_cfg.hovered_space.space() == space {
             ctx.rec_cfg.hovered_space = HoveredSpace::None;
