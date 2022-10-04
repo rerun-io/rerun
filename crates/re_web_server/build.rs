@@ -18,7 +18,7 @@ fn main() {
     rerun_if_changed("../../crates/re_viewer/src/**/*.rs");
 
     if std::env::var("CARGO_FEATURE___CI").is_ok() {
-        // Thi saves a lot of CI time
+        // This saves a lot of CI time.
         eprintln!("__ci feature detected: Skipping building of web viewer wasm.");
     } else {
         eprintln!("Build web viewer wasm…");

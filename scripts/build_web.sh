@@ -57,15 +57,15 @@ rm -f ${BUILD_DIR}/${CRATE_NAME_SNAKE_CASE}_bg.wasm
 
 TARGET=`cargo metadata --format-version=1 | jq --raw-output .target_directory`
 
-# We need to use a different target folder to support recursive builds,
-# when re_web_server/build.rs calls this scripts.
+# re_web_server/build.rs calls this scripts, so we need to use
+# a different target folder to support recursive caergo builds.
 TARGET_WASM="${TARGET}_wasm"
 
 echo "Compiling rust to wasm in folder: ${TARGET_WASM}"
 BUILD=release
 cargo build --target-dir $TARGET_WASM -p ${CRATE_NAME} --release --lib --target wasm32-unknown-unknown
 
-# Get the output directory (in the workspace it is in another location)
+# Get the output directoryß (in the workspace it is in another location)
 
 echo "Generating JS bindings for wasm…"
 TARGET_NAME="${CRATE_NAME_SNAKE_CASE}.wasm"
