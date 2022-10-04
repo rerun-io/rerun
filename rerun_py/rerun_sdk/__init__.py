@@ -94,6 +94,15 @@ def connect(addr: Optional[str] = None):
     return rerun_rs.connect(addr)
 
 
+def serve():
+    """
+    Serve a Rerun Web Viewer.
+
+    WARNING: This is an experimental feature.
+    """
+    return rerun_rs.serve()
+
+
 def disconnect():
     """ Disconnect from the remote rerun server (if any). """
     return rerun_rs.disconnect()

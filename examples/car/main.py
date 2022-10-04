@@ -4,6 +4,7 @@
 from dataclasses import dataclass
 import os
 from pathlib import Path
+from time import sleep
 from typing import Final, Iterator, Tuple
 
 import argparse
@@ -315,6 +316,12 @@ def main() -> None:
         help="Connect to an external viewer",
     )
     parser.add_argument(
+        "--serve",
+        dest="serve",
+        action="store_true",
+        help="Serve a web viewer (WARNING: experimental feature)",
+    )
+    parser.add_argument(
         "--addr", type=str, default=None, help="Connect to this ip:port"
     )
     parser.add_argument(
@@ -322,7 +329,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.connect:
+    if args.serve:
+        rerun.serve()
+    elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
@@ -330,7 +339,14 @@ def main() -> None:
 
     log_car_data(args)
 
-    if args.save is not None:
+    if args.serve:
+        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
+        try:
+            sleep(100_000)
+        except:
+            pass
+
+    elif args.save is not None:
         rerun.save(args.save)
     elif not args.connect:
         # Show the logged data inside the Python process:
