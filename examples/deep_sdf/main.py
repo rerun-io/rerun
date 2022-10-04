@@ -58,7 +58,7 @@ def log_timing_decorator(objpath: str, level: str):
             now = timer()
             result = func(*args, **kwargs)
             elapsed_ms = (timer() - now) * 1_000.0
-            rerun.log_msg(objpath, f"execution took {elapsed_ms}ms", level=level)
+            rerun.log_msg(objpath, f"execution took {elapsed_ms}ms", level=level, space="autologs")
             return result
         return wrapper
     return inner

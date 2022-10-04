@@ -73,15 +73,19 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             // Log mesages work a bit different because they are completely isolated from the
             // main timeline selection: we do not filter them, rather we always want the
             // complete timeline!
-            if tab.space.as_ref().map(ToString::to_string).as_deref() == Some("/logs") {
-                let state_log_messages = StateLogMessages::from_context(self.ctx);
-                if !state_log_messages.is_empty() {
-                    let response = state_log_messages.show(ui, self.ctx);
-                    if response.hovered() {
-                        self.hovered_space = tab.space.clone();
+            if let Some(objects) = self.objects.get(&tab.space.as_ref()) {
+                if objects.has_any_log_messages() {
+                    let state_log_messages =
+                        StateLogMessages::from_context(self.ctx, tab.space.as_ref());
+                    if !state_log_messages.is_empty() {
+                        let response = state_log_messages.show(ui, self.ctx);
+                        if response.hovered() {
+                            self.hovered_space = tab.space.clone();
+                        }
                     }
+
+                    return;
                 }
-                return;
             }
 
             let hovered =

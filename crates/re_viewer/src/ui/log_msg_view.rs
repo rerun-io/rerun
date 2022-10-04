@@ -1,4 +1,5 @@
 use crate::ViewerContext;
+use egui::Color32;
 use nohash_hasher::IntMap;
 use re_data_store::{InstanceProps, LogMessage, Objects};
 use re_log_types::*;
@@ -14,7 +15,7 @@ pub(crate) struct StateLogMessages<'s> {
 impl<'s> StateLogMessages<'s> {
     /// Gather all `LogMessage` objects across the entire time range, not just the
     /// current time selection.
-    pub fn from_context(ctx: &mut ViewerContext<'s>) -> Self {
+    pub fn from_context(ctx: &mut ViewerContext<'s>, space: Option<&ObjPath>) -> Self {
         crate::profile_function!();
 
         let mut objects = re_data_store::Objects::default();
@@ -39,6 +40,15 @@ impl<'s> StateLogMessages<'s> {
             }
         }
 
+        let objects = objects.filter(|props| {
+            props.space == space
+                && ctx
+                    .rec_cfg
+                    .projected_object_properties
+                    .get(props.obj_path)
+                    .visible
+        });
+
         Self { objects }
     }
 
@@ -62,6 +72,8 @@ impl<'s> StateLogMessages<'s> {
         .response
     }
 }
+
+// -----------------------------------------------------------------------------
 
 struct CompleteLogMessage<'s> {
     id: MsgId,
@@ -183,10 +195,11 @@ fn log_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Complet
 
                 // level
                 row.col(|ui| {
-                    ui.label(
-                        msg.level
-                            .map_or_else(|| "-".to_owned(), |lvl| lvl.to_owned()),
-                    );
+                    if let Some(lvl) = msg.level {
+                        ui.colored_label(level_to_color(ui, lvl), lvl);
+                    } else {
+                        ui.label("-");
+                    }
                 });
 
                 // text
@@ -195,4 +208,15 @@ fn log_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Complet
                 });
             });
         });
+}
+
+fn level_to_color(ui: &egui::Ui, lvl: &str) -> Color32 {
+    match lvl {
+        "TRACE" => Color32::LIGHT_GRAY,
+        "DEBUG" => Color32::LIGHT_BLUE,
+        "INFO" => Color32::LIGHT_GREEN,
+        "WARN" => Color32::YELLOW,
+        "ERROR" => Color32::RED,
+        _ => ui.visuals().text_color(),
+    }
 }
