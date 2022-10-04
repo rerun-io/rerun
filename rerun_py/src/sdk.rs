@@ -5,9 +5,10 @@ use re_log_types::{
     RecordingInfo, Time, TimePoint, TypeMsg,
 };
 
-#[derive(Default)]
 pub struct Sdk {
-    // TODO(emilk): also support sending over `mpsc::Sender`.
+    #[cfg(feature = "web")]
+    tokio_rt: tokio::runtime::Runtime,
+
     sender: Sender,
 
     // TODO(emilk): just store `ObjTypePathHash`
@@ -19,12 +20,24 @@ pub struct Sdk {
 }
 
 impl Sdk {
+    fn new() -> Self {
+        Self {
+            #[cfg(feature = "web")]
+            tokio_rt: tokio::runtime::Runtime::new().unwrap(),
+
+            sender: Default::default(),
+            registered_types: Default::default(),
+            recording_id: None,
+            has_sent_begin_recording_msg: false,
+        }
+    }
+
     /// Access the global [`Sdk`]. This is a singleton.
     pub fn global() -> std::sync::MutexGuard<'static, Self> {
         use once_cell::sync::OnceCell;
         use std::sync::Mutex;
         static INSTANCE: OnceCell<Mutex<Sdk>> = OnceCell::new();
-        let mutex = INSTANCE.get_or_init(Default::default);
+        let mutex = INSTANCE.get_or_init(|| Mutex::new(Sdk::new()));
         mutex.lock().unwrap()
     }
 
@@ -53,7 +66,47 @@ impl Sdk {
                 }
                 self.sender = Sender::Remote(client);
             }
+            #[cfg(feature = "web")]
+            Sender::WebViewer(web_server, _) => {
+                re_log::info!("Shutting down web server.");
+                web_server.abort();
+                self.sender = Sender::Remote(re_sdk_comms::Client::new(addr));
+            }
         }
+    }
+
+    #[cfg(feature = "web")]
+    pub fn serve(&mut self) {
+        let (rerun_tx, rerun_rx) = std::sync::mpsc::channel();
+
+        let web_server_join_handle = self.tokio_rt.spawn(async {
+            // This is the server which the web viewer will talk to:
+            let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
+                .await
+                .unwrap();
+            let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx));
+
+            // This is the server that serves the WASM+HTML:
+            let web_port = 9090;
+            let web_server = re_web_server::WebServer::new(web_port);
+            let web_server_handle = tokio::spawn(async move {
+                web_server.serve().await.unwrap();
+            });
+
+            let ws_server_url = re_ws_comms::default_server_url();
+            let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, ws_server_url);
+            let open = true;
+            if open {
+                webbrowser::open(&viewer_url).ok();
+            } else {
+                re_log::info!("Web server is running - view it at {}", viewer_url);
+            }
+
+            ws_server_handle.await.unwrap().unwrap();
+            web_server_handle.await.unwrap();
+        });
+
+        self.sender = Sender::WebViewer(web_server_join_handle, rerun_tx);
     }
 
     #[cfg(feature = "re_viewer")]
@@ -80,6 +133,8 @@ impl Sdk {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
             Sender::Buffered(log_messages) => std::mem::take(log_messages),
+            #[cfg(feature = "web")]
+            Sender::WebViewer(_, _) => vec![],
         }
     }
 
@@ -142,6 +197,10 @@ enum Sender {
 
     #[allow(unused)] // only used with `#[cfg(feature = "re_viewer")]`
     Buffered(Vec<LogMsg>),
+
+    /// Send it to the web viewer over WebSockets
+    #[cfg(feature = "web")]
+    WebViewer(tokio::task::JoinHandle<()>, std::sync::mpsc::Sender<LogMsg>),
 }
 
 impl Default for Sender {
@@ -155,6 +214,13 @@ impl Sender {
         match self {
             Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
+
+            #[cfg(feature = "web")]
+            Self::WebViewer(_, sender) => {
+                if let Err(err) = sender.send(msg) {
+                    re_log::error!("Failed to send log message to web server: {err}");
+                }
+            }
         }
     }
 }

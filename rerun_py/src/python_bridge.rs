@@ -2,14 +2,15 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
+use std::{borrow::Cow, io::Cursor, path::PathBuf};
+
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
-use pyo3::exceptions::{PyRuntimeError, PyTypeError};
-use pyo3::prelude::*;
-use pyo3::types::PyList;
-use std::borrow::Cow;
-use std::io::Cursor;
-use std::path::PathBuf;
+use pyo3::{
+    exceptions::{PyRuntimeError, PyTypeError},
+    prelude::*,
+    types::PyList,
+};
 
 use re_log_types::{LoggedData, *};
 
@@ -81,6 +82,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
+    m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
 
     #[cfg(feature = "re_viewer")]
@@ -236,6 +238,22 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     Ok(())
 }
 
+/// Serve a web-viewer.
+#[allow(clippy::unnecessary_wraps)] // False positive
+#[pyfunction]
+fn serve() -> PyResult<()> {
+    #[cfg(feature = "web")]
+    {
+        Sdk::global().serve();
+        Ok(())
+    }
+
+    #[cfg(not(feature = "web"))]
+    Err(PyRuntimeError::new_err(
+        "The Rerun SDK was not compiled with the 'web' feature",
+    ))
+}
+
 /// Wait until all logged data have been sent to the remove server (if any).
 #[pyfunction]
 fn flush() {
@@ -263,7 +281,7 @@ fn disconnect() {
 fn show() -> Result<(), PyErr> {
     let mut sdk = Sdk::global();
     if sdk.is_connected() {
-        return Err(PyTypeError::new_err(
+        return Err(PyRuntimeError::new_err(
             "Can't show the log messages: Rerun was configured to send the data to a server!",
         ));
     }
@@ -290,7 +308,7 @@ fn save(path: &str) -> Result<(), PyErr> {
 
     let mut sdk = Sdk::global();
     if sdk.is_connected() {
-        return Err(PyTypeError::new_err(
+        return Err(PyRuntimeError::new_err(
             "Can't show the log messages: Rerun was configured to send the data to a server!",
         ));
     }
@@ -309,7 +327,7 @@ fn save(path: &str) -> Result<(), PyErr> {
     match std::fs::File::create(path) {
         Ok(file) => {
             if let Err(err) = re_log_types::encoding::encode(log_messages.iter(), file) {
-                Err(PyTypeError::new_err(format!(
+                Err(PyRuntimeError::new_err(format!(
                     "Failed to write to file at {path:?}: {err}",
                 )))
             } else {
@@ -317,7 +335,7 @@ fn save(path: &str) -> Result<(), PyErr> {
                 Ok(())
             }
         }
-        Err(err) => Err(PyTypeError::new_err(format!(
+        Err(err) => Err(PyRuntimeError::new_err(format!(
             "Failed to create file at {path:?}: {err}",
         ))),
     }

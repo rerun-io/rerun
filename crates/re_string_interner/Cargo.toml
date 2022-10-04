@@ -1,9 +1,9 @@
 [package]
 name = "re_string_interner"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.63"
-license = "MIT OR Apache-2.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 publish = false
 
 
@@ -13,5 +13,5 @@ nohash-hasher = "0.2"
 once_cell = "1.12"
 parking_lot = "0.12"
 
-# Optional:
+# Optional dependencies:
 serde = { version = "1", optional = true }

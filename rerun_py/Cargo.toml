@@ -1,11 +1,10 @@
 [package]
-edition = "2021"
-license = "MIT OR Apache-2.0"
 name = "re_sdk_python"        # name of the rust crate
+edition.workspace = true
+license.workspace = true
 publish = false
-rust-version = "1.63"
-version = "0.1.0"
-
+rust-version.workspace = true
+version.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
@@ -26,7 +25,10 @@ re_viewer = ["dep:re_viewer"]
 extension-module = ["pyo3/extension-module"]
 
 ## Support serving a web viewer over HTTP.
-web = ["rerun/web"]
+##
+## Enabling this adds quite a bit to the compile time and binary size,
+## since it requires compiling and bundling the viewer as wasm.
+web = ["rerun/web", "dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 
 [dependencies]
@@ -49,6 +51,11 @@ rand = { version = "0.8", features = ["std_rng"] }
 tokio = { version = "1.16", features = ["rt-multi-thread"] }
 tracing-subscriber = "0.3"
 uuid = "1.1"
+
+# Optional dependencies:
+re_ws_comms = { path = "../crates/re_ws_comms", optional = true, features = ["server"] }
+re_web_server = { path = "../crates/re_web_server", optional = true }
+webbrowser = { version = "0.8", optional = true }
 
 
 [build-dependencies]
