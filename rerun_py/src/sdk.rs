@@ -31,9 +31,7 @@ impl Sdk {
             has_sent_begin_recording_msg: false,
         }
     }
-}
 
-impl Sdk {
     /// Access the global [`Sdk`]. This is a singleton.
     pub fn global() -> std::sync::MutexGuard<'static, Self> {
         use once_cell::sync::OnceCell;
