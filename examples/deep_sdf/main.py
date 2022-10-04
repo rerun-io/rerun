@@ -130,9 +130,9 @@ def log_sampled_sdf(points: np.ndarray, sdf: np.ndarray):
                      space="world")
 
     outside = points[sdf <= 0]
-    # rerun.log_msg("sdf/outside/logs",
-    #               f"{len(outside)} points outside ({len(points)} total)"
-    #               level="trace")
+    rerun.log_msg("sdf/outside/logs",
+                  f"{len(outside)} points outside ({len(points)} total)",
+                  level="trace")
     rerun.log_points("sdf/outside",
                      points[sdf > 0],
                      colors=np.array([0, 255, 0, 255]),

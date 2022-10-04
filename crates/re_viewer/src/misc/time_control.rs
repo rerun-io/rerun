@@ -459,6 +459,7 @@ impl TimeControl {
                 objects.query(store, &time_query, &log_db.obj_types);
             }
         }
+
         objects
     }
 

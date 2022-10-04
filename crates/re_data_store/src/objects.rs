@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::Index};
 
 use nohash_hasher::IntMap;
 use re_log_types::{objects::*, DataVec, FieldName, IndexHash, MsgId, ObjPath, ObjTypePath};
@@ -54,6 +54,10 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
 
     pub fn last(&self) -> Option<(&InstanceProps<'s>, &T)> {
         self.0.last().map(|obj| (&obj.props, &obj.data))
+    }
+
+    pub fn get(&self, idx: usize) -> Option<(&InstanceProps<'s>, &T)> {
+        self.0.get(idx).map(|obj| (&obj.props, &obj.data))
     }
 
     pub fn filter(&self, keep: &impl Fn(&InstanceProps<'_>) -> bool) -> Self {
@@ -559,7 +563,7 @@ impl<'s> LogMessage<'s> {
 
         visit_type_data_2(
             obj_store,
-            &FieldName::from("log"),
+            &FieldName::from("text"),
             time_query,
             ("space", "level"),
             |instance_index: Option<&IndexHash>,
@@ -673,6 +677,7 @@ impl<'s> Objects<'s> {
     pub fn is_empty(&self) -> bool {
         let Self {
             space,
+            log_message,
             image,
             point2d,
             bbox2d,
@@ -686,6 +691,7 @@ impl<'s> Objects<'s> {
         } = self;
         space.is_empty()
             && image.is_empty()
+            && log_message.is_empty()
             && point2d.is_empty()
             && bbox2d.is_empty()
             && line_segments2d.is_empty()
@@ -713,6 +719,10 @@ impl<'s> Objects<'s> {
             || !self.camera.is_empty()
     }
 
+    pub fn has_any_log_messages(&self) -> bool {
+        !self.log_message.is_empty()
+    }
+
     pub fn partition_on_space(self) -> ObjectsBySpace<'s> {
         crate::profile_function!();
 
@@ -720,6 +730,7 @@ impl<'s> Objects<'s> {
 
         let Self {
             space: _, // yes, this is intentional
+            log_message,
             image,
             point2d,
             bbox2d,
@@ -731,6 +742,10 @@ impl<'s> Objects<'s> {
             mesh3d,
             camera,
         } = self;
+
+        for obj in log_message.0 {
+            partitioner.slot(obj.props.space).log_message.0.push(obj);
+        }
 
         for obj in image.0 {
             partitioner.slot(obj.props.space).image.0.push(obj);

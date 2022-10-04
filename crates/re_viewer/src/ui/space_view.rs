@@ -255,6 +255,18 @@ impl SpacesPanel {
             return;
         }
 
+        println!("--------------------");
+        for msg in ctx.log_db.chronological_log_messages() {
+            match msg {
+                LogMsg::DataMsg(msg) => {
+                    if msg.data_path.to_string().starts_with("/global") {
+                        dbg!(msg.data_path.to_string(), &msg.data);
+                    }
+                }
+                _ => {}
+            };
+        }
+
         let objects = ctx
             .rec_cfg
             .time_ctrl
@@ -300,6 +312,8 @@ pub(crate) struct SpaceStates {
 
     #[cfg(feature = "glow")]
     state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
+
+    state_logs: ahash::HashMap<Option<ObjPath>, crate::log_msg_view::StateLogMsg>,
 
     state_tensor: ahash::HashMap<Option<ObjPath>, crate::view_tensor::TensorViewState>,
 }
@@ -360,8 +374,11 @@ impl SpaceStates {
             }
         }
 
-        if objects.has_any_2d() && objects.has_any_3d() {
-            re_log::warn_once!("Space {:?} has both 2D and 3D objects", space_name(space));
+        let num_cats = objects.has_any_2d() as u32
+            + objects.has_any_3d() as u32
+            + objects.has_any_log_messages() as u32;
+        if num_cats > 1 {
+            re_log::warn_once!("Space {:?} contains multiple categories of objects (e.g. both 2D and 3D, both 2D and log messages, etc...)", space_name(space));
         }
 
         if objects.has_any_2d() {
@@ -386,6 +403,13 @@ impl SpaceStates {
                 .size(24.0)
                 .color(ui.visuals().warn_fg_color),
             );
+        }
+
+        // dbg!(objects.has_any_log_messages());
+        if objects.has_any_log_messages() {
+            let state_logs = self.state_logs.entry(space.cloned()).or_default();
+            let response = crate::log_msg_view::show(ctx, ui, state_logs, space, &objects);
+            // hovered |= response.hovered();
         }
 
         if !hovered && ctx.rec_cfg.hovered_space.space() == space {

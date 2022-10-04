@@ -8,6 +8,7 @@ pub enum ObjectType {
     Space,
 
     /// A logging message.
+    // TODO: better naming.
     LogMessage,
 
     /// An image. Could be gray, RGB, a depth map, ….
