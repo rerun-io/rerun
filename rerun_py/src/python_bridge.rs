@@ -494,7 +494,7 @@ fn log_msg(
         LoggedData::Single(Data::String(text.to_owned())),
     );
 
-    let level = level.map_or_else(|| "info".to_owned(), ToOwned::to_owned);
+    let level = level.map_or_else(|| "INFO".to_owned(), |lvl| lvl.to_uppercase());
     sdk.send_data(
         &time_point,
         (&obj_path, "level"),

@@ -70,6 +70,20 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 *self.maximized = Some(tab.clone());
             }
 
+            // Log mesages work a bit different because they are completely isolated from the
+            // main timeline selection: we do not filter them, rather we always want the
+            // complete timeline!
+            if tab.space.as_ref().map(ToString::to_string).as_deref() == Some("/logs") {
+                let state_log_messages = StateLogMessages::from_context(self.ctx);
+                if !state_log_messages.is_empty() {
+                    let response = state_log_messages.show(ui, self.ctx);
+                    if response.hovered() {
+                        self.hovered_space = tab.space.clone();
+                    }
+                }
+                return;
+            }
+
             let hovered =
                 self.space_states
                     .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
@@ -364,7 +378,11 @@ impl SpaceStates {
             + objects.has_any_3d() as u32
             + objects.has_any_log_messages() as u32;
         if num_cats > 1 {
-            re_log::warn_once!("Space {:?} contains multiple categories of objects (e.g. both 2D and 3D, both 2D and log messages, etc...)", space_name(space));
+            re_log::warn_once!(
+                "Space {:?} contains multiple categories of objects \
+                    (e.g. both 2D and 3D, both 2D and log messages, etc...)",
+                space_name(space)
+            );
         }
 
         if objects.has_any_2d() {
@@ -389,12 +407,6 @@ impl SpaceStates {
                 .size(24.0)
                 .color(ui.visuals().warn_fg_color),
             );
-        }
-
-        let state_log_messages = StateLogMessages::from_context(ctx);
-        if !state_log_messages.is_empty() {
-            let response = state_log_messages.show(ui, ctx);
-            hovered |= response.hovered();
         }
 
         if !hovered && ctx.rec_cfg.hovered_space.space() == space {
