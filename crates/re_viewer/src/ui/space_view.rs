@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use re_data_store::ObjectsBySpace;
 use re_log_types::*;
 
-use crate::{misc::HoveredSpace, ViewerContext};
+use crate::{misc::HoveredSpace, ui::log_msg_view::StateLogMessages, ViewerContext};
 
 // ----------------------------------------------------------------------------
 
@@ -301,8 +301,6 @@ pub(crate) struct SpaceStates {
     #[cfg(feature = "glow")]
     state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
 
-    state_logs: ahash::HashMap<Option<ObjPath>, crate::log_msg_view::StateLogMsg>,
-
     state_tensor: ahash::HashMap<Option<ObjPath>, crate::view_tensor::TensorViewState>,
 }
 
@@ -393,10 +391,11 @@ impl SpaceStates {
             );
         }
 
-        // TODO: caching and check (.. and naming)
-        let state_logs = self.state_logs.entry(space.cloned()).or_default();
-        let response = crate::log_msg_view::show(ctx, ui, state_logs);
-        hovered |= response.hovered();
+        let state_log_messages = StateLogMessages::from_context(ctx);
+        if !state_log_messages.is_empty() {
+            let response = state_log_messages.show(ui, ctx);
+            hovered |= response.hovered();
+        }
 
         if !hovered && ctx.rec_cfg.hovered_space.space() == space {
             ctx.rec_cfg.hovered_space = HoveredSpace::None;

@@ -1,27 +1,23 @@
 use crate::ViewerContext;
 use nohash_hasher::IntMap;
-use re_data_store::{InstanceProps, LogMessage};
+use re_data_store::{InstanceProps, LogMessage, Objects};
 use re_log_types::*;
 
 // -----------------------------------------------------------------------------
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct StateLogMsg {
-    // TODO: msg caching
+pub(crate) struct StateLogMessages<'s> {
+    #[serde(skip)]
+    objects: Objects<'s>,
 }
+impl<'s> StateLogMessages<'s> {
+    /// Gather all `LogMessage` objects across the entire time range, not just the
+    /// current time selection.
+    pub fn from_context(ctx: &mut ViewerContext<'s>) -> Self {
+        crate::profile_function!();
 
-pub(crate) fn show(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    _state: &mut StateLogMsg,
-) -> egui::Response {
-    crate::profile_function!();
-
-    // Gather all `LogMessage` objects across the entire time range, not just the
-    // current time selection.
-    let mut objects = re_data_store::Objects::default();
-    let messages = {
+        let mut objects = re_data_store::Objects::default();
         let obj_types = ctx
             .log_db
             .obj_types
@@ -36,18 +32,31 @@ pub(crate) fn show(
         let all_time = re_data_store::TimeQuery::<i64>::Range(i64::MIN..=i64::MAX);
 
         if let Some(store) = ctx.log_db.data_store.get(time_source) {
-            objects.query(store, &all_time, &obj_types);
+            for (obj_path, obj_store) in store.iter() {
+                if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
+                    objects.query_object(obj_store, &all_time, obj_path, obj_type);
+                }
+            }
         }
 
-        objects.log_message.iter().collect::<Vec<_>>()
-    };
+        Self { objects }
+    }
 
-    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-        ui.label(format!("{} log messages", objects.log_message.len()));
-        ui.separator();
-        log_table(ctx, ui, &messages);
-    })
-    .response
+    pub fn is_empty(&self) -> bool {
+        self.objects.is_empty()
+    }
+
+    pub fn show(&self, ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>) -> egui::Response {
+        crate::profile_function!();
+
+        let messages = self.objects.log_message.iter().collect::<Vec<_>>();
+        ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+            ui.label(format!("{} log messages", self.objects.log_message.len()));
+            ui.separator();
+            log_table(ctx, ui, &messages);
+        })
+        .response
+    }
 }
 
 fn log_table(
