@@ -13,7 +13,7 @@ name = "rerun_sdk"      # name of the Python library
 
 
 [features]
-default = ["extension-module", "re_viewer", "web"]
+default = ["extension-module", "re_viewer"]
 
 ## Enable embedding the Rerun Viewer in the Python SDK.
 re_viewer = ["dep:re_viewer"]
@@ -26,6 +26,9 @@ re_viewer = ["dep:re_viewer"]
 extension-module = ["pyo3/extension-module"]
 
 ## Support serving a web viewer over HTTP.
+##
+## Enabling this adds quite a bit to the compile time and binary size,
+## since it requires compiling and bundling the viewer as wasm.
 web = ["rerun/web", "dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 
