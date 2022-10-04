@@ -206,9 +206,9 @@ if __name__ == '__main__':
         voxvol = compute_voxel_sdf(mesh, args.resolution)
 
     # TODO(cmc): really could use some structured logging here!
-    rerun.log_msg("global", f"starting DeepSDF logger")
-    rerun.log_msg("global", f"point cloud size: {args.points}")
-    rerun.log_msg("global", f"voxel resolution: {args.resolution}")
+    rerun.log_msg("ann/#1", f"starting DeepSDF logger", timeless=True)
+    rerun.log_msg("ann/#2", f"point cloud size: {args.points}", timeless=True)
+    rerun.log_msg("ann/#3", f"voxel resolution: {args.resolution}", timeless=True)
 
     log_mesh(path, mesh)
     log_sampled_sdf(points, sdf)

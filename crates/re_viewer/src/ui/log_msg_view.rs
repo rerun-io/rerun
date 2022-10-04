@@ -1,7 +1,7 @@
 use crate::ViewerContext;
 use egui::Color32;
 use nohash_hasher::IntMap;
-use re_data_store::{InstanceProps, Objects, TextEntry};
+use re_data_store::{Objects, TextEntry};
 use re_log_types::*;
 
 // -----------------------------------------------------------------------------
@@ -76,12 +76,9 @@ impl<'s> TextEntryFetcher<'s> {
 // -----------------------------------------------------------------------------
 
 struct CompleteTextEntry<'s> {
-    id: MsgId,
     data_path: DataPath,
     time_point: TimePoint,
     time: TimeInt,
-    #[allow(dead_code)]
-    props: &'s InstanceProps<'s>,
     msg: &'s TextEntry<'s>,
 }
 
@@ -90,7 +87,7 @@ fn collect_text_entries<'a, 's>(
     objects: &'a Objects<'s>,
 ) -> Vec<CompleteTextEntry<'a>> {
     let time_source = ctx.rec_cfg.time_ctrl.source();
-    let mut msgs = objects
+    let mut text_entries = objects
         .text_entry
         .iter()
         .filter_map(|(props, text_entry)| {
@@ -113,28 +110,29 @@ fn collect_text_entries<'a, 's>(
                 return None;
             };
 
-            let time = if let Some(time) = data_msg.time_point.0.get(time_source) {
-                *time
-            } else {
-                // TODO(cmc): is that cause for warning? what about timeless logs?
-                return None;
-            };
+            let time = data_msg
+                .time_point
+                .0
+                .get(time_source)
+                .map_or(TimeInt::BEGINNING, |t| *t);
 
             Some(CompleteTextEntry {
-                id: data_msg.msg_id,
                 data_path: data_msg.data_path.clone(),
                 time_point: data_msg.time_point.clone(),
                 time,
-                props,
                 msg: text_entry,
             })
         })
         .collect::<Vec<_>>();
 
-    // Sort first along currently selected timeline, then on message id.
-    msgs.sort_by(|a, b| a.time.cmp(&b.time).then_with(|| a.id.cmp(&b.id)));
+    // First sort along the time axis, then along paths.
+    text_entries.sort_by(|a, b| {
+        a.time
+            .cmp(&b.time)
+            .then_with(|| a.data_path.obj_path().cmp(b.data_path.obj_path()))
+    });
 
-    msgs
+    text_entries
 }
 
 fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[CompleteTextEntry<'_>]) {
@@ -171,11 +169,9 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
             const ROW_HEIGHT: f32 = 18.0;
             body.rows(ROW_HEIGHT, messages.len(), |index, mut row| {
                 let CompleteTextEntry {
-                    id: _,
                     time_point,
                     data_path,
                     time: _,
-                    props: _,
                     msg,
                 } = &messages[index];
 
