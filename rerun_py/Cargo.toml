@@ -13,7 +13,7 @@ name = "rerun_sdk"      # name of the Python library
 
 
 [features]
-default = ["extension-module", "re_viewer"]
+default = ["extension-module", "re_viewer", "web"]
 
 ## Enable embedding the Rerun Viewer in the Python SDK.
 re_viewer = ["dep:re_viewer"]
