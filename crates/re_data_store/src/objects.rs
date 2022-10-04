@@ -547,12 +547,12 @@ impl<'s> Space<'s> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct LogMessage<'s> {
-    pub text: &'s str,
+pub struct TextEntry<'s> {
+    pub body: &'s str,
     pub level: Option<&'s str>,
 }
 
-impl<'s> LogMessage<'s> {
+impl<'s> TextEntry<'s> {
     fn query<Time: 'static + Copy + Ord>(
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
@@ -563,7 +563,7 @@ impl<'s> LogMessage<'s> {
 
         visit_type_data_2(
             obj_store,
-            &FieldName::from("text"),
+            &FieldName::from("body"),
             time_query,
             ("space", "level"),
             |instance_index: Option<&IndexHash>,
@@ -571,7 +571,7 @@ impl<'s> LogMessage<'s> {
              text: &String,
              space: Option<&ObjPath>,
              level: Option<&String>| {
-                out.log_message.0.push(Object {
+                out.text_entry.0.push(Object {
                     props: InstanceProps {
                         msg_id,
                         space,
@@ -579,8 +579,8 @@ impl<'s> LogMessage<'s> {
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
-                    data: LogMessage {
-                        text: text.as_str(),
+                    data: TextEntry {
+                        body: text.as_str(),
                         level: level.map(|s| s.as_str()),
                     },
                 });
@@ -593,7 +593,7 @@ impl<'s> LogMessage<'s> {
 pub struct Objects<'s> {
     pub space: BTreeMap<&'s ObjPath, Space<'s>>, // SPECIAL!
 
-    pub log_message: ObjectVec<'s, LogMessage<'s>>,
+    pub text_entry: ObjectVec<'s, TextEntry<'s>>,
 
     pub image: ObjectVec<'s, Image<'s>>,
     pub point2d: ObjectVec<'s, Point2D<'s>>,
@@ -636,7 +636,7 @@ impl<'s> Objects<'s> {
     ) {
         let query_fn = match obj_type {
             ObjectType::Space => Space::query,
-            ObjectType::LogMessage => LogMessage::query,
+            ObjectType::TextEntry => TextEntry::query,
             ObjectType::Image => Image::query,
             ObjectType::Point2D => Point2D::query,
             ObjectType::BBox2D => BBox2D::query,
@@ -658,7 +658,7 @@ impl<'s> Objects<'s> {
         Self {
             space: self.space.clone(), // SPECIAL - can't filter
 
-            log_message: self.log_message.filter(&keep),
+            text_entry: self.text_entry.filter(&keep),
 
             image: self.image.filter(&keep),
             point2d: self.point2d.filter(&keep),
@@ -677,7 +677,7 @@ impl<'s> Objects<'s> {
     pub fn is_empty(&self) -> bool {
         let Self {
             space,
-            log_message,
+            text_entry,
             image,
             point2d,
             bbox2d,
@@ -691,7 +691,7 @@ impl<'s> Objects<'s> {
         } = self;
         space.is_empty()
             && image.is_empty()
-            && log_message.is_empty()
+            && text_entry.is_empty()
             && point2d.is_empty()
             && bbox2d.is_empty()
             && line_segments2d.is_empty()
@@ -720,7 +720,7 @@ impl<'s> Objects<'s> {
     }
 
     pub fn has_any_log_messages(&self) -> bool {
-        !self.log_message.is_empty()
+        !self.text_entry.is_empty()
     }
 
     pub fn partition_on_space(self) -> ObjectsBySpace<'s> {
@@ -730,7 +730,7 @@ impl<'s> Objects<'s> {
 
         let Self {
             space: _, // yes, this is intentional
-            log_message,
+            text_entry: log_message,
             image,
             point2d,
             bbox2d,
@@ -744,7 +744,7 @@ impl<'s> Objects<'s> {
         } = self;
 
         for obj in log_message.0 {
-            partitioner.slot(obj.props.space).log_message.0.push(obj);
+            partitioner.slot(obj.props.space).text_entry.0.push(obj);
         }
 
         for obj in image.0 {

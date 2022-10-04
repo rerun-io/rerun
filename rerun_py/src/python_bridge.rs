@@ -484,13 +484,13 @@ fn log_msg(
     let mut sdk = Sdk::global();
 
     let obj_path = parse_obj_path(obj_path)?;
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::LogMessage);
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::TextEntry);
 
     let time_point = time(timeless);
 
     sdk.send_data(
         &time_point,
-        (&obj_path, "text"),
+        (&obj_path, "body"),
         LoggedData::Single(Data::String(text.to_owned())),
     );
 

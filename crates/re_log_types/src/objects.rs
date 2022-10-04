@@ -8,8 +8,7 @@ pub enum ObjectType {
     Space,
 
     /// A logging message.
-    // TODO: better naming.
-    LogMessage,
+    TextEntry,
 
     /// An image. Could be gray, RGB, a depth map, ….
     Image,
@@ -40,7 +39,7 @@ impl ObjectType {
         match self {
             Self::Space => &["up"],
 
-            Self::LogMessage => &["space", "text", "level"],
+            Self::TextEntry => &["space", "body", "level"],
 
             Self::Image => &["space", "color", "tensor", "meter"],
             Self::Point2D => &["space", "color", "pos", "radius"],

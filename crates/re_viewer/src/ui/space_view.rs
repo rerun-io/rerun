@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use re_data_store::ObjectsBySpace;
 use re_log_types::*;
 
-use crate::{misc::HoveredSpace, ui::log_msg_view::StateLogMessages, ViewerContext};
+use crate::{misc::HoveredSpace, ui::log_msg_view::TextEntryFetcher, ViewerContext};
 
 // ----------------------------------------------------------------------------
 
@@ -76,7 +76,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             if let Some(objects) = self.objects.get(&tab.space.as_ref()) {
                 if objects.has_any_log_messages() {
                     let state_log_messages =
-                        StateLogMessages::from_context(self.ctx, tab.space.as_ref());
+                        TextEntryFetcher::from_context(self.ctx, tab.space.as_ref());
                     if !state_log_messages.is_empty() {
                         let response = state_log_messages.show(ui, self.ctx);
                         if response.hovered() {
