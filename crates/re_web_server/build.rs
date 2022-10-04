@@ -35,12 +35,7 @@ fn main() {
         let env = cmd
             .get_envs()
             .filter(|(k, _)| !k.to_string_lossy().starts_with("CARGO"))
-            .map(|(k, v)| {
-                (
-                    k.to_owned(),
-                    v.map_or_else(|| OsString::new(), |v| v.to_owned()),
-                )
-            })
+            .map(|(k, v)| (k.to_owned(), v.map_or_else(OsString::new, |v| v.to_owned())))
             .collect::<Vec<_>>();
         let output = cmd
             .envs(env)
