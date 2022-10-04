@@ -11,9 +11,6 @@ use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
 
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 /// The Rerun Viewer and Server
 ///
 /// Features:
@@ -88,6 +85,12 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
     if args.web_viewer {
         #[cfg(feature = "web")]
         {
+            assert!(
+                args.url_or_path.is_some() || args.port != re_ws_comms::DEFAULT_WS_SERVER_PORT,
+                "Trying to spawn a websocket server on {}, but this port is already used by the server we're connecting to. Please specify a different port.",
+                args.port
+            );
+
             // This is the server which the web viewer will talk to:
             re_log::info!("Starting a Rerun WebSocket Server…");
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
