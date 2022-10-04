@@ -1,4 +1,4 @@
-use std::process::Stdio;
+use std::ffi::OsString;
 
 // Mapping to cargo:rerun-if-changed with glob support
 fn rerun_if_changed(path: &str) {
@@ -29,9 +29,28 @@ fn main() {
             cmd.arg("--optimize");
         }
 
-        cmd.stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
+        // Get rid of everything cargo-related: we really don't want the cargo invocation
+        // from build_web.sh to catch on some configuration variables that are really not
+        // its concern!
+        let env = cmd
+            .get_envs()
+            .filter(|(k, _)| !k.to_string_lossy().starts_with("CARGO"))
+            .map(|(k, v)| {
+                (
+                    k.to_owned(),
+                    v.map_or_else(|| OsString::new(), |v| v.to_owned()),
+                )
+            })
+            .collect::<Vec<_>>();
+        let output = cmd
+            .envs(env)
             .output()
             .expect("failed to build viewer for web");
+
+        eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+        eprintln!("status: {}", output.status);
+
+        assert!(output.status.success());
     }
 }
