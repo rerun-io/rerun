@@ -64,8 +64,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
             re_log::info!("Loading {path:?}…");
             load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
         } else {
-            connect_to_ws_url(&args, profiler, url_or_path.clone()).await?;
-            return Ok(());
+            return connect_to_ws_url(&args, profiler, url_or_path.clone()).await;
         }
     } else {
         #[cfg(feature = "server")]
@@ -78,18 +77,20 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         }
 
         #[cfg(not(feature = "server"))]
-        panic!("No url or .rrd path given");
+        return Err(anyhow::anyhow!("No url or .rrd path given"));
     };
 
     // Now what do we do with the data?
     if args.web_viewer {
         #[cfg(feature = "web")]
         {
-            assert!(
-                args.url_or_path.is_some() || args.port != re_ws_comms::DEFAULT_WS_SERVER_PORT,
-                "Trying to spawn a websocket server on {}, but this port is already used by the server we're connecting to. Please specify a different port.",
-                args.port
-            );
+            if args.url_or_path.is_none() && args.port == re_ws_comms::DEFAULT_WS_SERVER_PORT {
+                return Err(anyhow::anyhow!(
+                    "Trying to spawn a websocket server on {}, but this port is \
+                already used by the server we're connecting to. Please specify a different port.",
+                    args.port
+                ));
+            }
 
             // This is the server which the web viewer will talk to:
             re_log::info!("Starting a Rerun WebSocket Server…");
@@ -99,11 +100,13 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
             let rerun_ws_server_url = re_ws_comms::default_server_url();
             host_web_viewer(rerun_ws_server_url).await?;
 
-            server_handle.await.unwrap().unwrap();
+            return server_handle.await?;
         }
 
         #[cfg(not(feature = "web"))]
-        panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
+        return Err(anyhow::anyhow!(
+            "Can't host web-viewer - rerun was not compiled with the 'web' feature"
+        ));
     } else {
         re_viewer::run_native_app(Box::new(move |cc| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
