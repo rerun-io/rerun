@@ -3,9 +3,12 @@ set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path/.."
 
-# TODO(emilk): we should probably replace this with https://trunkrs.dev/ or https://github.com/rustwasm/wasm-pack
+# TODO(emilk): we should probably replace this with https://trunkrs.dev/ or https://github.com/rustwasm/wasm-pack or a script in another language
 
-#./scripts/setup_web.sh
+# This script may be called from a build.rs,
+# so we should not use `sudo` here, which means
+# we cannot call ./scripts/setup_web.sh
+# We assume the user has already called it previously.
 
 OPEN=false
 OPTIMIZE=false
@@ -39,9 +42,6 @@ while test $# -gt 0; do
   esac
 done
 
-# TODO: move this to a separate bootstapping step so cargo isn't calling sudo
-#./setup_web.sh # <- call this first!
-
 CRATE_NAME="re_viewer"
 CRATE_NAME_SNAKE_CASE="${CRATE_NAME//-/_}" # for those who name crates with-kebab-case
 
@@ -57,7 +57,8 @@ rm -f ${BUILD_DIR}/${CRATE_NAME_SNAKE_CASE}_bg.wasm
 
 TARGET=`cargo metadata --format-version=1 | jq --raw-output .target_directory`
 
-# We need to use a different target folder to support recusrive builds
+# We need to use a different target folder to support recursive builds,
+# when re_web_server/build.rs calls this scripts.
 TARGET_WASM="${TARGET}_wasm"
 
 echo "Compiling rust to wasm in folder: ${TARGET_WASM}"
