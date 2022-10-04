@@ -3,9 +3,12 @@ set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path/.."
 
-# TODO(emilk): we should probably replace this with https://trunkrs.dev/ or https://github.com/rustwasm/wasm-pack
+# TODO(emilk): we should probably replace this with https://trunkrs.dev/ or https://github.com/rustwasm/wasm-pack or a script in another language
 
-./scripts/setup_web.sh
+# This script may be called from a build.rs,
+# so we should not use `sudo` here, which means
+# we cannot call ./scripts/setup_web.sh
+# We assume the user has already called it previously.
 
 OPEN=false
 OPTIMIZE=false
@@ -39,8 +42,6 @@ while test $# -gt 0; do
   esac
 done
 
-# ./setup_web.sh # <- call this first!
-
 CRATE_NAME="re_viewer"
 CRATE_NAME_SNAKE_CASE="${CRATE_NAME//-/_}" # for those who name crates with-kebab-case
 
@@ -54,16 +55,21 @@ export RUSTFLAGS=--cfg=web_sys_unstable_apis
 # Clear output from old stuff:
 rm -f ${BUILD_DIR}/${CRATE_NAME_SNAKE_CASE}_bg.wasm
 
-echo "Compiling rust to wasm…"
-BUILD=release
-cargo build -p ${CRATE_NAME} --release --lib --target wasm32-unknown-unknown
-
-# Get the output directory (in the workspace it is in another location)
 TARGET=`cargo metadata --format-version=1 | jq --raw-output .target_directory`
+
+# re_web_server/build.rs calls this scripts, so we need to use
+# a different target folder to support recursive caergo builds.
+TARGET_WASM="${TARGET}_wasm"
+
+echo "Compiling rust to wasm in folder: ${TARGET_WASM}"
+BUILD=release
+cargo build --target-dir $TARGET_WASM -p ${CRATE_NAME} --release --lib --target wasm32-unknown-unknown
+
+# Get the output directoryß (in the workspace it is in another location)
 
 echo "Generating JS bindings for wasm…"
 TARGET_NAME="${CRATE_NAME_SNAKE_CASE}.wasm"
-wasm-bindgen "${TARGET}/wasm32-unknown-unknown/${BUILD}/${TARGET_NAME}" \
+wasm-bindgen "${TARGET_WASM}/wasm32-unknown-unknown/${BUILD}/${TARGET_NAME}" \
   --out-dir ${BUILD_DIR} --no-modules --no-typescript
 
 if [[ "${OPTIMIZE}" = true ]]; then

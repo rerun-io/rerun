@@ -14,6 +14,5 @@ fi
 # Needed to compile and check the code:
 rustup install 1.63.0
 ./scripts/setup_web.sh
-./scripts/build_web.sh # We bake the wasm into some binaries, so we need to build the WASM at least once!
 
 echo "setup.sh completed!"
