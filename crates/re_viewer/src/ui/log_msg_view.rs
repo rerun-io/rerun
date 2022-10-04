@@ -1,4 +1,5 @@
 use crate::ViewerContext;
+use nohash_hasher::IntMap;
 use re_data_store::{InstanceId, InstanceProps, LogMessage};
 use re_log_types::*;
 
@@ -21,7 +22,29 @@ pub(crate) fn show(
 ) {
     crate::profile_function!();
 
-    let messages = objects.log_message.iter().collect::<Vec<_>>();
+    // Gather all `LogMessage` objects across the entire time range, not just the
+    // current selection.
+    let mut objects = re_data_store::Objects::default();
+    let messages = {
+        let obj_types = ctx
+            .log_db
+            .obj_types
+            .iter()
+            .filter_map(|(obj_type_path, obj_type)| {
+                matches!(&obj_type, ObjectType::LogMessage)
+                    .then(|| (obj_type_path.clone(), obj_type.clone()))
+            })
+            .collect::<IntMap<_, _>>();
+
+        let time_source = &ctx.rec_cfg.time_ctrl.source();
+        let all_time = re_data_store::TimeQuery::<i64>::Range(i64::MIN..=i64::MAX);
+
+        if let Some(store) = ctx.log_db.data_store.get(&time_source) {
+            objects.query(store, &all_time, &obj_types);
+        }
+
+        objects.log_message.iter().collect::<Vec<_>>()
+    };
 
     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
         ui.label(format!("{} log messages", objects.log_message.len()));
@@ -44,7 +67,7 @@ fn log_table(
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                 .resizable(true)
                 .columns(
-                    Size::initial(200.0).at_least(100.0),
+                    Size::initial(120.0).at_least(100.0),
                     ctx.log_db.time_points.0.len(),
                 ) // time(s)
                 .column(Size::initial(60.0).at_least(60.0)) // path
@@ -94,6 +117,7 @@ fn log_table(
 
                         // path
                         row.col(|ui| {
+                            // ctx.data_path_button(ui, data_path)
                             ui.label(props.obj_path.to_string());
                         });
 

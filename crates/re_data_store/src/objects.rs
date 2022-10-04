@@ -618,6 +618,7 @@ impl<'s> Objects<'s> {
     ) {
         crate::profile_function!();
 
+        dbg!(obj_types);
         for (obj_path, obj_store) in store.iter() {
             if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
                 self.query_object(obj_store, time_query, obj_path, obj_type);

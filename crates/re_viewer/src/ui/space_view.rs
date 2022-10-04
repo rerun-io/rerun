@@ -255,18 +255,6 @@ impl SpacesPanel {
             return;
         }
 
-        println!("--------------------");
-        for msg in ctx.log_db.chronological_log_messages() {
-            match msg {
-                LogMsg::DataMsg(msg) => {
-                    if msg.data_path.to_string().starts_with("/global") {
-                        dbg!(msg.data_path.to_string(), &msg.data);
-                    }
-                }
-                _ => {}
-            };
-        }
-
         let objects = ctx
             .rec_cfg
             .time_ctrl
