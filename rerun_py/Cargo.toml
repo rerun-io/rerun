@@ -32,6 +32,7 @@ web = ["rerun/web", "dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 
 [dependencies]
+re_error = { path = "../crates/re_error" }
 re_log = { path = "../crates/re_log" }
 re_log_types = { path = "../crates/re_log_types" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
@@ -41,7 +42,10 @@ rerun = { path = "../crates/rerun" }
 
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 document-features = "0.2"
-image = { version = "0.24", default-features = false, features = ["jpeg", "jpeg_rayon"] }
+image = { version = "0.24", default-features = false, features = [
+    "jpeg",
+    "jpeg_rayon",
+] }
 itertools = "0.10"
 nohash-hasher = "0.2"
 numpy = "0.17"
@@ -53,7 +57,9 @@ tracing-subscriber = "0.3"
 uuid = "1.1"
 
 # Optional dependencies:
-re_ws_comms = { path = "../crates/re_ws_comms", optional = true, features = ["server"] }
+re_ws_comms = { path = "../crates/re_ws_comms", optional = true, features = [
+    "server",
+] }
 re_web_server = { path = "../crates/re_web_server", optional = true }
 webbrowser = { version = "0.8", optional = true }
 

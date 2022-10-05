@@ -203,7 +203,7 @@ fn main(argv: Vec<String>) -> PyResult<()> {
         .build()
         .unwrap()
         .block_on(rerun::run(argv))
-        .map_err(|err| PyRuntimeError::new_err(format!("{:#}", err)))
+        .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 
 #[pyfunction]

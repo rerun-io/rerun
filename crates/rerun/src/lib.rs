@@ -77,7 +77,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         }
 
         #[cfg(not(feature = "server"))]
-        return Err(anyhow::anyhow!("No url or .rrd path given"));
+        anyhow::bail!("No url or .rrd path given");
     };
 
     // Now what do we do with the data?
@@ -85,11 +85,11 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         #[cfg(feature = "web")]
         {
             if args.url_or_path.is_none() && args.port == re_ws_comms::DEFAULT_WS_SERVER_PORT {
-                return Err(anyhow::anyhow!(
+                anyhow::bail!(
                     "Trying to spawn a websocket server on {}, but this port is \
                 already used by the server we're connecting to. Please specify a different port.",
                     args.port
-                ));
+                );
             }
 
             // This is the server which the web viewer will talk to:
@@ -104,9 +104,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         }
 
         #[cfg(not(feature = "web"))]
-        return Err(anyhow::anyhow!(
-            "Can't host web-viewer - rerun was not compiled with the 'web' feature"
-        ));
+        anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
     } else {
         re_viewer::run_native_app(Box::new(move |cc| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
@@ -166,7 +164,6 @@ async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
     let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, rerun_ws_server_url);
 
     let web_server = re_web_server::WebServer::new(web_port);
-    //let web_server_handle = tokio::spawn(async move { web_server.serve().await });
     let web_server_handle = tokio::spawn(web_server.serve());
 
     let open = true;

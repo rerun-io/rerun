@@ -2800,6 +2800,7 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand",
+ "re_error",
  "re_log",
  "re_log_types",
  "re_sdk_comms",
