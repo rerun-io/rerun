@@ -479,7 +479,7 @@ impl TimeControl {
         // Query for permanent objects.
         // TODO(cmc): At some point we might want keep a cache of what we've read so far,
         // and incrementally query for new messages.
-        let all_time = re_data_store::TimeQuery::<i64>::Range(i64::MIN..=i64::MAX);
+        let all_time = TimeQuery::EVERYTHING;
         if let Some(store) = log_db.data_store.get(&self.time_source) {
             objects.query(store, &all_time, &perma_obj_types);
         }

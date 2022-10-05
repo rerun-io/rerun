@@ -47,14 +47,10 @@ fn collect_text_entries<'s>(
         .text_entry
         .iter()
         .filter_map(|(props, text_entry)| {
-            // TODO(cmc): let-else cannot land soon enough...
-
-            let msg = if let Some(msg) = ctx.log_db.get_log_msg(props.msg_id) {
-                msg
-            } else {
+            let msg = ctx.log_db.get_log_msg(props.msg_id).or_else(|| {
                 re_log::warn_once!("Missing LogMsg for {:?}", props.obj_path.obj_type_path());
-                return None;
-            };
+                None
+            })?;
 
             let data_msg = if let LogMsg::DataMsg(data_msg) = msg {
                 data_msg
@@ -159,7 +155,7 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
                 // body
                 row.col(|ui| {
                     if let Some(c) = props.color {
-                        let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
+                        let color = Color32::from_rgba_unmultiplied(c[0], c[1], c[2], c[3]);
                         ui.colored_label(color, text_entry.body);
                     } else {
                         ui.label(text_entry.body);

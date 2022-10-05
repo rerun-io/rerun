@@ -79,6 +79,10 @@ pub enum TimeQuery<Time> {
     Range(std::ops::RangeInclusive<Time>),
 }
 
+impl TimeQuery<i64> {
+    pub const EVERYTHING: Self = Self::Range(i64::MIN..=i64::MAX);
+}
+
 // ---------------------------------------------------------------------------
 
 /// Profiling macro for feature "puffin"

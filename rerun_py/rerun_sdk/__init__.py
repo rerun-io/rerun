@@ -199,6 +199,35 @@ def set_space_up(space: str, up: Sequence[float]):
     return rerun_rs.set_space_up(space, up)
 
 
+class LogLevel(Enum):
+    # """ Designates very serious errors. """
+    ERROR = "ERROR"
+    # """ Designates hazardous situations. """
+    WARN = "WARN"
+    # """ Designates useful information. """
+    INFO = "INFO"
+    # """ Designates lower priority information. """
+    DEBUG = "DEBUG"
+    # """ Designates very low priority, often extremely verbose, information. """
+    TRACE = "TRACE"
+
+
+def log_text_entry(obj_path: str,
+                   text: str,
+                   level: Optional[LogLevel] = None,
+                   color: Optional[Sequence[int]] = None,
+                   timeless: bool = False,
+                   space: Optional[str] = None):
+    """
+    Log a text entry, with optional level.
+
+    * If no `level` is given, it will default to `info`.
+    * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    * If no `space` is given, the space name "logs" will be used.
+    """
+    rerun_rs.log_text_entry(obj_path, text, level, color, timeless, space)
+
+
 # """ How to specify rectangles (axis-aligned bounding boxes). """
 class RectFormat(Enum):
     # """ [x,y,w,h], with x,y = left,top. """"
@@ -218,22 +247,6 @@ class RectFormat(Enum):
 
     # """ [x_center, y_center, width/2, height/2]"
     XCYCW2H2 = "XCYCW2H2"
-
-
-def log_text_entry(obj_path: str,
-                   text: str,
-                   level: Optional[str] = None,
-                   color: Optional[Sequence[int]] = None,
-                   timeless: bool = False,
-                   space: Optional[str] = None):
-    """
-    Log a text entry, with optional level.
-
-    * If no `level` is given, it will default to `info`.
-    * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
-    * If no `space` is given, the space name "logs" will be used.
-    """
-    rerun_rs.log_text_entry(obj_path, text, level, color, timeless, space)
 
 
 def log_rect(
