@@ -30,7 +30,11 @@ pub(crate) fn view_instance(
     instance_id: &InstanceId,
     preview: Preview,
 ) -> Option<()> {
-    let store = ctx.log_db.data_store.get(ctx.rec_cfg.time_ctrl.source())?;
+    let store = ctx
+        .log_db
+        .obj_db
+        .store
+        .get(ctx.rec_cfg.time_ctrl.source())?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
 
@@ -83,7 +87,8 @@ pub(crate) fn view_data(
 
     match ctx
         .log_db
-        .data_store
+        .obj_db
+        .store
         .query_data_path(time_source, &time_query, data_path)?
     {
         Ok((time_msgid_index, data_vec)) => {

@@ -260,7 +260,7 @@ impl RecordingConfig {
         }
 
         let mut path = vec![];
-        project_tree(self, &mut path, ObjectProps::default(), &log_db.data_tree);
+        project_tree(self, &mut path, ObjectProps::default(), &log_db.obj_db.tree);
     }
 }
 

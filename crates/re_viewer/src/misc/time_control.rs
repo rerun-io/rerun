@@ -455,8 +455,8 @@ impl TimeControl {
 
         let mut objects = re_data_store::Objects::default();
         if let Some(time_query) = self.time_query() {
-            if let Some(store) = log_db.data_store.get(&self.time_source) {
-                objects.query(store, &time_query, &log_db.obj_types);
+            if let Some(store) = log_db.obj_db.store.get(&self.time_source) {
+                objects.query(store, &time_query, &log_db.obj_db.types);
             }
         }
         objects

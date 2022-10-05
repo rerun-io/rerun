@@ -13,7 +13,7 @@ use crate::{
     TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
 };
 
-/// A column where we should button to hide/show a propery.
+/// A column where we should button to hide/show a property.
 const PROPERY_COLUMN_WIDTH: f32 = 14.0;
 
 /// A panel that shows objects to the left, time on the top.
@@ -181,7 +181,7 @@ impl TimePanel {
             time_area_response,
             time_area_painter,
             &mut path,
-            &ctx.log_db.data_tree,
+            &ctx.log_db.obj_db.tree,
             ui,
         );
     }
@@ -1773,7 +1773,7 @@ fn test_time_ranges_ui() {
         ],
     );
 
-    // Santiy check round-tripping:
+    // Sanity check round-tripping:
     for segment in &time_range_ui.segments {
         let pixel_precision = 0.5;
 

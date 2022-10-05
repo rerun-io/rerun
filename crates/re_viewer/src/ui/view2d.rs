@@ -317,7 +317,7 @@ pub(crate) fn view_2d(
 
     painter.extend(shapes);
 
-    state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.data_store);
+    state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
 
     response
 }

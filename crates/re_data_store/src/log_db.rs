@@ -13,6 +13,57 @@ pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
 
 // ----------------------------------------------------------------------------
 
+/// Stored objects and their types, with easy indexing of the paths.
+#[derive(Default)]
+pub struct ObjDb {
+    /// The types of all the objects.
+    /// Must be registered before adding them.
+    pub types: IntMap<ObjTypePath, ObjectType>,
+
+    /// A tree-view (split on path components) of the objects.
+    pub tree: crate::ObjectTree,
+
+    /// The actual store of data.
+    pub store: crate::DataStore,
+}
+
+impl ObjDb {
+    fn add_data_msg(
+        &mut self,
+        msg_id: MsgId,
+        time_point: &TimePoint,
+        data_path: &DataPath,
+        data: &LoggedData,
+    ) {
+        // Validate:
+        {
+            let obj_type_path = &data_path.obj_path.obj_type_path();
+            let field_name = &data_path.field_name;
+            if let Some(obj_type) = self.types.get(obj_type_path) {
+                let valid_members = obj_type.members();
+                if !valid_members.contains(&field_name.as_str()) {
+                    re_log::warn_once!(
+                    "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
+                    valid_members.iter().format(", ")
+                );
+                }
+            } else {
+                re_log::warn_once!(
+                    "Logging to {obj_type_path}.{field_name} without first registering object type"
+                );
+            }
+        }
+
+        if let Err(err) = self.store.insert_data(msg_id, time_point, data_path, data) {
+            re_log::warn!("Failed to add data to data_store: {err:?}");
+        }
+
+        self.tree.add_data_msg(msg_id, time_point, data_path, data);
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// A in-memory database built from a stream of [`LogMsg`]es.
 #[derive(Default)]
 pub struct LogDb {
@@ -27,16 +78,11 @@ pub struct LogDb {
 
     recording_info: Option<RecordingInfo>,
 
-    pub obj_types: IntMap<ObjTypePath, ObjectType>,
-
     /// All the points of time when we have some data.
     pub time_points: TimePoints,
 
-    /// A tree-view (split on path components) of the objects.
-    pub data_tree: crate::ObjectTree,
-
-    /// The actual store of data.
-    pub data_store: crate::DataStore,
+    /// Where we store the objects.
+    pub obj_db: ObjDb,
 
     /// All known spaces
     spaces: IntMap<ObjPathHash, ObjPath>,
@@ -88,7 +134,10 @@ impl LogDb {
     }
 
     fn add_type_msg(&mut self, msg: &TypeMsg) {
-        let previous_value = self.obj_types.insert(msg.type_path.clone(), msg.obj_type);
+        let previous_value = self
+            .obj_db
+            .types
+            .insert(msg.type_path.clone(), msg.obj_type);
 
         if let Some(previous_value) = previous_value {
             if previous_value != msg.obj_type {
@@ -138,33 +187,7 @@ impl LogDb {
             return; // done
         }
 
-        // Validate:
-        {
-            let obj_type_path = &data_path.obj_path.obj_type_path();
-            let field_name = &data_path.field_name;
-            if let Some(obj_type) = self.obj_types.get(obj_type_path) {
-                let valid_members = obj_type.members();
-                if !valid_members.contains(&field_name.as_str()) {
-                    re_log::warn_once!(
-                    "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
-                    valid_members.iter().format(", ")
-                );
-                }
-            } else {
-                re_log::warn_once!(
-                    "Logging to {obj_type_path}.{field_name} without first registering object type"
-                );
-            }
-        }
-
-        if let Err(err) = self
-            .data_store
-            .insert_data(msg_id, time_point, data_path, data)
-        {
-            re_log::warn!("Failed to add data to data_store: {err:?}");
-        }
-
-        self.data_tree
+        self.obj_db
             .add_data_msg(msg_id, time_point, data_path, data);
 
         self.register_spaces(data);
