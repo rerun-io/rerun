@@ -29,8 +29,14 @@ pub struct LogDb {
     recording_info: Option<RecordingInfo>,
 
     pub obj_types: IntMap<ObjTypePath, ObjectType>,
+
+    /// All the points of time when we have some data.
     pub time_points: TimePoints,
+
+    /// A tree-view (split on path components) of the objects.
     pub data_tree: ObjectTree,
+
+    /// The actual store of data.
     pub data_store: crate::DataStore,
 
     /// All known spaces
