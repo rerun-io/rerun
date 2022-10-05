@@ -720,7 +720,7 @@ impl<'s> Objects<'s> {
             || !self.camera.is_empty()
     }
 
-    pub fn has_any_log_messages(&self) -> bool {
+    pub fn has_any_text_entries(&self) -> bool {
         !self.text_entry.is_empty()
     }
 

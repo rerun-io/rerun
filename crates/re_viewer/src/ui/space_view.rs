@@ -70,11 +70,11 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 *self.maximized = Some(tab.clone());
             }
 
-            // Log mesages work a bit different because they are completely isolated from the
-            // main timeline selection: we do not filter them, rather we always want the
+            // Text entries work a bit different because they are completely isolated from
+            // the main timeline selection: we do not filter them, rather we always want the
             // complete timeline!
             if let Some(objects) = self.objects.get(&tab.space.as_ref()) {
-                if objects.has_any_log_messages() {
+                if objects.has_any_text_entries() {
                     let state_log_messages =
                         TextEntryFetcher::from_context(self.ctx, tab.space.as_ref());
                     if !state_log_messages.is_empty() {
@@ -380,11 +380,13 @@ impl SpaceStates {
 
         let num_cats = objects.has_any_2d() as u32
             + objects.has_any_3d() as u32
-            + objects.has_any_log_messages() as u32;
+            // NOTE: cannot actually happen at the moment as text entries are caught early..
+            // better safe than sorry.
+            + objects.has_any_text_entries() as u32;
         if num_cats > 1 {
             re_log::warn_once!(
                 "Space {:?} contains multiple categories of objects \
-                    (e.g. both 2D and 3D, both 2D and log messages, etc...)",
+                    (e.g. both 2D and 3D, both 2D and text entries, etc...)",
                 space_name(space)
             );
         }

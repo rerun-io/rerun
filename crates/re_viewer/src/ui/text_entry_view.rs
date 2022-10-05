@@ -6,15 +6,12 @@ use re_log_types::*;
 
 // -----------------------------------------------------------------------------
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
 pub(crate) struct TextEntryFetcher<'s> {
-    #[serde(skip)]
     objects: Objects<'s>,
 }
 impl<'s> TextEntryFetcher<'s> {
-    /// Gather all `LogMessage` objects across the entire time range, not just the
-    /// current time selection.
+    /// Gather all `TextEntry` objects for the given `space` across the entire time range,
+    /// not just the current time selection.
     pub fn from_context(ctx: &mut ViewerContext<'s>, space: Option<&ObjPath>) -> Self {
         crate::profile_function!();
 
@@ -29,6 +26,8 @@ impl<'s> TextEntryFetcher<'s> {
             })
             .collect::<IntMap<_, _>>();
 
+        // TODO(cmc): At some point we might want keep a cache of what we've read so far,
+        // and incrementally query for new messages.
         let time_source = ctx.rec_cfg.time_ctrl.source();
         let all_time = re_data_store::TimeQuery::<i64>::Range(i64::MIN..=i64::MAX);
 
@@ -61,11 +60,12 @@ impl<'s> TextEntryFetcher<'s> {
 
         let text_entries = collect_text_entries(ctx, &self.objects);
 
-        // TODO(cmc): There are some rendering issues with horizontal scrolling here that seem
-        // to stem from the interaction between egui's Table and the docking system.
+        // TODO(cmc): There are some rendering issues with horizontal scrolling here
+        // that seem to stem from the interaction between egui's Table and the docking
+        // system.
         // Specifically, the text from the remainder column is incorrectly clipped.
         ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-            ui.label(format!("{} log messages", self.objects.text_entry.len()));
+            ui.label(format!("{} text entries", self.objects.text_entry.len()));
             ui.separator();
             show_table(ctx, ui, &text_entries);
         })
@@ -87,6 +87,8 @@ fn collect_text_entries<'a, 's>(
     ctx: &mut ViewerContext<'s>,
     objects: &'a Objects<'s>,
 ) -> Vec<CompleteTextEntry<'a>> {
+    crate::profile_function!();
+
     let time_source = ctx.rec_cfg.time_ctrl.source();
     let mut text_entries = objects
         .text_entry

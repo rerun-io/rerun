@@ -67,7 +67,10 @@ def log_timing_decorator(objpath: str, level: str):
             now = timer()
             result = func(*args, **kwargs)
             elapsed_ms = (timer() - now) * 1_000.0
-            rerun.log_text_entry(objpath, f"execution took {elapsed_ms}ms", level=level, space="autologs")
+            rerun.log_text_entry(objpath,
+                                 f"execution took {elapsed_ms}ms",
+                                 level=level,
+                                 space="autologs")
             return result
         return wrapper
     return inner
@@ -203,14 +206,17 @@ if __name__ == '__main__':
     try:
         with open(sdf_path, 'rb') as f:
             sdf = np.load(sdf_path)
+            rerun.log_text_entry("global", "loading sampled SDF from cache")
         with open(points_path, 'rb') as f:
             points = np.load(points_path)
+            rerun.log_text_entry("global", "loading point cloud from cache")
     except:
         (points, sdf) = compute_sample_sdf(mesh, args.points)
 
     try:
         with open(voxvol_path, 'rb') as f:
             voxvol = np.load(voxvol_path)
+            rerun.log_text_entry("global", "loading volumetric SDF from cache")
     except:
         voxvol = compute_voxel_sdf(mesh, args.resolution)
 
@@ -224,14 +230,17 @@ if __name__ == '__main__':
     log_volumetric_sdf(voxvol)
 
     elapsed_ms = (timer() - now) * 1_000.0
-    rerun.log_text_entry("global", f"SDFs computed and logged in {elapsed_ms}ms")
+    announcement(f"SDFs computed and logged in {elapsed_ms}ms")
 
     with open(points_path, 'wb+') as f:
         np.save(f, points)
+        rerun.log_text_entry("global", "writing sampled SDF to cache", level="debug")
     with open(sdf_path, 'wb+') as f:
         np.save(f, sdf)
+        rerun.log_text_entry("global", "writing point cloud to cache", level="debug")
     with open(voxvol_path, 'wb+') as f:
         np.save(f, voxvol)
+        rerun.log_text_entry("global", "writing volumetric SDF to cache", level="debug")
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
