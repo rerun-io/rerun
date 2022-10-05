@@ -12,11 +12,13 @@ py-dev-env:
     echo "Do 'source venv/bin/activate' to use the virtual environment!"
 
 # Build and install the package into the venv
-py-build mode="release":
+py-build:
     #!/usr/bin/env bash
     unset CONDA_PREFIX && \
         source venv/bin/activate && \
-        maturin develop -m rerun_py/Cargo.toml --extras="tests" {{ if mode == "debug" { "" } else { "--release" } }}
+        maturin develop \
+            -m rerun_py/Cargo.toml \
+            --extras="tests"
 
 # Run autoformatting
 py-format:

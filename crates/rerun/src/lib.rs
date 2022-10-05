@@ -6,6 +6,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+use anyhow::Context;
 use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
@@ -40,17 +41,17 @@ struct Args {
     profile: bool,
 }
 
-pub async fn run<I, T>(args: I)
+pub async fn run<I, T>(args: I) -> anyhow::Result<()>
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
     use clap::Parser as _;
     let args = Args::parse_from(args);
-    run_impl(args).await;
+    run_impl(args).await
 }
 
-async fn run_impl(args: Args) {
+async fn run_impl(args: Args) -> anyhow::Result<()> {
     let mut profiler = re_viewer::Profiler::default();
     if args.profile {
         profiler.start();
@@ -61,52 +62,49 @@ async fn run_impl(args: Args) {
         let path = std::path::Path::new(url_or_path).to_path_buf();
         if path.exists() || url_or_path.ends_with(".rrd") {
             re_log::info!("Loading {path:?}…");
-            load_file_to_channel(&path)
-                .unwrap_or_else(|err| panic!("Failed to load {path:?}: {}", re_error::format(err)))
+            load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
         } else {
-            connect_to_ws_url(&args, profiler, url_or_path.clone()).await;
-            return;
+            return connect_to_ws_url(&args, profiler, url_or_path.clone()).await;
         }
     } else {
         #[cfg(feature = "server")]
         {
             let bind_addr = format!("127.0.0.1:{}", args.port);
-            let rx = re_sdk_comms::serve(&bind_addr).unwrap_or_else(|err| {
-                panic!("Failed to host: {}", re_error::format(err));
-            });
+            let rx = re_sdk_comms::serve(&bind_addr)
+                .with_context(|| format!("Failed to bind address {bind_addr:?}"))?;
             re_log::info!("Hosting a SDK server over TCP at {bind_addr}");
             rx
         }
 
         #[cfg(not(feature = "server"))]
-        panic!("No url or .rrd path given");
+        anyhow::bail!("No url or .rrd path given");
     };
 
     // Now what do we do with the data?
     if args.web_viewer {
         #[cfg(feature = "web")]
         {
-            assert!(
-                args.url_or_path.is_some() || args.port != re_ws_comms::DEFAULT_WS_SERVER_PORT,
-                "Trying to spawn a websocket server on {}, but this port is already used by the server we're connecting to. Please specify a different port.",
-                args.port
-            );
+            if args.url_or_path.is_none() && args.port == re_ws_comms::DEFAULT_WS_SERVER_PORT {
+                anyhow::bail!(
+                    "Trying to spawn a websocket server on {}, but this port is \
+                already used by the server we're connecting to. Please specify a different port.",
+                    args.port
+                );
+            }
 
             // This is the server which the web viewer will talk to:
             re_log::info!("Starting a Rerun WebSocket Server…");
-            let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
-                .await
-                .unwrap();
+            let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
             let server_handle = tokio::spawn(ws_server.listen(rx));
 
             let rerun_ws_server_url = re_ws_comms::default_server_url();
-            host_web_viewer(rerun_ws_server_url).await;
+            host_web_viewer(rerun_ws_server_url).await?;
 
-            server_handle.await.unwrap().unwrap();
+            return server_handle.await?;
         }
 
         #[cfg(not(feature = "web"))]
-        panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
+        anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
     } else {
         re_viewer::run_native_app(Box::new(move |cc| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
@@ -115,19 +113,20 @@ async fn run_impl(args: Args) {
             Box::new(app)
         }));
     }
+    Ok(())
 }
 
 async fn connect_to_ws_url(
     args: &Args,
     profiler: re_viewer::Profiler,
     mut rerun_server_ws_url: String,
-) {
+) -> anyhow::Result<()> {
     if !rerun_server_ws_url.contains("://") {
         rerun_server_ws_url = format!("{}://{rerun_server_ws_url}", re_ws_comms::PROTOCOL);
     }
 
     if args.web_viewer {
-        host_web_viewer(rerun_server_ws_url).await;
+        host_web_viewer(rerun_server_ws_url).await?;
     } else {
         // By using RemoteViewerApp we let the user change the server they are connected to.
         re_viewer::run_native_app(Box::new(move |cc| {
@@ -137,6 +136,7 @@ async fn connect_to_ws_url(
             Box::new(app)
         }));
     }
+    Ok(())
 }
 
 fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMsg>> {
@@ -159,14 +159,12 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
 }
 
 #[cfg(feature = "web")]
-async fn host_web_viewer(rerun_ws_server_url: String) {
+async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
     let web_port = 9090;
     let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, rerun_ws_server_url);
 
     let web_server = re_web_server::WebServer::new(web_port);
-    let web_server_handle = tokio::spawn(async move {
-        web_server.serve().await.unwrap();
-    });
+    let web_server_handle = tokio::spawn(web_server.serve());
 
     let open = true;
     if open {
@@ -175,10 +173,10 @@ async fn host_web_viewer(rerun_ws_server_url: String) {
         println!("Hosting Rerun Web Viewer at {viewer_url}.");
     }
 
-    web_server_handle.await.unwrap();
+    web_server_handle.await?
 }
 
 #[cfg(not(feature = "web"))]
-async fn host_web_viewer(_rerun_ws_server_url: String) {
+async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
     panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
 }

@@ -2800,6 +2800,7 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand",
+ "re_error",
  "re_log",
  "re_log_types",
  "re_sdk_comms",
@@ -2890,6 +2891,7 @@ dependencies = [
 name = "re_web_server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "document-features",
  "futures-util",
  "glob",
