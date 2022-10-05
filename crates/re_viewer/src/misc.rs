@@ -216,7 +216,7 @@ pub mod cam {
         })
     }
 
-    /// Returns x, y, and depth in image coordiantes.
+    /// Returns x, y, and depth in image coordinates.
     pub fn project_onto_2d(cam: &re_log_types::Camera, pos3d: Vec3) -> Option<Vec3> {
         image_from_world(cam).map(|pixel_from_world| {
             let point = pixel_from_world.transform_point3(pos3d);

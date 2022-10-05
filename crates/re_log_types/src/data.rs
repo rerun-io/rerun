@@ -404,7 +404,7 @@ pub struct Camera {
     pub camera_space_convention: CameraSpaceConvention,
 
     /// Column-major intrinsics matrix.
-    /// Image coordiantes from view coordinates (via projection).
+    /// Image coordinates from view coordinates (via projection).
     ///
     /// Example:
     /// ```text
@@ -422,7 +422,7 @@ pub struct Camera {
     /// ```
     pub resolution: Option<[f32; 2]>,
 
-    /// The 2D space that this camera proejcts into.
+    /// The 2D space that this camera projects into.
     pub target_space: Option<ObjPath>,
 }
 

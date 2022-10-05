@@ -54,7 +54,7 @@ impl LogDb {
         self.log_messages.is_empty()
     }
 
-    /// All known spacves, in undefined order.
+    /// All known spaces, in undefined order.
     pub fn spaces(&self) -> impl ExactSizeIterator<Item = &ObjPath> {
         self.spaces.values()
     }
@@ -202,7 +202,7 @@ impl LogDb {
         };
 
         // This is a bit hacky, and I don't like it,
-        // but we nned a single place to find all the spaces (ignoring time).
+        // but we need a single place to find all the spaces (ignoring time).
         match data {
             LoggedData::Single(Data::Space(space)) | LoggedData::BatchSplat(Data::Space(space)) => {
                 register_space(space);
