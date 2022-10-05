@@ -1,3 +1,4 @@
+use nohash_hasher::IntMap;
 use std::collections::{BTreeMap, BTreeSet};
 
 use egui::NumExt as _;
@@ -453,11 +454,34 @@ impl TimeControl {
     ) -> re_data_store::Objects<'db> {
         crate::profile_function!();
 
+        let mut obj_types = log_db.obj_types.clone();
+
+        // Object types that are exempt from the timeline cursor selection.
+        let perma_obj_types = log_db
+            .obj_types
+            .iter()
+            .filter_map(|(obj_type_path, obj_type)| {
+                matches!(&obj_type, ObjectType::TextEntry)
+                    .then(|| (obj_type_path.clone(), *obj_type))
+            })
+            .collect::<IntMap<_, _>>();
+
         let mut objects = re_data_store::Objects::default();
+
+        // Query for those standard objects based timeline cursor selection.
+        obj_types.retain(|k, _| !perma_obj_types.contains_key(k));
         if let Some(time_query) = self.time_query() {
             if let Some(store) = log_db.data_store.get(&self.time_source) {
-                objects.query(store, &time_query, &log_db.obj_types);
+                objects.query(store, &time_query, &obj_types);
             }
+        }
+
+        // Query for permanent objects.
+        // TODO(cmc): At some point we might want keep a cache of what we've read so far,
+        // and incrementally query for new messages.
+        let all_time = re_data_store::TimeQuery::<i64>::Range(i64::MIN..=i64::MAX);
+        if let Some(store) = log_db.data_store.get(&self.time_source) {
+            objects.query(store, &all_time, &perma_obj_types);
         }
 
         objects

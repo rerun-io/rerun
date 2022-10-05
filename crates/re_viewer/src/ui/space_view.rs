@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use re_data_store::ObjectsBySpace;
 use re_log_types::*;
 
-use crate::{misc::HoveredSpace, ui::text_entry_view::TextEntryFetcher, ViewerContext};
+use crate::{misc::HoveredSpace, ViewerContext};
 
 // ----------------------------------------------------------------------------
 
@@ -68,24 +68,6 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
         ui.horizontal_top(|ui| {
             if ui.button("🗖").on_hover_text("Maximize space").clicked() {
                 *self.maximized = Some(tab.clone());
-            }
-
-            // Text entries work a bit different because they are completely isolated from
-            // the main timeline selection: we do not filter them, rather we always want the
-            // complete timeline!
-            if let Some(objects) = self.objects.get(&tab.space.as_ref()) {
-                if objects.has_any_text_entries() {
-                    let state_log_messages =
-                        TextEntryFetcher::from_context(self.ctx, tab.space.as_ref());
-                    if !state_log_messages.is_empty() {
-                        let response = state_log_messages.show(ui, self.ctx);
-                        if response.hovered() {
-                            self.hovered_space = tab.space.clone();
-                        }
-                    }
-
-                    return;
-                }
             }
 
             let hovered =
@@ -380,8 +362,6 @@ impl SpaceStates {
 
         let num_cats = objects.has_any_2d() as u32
             + objects.has_any_3d() as u32
-            // NOTE: cannot actually happen at the moment as text entries are caught early..
-            // better safe than sorry.
             + objects.has_any_text_entries() as u32;
         if num_cats > 1 {
             re_log::warn_once!(
@@ -413,6 +393,11 @@ impl SpaceStates {
                 .size(24.0)
                 .color(ui.visuals().warn_fg_color),
             );
+        }
+
+        if objects.has_any_text_entries() {
+            let response = crate::text_entry_view::show(ui, ctx, &objects);
+            hovered |= response.hovered();
         }
 
         if !hovered && ctx.rec_cfg.hovered_space.space() == space {

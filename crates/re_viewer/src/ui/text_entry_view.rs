@@ -1,76 +1,29 @@
 use crate::ViewerContext;
 use egui::Color32;
-use nohash_hasher::IntMap;
 use re_data_store::{InstanceProps, Objects, TextEntry};
 use re_log_types::*;
 
 // -----------------------------------------------------------------------------
 
-pub(crate) struct TextEntryFetcher<'s> {
-    objects: Objects<'s>,
-}
-impl<'s> TextEntryFetcher<'s> {
-    /// Gather all `TextEntry` objects for the given `space` across the entire time range,
-    /// not just the current time selection.
-    pub fn from_context(ctx: &mut ViewerContext<'s>, space: Option<&ObjPath>) -> Self {
-        crate::profile_function!();
+pub(crate) fn show(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    objects: &Objects<'_>,
+) -> egui::Response {
+    crate::profile_function!();
 
-        let mut objects = re_data_store::Objects::default();
-        let obj_types = ctx
-            .log_db
-            .obj_types
-            .iter()
-            .filter_map(|(obj_type_path, obj_type)| {
-                matches!(&obj_type, ObjectType::TextEntry)
-                    .then(|| (obj_type_path.clone(), *obj_type))
-            })
-            .collect::<IntMap<_, _>>();
+    let text_entries = collect_text_entries(ctx, objects);
 
-        // TODO(cmc): At some point we might want keep a cache of what we've read so far,
-        // and incrementally query for new messages.
-        let time_source = ctx.rec_cfg.time_ctrl.source();
-        let all_time = re_data_store::TimeQuery::<i64>::Range(i64::MIN..=i64::MAX);
-
-        if let Some(store) = ctx.log_db.data_store.get(time_source) {
-            for (obj_path, obj_store) in store.iter() {
-                if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
-                    objects.query_object(obj_store, &all_time, obj_path, obj_type);
-                }
-            }
-        }
-
-        let objects = objects.filter(|props| {
-            props.space == space
-                && ctx
-                    .rec_cfg
-                    .projected_object_properties
-                    .get(props.obj_path)
-                    .visible
-        });
-
-        Self { objects }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.objects.is_empty()
-    }
-
-    pub fn show(&self, ui: &mut egui::Ui, ctx: &mut ViewerContext<'s>) -> egui::Response {
-        crate::profile_function!();
-
-        let text_entries = collect_text_entries(ctx, &self.objects);
-
-        // TODO(cmc): There are some rendering issues with horizontal scrolling here
-        // that seem to stem from the interaction between egui's Table and the docking
-        // system.
-        // Specifically, the text from the remainder column is incorrectly clipped.
-        ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-            ui.label(format!("{} text entries", self.objects.text_entry.len()));
-            ui.separator();
-            show_table(ctx, ui, &text_entries);
-        })
-        .response
-    }
+    // TODO(cmc): There are some rendering issues with horizontal scrolling here
+    // that seem to stem from the interaction between egui's Table and the docking
+    // system.
+    // Specifically, the text from the remainder column is incorrectly clipped.
+    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+        ui.label(format!("{} text entries", objects.text_entry.len()));
+        ui.separator();
+        show_table(ctx, ui, &text_entries);
+    })
+    .response
 }
 
 // -----------------------------------------------------------------------------
@@ -83,10 +36,10 @@ struct CompleteTextEntry<'s> {
     text_entry: &'s TextEntry<'s>,
 }
 
-fn collect_text_entries<'a, 's>(
-    ctx: &mut ViewerContext<'s>,
-    objects: &'a Objects<'s>,
-) -> Vec<CompleteTextEntry<'a>> {
+fn collect_text_entries<'s>(
+    ctx: &mut ViewerContext<'_>,
+    objects: &'s Objects<'_>,
+) -> Vec<CompleteTextEntry<'s>> {
     crate::profile_function!();
 
     let time_source = ctx.rec_cfg.time_ctrl.source();
