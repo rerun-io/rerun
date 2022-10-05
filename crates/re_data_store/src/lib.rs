@@ -21,6 +21,7 @@
 mod batch;
 mod instance;
 pub mod log_db;
+pub mod object_tree;
 pub mod objects;
 pub mod query;
 mod stores;
@@ -28,6 +29,7 @@ mod stores;
 pub use batch::*;
 pub use instance::*;
 pub use log_db::LogDb;
+pub use object_tree::*;
 pub use objects::*;
 pub use stores::*;
 

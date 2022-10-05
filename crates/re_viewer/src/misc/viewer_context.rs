@@ -1,9 +1,6 @@
 use macaw::Ray3;
 
-use re_data_store::{
-    log_db::{LogDb, ObjectTree},
-    InstanceId, ObjTypePath,
-};
+use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath, ObjectTree};
 use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource};
 
 /// Common things needed by many parts of the viewer.

@@ -5,7 +5,7 @@ use std::{
 
 use egui::*;
 
-use re_data_store::{log_db::ObjectTree, InstanceId};
+use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::*;
 
 use crate::{
