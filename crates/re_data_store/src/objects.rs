@@ -561,26 +561,27 @@ impl<'s> TextEntry<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_2(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("body"),
             time_query,
-            ("space", "level"),
+            ("space", "level", "color"),
             |instance_index: Option<&IndexHash>,
              msg_id: &MsgId,
-             text: &String,
+             body: &String,
              space: Option<&ObjPath>,
-             level: Option<&String>| {
+             level: Option<&String>,
+             color: Option<&[u8; 4]>| {
                 out.text_entry.0.push(Object {
                     props: InstanceProps {
                         msg_id,
                         space,
-                        color: None,
+                        color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                     },
                     data: TextEntry {
-                        body: text.as_str(),
+                        body: body.as_str(),
                         level: level.map(|s| s.as_str()),
                     },
                 });
@@ -730,7 +731,7 @@ impl<'s> Objects<'s> {
 
         let Self {
             space: _, // yes, this is intentional
-            text_entry: log_message,
+            text_entry,
             image,
             point2d,
             bbox2d,
@@ -743,7 +744,7 @@ impl<'s> Objects<'s> {
             camera,
         } = self;
 
-        for obj in log_message.0 {
+        for obj in text_entry.0 {
             partitioner.slot(obj.props.space).text_entry.0.push(obj);
         }
 

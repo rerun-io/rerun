@@ -39,7 +39,7 @@ impl ObjectType {
         match self {
             Self::Space => &["up"],
 
-            Self::TextEntry => &["space", "body", "level"],
+            Self::TextEntry => &["space", "body", "level", "color"],
 
             Self::Image => &["space", "color", "tensor", "meter"],
             Self::Point2D => &["space", "color", "pos", "radius"],

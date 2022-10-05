@@ -220,19 +220,20 @@ class RectFormat(Enum):
     XCYCW2H2 = "XCYCW2H2"
 
 
-# TODO(cmc): what about structured logging?
-def log_msg(obj_path: str,
-            text: str,
-            level: Optional[str] = None,
-            timeless: bool = False,
-            space: Optional[str] = None):
+def log_text_entry(obj_path: str,
+                   text: str,
+                   level: Optional[str] = None,
+                   color: Optional[Sequence[int]] = None,
+                   timeless: bool = False,
+                   space: Optional[str] = None):
     """
-    Log a logging message, with optional level.
+    Log a text entry, with optional level.
 
-    If no `level` is given, it will default to `info`.
-    If no `space` is given, the space name "logs" will be used.
+    * If no `level` is given, it will default to `info`.
+    * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    * If no `space` is given, the space name "logs" will be used.
     """
-    rerun_rs.log_msg(obj_path, text, level, timeless, space)
+    rerun_rs.log_text_entry(obj_path, text, level, color, timeless, space)
 
 
 def log_rect(

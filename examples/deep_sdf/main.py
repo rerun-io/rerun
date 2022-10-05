@@ -49,6 +49,15 @@ from trimesh import Trimesh
 from rerun_sdk import MeshFormat
 
 
+def announcement(body: str):
+    announcement.counter += 1
+    rerun.log_text_entry(f"ann/#{announcement.counter}",
+                         body,
+                         color=[255, 215, 0],
+                         timeless=True)
+announcement.counter = 0
+
+
 def log_timing_decorator(objpath: str, level: str):
     """
     Times the inner method using `timeit`, and logs the result using Rerun.
@@ -58,7 +67,7 @@ def log_timing_decorator(objpath: str, level: str):
             now = timer()
             result = func(*args, **kwargs)
             elapsed_ms = (timer() - now) * 1_000.0
-            rerun.log_msg(objpath, f"execution took {elapsed_ms}ms", level=level, space="autologs")
+            rerun.log_text_entry(objpath, f"execution took {elapsed_ms}ms", level=level, space="autologs")
             return result
         return wrapper
     return inner
@@ -121,7 +130,7 @@ def log_sampled_sdf(points: np.ndarray, sdf: np.ndarray):
     rerun.set_space_up("world", [0, 1, 0]) # TODO(cmc): depends on the mesh really
 
     inside = points[sdf <= 0]
-    rerun.log_msg("sdf/inside/logs",
+    rerun.log_text_entry("sdf/inside/logs",
                   f"{len(inside)} points inside ({len(points)} total)",
                   level="trace")
     rerun.log_points("sdf/inside",
@@ -130,7 +139,7 @@ def log_sampled_sdf(points: np.ndarray, sdf: np.ndarray):
                      space="world")
 
     outside = points[sdf <= 0]
-    rerun.log_msg("sdf/outside/logs",
+    rerun.log_text_entry("sdf/outside/logs",
                   f"{len(outside)} points outside ({len(points)} total)",
                   level="trace")
     rerun.log_points("sdf/outside",
@@ -206,16 +215,16 @@ if __name__ == '__main__':
         voxvol = compute_voxel_sdf(mesh, args.resolution)
 
     # TODO(cmc): really could use some structured logging here!
-    rerun.log_msg("ann/#1", f"starting DeepSDF logger", timeless=True)
-    rerun.log_msg("ann/#2", f"point cloud size: {args.points}", timeless=True)
-    rerun.log_msg("ann/#3", f"voxel resolution: {args.resolution}", timeless=True)
+    announcement(f"starting DeepSDF logger")
+    announcement(f"point cloud size: {args.points}")
+    announcement(f"voxel resolution: {args.resolution}")
 
     log_mesh(path, mesh)
     log_sampled_sdf(points, sdf)
     log_volumetric_sdf(voxvol)
 
     elapsed_ms = (timer() - now) * 1_000.0
-    rerun.log_msg("global", f"SDFs computed and logged in {elapsed_ms}ms")
+    rerun.log_text_entry("global", f"SDFs computed and logged in {elapsed_ms}ms")
 
     with open(points_path, 'wb+') as f:
         np.save(f, points)

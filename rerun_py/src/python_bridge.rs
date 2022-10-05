@@ -98,7 +98,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
 
-    m.add_function(wrap_pyfunction!(log_msg, m)?)?;
+    m.add_function(wrap_pyfunction!(log_text_entry, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
@@ -469,15 +469,16 @@ fn log_camera(
 
 // ----------------------------------------------------------------------------
 
-/// Log a logging message.
+/// Log a text entry.
 ///
 /// If no `level` is given, it will default to `info`.
 /// If no `space` is given, the space name "logs" will be used.
 #[pyfunction]
-fn log_msg(
+fn log_text_entry(
     obj_path: &str,
     text: &str,
     level: Option<&str>,
+    color: Option<Vec<u8>>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -500,6 +501,15 @@ fn log_msg(
         (&obj_path, "level"),
         LoggedData::Single(Data::String(level)),
     );
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
+    }
 
     let space = space.unwrap_or_else(|| "logs".to_owned());
     sdk.send_data(

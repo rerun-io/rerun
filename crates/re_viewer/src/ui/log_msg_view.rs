@@ -1,7 +1,7 @@
 use crate::ViewerContext;
 use egui::Color32;
 use nohash_hasher::IntMap;
-use re_data_store::{Objects, TextEntry};
+use re_data_store::{InstanceProps, Objects, TextEntry};
 use re_log_types::*;
 
 // -----------------------------------------------------------------------------
@@ -79,7 +79,8 @@ struct CompleteTextEntry<'s> {
     data_path: DataPath,
     time_point: TimePoint,
     time: TimeInt,
-    msg: &'s TextEntry<'s>,
+    props: &'s InstanceProps<'s>,
+    text_entry: &'s TextEntry<'s>,
 }
 
 fn collect_text_entries<'a, 's>(
@@ -120,7 +121,8 @@ fn collect_text_entries<'a, 's>(
                 data_path: data_msg.data_path.clone(),
                 time_point: data_msg.time_point.clone(),
                 time,
-                msg: text_entry,
+                props,
+                text_entry,
             })
         })
         .collect::<Vec<_>>();
@@ -172,7 +174,8 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
                     time_point,
                     data_path,
                     time: _,
-                    msg,
+                    props,
+                    text_entry,
                 } = &messages[index];
 
                 // time(s)
@@ -186,12 +189,12 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
 
                 // path
                 row.col(|ui| {
-                    ctx.data_path_button(ui, data_path);
+                    ctx.obj_path_button(ui, data_path.obj_path());
                 });
 
                 // level
                 row.col(|ui| {
-                    if let Some(lvl) = msg.level {
+                    if let Some(lvl) = text_entry.level {
                         ui.colored_label(level_to_color(ui, lvl), lvl);
                     } else {
                         ui.label("-");
@@ -200,7 +203,12 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
 
                 // body
                 row.col(|ui| {
-                    ui.label(msg.body.to_owned());
+                    if let Some(c) = props.color {
+                        let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
+                        ui.colored_label(color, text_entry.body);
+                    } else {
+                        ui.label(text_entry.body);
+                    }
                 });
             });
         });
