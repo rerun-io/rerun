@@ -56,6 +56,7 @@ struct Tab {
 struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
     objects: ObjectsBySpace<'b>,
+    perma_objects: ObjectsBySpace<'b>,
     space_states: &'a mut SpaceStates,
     hovered_space: Option<ObjPath>,
     maximized: &'a mut Option<Tab>,
@@ -70,9 +71,15 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 *self.maximized = Some(tab.clone());
             }
 
-            let hovered =
+            let mut hovered =
                 self.space_states
                     .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
+            hovered |= self.space_states.show_permanent_space(
+                self.ctx,
+                &self.perma_objects,
+                tab.space.as_ref(),
+                ui,
+            );
 
             if hovered {
                 self.hovered_space = tab.space.clone();
@@ -145,8 +152,9 @@ impl View {
     pub fn ui<'a, 'b>(
         &mut self,
         ctx: &'a mut ViewerContext<'b>,
-        objects: ObjectsBySpace<'b>,
         ui: &mut egui::Ui,
+        objects: ObjectsBySpace<'b>,
+        perma_objects: ObjectsBySpace<'b>,
     ) {
         let num_tabs = num_tabs(&self.tree);
 
@@ -162,6 +170,8 @@ impl View {
 
             self.space_states
                 .show_space(ctx, &objects, tab.space.as_ref(), ui);
+            self.space_states
+                .show_permanent_space(ctx, &perma_objects, tab.space.as_ref(), ui);
         } else if let Some(tab) = self.maximized.clone() {
             ui.horizontal(|ui| {
                 if ui
@@ -180,10 +190,13 @@ impl View {
 
             self.space_states
                 .show_space(ctx, &objects, tab.space.as_ref(), ui);
+            self.space_states
+                .show_permanent_space(ctx, &perma_objects, tab.space.as_ref(), ui);
         } else {
             let mut tab_viewer = TabViewer {
                 ctx,
                 objects,
+                perma_objects,
                 space_states: &mut self.space_states,
                 hovered_space: None,
                 maximized: &mut self.maximized,
@@ -261,6 +274,12 @@ impl SpacesPanel {
             .selected_objects(ctx.log_db)
             .partition_on_space();
 
+        let perma_objects = ctx
+            .rec_cfg
+            .time_ctrl
+            .all_objects(ctx.log_db, [ObjectType::TextEntry].into_iter())
+            .partition_on_space();
+
         let all_spaces = {
             // `objects` contain all spaces that exist in this time,
             // but we want to show all spaces that could ever exist.
@@ -286,7 +305,7 @@ impl SpacesPanel {
             }
         }
 
-        self.view.ui(ctx, objects, ui);
+        self.view.ui(ctx, ui, objects, perma_objects);
     }
 }
 
@@ -392,6 +411,49 @@ impl SpaceStates {
                 )
                 .size(24.0)
                 .color(ui.visuals().warn_fg_color),
+            );
+        }
+
+        if !hovered && ctx.rec_cfg.hovered_space.space() == space {
+            ctx.rec_cfg.hovered_space = HoveredSpace::None;
+        }
+
+        hovered
+    }
+
+    /// Returns `true` if hovered.
+    fn show_permanent_space(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        perma_objects: &ObjectsBySpace<'_>,
+        space: Option<&ObjPath>,
+        ui: &mut egui::Ui,
+    ) -> bool {
+        crate::profile_function!(space_name(space));
+
+        let mut hovered = false;
+
+        let objects = if let Some(objects) = perma_objects.get(&space) {
+            objects
+        } else {
+            return hovered;
+        };
+
+        let objects = objects.filter(|props| {
+            ctx.rec_cfg
+                .projected_object_properties
+                .get(props.obj_path)
+                .visible
+        });
+
+        let num_cats = objects.has_any_2d() as u32
+            + objects.has_any_3d() as u32
+            + objects.has_any_text_entries() as u32;
+        if num_cats > 1 {
+            re_log::warn_once!(
+                "Space {:?} contains multiple categories of objects \
+                    (e.g. both 2D and 3D, both 2D and text entries, etc...)",
+                space_name(space)
             );
         }
 

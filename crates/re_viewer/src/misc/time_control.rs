@@ -1,3 +1,4 @@
+use ahash::HashSet;
 use nohash_hasher::IntMap;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -454,34 +455,43 @@ impl TimeControl {
     ) -> re_data_store::Objects<'db> {
         crate::profile_function!();
 
-        let mut obj_types = log_db.obj_types.clone();
+        let mut objects = re_data_store::Objects::default();
+        if let Some(time_query) = self.time_query() {
+            if let Some(store) = log_db.data_store.get(&self.time_source) {
+                objects.query(store, &time_query, &log_db.obj_types);
+            }
+        }
+        objects
+    }
 
-        // Object types that are exempt from the timeline cursor selection.
-        let perma_obj_types = log_db
+    /// Return all the objects for a given set of `ObjectType`s for the current time source.
+    pub fn all_objects<'db>(
+        &self,
+        log_db: &'db re_data_store::log_db::LogDb,
+        obj_types: impl Iterator<Item = ObjectType>,
+    ) -> re_data_store::Objects<'db> {
+        crate::profile_function!();
+
+        let obj_types = obj_types.collect::<HashSet<_>>();
+        let obj_types = log_db
             .obj_types
             .iter()
             .filter_map(|(obj_type_path, obj_type)| {
-                matches!(&obj_type, ObjectType::TextEntry)
+                obj_types
+                    .contains(obj_type)
                     .then(|| (obj_type_path.clone(), *obj_type))
             })
             .collect::<IntMap<_, _>>();
 
-        let mut objects = re_data_store::Objects::default();
-
-        // Query for those standard objects based timeline cursor selection.
-        obj_types.retain(|k, _| !perma_obj_types.contains_key(k));
-        if let Some(time_query) = self.time_query() {
-            if let Some(store) = log_db.data_store.get(&self.time_source) {
-                objects.query(store, &time_query, &obj_types);
-            }
-        }
-
-        // Query for permanent objects.
         // TODO(cmc): At some point we might want keep a cache of what we've read so far,
         // and incrementally query for new messages.
-        let all_time = TimeQuery::EVERYTHING;
+        let mut objects = re_data_store::Objects::default();
         if let Some(store) = log_db.data_store.get(&self.time_source) {
-            objects.query(store, &all_time, &perma_obj_types);
+            for (obj_path, obj_store) in store.iter() {
+                if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
+                    objects.query_object(obj_store, &TimeQuery::EVERYTHING, obj_path, obj_type);
+                }
+            }
         }
 
         objects
