@@ -215,19 +215,25 @@ pub(crate) fn view_2d(
         }
 
         if let Some(label) = label {
-            let shrunken_screen_rect = rect_in_ui.shrink(4.0);
+            let wrap_width = (rect_in_ui.width() - 4.0).max(60.0);
             let font_id = TextStyle::Body.resolve(ui.style());
             let galley = ui.fonts().layout(
                 (*label).to_owned(),
                 font_id,
                 paint_props.fg_stroke.color,
-                shrunken_screen_rect.width(),
+                wrap_width,
             );
-            let text_rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
-                shrunken_screen_rect.center_top(),
-                galley.size(),
-            ));
-            let bg_rect = text_rect.expand2(vec2(6.0, 2.0));
+            // Generally it's nice to have a small label inside the rect!
+            // However, these bounding boxes _usually_ contain something of interest, so let's not cover it completely in text
+            // So we change strategy and put it at the bottom if the text is more than than a quarter of the box size.
+            let text_anchor_pos = if galley.size().x * galley.size().y > rect_in_ui.area() * 0.25 {
+                rect_in_ui.center_bottom()
+            } else {
+                rect_in_ui.center_top()
+            } + vec2(0.0, 2.0);
+            let text_rect =
+                Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
+            let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
             shapes.push(Shape::rect_filled(
                 bg_rect,
                 3.0,
