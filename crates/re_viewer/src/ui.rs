@@ -1,9 +1,9 @@
 pub(crate) mod context_panel;
 pub(crate) mod data_ui;
 pub(crate) mod image_ui;
-pub(crate) mod log_msg_view;
 pub(crate) mod log_table_view;
 pub(crate) mod space_view;
+pub(crate) mod text_entry_view;
 pub(crate) mod time_panel;
 pub(crate) mod view2d;
 #[cfg(feature = "glow")]

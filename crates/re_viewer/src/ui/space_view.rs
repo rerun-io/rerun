@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use re_data_store::ObjectsBySpace;
 use re_log_types::*;
 
-use crate::{misc::HoveredSpace, ui::log_msg_view::TextEntryFetcher, ViewerContext};
+use crate::{misc::HoveredSpace, ui::text_entry_view::TextEntryFetcher, ViewerContext};
 
 // ----------------------------------------------------------------------------
 
