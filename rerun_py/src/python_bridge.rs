@@ -1019,6 +1019,7 @@ fn log_obb(
     rotation_q: re_log_types::Quaternion,
     color: Option<Vec<u8>>,
     stroke_width: Option<f32>,
+    label: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -1055,6 +1056,14 @@ fn log_obb(
             &time_point,
             (&obj_path, "stroke_width"),
             LoggedData::Single(Data::F32(stroke_width)),
+        );
+    }
+
+    if let Some(label) = label {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "label"),
+            LoggedData::Single(Data::String(label)),
         );
     }
 

@@ -447,19 +447,23 @@ def log_line_segments(
 
     If no `space` is given, the space name "3D" will be used.
     """
-    positions = np.require(positions, dtype='float32')
-    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless, space)
+    positions = np.require(positions, dtype="float32")
+    rerun_rs.log_line_segments(
+        obj_path, positions, stroke_width, color, timeless, space
+    )
 
 
 def log_obb(
-            obj_path: str,
-            half_size: ArrayLike,
-            position: ArrayLike,
-            rotation_q: ArrayLike,
-            color: Optional[Sequence[int]] = None,
-            stroke_width: Optional[float] = None,
-            timeless: bool = False,
-            space: Optional[str] = None):
+    obj_path: str,
+    half_size: ArrayLike,
+    position: ArrayLike,
+    rotation_q: ArrayLike,
+    color: Optional[Sequence[int]] = None,
+    stroke_width: Optional[float] = None,
+    label: Optional[str] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+):
     """
     Log a 3D oriented bounding box, defined by its half size.
 
