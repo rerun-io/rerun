@@ -22,7 +22,10 @@ pub(crate) fn show(
     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
         ui.label(format!("{} text entries", objects.text_entry.len()));
         ui.separator();
-        show_table(ctx, ui, &text_entries);
+
+        egui::ScrollArea::horizontal().show(ui, |ui| {
+            show_table(ctx, ui, &text_entries);
+        })
     })
     .response
 }
