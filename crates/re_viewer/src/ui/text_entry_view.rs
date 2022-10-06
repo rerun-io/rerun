@@ -87,7 +87,7 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
     egui_extras::TableBuilder::new(ui)
         .striped(true)
         .resizable(true)
-        .scroll(false)
+        .scroll(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(
             Size::initial(180.0).at_least(100.0),

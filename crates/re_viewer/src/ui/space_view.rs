@@ -205,6 +205,7 @@ impl View {
             let dock_style = egui_dock::Style {
                 separator_width: 2.0,
                 show_close_buttons: false,
+                tab_include_scrollarea: false,
                 ..egui_dock::Style::from_egui(ui.style().as_ref())
             };
 
