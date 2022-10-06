@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Example using a vicom MRI scan.
+"""Example using a dicom MRI scan.
 
 Setup:
 ``` sh
-python3 examples/vicom/download_dataset.py
+python3 examples/dicom/download_dataset.py
 ```
 
 Run:
 ``` sh
-python3 examples/vicom/main.py
+python3 examples/dicom/main.py
 ```
 """
 
@@ -42,7 +42,7 @@ def list_dicom_files(dir: Path) -> Iterable[Path]:
                 yield Path(path) / f
 
 
-def read_and_log_vicom_dataset():
+def read_and_log_dicom_dataset():
     dicom_files = list_dicom_files(DATASET_DIR)
     voxels_volume, _ = extract_voxel_data(dicom_files)
     voxels_volume = voxels_volume.astype('uint16') # the data is i16, but in range [0, 536].
@@ -69,7 +69,7 @@ def main() -> None:
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    read_and_log_vicom_dataset()
+    read_and_log_dicom_dataset()
 
     if args.save is not None:
         rerun.save(args.save)

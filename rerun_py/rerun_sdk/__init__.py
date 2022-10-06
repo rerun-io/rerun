@@ -1,13 +1,13 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
 import atexit
-from enum import Enum
 import ntpath
-import numpy as np
-from typing import List, Optional, Sequence, Union, Iterable
-from pathlib import Path
-import numpy.typing as npt
-from typing import Optional, Sequence, TypeVar, Union
 from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Any, Iterable, Optional, Sequence, TypeVar, Union
+
+import numpy as np
+import numpy.typing as npt
 
 from rerun_sdk import rerun_sdk as rerun_rs  # type: ignore[attr-defined]
 from rerun_sdk.color_conversion import linear_to_gamma_u8_pixel
@@ -40,7 +40,7 @@ class MeshFormat(Enum):
 
 
 class CameraSpaceConvention(Enum):
-    """The convetion used for the camera space's (3D) coordinate system."""
+    """The convention used for the camera space's (3D) coordinate system."""
 
     # Right-handed system used by ARKit and PyTorch3D.
     # * +X = right
