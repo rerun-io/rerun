@@ -68,7 +68,7 @@ def log_timing_decorator(objpath: str, level: str):
             result = func(*args, **kwargs)
             elapsed_ms = (timer() - now) * 1_000.0
             rerun.log_text_entry(objpath,
-                                 f"execution took {elapsed_ms}ms",
+                                 f"execution took {elapsed_ms:.1f}ms",
                                  level=level,
                                  space="autologs")
             return result
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     log_volumetric_sdf(voxvol)
 
     elapsed_ms = (timer() - now) * 1_000.0
-    announcement(f"SDFs computed and logged in {elapsed_ms}ms")
+    announcement(f"SDFs computed and logged in {elapsed_ms:.1f}ms")
 
     with open(points_path, 'wb+') as f:
         np.save(f, points)
