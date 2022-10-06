@@ -229,7 +229,7 @@ class RerunHandler(logging.Handler):
     """
     This class provides a logging handler that forwards all events to the Rerun SDK.
 
-    Because Rerun's data model doesn't match 1-to-1 with the different concepts of
+    Because Rerun's data model doesn't match 1-to-1 with the different concepts from
     python's logging ecosystem, we need a way to map the latter to the former:
 
     * Object path: the name of the logger responsible for the creation of the LogRecord

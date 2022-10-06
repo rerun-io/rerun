@@ -19,8 +19,8 @@ from rerun_sdk import RerunHandler
 
 
 def log_stuff():
-    # That's really all there is to it: attach the Rerun log handler to one
-    # or more logger of your choice and your logs will be forwarded.
+    # That's really all there is to it: attach a Rerun logging handler to one
+    # or more loggers of your choosing and your logs will be forwarded.
     #
     # In this case we attach our handler directly to the root logger, which
     # will catch events from all loggers going forward (propagation is on by
