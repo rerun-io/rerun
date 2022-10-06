@@ -2,3 +2,4 @@ rerun_sdk
 betterproto[compiler]
 requests
 scipy
+opencv-python<4.6 # opencv-4.6 rotates images incorrectly
