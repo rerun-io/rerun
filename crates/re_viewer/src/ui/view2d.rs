@@ -207,6 +207,7 @@ impl State2D {
     }
 }
 
+/// Create the outer 2D view, which consists of a scrollable region
 pub(crate) fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -221,301 +222,305 @@ pub(crate) fn view_2d(
 
     let (desired_size, offset) = state.desired_size_and_offset(available_size);
 
-    let mut scroll_area = ScrollArea::both();
-
     // Bound the offset based on sizes
     // TODO(jleibs): can we derive this from the ScrollArea shape?
     let offset = offset.at_most(desired_size - available_size);
     let offset = offset.at_least(Vec2::ZERO);
 
-    // Update the scroll area based on the computed offset
-    // This handles cases of dragging/zooming the space
-    scroll_area = scroll_area.scroll_offset(offset);
+    let mut scroll_area = ScrollArea::both();
+    scroll_area = scroll_area
+        .scroll_offset(offset)
+        .always_show_scroll(true)
+        .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
-        state.scene_bbox_accum = state
-            .scene_bbox_accum
-            .union(crate::misc::calc_bbox_2d(objects));
-
-        let scene_bbox = state.scene_bbox_accum;
-
-        let (mut response, painter) =
-            ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
-
-        // Create our transforms
-        let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
-        let space_from_ui = ui_from_space.inverse();
-
-        // ------------------------------------------------------------------------
-        state.update(&response, space_from_ui, available_size);
-
-        // ------------------------------------------------------------------------
-        if let Some(instance_id) = &state.hovered_instance {
-            if response.clicked() {
-                ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
-            }
-            egui::containers::popup::show_tooltip_at_pointer(
-                ui.ctx(),
-                Id::new("2d_tooltip"),
-                |ui| {
-                    ctx.instance_id_button(ui, instance_id);
-                    crate::ui::data_ui::view_instance(
-                        ctx,
-                        ui,
-                        instance_id,
-                        crate::ui::Preview::Small,
-                    );
-                },
-            );
-        }
-
-        // ------------------------------------------------------------------------
-
-        // Paint background in case there is no image covering it all:
-        let mut shapes = vec![Shape::rect_filled(
-            ui_from_space.transform_rect(scene_bbox),
-            3.0,
-            ui.visuals().extreme_bg_color,
-        )];
-
-        // ------------------------------------------------------------------------
-
-        let total_num_images = objects.image.len();
-
-        let hover_radius = 5.0; // TODO(emilk): from egui?
-
-        let mut closest_dist = hover_radius;
-        let mut closest_instance_id_hash = InstanceIdHash::NONE;
-        let pointer_pos = response.hover_pos();
-
-        let mut check_hovering = |props: &re_data_store::InstanceProps<'_>, dist: f32| {
-            if dist <= closest_dist {
-                closest_dist = dist;
-                closest_instance_id_hash = InstanceIdHash::from_props(props);
-            }
-        };
-
-        let mut depths_at_pointer = vec![];
-
-        let hovered_instance_id_hash = state
-            .hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, InstanceId::hash);
-
-        for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
-            let re_data_store::Image { tensor, meter } = obj;
-            let paint_props = paint_properties(
-                ctx,
-                &hovered_instance_id_hash,
-                props,
-                DefaultColor::White,
-                &None,
-            );
-
-            if tensor.shape.len() < 2 {
-                continue; // not an image. don't know how to display this!
-            }
-
-            let texture_id = ctx
-                .cache
-                .image
-                .get(props.msg_id, tensor)
-                .texture_id(ui.ctx());
-            let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
-                Pos2::ZERO,
-                vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
-            ));
-            let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-
-            let opacity = if image_idx == 0 {
-                1.0 // bottom image
-            } else {
-                // make top images transparent
-                1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
-            };
-            let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
-            shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
-
-            if paint_props.is_hovered {
-                shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
-            }
-
-            if let Some(pointer_pos) = pointer_pos {
-                let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
-                let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
-                check_hovering(props, dist);
-
-                if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
-                    let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
-                    response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
-                        ui,
-                        response,
-                        tensor,
-                        dynamic_image,
-                        rect_in_ui,
-                        pointer_pos,
-                        *meter,
-                    );
-                }
-
-                if let Some(meter) = *meter {
-                    let pos_in_image = space_from_ui.transform_pos(pointer_pos);
-                    if let Some(raw_value) =
-                        tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
-                    {
-                        let raw_value = raw_value.as_f64();
-                        let depth_in_meters = raw_value / meter as f64;
-                        depths_at_pointer.push(depth_in_meters);
-                    }
-                }
-            }
-        }
-
-        for (props, obj) in objects.bbox2d.iter() {
-            let re_data_store::BBox2D {
-                bbox,
-                stroke_width,
-                label,
-            } = obj;
-            let paint_props = paint_properties(
-                ctx,
-                &hovered_instance_id_hash,
-                props,
-                DefaultColor::Random,
-                stroke_width,
-            );
-
-            let rect_in_ui =
-                ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
-            let rounding = 2.0;
-            shapes.push(Shape::rect_stroke(
-                rect_in_ui,
-                rounding,
-                paint_props.bg_stroke,
-            ));
-            shapes.push(Shape::rect_stroke(
-                rect_in_ui,
-                rounding,
-                paint_props.fg_stroke,
-            ));
-
-            let mut hover_dist = f32::INFINITY;
-
-            if let Some(pointer_pos) = pointer_pos {
-                hover_dist = rect_in_ui.signed_distance_to_pos(pointer_pos).abs();
-            }
-
-            if let Some(label) = label {
-                let shrunken_screen_rect = rect_in_ui.shrink(4.0);
-                let font_id = TextStyle::Body.resolve(ui.style());
-                let galley = ui.fonts().layout(
-                    (*label).to_owned(),
-                    font_id,
-                    paint_props.fg_stroke.color,
-                    shrunken_screen_rect.width(),
-                );
-                let text_rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
-                    shrunken_screen_rect.center_top(),
-                    galley.size(),
-                ));
-                let bg_rect = text_rect.expand2(vec2(6.0, 2.0));
-                shapes.push(Shape::rect_filled(
-                    bg_rect,
-                    3.0,
-                    paint_props.bg_stroke.color,
-                ));
-                shapes.push(Shape::galley(text_rect.min, galley));
-                if let Some(pointer_pos) = pointer_pos {
-                    hover_dist = hover_dist.min(bg_rect.signed_distance_to_pos(pointer_pos));
-                }
-            }
-
-            check_hovering(props, hover_dist);
-        }
-
-        for (props, obj) in objects.line_segments2d.iter() {
-            let re_data_store::LineSegments2D {
-                points,
-                stroke_width,
-            } = obj;
-            let paint_props = paint_properties(
-                ctx,
-                &hovered_instance_id_hash,
-                props,
-                DefaultColor::Random,
-                stroke_width,
-            );
-
-            let mut min_dist_sq = f32::INFINITY;
-
-            for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
-                let a = ui_from_space.transform_pos(a);
-                let b = ui_from_space.transform_pos(b);
-                shapes.push(Shape::line_segment([a, b], paint_props.bg_stroke));
-                shapes.push(Shape::line_segment([a, b], paint_props.fg_stroke));
-
-                if let Some(pointer_pos) = pointer_pos {
-                    let line_segment_distance_sq =
-                        crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos);
-                    min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
-                }
-            }
-
-            check_hovering(props, min_dist_sq.sqrt());
-        }
-
-        for (props, obj) in objects.point2d.iter() {
-            let re_data_store::Point2D { pos, radius } = obj;
-            let paint_props = paint_properties(
-                ctx,
-                &hovered_instance_id_hash,
-                props,
-                DefaultColor::Random,
-                &None,
-            );
-
-            let radius = radius.unwrap_or(1.5);
-            let radius = paint_props.boost_radius_on_hover(radius);
-
-            let pos_in_ui = ui_from_space.transform_pos(pos2(pos[0], pos[1]));
-            shapes.push(Shape::circle_filled(
-                pos_in_ui,
-                radius + 1.0,
-                paint_props.bg_stroke.color,
-            ));
-            shapes.push(Shape::circle_filled(
-                pos_in_ui,
-                radius,
-                paint_props.fg_stroke.color,
-            ));
-
-            if let Some(pointer_pos) = pointer_pos {
-                check_hovering(props, pos_in_ui.distance(pointer_pos));
-            }
-        }
-
-        // ------------------------------------------------------------------------
-
-        let depth_at_pointer = if depths_at_pointer.len() == 1 {
-            depths_at_pointer[0] as f32
-        } else {
-            f32::INFINITY
-        };
-        project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
-        show_projections_from_3d_space(ctx, ui, space, &ui_from_space, &mut shapes);
-
-        // ------------------------------------------------------------------------
-
-        painter.extend(shapes);
-
-        state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.data_store);
-
-        response
+        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, objects)
     });
 
+    // Update the scroll area based on the computed offset
+    // This handles cases of dragging/zooming the space
     state.capture_scroll(scroll_out.state.offset, available_size);
-
     scroll_out.inner
+}
+
+/// Create the real 2D view inside the scrollable area
+fn view_2d_scrollable(
+    desired_size: Vec2,
+    available_size: Vec2,
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &mut State2D,
+    space: Option<&ObjPath>,
+    objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
+) -> egui::Response {
+    state.scene_bbox_accum = state
+        .scene_bbox_accum
+        .union(crate::misc::calc_bbox_2d(objects));
+
+    let scene_bbox = state.scene_bbox_accum;
+
+    let (mut response, painter) = ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
+
+    // Create our transforms
+    let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
+    let space_from_ui = ui_from_space.inverse();
+
+    // ------------------------------------------------------------------------
+    state.update(&response, space_from_ui, available_size);
+
+    // ------------------------------------------------------------------------
+    if let Some(instance_id) = &state.hovered_instance {
+        if response.clicked() {
+            ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
+        }
+        egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
+            ctx.instance_id_button(ui, instance_id);
+            crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
+        });
+    }
+
+    // ------------------------------------------------------------------------
+
+    // Paint background in case there is no image covering it all:
+    let mut shapes = vec![Shape::rect_filled(
+        ui_from_space.transform_rect(scene_bbox),
+        3.0,
+        ui.visuals().extreme_bg_color,
+    )];
+
+    // ------------------------------------------------------------------------
+
+    let total_num_images = objects.image.len();
+
+    let hover_radius = 5.0; // TODO(emilk): from egui?
+
+    let mut closest_dist = hover_radius;
+    let mut closest_instance_id_hash = InstanceIdHash::NONE;
+    let pointer_pos = response.hover_pos();
+
+    let mut check_hovering = |props: &re_data_store::InstanceProps<'_>, dist: f32| {
+        if dist <= closest_dist {
+            closest_dist = dist;
+            closest_instance_id_hash = InstanceIdHash::from_props(props);
+        }
+    };
+
+    let mut depths_at_pointer = vec![];
+
+    let hovered_instance_id_hash = state
+        .hovered_instance
+        .as_ref()
+        .map_or(InstanceIdHash::NONE, InstanceId::hash);
+
+    for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
+        let re_data_store::Image { tensor, meter } = obj;
+        let paint_props = paint_properties(
+            ctx,
+            &hovered_instance_id_hash,
+            props,
+            DefaultColor::White,
+            &None,
+        );
+
+        if tensor.shape.len() < 2 {
+            continue; // not an image. don't know how to display this!
+        }
+
+        let texture_id = ctx
+            .cache
+            .image
+            .get(props.msg_id, tensor)
+            .texture_id(ui.ctx());
+        let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
+            Pos2::ZERO,
+            vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
+        ));
+        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+
+        let opacity = if image_idx == 0 {
+            1.0 // bottom image
+        } else {
+            // make top images transparent
+            1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+        };
+        let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
+        shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
+
+        if paint_props.is_hovered {
+            shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
+        }
+
+        if let Some(pointer_pos) = pointer_pos {
+            let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
+            let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
+            check_hovering(props, dist);
+
+            if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
+                let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
+                response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
+                    ui,
+                    response,
+                    tensor,
+                    dynamic_image,
+                    rect_in_ui,
+                    pointer_pos,
+                    *meter,
+                );
+            }
+
+            if let Some(meter) = *meter {
+                let pos_in_image = space_from_ui.transform_pos(pointer_pos);
+                if let Some(raw_value) =
+                    tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
+                {
+                    let raw_value = raw_value.as_f64();
+                    let depth_in_meters = raw_value / meter as f64;
+                    depths_at_pointer.push(depth_in_meters);
+                }
+            }
+        }
+    }
+
+    for (props, obj) in objects.bbox2d.iter() {
+        let re_data_store::BBox2D {
+            bbox,
+            stroke_width,
+            label,
+        } = obj;
+        let paint_props = paint_properties(
+            ctx,
+            &hovered_instance_id_hash,
+            props,
+            DefaultColor::Random,
+            stroke_width,
+        );
+
+        let rect_in_ui =
+            ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
+        let rounding = 2.0;
+        shapes.push(Shape::rect_stroke(
+            rect_in_ui,
+            rounding,
+            paint_props.bg_stroke,
+        ));
+        shapes.push(Shape::rect_stroke(
+            rect_in_ui,
+            rounding,
+            paint_props.fg_stroke,
+        ));
+
+        let mut hover_dist = f32::INFINITY;
+
+        if let Some(pointer_pos) = pointer_pos {
+            hover_dist = rect_in_ui.signed_distance_to_pos(pointer_pos).abs();
+        }
+
+        if let Some(label) = label {
+            let shrunken_screen_rect = rect_in_ui.shrink(4.0);
+            let font_id = TextStyle::Body.resolve(ui.style());
+            let galley = ui.fonts().layout(
+                (*label).to_owned(),
+                font_id,
+                paint_props.fg_stroke.color,
+                shrunken_screen_rect.width(),
+            );
+            let text_rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
+                shrunken_screen_rect.center_top(),
+                galley.size(),
+            ));
+            let bg_rect = text_rect.expand2(vec2(6.0, 2.0));
+            shapes.push(Shape::rect_filled(
+                bg_rect,
+                3.0,
+                paint_props.bg_stroke.color,
+            ));
+            shapes.push(Shape::galley(text_rect.min, galley));
+            if let Some(pointer_pos) = pointer_pos {
+                hover_dist = hover_dist.min(bg_rect.signed_distance_to_pos(pointer_pos));
+            }
+        }
+
+        check_hovering(props, hover_dist);
+    }
+
+    for (props, obj) in objects.line_segments2d.iter() {
+        let re_data_store::LineSegments2D {
+            points,
+            stroke_width,
+        } = obj;
+        let paint_props = paint_properties(
+            ctx,
+            &hovered_instance_id_hash,
+            props,
+            DefaultColor::Random,
+            stroke_width,
+        );
+
+        let mut min_dist_sq = f32::INFINITY;
+
+        for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
+            let a = ui_from_space.transform_pos(a);
+            let b = ui_from_space.transform_pos(b);
+            shapes.push(Shape::line_segment([a, b], paint_props.bg_stroke));
+            shapes.push(Shape::line_segment([a, b], paint_props.fg_stroke));
+
+            if let Some(pointer_pos) = pointer_pos {
+                let line_segment_distance_sq =
+                    crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos);
+                min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
+            }
+        }
+
+        check_hovering(props, min_dist_sq.sqrt());
+    }
+
+    for (props, obj) in objects.point2d.iter() {
+        let re_data_store::Point2D { pos, radius } = obj;
+        let paint_props = paint_properties(
+            ctx,
+            &hovered_instance_id_hash,
+            props,
+            DefaultColor::Random,
+            &None,
+        );
+
+        let radius = radius.unwrap_or(1.5);
+        let radius = paint_props.boost_radius_on_hover(radius);
+
+        let pos_in_ui = ui_from_space.transform_pos(pos2(pos[0], pos[1]));
+        shapes.push(Shape::circle_filled(
+            pos_in_ui,
+            radius + 1.0,
+            paint_props.bg_stroke.color,
+        ));
+        shapes.push(Shape::circle_filled(
+            pos_in_ui,
+            radius,
+            paint_props.fg_stroke.color,
+        ));
+
+        if let Some(pointer_pos) = pointer_pos {
+            check_hovering(props, pos_in_ui.distance(pointer_pos));
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
+    let depth_at_pointer = if depths_at_pointer.len() == 1 {
+        depths_at_pointer[0] as f32
+    } else {
+        f32::INFINITY
+    };
+    project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
+    show_projections_from_3d_space(ctx, ui, space, &ui_from_space, &mut shapes);
+
+    // ------------------------------------------------------------------------
+
+    painter.extend(shapes);
+
+    state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.data_store);
+
+    response
 }
 
 // ------------------------------------------------------------------------
