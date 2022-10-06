@@ -431,7 +431,7 @@ def log_camera(
     rerun_rs.log_camera(
         obj_path,
         resolution=_to_sequence(resolution),
-        intrinsics=np.asarray(intrinsics).T.tolist(),
+        intrinsics_matrix=np.asarray(intrinsics).T.tolist(),
         rotation_q=_to_sequence(rotation_q),
         position=_to_sequence(position),
         camera_space_convention=camera_space_convention.value,
