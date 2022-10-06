@@ -21,16 +21,28 @@ pub(crate) struct State2D {
 
     // If ZoomInfo isn't set, we assume "Auto" and scale the full accum_bbox to the available space
     #[serde(skip)]
-    zoom: Option<ZoomState>,
+    zoom: ZoomState,
 }
 
 #[derive(Clone, Copy)]
-struct ZoomState {
-    scale: f32,   // How many display-pixels an image-pixel will take up
-    center: Pos2, // Which pixel will be at the center of the zoomed region
-    // Accepting_scroll is a kind of hacky way of preventing the scroll-based updates
-    // from later overriding the zoom/drag-based updates.
-    accepting_scroll: bool,
+/// Sub-state specific to the Zoom/Scale/Pan engine
+enum ZoomState {
+    Auto,
+    Scaled {
+        /// Number of ui points per scene unit
+        scale: f32,
+        // Which scene coordinate will be at the center of the zoomed region.
+        center: Pos2,
+        // Accepting_scroll is a kind of hacky way of preventing the scroll-based updates
+        // from later overriding the zoom/drag-based updates.
+        accepting_scroll: bool,
+    },
+}
+
+impl Default for ZoomState {
+    fn default() -> Self {
+        ZoomState::Auto
+    }
 }
 
 impl Default for State2D {
@@ -45,20 +57,24 @@ impl Default for State2D {
 
 impl State2D {
     /// Determine the optimal sub-region and size based on the `ZoomState` and
-    /// available size This will generally be used to construct the painter and
+    /// available size. This will generally be used to construct the painter and
     /// subsequent transforms
+    ///
+    /// Returns `(desired_size, scroll_offset)` where:
+    ///   - `desired_size` is the size of the painter necessary to capture the zoomed view in ui points
+    ///   - `scroll_offset` is the position of the `ScrollArea` offset in ui points
     fn desired_size_and_offset(&self, available_size: Vec2) -> (Vec2, Vec2) {
-        if let Some(zoom) = self.zoom {
-            let desired_size = self.scene_bbox_accum.size() * zoom.scale;
+        if let ZoomState::Scaled { scale, center, .. } = self.zoom {
+            let desired_size = self.scene_bbox_accum.size() * scale;
 
-            // Try to keep the center of the image in the middle of the available size
-            let offset = (zoom.center.to_vec2() - self.scene_bbox_accum.left_top().to_vec2())
-                * zoom.scale
+            // Try to keep the center of the scene in the middle of the available size
+            let scroll_offset = (center.to_vec2() - self.scene_bbox_accum.left_top().to_vec2())
+                * scale
                 - available_size / 2.0;
 
-            (desired_size, offset)
+            (desired_size, scroll_offset)
         } else {
-            // Otherwise, we autoscale to fit available space while maintaining aspect ratio
+            // Otherwise, we autoscale the space to fit available area while maintaining aspect ratio
             let scene_bbox = if self.scene_bbox_accum.is_positive() {
                 self.scene_bbox_accum
             } else {
@@ -84,94 +100,102 @@ impl State2D {
         ui_to_space: egui::emath::RectTransform,
         available_size: Vec2,
     ) {
-        // First check if we are initiating zoom-mode
-        if self.zoom.is_none() && response.hovered() {
-            let input = response.ctx.input();
+        // Determine if we are zooming
+        let zoom_delta = response.ctx.input().zoom_delta();
+        let hovered_zoom = if response.hovered() && zoom_delta != 1.0 {
+            Some(zoom_delta)
+        } else {
+            None
+        };
 
-            // Process zoom changes
-            let input_zoom = input.zoom_delta();
-            if input_zoom > 1.0 {
-                // If increasing zoom, initialize zoom context if necessary
-                if self.zoom.is_none() {
-                    let scale = response.rect.height() / self.scene_bbox_accum.height();
-                    let center = self.scene_bbox_accum.center();
-                    self.zoom = Some(ZoomState {
-                        scale,
-                        center,
-                        accepting_scroll: false,
-                    });
+        match self.zoom {
+            ZoomState::Auto => {
+                if let Some(input_zoom) = hovered_zoom {
+                    if input_zoom > 1.0 {
+                        let scale = response.rect.height() / self.scene_bbox_accum.height();
+                        let center = self.scene_bbox_accum.center();
+                        self.zoom = ZoomState::Scaled {
+                            scale,
+                            center,
+                            accepting_scroll: false,
+                        };
+                        // Recursively update now that we have initialized `ZoomState` to `Scaled`
+                        self.update(response, ui_to_space, available_size);
+                    }
                 }
+            }
+            ZoomState::Scaled {
+                mut scale,
+                mut center,
+                ..
+            } => {
+                let mut accepting_scroll = true;
+
+                // If we are zooming, adjust the scale and center
+                if let Some(input_zoom) = hovered_zoom {
+                    let new_scale = scale * input_zoom;
+
+                    // Adjust for mouse location while executing zoom
+                    if let Some(hover_pos) = response.ctx.input().pointer.hover_pos() {
+                        let zoom_loc = ui_to_space.transform_pos(hover_pos);
+
+                        // Space-units under the cursor will shift based on distance from center
+                        let dist_from_center = zoom_loc - center;
+                        // In UI points this happens based on the difference in scale;
+                        let shift_in_ui = dist_from_center * (new_scale - scale);
+                        // But we will compensate for it by a shift in space units
+                        let shift_in_space = shift_in_ui / new_scale;
+
+                        // Moving the center in the direction of the desired shift
+                        center += shift_in_space;
+                    }
+                    scale = new_scale;
+                    accepting_scroll = false;
+                }
+
+                // If we are dragging, adjust the center accordingly
+                if response.dragged_by(egui::PointerButton::Primary) {
+                    // Adjust center based on drag
+                    center -= response.drag_delta() / scale;
+                    accepting_scroll = false;
+                }
+
+                // Save the zoom state
+                self.zoom = ZoomState::Scaled {
+                    scale,
+                    center,
+                    accepting_scroll,
+                };
             }
         }
 
-        // Now, if we are in zoom-mode update our state
-        if let Some(mut zoom) = self.zoom {
-            // Default to accepting scroll unless we disable it
-            zoom.accepting_scroll = true;
-
-            if response.hovered() {
-                let input = response.ctx.input();
-
-                // Process zoom changes
-                let input_zoom = input.zoom_delta();
-
-                if input_zoom != 1.0 {
-                    let new_scale = zoom.scale * input_zoom;
-                    let new_scale = (new_scale * 10.0).round() / 10.0;
-
-                    // Adjust for mouse location while executing zoom
-                    if let Some(hover_pos) = input.pointer.hover_pos() {
-                        let zoom_loc = ui_to_space.transform_pos(hover_pos);
-
-                        // Pixels under the cursor will shift based on distance from center
-                        let dist_from_center = zoom_loc - zoom.center;
-                        let shift_in_ui =
-                            dist_from_center * new_scale - dist_from_center * zoom.scale;
-                        let shift_in_space = shift_in_ui / new_scale;
-
-                        // Need to counteract by moving the center in the direction of shift
-                        zoom.center += shift_in_space;
-                    }
-                    zoom.scale = new_scale;
-                    zoom.accepting_scroll = false;
-                }
-
-                // If we have zoomed past our native size, switch back to auto-zoom
-                if self.scene_bbox_accum.size().x * zoom.scale < available_size.x
-                    && self.scene_bbox_accum.size().y * zoom.scale < available_size.y
-                {
-                    self.zoom = None;
-                    return;
-                }
-
-                if response.dragged_by(egui::PointerButton::Primary) {
-                    // Adjust center based on drag
-                    let center = zoom.center - response.drag_delta() / zoom.scale;
-                    zoom.center = center;
-                    zoom.accepting_scroll = false;
-                }
+        // Finally if our zoomed region is smaller than the available size, revert to auto mode
+        if let ZoomState::Scaled { scale, .. } = self.zoom {
+            if self.scene_bbox_accum.size().x * scale < available_size.x
+                && self.scene_bbox_accum.size().y * scale < available_size.y
+            {
+                self.zoom = ZoomState::Auto;
             }
-            self.zoom = Some(zoom);
         }
     }
 
     /// Take the offset from the `ScrollArea` and apply it back to center so that other
     /// scroll interfaces work as expected.
     fn capture_scroll(&mut self, offset: Vec2, available_size: Vec2) {
-        if let Some(ZoomState {
+        if let ZoomState::Scaled {
             scale,
             accepting_scroll,
             ..
-        }) = self.zoom
+        } = self.zoom
         {
             if accepting_scroll {
                 let center =
                     self.scene_bbox_accum.left_top() + (available_size / 2.0 + offset) / scale;
-                self.zoom = Some(ZoomState {
+                self.zoom = ZoomState::Scaled {
                     scale,
                     center,
                     accepting_scroll,
-                });
+                };
             }
         }
     }
@@ -199,7 +223,7 @@ pub(crate) fn view_2d(
     let offset = offset.at_least(Vec2::ZERO);
 
     // Update the scroll area based on the computed offset
-    // This handles cases of dragging/zooming the image
+    // This handles cases of dragging/zooming the space
     scroll_area = scroll_area.scroll_offset(offset);
 
     let scroll_out = scroll_area.show(ui, |ui| {
