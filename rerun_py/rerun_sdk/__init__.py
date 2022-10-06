@@ -487,8 +487,8 @@ def log_line_segments(
     The points will be connected in even-odd pairs, like so:
 
            2------3     5
-                   \   /
-    0----1          \ /
+                       /
+    0----1            /
                      4
 
     `positions`: a Nx3 array of points along the path.
