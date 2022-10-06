@@ -63,30 +63,33 @@ impl State2D {
     ///   - `desired_size` is the size of the painter necessary to capture the zoomed view in ui points
     ///   - `scroll_offset` is the position of the `ScrollArea` offset in ui points
     fn desired_size_and_offset(&self, available_size: Vec2) -> (Vec2, Vec2) {
-        if let ZoomState::Scaled { scale, center, .. } = self.zoom {
-            let desired_size = self.scene_bbox_accum.size() * scale;
+        match self.zoom {
+            ZoomState::Scaled { scale, center, .. } => {
+                let desired_size = self.scene_bbox_accum.size() * scale;
 
-            // Try to keep the center of the scene in the middle of the available size
-            let scroll_offset = (center.to_vec2() - self.scene_bbox_accum.left_top().to_vec2())
-                * scale
-                - available_size / 2.0;
+                // Try to keep the center of the scene in the middle of the available size
+                let scroll_offset = (center.to_vec2() - self.scene_bbox_accum.left_top().to_vec2())
+                    * scale
+                    - available_size / 2.0;
 
-            (desired_size, scroll_offset)
-        } else {
-            // Otherwise, we autoscale the space to fit available area while maintaining aspect ratio
-            let scene_bbox = if self.scene_bbox_accum.is_positive() {
-                self.scene_bbox_accum
-            } else {
-                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
-            };
-            let mut desired_size = scene_bbox.size();
-            desired_size *= available_size.x / desired_size.x; // fill full width
-            desired_size *= (available_size.y / desired_size.y).at_most(1.0); // shrink so we don't fill more than full height
+                (desired_size, scroll_offset)
+            }
+            ZoomState::Auto => {
+                // Otherwise, we autoscale the space to fit available area while maintaining aspect ratio
+                let scene_bbox = if self.scene_bbox_accum.is_positive() {
+                    self.scene_bbox_accum
+                } else {
+                    Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
+                };
+                let mut desired_size = scene_bbox.size();
+                desired_size *= available_size.x / desired_size.x; // fill full width
+                desired_size *= (available_size.y / desired_size.y).at_most(1.0); // shrink so we don't fill more than full height
 
-            if desired_size.is_finite() {
-                (desired_size, Vec2::ZERO)
-            } else {
-                (available_size, Vec2::ZERO)
+                if desired_size.is_finite() {
+                    (desired_size, Vec2::ZERO)
+                } else {
+                    (available_size, Vec2::ZERO)
+                }
             }
         }
     }
