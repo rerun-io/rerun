@@ -1,14 +1,14 @@
 """Color conversion utilities."""
-from typing import Any, Union
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
 
 
-def linear_to_gamma_u8_value(
-    linear: npt.NDArray[Union[np.float32, np.float64]]
-) -> npt.NDArray[np.uint8]:
-    """Transform color values from linear [0, 1] to gamma encoded [0, 255].
+def linear_to_gamma_u8_value(linear: npt.NDArray[Union[np.float32, np.float64]]) -> npt.NDArray[np.uint8]:
+    """
+    Transform color values from linear [0, 1] to gamma encoded [0, 255].
+
     Linear colors are expected to have dtype np.float32 or np.float64.
 
     Intended to implement the following per color value:
@@ -34,17 +34,15 @@ def linear_to_gamma_u8_value(
     return gamma.astype(np.uint8)
 
 
-def linear_to_gamma_u8_pixel(
-    linear: npt.NDArray[Union[np.float32, np.float64]]
-) -> npt.NDArray[np.uint8]:
-    """Transform color pixels from linear [0, 1] to gamma encoded [0, 255].
+def linear_to_gamma_u8_pixel(linear: npt.NDArray[Union[np.float32, np.float64]]) -> npt.NDArray[np.uint8]:
+    """
+    Transform color pixels from linear [0, 1] to gamma encoded [0, 255].
 
     Linear colors are expected to have dtype np.float32 or np.float64.
 
     The last dimension of the colors array `linear` is expected to represent a single pixel color.
     - 3 colors means RGB
     - 4 colors means RGBA
-
     """
     num_channels = linear.shape[-1]
     assert num_channels in (3, 4)

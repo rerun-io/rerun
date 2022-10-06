@@ -1,11 +1,10 @@
-"""The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk"""
+"""The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk."""
 
 import atexit
-import ntpath
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Final, Iterable, Optional, Sequence, TypeVar, Union
+from typing import Final, Iterable, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -28,15 +27,16 @@ Colors = npt.NDArray[ColorDtype]
 
 
 class MeshFormat(Enum):
-    # Needs some way of logging materials too, or adding some default material to the viewer.
-    # """ glTF """
+    # Needs some way of logging materials too, or adding some default material to the
+    # viewer.
     # GLTF = "GLTF"
 
-    """Binary glTF"""
+    # Binary glTF
     GLB = "GLB"
 
-    # Needs some way of logging materials too, or adding some default material to the viewer.
-    # """ Wavefront .obj """
+    # Needs some way of logging materials too, or adding some default material to the
+    # viewer.
+    # Wavefront .obj
     OBJ = "OBJ"
 
 
@@ -70,8 +70,8 @@ def get_recording_id() -> str:
     which means that all processes spawned with `multiprocessing`
     will have the same default recording_id.
 
-    If you are not using `multiprocessing` and still want several different Python processes
-    to log to the same Rerun instance (and be part of the same recording),
+    If you are not using `multiprocessing` and still want several different Python
+    processes to log to the same Rerun instance (and be part of the same recording),
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
@@ -86,8 +86,8 @@ def set_recording_id(value: str) -> None:
     which means that all processes spawned with `multiprocessing`
     will have the same default recording_id.
 
-    If you are not using `multiprocessing` and still want several different Python processes
-    to log to the same Rerun instance (and be part of the same recording),
+    If you are not using `multiprocessing` and still want several different Python
+    processes to log to the same Rerun instance (and be part of the same recording),
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
@@ -95,9 +95,7 @@ def set_recording_id(value: str) -> None:
 
 
 def connect(addr: Optional[str] = None) -> None:
-    """
-    Connect to a remote Rerun Viewer on the given ip:port.
-    """
+    """Connect to a remote Rerun Viewer on the given ip:port."""
     rerun_rs.connect(addr)
 
 
@@ -169,7 +167,8 @@ def set_time_seconds(time_source: str, seconds: Optional[float]) -> None:
     The argument should be in seconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
-    The rerun_sdk has a built-in time which is `log_time`, and is logged as seconds since unix epoch.
+    The rerun_sdk has a built-in time which is `log_time`, and is logged as seconds
+    since unix epoch.
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
@@ -190,7 +189,8 @@ def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
     The argument should be in nanoseconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
-    The rerun_sdk has a built-in time which is `log_time`, and is logged as nanos since unix epoch.
+    The rerun_sdk has a built-in time which is `log_time`, and is logged as nanos since
+    unix epoch.
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
@@ -198,7 +198,8 @@ def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
 
 
 def set_space_up(space: str, up: Sequence[float]) -> None:
-    """Set the preferred up-axis in the viewer for a given 3D space.
+    """
+    Set the preferred up-axis in the viewer for a given 3D space.
 
     - space: The name of the space
     - up: The (x, y, z) values of the up-axis
@@ -279,16 +280,14 @@ def log_rect(
     """
     Log a 2D rectangle.
 
-    * `rect`: the recangle in [x, y, w, h], or some format you pick with the `rect_format` argument.
+    * `rect`: the recangle in [x, y, w, h], or some format you pick with the
+    `rect_format` argument.
     * `rect_format`: how to interpret the `rect` argument
     * `label` is an optional text to show inside the rectangle.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     If no `space` is given, the space name "2D" will be used.
     """
-
-    rerun_rs.log_rect(
-        obj_path, rect_format.value, _to_sequence(rect), color, label, timeless, space
-    )
+    rerun_rs.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless, space)
 
 
 def log_rects(
@@ -303,9 +302,11 @@ def log_rects(
 ) -> None:
     """
     Log multiple 2D rectangles.
+
     Logging again to the same `obj_path` will replace all the previous rectangles.
 
-    * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format` argument.
+    * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format`
+    argument.
     * `rect_format`: how to interpret the `rect` argument
     * `labels` is an optional per-rectangle text to show inside the rectangle.
 
@@ -314,7 +315,8 @@ def log_rects(
     or one color per point in a Nx3 or Nx4 numpy array.
 
     Supported `dtype`s for `colors`:
-    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
+    space.
     * float32/float64: all color components should be in 0-1 linear space.
 
     If no `space` is given, the space name "2D" will be used.
@@ -324,9 +326,7 @@ def log_rects(
     if labels is None:
         labels = []
 
-    rerun_rs.log_rects(
-        obj_path, rect_format.value, rects, colors, labels, timeless, space
-    )
+    rerun_rs.log_rects(obj_path, rect_format.value, rects, colors, labels, timeless, space)
 
 
 def log_point(
@@ -338,6 +338,7 @@ def log_point(
 ) -> None:
     """
     Log a 2D or 3D point, with optional color.
+
     Logging again to the same `obj_path` will replace the previous point.
 
     `position`: 2x1 or 3x1 array
@@ -347,7 +348,8 @@ def log_point(
     or one color per point in a Nx3 or Nx4 numpy array.
 
     Supported `dtype`s for `colors`:
-    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
+    space.
     * float32/float64: all color components should be in 0-1 linear space.
 
     If no `space` is given, the space name "2D" or "3D" will be used,
@@ -367,6 +369,7 @@ def log_points(
 ) -> None:
     """
     Log 2D or 3D points, with optional colors.
+
     Logging again to the same `obj_path` will replace all the previous points.
 
     `positions`: Nx2 or Nx3 array
@@ -376,7 +379,8 @@ def log_points(
     or one color per point in a Nx3 or Nx4 numpy array.
 
     Supported `dtype`s for `colors`:
-    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
+    space.
     * float32/float64: all color components should be in 0-1 linear space.
 
     If no `space` is given, the space name "2D" or "3D" will be used,
@@ -414,7 +418,8 @@ def log_camera(
     space: Optional[str] = None,
     target_space: Optional[str] = None,
 ) -> None:
-    """Log a perspective camera model.
+    """
+    Log a perspective camera model.
 
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
     `position`: Array with [x, y, z] position of the camera in world space.
@@ -424,7 +429,6 @@ def log_camera(
     `space`: The 3D space the camera is in. Will default to "3D".
     `target_space`: The 2D space that the camera projects into.
     """
-
     rerun_rs.log_camera(
         obj_path,
         resolution=_to_sequence(resolution),
@@ -447,7 +451,10 @@ def log_path(
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
-    """Log a 3D path. A path is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
+    r"""
+    Log a 3D path.
+
+    A path is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
     The points will be connected in order, like so:
 
@@ -475,14 +482,14 @@ def log_line_segments(
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
-    """
+    r"""
     Log many 2D or 3D line segments.
 
     The points will be connected in even-odd pairs, like so:
 
            2------3     5
-                       /
-    0----1            /
+                   \   /
+    0----1          \ /
                      4
 
     `positions`: a Nx3 array of points along the path.
@@ -492,9 +499,7 @@ def log_line_segments(
     If no `space` is given, the space name "3D" will be used.
     """
     positions = np.require(positions, dtype="float32")
-    rerun_rs.log_line_segments(
-        obj_path, positions, stroke_width, color, timeless, space
-    )
+    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless, space)
 
 
 def log_obb(
@@ -542,8 +547,10 @@ def log_image(
     The image should either have 1, 3 or 4 channels (gray, RGB or RGBA).
 
     Supported `dtype`s:
-    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear space.
-    * uint16: color components should be in 0-65535 sRGB gamma space, except for alpha which should be in 0-65535 linear space.
+    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
+    space.
+    * uint16: color components should be in 0-65535 sRGB gamma space, except for alpha which should be in 0-65535
+    linear space.
     * float32/float64: all color components should be in 0-1 linear space.
 
     If no `space` is given, the space name "2D" will be used.
@@ -596,11 +603,8 @@ def log_tensor(
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
-    """
-    If no `space` is given, the space name "2D" will be used.
-    """
-
-    if not names is None:
+    """If no `space` is given, the space name "2D" will be used."""
+    if names is not None:
         names = list(names)
         assert len(tensor.shape) == len(names)
 
@@ -611,9 +615,7 @@ def log_tensor(
     elif tensor.dtype == "float32":
         rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, timeless, space)
     elif tensor.dtype == "float64":
-        rerun_rs.log_tensor_f32(
-            obj_path, tensor.astype("float32"), names, meter, timeless, space
-        )
+        rerun_rs.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, timeless, space)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
@@ -633,6 +635,7 @@ def log_mesh_file(
     `transform` is an optional 3x4 affine transform matrix applied to the mesh.
 
     Example:
+    -------
     ```
     # Move mesh 10 units along the X axis.
     transform=np.array([
@@ -640,15 +643,14 @@ def log_mesh_file(
         [0, 1, 0, 0],
         [0, 0, 1, 0]])
     ```
+
     """
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
     else:
         transform = np.require(transform, dtype="float32")
 
-    rerun_rs.log_mesh_file(
-        obj_path, mesh_format.value, mesh_file, transform, timeless, space
-    )
+    rerun_rs.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless, space)
 
 
 def log_image_file(
