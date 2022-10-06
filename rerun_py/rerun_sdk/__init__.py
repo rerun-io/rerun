@@ -210,6 +210,8 @@ class LogLevel:
     arbitrary strings as level (e.g. for user-defined levels).
     """
 
+    # """ Designates catastrophic failures. """
+    CRITICAL: Final = "CRITICAL"
     # """ Designates very serious errors. """
     ERROR: Final = "ERROR"
     # """ Designates hazardous situations. """
