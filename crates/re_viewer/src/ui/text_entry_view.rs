@@ -18,6 +18,7 @@ pub(crate) fn show(
     // that seem to stem from the interaction between egui's Table and the docking
     // system.
     // Specifically, the text from the remainder column is incorrectly clipped.
+    // Relevant: https://github.com/Adanos020/egui_dock/issues/48
     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
         ui.label(format!("{} text entries", objects.text_entry.len()));
         ui.separator();
@@ -31,7 +32,7 @@ pub(crate) fn show(
 struct CompleteTextEntry<'s> {
     data_path: DataPath,
     time_point: TimePoint,
-    time: TimeInt,
+    time: i64,
     props: &'s InstanceProps<'s>,
     text_entry: &'s TextEntry<'s>,
 }
@@ -42,7 +43,6 @@ fn collect_text_entries<'s>(
 ) -> Vec<CompleteTextEntry<'s>> {
     crate::profile_function!();
 
-    let time_source = ctx.rec_cfg.time_ctrl.source();
     let mut text_entries = objects
         .text_entry
         .iter()
@@ -62,16 +62,10 @@ fn collect_text_entries<'s>(
                 return None;
             };
 
-            let time = data_msg
-                .time_point
-                .0
-                .get(time_source)
-                .map_or(TimeInt::BEGINNING, |t| *t);
-
             Some(CompleteTextEntry {
                 data_path: data_msg.data_path.clone(),
                 time_point: data_msg.time_point.clone(),
-                time,
+                time: props.time,
                 props,
                 text_entry,
             })
@@ -96,7 +90,7 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
         .scroll(false)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(
-            Size::initial(120.0).at_least(100.0),
+            Size::initial(180.0).at_least(100.0),
             ctx.log_db.time_points.0.len(),
         ) // time(s)
         .column(Size::initial(120.0).at_least(100.0)) // path
