@@ -2884,6 +2884,7 @@ dependencies = [
  "tracing-wasm",
  "typenum",
  "vec1",
+ "wasm-bindgen-futures",
  "wgpu",
 ]
 

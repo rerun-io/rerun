@@ -7,7 +7,7 @@ use eframe::wasm_bindgen::{self, prelude::*};
 /// You can add more callbacks like this if you want to call in to your code.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-pub fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::JsValue> {
+pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::JsValue> {
     // Make sure panics are logged using `console.error`.
     console_error_panic_hook::set_once();
 
@@ -29,7 +29,7 @@ pub fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::J
             let app = crate::RemoteViewerApp::new(&cc.egui_ctx, cc.storage.as_deref(), url);
             Box::new(app)
         }),
-    )?;
+    ).await?;
 
     Ok(())
 }
