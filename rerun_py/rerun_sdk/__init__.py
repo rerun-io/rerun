@@ -19,7 +19,7 @@ atexit.register(rerun_shutdown)
 
 # -----------------------------------------------------------------------------
 
-ArrayLike = Union[np.ndarray[Any, Any], Sequence]
+ArrayLike = Union[np.ndarray, Sequence]
 
 
 class MeshFormat(Enum):
@@ -255,7 +255,7 @@ def log_rects(
     rects: ArrayLike,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    colors: Optional[np.ndarray[Any, Any]] = None,
+    colors: Optional[np.ndarray] = None,
     labels: Optional[Sequence[str]] = None,
     timeless: bool = False,
     space: Optional[str] = None,
@@ -294,7 +294,7 @@ def log_rects(
 
 def log_point(
         obj_path: str,
-        position: np.ndarray[Any, Any],
+        position: np.ndarray,
         color: Optional[Sequence[int]] = None,
         timeless: bool = False,
         space: Optional[str] = None):
@@ -321,9 +321,9 @@ def log_point(
 
 def log_points(
         obj_path: str,
-        positions: np.ndarray[Any, Any],
+        positions: np.ndarray,
         *,
-        colors: Optional[np.ndarray[Any, Any]] = None,
+        colors: Optional[np.ndarray] = None,
         timeless: bool = False,
         space: Optional[str] = None):
     """
@@ -349,7 +349,7 @@ def log_points(
     rerun_rs.log_points(obj_path, positions, colors, timeless, space)
 
 
-def _normalize_colors(colors: Optional[np.ndarray[Any, Any]] = None):
+def _normalize_colors(colors: Optional[np.ndarray] = None):
     if colors is None:
         # An empty array represents no colors.
         colors = np.array((), dtype=np.uint8)
@@ -396,7 +396,7 @@ def log_camera(obj_path: str,
 
 def log_path(
         obj_path: str,
-        positions: np.ndarray[Any, Any],
+        positions: np.ndarray,
         *,
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
@@ -426,7 +426,7 @@ def log_path(
 
 def log_line_segments(
         obj_path: str,
-        positions: np.ndarray[Any, Any],
+        positions: np.ndarray,
         *,
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
@@ -481,7 +481,7 @@ def log_obb(
                      space)
 
 
-def log_image(obj_path: str, image: np.ndarray[Any, Any], *, timeless: bool = False, space: Optional[str] = None):
+def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space: Optional[str] = None):
     """
     Log a gray or color image.
 
@@ -507,7 +507,7 @@ def log_image(obj_path: str, image: np.ndarray[Any, Any], *, timeless: bool = Fa
     log_tensor(obj_path, image, timeless=timeless, space=space)
 
 
-def log_depth_image(obj_path: str, image: np.ndarray[Any, Any], *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None):
+def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None):
     """
     Log a depth image.
 
@@ -528,7 +528,7 @@ def log_depth_image(obj_path: str, image: np.ndarray[Any, Any], *, meter: Option
 
 
 def log_tensor(obj_path: str,
-               tensor: np.ndarray[Any, Any],
+               tensor: np.ndarray,
                names: Optional[Iterable[str]] = None,
                meter: Optional[float] = None,
                timeless: bool = False,
@@ -556,7 +556,7 @@ def log_tensor(obj_path: str,
 def log_mesh_file(obj_path: str,
                   mesh_format: MeshFormat,
                   mesh_file: bytes, *,
-                  transform: Optional[np.ndarray[Any, Any]] = None,
+                  transform: Optional[np.ndarray] = None,
                   timeless: bool = False,
                   space: Optional[str] = None):
     """

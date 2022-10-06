@@ -3,7 +3,7 @@ from typing import Any, Union
 
 import numpy as np
 
-def linear_to_gamma_u8_value(linear: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+def linear_to_gamma_u8_value(linear: np.ndarray) -> np.ndarray:
     """Transform color values from linear [0, 1] to gamma encoded [0, 255].
     Linear colors are expected to have dtype np.float32 or np.float64.
 
@@ -30,7 +30,7 @@ def linear_to_gamma_u8_value(linear: np.ndarray[Any, Any]) -> np.ndarray[Any, np
     return gamma.astype(np.uint8)
 
 
-def linear_to_gamma_u8_pixel(linear: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+def linear_to_gamma_u8_pixel(linear: np.ndarray) -> np.ndarray:
     """Transform color pixels from linear [0, 1] to gamma encoded [0, 255].
 
     Linear colors are expected to have dtype np.float32 or np.float64.
