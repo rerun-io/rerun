@@ -19,7 +19,7 @@ pub(crate) struct State2D {
     #[serde(skip)]
     scene_bbox_accum: epaint::Rect,
 
-    // If ZoomInfo isn't set, we assume "Auto" and scale the full accum_bbox to the available space
+    /// The zoom and pan state, which is either a zoom/center or `Auto` which will fill the screen
     #[serde(skip)]
     zoom: ZoomState,
 }
@@ -31,10 +31,9 @@ enum ZoomState {
     Scaled {
         /// Number of ui points per scene unit
         scale: f32,
-        // Which scene coordinate will be at the center of the zoomed region.
+        /// Which scene coordinate will be at the center of the zoomed region.
         center: Pos2,
-        // Accepting_scroll is a kind of hacky way of preventing the scroll-based updates
-        // from later overriding the zoom/drag-based updates.
+        /// Whether to allow the state to be updated by the current `ScrollArea` offsets
         accepting_scroll: bool,
     },
 }
