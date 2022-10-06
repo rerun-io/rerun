@@ -13,14 +13,14 @@ python3 examples/dicom/main.py
 """
 
 import argparse
-from typing import Final, Iterable, Tuple
-import pydicom as dicom
-import dicom_numpy   # type: ignore
-import numpy as np
 import os
 from pathlib import Path
-import numpy.typing as npt
+from typing import Final, Iterable, Tuple
 
+import dicom_numpy  # type: ignore
+import numpy as np
+import numpy.typing as npt
+import pydicom as dicom
 import rerun_sdk as rerun
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"

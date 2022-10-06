@@ -34,19 +34,17 @@ python3 examples/deep_sdf/main.py examples/deep_sdf/dataset/avocado.glb
 
 import argparse
 import os
+from pathlib import Path
+from timeit import default_timer as timer
+from typing import Tuple, cast
 
 import mesh_to_sdf
 import numpy as np
 import rerun_sdk as rerun
 import trimesh
-
-from pathlib import Path
-from timeit import default_timer as timer
-from typing import Tuple, cast
-
+from rerun_sdk import LogLevel, MeshFormat
 from scipy.spatial.transform import Rotation as R
 from trimesh import Trimesh
-from rerun_sdk import MeshFormat, LogLevel
 
 
 def announcement(body: str):
