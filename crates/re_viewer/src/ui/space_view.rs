@@ -56,6 +56,7 @@ struct Tab {
 struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
     objects: ObjectsBySpace<'b>,
+    sticky_objects: ObjectsBySpace<'b>,
     space_states: &'a mut SpaceStates,
     hovered_space: Option<ObjPath>,
     maximized: &'a mut Option<Tab>,
@@ -70,9 +71,15 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 *self.maximized = Some(tab.clone());
             }
 
-            let hovered =
+            let mut hovered =
                 self.space_states
                     .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
+            hovered |= self.space_states.show_sticky_space(
+                self.ctx,
+                &self.sticky_objects,
+                tab.space.as_ref(),
+                ui,
+            );
 
             if hovered {
                 self.hovered_space = tab.space.clone();
@@ -145,8 +152,9 @@ impl View {
     pub fn ui<'a, 'b>(
         &mut self,
         ctx: &'a mut ViewerContext<'b>,
-        objects: ObjectsBySpace<'b>,
         ui: &mut egui::Ui,
+        objects: ObjectsBySpace<'b>,
+        sticky_objects: ObjectsBySpace<'b>,
     ) {
         let num_tabs = num_tabs(&self.tree);
 
@@ -162,6 +170,8 @@ impl View {
 
             self.space_states
                 .show_space(ctx, &objects, tab.space.as_ref(), ui);
+            self.space_states
+                .show_sticky_space(ctx, &sticky_objects, tab.space.as_ref(), ui);
         } else if let Some(tab) = self.maximized.clone() {
             ui.horizontal(|ui| {
                 if ui
@@ -180,10 +190,13 @@ impl View {
 
             self.space_states
                 .show_space(ctx, &objects, tab.space.as_ref(), ui);
+            self.space_states
+                .show_sticky_space(ctx, &sticky_objects, tab.space.as_ref(), ui);
         } else {
             let mut tab_viewer = TabViewer {
                 ctx,
                 objects,
+                sticky_objects,
                 space_states: &mut self.space_states,
                 hovered_space: None,
                 maximized: &mut self.maximized,
@@ -255,10 +268,23 @@ impl SpacesPanel {
             return;
         }
 
+        // All of the objects present in our datastores that match the
+        // current timeline selection.
         let objects = ctx
             .rec_cfg
             .time_ctrl
             .selected_objects(ctx.log_db)
+            .partition_on_space();
+
+        // All of the objects present in our datastores that match the
+        // given list of `ObjectType`s, ignoring the current timeline selection.
+        //
+        // Unless the user actively hides them, they will always stick around,
+        // hence their name.
+        let sticky_objects = ctx
+            .rec_cfg
+            .time_ctrl
+            .all_objects(ctx.log_db, [ObjectType::TextEntry].into_iter())
             .partition_on_space();
 
         let all_spaces = {
@@ -286,7 +312,7 @@ impl SpacesPanel {
             }
         }
 
-        self.view.ui(ctx, objects, ui);
+        self.view.ui(ctx, ui, objects, sticky_objects);
     }
 }
 
@@ -360,8 +386,15 @@ impl SpaceStates {
             }
         }
 
-        if objects.has_any_2d() && objects.has_any_3d() {
-            re_log::warn_once!("Space {:?} has both 2D and 3D objects", space_name(space));
+        let num_categories = objects.has_any_2d() as u32
+            + objects.has_any_3d() as u32
+            + objects.has_any_text_entries() as u32;
+        if num_categories > 1 {
+            re_log::warn_once!(
+                "Space {:?} contains multiple categories of objects \
+                    (e.g. both 2D and 3D, both 2D and text entries, etc...)",
+                space_name(space)
+            );
         }
 
         if objects.has_any_2d() {
@@ -386,6 +419,59 @@ impl SpaceStates {
                 .size(24.0)
                 .color(ui.visuals().warn_fg_color),
             );
+        }
+
+        if !hovered && ctx.rec_cfg.hovered_space.space() == space {
+            ctx.rec_cfg.hovered_space = HoveredSpace::None;
+        }
+
+        hovered
+    }
+
+    /// Shows a sticky space, i.e. a space that always shows its entire dataset,
+    /// irrelevant of time, as opposed to only what's currently selected in
+    /// the time panel.
+    ///
+    /// Returns `true` if hovered.
+    #[allow(clippy::unused_self)] // we do not keep any state... yet.
+    fn show_sticky_space(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        sticky_objects: &ObjectsBySpace<'_>,
+        space: Option<&ObjPath>,
+        ui: &mut egui::Ui,
+    ) -> bool {
+        crate::profile_function!(space_name(space));
+
+        let mut hovered = false;
+
+        let objects = if let Some(objects) = sticky_objects.get(&space) {
+            objects
+        } else {
+            return hovered;
+        };
+
+        let objects = objects.filter(|props| {
+            ctx.rec_cfg
+                .projected_object_properties
+                .get(props.obj_path)
+                .visible
+        });
+
+        let num_categories = objects.has_any_2d() as u32
+            + objects.has_any_3d() as u32
+            + objects.has_any_text_entries() as u32;
+        if num_categories > 1 {
+            re_log::warn_once!(
+                "Space {:?} contains multiple categories of objects \
+                    (e.g. both 2D and 3D, both 2D and text entries, etc...)",
+                space_name(space)
+            );
+        }
+
+        if objects.has_any_text_entries() {
+            let response = crate::text_entry_view::show(ui, ctx, &objects);
+            hovered |= response.hovered();
         }
 
         if !hovered && ctx.rec_cfg.hovered_space.space() == space {

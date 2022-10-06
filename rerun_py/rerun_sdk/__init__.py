@@ -1,10 +1,12 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
+
 import atexit
-from enum import Enum
 import numpy as np
-from typing import Optional, Sequence, Union, Iterable
-from pathlib import Path
+
 from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Optional, Sequence, Union, Iterable, Final
 
 from rerun_sdk import rerun_sdk as rerun_rs # type: ignore
 from rerun_sdk.color_conversion import linear_to_gamma_u8_pixel
@@ -197,6 +199,43 @@ def set_space_up(space: str, up: Sequence[float]):
     - up: The (x, y, z) values of the up-axis
     """
     return rerun_rs.set_space_up(space, up)
+
+
+@dataclass
+class LogLevel:
+    """
+    Represents the standard log levels.
+
+    This is a collection of constants rather than an enum because we do support
+    arbitrary strings as level (e.g. for user-defined levels).
+    """
+
+    # """ Designates very serious errors. """
+    ERROR: Final = "ERROR"
+    # """ Designates hazardous situations. """
+    WARN: Final = "WARN"
+    # """ Designates useful information. """
+    INFO: Final = "INFO"
+    # """ Designates lower priority information. """
+    DEBUG: Final = "DEBUG"
+    # """ Designates very low priority, often extremely verbose, information. """
+    TRACE: Final = "TRACE"
+
+
+def log_text_entry(obj_path: str,
+                   text: str,
+                   level: Optional[str] = LogLevel.INFO,
+                   color: Optional[Sequence[int]] = None,
+                   timeless: bool = False,
+                   space: Optional[str] = None):
+    """
+    Log a text entry, with optional level.
+
+    * If no `level` is given, it will default to `LogLevel.INFO`.
+    * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    * If no `space` is given, the space name "logs" will be used.
+    """
+    rerun_rs.log_text_entry(obj_path, text, level, color, timeless, space)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
