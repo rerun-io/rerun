@@ -14,16 +14,12 @@ pub(crate) fn show(
 
     let text_entries = collect_text_entries(ctx, objects);
 
-    // TODO(cmc): There are some rendering issues with horizontal scrolling here
-    // that seem to stem from the interaction between egui's Table and the docking
-    // system.
-    // Specifically, the text from the remainder column is incorrectly clipped.
-    // Relevant: https://github.com/Adanos020/egui_dock/issues/48
     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
         ui.label(format!("{} text entries", objects.text_entry.len()));
         ui.separator();
 
         egui::ScrollArea::horizontal().show(ui, |ui| {
+            crate::profile_scope!("render table");
             show_table(ctx, ui, &text_entries);
         })
     })
@@ -46,41 +42,49 @@ fn collect_text_entries<'s>(
 ) -> Vec<CompleteTextEntry<'s>> {
     crate::profile_function!();
 
-    let mut text_entries = objects
-        .text_entry
-        .iter()
-        .filter_map(|(props, text_entry)| {
-            let msg = ctx.log_db.get_log_msg(props.msg_id).or_else(|| {
-                re_log::warn_once!("Missing LogMsg for {:?}", props.obj_path.obj_type_path());
-                None
-            })?;
+    let mut text_entries = {
+        crate::profile_scope!("collect");
 
-            let data_msg = if let LogMsg::DataMsg(data_msg) = msg {
-                data_msg
-            } else {
-                re_log::warn_once!(
-                    "LogMsg must be a DataMsg ({:?})",
-                    props.obj_path.obj_type_path()
-                );
-                return None;
-            };
+        objects
+            .text_entry
+            .iter()
+            .filter_map(|(props, text_entry)| {
+                let msg = ctx.log_db.get_log_msg(props.msg_id).or_else(|| {
+                    re_log::warn_once!("Missing LogMsg for {:?}", props.obj_path.obj_type_path());
+                    None
+                })?;
 
-            Some(CompleteTextEntry {
-                data_path: data_msg.data_path.clone(),
-                time_point: data_msg.time_point.clone(),
-                time: props.time,
-                props,
-                text_entry,
+                let data_msg = if let LogMsg::DataMsg(data_msg) = msg {
+                    data_msg
+                } else {
+                    re_log::warn_once!(
+                        "LogMsg must be a DataMsg ({:?})",
+                        props.obj_path.obj_type_path()
+                    );
+                    return None;
+                };
+
+                Some(CompleteTextEntry {
+                    data_path: data_msg.data_path.clone(),
+                    time_point: data_msg.time_point.clone(),
+                    time: props.time,
+                    props,
+                    text_entry,
+                })
             })
-        })
-        .collect::<Vec<_>>();
+            .collect::<Vec<_>>()
+    };
 
-    // First sort along the time axis, then along paths.
-    text_entries.sort_by(|a, b| {
-        a.time
-            .cmp(&b.time)
-            .then_with(|| a.data_path.obj_path().cmp(b.data_path.obj_path()))
-    });
+    {
+        crate::profile_scope!("sort");
+
+        // First sort along the time axis, then along paths.
+        text_entries.sort_by(|a, b| {
+            a.time
+                .cmp(&b.time)
+                .then_with(|| a.data_path.obj_path().cmp(b.data_path.obj_path()))
+        });
+    }
 
     text_entries
 }
