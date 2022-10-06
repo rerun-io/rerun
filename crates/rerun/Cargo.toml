@@ -9,7 +9,7 @@ default-run = "rerun"
 
 
 [features]
-default = ["server"]
+default = ["server", "glow"]
 
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]
@@ -20,12 +20,14 @@ server = ["re_sdk_comms/server"]
 ## since it requires compiling and bundling the viewer as wasm.
 web = ["re_ws_comms/server", "dep:re_web_server", "dep:webbrowser"]
 
+wgpu = ["re_viewer/wgpu"]
+glow = ["re_viewer/glow"]
 
 [dependencies]
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
-re_viewer = { path = "../re_viewer", features = ["puffin"] }
+re_viewer = { path = "../re_viewer", features = ["puffin"], default-features = false }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 anyhow = "1.0"
