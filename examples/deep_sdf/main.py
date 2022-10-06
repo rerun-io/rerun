@@ -95,14 +95,14 @@ def read_mesh(path: Path) -> Trimesh:
     return cast(Trimesh, mesh)
 
 
-@log_timing_decorator("global/voxel_sdf", "debug")
+@log_timing_decorator("global/voxel_sdf", "DEBUG")
 def compute_voxel_sdf(mesh: Trimesh, resolution: int) -> np.ndarray:
     print("computing voxel-based SDF")
     voxvol = mesh_to_sdf.mesh_to_voxels(mesh, voxel_resolution=resolution)
     return voxvol
 
 
-@log_timing_decorator("global/sample_sdf", "debug")
+@log_timing_decorator("global/sample_sdf", "DEBUG")
 def compute_sample_sdf(mesh: Trimesh, num_points: int) -> Tuple[np.ndarray, np.ndarray]:
     print("computing sample-based SDF")
     points, sdf, _ = mesh_to_sdf.sample_sdf_near_surface(mesh,
@@ -111,7 +111,7 @@ def compute_sample_sdf(mesh: Trimesh, num_points: int) -> Tuple[np.ndarray, np.n
     return (points, sdf)
 
 
-@log_timing_decorator("global/log_mesh", "debug")
+@log_timing_decorator("global/log_mesh", "DEBUG")
 def log_mesh(path: Path, mesh: Trimesh):
     # Internally, `mesh_to_sdf` will normalize everything to a unit sphere centered around the
     # center of mass.
@@ -135,7 +135,7 @@ def log_sampled_sdf(points: np.ndarray, sdf: np.ndarray):
     inside = points[sdf <= 0]
     rerun.log_text_entry("sdf/inside/logs",
                          f"{len(inside)} points inside ({len(points)} total)",
-                         level="trace")
+                         level="TRACE")
     rerun.log_points("sdf/inside",
                      points[sdf <= 0],
                      colors=np.array([255, 0, 0, 255]),
@@ -144,7 +144,7 @@ def log_sampled_sdf(points: np.ndarray, sdf: np.ndarray):
     outside = points[sdf > 0]
     rerun.log_text_entry("sdf/outside/logs",
                   f"{len(outside)} points outside ({len(points)} total)",
-                  level="trace")
+                  level="TRACE")
     rerun.log_points("sdf/outside",
                      points[sdf > 0],
                      colors=np.array([0, 255, 0, 255]),
@@ -234,13 +234,13 @@ if __name__ == '__main__':
 
     with open(points_path, 'wb+') as f:
         np.save(f, points)
-        rerun.log_text_entry("global", "writing sampled SDF to cache", level="debug")
+        rerun.log_text_entry("global", "writing sampled SDF to cache", level="DEBUG")
     with open(sdf_path, 'wb+') as f:
         np.save(f, sdf)
-        rerun.log_text_entry("global", "writing point cloud to cache", level="debug")
+        rerun.log_text_entry("global", "writing point cloud to cache", level="DEBUG")
     with open(voxvol_path, 'wb+') as f:
         np.save(f, voxvol)
-        rerun.log_text_entry("global", "writing volumetric SDF to cache", level="debug")
+        rerun.log_text_entry("global", "writing volumetric SDF to cache", level="DEBUG")
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
