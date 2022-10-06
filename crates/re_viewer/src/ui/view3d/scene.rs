@@ -247,7 +247,7 @@ impl Scene {
 
                 let instance_id = InstanceIdHash::from_props(props);
 
-                let world_from_view = crate::misc::cam::world_from_view(camera);
+                let world_from_view = crate::misc::cam::world_from_view(&camera.extrinsics);
 
                 let dist_to_eye = eye_camera_plane.distance(world_from_view.translation());
                 let color = object_color(ctx, props);
@@ -281,11 +281,11 @@ impl Scene {
                 }
 
                 if ctx.options.show_camera_axes_in_3d {
-                    let world_from_view = crate::misc::cam::world_from_view(camera);
                     let center = world_from_view.translation();
                     let radius = dist_to_eye * line_radius_from_distance * 2.0;
 
                     for (axis_index, dir) in camera
+                        .extrinsics
                         .camera_space_convention
                         .axis_dirs_in_rerun_view_space()
                         .iter()
@@ -320,10 +320,12 @@ impl Scene {
         line_radius: f32,
         color: [u8; 4],
     ) {
-        if let (Some(world_from_image), Some([w, h])) =
-            (crate::misc::cam::world_from_image(cam), cam.resolution)
+        if let (Some(world_from_image), Some(intrinsics)) =
+            (crate::misc::cam::world_from_image(cam), cam.intrinsics)
         {
-            let world_from_view = crate::misc::cam::world_from_view(cam);
+            let [w, h] = intrinsics.resolution;
+
+            let world_from_view = crate::misc::cam::world_from_view(&cam.extrinsics);
 
             // At what distance do we end the frustum?
             let d = scene_bbox.size().length() * 0.3;

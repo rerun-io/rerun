@@ -459,7 +459,7 @@ fn show_projections_from_2d_space(
                         }
                     }
                     let length = if let Some(hit_pos) = hit_pos {
-                        hit_pos.distance(Vec3::from_slice(&cam.position))
+                        hit_pos.distance(Vec3::from_slice(&cam.extrinsics.position))
                     } else {
                         4.0 * state.scene_bbox.half_size().length() // should be long enough
                     };
