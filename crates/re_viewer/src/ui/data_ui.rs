@@ -371,11 +371,8 @@ pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Respon
 
 fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
     let Camera {
-        rotation,
-        position,
-        camera_space_convention,
+        extrinsics,
         intrinsics,
-        resolution,
         target_space,
     } = cam;
     ui.vertical(|ui| {
@@ -385,6 +382,12 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
+                    let Extrinsics {
+                        rotation,
+                        position,
+                        camera_space_convention,
+                    } = extrinsics;
+
                     ui.label("rotation");
                     ui.monospace(format!("{rotation:?}"));
                     ui.end_row();
@@ -397,15 +400,19 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
                     ui.monospace(format!("{camera_space_convention:?}"));
                     ui.end_row();
 
-                    ui.label("intrinsics");
-                    if let Some(intrinsics) = intrinsics {
-                        ui_intrinsics(ui, intrinsics);
-                    }
-                    ui.end_row();
+                    if let Some(Intrinsics {
+                        intrinsics_matrix,
+                        resolution,
+                    }) = intrinsics
+                    {
+                        ui.label("intrinsics");
+                        ui_intrinsics_matrix(ui, intrinsics_matrix);
+                        ui.end_row();
 
-                    ui.label("resolution");
-                    ui.monospace(format!("{resolution:?}"));
-                    ui.end_row();
+                        ui.label("resolution");
+                        ui.monospace(format!("{resolution:?}"));
+                        ui.end_row();
+                    }
 
                     ui.label("target_space");
                     if let Some(target_space) = target_space {
@@ -418,7 +425,7 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
     .response
 }
 
-fn ui_intrinsics(ui: &mut egui::Ui, intrinsics: &[[f32; 3]; 3]) {
+fn ui_intrinsics_matrix(ui: &mut egui::Ui, intrinsics: &[[f32; 3]; 3]) {
     egui::Grid::new("intrinsics").num_columns(3).show(ui, |ui| {
         ui.monospace(intrinsics[0][0].to_string());
         ui.monospace(intrinsics[1][0].to_string());

@@ -407,7 +407,7 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
 fn log_camera(
     obj_path: &str,
     resolution: [f32; 2],
-    intrinsics: [[f32; 3]; 3],
+    intrinsics_matrix: [[f32; 3]; 3],
     rotation_q: re_log_types::Quaternion,
     position: [f32; 3],
     camera_space_convention: &str,
@@ -434,12 +434,20 @@ fn log_camera(
         None
     };
 
-    let camera = re_log_types::Camera {
+    let extrinsics = re_log_types::Extrinsics {
         rotation: rotation_q,
         position,
-        intrinsics: Some(intrinsics),
-        resolution: Some(resolution),
         camera_space_convention: convention,
+    };
+
+    let intrinsics = re_log_types::Intrinsics {
+        intrinsics_matrix,
+        resolution,
+    };
+
+    let camera = re_log_types::Camera {
+        extrinsics,
+        intrinsics: Some(intrinsics),
         target_space,
     };
 
