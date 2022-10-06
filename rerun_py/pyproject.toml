@@ -32,10 +32,3 @@ locked = true
 
 [tool.isort]
 profile = "black"
-
-[tool.mypy]
-files = ["rerun_sdk", "tests"]
-namespace_packages = true
-show_error_codes = true
-strict = true
-enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code"]

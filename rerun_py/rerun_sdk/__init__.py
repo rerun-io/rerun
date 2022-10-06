@@ -3,13 +3,13 @@ import atexit
 from enum import Enum
 import ntpath
 import numpy as np
-from typing import Optional, Sequence, Union, Iterable
+from typing import List, Optional, Sequence, Union, Iterable
 from pathlib import Path
 import numpy.typing as npt
 from typing import Optional, Sequence, TypeVar, Union
 from dataclasses import dataclass
 
-from rerun_sdk import rerun_sdk as rerun_rs # type: ignore[attr-defined]
+from rerun_sdk import rerun_sdk as rerun_rs  # type: ignore[attr-defined]
 from rerun_sdk.color_conversion import linear_to_gamma_u8_pixel
 
 
@@ -21,16 +21,17 @@ atexit.register(rerun_shutdown)
 
 # -----------------------------------------------------------------------------
 
-ArrayLike = Union[np.ndarray, Sequence]
+# ArrayLike = Union[np.ndarray, Sequence]
 ColorDtype = Union[np.uint8, np.float32, np.float64]
 Colors = npt.NDArray[ColorDtype]
+
 
 class MeshFormat(Enum):
     # Needs some way of logging materials too, or adding some default material to the viewer.
     # """ glTF """
     # GLTF = "GLTF"
 
-    """ Binary glTF """
+    """Binary glTF"""
     GLB = "GLB"
 
     # Needs some way of logging materials too, or adding some default material to the viewer.
@@ -75,6 +76,7 @@ def get_recording_id() -> str:
     """
     return str(rerun_rs.get_recording_id())
 
+
 def set_recording_id(value: str) -> None:
     """
     Set the recording ID that this process is logging to, as a UUIDv4.
@@ -98,17 +100,17 @@ def connect(addr: Optional[str] = None) -> None:
     rerun_rs.connect(addr)
 
 
-def serve():
+def serve() -> None:
     """
     Serve a Rerun Web Viewer.
 
     WARNING: This is an experimental feature.
     """
-    return rerun_rs.serve()
+    rerun_rs.serve()
 
 
 def disconnect() -> None:
-    """ Disconnect from the remote rerun server (if any). """
+    """Disconnect from the remote rerun server (if any)."""
     rerun_rs.disconnect()
 
 
@@ -195,7 +197,7 @@ def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
 
 
 def set_space_up(space: str, up: Sequence[float]) -> None:
-    """ Set the preferred up-axis in the viewer for a given 3D space.
+    """Set the preferred up-axis in the viewer for a given 3D space.
 
     - space: The name of the space
     - up: The (x, y, z) values of the up-axis
@@ -226,7 +228,7 @@ class RectFormat(Enum):
 
 def log_rect(
     obj_path: str,
-    rect: ArrayLike,
+    rect: npt.ArrayLike,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
     color: Optional[Sequence[int]] = None,
@@ -244,18 +246,14 @@ def log_rect(
     If no `space` is given, the space name "2D" will be used.
     """
 
-    rerun_rs.log_rect(obj_path,
-                      rect_format.value,
-                      _to_sequence(rect),
-                      color,
-                      label,
-                      timeless,
-                      space)
+    rerun_rs.log_rect(
+        obj_path, rect_format.value, _to_sequence(rect), color, label, timeless, space
+    )
 
 
 def log_rects(
     obj_path: str,
-    rects: ArrayLike,
+    rects: npt.ArrayLike,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
     colors: Optional[Colors] = None,
@@ -281,26 +279,23 @@ def log_rects(
 
     If no `space` is given, the space name "2D" will be used.
     """
-    rects = np.require(rects, dtype='float32')
+    rects = np.require(rects, dtype="float32")
     colors = _normalize_colors(colors)
     if labels is None:
         labels = []
 
-    rerun_rs.log_rects(obj_path,
-                       rect_format.value,
-                       rects,
-                       colors,
-                       labels,
-                       timeless,
-                       space)
+    rerun_rs.log_rects(
+        obj_path, rect_format.value, rects, colors, labels, timeless, space
+    )
 
 
 def log_point(
-        obj_path: str,
-        position: npt.NDArray[np.float32],
-        color: Optional[Sequence[int]] = None,
-        timeless: bool = False,
-        space: Optional[str] = None) -> None:
+    obj_path: str,
+    position: npt.NDArray[np.float32],
+    color: Optional[Sequence[int]] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
     """
     Log a 2D or 3D point, with optional color.
     Logging again to the same `obj_path` will replace the previous point.
@@ -318,17 +313,18 @@ def log_point(
     If no `space` is given, the space name "2D" or "3D" will be used,
     depending on the dimensionality of the data.
     """
-    position = np.require(position, dtype='float32')
+    position = np.require(position, dtype="float32")
     rerun_rs.log_point(obj_path, position, color, timeless, space)
 
 
 def log_points(
-        obj_path: str,
-        positions: npt.NDArray[np.float32],
-        *,
-        colors: Optional[Colors] = None,
-        timeless: bool = False,
-        space: Optional[str] = None) -> None:
+    obj_path: str,
+    positions: npt.NDArray[np.float32],
+    *,
+    colors: Optional[Colors] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
     """
     Log 2D or 3D points, with optional colors.
     Logging again to the same `obj_path` will replace all the previous points.
@@ -346,35 +342,38 @@ def log_points(
     If no `space` is given, the space name "2D" or "3D" will be used,
     depending on the dimensionality of the data.
     """
-    positions = np.require(positions, dtype='float32')
+    positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
 
     rerun_rs.log_points(obj_path, positions, colors, timeless, space)
 
-def _normalize_colors(colors: Optional[Colors] = None) -> npt.NDArray[np.uint8]:
+
+def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:
+    """Normalize flexible colors arrays."""
     if colors is None:
         # An empty array represents no colors.
-        colors = np.array((), dtype=np.uint8)
+        return np.array((), dtype=np.uint8)
     else:
+        colors_array = np.array(colors)
+
         # Rust expects colors in 0-255 uint8
-        if colors.dtype in ['float32', 'float64']:
-            colors = linear_to_gamma_u8_pixel(linear=colors)
+        if colors_array.dtype.type in [np.float32, np.float64]:
+            return linear_to_gamma_u8_pixel(linear=colors_array)
 
-        if colors.dtype != 'uint8':
-            colors = colors.astype('uint8')
-        colors = np.require(colors, dtype='uint8')
-    return colors
+        return np.require(colors_array, np.uint8)
 
 
-def log_camera(obj_path: str,
-               rotation_q: ArrayLike,
-               position: ArrayLike,
-               intrinsics: ArrayLike,
-               resolution: ArrayLike,
-               camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
-               timeless: bool = False,
-               space: Optional[str] = None,
-               target_space: Optional[str] = None) -> None:
+def log_camera(
+    obj_path: str,
+    rotation_q: npt.ArrayLike,
+    position: npt.ArrayLike,
+    intrinsics: npt.ArrayLike,
+    resolution: npt.ArrayLike,
+    camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+    timeless: bool = False,
+    space: Optional[str] = None,
+    target_space: Optional[str] = None,
+) -> None:
     """Log a perspective camera model.
 
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
@@ -385,29 +384,30 @@ def log_camera(obj_path: str,
     `space`: The 3D space the camera is in. Will default to "3D".
     `target_space`: The 2D space that the camera projects into.
     """
+
     rerun_rs.log_camera(
         obj_path,
-        _to_sequence(resolution),
-        _to_transposed_sequence(intrinsics),
-        _to_sequence(rotation_q),
-        _to_sequence(position),
-        camera_space_convention.value,
-        timeless, space,
-        target_space)
+        resolution=_to_sequence(resolution),
+        intrinsics=np.asarray(intrinsics).T.tolist(),
+        rotation_q=_to_sequence(rotation_q),
+        position=_to_sequence(position),
+        camera_space_convention=camera_space_convention.value,
+        timeless=timeless,
+        space=space,
+        target_space=target_space,
+    )
 
 
 def log_path(
-        obj_path: str,
-        positions: np.ndarray,
-        *,
-        stroke_width: Optional[float] = None,
-        color: Optional[Sequence[int]] = None,
-        timeless: bool = False,
-        space: Optional[str] = None) -> None:
-    """
-    Log a 3D path.
-    A path is a list of points connected by line segments.
-    It can be used to draw approximations of smooth curves.
+    obj_path: str,
+    positions: npt.NDArray[np.float32],
+    *,
+    stroke_width: Optional[float] = None,
+    color: Optional[Sequence[int]] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
+    """Log a 3D path. A path is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
     The points will be connected in order, like so:
 
@@ -422,18 +422,19 @@ def log_path(
 
     If no `space` is given, the space name "3D" will be used.
     """
-    positions = np.require(positions, dtype='float32')
+    positions = np.require(positions, dtype="float32")
     rerun_rs.log_path(obj_path, positions, stroke_width, color, timeless, space)
 
 
 def log_line_segments(
-        obj_path: str,
-        positions: np.ndarray,
-        *,
-        stroke_width: Optional[float] = None,
-        color: Optional[Sequence[int]] = None,
-        timeless: bool = False,
-        space: Optional[str] = None) -> None:
+    obj_path: str,
+    positions: npt.NDArray[np.float32],
+    *,
+    stroke_width: Optional[float] = None,
+    color: Optional[Sequence[int]] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
     """
     Log many 2D or 3D line segments.
 
@@ -450,19 +451,22 @@ def log_line_segments(
 
     If no `space` is given, the space name "3D" will be used.
     """
-    positions = np.require(positions, dtype='float32')
-    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless, space)
+    positions = np.require(positions, dtype="float32")
+    rerun_rs.log_line_segments(
+        obj_path, positions, stroke_width, color, timeless, space
+    )
 
 
 def log_obb(
-            obj_path: str,
-            half_size: ArrayLike,
-            position: ArrayLike,
-            rotation_q: ArrayLike,
-            color: Optional[Sequence[int]] = None,
-            stroke_width: Optional[float] = None,
-            timeless: bool = False,
-            space: Optional[str] = None) -> None:
+    obj_path: str,
+    half_size: npt.ArrayLike,
+    position: npt.ArrayLike,
+    rotation_q: npt.ArrayLike,
+    color: Optional[Sequence[int]] = None,
+    stroke_width: Optional[float] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
     """
     Log a 3D oriented bounding box, defined by its half size.
 
@@ -473,17 +477,25 @@ def log_obb(
     `stroke_width`: width of the OBB edges.
     `space`: The 3D space the OBB is in. Will default to "3D".
     """
-    rerun_rs.log_obb(obj_path,
-                     _to_sequence(half_size),
-                     _to_sequence(position),
-                     _to_sequence(rotation_q),
-                     color,
-                     stroke_width,
-                     timeless,
-                     space)
+    rerun_rs.log_obb(
+        obj_path,
+        _to_sequence(half_size),
+        _to_sequence(position),
+        _to_sequence(rotation_q),
+        color,
+        stroke_width,
+        timeless,
+        space,
+    )
 
 
-def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space: Optional[str] = None) -> None:
+def log_image(
+    obj_path: str,
+    image: Colors,
+    *,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
     """
     Log a gray or color image.
 
@@ -504,12 +516,20 @@ def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space
         depth = image.shape[2]
         if depth not in (1, 3, 4):
             raise TypeError(
-                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}")
+                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}"
+            )
 
     log_tensor(obj_path, image, timeless=timeless, space=space)
 
 
-def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None) -> None:
+def log_depth_image(
+    obj_path: str,
+    image: Colors,
+    *,
+    meter: Optional[float] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
     """
     Log a depth image.
 
@@ -523,18 +543,19 @@ def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] 
     """
     # Catch some errors early:
     if len(image.shape) != 2:
-        raise TypeError(
-            f"Expected 2D depth image, got array of shape {image.shape}")
+        raise TypeError(f"Expected 2D depth image, got array of shape {image.shape}")
 
     log_tensor(obj_path, image, meter=meter, timeless=timeless, space=space)
 
 
-def log_tensor(obj_path: str,
-               tensor: np.ndarray,
-               names: Optional[Iterable] = None,
-               meter: Optional[float] = None,
-               timeless: bool = False,
-               space: Optional[str] = None) -> None:
+def log_tensor(
+    obj_path: str,
+    tensor: npt.NDArray[Union[np.uint8, np.uint16, np.float32, np.float64]],
+    names: Optional[Iterable[str]] = None,
+    meter: Optional[float] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
     """
     If no `space` is given, the space name "2D" will be used.
     """
@@ -543,19 +564,29 @@ def log_tensor(obj_path: str,
         names = list(names)
         assert len(tensor.shape) == len(names)
 
-    if tensor.dtype == 'uint8':
+    if tensor.dtype == "uint8":
         rerun_rs.log_tensor_u8(obj_path, tensor, names, meter, timeless, space)
-    elif tensor.dtype == 'uint16':
+    elif tensor.dtype == "uint16":
         rerun_rs.log_tensor_u16(obj_path, tensor, names, meter, timeless, space)
-    elif tensor.dtype == 'float32':
+    elif tensor.dtype == "float32":
         rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, timeless, space)
-    elif tensor.dtype == 'float64':
-        rerun_rs.log_tensor_f32(obj_path, tensor.astype('float32'), names, meter, timeless, space)
+    elif tensor.dtype == "float64":
+        rerun_rs.log_tensor_f32(
+            obj_path, tensor.astype("float32"), names, meter, timeless, space
+        )
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
 
-def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, transform: np.ndarray = None, timeless: bool = False, space: Optional[str] = None) -> None:
+def log_mesh_file(
+    obj_path: str,
+    mesh_format: MeshFormat,
+    mesh_file: bytes,
+    *,
+    transform: Optional[npt.NDArray[np.float32]] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
 
@@ -573,31 +604,32 @@ def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, t
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
     else:
-        transform = np.require(transform, dtype='float32')
+        transform = np.require(transform, dtype="float32")
 
-    rerun_rs.log_mesh_file(obj_path, mesh_format.value,
-                           mesh_file, transform, timeless, space)
+    rerun_rs.log_mesh_file(
+        obj_path, mesh_format.value, mesh_file, transform, timeless, space
+    )
 
 
-def log_image_file(obj_path: str,
-                   img_path: Path,
-                   img_format: Optional[ImageFormat] = None,
-                   timeless: bool = False,
-                   space: Optional[str] = None):
+def log_image_file(
+    obj_path: str,
+    img_path: Path,
+    img_format: Optional[ImageFormat] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
     """
     Log the contents of an image file (only JPEGs supported for now).
 
     If no `img_format` is specified, we will try and guess it.
     If no `space` is given, the space name "2D" will be used.
     """
-    img_format = getattr(img_format, 'value', None)
+    img_format = getattr(img_format, "value", None)
     rerun_rs.log_image_file(obj_path, img_path, img_format, timeless, space)
 
-def _to_sequence(array: ArrayLike) -> Sequence:
-    if hasattr(array, 'tolist'):
-        return array.tolist()  # type: ignore
-    return array  # type: ignore
 
+def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:
+    if isinstance(array, np.ndarray):
+        return np.require(array, float).tolist()  # type: ignore[no-any-return]
 
-def _to_transposed_sequence(array: ArrayLike) -> Sequence:
-    return np.asarray(array).T.tolist()
+    return array  # type: ignore[return-value]
