@@ -169,8 +169,14 @@ impl State2D {
             }
         }
 
-        // Finally if our zoomed region is smaller than the available size, revert to auto mode
+        // Process things that might reset ZoomState to Auto
         if let ZoomState::Scaled { scale, .. } = self.zoom {
+            // If the user double-clicks
+            if response.double_clicked() {
+                self.zoom = ZoomState::Auto;
+            }
+
+            // If our zoomed region is smaller than the available size
             if self.scene_bbox_accum.size().x * scale < available_size.x
                 && self.scene_bbox_accum.size().y * scale < available_size.y
             {
