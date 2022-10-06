@@ -30,8 +30,6 @@ py-format:
 
 # Run linting
 py-lint:
-    #!/usr/bin/env bash
-    cd rerun_py
     mypy
     flake8
 

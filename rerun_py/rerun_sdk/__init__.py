@@ -1,4 +1,5 @@
-# The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
+"""The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk"""
+
 import atexit
 import ntpath
 from dataclasses import dataclass

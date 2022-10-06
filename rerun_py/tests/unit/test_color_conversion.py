@@ -1,7 +1,10 @@
 """Test for color_conversion module."""
 import numpy as np
 
-from rerun_sdk.color_conversion import linear_to_gamma_u8_value, linear_to_gamma_u8_pixel
+from rerun_sdk.color_conversion import (
+    linear_to_gamma_u8_value,
+    linear_to_gamma_u8_pixel,
+)
 
 
 def test_linear_to_gamma_u8_value() -> None:
