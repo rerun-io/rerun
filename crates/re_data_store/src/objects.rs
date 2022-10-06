@@ -651,10 +651,6 @@ impl<'s> Objects<'s> {
             if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
                 self.query_object(obj_store, time_query, obj_path, obj_type);
             } else {
-                // TODO(cmc): This warning doesn't really apply anymore, in a world where
-                // permanent objects are a thing.
-                // And we really have no way to identify false positives here since, by
-                // definition, we don't know anything about that path at this point.
                 re_log::warn_once!("Missing ObjectType for {:?}", obj_path.obj_type_path());
             }
         }
