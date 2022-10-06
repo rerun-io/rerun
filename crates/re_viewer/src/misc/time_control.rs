@@ -452,7 +452,7 @@ impl TimeControl {
     pub fn selected_objects<'db>(
         &self,
         log_db: &'db re_data_store::log_db::LogDb,
-    ) -> re_data_store::Objects<'db> {
+    ) -> re_data_store::Objects<'db, Time> {
         crate::profile_function!();
 
         let mut objects = re_data_store::Objects::default();
@@ -469,7 +469,7 @@ impl TimeControl {
         &self,
         log_db: &'db re_data_store::log_db::LogDb,
         obj_types: impl Iterator<Item = ObjectType>,
-    ) -> re_data_store::Objects<'db> {
+    ) -> re_data_store::Objects<'db, Time> {
         crate::profile_function!();
 
         let obj_types = obj_types.collect::<HashSet<_>>();

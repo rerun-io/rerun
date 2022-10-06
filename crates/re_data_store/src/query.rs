@@ -208,7 +208,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
     (child1,): (&str,),
-    mut visit: impl FnMut(Option<&'s IndexHash>, &'s MsgId, &'s T, Option<&'s S1>),
+    mut visit: impl FnMut(Option<&'s IndexHash>, Time, &'s MsgId, &'s T, Option<&'s S1>),
 ) -> Option<()> {
     crate::profile_function!();
     let child1 = FieldName::from(child1);
@@ -220,7 +220,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
             &primary.history,
             time_query,
             |time, (msg_id, primary_value)| {
-                visit(None, msg_id, primary_value, child1.latest_at(time));
+                visit(None, *time, msg_id, primary_value, child1.latest_at(time));
             },
         );
     } else {
@@ -235,6 +235,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
                     for (instance_index, primary_value) in primary_batch.iter() {
                         visit(
                             Some(instance_index),
+                            *time,
                             msg_id,
                             primary_value,
                             child1.get(instance_index),
@@ -259,7 +260,7 @@ pub fn visit_type_data_2<
     field_name: &FieldName,
     time_query: &TimeQuery<Time>,
     (child1, child2): (&str, &str),
-    mut visit: impl FnMut(Option<&'s IndexHash>, &'s MsgId, &'s T, Option<&'s S1>, Option<&'s S2>),
+    mut visit: impl FnMut(Option<&'s IndexHash>, Time, &'s MsgId, &'s T, Option<&'s S1>, Option<&'s S2>),
 ) -> Option<()> {
     crate::profile_function!();
     let child1 = FieldName::from(child1);
@@ -275,6 +276,7 @@ pub fn visit_type_data_2<
             |time, (msg_id, primary_value)| {
                 visit(
                     None,
+                    *time,
                     msg_id,
                     primary_value,
                     child1.latest_at(time),
@@ -296,6 +298,7 @@ pub fn visit_type_data_2<
                     for (instance_index, primary_value) in primary_batch.iter() {
                         visit(
                             Some(instance_index),
+                            *time,
                             msg_id,
                             primary_value,
                             child1.get(instance_index),
@@ -324,6 +327,7 @@ pub fn visit_type_data_3<
     (child1, child2, child3): (&str, &str, &str),
     mut visit: impl FnMut(
         Option<&'s IndexHash>,
+        Time,
         &'s MsgId,
         &'s T,
         Option<&'s S1>,
@@ -347,6 +351,7 @@ pub fn visit_type_data_3<
             |time, (msg_id, primary_value)| {
                 visit(
                     None,
+                    *time,
                     msg_id,
                     primary_value,
                     child1.latest_at(time),
@@ -371,6 +376,7 @@ pub fn visit_type_data_3<
                     for (instance_index, primary_value) in primary_batch.iter() {
                         visit(
                             Some(instance_index),
+                            *time,
                             msg_id,
                             primary_value,
                             child1.get(instance_index),
@@ -401,6 +407,7 @@ pub fn visit_type_data_4<
     (child1, child2, child3, child4): (&str, &str, &str, &str),
     mut visit: impl FnMut(
         Option<&'s IndexHash>,
+        Time,
         &'s MsgId,
         &'s T,
         Option<&'s S1>,
@@ -427,6 +434,7 @@ pub fn visit_type_data_4<
             |time, (msg_id, primary_value)| {
                 visit(
                     None,
+                    *time,
                     msg_id,
                     primary_value,
                     child1.latest_at(time),
@@ -454,6 +462,7 @@ pub fn visit_type_data_4<
                     for (instance_index, primary_value) in primary_batch.iter() {
                         visit(
                             Some(instance_index),
+                            *time,
                             msg_id,
                             primary_value,
                             child1.get(instance_index),

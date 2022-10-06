@@ -147,7 +147,10 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    pub fn random_color(&mut self, props: &re_data_store::InstanceProps<'_>) -> [u8; 3] {
+    pub fn random_color<Time>(
+        &mut self,
+        props: &re_data_store::InstanceProps<'_, Time>,
+    ) -> [u8; 3] {
         // TODO(emilk): ignore "temporary" indices when calculating the hash.
         let hash = props.obj_path.hash64();
 

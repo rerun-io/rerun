@@ -5,10 +5,10 @@ use re_log_types::*;
 
 // -----------------------------------------------------------------------------
 
-pub(crate) fn show(
+pub(crate) fn show<Time>(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    objects: &Objects<'_>,
+    objects: &Objects<'_, Time>,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -28,18 +28,18 @@ pub(crate) fn show(
 
 // -----------------------------------------------------------------------------
 
-struct CompleteTextEntry<'s> {
+struct CompleteTextEntry<'s, Time> {
     data_path: DataPath,
     time_point: TimePoint,
     time: TimeInt,
-    props: &'s InstanceProps<'s>,
+    props: &'s InstanceProps<'s, Time>,
     text_entry: &'s TextEntry<'s>,
 }
 
-fn collect_text_entries<'s>(
+fn collect_text_entries<'s, Time>(
     ctx: &mut ViewerContext<'_>,
-    objects: &'s Objects<'_>,
-) -> Vec<CompleteTextEntry<'s>> {
+    objects: &'s Objects<'_, Time>,
+) -> Vec<CompleteTextEntry<'s, Time>> {
     crate::profile_function!();
 
     let time_source = ctx.rec_cfg.time_ctrl.source();
@@ -88,7 +88,11 @@ fn collect_text_entries<'s>(
     text_entries
 }
 
-fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[CompleteTextEntry<'_>]) {
+fn show_table<Time>(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    messages: &[CompleteTextEntry<'_, Time>],
+) {
     use egui_extras::Size;
     egui_extras::TableBuilder::new(ui)
         .striped(true)
