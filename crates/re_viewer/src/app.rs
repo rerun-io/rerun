@@ -375,10 +375,6 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
 
             ui.separator();
 
-            egui::widgets::global_dark_light_mode_switch(ui);
-
-            ui.separator();
-
             if !app.log_db().is_empty() {
                 ui.selectable_value(&mut app.state.view_index, 0, "Spaces");
                 ui.selectable_value(&mut app.state.view_index, 1, "Table");
