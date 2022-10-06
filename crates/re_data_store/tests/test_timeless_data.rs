@@ -43,7 +43,8 @@ fn test_timeless_data() {
         query_time: i64,
     ) -> String {
         let (time_msgid_multiindex, data) = store
-            .data_store
+            .obj_db
+            .store
             .query_data_path(timeline, &TimeQuery::LatestAt(query_time), data_path)
             .unwrap()
             .unwrap();

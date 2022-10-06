@@ -290,7 +290,7 @@ impl SpacesPanel {
         let all_spaces = {
             // `objects` contain all spaces that exist in this time,
             // but we want to show all spaces that could ever exist.
-            // Othewise we get a lot of flicker of spaces as we play back data.
+            // Otherwise we get a lot of flicker of spaces as we play back data.
             let mut all_spaces = ctx.log_db.spaces().map(Some).collect_vec();
             if objects.contains_key(&None) {
                 // Some objects lack a space, so they end up in the `None` space.
@@ -358,7 +358,7 @@ impl SpaceStates {
 
         // We have a special tensor viewer that only works
         // when we only have a single tensor (and no bounding boxes etc).
-        // It is also not as great for images as the nomral 2d view (at least not yet).
+        // It is also not as great for images as the normal 2d view (at least not yet).
         // This is a hacky-way of detecting this special case.
         // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
         // so we can stack bounding boxes etc on top of it.
@@ -414,7 +414,7 @@ impl SpaceStates {
             #[cfg(not(feature = "glow"))]
             ui.label(
                 egui::RichText::new(
-                    "3D view not availble (Rerun was compiled without the 'glow' feature)",
+                    "3D view not available (Rerun was compiled without the 'glow' feature)",
                 )
                 .size(24.0)
                 .color(ui.visuals().warn_fg_color),

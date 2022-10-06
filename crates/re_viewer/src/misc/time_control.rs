@@ -457,8 +457,8 @@ impl TimeControl {
 
         let mut objects = re_data_store::Objects::default();
         if let Some(time_query) = self.time_query() {
-            if let Some(store) = log_db.data_store.get(&self.time_source) {
-                objects.query(store, &time_query, &log_db.obj_types);
+            if let Some(store) = log_db.obj_db.store.get(&self.time_source) {
+                objects.query(store, &time_query, &log_db.obj_db.types);
             }
         }
         objects
@@ -474,7 +474,8 @@ impl TimeControl {
 
         let obj_types = obj_types.collect::<HashSet<_>>();
         let obj_types = log_db
-            .obj_types
+            .obj_db
+            .types
             .iter()
             .filter_map(|(obj_type_path, obj_type)| {
                 obj_types
@@ -486,7 +487,7 @@ impl TimeControl {
         // TODO(cmc): At some point we might want keep a cache of what we've read so far,
         // and incrementally query for new messages.
         let mut objects = re_data_store::Objects::default();
-        if let Some(store) = log_db.data_store.get(&self.time_source) {
+        if let Some(store) = log_db.obj_db.store.get(&self.time_source) {
             for (obj_path, obj_store) in store.iter() {
                 if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
                     objects.query_object(obj_store, &TimeQuery::EVERYTHING, obj_path, obj_type);

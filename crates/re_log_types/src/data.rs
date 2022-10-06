@@ -387,6 +387,17 @@ pub type Quaternion = [f32; 4];
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Camera {
+    pub extrinsics: Extrinsics,
+    pub intrinsics: Option<Intrinsics>,
+
+    /// The 2D space that this camera projects into.
+    pub target_space: Option<ObjPath>,
+}
+
+/// Camera pose
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct Extrinsics {
     /// How is the camera rotated?
     ///
     /// This transforms world-space from camera-space.
@@ -402,9 +413,14 @@ pub struct Camera {
 
     /// What is the users camera-space coordinate system?
     pub camera_space_convention: CameraSpaceConvention,
+}
 
+/// Camera projection
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct Intrinsics {
     /// Column-major intrinsics matrix.
-    /// Image coordiantes from view coordinates (via projection).
+    /// Image coordinates from view coordinates (via projection).
     ///
     /// Example:
     /// ```text
@@ -412,7 +428,7 @@ pub struct Camera {
     ///  [0.0,    1496.1, 0.0], // col 1
     ///  [980.5,  744.5,  1.0]] // col 2
     /// ```
-    pub intrinsics: Option<[[f32; 3]; 3]>,
+    pub intrinsics_matrix: [[f32; 3]; 3],
 
     /// Pixel resolution (usually integers). Width and height.
     ///
@@ -420,10 +436,14 @@ pub struct Camera {
     /// ```text
     /// [1920.0, 1440.0]
     /// ```
-    pub resolution: Option<[f32; 2]>,
+    pub resolution: [f32; 2],
+}
 
-    /// The 2D space that this camera proejcts into.
-    pub target_space: Option<ObjPath>,
+impl Intrinsics {
+    /// Field of View on the Y axis, i.e. the angle between top and bottom.
+    pub fn fov_y(&self) -> f32 {
+        2.0 * (0.5 * self.resolution[1] / self.intrinsics_matrix[1][1]).atan()
+    }
 }
 
 /// Convention for the coordinate system of the camera.
