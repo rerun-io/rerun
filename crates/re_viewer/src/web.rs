@@ -29,7 +29,8 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
             let app = crate::RemoteViewerApp::new(&cc.egui_ctx, cc.storage.as_deref(), url);
             Box::new(app)
         }),
-    ).await?;
+    )
+    .await?;
 
     Ok(())
 }
