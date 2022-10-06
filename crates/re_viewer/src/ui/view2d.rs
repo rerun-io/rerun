@@ -1,4 +1,4 @@
-use eframe::emath::RectTransform;
+use eframe::{emath::RectTransform, epaint::text::TextWrapping};
 use egui::*;
 
 use re_data_store::{InstanceId, InstanceIdHash};
@@ -416,25 +416,42 @@ fn view_2d_scrollable(
         }
 
         if let Some(label) = label {
-            let shrunken_screen_rect = rect_in_ui.shrink(4.0);
+            let wrap_width = (rect_in_ui.width() - 4.0).max(60.0);
             let font_id = TextStyle::Body.resolve(ui.style());
-            let galley = ui.fonts().layout(
-                (*label).to_owned(),
-                font_id,
-                paint_props.fg_stroke.color,
-                shrunken_screen_rect.width(),
-            );
-            let text_rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
-                shrunken_screen_rect.center_top(),
-                galley.size(),
-            ));
-            let bg_rect = text_rect.expand2(vec2(6.0, 2.0));
+            let galley = ui.fonts().layout_job({
+                text::LayoutJob {
+                    sections: vec![text::LayoutSection {
+                        leading_space: 0.0,
+                        byte_range: 0..label.len(),
+                        format: TextFormat::simple(font_id, paint_props.fg_stroke.color),
+                    }],
+                    text: (*label).to_owned(),
+                    wrap: TextWrapping {
+                        max_width: wrap_width,
+                        ..Default::default()
+                    },
+                    break_on_newline: true,
+                    halign: Align::Center,
+                    ..Default::default()
+                }
+            });
+            // Generally it's nice to have a small label inside the rect!
+            // However, these bounding boxes _usually_ contain something of interest, so let's not cover it completely in text
+            // So we change strategy and put it at the bottom if the text is more than than a quarter of the box size.
+            let text_anchor_pos = if galley.size().x * galley.size().y > rect_in_ui.area() * 0.25 {
+                rect_in_ui.center_bottom()
+            } else {
+                rect_in_ui.center_top()
+            } + vec2(0.0, 2.0);
+            let text_rect =
+                Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
+            let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
             shapes.push(Shape::rect_filled(
                 bg_rect,
                 3.0,
                 paint_props.bg_stroke.color,
             ));
-            shapes.push(Shape::galley(text_rect.min, galley));
+            shapes.push(Shape::galley(text_rect.center_top(), galley));
             if let Some(pointer_pos) = pointer_pos {
                 hover_dist = hover_dist.min(bg_rect.signed_distance_to_pos(pointer_pos));
             }
@@ -518,7 +535,7 @@ fn view_2d_scrollable(
 
     painter.extend(shapes);
 
-    state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.data_store);
+    state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
 
     response
 }

@@ -9,5 +9,7 @@
 		"webfreak.debug", // Native Debug
 		"zxh404.vscode-proto3", // vscode-proto3
 		"ms-python.python",
+		"polymeilex.wgsl",
+		"streetsidesoftware.code-spell-checker"
 	]
 }
