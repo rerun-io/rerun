@@ -214,9 +214,6 @@ pub(crate) struct RecordingConfig {
     #[serde(skip)]
     pub projected_object_properties: ObjectsProperties,
 
-    /// So we only re-calculate `projected_object_properties` when it changes.
-    individual_object_properties_last_frame: ObjectsProperties,
-
     /// What space is the pointer hovering over?
     #[serde(skip)]
     pub hovered_space: HoveredSpace,
@@ -233,12 +230,9 @@ impl RecordingConfig {
     fn project_object_properties(&mut self, log_db: &LogDb) {
         crate::profile_function!();
 
-        if self.individual_object_properties == self.individual_object_properties_last_frame {
-            // when we have objects with a lot of children (e.g. a batch of points),
-            // the project gets slow, so this memoization is important.
-            return;
-        }
-        self.individual_object_properties_last_frame = self.individual_object_properties.clone();
+        // NOTE(emilk): we could do this projection only when the object properties changes
+        // and/or when new object paths are added, but such memoization would add complexity,
+        // and in most cases this is pretty fast already.
 
         fn project_tree(
             rec_cfg: &mut RecordingConfig,

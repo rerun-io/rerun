@@ -5,7 +5,7 @@ cd "$script_path/.."
 
 # Pre-requisites:
 rustup target add wasm32-unknown-unknown
-cargo install wasm-bindgen-cli --version 0.2.82
+cargo install wasm-bindgen-cli --version 0.2.83
 
 # Required by build_web.sh:
 packagesNeeded='binaryen jq'
