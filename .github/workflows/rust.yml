@@ -182,3 +182,19 @@ jobs:
           maturin-version: "0.13.5"
           command: build
           args: -m rerun_py/Cargo.toml  -o dist --universal2
+
+  user-pip-macos:
+    name: User Pip MacOS
+    runs-on: macos-latest
+    if: "startsWith(github.ref, 'refs/tags/')" # slow; uses up a lot of CI minutes
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+      - name: Setup python for building wheel
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+          cache: "pip"
+      - name: Install rerun_py
+        run: pip install ./rerun_py
