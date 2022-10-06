@@ -98,6 +98,8 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
 
+    m.add_function(wrap_pyfunction!(log_text_entry, m)?)?;
+
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
 
@@ -407,7 +409,7 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
 fn log_camera(
     obj_path: &str,
     resolution: [f32; 2],
-    intrinsics: [[f32; 3]; 3],
+    intrinsics_matrix: [[f32; 3]; 3],
     rotation_q: re_log_types::Quaternion,
     position: [f32; 3],
     camera_space_convention: &str,
@@ -434,12 +436,20 @@ fn log_camera(
         None
     };
 
-    let camera = re_log_types::Camera {
+    let extrinsics = re_log_types::Extrinsics {
         rotation: rotation_q,
         position,
-        intrinsics: Some(intrinsics),
-        resolution: Some(resolution),
         camera_space_convention: convention,
+    };
+
+    let intrinsics = re_log_types::Intrinsics {
+        intrinsics_matrix,
+        resolution,
+    };
+
+    let camera = re_log_types::Camera {
+        extrinsics,
+        intrinsics: Some(intrinsics),
         target_space,
     };
 
@@ -456,6 +466,60 @@ fn log_camera(
     );
 
     let space = space.unwrap_or_else(|| "3D".to_owned());
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
+// ----------------------------------------------------------------------------
+
+/// Log a text entry.
+///
+/// If no `space` is given, the space name "logs" will be used.
+#[pyfunction]
+fn log_text_entry(
+    obj_path: &str,
+    text: &str,
+    level: Option<&str>,
+    color: Option<Vec<u8>>,
+    timeless: bool,
+    space: Option<String>,
+) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::TextEntry);
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "body"),
+        LoggedData::Single(Data::String(text.to_owned())),
+    );
+
+    if let Some(lvl) = level {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "level"),
+            LoggedData::Single(Data::String(lvl.to_owned())),
+        );
+    }
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
+    }
+
+    let space = space.unwrap_or_else(|| "logs".to_owned());
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),

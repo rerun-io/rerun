@@ -24,12 +24,12 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-10-02 - crate update
-eframe = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
-egui = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "77df8ca0b0a949a713a9331b7c066df775aa6582" }
+# 2022-10-06 - wgpu on web
+eframe = { git = "https://github.com/emilk/egui", rev = "3ec170cc1e2309345df04b5e2a083b3b452c012f" }
+egui = { git = "https://github.com/emilk/egui", rev = "3ec170cc1e2309345df04b5e2a083b3b452c012f" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "3ec170cc1e2309345df04b5e2a083b3b452c012f" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "3ec170cc1e2309345df04b5e2a083b3b452c012f" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "3ec170cc1e2309345df04b5e2a083b3b452c012f" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }

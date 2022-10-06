@@ -21,6 +21,7 @@
 mod batch;
 mod instance;
 pub mod log_db;
+pub mod object_tree;
 pub mod objects;
 pub mod query;
 mod stores;
@@ -28,6 +29,7 @@ mod stores;
 pub use batch::*;
 pub use instance::*;
 pub use log_db::LogDb;
+pub use object_tree::*;
 pub use objects::*;
 pub use stores::*;
 
@@ -66,6 +68,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 // ----------------------------------------------------------------------------
 
 /// A query in time.
+#[derive(Debug)]
 pub enum TimeQuery<Time> {
     /// Get the latest version of the data available at this time.
     LatestAt(Time),
@@ -76,6 +79,10 @@ pub enum TimeQuery<Time> {
     /// Motivation: all data is considered alive untl the next logging
     /// to the same data path.
     Range(std::ops::RangeInclusive<Time>),
+}
+
+impl TimeQuery<i64> {
+    pub const EVERYTHING: Self = Self::Range(i64::MIN..=i64::MAX);
 }
 
 // ---------------------------------------------------------------------------
