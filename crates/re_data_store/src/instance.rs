@@ -27,7 +27,7 @@ impl InstanceId {
 
     /// Does this object match this instance id?
     #[inline]
-    pub fn is_instance<Time>(&self, props: &InstanceProps<'_, Time>) -> bool {
+    pub fn is_instance(&self, props: &InstanceProps<'_>) -> bool {
         &self.obj_path == props.obj_path
             && if let Some(index) = &self.instance_index {
                 index.hash() == props.instance_index
@@ -72,7 +72,7 @@ impl InstanceIdHash {
     };
 
     #[inline]
-    pub fn from_props<Time>(props: &InstanceProps<'_, Time>) -> Self {
+    pub fn from_props(props: &InstanceProps<'_>) -> Self {
         Self {
             obj_path_hash: *props.obj_path.hash(),
             instance_index_hash: props.instance_index,
@@ -93,7 +93,7 @@ impl InstanceIdHash {
 
     /// Does this object match this instance id?
     #[inline]
-    pub fn is_instance<Time>(&self, props: &InstanceProps<'_, Time>) -> bool {
+    pub fn is_instance(&self, props: &InstanceProps<'_>) -> bool {
         &self.obj_path_hash == props.obj_path.hash()
             && self.instance_index_hash == props.instance_index
     }

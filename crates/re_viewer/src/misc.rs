@@ -62,7 +62,7 @@ pub fn random_rgb(seed: u64) -> [u8; 3] {
 
 // ----------------------------------------------------------------------------
 
-pub fn calc_bbox_2d<Time>(objects: &re_data_store::Objects<'_, Time>) -> emath::Rect {
+pub fn calc_bbox_2d(objects: &re_data_store::Objects<'_>) -> emath::Rect {
     crate::profile_function!();
 
     let mut bbox = emath::Rect::NOTHING;
@@ -94,7 +94,7 @@ pub fn calc_bbox_2d<Time>(objects: &re_data_store::Objects<'_, Time>) -> emath::
 }
 
 #[cfg(feature = "glow")]
-pub fn calc_bbox_3d<Time>(objects: &re_data_store::Objects<'_, Time>) -> macaw::BoundingBox {
+pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox {
     crate::profile_function!();
 
     let mut bbox = macaw::BoundingBox::nothing();

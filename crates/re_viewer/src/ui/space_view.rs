@@ -53,16 +53,16 @@ struct Tab {
     space: Option<ObjPath>,
 }
 
-struct TabViewer<'a, 'b, Time> {
+struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
-    objects: ObjectsBySpace<'b, Time>,
-    perma_objects: ObjectsBySpace<'b, Time>,
+    objects: ObjectsBySpace<'b>,
+    perma_objects: ObjectsBySpace<'b>,
     space_states: &'a mut SpaceStates,
     hovered_space: Option<ObjPath>,
     maximized: &'a mut Option<Tab>,
 }
 
-impl<'a, 'b, Time> egui_dock::TabViewer for TabViewer<'a, 'b, Time> {
+impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     type Tab = Tab;
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
@@ -149,12 +149,12 @@ impl View {
         }
     }
 
-    pub fn ui<'a, 'b, Time>(
+    pub fn ui<'a, 'b>(
         &mut self,
         ctx: &'a mut ViewerContext<'b>,
         ui: &mut egui::Ui,
-        objects: ObjectsBySpace<'b, Time>,
-        perma_objects: ObjectsBySpace<'b, Time>,
+        objects: ObjectsBySpace<'b>,
+        perma_objects: ObjectsBySpace<'b>,
     ) {
         let num_tabs = num_tabs(&self.tree);
 
@@ -328,7 +328,7 @@ impl SpaceStates {
     fn show_space(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        objects: &ObjectsBySpace<'_, Time>,
+        objects: &ObjectsBySpace<'_>,
         space: Option<&ObjPath>,
         ui: &mut egui::Ui,
     ) -> bool {
@@ -425,7 +425,7 @@ impl SpaceStates {
     fn show_permanent_space(
         &self,
         ctx: &mut ViewerContext<'_>,
-        perma_objects: &ObjectsBySpace<'_, Time>,
+        perma_objects: &ObjectsBySpace<'_>,
         space: Option<&ObjPath>,
         ui: &mut egui::Ui,
     ) -> bool {

@@ -53,13 +53,13 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub(crate) fn from_objects<Time>(
+    pub(crate) fn from_objects(
         ctx: &mut ViewerContext<'_>,
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         eye: &Eye,
         hovered_instance_id: Option<&InstanceId>,
-        objects: &re_data_store::Objects<'_, Time>,
+        objects: &re_data_store::Objects<'_>,
     ) -> Self {
         crate::profile_function!();
         let hovered_instance_id_hash =

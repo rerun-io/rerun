@@ -262,10 +262,7 @@ struct SpaceSpecs {
 }
 
 impl SpaceSpecs {
-    fn from_objects<Time>(
-        space: Option<&ObjPath>,
-        objects: &re_data_store::Objects<'_, Time>,
-    ) -> Self {
+    fn from_objects(space: Option<&ObjPath>, objects: &re_data_store::Objects<'_>) -> Self {
         if let Some(space) = space {
             if let Some(space) = objects.space.get(&space) {
                 return SpaceSpecs {
@@ -278,10 +275,7 @@ impl SpaceSpecs {
 }
 
 /// If the path to a camera is selected, we follow that camera.
-fn tracking_camera<Time>(
-    ctx: &ViewerContext<'_>,
-    objects: &re_data_store::Objects<'_, Time>,
-) -> Option<Eye> {
+fn tracking_camera(ctx: &ViewerContext<'_>, objects: &re_data_store::Objects<'_>) -> Option<Eye> {
     if let Selection::Instance(selected) = &ctx.rec_cfg.selection {
         find_camera(objects, selected)
     } else {
@@ -289,10 +283,7 @@ fn tracking_camera<Time>(
     }
 }
 
-fn find_camera<Time>(
-    objects: &re_data_store::Objects<'_, Time>,
-    needle: &InstanceId,
-) -> Option<Eye> {
+fn find_camera(objects: &re_data_store::Objects<'_>, needle: &InstanceId) -> Option<Eye> {
     let mut found_camera = None;
 
     for (props, camera) in objects.camera.iter() {
@@ -308,9 +299,9 @@ fn find_camera<Time>(
     found_camera.map(Eye::from_camera)
 }
 
-fn click_object<Time>(
+fn click_object(
     ctx: &mut ViewerContext<'_>,
-    objects: &re_data_store::Objects<'_, Time>,
+    objects: &re_data_store::Objects<'_>,
     state: &mut State3D,
     instance_id: &InstanceId,
 ) {
@@ -328,12 +319,12 @@ fn click_object<Time>(
     }
 }
 
-pub(crate) fn view_3d<Time>(
+pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State3D,
     space: Option<&ObjPath>,
-    objects: &re_data_store::Objects<'_, Time>,
+    objects: &re_data_store::Objects<'_>,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -443,9 +434,9 @@ pub(crate) fn view_3d<Time>(
     response
 }
 
-fn show_projections_from_2d_space<Time>(
+fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
-    objects: &re_data_store::Objects<'_, Time>,
+    objects: &re_data_store::Objects<'_>,
     state: &mut State3D,
     orbit_eye: OrbitEye,
     scene: &mut Scene,
@@ -499,13 +490,13 @@ fn show_projections_from_2d_space<Time>(
     }
 }
 
-fn project_onto_other_spaces<Time>(
+fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
     state: &mut State3D,
     space: Option<&ObjPath>,
     response: &egui::Response,
     orbit_eye: OrbitEye,
-    objects: &re_data_store::Objects<'_, Time>,
+    objects: &re_data_store::Objects<'_>,
 ) {
     if let Some(pos_in_ui) = response.hover_pos() {
         let ray_in_world = {

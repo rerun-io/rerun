@@ -26,7 +26,7 @@ fn time_source() -> TimeSource {
 fn do_query<'s>(
     obj_types: &IntMap<ObjTypePath, ObjectType>,
     data_store: &'s DataStore,
-) -> Objects<'s, i64> {
+) -> Objects<'s> {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let mut objects = Objects::default();
     let timeline_store = data_store.get(&time_source()).unwrap();

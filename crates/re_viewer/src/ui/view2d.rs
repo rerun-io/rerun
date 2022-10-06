@@ -29,12 +29,12 @@ impl Default for State2D {
     }
 }
 
-pub(crate) fn view_2d<Time>(
+pub(crate) fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State2D,
     space: Option<&ObjPath>,
-    objects: &re_data_store::Objects<'_, Time>, // Note: only the objects that belong to this space
+    objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -424,10 +424,10 @@ enum DefaultColor {
     Random,
 }
 
-fn paint_properties<Time>(
+fn paint_properties(
     ctx: &mut ViewerContext<'_>,
     hovered: &InstanceIdHash,
-    props: &re_data_store::InstanceProps<'_, Time>,
+    props: &re_data_store::InstanceProps<'_>,
     default_color: DefaultColor,
     stroke_width: &Option<f32>,
 ) -> ObjectPaintProperties {

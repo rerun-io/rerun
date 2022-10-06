@@ -7,8 +7,7 @@ use crate::{query::*, ObjStore, TimeLineStore, TimeQuery};
 
 /// Common properties of an object instance.
 #[derive(Copy, Clone, Debug)]
-pub struct InstanceProps<'s, Time> {
-    pub time: Time,
+pub struct InstanceProps<'s> {
     pub msg_id: &'s MsgId,
     pub space: Option<&'s ObjPath>,
     pub color: Option<[u8; 4]>,
@@ -22,21 +21,21 @@ pub struct InstanceProps<'s, Time> {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct Object<'s, Time, T> {
-    pub props: InstanceProps<'s, Time>,
+struct Object<'s, T: Copy + Clone + std::fmt::Debug> {
+    pub props: InstanceProps<'s>,
     pub data: T,
 }
 
 #[derive(Clone, Debug)]
-pub struct ObjectVec<'s, Time, T>(Vec<Object<'s, Time, T>>);
+pub struct ObjectVec<'s, T: Copy + Clone + std::fmt::Debug>(Vec<Object<'s, T>>);
 
-impl<'s, Time, T> Default for ObjectVec<'s, Time, T> {
+impl<'s, T: Clone + Copy + std::fmt::Debug> Default for ObjectVec<'s, T> {
     fn default() -> Self {
-        Self(Vec::new())
+        Self(Default::default())
     }
 }
 
-impl<'s, Time: Copy, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, Time, T> {
+impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -45,23 +44,23 @@ impl<'s, Time: Copy, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, Time, T> {
         self.0.is_empty()
     }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&InstanceProps<'s, Time>, &T)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&InstanceProps<'s>, &T)> {
         self.0.iter().map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn first(&self) -> Option<(&InstanceProps<'s, Time>, &T)> {
+    pub fn first(&self) -> Option<(&InstanceProps<'s>, &T)> {
         self.0.first().map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn last(&self) -> Option<(&InstanceProps<'s, Time>, &T)> {
+    pub fn last(&self) -> Option<(&InstanceProps<'s>, &T)> {
         self.0.last().map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn get(&self, idx: usize) -> Option<(&InstanceProps<'s, Time>, &T)> {
+    pub fn get(&self, idx: usize) -> Option<(&InstanceProps<'s>, &T)> {
         self.0.get(idx).map(|obj| (&obj.props, &obj.data))
     }
 
-    pub fn filter(&self, keep: &impl Fn(&InstanceProps<'_, Time>) -> bool) -> Self {
+    pub fn filter(&self, keep: &impl Fn(&InstanceProps<'_>) -> bool) -> Self {
         crate::profile_function!();
         Self(
             self.0
@@ -90,7 +89,7 @@ impl<'s> Image<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -100,7 +99,6 @@ impl<'s> Image<'s> {
             time_query,
             ("space", "color", "meter"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              tensor: &re_log_types::Tensor,
              space: Option<&ObjPath>,
@@ -108,7 +106,6 @@ impl<'s> Image<'s> {
              meter: Option<&f32>| {
                 out.image.0.push(Object {
                     props: InstanceProps {
-                        time,
                         msg_id,
                         space,
                         color: color.copied(),
@@ -136,7 +133,7 @@ impl<'s> Point2D<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -146,7 +143,6 @@ impl<'s> Point2D<'s> {
             time_query,
             ("space", "color", "radius"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              pos: &[f32; 2],
              space: Option<&ObjPath>,
@@ -154,7 +150,6 @@ impl<'s> Point2D<'s> {
              radius: Option<&f32>| {
                 out.point2d.0.push(Object {
                     props: InstanceProps {
-                        time,
                         msg_id,
                         space,
                         color: color.copied(),
@@ -182,7 +177,7 @@ impl<'s> Point3D<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -192,7 +187,6 @@ impl<'s> Point3D<'s> {
             time_query,
             ("space", "color", "radius"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              pos: &[f32; 3],
              space: Option<&ObjPath>,
@@ -200,7 +194,6 @@ impl<'s> Point3D<'s> {
              radius: Option<&f32>| {
                 out.point3d.0.push(Object {
                     props: InstanceProps {
-                        time,
                         msg_id,
                         space,
                         color: color.copied(),
@@ -229,7 +222,7 @@ impl<'s> BBox2D<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -239,7 +232,6 @@ impl<'s> BBox2D<'s> {
             time_query,
             ("space", "color", "stroke_width", "label"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              bbox: &re_log_types::BBox2D,
              space: Option<&ObjPath>,
@@ -248,7 +240,6 @@ impl<'s> BBox2D<'s> {
              label: Option<&String>| {
                 out.bbox2d.0.push(Object {
                     props: InstanceProps {
-                        time,
                         msg_id,
                         space,
                         color: color.copied(),
@@ -277,7 +268,7 @@ impl<'s> Box3D<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -287,7 +278,6 @@ impl<'s> Box3D<'s> {
             time_query,
             ("space", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              obb: &re_log_types::Box3,
              space: Option<&ObjPath>,
@@ -295,7 +285,6 @@ impl<'s> Box3D<'s> {
              stroke_width: Option<&f32>| {
                 out.box3d.0.push(Object {
                     props: InstanceProps {
-                        time,
                         msg_id,
                         space,
                         color: color.copied(),
@@ -323,7 +312,7 @@ impl<'s> Path3D<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -333,7 +322,6 @@ impl<'s> Path3D<'s> {
             time_query,
             ("space", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
@@ -342,7 +330,6 @@ impl<'s> Path3D<'s> {
                 if let Some(points) = as_vec_of_vec3("Path3D::points", points) {
                     out.path3d.0.push(Object {
                         props: InstanceProps {
-                            time,
                             msg_id,
                             space,
                             color: color.copied(),
@@ -372,7 +359,7 @@ impl<'s> LineSegments2D<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -382,7 +369,6 @@ impl<'s> LineSegments2D<'s> {
             time_query,
             ("space", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
@@ -391,7 +377,6 @@ impl<'s> LineSegments2D<'s> {
                 if let Some(points) = as_vec_of_vec2("LineSegments2D::points", points) {
                     out.line_segments2d.0.push(Object {
                         props: InstanceProps {
-                            time,
                             msg_id,
                             space,
                             color: color.copied(),
@@ -421,7 +406,7 @@ impl<'s> LineSegments3D<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -431,7 +416,6 @@ impl<'s> LineSegments3D<'s> {
             time_query,
             ("space", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
@@ -440,7 +424,6 @@ impl<'s> LineSegments3D<'s> {
                 if let Some(points) = as_vec_of_vec3("LineSegments3D::points", points) {
                     out.line_segments3d.0.push(Object {
                         props: InstanceProps {
-                            time,
                             msg_id,
                             space,
                             color: color.copied(),
@@ -468,7 +451,7 @@ impl<'s> Mesh3D<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -478,14 +461,12 @@ impl<'s> Mesh3D<'s> {
             time_query,
             ("space", "color"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              mesh: &re_log_types::Mesh3D,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.mesh3d.0.push(Object {
                     props: InstanceProps {
-                        time,
                         msg_id,
                         space,
                         color: color.copied(),
@@ -510,7 +491,7 @@ impl<'s> Camera<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -520,14 +501,12 @@ impl<'s> Camera<'s> {
             time_query,
             ("space", "color"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              camera: &re_log_types::Camera,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.camera.0.push(Object {
                     props: InstanceProps {
-                        time,
                         msg_id,
                         space,
                         color: color.copied(),
@@ -552,7 +531,7 @@ impl<'s> Space<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -578,7 +557,7 @@ impl<'s> TextEntry<'s> {
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
         time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s, Time>,
+        out: &mut Objects<'s>,
     ) {
         crate::profile_function!();
 
@@ -588,7 +567,6 @@ impl<'s> TextEntry<'s> {
             time_query,
             ("space", "level", "color"),
             |instance_index: Option<&IndexHash>,
-             time: Time,
              msg_id: &MsgId,
              body: &String,
              space: Option<&ObjPath>,
@@ -596,7 +574,6 @@ impl<'s> TextEntry<'s> {
              color: Option<&[u8; 4]>| {
                 out.text_entry.0.push(Object {
                     props: InstanceProps {
-                        time,
                         msg_id,
                         space,
                         color: color.copied(),
@@ -613,47 +590,28 @@ impl<'s> TextEntry<'s> {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Objects<'s, Time> {
+#[derive(Clone, Debug, Default)]
+pub struct Objects<'s> {
     pub space: BTreeMap<&'s ObjPath, Space<'s>>, // SPECIAL!
 
-    pub text_entry: ObjectVec<'s, Time, TextEntry<'s>>,
+    pub text_entry: ObjectVec<'s, TextEntry<'s>>,
 
-    pub image: ObjectVec<'s, Time, Image<'s>>,
-    pub point2d: ObjectVec<'s, Time, Point2D<'s>>,
-    pub bbox2d: ObjectVec<'s, Time, BBox2D<'s>>,
-    pub line_segments2d: ObjectVec<'s, Time, LineSegments2D<'s>>,
+    pub image: ObjectVec<'s, Image<'s>>,
+    pub point2d: ObjectVec<'s, Point2D<'s>>,
+    pub bbox2d: ObjectVec<'s, BBox2D<'s>>,
+    pub line_segments2d: ObjectVec<'s, LineSegments2D<'s>>,
 
-    pub point3d: ObjectVec<'s, Time, Point3D<'s>>,
-    pub box3d: ObjectVec<'s, Time, Box3D<'s>>,
-    pub path3d: ObjectVec<'s, Time, Path3D<'s>>,
-    pub line_segments3d: ObjectVec<'s, Time, LineSegments3D<'s>>,
-    pub mesh3d: ObjectVec<'s, Time, Mesh3D<'s>>,
-    pub camera: ObjectVec<'s, Time, Camera<'s>>,
+    pub point3d: ObjectVec<'s, Point3D<'s>>,
+    pub box3d: ObjectVec<'s, Box3D<'s>>,
+    pub path3d: ObjectVec<'s, Path3D<'s>>,
+    pub line_segments3d: ObjectVec<'s, LineSegments3D<'s>>,
+    pub mesh3d: ObjectVec<'s, Mesh3D<'s>>,
+    pub camera: ObjectVec<'s, Camera<'s>>,
     // be very careful when adding to this to update everything, including `viwer::misc::calc_bbox_3d`.
 }
 
-impl<'s, Time> Default for Objects<'s, Time> {
-    fn default() -> Self {
-        Self {
-            space: Default::default(),
-            text_entry: Default::default(),
-            image: Default::default(),
-            point2d: Default::default(),
-            bbox2d: Default::default(),
-            line_segments2d: Default::default(),
-            point3d: Default::default(),
-            box3d: Default::default(),
-            path3d: Default::default(),
-            line_segments3d: Default::default(),
-            mesh3d: Default::default(),
-            camera: Default::default(),
-        }
-    }
-}
-
-impl<'s, Time: 'static + Copy + Ord> Objects<'s, Time> {
-    pub fn query(
+impl<'s> Objects<'s> {
+    pub fn query<Time: 'static + Copy + Ord>(
         &mut self,
         store: &'s TimeLineStore<Time>,
         time_query: &'_ TimeQuery<Time>,
@@ -674,7 +632,7 @@ impl<'s, Time: 'static + Copy + Ord> Objects<'s, Time> {
         }
     }
 
-    pub fn query_object(
+    pub fn query_object<Time: 'static + Copy + Ord>(
         &mut self,
         obj_store: &'s ObjStore<Time>,
         time_query: &'_ TimeQuery<Time>,
@@ -699,7 +657,7 @@ impl<'s, Time: 'static + Copy + Ord> Objects<'s, Time> {
         query_fn(obj_path, obj_store, time_query, self);
     }
 
-    pub fn filter(&self, keep: impl Fn(&InstanceProps<'_, Time>) -> bool) -> Self {
+    pub fn filter(&self, keep: impl Fn(&InstanceProps<'_>) -> bool) -> Self {
         crate::profile_function!();
 
         Self {
@@ -770,7 +728,7 @@ impl<'s, Time: 'static + Copy + Ord> Objects<'s, Time> {
         !self.text_entry.is_empty()
     }
 
-    pub fn partition_on_space(self) -> ObjectsBySpace<'s, Time> {
+    pub fn partition_on_space(self) -> ObjectsBySpace<'s> {
         crate::profile_function!();
 
         let mut partitioner = SpacePartitioner::default();
@@ -845,26 +803,17 @@ impl<'s, Time: 'static + Copy + Ord> Objects<'s, Time> {
 }
 
 /// Partitioned on space.
-pub type ObjectsBySpace<'s, Time> = ahash::HashMap<Option<&'s ObjPath>, Objects<'s, Time>>; // TODO(emilk): nohash_hasher
+pub type ObjectsBySpace<'s> = ahash::HashMap<Option<&'s ObjPath>, Objects<'s>>; // TODO(emilk): nohash_hasher
 
-struct SpacePartitioner<'s, Time> {
+#[derive(Default)]
+struct SpacePartitioner<'s> {
     current_space: Option<&'s ObjPath>,
-    current_objects: Objects<'s, Time>,
-    partitioned: ObjectsBySpace<'s, Time>,
+    current_objects: Objects<'s>,
+    partitioned: ObjectsBySpace<'s>,
 }
 
-impl<'s, Time> Default for SpacePartitioner<'s, Time> {
-    fn default() -> Self {
-        Self {
-            current_space: None,
-            current_objects: Objects::default(),
-            partitioned: Default::default(),
-        }
-    }
-}
-
-impl<'s, Time: 'static + Copy + Ord> SpacePartitioner<'s, Time> {
-    fn slot(&mut self, new_space: Option<&'s ObjPath>) -> &mut Objects<'s, Time> {
+impl<'s> SpacePartitioner<'s> {
+    fn slot(&mut self, new_space: Option<&'s ObjPath>) -> &mut Objects<'s> {
         // we often have runs of the same space, so optimize of that:
         if new_space != self.current_space {
             let new_objects = self.partitioned.remove(&new_space).unwrap_or_default();
@@ -877,7 +826,7 @@ impl<'s, Time: 'static + Copy + Ord> SpacePartitioner<'s, Time> {
         &mut self.current_objects
     }
 
-    fn finish(self) -> ObjectsBySpace<'s, Time> {
+    fn finish(self) -> ObjectsBySpace<'s> {
         let Self {
             current_space,
             current_objects,
