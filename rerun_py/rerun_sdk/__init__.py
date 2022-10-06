@@ -2,11 +2,12 @@
 import atexit
 from enum import Enum
 import numpy as np
-from typing import Optional, Sequence, Union, Iterable
+import numpy.typing as npt
+from typing import Any, Optional, Sequence, Union, Iterable
 from pathlib import Path
 from dataclasses import dataclass
 
-from rerun_sdk import rerun_sdk as rerun_rs # type: ignore
+from rerun_sdk import rerun_sdk as rerun_rs # type: ignore[attr-defined]
 from rerun_sdk.color_conversion import linear_to_gamma_u8_pixel
 
 
@@ -18,7 +19,7 @@ atexit.register(rerun_shutdown)
 
 # -----------------------------------------------------------------------------
 
-ArrayLike = Union[np.ndarray, Sequence]
+ArrayLike = Union[np.ndarray[Any, Any], Sequence]
 
 
 class MeshFormat(Enum):
@@ -35,7 +36,7 @@ class MeshFormat(Enum):
 
 
 class CameraSpaceConvention(Enum):
-    """The convetion used for the camera space's (3D) coordinate system."""
+    """The convention used for the camera space's (3D) coordinate system."""
 
     # Right-handed system used by ARKit and PyTorch3D.
     # * +X = right
@@ -69,7 +70,7 @@ def get_recording_id() -> str:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    return rerun_rs.get_recording_id()
+    return rerun_rs.get_recording_id() # type: ignore[no-any-return]
 
 def set_recording_id(value: str):
     """
@@ -91,7 +92,7 @@ def connect(addr: Optional[str] = None):
     """
     Connect to a remote Rerun Viewer on the given ip:port.
     """
-    return rerun_rs.connect(addr)
+    rerun_rs.connect(addr)
 
 
 def serve():
@@ -100,12 +101,12 @@ def serve():
 
     WARNING: This is an experimental feature.
     """
-    return rerun_rs.serve()
+    rerun_rs.serve()
 
 
 def disconnect():
     """ Disconnect from the remote rerun server (if any). """
-    return rerun_rs.disconnect()
+    rerun_rs.disconnect()
 
 
 def show():
@@ -118,7 +119,7 @@ def show():
 
     NOTE: There is a bug which causes this function to only work once on some platforms.
     """
-    return rerun_rs.show()
+    rerun_rs.show()
 
 
 def save(path: str):
@@ -129,7 +130,7 @@ def save(path: str):
 
     This will clear the logged data after saving.
     """
-    return rerun_rs.save(path)
+    rerun_rs.save(path)
 
 
 def set_time_sequence(time_source: str, sequence: Optional[int]):
@@ -145,7 +146,7 @@ def set_time_sequence(time_source: str, sequence: Optional[int]):
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    return rerun_rs.set_time_sequence(time_source, sequence)
+    rerun_rs.set_time_sequence(time_source, sequence)
 
 
 def set_time_seconds(time_source: str, seconds: Optional[float]):
@@ -187,7 +188,7 @@ def set_time_nanos(time_source: str, nanos: Optional[int]):
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    return rerun_rs.set_time_nanos(time_source, nanos)
+    rerun_rs.set_time_nanos(time_source, nanos)
 
 
 def set_space_up(space: str, up: Sequence[float]):
@@ -196,7 +197,7 @@ def set_space_up(space: str, up: Sequence[float]):
     - space: The name of the space
     - up: The (x, y, z) values of the up-axis
     """
-    return rerun_rs.set_space_up(space, up)
+    rerun_rs.set_space_up(space, up)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
@@ -254,7 +255,7 @@ def log_rects(
     rects: ArrayLike,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    colors: Optional[np.ndarray] = None,
+    colors: Optional[np.ndarray[Any, Any]] = None,
     labels: Optional[Sequence[str]] = None,
     timeless: bool = False,
     space: Optional[str] = None,
@@ -293,7 +294,7 @@ def log_rects(
 
 def log_point(
         obj_path: str,
-        position: np.ndarray,
+        position: np.ndarray[Any, Any],
         color: Optional[Sequence[int]] = None,
         timeless: bool = False,
         space: Optional[str] = None):
@@ -320,9 +321,9 @@ def log_point(
 
 def log_points(
         obj_path: str,
-        positions: np.ndarray,
+        positions: np.ndarray[Any, Any],
         *,
-        colors: Optional[np.ndarray] = None,
+        colors: Optional[np.ndarray[Any, Any]] = None,
         timeless: bool = False,
         space: Optional[str] = None):
     """
@@ -348,7 +349,7 @@ def log_points(
     rerun_rs.log_points(obj_path, positions, colors, timeless, space)
 
 
-def _normalize_colors(colors: Optional[np.ndarray] = None):
+def _normalize_colors(colors: Optional[np.ndarray[Any, Any]] = None):
     if colors is None:
         # An empty array represents no colors.
         colors = np.array((), dtype=np.uint8)
@@ -395,7 +396,7 @@ def log_camera(obj_path: str,
 
 def log_path(
         obj_path: str,
-        positions: np.ndarray,
+        positions: np.ndarray[Any, Any],
         *,
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
@@ -425,7 +426,7 @@ def log_path(
 
 def log_line_segments(
         obj_path: str,
-        positions: np.ndarray,
+        positions: np.ndarray[Any, Any],
         *,
         stroke_width: Optional[float] = None,
         color: Optional[Sequence[int]] = None,
@@ -480,7 +481,7 @@ def log_obb(
                      space)
 
 
-def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space: Optional[str] = None):
+def log_image(obj_path: str, image: np.ndarray[Any, Any], *, timeless: bool = False, space: Optional[str] = None):
     """
     Log a gray or color image.
 
@@ -506,7 +507,7 @@ def log_image(obj_path: str, image: np.ndarray, *, timeless: bool = False, space
     log_tensor(obj_path, image, timeless=timeless, space=space)
 
 
-def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None):
+def log_depth_image(obj_path: str, image: np.ndarray[Any, Any], *, meter: Optional[float] = None, timeless: bool = False, space: Optional[str] = None):
     """
     Log a depth image.
 
@@ -527,8 +528,8 @@ def log_depth_image(obj_path: str, image: np.ndarray, *, meter: Optional[float] 
 
 
 def log_tensor(obj_path: str,
-               tensor: np.ndarray,
-               names: Optional[Iterable] = None,
+               tensor: np.ndarray[Any, Any],
+               names: Optional[Iterable[str]] = None,
                meter: Optional[float] = None,
                timeless: bool = False,
                space: Optional[str] = None):
@@ -552,7 +553,12 @@ def log_tensor(obj_path: str,
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
 
-def log_mesh_file(obj_path: str, mesh_format: MeshFormat, mesh_file: bytes, *, transform: np.ndarray = None, timeless: bool = False, space: Optional[str] = None):
+def log_mesh_file(obj_path: str,
+                  mesh_format: MeshFormat,
+                  mesh_file: bytes, *,
+                  transform: Optional[np.ndarray[Any, Any]] = None,
+                  timeless: bool = False,
+                  space: Optional[str] = None):
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
 
@@ -590,11 +596,12 @@ def log_image_file(obj_path: str,
     img_format = getattr(img_format, 'value', None)
     rerun_rs.log_image_file(obj_path, img_path, img_format, timeless, space)
 
-def _to_sequence(array: ArrayLike) -> Sequence:
+
+def _to_sequence(array: ArrayLike) -> Sequence[Any]:
     if hasattr(array, 'tolist'):
-        return array.tolist()  # type: ignore
-    return array  # type: ignore
+        return array.tolist() # type: ignore[no-any-return, union-attr]
+    return array # type: ignore[return-value]
 
 
-def _to_transposed_sequence(array: ArrayLike) -> Sequence:
-    return np.asarray(array).T.tolist()
+def _to_transposed_sequence(array: ArrayLike) -> Sequence[Any]:
+    return np.asarray(array).T.tolist() # type: ignore[no-any-return]
