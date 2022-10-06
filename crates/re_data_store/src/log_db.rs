@@ -43,9 +43,9 @@ impl ObjDb {
                 let valid_members = obj_type.members();
                 if !valid_members.contains(&field_name.as_str()) {
                     re_log::warn_once!(
-                    "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
-                    valid_members.iter().format(", ")
-                );
+                        "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
+                        valid_members.iter().format(", ")
+                    );
                 }
             } else {
                 re_log::warn_once!(
