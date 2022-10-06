@@ -104,6 +104,9 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_camera, m)?)?;
+    m.add_function(wrap_pyfunction!(log_extrinsics, m)?)?;
+    m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
+
     m.add_function(wrap_pyfunction!(log_point, m)?)?;
     m.add_function(wrap_pyfunction!(log_points, m)?)?;
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
@@ -403,6 +406,17 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
     }
 }
 
+fn parse_camera_space_convention(s: &str) -> PyResult<CameraSpaceConvention> {
+    match s {
+        "XRightYUpZBack" => Ok(re_log_types::CameraSpaceConvention::XRightYUpZBack),
+        "XRightYDownZFwd" => Ok(re_log_types::CameraSpaceConvention::XRightYDownZFwd),
+        _ => Err(PyTypeError::new_err(format!(
+            "Unknown camera space convetions format {s:?}.
+                Expected one of: XRightYUpZBack, XRightYDownZFwd"
+        ))),
+    }
+}
+
 /// Log a 3D camera
 #[allow(clippy::too_many_arguments)]
 #[pyfunction]
@@ -418,17 +432,7 @@ fn log_camera(
     target_space: Option<String>,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
-
-    let convention = match camera_space_convention {
-        "XRightYUpZBack" => re_log_types::CameraSpaceConvention::XRightYUpZBack,
-        "XRightYDownZFwd" => re_log_types::CameraSpaceConvention::XRightYDownZFwd,
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Unknown camera space convetions format {camera_space_convention:?}.
-                Expected one of: XRightYUpZBack, XRightYDownZFwd"
-            )));
-        }
-    };
+    let convention = parse_camera_space_convention(camera_space_convention)?;
 
     let target_space = if let Some(target_space) = target_space {
         Some(parse_obj_path(&target_space)?)
@@ -470,6 +474,69 @@ fn log_camera(
         &time_point,
         (&obj_path, "space"),
         LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
+/// NOTE(emilk): EXPERIMENTAL!
+#[pyfunction]
+fn log_extrinsics(
+    obj_path: &str,
+    rotation_q: re_log_types::Quaternion,
+    position: [f32; 3],
+    camera_space_convention: &str,
+    timeless: bool,
+) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+    let convention = parse_camera_space_convention(camera_space_convention)?;
+
+    let transform = re_log_types::Transform::Extrinsics(re_log_types::Extrinsics {
+        rotation: rotation_q,
+        position,
+        camera_space_convention: convention,
+    });
+
+    let mut sdk = Sdk::global();
+
+    // sdk.register_type(obj_path.obj_type_path(), ???); // TODO
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "_transform"),
+        LoggedData::Single(Data::Transform(transform)),
+    );
+
+    Ok(())
+}
+
+/// NOTE(emilk): EXPERIMENTAL!
+#[pyfunction]
+fn log_intrinsics(
+    obj_path: &str,
+    resolution: [f32; 2],
+    intrinsics_matrix: [[f32; 3]; 3],
+    timeless: bool,
+) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let transform = re_log_types::Transform::Intrinsics(re_log_types::Intrinsics {
+        intrinsics_matrix,
+        resolution,
+    });
+
+    let mut sdk = Sdk::global();
+
+    // sdk.register_type(obj_path.obj_type_path(), ???); // TODO
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "_transform"),
+        LoggedData::Single(Data::Transform(transform)),
     );
 
     Ok(())

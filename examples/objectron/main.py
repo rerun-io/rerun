@@ -136,6 +136,16 @@ def log_camera(cam: ARCamera):
                      space="3d",
                      target_space="image")
 
+    # Experimental new API:
+    rerun._log_extrinsics("world/camera",
+                          rotation_q=rot.as_quat(),
+                          position=translation,
+                          camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK)
+
+    rerun._log_intrinsics("world/camera/video",
+                          resolution=[w, h],
+                          intrinsics=intrinsics)
+
 
 def log_point_cloud(point_cloud: ARPointCloud):
     """Logs a point cloud from an `ARFrame` using the Rerun SDK."""

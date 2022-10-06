@@ -320,6 +320,10 @@ pub(crate) fn ui_data(
             Preview::Small | Preview::Specific(_) => ui.label("Camera"),
             Preview::Medium => ui_camera(ui, cam),
         },
+        Data::Transform(transform) => match preview {
+            Preview::Small | Preview::Specific(_) => ui.label("Transform"),
+            Preview::Medium => ui_transform(ui, transform),
+        },
 
         Data::Tensor(tensor) => {
             let egui_image = ctx.cache.image.get(msg_id, tensor);
@@ -375,6 +379,13 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
         intrinsics,
         target_space,
     } = cam;
+
+    let Extrinsics {
+        rotation,
+        position,
+        camera_space_convention,
+    } = extrinsics;
+
     ui.vertical(|ui| {
         ui.label("Camera");
         ui.indent("camera", |ui| {
@@ -382,12 +393,6 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
-                    let Extrinsics {
-                        rotation,
-                        position,
-                        camera_space_convention,
-                    } = extrinsics;
-
                     ui.label("rotation");
                     ui.monospace(format!("{rotation:?}"));
                     ui.end_row();
@@ -405,7 +410,7 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
                         resolution,
                     }) = intrinsics
                     {
-                        ui.label("intrinsics");
+                        ui.label("intrinsics matrix");
                         ui_intrinsics_matrix(ui, intrinsics_matrix);
                         ui.end_row();
 
@@ -418,6 +423,70 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
                     if let Some(target_space) = target_space {
                         ui.monospace(target_space.to_string());
                     }
+                    ui.end_row();
+                });
+        });
+    })
+    .response
+}
+
+fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
+    match transform {
+        Transform::Extrinsics(extrinsics) => ui_extrinsics(ui, extrinsics),
+        Transform::Intrinsics(intrinsics) => ui_intrinsics(ui, intrinsics),
+    }
+}
+
+fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
+    let Extrinsics {
+        rotation,
+        position,
+        camera_space_convention,
+    } = extrinsics;
+
+    ui.vertical(|ui| {
+        ui.label("Camera");
+        ui.indent("camera", |ui| {
+            egui::Grid::new("camera")
+                .striped(true)
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("rotation");
+                    ui.monospace(format!("{rotation:?}"));
+                    ui.end_row();
+
+                    ui.label("position");
+                    ui.monospace(format!("{position:?}"));
+                    ui.end_row();
+
+                    ui.label("camera_space_convention");
+                    ui.monospace(format!("{camera_space_convention:?}"));
+                    ui.end_row();
+                });
+        });
+    })
+    .response
+}
+
+fn ui_intrinsics(ui: &mut egui::Ui, intrinsics: &Intrinsics) -> egui::Response {
+    let Intrinsics {
+        intrinsics_matrix,
+        resolution,
+    } = intrinsics;
+
+    ui.vertical(|ui| {
+        ui.label("Camera");
+        ui.indent("camera", |ui| {
+            egui::Grid::new("camera")
+                .striped(true)
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("intrinsics matrix");
+                    ui_intrinsics_matrix(ui, intrinsics_matrix);
+                    ui.end_row();
+
+                    ui.label("resolution");
+                    ui.monospace(format!("{resolution:?}"));
                     ui.end_row();
                 });
         });

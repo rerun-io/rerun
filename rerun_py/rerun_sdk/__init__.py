@@ -37,7 +37,7 @@ class MeshFormat(Enum):
 
 
 class CameraSpaceConvention(Enum):
-    """The convetion used for the camera space's (3D) coordinate system."""
+    """The convention used for the camera space's (3D) coordinate system."""
 
     # Right-handed system used by ARKit and PyTorch3D.
     # * +X = right
@@ -428,8 +428,44 @@ def log_camera(obj_path: str,
         _to_sequence(rotation_q),
         _to_sequence(position),
         camera_space_convention.value,
-        timeless, space,
+        timeless,
+        space,
         target_space)
+
+
+def _log_extrinsics(obj_path: str,
+                    rotation_q: ArrayLike,
+                    position: ArrayLike,
+                    camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+                    timeless: bool = False,):
+    """EXPERIMENTAL: Log camera extrinsics
+
+    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
+    `position`: Array with [x, y, z] position of the camera in world space.
+    `camera_space_convention`: The convention used for the orientation of the camera's 3D coordinate system.
+    """
+    rerun_rs.log_extrinsics(
+        obj_path,
+        _to_sequence(rotation_q),
+        _to_sequence(position),
+        camera_space_convention.value,
+        timeless)
+
+
+def _log_intrinsics(obj_path: str,
+                    intrinsics: ArrayLike,
+                    resolution: ArrayLike,
+                    timeless: bool = False):
+    """EXPERIMENTAL: Log a perspective camera model.
+
+    `intrinsics`: Row-major intrinsics matrix for projecting from camera space to image space
+    `resolution`: Array with [width, height] image resolution in pixels.
+    """
+    rerun_rs.log_intrinsics(
+        obj_path,
+        _to_sequence(resolution),
+        _to_transposed_sequence(intrinsics),
+        timeless)
 
 
 def log_path(
