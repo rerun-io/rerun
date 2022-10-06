@@ -447,10 +447,10 @@ impl SpaceStates {
                 .visible
         });
 
-        let num_cats = objects.has_any_2d() as u32
+        let num_categories = objects.has_any_2d() as u32
             + objects.has_any_3d() as u32
             + objects.has_any_text_entries() as u32;
-        if num_cats > 1 {
+        if num_categories > 1 {
             re_log::warn_once!(
                 "Space {:?} contains multiple categories of objects \
                     (e.g. both 2D and 3D, both 2D and text entries, etc...)",
