@@ -212,7 +212,7 @@ fn main(argv: Vec<String>) -> PyResult<()> {
 fn get_recording_id() -> PyResult<String> {
     Sdk::global()
         .recording_id()
-        .ok_or(PyTypeError::new_err("module has not been initialized"))
+        .ok_or_else(|| PyTypeError::new_err("module has not been initialized"))
         .map(|recording_id| recording_id.to_string())
 }
 
