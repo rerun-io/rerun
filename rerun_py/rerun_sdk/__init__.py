@@ -1,10 +1,12 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
+
 import atexit
-from enum import Enum
 import numpy as np
-from typing import Optional, Sequence, Union, Iterable
-from pathlib import Path
+
 from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Optional, Sequence, Union, Iterable, Final
 
 from rerun_sdk import rerun_sdk as rerun_rs # type: ignore
 from rerun_sdk.color_conversion import linear_to_gamma_u8_pixel
@@ -199,29 +201,37 @@ def set_space_up(space: str, up: Sequence[float]):
     return rerun_rs.set_space_up(space, up)
 
 
-class LogLevel(Enum):
+@dataclass
+class LogLevel:
+    """
+    Represents the standard log levels.
+
+    This is a collection of constants rather than an enum because we do support
+    arbitrary strings as level (e.g. for user-defined levels).
+    """
+
     # """ Designates very serious errors. """
-    ERROR = "ERROR"
+    ERROR: Final = "ERROR"
     # """ Designates hazardous situations. """
-    WARN = "WARN"
+    WARN: Final = "WARN"
     # """ Designates useful information. """
-    INFO = "INFO"
+    INFO: Final = "INFO"
     # """ Designates lower priority information. """
-    DEBUG = "DEBUG"
+    DEBUG: Final = "DEBUG"
     # """ Designates very low priority, often extremely verbose, information. """
-    TRACE = "TRACE"
+    TRACE: Final = "TRACE"
 
 
 def log_text_entry(obj_path: str,
                    text: str,
-                   level: Optional[LogLevel] = None,
+                   level: Optional[str] = LogLevel.INFO,
                    color: Optional[Sequence[int]] = None,
                    timeless: bool = False,
                    space: Optional[str] = None):
     """
     Log a text entry, with optional level.
 
-    * If no `level` is given, it will default to `info`.
+    * If no `level` is given, it will default to `LogLevel.INFO`.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     * If no `space` is given, the space name "logs" will be used.
     """

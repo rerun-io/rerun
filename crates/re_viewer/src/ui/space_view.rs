@@ -56,7 +56,7 @@ struct Tab {
 struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
     objects: ObjectsBySpace<'b>,
-    perma_objects: ObjectsBySpace<'b>,
+    sticky_objects: ObjectsBySpace<'b>,
     space_states: &'a mut SpaceStates,
     hovered_space: Option<ObjPath>,
     maximized: &'a mut Option<Tab>,
@@ -74,9 +74,9 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             let mut hovered =
                 self.space_states
                     .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
-            hovered |= self.space_states.show_permanent_space(
+            hovered |= self.space_states.show_sticky_space(
                 self.ctx,
-                &self.perma_objects,
+                &self.sticky_objects,
                 tab.space.as_ref(),
                 ui,
             );
@@ -154,7 +154,7 @@ impl View {
         ctx: &'a mut ViewerContext<'b>,
         ui: &mut egui::Ui,
         objects: ObjectsBySpace<'b>,
-        perma_objects: ObjectsBySpace<'b>,
+        sticky_objects: ObjectsBySpace<'b>,
     ) {
         let num_tabs = num_tabs(&self.tree);
 
@@ -171,7 +171,7 @@ impl View {
             self.space_states
                 .show_space(ctx, &objects, tab.space.as_ref(), ui);
             self.space_states
-                .show_permanent_space(ctx, &perma_objects, tab.space.as_ref(), ui);
+                .show_sticky_space(ctx, &sticky_objects, tab.space.as_ref(), ui);
         } else if let Some(tab) = self.maximized.clone() {
             ui.horizontal(|ui| {
                 if ui
@@ -191,12 +191,12 @@ impl View {
             self.space_states
                 .show_space(ctx, &objects, tab.space.as_ref(), ui);
             self.space_states
-                .show_permanent_space(ctx, &perma_objects, tab.space.as_ref(), ui);
+                .show_sticky_space(ctx, &sticky_objects, tab.space.as_ref(), ui);
         } else {
             let mut tab_viewer = TabViewer {
                 ctx,
                 objects,
-                perma_objects,
+                sticky_objects,
                 space_states: &mut self.space_states,
                 hovered_space: None,
                 maximized: &mut self.maximized,
@@ -268,13 +268,20 @@ impl SpacesPanel {
             return;
         }
 
+        // All of the objects present in our datastores that match the
+        // current timeline selection.
         let objects = ctx
             .rec_cfg
             .time_ctrl
             .selected_objects(ctx.log_db)
             .partition_on_space();
 
-        let perma_objects = ctx
+        // All of the objects present in our datastores that match the
+        // given list of `ObjectType`s, ignoring the current timeline selection.
+        //
+        // Unless the user actively hides them, they will always stick around,
+        // hence their name.
+        let sticky_objects = ctx
             .rec_cfg
             .time_ctrl
             .all_objects(ctx.log_db, [ObjectType::TextEntry].into_iter())
@@ -305,7 +312,7 @@ impl SpacesPanel {
             }
         }
 
-        self.view.ui(ctx, ui, objects, perma_objects);
+        self.view.ui(ctx, ui, objects, sticky_objects);
     }
 }
 
@@ -421,20 +428,24 @@ impl SpaceStates {
         hovered
     }
 
+    /// Shows a sticky space, i.e. a space that always shows its entire dataset,
+    /// irrelevant of time, as opposed to only what's currently selected in
+    /// the time panel.
+    ///
     /// Returns `true` if hovered.
-    fn show_permanent_space(
+    #[allow(clippy::unused_self)] // we do not keep any state... yet.
+    fn show_sticky_space(
         &self,
         ctx: &mut ViewerContext<'_>,
-        perma_objects: &ObjectsBySpace<'_>,
+        sticky_objects: &ObjectsBySpace<'_>,
         space: Option<&ObjPath>,
         ui: &mut egui::Ui,
     ) -> bool {
         crate::profile_function!(space_name(space));
 
-        _ = self; // we do not keep any state... yet.
         let mut hovered = false;
 
-        let objects = if let Some(objects) = perma_objects.get(&space) {
+        let objects = if let Some(objects) = sticky_objects.get(&space) {
             objects
         } else {
             return hovered;

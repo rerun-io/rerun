@@ -469,47 +469,8 @@ fn log_camera(
 
 // ----------------------------------------------------------------------------
 
-// TODO(cmc): For now we've decided to strongly type this at the SDK layer.
-// The support does have support for arbitrary named levels though, which might
-// be valuable to expose to end users at some point?
-#[allow(non_camel_case_types, clippy::upper_case_acronyms)] // we follow Python style
-enum LogLevel {
-    ERROR,
-    WARN,
-    INFO,
-    DEBUG,
-    TRACE,
-}
-
-impl LogLevel {
-    fn parse(lvl: &str) -> PyResult<LogLevel> {
-        match lvl {
-            "ERROR" => Ok(Self::ERROR),
-            "WARN" => Ok(Self::WARN),
-            "INFO" => Ok(Self::INFO),
-            "DEBUG" => Ok(Self::DEBUG),
-            "TRACE" => Ok(Self::TRACE),
-            _ => Err(PyTypeError::new_err(format!(
-                "Unknown LogLevel: {lvl:?}. \
-                Expected one of: ERROR WARN INFO DEBUG TRACE"
-            ))),
-        }
-    }
-
-    fn as_str(&self) -> &str {
-        match self {
-            LogLevel::ERROR => "ERROR",
-            LogLevel::WARN => "WARN",
-            LogLevel::INFO => "INFO",
-            LogLevel::DEBUG => "DEBUG",
-            LogLevel::TRACE => "TRACE",
-        }
-    }
-}
-
 /// Log a text entry.
 ///
-/// If no `level` is given, it will default to `info`.
 /// If no `space` is given, the space name "logs" will be used.
 #[pyfunction]
 fn log_text_entry(
@@ -533,12 +494,13 @@ fn log_text_entry(
         LoggedData::Single(Data::String(text.to_owned())),
     );
 
-    let level: LogLevel = LogLevel::parse(level.unwrap_or("INFO"))?;
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "level"),
-        LoggedData::Single(Data::String(level.as_str().to_owned())),
-    );
+    if let Some(lvl) = level {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "level"),
+            LoggedData::Single(Data::String(lvl.to_owned())),
+        );
+    }
 
     if let Some(color) = color {
         let color = convert_color(color)?;

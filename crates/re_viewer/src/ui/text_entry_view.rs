@@ -161,8 +161,8 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
 
 fn level_to_color(ui: &egui::Ui, lvl: &str) -> Color32 {
     match lvl {
-        "ERROR" => Color32::RED,
-        "WARN" => Color32::YELLOW,
+        "ERROR" => ui.visuals().error_fg_color,
+        "WARN" => ui.visuals().warn_fg_color,
         "INFO" => Color32::LIGHT_GREEN,
         "DEBUG" => Color32::LIGHT_BLUE,
         "TRACE" => Color32::LIGHT_GRAY,
