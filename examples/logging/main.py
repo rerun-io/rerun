@@ -55,9 +55,6 @@ def log_stuff():
         other_logger.debug("look ma, got my very own window!")
 
 
-    pass
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK")
