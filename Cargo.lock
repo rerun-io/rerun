@@ -978,8 +978,8 @@ dependencies = [
 
 [[package]]
 name = "egui_dock"
-version = "0.2.0"
-source = "git+https://github.com/rerun-io/egui_dock?rev=096be40cc9fc7471eea48df9104fe62acfc96d2b#096be40cc9fc7471eea48df9104fe62acfc96d2b"
+version = "0.2.1"
+source = "git+https://github.com/rerun-io/egui_dock?branch=hotfix/styleable_scroll_areas#7429992a8b031853bad1729b69813a40ed8d1656"
 dependencies = [
  "egui",
  "serde",
