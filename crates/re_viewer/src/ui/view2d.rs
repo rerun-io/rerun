@@ -44,8 +44,9 @@ impl Default for State2D {
 }
 
 impl State2D {
-    /// Determine the optimal sub-region and size based on the zoom_info and available size
-    /// This will generally be used to construct the painter and subsequent transforms
+    /// Determine the optimal sub-region and size based on the `ZoomState` and
+    /// available size This will generally be used to construct the painter and
+    /// subsequent transforms
     fn desired_size_and_offset(&self, available_size: Vec2) -> (Vec2, Vec2) {
         if let Some(zoom) = self.zoom {
             let desired_size = self.scene_bbox_accum.size() * zoom.scale;
@@ -76,7 +77,7 @@ impl State2D {
     }
 
     /// Update our zoom state based on response
-    /// If nothing else happens this will reset accept_scroll to true when appropriate
+    /// If nothing else happens this will reset `accepting_scroll` to true when appropriate
     fn update(
         &mut self,
         response: &egui::Response,
@@ -123,7 +124,7 @@ impl State2D {
                         let zoom_loc = ui_to_space.transform_pos(hover_pos);
 
                         // Pixels under the cursor will shift based on distance from center
-                        let dist_from_center = (zoom_loc - zoom.center);
+                        let dist_from_center = zoom_loc - zoom.center;
                         let shift_in_ui =
                             dist_from_center * new_scale - dist_from_center * zoom.scale;
                         let shift_in_space = shift_in_ui / new_scale;
@@ -154,7 +155,7 @@ impl State2D {
         }
     }
 
-    /// Take the offset from the ScrollArea and apply it back to center so that other
+    /// Take the offset from the `ScrollArea` and apply it back to center so that other
     /// scroll interfaces work as expected.
     fn capture_scroll(&mut self, offset: Vec2, available_size: Vec2) {
         if let Some(ZoomState {
@@ -193,7 +194,7 @@ pub(crate) fn view_2d(
     let mut scroll_area = ScrollArea::both();
 
     // Bound the offset based on sizes
-    // TODO: can we derive this from the ScrollArea shape?
+    // TODO(jleibs): can we derive this from the ScrollArea shape?
     let offset = offset.at_most(desired_size - available_size);
     let offset = offset.at_least(Vec2::ZERO);
 
