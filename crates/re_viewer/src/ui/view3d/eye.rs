@@ -17,14 +17,14 @@ pub struct Eye {
 
 impl Eye {
     pub fn from_camera(cam: &re_log_types::Camera) -> Eye {
-        let fov_y = if let (Some(intrinsis), Some([_w, h])) = (cam.intrinsics, cam.resolution) {
-            2.0 * (0.5 * h / intrinsis[1][1]).atan()
+        let fov_y = if let Some(intrinsis) = cam.intrinsics {
+            intrinsis.fov_y()
         } else {
             DEFAULT_FOV_Y
         };
 
         Self {
-            world_from_view: crate::misc::cam::world_from_view(cam),
+            world_from_view: crate::misc::cam::world_from_view(&cam.extrinsics),
             fov_y,
         }
     }

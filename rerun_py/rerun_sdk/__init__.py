@@ -5,7 +5,7 @@ import ntpath
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterable, Optional, Sequence, TypeVar, Union
+from typing import Any, Final, Iterable, Optional, Sequence, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -204,6 +204,45 @@ def set_space_up(space: str, up: Sequence[float]) -> None:
     - up: The (x, y, z) values of the up-axis
     """
     rerun_rs.set_space_up(space, up)
+
+
+@dataclass
+class LogLevel:
+    """
+    Represents the standard log levels.
+
+    This is a collection of constants rather than an enum because we do support
+    arbitrary strings as level (e.g. for user-defined levels).
+    """
+
+    # """ Designates very serious errors. """
+    ERROR: Final = "ERROR"
+    # """ Designates hazardous situations. """
+    WARN: Final = "WARN"
+    # """ Designates useful information. """
+    INFO: Final = "INFO"
+    # """ Designates lower priority information. """
+    DEBUG: Final = "DEBUG"
+    # """ Designates very low priority, often extremely verbose, information. """
+    TRACE: Final = "TRACE"
+
+
+def log_text_entry(
+    obj_path: str,
+    text: str,
+    level: Optional[str] = LogLevel.INFO,
+    color: Optional[Sequence[int]] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
+    """
+    Log a text entry, with optional level.
+
+    * If no `level` is given, it will default to `LogLevel.INFO`.
+    * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    * If no `space` is given, the space name "logs" will be used.
+    """
+    rerun_rs.log_text_entry(obj_path, text, level, color, timeless, space)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
