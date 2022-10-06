@@ -1,6 +1,7 @@
 # The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk
 
 import atexit
+import logging
 import numpy as np
 
 from dataclasses import dataclass
@@ -222,6 +223,53 @@ class LogLevel:
     DEBUG: Final = "DEBUG"
     # """ Designates very low priority, often extremely verbose, information. """
     TRACE: Final = "TRACE"
+
+
+class RerunHandler(logging.Handler):
+    """
+    This class provides a logging handler that forwards all events to the Rerun SDK.
+
+    Because Rerun's data model doesn't match 1-to-1 with the different concepts of
+    python's logging ecosystem, we need a way to map the latter to the former:
+
+    * Object path: the name of the logger responsible for the creation of the LogRecord
+                   is used as the final object path.
+
+    * Level: the log level is mapped as-is.
+
+    * Body: the body of the text entry corresponds to the formatted output of
+            the LogRecord using the standard formatter of the logging package,
+            unless it has been overridden by the user.
+
+    * Space: the notion of a Rerun space has no equivalence on the python side, and
+             is manually specified during the creation of the handler.
+             This feature allows you to maintain multiple distinct logging streams.
+
+    Read more about logging handlers at https://docs.python.org/3/howto/logging.html#handlers.
+    """
+
+    LVL2NAME: Final = {
+        logging.CRITICAL: LogLevel.CRITICAL,
+        logging.ERROR: LogLevel.ERROR,
+        logging.WARNING: LogLevel.WARN,
+        logging.INFO: LogLevel.INFO,
+        logging.DEBUG: LogLevel.DEBUG,
+    }
+
+    def __init__(self, space: Optional[str] = None):
+        logging.Handler.__init__(self)
+        self.space = space
+
+
+    def emit(self, record):
+        """
+        Emits a record to the Rerun SDK.
+        """
+        objpath = record.name.replace('.', '/')
+        level = self.LVL2NAME.get(record.levelno)
+        if level is None: # user-defined level
+            level = record.levelname
+        log_text_entry(objpath, record.getMessage(), level=level, space=self.space)
 
 
 def log_text_entry(obj_path: str,
