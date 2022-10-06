@@ -431,6 +431,7 @@ impl SpaceStates {
     ) -> bool {
         crate::profile_function!(space_name(space));
 
+        _ = self; // we do not keep any state... yet.
         let mut hovered = false;
 
         let objects = if let Some(objects) = perma_objects.get(&space) {
