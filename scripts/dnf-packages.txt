@@ -1,0 +1,8 @@
+ clang
+ clang-devel
+ clang-tools-extra
+ libxcb-devel
+ libxkbcommon-devel
+ openssl-devel
+ pkg-config
+ speech-dispatcher-devel

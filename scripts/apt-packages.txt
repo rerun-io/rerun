@@ -1,0 +1,9 @@
+# eframe reqs
+libgtk-3-dev
+libspeechd-dev
+libssl-dev
+libxcb-render0-dev
+libxcb-shape0-dev
+libxcb-xfixes0-dev
+libxkbcommon-dev
+patchelf
