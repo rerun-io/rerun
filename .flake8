@@ -17,3 +17,6 @@ extend-exclude =
     # Automatically generated test artifacts
     venv/,
     target/,
+
+    # Disabled for now TODO(john)
+    examples/,
