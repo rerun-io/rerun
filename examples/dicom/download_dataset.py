@@ -2,12 +2,11 @@
 
 import io
 import os
+import zipfile
 from pathlib import Path
 from typing import Final
-import zipfile
 
 import requests
-
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 

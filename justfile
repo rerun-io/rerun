@@ -22,16 +22,17 @@ py-build:
 
 # Run autoformatting
 py-format:
-    isort .
-    black .
+    black --config rerun_py/pyproject.toml .
     blackdoc .
+    isort .
     pyupgrade --py37-plus `find rerun_sdk/ tests/ -name "*.py" -type f`
     cargo fmt --all
 
 # Run linting
 py-lint:
-    #!/usr/bin/env bash
-    cd rerun_py
+    black --check --config rerun_py/pyproject.toml .
+    blackdoc --check .
+    isort --check .
     mypy
     flake8
 
