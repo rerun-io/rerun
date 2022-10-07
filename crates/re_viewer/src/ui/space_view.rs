@@ -323,10 +323,7 @@ impl SpacesPanel {
 pub(crate) struct SpaceStates {
     // per space
     state_2d: ahash::HashMap<Option<ObjPath>, crate::view2d::State2D>,
-
-    #[cfg(feature = "glow")]
     state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
-
     state_tensor: ahash::HashMap<Option<ObjPath>, crate::view_tensor::TensorViewState>,
 }
 
@@ -404,21 +401,11 @@ impl SpaceStates {
         }
 
         if objects.has_any_3d() {
-            #[cfg(feature = "glow")]
             ui.vertical(|ui| {
                 let state_3d = self.state_3d.entry(space.cloned()).or_default();
                 let response = crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
                 hovered |= response.hovered();
             });
-
-            #[cfg(not(feature = "glow"))]
-            ui.label(
-                egui::RichText::new(
-                    "3D view not available (Rerun was compiled without the 'glow' feature)",
-                )
-                .size(24.0)
-                .color(ui.visuals().warn_fg_color),
-            );
         }
 
         if !hovered && ctx.rec_cfg.hovered_space.space() == space {

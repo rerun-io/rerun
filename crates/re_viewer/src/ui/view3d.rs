@@ -419,6 +419,21 @@ pub(crate) fn view_3d(
     let dark_mode = ui.visuals().dark_mode;
     let show_axes = state.show_axes;
 
+    #[cfg(feature = "wgpu")]
+    let callback = egui::PaintCallback {
+        rect,
+        callback: std::sync::Arc::new(
+            egui_wgpu::CallbackFn::new()
+                .prepare(move |device, queue, paint_callback_resources| {
+                    // todo
+                })
+                .paint(move |_info, render_pass, paint_callback_resources| {
+                    // todo
+                }),
+        ),
+    };
+
+    #[cfg(feature = "glow")]
     let callback = egui::PaintCallback {
         rect,
         callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
@@ -429,6 +444,7 @@ pub(crate) fn view_3d(
             });
         })),
     };
+
     ui.painter().add(callback);
 
     response

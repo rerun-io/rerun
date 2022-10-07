@@ -7,9 +7,10 @@ use itertools::Itertools as _;
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{Box3, Mesh3D};
 
-use crate::{
-    math::line_segment_distance_sq_to_point_2d, misc::mesh_loader::CpuMesh, misc::ViewerContext,
-};
+use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
+
+#[cfg(feature = "glow")]
+use crate::misc::mesh_loader::CpuMesh;
 
 use super::eye::Eye;
 
@@ -37,6 +38,7 @@ pub struct MeshSource {
     pub instance_id: InstanceIdHash,
     pub mesh_id: u64,
     pub world_from_mesh: glam::Affine3A,
+    #[cfg(feature = "glow")]
     pub cpu_mesh: Arc<CpuMesh>,
 }
 
@@ -219,6 +221,7 @@ impl Scene {
             }
         }
 
+        #[cfg(feature = "glow")]
         {
             crate::profile_scope!("mesh3d");
             for (props, obj) in objects.mesh3d.iter() {
@@ -257,26 +260,29 @@ impl Scene {
                 let scale = scale_based_on_scene_size.min(scale_based_on_distance);
                 let scale = boost_size_on_hover(props, scale);
 
-                if ctx.options.show_camera_mesh_in_3d {
-                    // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
-                    // The lens is at the origin.
+                #[cfg(feature = "glow")]
+                {
+                    if ctx.options.show_camera_mesh_in_3d {
+                        // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
+                        // The lens is at the origin.
 
-                    let scale = Vec3::splat(scale);
+                        let scale = Vec3::splat(scale);
 
-                    let mesh_id = hash("camera_mesh");
-                    let world_from_mesh = world_from_view * glam::Affine3A::from_scale(scale);
+                        let mesh_id = hash("camera_mesh");
+                        let world_from_mesh = world_from_view * glam::Affine3A::from_scale(scale);
 
-                    if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
-                        mesh_id,
-                        "camera_mesh",
-                        &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
-                    ) {
-                        scene.meshes.push(MeshSource {
-                            instance_id,
+                        if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
                             mesh_id,
-                            world_from_mesh,
-                            cpu_mesh,
-                        });
+                            "camera_mesh",
+                            &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                        ) {
+                            scene.meshes.push(MeshSource {
+                                instance_id,
+                                mesh_id,
+                                world_from_mesh,
+                                cpu_mesh,
+                            });
+                        }
                     }
                 }
 
@@ -508,6 +514,7 @@ impl Scene {
             }
         }
 
+        #[cfg(feature = "glow")]
         {
             crate::profile_scope!("meshes");
             for mesh in meshes {
