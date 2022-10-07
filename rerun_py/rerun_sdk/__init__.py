@@ -225,7 +225,7 @@ class LogLevel:
     TRACE: Final = "TRACE"
 
 
-class RerunHandler(logging.Handler):
+class LoggingHandler(logging.Handler):
     """
     This class provides a logging handler that forwards all events to the Rerun SDK.
 
