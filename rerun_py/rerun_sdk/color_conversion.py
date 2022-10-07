@@ -1,11 +1,14 @@
 """Color conversion utilities."""
-from typing import Any, Union
+from typing import Union
 
 import numpy as np
+import numpy.typing as npt
 
 
-def linear_to_gamma_u8_value(linear: np.ndarray) -> np.ndarray:
-    """Transform color values from linear [0, 1] to gamma encoded [0, 255].
+def linear_to_gamma_u8_value(linear: npt.NDArray[Union[np.float32, np.float64]]) -> npt.NDArray[np.uint8]:
+    """
+    Transform color values from linear [0, 1] to gamma encoded [0, 255].
+
     Linear colors are expected to have dtype np.float32 or np.float64.
 
     Intended to implement the following per color value:
@@ -25,21 +28,21 @@ def linear_to_gamma_u8_value(linear: np.ndarray) -> np.ndarray:
     below = gamma <= 0.0031308
     gamma[below] *= 3294.6
     above = np.logical_not(below)
-    gamma[above] = gamma[above]**(1.0 / 2.4) * 269.025 - 14.025
+    gamma[above] = gamma[above] ** (1.0 / 2.4) * 269.025 - 14.025
 
     gamma.round(decimals=0, out=gamma)
     return gamma.astype(np.uint8)
 
 
-def linear_to_gamma_u8_pixel(linear: np.ndarray) -> np.ndarray:
-    """Transform color pixels from linear [0, 1] to gamma encoded [0, 255].
+def linear_to_gamma_u8_pixel(linear: npt.NDArray[Union[np.float32, np.float64]]) -> npt.NDArray[np.uint8]:
+    """
+    Transform color pixels from linear [0, 1] to gamma encoded [0, 255].
 
     Linear colors are expected to have dtype np.float32 or np.float64.
 
     The last dimension of the colors array `linear` is expected to represent a single pixel color.
     - 3 colors means RGB
     - 4 colors means RGBA
-
     """
     num_channels = linear.shape[-1]
     assert num_channels in (3, 4)
@@ -49,6 +52,6 @@ def linear_to_gamma_u8_pixel(linear: np.ndarray) -> np.ndarray:
 
     gamma_u8 = np.empty(shape=linear.shape, dtype=np.uint8)
     gamma_u8[..., :-1] = linear_to_gamma_u8_value(linear[..., :-1])
-    gamma_u8[..., -1] = np.around(255*linear[..., -1])
+    gamma_u8[..., -1] = np.around(255 * linear[..., -1])
 
     return gamma_u8

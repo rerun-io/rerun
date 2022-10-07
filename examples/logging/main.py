@@ -15,8 +15,6 @@ import logging
 
 import rerun_sdk as rerun
 
-from rerun_sdk import RerunHandler
-
 
 def log_stuff():
     # That's really all there is to it: attach a Rerun logging handler to one
@@ -27,7 +25,7 @@ def log_stuff():
     # default).
     #
     # For more info: https://docs.python.org/3/howto/logging.html#handlers
-    logging.getLogger().addHandler(RerunHandler())
+    logging.getLogger().addHandler(rerun.LoggingHandler())
     logging.getLogger().setLevel(-1)
 
     # The usual
@@ -50,7 +48,7 @@ def log_stuff():
     # Use spaces to create distinct logging streams
     other_logger = logging.getLogger("totally.unrelated")
     other_logger.propagate = False # don't want root logger to catch those
-    other_logger.addHandler(RerunHandler("3rd-party logs"))
+    other_logger.addHandler(rerun.LoggingHandler("3rd-party logs"))
     for _ in range(10):
         other_logger.debug("look ma, got my very own window!")
 
