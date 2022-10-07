@@ -5,25 +5,54 @@ use re_log_types::*;
 
 // -----------------------------------------------------------------------------
 
-pub(crate) fn show(
-    ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
-    objects: &Objects<'_>,
-) -> egui::Response {
-    crate::profile_function!();
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub(crate) struct TextEntryState {
+    latest_time: i64,
+}
 
-    let text_entries = collect_text_entries(ctx, objects);
+impl TextEntryState {
+    pub fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+        objects: &Objects<'_>,
+    ) -> egui::Response {
+        crate::profile_function!();
 
-    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-        ui.label(format!("{} text entries", objects.text_entry.len()));
-        ui.separator();
+        let text_entries = collect_text_entries(ctx, objects);
 
-        egui::ScrollArea::horizontal().show(ui, |ui| {
-            crate::profile_scope!("render table");
-            show_table(ctx, ui, &text_entries);
+        let time = ctx
+            .rec_cfg
+            .time_ctrl
+            .time_query()
+            .map(|q| match q {
+                re_data_store::TimeQuery::LatestAt(time) => time,
+                re_data_store::TimeQuery::Range(range) => *range.start(),
+            })
+            .expect("there is always an active time query");
+
+        let index = (self.latest_time != time).then(|| {
+            crate::profile_scope!("binsearch");
+            match text_entries.binary_search_by(|msg| msg.time.cmp(&time)) {
+                Ok(i) => i,
+                Err(i) => usize::min(i, text_entries.len() - 1),
+            }
+        });
+
+        self.latest_time = time;
+
+        ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+            ui.label(format!("{} text entries", objects.text_entry.len()));
+            ui.separator();
+
+            egui::ScrollArea::horizontal().show(ui, |ui| {
+                crate::profile_scope!("render table");
+                show_table(ctx, ui, &text_entries, index);
+            })
         })
-    })
-    .response
+        .response
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -89,12 +118,30 @@ fn collect_text_entries<'s>(
     text_entries
 }
 
-fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[CompleteTextEntry<'_>]) {
+fn show_table(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    text_entries: &[CompleteTextEntry<'_>],
+    index: Option<usize>,
+) {
     use egui_extras::Size;
-    egui_extras::TableBuilder::new(ui)
+    const ROW_HEIGHT: f32 = 18.0;
+
+    let spacing_y = ui.spacing().item_spacing.y;
+
+    let mut builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
         .resizable(true)
-        .scroll(true)
+        .scroll(true);
+
+    if let Some(index) = index {
+        let row_height_full = ROW_HEIGHT + spacing_y;
+        let mut offset = index as f32 * row_height_full;
+
+        builder = builder.vertical_scroll_offset(offset);
+    }
+
+    builder
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(
             Size::initial(180.0).at_least(100.0),
@@ -120,15 +167,14 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
             });
         })
         .body(|body| {
-            const ROW_HEIGHT: f32 = 18.0;
-            body.rows(ROW_HEIGHT, messages.len(), |index, mut row| {
+            body.rows(ROW_HEIGHT, text_entries.len(), |index, mut row| {
                 let CompleteTextEntry {
                     time_point,
                     data_path,
                     time: _,
                     props,
                     text_entry,
-                } = &messages[index];
+                } = &text_entries[index];
 
                 // time(s)
                 for time_source in ctx.log_db.time_points.0.keys() {
