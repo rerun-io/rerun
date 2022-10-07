@@ -219,6 +219,13 @@ pub(crate) fn view_2d(
 ) -> egui::Response {
     crate::profile_function!();
 
+    // TODO(emilk): make help button hover over the 2D view (https://github.com/emilk/egui/issues/980).
+    crate::misc::help_hover_button(ui).on_hover_text(
+        "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
+        Drag to pan.\n\
+        Double-click to reset the view.",
+    );
+
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
 
