@@ -266,24 +266,25 @@ class LoggingHandler(logging.Handler):
         logging.Handler.__init__(self)
         self.space = space
 
-
     def emit(self, record):
         """
         Emits a record to the Rerun SDK.
         """
-        objpath = record.name.replace('.', '/')
+        objpath = record.name.replace(".", "/")
         level = self.LVL2NAME.get(record.levelno)
-        if level is None: # user-defined level
+        if level is None:  # user-defined level
             level = record.levelname
         log_text_entry(objpath, record.getMessage(), level=level, space=self.space)
 
 
-def log_text_entry(obj_path: str,
-                   text: str,
-                   level: Optional[str] = LogLevel.INFO,
-                   color: Optional[Sequence[int]] = None,
-                   timeless: bool = False,
-                   space: Optional[str] = None):
+def log_text_entry(
+    obj_path: str,
+    text: str,
+    level: Optional[str] = LogLevel.INFO,
+    color: Optional[Sequence[int]] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+):
     """
     Log a text entry, with optional level.
 
