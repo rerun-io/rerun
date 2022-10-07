@@ -141,12 +141,12 @@ def log_camera(cam: ARCamera):
                      target_space="image")
 
     # Experimental new API:
-    rerun._log_extrinsics("world/camera",
+    rerun._log_extrinsics("3d/camera",
                           rotation_q=rot.as_quat(),
                           position=translation,
                           camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK)
 
-    rerun._log_intrinsics("world/camera/video",
+    rerun._log_intrinsics("3d/camera/video",
                           resolution=[w, h],
                           intrinsics_matrix=intrinsics)
 
@@ -194,7 +194,7 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
         rerun.set_time_seconds("time", time)
 
         for obj_ann in frame_ann.annotations:
-            path = f"objects/{obj_ann.object_id}"
+            path = f"3d/objects/{obj_ann.object_id}"
 
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
             keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y]
