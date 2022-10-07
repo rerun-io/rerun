@@ -445,9 +445,9 @@ fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
     } = extrinsics;
 
     ui.vertical(|ui| {
-        ui.label("Camera");
-        ui.indent("camera", |ui| {
-            egui::Grid::new("camera")
+        ui.label("Extrinsics");
+        ui.indent("extrinsics", |ui| {
+            egui::Grid::new("extrinsics")
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
@@ -475,9 +475,9 @@ fn ui_intrinsics(ui: &mut egui::Ui, intrinsics: &Intrinsics) -> egui::Response {
     } = intrinsics;
 
     ui.vertical(|ui| {
-        ui.label("Camera");
-        ui.indent("camera", |ui| {
-            egui::Grid::new("camera")
+        ui.label("Intrinsics");
+        ui.indent("intrinsics", |ui| {
+            egui::Grid::new("intrinsics")
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
