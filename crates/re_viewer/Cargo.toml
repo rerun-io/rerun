@@ -40,6 +40,7 @@ eframe      = { version = "0.19", default-features = false, features = ["default
 egui        = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { version = "0.19", features = ["tracing"] }
 
+wgpu = { version="0.14", default-features = false }
 
 ahash = "0.8"
 anyhow = "1.0"

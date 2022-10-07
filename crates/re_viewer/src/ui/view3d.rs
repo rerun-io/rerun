@@ -7,11 +7,14 @@ mod glow_rendering;
 #[cfg(feature = "glow")]
 mod mesh_cache;
 
+use std::sync::{Arc, RwLock};
+
 #[cfg(feature = "glow")]
 pub use mesh_cache::CpuMeshCache;
 
 use eye::*;
 use re_data_store::{InstanceId, InstanceIdHash};
+use re_renderer::frame_builder::FrameBuilder;
 use scene::*;
 
 use egui::NumExt as _;
@@ -419,19 +422,31 @@ pub(crate) fn view_3d(
     let dark_mode = ui.visuals().dark_mode;
     let show_axes = state.show_axes;
 
-    #[cfg(feature = "wgpu")]
-    let callback = egui::PaintCallback {
-        rect,
-        callback: std::sync::Arc::new(
-            egui_wgpu::CallbackFn::new()
-                .prepare(move |device, queue, paint_callback_resources| {
-                    // todo
-                })
-                .paint(move |_info, render_pass, paint_callback_resources| {
-                    // todo
-                }),
-        ),
+    let _callback = {
+        // FrameBuilder should drop together with the callback so we don't leak any resources when the ui disappears again!
+        let frame_builder_prepare = Arc::new(RwLock::new(FrameBuilder::new()));
+        let frame_builder_draw = frame_builder_prepare.clone();
+
+        egui::PaintCallback {
+            rect,
+            callback: std::sync::Arc::new(
+                egui_wgpu::CallbackFn::new()
+                    .prepare(move |device, _queue, paint_callback_resources| {
+                        let ctx = paint_callback_resources.get_mut().unwrap();
+                        frame_builder_prepare
+                            .write()
+                            .unwrap()
+                            .test_triangle(ctx, device);
+                    })
+                    .paint(move |_info, render_pass, paint_callback_resources| {
+                        let ctx = paint_callback_resources.get().unwrap();
+                        frame_builder_draw.read().unwrap().draw(ctx, render_pass);
+                    }),
+            ),
+        }
     };
+    #[cfg(not(feature = "glow"))]
+    let callback = _callback;
 
     #[cfg(feature = "glow")]
     let callback = egui::PaintCallback {

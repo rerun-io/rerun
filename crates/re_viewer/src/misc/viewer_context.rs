@@ -2,7 +2,6 @@ use macaw::Ray3;
 
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath, ObjectTree};
 use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource};
-use re_renderer::context::RenderContext;
 
 /// Common things needed by many parts of the viewer.
 pub(crate) struct ViewerContext<'a> {
@@ -18,9 +17,6 @@ pub(crate) struct ViewerContext<'a> {
 
     /// UI config for the current recording (found in [`LogDb`]).
     pub rec_cfg: &'a mut RecordingConfig,
-
-    /// Shared rendering context
-    pub render_context: &'a mut RenderContext,
 }
 
 impl<'a> ViewerContext<'a> {

@@ -23,9 +23,6 @@ pub struct App {
     /// What is serialized
     state: AppState,
 
-    /// Shared render context.
-    render_context: RenderContext,
-
     /// Set to `true` on Ctrl-C.
     #[cfg(not(target_arch = "wasm32"))]
     ctrl_c: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -62,7 +59,7 @@ impl App {
     }
 
     fn new(
-        _egui_ctx: &egui::Context,
+        egui_ctx: &egui::Context,
         storage: Option<&dyn eframe::Storage>,
         rx: Option<Receiver<LogMsg>>,
         log_db: LogDb,
@@ -75,7 +72,7 @@ impl App {
             // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
 
             let ctrl_c = ctrl_c.clone();
-            let egui_ctx = _egui_ctx.clone();
+            let egui_ctx = egui_ctx.clone();
 
             ctrlc::set_handler(move || {
                 re_log::debug!("Ctrl-C detected - Closing viewer.");
@@ -101,7 +98,6 @@ impl App {
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
-            render_context: RenderContext::new(),
         }
     }
 
@@ -121,6 +117,33 @@ impl eframe::App for App {
         if self.ctrl_c.load(std::sync::atomic::Ordering::SeqCst) {
             frame.close();
             return;
+        }
+
+        // TODO(andreas) can we move this into app creation? We lack the creation context there which would lead us to the renderer
+        #[cfg(feature = "wgpu")]
+        {
+            let egui_render_state = &mut frame.wgpu_render_state().unwrap();
+            let paint_callback_resources =
+                &mut egui_render_state.renderer.write().paint_callback_resources;
+
+            if !paint_callback_resources.contains::<RenderContext>() {
+                // TODO(andreas): Query used surface format from eframe/renderer.
+                #[cfg(target = "wasm32")]
+                let (output_format_color, output_format_depth) =
+                    (wgpu::TextureFormat::Rgba8Unorm, None);
+                #[cfg(not(target = "wasm32"))]
+                let (output_format_color, output_format_depth) = (
+                    wgpu::TextureFormat::Bgra8Unorm,
+                    Some(wgpu::TextureFormat::Depth32Float),
+                );
+
+                paint_callback_resources.insert(RenderContext::new(
+                    &egui_render_state.device,
+                    &egui_render_state.queue,
+                    output_format_color,
+                    output_format_depth,
+                ));
+            }
         }
 
         self.state.cache.new_frame();
@@ -179,7 +202,7 @@ impl eframe::App for App {
                 });
             });
         } else {
-            self.state.show(egui_ctx, log_db, &mut self.render_context);
+            self.state.show(egui_ctx, log_db);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -289,12 +312,7 @@ struct AppState {
 }
 
 impl AppState {
-    fn show(
-        &mut self,
-        egui_ctx: &egui::Context,
-        log_db: &LogDb,
-        render_context: &mut RenderContext,
-    ) {
+    fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb) {
         crate::profile_function!();
 
         let Self {
@@ -319,7 +337,6 @@ impl AppState {
             cache,
             log_db,
             rec_cfg,
-            render_context,
         };
 
         if ctx.rec_cfg.selection.is_some() {
