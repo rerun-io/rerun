@@ -651,8 +651,8 @@ impl<'s> Objects<'s> {
             if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
                 self.query_object(obj_store, time_query, obj_path, obj_type);
             } else {
-                // not everything is an object, and that's fine.
-                // some thing just contains a `_transform`, for instance.
+                // Not every path is an object, and that's fine.
+                // Some paths just contains a `_transform`, for instance.
             }
         }
     }

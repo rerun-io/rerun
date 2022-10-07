@@ -513,10 +513,14 @@ impl CameraSpaceConvention {
 
 // ----------------------------------------------------------------------------
 
+/// A transform between two spaces.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Transform {
+    /// The parent is a 3D space, the child a camera space.
     Extrinsics(Extrinsics),
+
+    /// The parent is some local camera space, the child an image space.
     Intrinsics(Intrinsics),
 }
 
