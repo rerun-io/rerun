@@ -979,7 +979,7 @@ dependencies = [
 [[package]]
 name = "egui_dock"
 version = "0.2.0"
-source = "git+https://github.com/rerun-io/egui_dock?rev=096be40cc9fc7471eea48df9104fe62acfc96d2b#096be40cc9fc7471eea48df9104fe62acfc96d2b"
+source = "git+https://github.com/rerun-io/egui_dock?rev=b9ef7e3c0606cba87cb8f3cd6b07d74801be5cca#b9ef7e3c0606cba87cb8f3cd6b07d74801be5cca"
 dependencies = [
  "egui",
  "serde",

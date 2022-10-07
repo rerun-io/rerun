@@ -45,7 +45,7 @@ anyhow = "1.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
 document-features = "0.2"
-egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc7471eea48df9104fe62acfc96d2b", features = ["serde"] } # 2022-09-06
+egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "b9ef7e3c0606cba87cb8f3cd6b07d74801be5cca", features = ["serde"] } # 2022-09-06 + workaround-ra-style
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
 image = { version = "0.24", default-features = false, features = ["jpeg", "png"] }
