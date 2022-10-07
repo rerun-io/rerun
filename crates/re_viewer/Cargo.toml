@@ -45,9 +45,7 @@ anyhow = "1.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
 document-features = "0.2"
-# egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc7471eea48df9104fe62acfc96d2b", features = ["serde"] } # 2022-09-06
-# TODO(cmc): shouldn't outlive this PR
-egui_dock = { git = "https://github.com/rerun-io/egui_dock", branch = "hotfix/styleable_scroll_areas", features = ["serde"] }
+egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "5f5a877a34d17ad31640b5a1a2eb771aff26a3a1", features = ["serde"] } # 2022-10-07
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
 image = { version = "0.24", default-features = false, features = ["jpeg", "png"] }
