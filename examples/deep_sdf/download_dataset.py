@@ -2,9 +2,10 @@
 
 import io
 import os
-import requests
-from pathlib import Path
 import zipfile
+from pathlib import Path
+
+import requests
 
 
 def download_mcguire_sample(package, name):

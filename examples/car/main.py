@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """Shows how to use the Rerun SDK."""
 
-from dataclasses import dataclass
+import argparse
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from time import sleep
 from typing import Final, Iterator, Tuple
 
-import argparse
 import cv2  # type: ignore
 import numpy as np
-
 import rerun_sdk as rerun
 
 CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath(

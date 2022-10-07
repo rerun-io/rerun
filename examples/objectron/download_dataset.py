@@ -5,6 +5,8 @@ import requests
 import os
 import cv2
 
+import requests
+
 
 def download(url, path):
     if not os.path.exists(path):

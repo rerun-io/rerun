@@ -12,5 +12,7 @@
         "target/**": true
     },
     "files.autoGuessEncoding": true,
-    "python.formatting.provider": "black"
+    "python.formatting.provider": "black",
+    "python.linting.mypyEnabled": true,
+    "python.linting.enabled": true
 }
