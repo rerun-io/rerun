@@ -2,14 +2,13 @@
 
 import atexit
 import logging
-import numpy as np
-import numpy.typing as npt
-
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Final, Iterable, Optional, Sequence, Union
 
+import numpy as np
+import numpy.typing as npt
 from rerun_sdk import rerun_sdk as rerun_rs  # type: ignore[attr-defined]
 from rerun_sdk.color_conversion import linear_to_gamma_u8_pixel
 
