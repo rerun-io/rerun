@@ -1,8 +1,6 @@
 """The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk."""
 
 import atexit
-import numpy as np
-
 import logging
 from dataclasses import dataclass
 from enum import Enum
