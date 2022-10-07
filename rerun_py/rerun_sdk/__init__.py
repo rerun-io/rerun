@@ -498,9 +498,7 @@ def log_line_segments(
     If no `space` is given, the space name "3D" will be used.
     """
     positions = np.require(positions, dtype="float32")
-    rerun_rs.log_line_segments(
-        obj_path, positions, stroke_width, color, timeless, space
-    )
+    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless, space)
 
 
 def log_obb(
