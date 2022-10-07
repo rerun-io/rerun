@@ -236,10 +236,8 @@ pub(crate) fn view_2d(
     let offset = offset.at_most(desired_size - available_size);
     let offset = offset.at_least(Vec2::ZERO);
 
-    let mut scroll_area = ScrollArea::both();
-    scroll_area = scroll_area
+    let scroll_area = ScrollArea::both()
         .scroll_offset(offset)
-        .always_show_scroll(true)
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
