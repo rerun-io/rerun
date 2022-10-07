@@ -499,7 +499,7 @@ fn log_extrinsics(
 
     let mut sdk = Sdk::global();
 
-    // sdk.register_type(obj_path.obj_type_path(), ???); // TODO
+    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
 
     let time_point = time(timeless);
 
@@ -529,7 +529,7 @@ fn log_intrinsics(
 
     let mut sdk = Sdk::global();
 
-    // sdk.register_type(obj_path.obj_type_path(), ???); // TODO
+    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
 
     let time_point = time(timeless);
 
