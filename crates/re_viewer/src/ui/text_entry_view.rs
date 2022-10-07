@@ -136,7 +136,7 @@ fn show_table(
 
     if let Some(index) = index {
         let row_height_full = ROW_HEIGHT + spacing_y;
-        let mut offset = index as f32 * row_height_full;
+        let offset = index as f32 * row_height_full;
 
         builder = builder.vertical_scroll_offset(offset);
     }
