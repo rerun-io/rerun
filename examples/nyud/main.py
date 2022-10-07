@@ -15,14 +15,14 @@ Within the dataset are 3 subsets, corresponding to `--folder-idx` argument value
 """
 
 import argparse
+import zipfile
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Final, Tuple
-import zipfile
-from datetime import datetime
+
 import cv2
 import numpy as np
-
 import rerun_sdk as rerun
 
 # Logging depth images is slow, so we don't log every frame

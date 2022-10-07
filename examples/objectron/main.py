@@ -22,19 +22,23 @@ import logging
 import math
 import os
 import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Final, Iterable, Iterator, List
 
 import numpy as np
 import rerun_sdk as rerun
-
-from dataclasses import dataclass
-from pathlib import Path
-from typing import List, Final, Iterator, Iterable
-
+from proto.objectron.proto import (
+    ARCamera,
+    ARFrame,
+    ARPointCloud,
+    FrameAnnotation,
+    Object,
+    ObjectType,
+    Sequence,
+)
 from rerun_sdk import ImageFormat
 from scipy.spatial.transform import Rotation as R
-from proto.objectron.proto import \
-    ARFrame, ARCamera, ARPointCloud, Sequence, Object, ObjectType, FrameAnnotation
-
 
 IMAGE_RESOLUTION: Final = (1440, 1920)
 GEOMETRY_FILENAME: Final = "geometry.pbdata"

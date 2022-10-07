@@ -17,7 +17,7 @@ keywords = ["computer-vision", "logging", "rerun"]
 license = { text = "MIT OR Apache-2.0" }
 requires-python = ">=3.7"
 
-dependencies = ["numpy"]
+dependencies = ["numpy==1.23"]
 
 [project.optional-dependencies]
 tests = ["pytest==7.1.2"]
@@ -30,12 +30,7 @@ repository = "https://github.com/rerun-io/rerun"
 [tool.maturin]
 locked = true
 
-[tool.isort]
-profile = "black"
-
-[tool.mypy]
-files = ["rerun_sdk", "tests"]
-namespace_packages = true
-show_error_codes = true
-strict = true
-enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code"]
+[tool.black]
+line-length = 120
+target-version = ['py38']
+extend-exclude = "examples"
