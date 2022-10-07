@@ -1,5 +1,5 @@
 use crate::ViewerContext;
-use egui::Color32;
+use egui::{Color32, RichText};
 use re_data_store::{InstanceProps, Objects, TextEntry};
 use re_log_types::*;
 
@@ -140,7 +140,7 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
                 // level
                 row.col(|ui| {
                     if let Some(lvl) = text_entry.level {
-                        ui.colored_label(level_to_color(ui, lvl), lvl);
+                        ui.label(level_to_rich_text(ui, lvl));
                     } else {
                         ui.label("-");
                     }
@@ -159,13 +159,16 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
         });
 }
 
-fn level_to_color(ui: &egui::Ui, lvl: &str) -> Color32 {
+fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
     match lvl {
-        "ERROR" => ui.visuals().error_fg_color,
-        "WARN" => ui.visuals().warn_fg_color,
-        "INFO" => Color32::LIGHT_GREEN,
-        "DEBUG" => Color32::LIGHT_BLUE,
-        "TRACE" => Color32::LIGHT_GRAY,
-        _ => ui.visuals().text_color(),
+        "CRITICAL" => RichText::new(lvl)
+            .color(Color32::WHITE)
+            .background_color(ui.visuals().error_fg_color),
+        "ERROR" => RichText::new(lvl).color(ui.visuals().error_fg_color),
+        "WARN" => RichText::new(lvl).color(ui.visuals().warn_fg_color),
+        "INFO" => RichText::new(lvl).color(Color32::LIGHT_GREEN),
+        "DEBUG" => RichText::new(lvl).color(Color32::LIGHT_BLUE),
+        "TRACE" => RichText::new(lvl).color(Color32::LIGHT_GRAY),
+        _ => RichText::new(lvl).color(ui.visuals().text_color()),
     }
 }
