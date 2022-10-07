@@ -43,11 +43,11 @@ impl ObjectType {
 
             Self::Image => &["space", "color", "tensor", "meter"],
             Self::Point2D => &["space", "color", "pos", "radius"],
-            Self::BBox2D => &["space", "color", "bbox", "stroke_width", "label"],
-            Self::LineSegments2D => &["space", "color", "points", "stroke_width"],
+            Self::BBox2D => &["space", "color", "bbox", "stroke_width", "label", "visible"],
+            Self::LineSegments2D => &["space", "color", "points", "stroke_width", "visible"],
 
             Self::Point3D => &["space", "color", "pos", "radius"],
-            Self::Box3D => &["space", "color", "obb", "stroke_width", "label"],
+            Self::Box3D => &["space", "color", "obb", "stroke_width", "label", "visible"],
             Self::Path3D => &["space", "color", "points", "stroke_width"],
             Self::LineSegments3D => &["space", "color", "points", "stroke_width"],
             Self::Mesh3D => &["space", "color", "mesh"],

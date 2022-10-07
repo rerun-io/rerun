@@ -24,6 +24,9 @@ pub struct InstanceProps<'s> {
     /// If it is a multi-object, this is the instance index,
     /// else it is [`IndexHash::NONE`].
     pub instance_index: IndexHash,
+
+    // TODO: convert to bool
+    pub visible: i32,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -119,6 +122,7 @@ impl<'s> Image<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: 1,
                     },
                     data: Image {
                         tensor,
@@ -165,6 +169,7 @@ impl<'s> Point2D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: 1,
                     },
                     data: Point2D {
                         pos,
@@ -211,6 +216,7 @@ impl<'s> Point3D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: 1,
                     },
                     data: Point3D {
                         pos,
@@ -238,11 +244,11 @@ impl<'s> BBox2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_5(
             obj_store,
             &FieldName::from("bbox"),
             time_query,
-            ("space", "color", "stroke_width", "label"),
+            ("space", "color", "stroke_width", "label", "visible"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
@@ -250,7 +256,8 @@ impl<'s> BBox2D<'s> {
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>,
-             label: Option<&String>| {
+             label: Option<&String>,
+             visible: Option<&i32>| {
                 out.bbox2d.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
@@ -259,6 +266,7 @@ impl<'s> BBox2D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&1),
                     },
                     data: BBox2D {
                         bbox,
@@ -287,11 +295,11 @@ impl<'s> Box3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_5(
             obj_store,
             &FieldName::from("obb"),
             time_query,
-            ("space", "color", "stroke_width", "label"),
+            ("space", "color", "stroke_width", "label", "visible"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
@@ -299,7 +307,8 @@ impl<'s> Box3D<'s> {
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>,
-             label: Option<&String>| {
+             label: Option<&String>,
+             visible: Option<&i32>| {
                 out.box3d.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
@@ -308,6 +317,7 @@ impl<'s> Box3D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&1),
                     },
                     data: Box3D {
                         obb,
@@ -356,6 +366,7 @@ impl<'s> Path3D<'s> {
                             color: color.copied(),
                             obj_path,
                             instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                            visible: 1,
                         },
                         data: Path3D {
                             points,
@@ -384,18 +395,19 @@ impl<'s> LineSegments2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("points"),
             time_query,
-            ("space", "color", "stroke_width"),
+            ("space", "color", "stroke_width", "visible"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              points: &DataVec,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
-             stroke_width: Option<&f32>| {
+             stroke_width: Option<&f32>,
+             visible: Option<&i32>| {
                 if let Some(points) = as_vec_of_vec2("LineSegments2D::points", points) {
                     out.line_segments2d.0.push(Object {
                         props: InstanceProps {
@@ -405,6 +417,7 @@ impl<'s> LineSegments2D<'s> {
                             color: color.copied(),
                             obj_path,
                             instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                            visible: *visible.unwrap_or(&1),
                         },
                         data: LineSegments2D {
                             points,
@@ -454,6 +467,7 @@ impl<'s> LineSegments3D<'s> {
                             color: color.copied(),
                             obj_path,
                             instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                            visible: 1,
                         },
                         data: LineSegments3D {
                             points,
@@ -499,6 +513,7 @@ impl<'s> Mesh3D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: 1,
                     },
                     data: Mesh3D { mesh },
                 });
@@ -541,6 +556,7 @@ impl<'s> Camera<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: 1,
                     },
                     data: Camera { camera },
                 });
@@ -610,6 +626,7 @@ impl<'s> TextEntry<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: 1,
                     },
                     data: TextEntry {
                         body: body.as_str(),
