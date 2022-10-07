@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
-import requests
 import os
-import cv2
 
+import cv2
 import requests
 
 
