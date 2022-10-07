@@ -402,7 +402,7 @@ pub(crate) fn view_3d(
     ui.with_layer_id(
         egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
         |ui| {
-            for label in scene.labels.iter() {
+            for label in &scene.labels {
                 let pt = world_to_screen.project_point3(label.translation);
                 let font_id = egui::TextStyle::Monospace.resolve(ui.style());
 

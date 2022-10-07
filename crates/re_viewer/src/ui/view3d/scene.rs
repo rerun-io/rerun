@@ -165,7 +165,7 @@ impl Scene {
                     InstanceIdHash::from_props(props),
                     color,
                     line_radius,
-                    label,
+                    *label,
                     obb,
                 );
             }
@@ -388,7 +388,7 @@ impl Scene {
         instance_id: InstanceIdHash,
         color: [u8; 4],
         line_radius: f32,
-        label: &Option<&str>,
+        label: Option<&str>,
         box3: &Box3,
     ) {
         let Box3 {
