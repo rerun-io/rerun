@@ -72,7 +72,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Download the objectron datasets")
     parser.add_argument(
-        "--reprocess-video", action="store_true", help="Reprocess video frames"
+        "--force-reprocess-video",
+        action="store_true",
+        help="Reprocess video frames even if already exist",
     )
     parser.add_argument(
         "datasets",
@@ -85,12 +87,13 @@ if __name__ == "__main__":
 
     if cv2.getVersionMajor() == 4 and cv2.getVersionMinor() == 6:
         parser.error(
-            """Opencv 4.6 contains a bug which will unpack some videos with the incorrect orientation
-            Please upgrade or downgrade."""
+            """Opencv 4.6 contains a bug which will unpack some videos with the incorrect orientation.
+            See: https://github.com/opencv/opencv/issues/22088
+            Please upgrade or downgrade as appropriate."""
         )
 
     if not args.datasets:
         args.datasets = available_datasets
 
     for dataset in args.datasets:
-        download_dataset(dataset, args.reprocess_video)
+        download_dataset(dataset, args.force_reprocess_video)
