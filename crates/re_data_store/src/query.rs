@@ -478,3 +478,99 @@ pub fn visit_type_data_4<
 
     Some(())
 }
+
+// TODO it's time to learn macros...
+pub fn visit_type_data_5<
+    's,
+    Time: 'static + Copy + Ord,
+    T: DataTrait,
+    S1: DataTrait,
+    S2: DataTrait,
+    S3: DataTrait,
+    S4: DataTrait,
+    S5: DataTrait,
+>(
+    obj_store: &'s ObjStore<Time>,
+    field_name: &FieldName,
+    time_query: &TimeQuery<Time>,
+    (child1, child2, child3, child4, child5): (&str, &str, &str, &str, &str),
+    mut visit: impl FnMut(
+        Option<&'s IndexHash>,
+        Time,
+        &'s MsgId,
+        &'s T,
+        Option<&'s S1>,
+        Option<&'s S2>,
+        Option<&'s S3>,
+        Option<&'s S4>,
+        Option<&'s S5>,
+    ),
+) -> Option<()> {
+    crate::profile_function!();
+    let child1 = FieldName::from(child1);
+    let child2 = FieldName::from(child2);
+    let child3 = FieldName::from(child3);
+    let child4 = FieldName::from(child4);
+    let child5 = FieldName::from(child5);
+
+    if obj_store.mono() {
+        let primary = obj_store.get_mono::<T>(field_name)?;
+        let child1 = MonoDataReader::<Time, S1>::new(obj_store, &child1);
+        let child2 = MonoDataReader::<Time, S2>::new(obj_store, &child2);
+        let child3 = MonoDataReader::<Time, S3>::new(obj_store, &child3);
+        let child4 = MonoDataReader::<Time, S4>::new(obj_store, &child4);
+        let child5 = MonoDataReader::<Time, S5>::new(obj_store, &child5);
+        query(
+            &primary.history,
+            time_query,
+            |time, (msg_id, primary_value)| {
+                visit(
+                    None,
+                    *time,
+                    msg_id,
+                    primary_value,
+                    child1.latest_at(time),
+                    child2.latest_at(time),
+                    child3.latest_at(time),
+                    child4.latest_at(time),
+                    child5.latest_at(time),
+                );
+            },
+        );
+    } else {
+        let primary = obj_store.get_multi::<T>(field_name)?;
+        let child1 = obj_store.get_multi::<S1>(&child1);
+        let child2 = obj_store.get_multi::<S2>(&child2);
+        let child3 = obj_store.get_multi::<S3>(&child3);
+        let child4 = obj_store.get_multi::<S4>(&child4);
+        let child5 = obj_store.get_multi::<S5>(&child5);
+        query(
+            &primary.history,
+            time_query,
+            |time, (msg_id, primary_batch)| {
+                if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
+                    let child1 = MultiDataReader::latest_at(child1, time);
+                    let child2 = MultiDataReader::latest_at(child2, time);
+                    let child3 = MultiDataReader::latest_at(child3, time);
+                    let child4 = MultiDataReader::latest_at(child4, time);
+                    let child5 = MultiDataReader::latest_at(child5, time);
+                    for (instance_index, primary_value) in primary_batch.iter() {
+                        visit(
+                            Some(instance_index),
+                            *time,
+                            msg_id,
+                            primary_value,
+                            child1.get(instance_index),
+                            child2.get(instance_index),
+                            child3.get(instance_index),
+                            child4.get(instance_index),
+                            child5.get(instance_index),
+                        );
+                    }
+                }
+            },
+        );
+    }
+
+    Some(())
+}
