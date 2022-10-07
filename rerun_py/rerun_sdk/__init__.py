@@ -457,7 +457,7 @@ def _log_extrinsics(
     """
     rerun_rs.log_extrinsics(
         obj_path,
-        rotation=_to_sequence(rotation_q),
+        rotation_q=_to_sequence(rotation_q),
         position=_to_sequence(position),
         camera_space_convention=camera_space_convention.value,
         timeless=timeless,
@@ -465,16 +465,19 @@ def _log_extrinsics(
 
 
 def _log_intrinsics(
-    obj_path: str, intrinsics: npt.ArrayLike, resolution: npt.ArrayLike, timeless: bool = False
+    obj_path: str, intrinsics_matrix: npt.ArrayLike, resolution: npt.ArrayLike, timeless: bool = False
 ) -> None:
     """
     EXPERIMENTAL: Log a perspective camera model.
 
-    `intrinsics`: Row-major intrinsics matrix for projecting from camera space to image space
+    `intrinsics_matrix`: Row-major intrinsics matrix for projecting from camera space to image space
     `resolution`: Array with [width, height] image resolution in pixels.
     """
     rerun_rs.log_intrinsics(
-        obj_path, resolution=_to_sequence(resolution), intrinsics=np.asarray(intrinsics).T.tolist(), timeless=timeless
+        obj_path,
+        resolution=_to_sequence(resolution),
+        intrinsics_matrix=np.asarray(intrinsics_matrix).T.tolist(),
+        timeless=timeless,
     )
 
 

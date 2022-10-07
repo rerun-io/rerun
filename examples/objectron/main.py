@@ -148,7 +148,7 @@ def log_camera(cam: ARCamera):
 
     rerun._log_intrinsics("world/camera/video",
                           resolution=[w, h],
-                          intrinsics=intrinsics)
+                          intrinsics_matrix=intrinsics)
 
 
 def log_point_cloud(point_cloud: ARPointCloud):
