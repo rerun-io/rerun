@@ -24,7 +24,7 @@ pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
             &FieldName::from("pos"),
             time_query,
             ("radius",),
-            |_object_path, _msg_id: &MsgId, pos: &[f32; 3], radius: Option<&f32>| {
+            |_object_path, _time, _msg_id: &MsgId, pos: &[f32; 3], radius: Option<&f32>| {
                 points.push(Point3 {
                     pos,
                     radius: radius.copied(),
@@ -159,7 +159,7 @@ fn test_batches() -> re_data_store::Result<()> {
                 &FieldName::new("pos"),
                 &time_query,
                 ("label",),
-                |_object_path, _msg_id, prim: &i32, sibling: Option<&String>| {
+                |_object_path, _time, _msg_id, prim: &i32, sibling: Option<&String>| {
                     values.push((*prim, sibling.cloned()));
                 },
             );

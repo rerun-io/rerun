@@ -7,6 +7,9 @@ pub enum ObjectType {
     /// Information about a space (up axis etc).
     Space,
 
+    /// A logging message.
+    TextEntry,
+
     /// An image. Could be gray, RGB, a depth map, ….
     Image,
     /// A point in 2D space.
@@ -35,6 +38,8 @@ impl ObjectType {
         #[allow(clippy::match_same_arms)]
         match self {
             Self::Space => &["up"],
+
+            Self::TextEntry => &["space", "color", "body", "level"],
 
             Self::Image => &["space", "color", "tensor", "meter"],
             Self::Point2D => &["space", "color", "pos", "radius"],
