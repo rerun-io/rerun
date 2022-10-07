@@ -42,8 +42,8 @@ pub struct MeshSource {
 
 pub struct Label {
     pub(crate) text: String,
-    /// Oriented bounding box (min, max) corners
-    pub(crate) corners: (Vec3, Vec3),
+    /// Origin of the label
+    pub(crate) origin: Vec3,
 }
 
 #[derive(Default)]
@@ -434,15 +434,10 @@ impl Scene {
             [corners[0b011], corners[0b111]],
         ];
 
-        let corners = (
-            transform.transform_point3(vec3(-0.5, -0.5, -0.5)),
-            transform.transform_point3(vec3(0.5, 0.5, 0.5)),
-        );
-
         if let Some(label) = label {
             self.labels.push(Label {
                 text: (*label).to_owned(),
-                corners,
+                origin: translation,
             });
         }
 

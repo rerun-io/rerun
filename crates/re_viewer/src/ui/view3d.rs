@@ -403,7 +403,7 @@ pub(crate) fn view_3d(
         egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
         |ui| {
             for label in &scene.labels {
-                let pt = ui_from_world.project_point3(label.corners.1 - label.corners.0);
+                let pt = ui_from_world.project_point3(label.origin);
                 let font_id = egui::TextStyle::Monospace.resolve(ui.style());
 
                 let galley = ui.fonts().layout(
