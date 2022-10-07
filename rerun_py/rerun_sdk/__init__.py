@@ -441,12 +441,15 @@ def log_camera(
     )
 
 
-def _log_extrinsics(obj_path: str,
-                    rotation_q: npt.ArrayLike,
-                    position: npt.ArrayLike,
-                    camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
-                    timeless: bool = False) -> None:
-    """EXPERIMENTAL: Log camera extrinsics
+def _log_extrinsics(
+    obj_path: str,
+    rotation_q: npt.ArrayLike,
+    position: npt.ArrayLike,
+    camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+    timeless: bool = False,
+) -> None:
+    """
+    EXPERIMENTAL: Log camera extrinsics.
 
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
     `position`: Array with [x, y, z] position of the camera in world space.
@@ -457,23 +460,22 @@ def _log_extrinsics(obj_path: str,
         rotation=_to_sequence(rotation_q),
         position=_to_sequence(position),
         camera_space_convention=camera_space_convention.value,
-        timeless=timeless)
+        timeless=timeless,
+    )
 
 
-def _log_intrinsics(obj_path: str,
-                    intrinsics: npt.ArrayLike,
-                    resolution: npt.ArrayLike,
-                    timeless: bool = False) -> None:
-    """EXPERIMENTAL: Log a perspective camera model.
+def _log_intrinsics(
+    obj_path: str, intrinsics: npt.ArrayLike, resolution: npt.ArrayLike, timeless: bool = False
+) -> None:
+    """
+    EXPERIMENTAL: Log a perspective camera model.
 
     `intrinsics`: Row-major intrinsics matrix for projecting from camera space to image space
     `resolution`: Array with [width, height] image resolution in pixels.
     """
     rerun_rs.log_intrinsics(
-        obj_path,
-        resolution=_to_sequence(resolution),
-        intrinsics=np.asarray(intrinsics).T.tolist(),
-        timeless=timeless)
+        obj_path, resolution=_to_sequence(resolution), intrinsics=np.asarray(intrinsics).T.tolist(), timeless=timeless
+    )
 
 
 def log_path(
