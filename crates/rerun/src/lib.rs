@@ -84,6 +84,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
     if args.web_viewer {
         #[cfg(feature = "web")]
         {
+            #[cfg(feature = "server")]
             if args.url_or_path.is_none() && args.port == re_ws_comms::DEFAULT_WS_SERVER_PORT {
                 anyhow::bail!(
                     "Trying to spawn a websocket server on {}, but this port is \

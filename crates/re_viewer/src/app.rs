@@ -128,10 +128,10 @@ impl eframe::App for App {
 
             if !paint_callback_resources.contains::<RenderContext>() {
                 // TODO(andreas): Query used surface format from eframe/renderer.
-                #[cfg(target = "wasm32")]
+                #[cfg(target_arch = "wasm32")]
                 let (output_format_color, output_format_depth) =
-                    (wgpu::TextureFormat::Rgba8Unorm, None);
-                #[cfg(not(target = "wasm32"))]
+                    (wgpu::TextureFormat::Rgba8UnormSrgb, None); // TODO(andreas) fix for not using srgb is in flight!
+                #[cfg(not(target_arch = "wasm32"))]
                 let (output_format_color, output_format_depth) = (
                     wgpu::TextureFormat::Bgra8Unorm,
                     Some(wgpu::TextureFormat::Depth32Float),
