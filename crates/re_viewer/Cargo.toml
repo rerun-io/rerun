@@ -23,7 +23,7 @@ puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin", "re_log_types/puffin
 glow = ["eframe/glow", "dep:egui_glow", "dep:glow", "dep:three-d", "dep:three-d-asset"]
 
 ## Enable the [`wgpu`](https://crates.io/crates/wgpu) renderer.
-wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:wgpu"]
+wgpu = ["eframe/wgpu", "dep:egui-wgpu" ]
 
 
 [dependencies]
@@ -34,6 +34,7 @@ re_log_types = { path = "../re_log_types", features = ["save", "load"] }
 re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
+re_renderer = { path = "../re_renderer" }
 
 eframe      = { version = "0.19", default-features = false, features = ["default_fonts", "persistence"] }
 egui        = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
@@ -75,7 +76,6 @@ three-d-asset = { version = "0.3.0", optional = true, default-features = false, 
 ] }
 
 egui-wgpu = { version = "0.19", optional = true }
-wgpu = { version = "0.13", optional = true, features = ["webgl"] }
 
 
 # native dependencies:

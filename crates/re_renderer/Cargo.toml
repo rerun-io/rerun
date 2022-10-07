@@ -1,0 +1,16 @@
+[package]
+name = "re_renderer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wgpu = { version="0.14", default-features = false }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { version="0.14", default-features = false, features = ["webgl"] }

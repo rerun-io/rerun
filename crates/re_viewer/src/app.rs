@@ -5,6 +5,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
+use re_renderer::context::RenderContext;
 
 use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 
@@ -21,6 +22,9 @@ pub struct App {
 
     /// What is serialized
     state: AppState,
+
+    /// Shared render context.
+    render_context: RenderContext,
 
     /// Set to `true` on Ctrl-C.
     #[cfg(not(target_arch = "wasm32"))]
@@ -97,6 +101,7 @@ impl App {
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
+            render_context: RenderContext::new(),
         }
     }
 
@@ -174,7 +179,7 @@ impl eframe::App for App {
                 });
             });
         } else {
-            self.state.show(egui_ctx, log_db);
+            self.state.show(egui_ctx, log_db, &mut self.render_context);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -284,7 +289,12 @@ struct AppState {
 }
 
 impl AppState {
-    fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb) {
+    fn show(
+        &mut self,
+        egui_ctx: &egui::Context,
+        log_db: &LogDb,
+        render_context: &mut RenderContext,
+    ) {
         crate::profile_function!();
 
         let Self {
@@ -309,6 +319,7 @@ impl AppState {
             cache,
             log_db,
             rec_cfg,
+            render_context,
         };
 
         if ctx.rec_cfg.selection.is_some() {
