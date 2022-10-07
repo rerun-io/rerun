@@ -398,12 +398,12 @@ pub(crate) fn view_3d(
     show_projections_from_2d_space(ctx, objects, state, orbit_eye, &mut scene);
 
     // Draw labels
-    let world_to_screen = eye.ui_from_world(&rect);
+    let ui_from_world = eye.ui_from_world(&rect);
     ui.with_layer_id(
         egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
         |ui| {
             for label in &scene.labels {
-                let pt = world_to_screen.project_point3(label.translation);
+                let pt = ui_from_world.project_point3(label.corners.1 - label.corners.0);
                 let font_id = egui::TextStyle::Monospace.resolve(ui.style());
 
                 let galley = ui.fonts().layout(
