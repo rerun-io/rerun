@@ -15,23 +15,12 @@ crate-type = ["cdylib", "rlib"]
 default = ["puffin", "glow"]
 
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
-puffin = [
-    "dep:puffin",
-    "dep:puffin_http",
-    "eframe/puffin",
-    "re_log_types/puffin",
-]
+puffin = ["dep:puffin", "dep:puffin_http", "eframe/puffin", "re_log_types/puffin"]
 
 #! #### Rendering backends
 #! You must enable either `glow` or `wgpu`.
 ## Enable the [`glow`](https://crates.io/crates/glow) renderer.
-glow = [
-    "eframe/glow",
-    "dep:egui_glow",
-    "dep:glow",
-    "dep:three-d",
-    "dep:three-d-asset",
-]
+glow = ["eframe/glow", "dep:egui_glow", "dep:glow", "dep:three-d", "dep:three-d-asset"]
 
 ## Enable the [`wgpu`](https://crates.io/crates/wgpu) renderer.
 wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:wgpu"]
@@ -46,11 +35,8 @@ re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
-eframe = { version = "0.19", default-features = false, features = [
-    "default_fonts",
-    "persistence",
-] }
-egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
+eframe      = { version = "0.19", default-features = false, features = ["default_fonts", "persistence"] }
+egui        = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { version = "0.19", features = ["tracing"] }
 
 
@@ -60,18 +46,11 @@ bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
 document-features = "0.2"
 # egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "096be40cc9fc7471eea48df9104fe62acfc96d2b", features = ["serde"] } # 2022-09-06
-# TODO: shouldn't outlive this PR
-egui_dock = { git = "https://github.com/rerun-io/egui_dock", branch = "hotfix/styleable_scroll_areas", features = [
-    "serde",
-] }
+# TODO(cmc): shouldn't outlive this PR
+egui_dock = { git = "https://github.com/rerun-io/egui_dock", branch = "hotfix/styleable_scroll_areas", features = ["serde"] }
 fixed = { version = "1.17", features = ["serde"] }
-glam = { version = "0.20", features = [
-    "mint",
-] } # can't update to 0.21 until a new version of `macaw` is released
-image = { version = "0.24", default-features = false, features = [
-    "jpeg",
-    "png",
-] }
+glam = { version = "0.20", features = ["mint"] } # can't update to 0.21 until a new version of `macaw` is released
+image = { version = "0.24", default-features = false, features = ["jpeg", "png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
 macaw = { version = "0.17", features = ["with_serde"] }
@@ -86,7 +65,7 @@ typenum = "1.15"
 vec1 = "1.8"
 
 # Optional dependencies:
-egui_glow = { version = "0.19", optional = true }
+egui_glow   = { version = "0.19", optional = true }
 glow = { version = "0.11", optional = true }
 three-d = { version = "0.13.0", optional = true, default-features = false }
 three-d-asset = { version = "0.3.0", optional = true, default-features = false, features = [
