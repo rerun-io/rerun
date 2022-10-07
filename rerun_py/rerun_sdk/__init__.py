@@ -763,3 +763,12 @@ def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:
         return np.require(array, float).tolist()  # type: ignore[no-any-return]
 
     return array  # type: ignore[return-value]
+
+
+def clear_object(
+    obj_path: str,
+) -> None:
+    """
+    Mark an object as no longer being visible
+    """
+    rerun_rs.clear_object(obj_path)
