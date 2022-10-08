@@ -25,7 +25,7 @@ py-format:
     black --config rerun_py/pyproject.toml .
     blackdoc .
     isort .
-    pyupgrade --py37-plus `find rerun_sdk/ tests/ -name "*.py" -type f`
+    pyupgrade --py37-plus `find rerun_py/rerun_sdk/ -name "*.py" -type f`
     cargo fmt --all
 
 # Run linting

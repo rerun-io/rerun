@@ -3,8 +3,9 @@
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
 * 2022-10-07: Implement zooming and panning of 2D view ([#160](https://github.com/rerun-io/rerun/pull/160)).
+* 2022-10-06: Support labels for 3D bounding boxes ([#159](https://github.com/rerun-io/rerun/pull/159)).
 * 2022-10-06: Implement text entries ("logging logs") ([#153](https://github.com/rerun-io/rerun/pull/153), [#167](https://github.com/rerun-io/rerun/pull/167))
-* 2022-10-06: Improve rendering of bounding box labels for small bounding boxes ([#157](https://github.com/rerun-io/rerun/pull/157))
+* 2022-10-06: Improve rendering of bounding box labels for small bounding boxes ([#157](https://github.com/rerun-io/rerun/pull/157)).
 * 2022-10-06: Fix bug object visibility toggling ([#155](https://github.com/rerun-io/rerun/pull/155)).
 * 2022-10-04: Update pinned rust version to 1.64 and use workspace inheritance ([#110](https://github.com/rerun-io/rerun/pull/110)).
 * 2022-09-21: Python SDK: add `log_point` ([#106](https://github.com/rerun-io/rerun/pull/106)).

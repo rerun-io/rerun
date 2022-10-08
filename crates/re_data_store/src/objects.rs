@@ -275,6 +275,7 @@ impl<'s> BBox2D<'s> {
 pub struct Box3D<'s> {
     pub obb: &'s re_log_types::Box3,
     pub stroke_width: Option<f32>,
+    pub label: Option<&'s str>,
 }
 
 impl<'s> Box3D<'s> {
@@ -286,18 +287,19 @@ impl<'s> Box3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("obb"),
             time_query,
-            ("space", "color", "stroke_width"),
+            ("space", "color", "stroke_width", "label"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              obb: &re_log_types::Box3,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
-             stroke_width: Option<&f32>| {
+             stroke_width: Option<&f32>,
+             label: Option<&String>| {
                 out.box3d.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
@@ -310,6 +312,7 @@ impl<'s> Box3D<'s> {
                     data: Box3D {
                         obb,
                         stroke_width: stroke_width.copied(),
+                        label: label.map(|s| s.as_str()),
                     },
                 });
             },

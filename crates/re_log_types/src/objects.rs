@@ -47,7 +47,7 @@ impl ObjectType {
             Self::LineSegments2D => &["space", "color", "points", "stroke_width"],
 
             Self::Point3D => &["space", "color", "pos", "radius"],
-            Self::Box3D => &["space", "color", "obb", "stroke_width"],
+            Self::Box3D => &["space", "color", "obb", "stroke_width", "label"],
             Self::Path3D => &["space", "color", "points", "stroke_width"],
             Self::LineSegments3D => &["space", "color", "points", "stroke_width"],
             Self::Mesh3D => &["space", "color", "mesh"],

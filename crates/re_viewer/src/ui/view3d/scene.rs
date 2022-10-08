@@ -40,11 +40,18 @@ pub struct MeshSource {
     pub cpu_mesh: Arc<CpuMesh>,
 }
 
+pub struct Label {
+    pub(crate) text: String,
+    /// Origin of the label
+    pub(crate) origin: Vec3,
+}
+
 #[derive(Default)]
 pub struct Scene {
     pub points: Vec<Point>,
     pub line_segments: Vec<LineSegments>,
     pub meshes: Vec<MeshSource>,
+    pub labels: Vec<Label>,
 
     /// Multiply this with the distance to a point to get its suggested radius.
     pub point_radius_from_distance: f32,
@@ -140,7 +147,11 @@ impl Scene {
         {
             crate::profile_scope!("box3d");
             for (props, obj) in objects.box3d.iter() {
-                let re_data_store::Box3D { obb, stroke_width } = obj;
+                let re_data_store::Box3D {
+                    obb,
+                    stroke_width,
+                    label,
+                } = obj;
                 let line_radius = stroke_width.map_or_else(
                     || {
                         let dist_to_eye =
@@ -151,7 +162,13 @@ impl Scene {
                 );
                 let line_radius = boost_size_on_hover(props, line_radius);
                 let color = object_color(ctx, props);
-                scene.add_box(InstanceIdHash::from_props(props), color, line_radius, obb);
+                scene.add_box(
+                    InstanceIdHash::from_props(props),
+                    color,
+                    line_radius,
+                    *label,
+                    obb,
+                );
             }
         }
 
@@ -372,6 +389,7 @@ impl Scene {
         instance_id: InstanceIdHash,
         color: [u8; 4],
         line_radius: f32,
+        label: Option<&str>,
         box3: &Box3,
     ) {
         let Box3 {
@@ -416,6 +434,13 @@ impl Scene {
             [corners[0b011], corners[0b111]],
         ];
 
+        if let Some(label) = label {
+            self.labels.push(Label {
+                text: (*label).to_owned(),
+                origin: translation,
+            });
+        }
+
         self.line_segments.push(LineSegments {
             instance_id,
             segments,
@@ -446,6 +471,7 @@ impl Scene {
             points,
             line_segments,
             meshes,
+            labels: _,
             point_radius_from_distance: _,
             line_radius_from_distance: _,
         } = self;

@@ -92,6 +92,7 @@ impl GpuScene {
             points,
             line_segments,
             meshes,
+            labels: _,
             point_radius_from_distance: _,
             line_radius_from_distance: _,
         } = scene;
