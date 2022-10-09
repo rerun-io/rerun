@@ -50,6 +50,15 @@ py-test:
 rs-doc:
     cargo +nightly doc --all --open --keep-going --all-features -Zunstable-options
 
+
+### TOML
+
+toml-format:
+    taplo fmt
+
+toml-lint:
+    taplo fmt --check
+
 ### Misc
 
 # Update the design_tokens.json used to style the GUI.
