@@ -58,7 +58,7 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
                 // Block indefinitely until we get awakened by an incoming LogMsg.
                 if let Ok(msg) = rx.recv() {
                     num_coalesced += 1;
-                    if !tx.send(msg).is_ok() {
+                    if tx.send(msg).is_err() {
                         break;
                     }
                 } else {
@@ -68,14 +68,14 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
                 // Now that we're awake, give some time for other LogMsgs to show themselves.
                 if let Ok(msg) = rx.recv_timeout(COALESCE_TIMEOUT) {
                     num_coalesced += 1;
-                    if !tx.send(msg).is_ok() {
+                    if tx.send(msg).is_err() {
                         break;
                     }
 
                     // Finally, let's try to coalesce all LogMsgs that are already buffered.
                     while let Ok(msg) = rx.recv() {
                         num_coalesced += 1;
-                        if !tx.send(msg).is_ok() {
+                        if tx.send(msg).is_err() {
                             break 'outer;
                         }
                     }
