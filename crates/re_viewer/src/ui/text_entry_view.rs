@@ -40,7 +40,7 @@ impl TextEntryState {
         // - Otherwise, let the user scroll around freely!
         let scroll_to_row = (self.latest_time != time).then(|| {
             crate::profile_scope!("binsearch");
-            let index = text_entries.partition_point(|msg| msg.time < time);
+            let index = text_entries.partition_point(|msg| msg.0.time < time);
             usize::min(index, index.saturating_sub(1))
         });
 
@@ -61,10 +61,40 @@ impl TextEntryState {
 
 // -----------------------------------------------------------------------------
 
+fn collect_text_entries<'s>(
+    _ctx: &mut ViewerContext<'_>,
+    objects: &'s Objects<'_>,
+) -> Vec<(&'s InstanceProps<'s>, &'s TextEntry<'s>)> {
+    crate::profile_function!();
+
+    let mut text_entries = {
+        crate::profile_scope!("collect");
+
+        objects.text_entry.iter().collect::<Vec<_>>()
+    };
+
+    {
+        crate::profile_scope!("sort");
+
+        text_entries.sort_by(|a, b| {
+            a.0.time.cmp(&b.0.time)
+            // TODO(cmc): Ideally, we'd want to first sort along the time axis, then
+            // along paths, for a somewhat more elegant output.
+            // In practice, due to the current limitations of our query system, that
+            // requires fetching _everything_ from the data store ahead of time, which
+            // completely destroys performance.
+            // For now we are better off with a slightly less elegant output, and orders
+            // of magnitude better performance.
+            // .then_with(|| a.data_path.obj_path().cmp(b.data_path.obj_path()))
+        });
+    }
+
+    text_entries
+}
+
 struct CompleteTextEntry<'s> {
     data_path: DataPath,
     time_point: TimePoint,
-    time: i64,
     props: &'s InstanceProps<'s>,
     text_entry: &'s TextEntry<'s>,
 }
@@ -93,43 +123,10 @@ impl<'s> CompleteTextEntry<'s> {
         Some(CompleteTextEntry {
             data_path: data_msg.data_path.clone(),
             time_point: data_msg.time_point.clone(),
-            time: props.time,
             props,
             text_entry,
         })
     }
-}
-
-fn collect_text_entries<'s>(
-    ctx: &mut ViewerContext<'_>,
-    objects: &'s Objects<'_>,
-) -> Vec<CompleteTextEntry<'s>> {
-    crate::profile_function!();
-
-    let mut text_entries = {
-        crate::profile_scope!("collect");
-
-        objects
-            .text_entry
-            .iter()
-            .filter_map(|(props, text_entry)| {
-                CompleteTextEntry::try_from_props(ctx, props, text_entry)
-            })
-            .collect::<Vec<_>>()
-    };
-
-    {
-        crate::profile_scope!("sort");
-
-        // First sort along the time axis, then along paths.
-        text_entries.sort_by(|a, b| {
-            a.time
-                .cmp(&b.time)
-                .then_with(|| a.data_path.obj_path().cmp(b.data_path.obj_path()))
-        });
-    }
-
-    text_entries
 }
 
 /// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
@@ -138,7 +135,7 @@ fn collect_text_entries<'s>(
 fn show_table(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    text_entries: &[CompleteTextEntry<'_>],
+    text_entries: &[(&InstanceProps<'_>, &TextEntry<'_>)],
     scroll_to_row: Option<usize>,
 ) {
     use egui_extras::Size;
@@ -184,13 +181,30 @@ fn show_table(
         })
         .body(|body| {
             body.rows(ROW_HEIGHT, text_entries.len(), |index, mut row| {
+                let (props, text_entry) = text_entries[index];
+
+                // NOTE: `try_from_props` is where we actually fetch data from the underlying
+                // store, which is a costly operation.
+                // Doing this here guarantees that it only happens for visible rows.
+                let text_entry =
+                    if let Some(te) = CompleteTextEntry::try_from_props(ctx, props, text_entry) {
+                        te
+                    } else {
+                        row.col(|ui| {
+                            ui.colored_label(
+                                Color32::RED,
+                                "<failed to load TextEntry from data store>",
+                            );
+                        });
+                        return;
+                    };
+
                 let CompleteTextEntry {
                     time_point,
                     data_path,
-                    time: _,
                     props,
                     text_entry,
-                } = &text_entries[index];
+                } = text_entry;
 
                 // time(s)
                 for time_source in ctx.log_db.time_points.0.keys() {
