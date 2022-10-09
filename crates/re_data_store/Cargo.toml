@@ -24,6 +24,7 @@ re_string_interner = { path = "../re_string_interner" }
 
 ahash = "0.8"
 document-features = "0.2"
+impl-trait-for-tuples = "0.2.2"
 itertools = "0.10"
 nohash-hasher = "0.2"
 serde = { version = "1", features = ["derive", "rc"], optional = true }

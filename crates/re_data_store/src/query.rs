@@ -91,7 +91,7 @@ pub(crate) fn query<'data, Time: 'static + Copy + Ord, T: 'static>(
 
 // ----------------------------------------------------------------------------
 
-struct MonoDataReader<'store, Time, T> {
+pub(crate) struct MonoDataReader<'store, Time, T> {
     history: Option<&'store MonoFieldStore<Time, T>>,
 }
 
@@ -109,7 +109,7 @@ impl<'store, Time: 'static + Copy + Ord, T: DataTrait> MonoDataReader<'store, Ti
 
 // ----------------------------------------------------------------------------
 
-enum MultiDataReader<'store, T> {
+pub(crate) enum MultiDataReader<'store, T> {
     None,
     Splat(&'store T),
     Batch(&'store Batch<T>),
@@ -470,6 +470,139 @@ pub fn visit_type_data_4<
                             child3.get(instance_index),
                             child4.get(instance_index),
                         );
+                    }
+                }
+            },
+        );
+    }
+
+    Some(())
+}
+
+// ----------------------------------------------------------------------------
+
+pub(crate) trait ChildTupleMappable<'store, Time> {
+    type Keys;
+    type Fields;
+    type MonoReaders;
+    type OptionMultiFieldStores;
+    type MultiReaders;
+    type Results;
+
+    fn get_fields(keys: Self::Keys) -> Self::Fields;
+    fn get_mono_readers(
+        fields: Self::Fields,
+        obj_store: &'store ObjStore<Time>,
+    ) -> Self::MonoReaders;
+    fn get_mono_results(mono_readers: &Self::MonoReaders, time: &Time) -> Self::Results;
+    fn get_field_stores(
+        fields: Self::Fields,
+        obj_store: &'store ObjStore<Time>,
+    ) -> Self::OptionMultiFieldStores;
+    fn get_multi_readers(
+        field_stores: &Self::OptionMultiFieldStores,
+        time: &Time,
+    ) -> Self::MultiReaders;
+    fn get_multi_instance(
+        multi_readers: &Self::MultiReaders,
+        instance_index: &IndexHash,
+    ) -> Self::Results;
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(5)]
+#[tuple_types_no_default_trait_bound]
+impl<'store, Time: 'static + Copy + Ord> ChildTupleMappable<'store, Time> for TupleElem {
+    for_tuples!(where #(TupleElem : DataTrait)* );
+    for_tuples!(type Keys = ( #(&'static str),*); );
+    for_tuples!(type Fields = ( #(FieldName),*); );
+    for_tuples!(type MonoReaders = ( #(MonoDataReader<'store, Time, TupleElem>),*); );
+    for_tuples!(type OptionMultiFieldStores = ( #(Option<&'store MultiFieldStore<Time, TupleElem>>),*); );
+    for_tuples!(type MultiReaders = ( #(MultiDataReader<'store, TupleElem>),*); );
+    for_tuples!(type Results = ( #(Option<&'store TupleElem>),*); );
+
+    fn get_fields(keys: Self::Keys) -> Self::Fields {
+        // (FieldName::from(child.0), ...)
+        for_tuples!((#(FieldName::from(keys.TupleElem)),*));
+    }
+
+    fn get_mono_readers(
+        fields: Self::Fields,
+        obj_store: &'store ObjStore<Time>,
+    ) -> Self::MonoReaders {
+        // (MonoDataReader<Time, S1>::new(obj_store, &fields.0, ...)
+        for_tuples!((#(MonoDataReader::<Time, TupleElem>::new(obj_store, &fields.TupleElem)),*));
+    }
+
+    fn get_mono_results(mono_readers: &Self::MonoReaders, time: &Time) -> Self::Results {
+        // (mono_readers.0.latest_at(time), ...)
+        for_tuples!((#(mono_readers.TupleElem.latest_at(time)),*));
+    }
+
+    fn get_field_stores(
+        fields: Self::Fields,
+        obj_store: &'store ObjStore<Time>,
+    ) -> Self::OptionMultiFieldStores {
+        // (mono_readers.0.latest_at(time), ...)
+        for_tuples!((#(obj_store.get_multi::<TupleElem>(&fields.TupleElem)),*));
+    }
+
+    fn get_multi_readers(
+        field_stores: &Self::OptionMultiFieldStores,
+        time: &Time,
+    ) -> Self::MultiReaders {
+        // (MultiDataReader::latest_at(field_stores.0, time), ...)
+        for_tuples!((#(MultiDataReader::latest_at(field_stores.TupleElem, time)),*));
+    }
+
+    fn get_multi_instance(
+        multi_readers: &Self::MultiReaders,
+        instance_index: &IndexHash,
+    ) -> Self::Results {
+        // (multi_readers.0.get(indstance_index), ...)
+        for_tuples!((#(multi_readers.TupleElem.get(instance_index)),*));
+    }
+}
+
+pub(crate) fn visit_type_data_n<
+    's,
+    Time: 'static + Copy + Ord,
+    T: DataTrait,
+    ChildTuple: ChildTupleMappable<'s, Time>,
+>(
+    obj_store: &'s ObjStore<Time>,
+    field_name: &FieldName,
+    time_query: &TimeQuery<Time>,
+    child_keys: ChildTuple::Keys,
+    mut visit: impl FnMut(Option<&'s IndexHash>, Time, &'s MsgId, &'s T, ChildTuple::Results),
+) -> Option<()> {
+    crate::profile_function!();
+
+    let child_fields = ChildTuple::get_fields(child_keys);
+
+    if obj_store.mono() {
+        let primary = obj_store.get_mono::<T>(field_name)?;
+        let child_mono_readers = ChildTuple::get_mono_readers(child_fields, obj_store);
+        query(
+            &primary.history,
+            time_query,
+            |time, (msg_id, primary_value)| {
+                let results = ChildTuple::get_mono_results(&child_mono_readers, time);
+                visit(None, *time, msg_id, primary_value, results);
+            },
+        );
+    } else {
+        let primary = obj_store.get_multi::<T>(field_name)?;
+        let child_field_stores = ChildTuple::get_field_stores(child_fields, obj_store);
+        query(
+            &primary.history,
+            time_query,
+            |time, (msg_id, primary_batch)| {
+                if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
+                    let multi_readers = ChildTuple::get_multi_readers(&child_field_stores, time);
+                    for (instance_index, primary_value) in primary_batch.iter() {
+                        let results =
+                            ChildTuple::get_multi_instance(&multi_readers, instance_index);
+                        visit(Some(instance_index), *time, msg_id, primary_value, results);
                     }
                 }
             },
