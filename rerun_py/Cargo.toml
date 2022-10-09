@@ -43,8 +43,8 @@ rerun = { path = "../crates/rerun" }
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 document-features = "0.2"
 image = { version = "0.24", default-features = false, features = [
-    "jpeg",
-    "jpeg_rayon",
+  "jpeg",
+  "jpeg_rayon",
 ] }
 itertools = "0.10"
 nohash-hasher = "0.2"
@@ -58,7 +58,7 @@ uuid = "1.1"
 
 # Optional dependencies:
 re_ws_comms = { path = "../crates/re_ws_comms", optional = true, features = [
-    "server",
+  "server",
 ] }
 re_web_server = { path = "../crates/re_web_server", optional = true }
 webbrowser = { version = "0.8", optional = true }
