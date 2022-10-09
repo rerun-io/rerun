@@ -73,7 +73,7 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
                     }
 
                     // Finally, let's try to coalesce all LogMsgs that are already buffered.
-                    while let Ok(msg) = rx.recv() {
+                    while let Ok(msg) = rx.try_recv() {
                         num_coalesced += 1;
                         if tx.send(msg).is_err() {
                             break 'outer;
