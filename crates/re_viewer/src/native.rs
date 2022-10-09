@@ -1,4 +1,4 @@
-use std::sync::mpsc::Receiver;
+use std::{sync::mpsc::Receiver, time::Duration};
 
 use re_log_types::LogMsg;
 
@@ -48,13 +48,46 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     std::thread::Builder::new()
         .name("ui_waker".to_owned())
         .spawn(move || {
-            while let Ok(msg) = rx.recv() {
-                if tx.send(msg).is_ok() {
-                    ctx.request_repaint();
+            // In the worst case, how long should we wait for the next LogMsg after
+            // we got awakened?
+            const COALESCE_TIMEOUT: Duration = Duration::from_micros(100);
+
+            'outer: loop {
+                let mut num_coalesced = 0usize;
+
+                // Block indefinitely until we get awakened by an incoming LogMsg.
+                if let Ok(msg) = rx.recv() {
+                    num_coalesced += 1;
+                    if !tx.send(msg).is_ok() {
+                        break;
+                    }
                 } else {
                     break;
                 }
+
+                // Now that we're awake, give some time for other LogMsgs to show themselves.
+                if let Ok(msg) = rx.recv_timeout(COALESCE_TIMEOUT) {
+                    num_coalesced += 1;
+                    if !tx.send(msg).is_ok() {
+                        break;
+                    }
+
+                    // Finally, let's try to coalesce all LogMsgs that are already buffered.
+                    while let Ok(msg) = rx.recv() {
+                        num_coalesced += 1;
+                        if !tx.send(msg).is_ok() {
+                            break 'outer;
+                        }
+                    }
+                }
+
+                ctx.request_repaint();
+                re_log::debug!(
+                    "sent repaint request (coalesced {} into one)",
+                    num_coalesced
+                );
             }
+
             re_log::debug!("Shutting down ui_waker thread");
         })
         .unwrap();
