@@ -37,6 +37,10 @@ impl ObjectTree {
         self.children.is_empty()
     }
 
+    pub fn num_children_and_fields(&self) -> usize {
+        self.children.len() + self.fields.len()
+    }
+
     pub fn add_data_msg(
         &mut self,
         msg_id: MsgId,
