@@ -128,10 +128,10 @@ impl ObjPath {
         self.path.to_type_path_and_index_path()
     }
 
+    /// Return [`None`] if root.
     #[must_use]
-    pub fn parent(&self) -> Self {
-        let parent = self.path.parent();
-        Self::from(parent)
+    pub fn parent(&self) -> Option<Self> {
+        self.path.parent().map(Self::from)
     }
 }
 

@@ -257,12 +257,10 @@ impl TimePanel {
         // Property column:
 
         if is_visible {
-            let are_all_ancestors_visible = tree.path.is_root()
-                || ctx
-                    .rec_cfg
-                    .projected_object_properties
-                    .get(&tree.path.parent())
-                    .visible;
+            let are_all_ancestors_visible = match tree.path.parent() {
+                None => true, // root
+                Some(parent) => ctx.rec_cfg.projected_object_properties.get(&parent).visible,
+            };
 
             let mut props = ctx.rec_cfg.individual_object_properties.get(&tree.path);
             let property_rect =
