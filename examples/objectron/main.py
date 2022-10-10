@@ -172,16 +172,21 @@ def log_annotated_bboxes(bboxes: Iterable[Object]):
             continue
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
-        rerun.log_obb(f"3d/objects/{bbox.id}/bbox3d",
-                      bbox.scale,
-                      bbox.translation,
-                      rot.as_quat(),
-                      color=[130, 160, 250, 255],
-                      timeless=True,
-                      space="3d")
+        rerun.log_obb(
+            f"3d/objects/{bbox.id}/bbox3d",
+            bbox.scale,
+            bbox.translation,
+            rot.as_quat(),
+            color=[130, 160, 250, 255],
+            label=bbox.category,
+            timeless=True,
+            space="3d",
+        )
 
 
-def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]):
+def log_frame_annotations(
+    frame_times: List[float], frame_annotations: List[FrameAnnotation]
+):
     """Maps annotations to their associated `ARFrame` then logs them using the Rerun SDK."""
 
     for frame_ann in frame_annotations:
