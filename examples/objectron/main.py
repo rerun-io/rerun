@@ -148,7 +148,11 @@ def log_camera(cam: ARCamera):
         camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
     )
 
-    rerun._log_intrinsics("3d/camera/video", resolution=[w, h], intrinsics_matrix=intrinsics)
+    rerun._log_intrinsics(
+        "3d/camera/video",
+        resolution=[w, h],
+        intrinsics_matrix=intrinsics,
+    )
 
 
 def log_point_cloud(point_cloud: ARPointCloud):
@@ -221,32 +225,22 @@ def log_projected_bbox(path: str, keypoints: np.ndarray):
     # this doesn't make sense, that'll make everything clearer.
     #
     # TODO(cmc): replace once we can project 3D bboxes on 2D views
-    segments = [
-        keypoints[1],
-        keypoints[2],
-        keypoints[1],
-        keypoints[3],
-        keypoints[4],
-        keypoints[2],
-        keypoints[4],
-        keypoints[3],
-        keypoints[5],
-        keypoints[6],
-        keypoints[5],
-        keypoints[7],
-        keypoints[8],
-        keypoints[6],
-        keypoints[8],
-        keypoints[7],
-        keypoints[1],
-        keypoints[5],
-        keypoints[2],
-        keypoints[6],
-        keypoints[3],
-        keypoints[7],
-        keypoints[4],
-        keypoints[8],
-    ]
+    # fmt: off
+    segments = [keypoints[1], keypoints[2],
+                keypoints[1], keypoints[3],
+                keypoints[4], keypoints[2],
+                keypoints[4], keypoints[3],
+
+                keypoints[5], keypoints[6],
+                keypoints[5], keypoints[7],
+                keypoints[8], keypoints[6],
+                keypoints[8], keypoints[7],
+
+                keypoints[1], keypoints[5],
+                keypoints[2], keypoints[6],
+                keypoints[3], keypoints[7],
+                keypoints[4], keypoints[8]]
+    # fmt: on
 
     rerun.log_line_segments(path, segments, space="image", color=[130, 160, 250, 255])
 
