@@ -201,7 +201,7 @@ impl TimePanel {
 
         if !tree
             .prefix_times
-            .contains_key(ctx.rec_cfg.time_ctrl.source())
+            .contains_key(ctx.rec_cfg.time_ctrl.timeline())
         {
             return; // ignore objects that have no data for the current timeline
         }
@@ -290,7 +290,8 @@ impl TimePanel {
         // show the data in the time area:
 
         if is_visible && is_closed {
-            if let Some(messages_over_time) = tree.prefix_times.get(ctx.rec_cfg.time_ctrl.source())
+            if let Some(messages_over_time) =
+                tree.prefix_times.get(ctx.rec_cfg.time_ctrl.timeline())
             {
                 show_data_over_time(
                     ctx,
@@ -330,7 +331,7 @@ impl TimePanel {
 
             let obj_path = ObjPath::from(path.clone());
             for (field_name, data) in &tree.fields {
-                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.source()) {
+                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.timeline()) {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
@@ -379,7 +380,8 @@ impl TimePanel {
                 // show the data in the time area:
 
                 if is_visible {
-                    if let Some(messages_over_time) = data.times.get(ctx.rec_cfg.time_ctrl.source())
+                    if let Some(messages_over_time) =
+                        data.times.get(ctx.rec_cfg.time_ctrl.timeline())
                     {
                         show_data_over_time(
                             ctx,
@@ -620,7 +622,12 @@ fn initialize_time_ranges_ui(
     time_x_range: RangeInclusive<f32>,
 ) -> TimeRangesUi {
     crate::profile_function!();
-    if let Some(time_points) = ctx.log_db.time_points.0.get(ctx.rec_cfg.time_ctrl.source()) {
+    if let Some(time_points) = ctx
+        .log_db
+        .time_points
+        .0
+        .get(ctx.rec_cfg.time_ctrl.timeline())
+    {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), time_points);
         let time_view = ctx.rec_cfg.time_ctrl.time_view();
         let time_view = time_view.unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis));

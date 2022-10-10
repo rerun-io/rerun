@@ -27,8 +27,9 @@ from pathlib import Path
 from typing import Final, Iterable, Iterator, List
 
 import numpy as np
+import numpy.typing as npt
 import rerun_sdk as rerun
-from proto.objectron.proto import (
+from proto.objectron.proto import (  # type: ignore[import]
     ARCamera,
     ARFrame,
     ARPointCloud,
@@ -38,7 +39,7 @@ from proto.objectron.proto import (
     Sequence,
 )
 from rerun_sdk import ImageFormat
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation as R  # type: ignore[import]
 
 IMAGE_RESOLUTION: Final = (1440, 1920)
 GEOMETRY_FILENAME: Final = "geometry.pbdata"
@@ -48,6 +49,7 @@ ANNOTATIONS_FILENAME: Final = "annotation.pbdata"
 @dataclass
 class SampleARFrame:
     """An `ARFrame` sample and the relevant associated metadata."""
+
     index: int
     timestamp: float
     dirpath: Path
@@ -67,14 +69,11 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
 
     frame_idx = 0
     while len(data) > 0 and frame_idx < nb_frames:
-        next_len = int.from_bytes(data[:4], byteorder='little', signed=False)
+        next_len = int.from_bytes(data[:4], byteorder="little", signed=False)
         data = data[4:]
 
         frame = ARFrame().parse(data[:next_len])
-        yield SampleARFrame(index=frame_idx,
-                            timestamp=frame.timestamp,
-                            dirpath=dirpath,
-                            frame=frame)
+        yield SampleARFrame(index=frame_idx, timestamp=frame.timestamp, dirpath=dirpath, frame=frame)
 
         data = data[next_len:]
         frame_idx += 1
@@ -96,7 +95,7 @@ def read_annotations(dirpath: Path) -> Sequence:
     return seq
 
 
-def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
+def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
     rerun.set_space_up("3d", [0, 1, 0])
@@ -116,7 +115,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
     log_frame_annotations(frame_times, seq.frame_annotations)
 
 
-def log_camera(cam: ARCamera):
+def log_camera(cam: ARCamera) -> None:
     """Logs a camera from an `ARFrame` using the Rerun SDK."""
 
     world_from_cam = np.asarray(cam.transform).reshape((4, 4))
@@ -131,44 +130,45 @@ def log_camera(cam: ARCamera):
     rot = rot * R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
     (w, h) = (h, w)
 
-    rerun.log_camera("camera",
-                     resolution=[w, h],
-                     intrinsics=intrinsics,
-                     rotation_q=rot.as_quat(),
-                     position=translation,
-                     camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
-                     space="3d",
-                     target_space="image")
+    rerun.log_camera(
+        "camera",
+        resolution=[w, h],
+        intrinsics=intrinsics,
+        rotation_q=rot.as_quat(),
+        position=translation,
+        camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
+        space="3d",
+        target_space="image",
+    )
 
     # Experimental new API:
-    rerun._log_extrinsics("3d/camera",
-                          rotation_q=rot.as_quat(),
-                          position=translation,
-                          camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK)
+    rerun._log_extrinsics(
+        "3d/camera",
+        rotation_q=rot.as_quat(),
+        position=translation,
+        camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
+    )
 
-    rerun._log_intrinsics("3d/camera/video",
-                          resolution=[w, h],
-                          intrinsics_matrix=intrinsics)
+    rerun._log_intrinsics("3d/camera/video", resolution=[w, h], intrinsics_matrix=intrinsics)
 
 
-def log_point_cloud(point_cloud: ARPointCloud):
+def log_point_cloud(point_cloud: ARPointCloud) -> None:
     """Logs a point cloud from an `ARFrame` using the Rerun SDK."""
 
     for i in range(point_cloud.count):
         point = point_cloud.point[i]
         ident = point_cloud.identifier[i]
-        rerun.log_point(f"3d/points/{ident}",
-                        [point.x, point.y, point.z],
-                        color=[255, 255, 255, 255],
-                        space="3d")
+        rerun.log_point(
+            f"3d/points/{ident}", np.array([point.x, point.y, point.z]), color=[255, 255, 255, 255], space="3d"
+        )
 
 
-def log_annotated_bboxes(bboxes: Iterable[Object]):
+def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
     """Logs all the bounding boxes annotated in an `ARFrame` sequence using the Rerun SDK."""
 
     for bbox in bboxes:
         if bbox.type != ObjectType.BOUNDING_BOX:
-            logging.error(f"err: object type not supported: {bbox.type}")
+            logging.error(f"err: object type not supported: {bbox.type}")  # type: ignore[attr-defined]
             continue
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
@@ -184,9 +184,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]):
         )
 
 
-def log_frame_annotations(
-    frame_times: List[float], frame_annotations: List[FrameAnnotation]
-):
+def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]) -> None:
     """Maps annotations to their associated `ARFrame` then logs them using the Rerun SDK."""
 
     for frame_ann in frame_annotations:
@@ -202,8 +200,7 @@ def log_frame_annotations(
             path = f"3d/objects/{obj_ann.object_id}"
 
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
-            keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y]
-                                         for kp in obj_ann.keypoints])
+            keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y] for kp in obj_ann.keypoints], dtype=np.float32)
             # NOTE: These are normalized points, so we need to bring them back to image space
             keypoint_pos2s *= IMAGE_RESOLUTION
 
@@ -211,13 +208,10 @@ def log_frame_annotations(
                 log_projected_bbox(f"{path}/bbox2d", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
-                    rerun.log_point(f"{path}/bbox2d/{id}",
-                                    pos2,
-                                    color=[130, 160, 250, 255],
-                                    space="image")
+                    rerun.log_point(f"{path}/bbox2d/{id}", pos2, color=[130, 160, 250, 255], space="image")
 
 
-def log_projected_bbox(path: str, keypoints: np.ndarray):
+def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
     """
     Projects the 3D bounding box described by the keypoints of an `ObjectAnnotation`
     to a 2D plane, using line segments.
@@ -230,42 +224,37 @@ def log_projected_bbox(path: str, keypoints: np.ndarray):
     # this doesn't make sense, that'll make everything clearer.
     #
     # TODO(cmc): replace once we can project 3D bboxes on 2D views
-    segments = [keypoints[1], keypoints[2],
-                keypoints[1], keypoints[3],
-                keypoints[4], keypoints[2],
-                keypoints[4], keypoints[3],
+    # fmt: off
+    segments = np.array([keypoints[1], keypoints[2],
+                         keypoints[1], keypoints[3],
+                         keypoints[4], keypoints[2],
+                         keypoints[4], keypoints[3],
 
-                keypoints[5], keypoints[6],
-                keypoints[5], keypoints[7],
-                keypoints[8], keypoints[6],
-                keypoints[8], keypoints[7],
+                         keypoints[5], keypoints[6],
+                         keypoints[5], keypoints[7],
+                         keypoints[8], keypoints[6],
+                         keypoints[8], keypoints[7],
 
-                keypoints[1], keypoints[5],
-                keypoints[2], keypoints[6],
-                keypoints[3], keypoints[7],
-                keypoints[4], keypoints[8]]
+                         keypoints[1], keypoints[5],
+                         keypoints[2], keypoints[6],
+                         keypoints[3], keypoints[7],
+                         keypoints[4], keypoints[8]],
+                         dtype=np.float32)
+    # fmt: on
 
-    rerun.log_line_segments(path,
-                            segments,
-                            space="image",
-                            color=[130, 160, 250, 255])
+    rerun.log_line_segments(path, segments, space="image", color=[130, 160, 250, 255])
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Logs Objectron data using the Rerun SDK.')
-    parser.add_argument('--headless', action='store_true',
-                        help="Don't show GUI")
-    parser.add_argument('--connect', dest='connect', action='store_true',
-                        help='Connect to an external viewer')
-    parser.add_argument('--addr', type=str, default=None,
-                        help='Connect to this ip:port')
-    parser.add_argument('--save', type=str, default=None,
-                        help='Save data to a .rrd file at this path')
-    parser.add_argument('--frames', type=int, default=sys.maxsize,
-                        help='If specifies, limits the number of frames logged')
-    parser.add_argument('dir', type=Path, nargs='+',
-                        help='Directories to log (e.g. `dataset/bike/batch-8/16/`)')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
+    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
+    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
+    parser.add_argument(
+        "--frames", type=int, default=sys.maxsize, help="If specifies, limits the number of frames logged"
+    )
+    parser.add_argument("dir", type=Path, nargs="+", help="Directories to log (e.g. `dataset/bike/batch-8/16/`)")
     args = parser.parse_args()
 
     if args.connect:

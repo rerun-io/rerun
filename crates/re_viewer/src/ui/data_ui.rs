@@ -34,7 +34,7 @@ pub(crate) fn view_instance(
         .log_db
         .obj_db
         .store
-        .get(ctx.rec_cfg.time_ctrl.source())?;
+        .get(ctx.rec_cfg.time_ctrl.timeline())?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
 
@@ -82,7 +82,7 @@ pub(crate) fn view_data(
     ui: &mut egui::Ui,
     data_path: &DataPath,
 ) -> Option<()> {
-    let timeline = ctx.rec_cfg.time_ctrl.source();
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
 
     match ctx

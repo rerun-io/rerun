@@ -1,10 +1,10 @@
+name: CI
+
 on:
   push:
     branches:
       - "main"
   pull_request:
-
-name: CI
 
 env:
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
@@ -137,13 +137,6 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           rust-version: "1.64.0"
-
-  lint_py:
-    name: lint.py
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - run: ./scripts/lint.py
 
   maturin-windows:
     name: Maturin Windows

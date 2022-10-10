@@ -8,8 +8,9 @@ format: toml-format py-format
     cargo fmt --all
 
 # Lint all of our code
-lint: toml-lint py-lint
+lint:
     cargo cranky
+    scripts/lint.py
 
 
 ### Python

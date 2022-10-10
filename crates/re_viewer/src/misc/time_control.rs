@@ -305,20 +305,20 @@ impl TimeControl {
 
     /// Make sure the selected timeline is a valid one
     pub fn select_a_valid_timeline(&mut self, time_points: &TimePoints) {
-        for source in time_points.0.keys() {
-            if &self.timeline == source {
+        for timeline in time_points.0.keys() {
+            if &self.timeline == timeline {
                 return; // it's valid
             }
         }
-        if let Some(source) = time_points.0.keys().next() {
-            self.timeline = *source;
+        if let Some(timeline) = time_points.0.keys().next() {
+            self.timeline = *timeline;
         } else {
             self.timeline = Default::default();
         }
     }
 
     /// The currently selected timeline
-    pub fn source(&self) -> &Timeline {
+    pub fn timeline(&self) -> &Timeline {
         &self.timeline
     }
 
@@ -327,7 +327,7 @@ impl TimeControl {
         self.timeline.typ()
     }
 
-    pub fn set_source(&mut self, timeline: Timeline) {
+    pub fn set_timeline(&mut self, timeline: Timeline) {
         self.timeline = timeline;
     }
 
@@ -394,7 +394,7 @@ impl TimeControl {
         }
     }
 
-    pub fn set_source_and_time(&mut self, timeline: Timeline, time: impl Into<TimeReal>) {
+    pub fn set_timeline_and_time(&mut self, timeline: Timeline, time: impl Into<TimeReal>) {
         self.timeline = timeline;
         self.set_time(time);
     }

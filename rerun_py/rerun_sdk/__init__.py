@@ -230,7 +230,7 @@ class LogLevel:
     TRACE: Final = "TRACE"
 
 
-class LoggingHandler(logging.Handler):
+class LoggingHandler(logging.Handler):  # type: ignore[name-defined, misc]
     """
     Provides a logging handler that forwards all events to the Rerun SDK.
 
@@ -254,18 +254,18 @@ class LoggingHandler(logging.Handler):
     """
 
     LVL2NAME: Final = {
-        logging.CRITICAL: LogLevel.CRITICAL,
-        logging.ERROR: LogLevel.ERROR,
-        logging.WARNING: LogLevel.WARN,
-        logging.INFO: LogLevel.INFO,
-        logging.DEBUG: LogLevel.DEBUG,
+        logging.CRITICAL: LogLevel.CRITICAL,  # type: ignore[attr-defined]
+        logging.ERROR: LogLevel.ERROR,  # type: ignore[attr-defined]
+        logging.WARNING: LogLevel.WARN,  # type: ignore[attr-defined]
+        logging.INFO: LogLevel.INFO,  # type: ignore[attr-defined]
+        logging.DEBUG: LogLevel.DEBUG,  # type: ignore[attr-defined]
     }
 
     def __init__(self, space: Optional[str] = None):
-        logging.Handler.__init__(self)
+        logging.Handler.__init__(self)  # type: ignore[attr-defined]
         self.space = space
 
-    def emit(self, record: logging.LogRecord) -> None:
+    def emit(self, record: logging.LogRecord) -> None:  # type: ignore[name-defined]
         """Emits a record to the Rerun SDK."""
         objpath = record.name.replace(".", "/")
         level = self.LVL2NAME.get(record.levelno)

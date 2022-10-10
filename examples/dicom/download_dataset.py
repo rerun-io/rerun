@@ -21,5 +21,6 @@ def download_dataset():
     z = zipfile.ZipFile(io.BytesIO(resp.content))
     z.extractall(DATASET_DIR.absolute())
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     download_dataset()

@@ -136,7 +136,9 @@ impl<'a> ViewerContext<'a> {
 
         let response = ui.selectable_label(is_selected, timeline.typ().format(value));
         if response.clicked() {
-            self.rec_cfg.time_ctrl.set_source_and_time(*timeline, value);
+            self.rec_cfg
+                .time_ctrl
+                .set_timeline_and_time(*timeline, value);
             self.rec_cfg.time_ctrl.pause();
         }
         response
