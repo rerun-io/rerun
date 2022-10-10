@@ -43,11 +43,11 @@ impl ObjectType {
 
             Self::Image => &["space", "color", "tensor", "meter"],
             Self::Point2D => &["space", "color", "pos", "radius"],
-            Self::BBox2D => &["space", "color", "bbox", "stroke_width", "label", "visible"],
-            Self::LineSegments2D => &["space", "color", "points", "stroke_width", "visible"],
+            Self::BBox2D => &["space", "color", "bbox", "stroke_width", "label"],
+            Self::LineSegments2D => &["space", "color", "points", "stroke_width"],
 
             Self::Point3D => &["space", "color", "pos", "radius"],
-            Self::Box3D => &["space", "color", "obb", "stroke_width", "label", "visible"],
+            Self::Box3D => &["space", "color", "obb", "stroke_width", "label"],
             Self::Path3D => &["space", "color", "points", "stroke_width"],
             Self::LineSegments3D => &["space", "color", "points", "stroke_width"],
             Self::Mesh3D => &["space", "color", "mesh"],
@@ -57,4 +57,4 @@ impl ObjectType {
 }
 
 /// These are fields not part of the actual object, but express meta-info about paths.
-pub const META_FIELDS: &[&str] = &["_transform"];
+pub const META_FIELDS: &[&str] = &["_transform", "_visible"];
