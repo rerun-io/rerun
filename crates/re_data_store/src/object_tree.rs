@@ -50,25 +50,22 @@ impl ObjectTree {
     ) {
         crate::profile_function!();
         let obj_path = data_path.obj_path.to_components();
-        self.add_path(
-            obj_path.as_slice(),
-            0,
-            data_path.field_name,
-            msg_id,
-            time_point,
-            data,
-        );
+
+        let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, msg_id, time_point);
+
+        leaf.fields
+            .entry(data_path.field_name)
+            .or_default()
+            .add(msg_id, time_point, data);
     }
 
-    pub(crate) fn add_path(
+    fn create_subtrees_recursively(
         &mut self,
         full_path: &[ObjPathComp],
         depth: usize,
-        field_name: FieldName,
         msg_id: MsgId,
         time_point: &TimePoint,
-        data: &LoggedData,
-    ) {
+    ) -> &mut Self {
         for (timeline, time_value) in &time_point.0 {
             self.prefix_times
                 .entry(*timeline)
@@ -80,18 +77,13 @@ impl ObjectTree {
 
         match full_path.get(depth) {
             None => {
-                // end of path
-                self.fields
-                    .entry(field_name)
-                    .or_default()
-                    .add(msg_id, time_point, data);
+                self // end of path
             }
-            Some(component) => {
-                self.children
-                    .entry(component.clone())
-                    .or_insert_with(|| ObjectTree::new(full_path[..depth + 1].into()))
-                    .add_path(full_path, depth + 1, field_name, msg_id, time_point, data);
-            }
+            Some(component) => self
+                .children
+                .entry(component.clone())
+                .or_insert_with(|| ObjectTree::new(full_path[..depth + 1].into()))
+                .create_subtrees_recursively(full_path, depth + 1, msg_id, time_point),
         }
     }
 }
