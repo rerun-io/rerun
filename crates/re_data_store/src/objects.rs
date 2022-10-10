@@ -817,6 +817,35 @@ impl<'s> Objects<'s> {
             && arrow3d.is_empty()
     }
 
+    pub fn len(&self) -> usize {
+        let Self {
+            space,
+            text_entry,
+            image,
+            point2d,
+            bbox2d,
+            line_segments2d,
+            point3d,
+            box3d,
+            path3d,
+            line_segments3d,
+            mesh3d,
+            camera,
+        } = self;
+        space.len()
+            + image.len()
+            + text_entry.len()
+            + point2d.len()
+            + bbox2d.len()
+            + line_segments2d.len()
+            + point3d.len()
+            + box3d.len()
+            + path3d.len()
+            + line_segments3d.len()
+            + mesh3d.len()
+            + camera.len()
+    }
+
     pub fn has_any_2d(&self) -> bool {
         !self.image.is_empty()
             || !self.point2d.is_empty()
