@@ -765,10 +765,8 @@ def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:
     return array  # type: ignore[return-value]
 
 
-def clear_object(
-    obj_path: str,
-) -> None:
+def set_visible(obj_path: str, visibile: bool) -> None:
     """
-    Mark an object as no longer being visible
+    Change the visibility of an object
     """
-    rerun_rs.clear_object(obj_path)
+    rerun_rs.set_visible(obj_path, visibile)

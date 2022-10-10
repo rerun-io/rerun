@@ -119,7 +119,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
-    m.add_function(wrap_pyfunction!(clear_object, m)?)?;
+    m.add_function(wrap_pyfunction!(set_visible, m)?)?;
 
     Ok(())
 }
@@ -1453,7 +1453,7 @@ fn log_image_file(
 
 /// Clear the visibility flag of an object
 #[pyfunction]
-fn clear_object(obj_path: &str) -> PyResult<()> {
+fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
 
     let mut sdk = Sdk::global();
@@ -1463,7 +1463,7 @@ fn clear_object(obj_path: &str) -> PyResult<()> {
     sdk.send_data(
         &time_point,
         (&obj_path, "_visible"),
-        LoggedData::Single(Data::Bool(false)),
+        LoggedData::Single(Data::Bool(visibile)),
     );
 
     Ok(())
