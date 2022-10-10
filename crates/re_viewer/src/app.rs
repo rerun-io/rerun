@@ -270,7 +270,7 @@ struct AppState {
     viewport_panel: IntMap<RecordingId, crate::viewport_panel::ViewportPanel>,
 
     view_index: usize,
-    log_table_view: crate::log_table_view::LogTableView,
+    event_log_view: crate::event_log_view::EventLogView,
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: crate::time_panel::TimePanel,
 
@@ -293,7 +293,7 @@ impl AppState {
             selected_rec_id: selected_recording_id,
             recording_configs,
             view_index,
-            log_table_view,
+            event_log_view,
             viewport_panel,
             selection_panel,
             time_panel,
@@ -329,7 +329,7 @@ impl AppState {
                 .entry(*selected_recording_id)
                 .or_default()
                 .ui(&mut ctx, ui),
-            1 => log_table_view.ui(&mut ctx, ui),
+            1 => event_log_view.ui(&mut ctx, ui),
             _ => {}
         });
 

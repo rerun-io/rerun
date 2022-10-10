@@ -3,11 +3,12 @@ use re_log_types::*;
 
 use crate::{Preview, ViewerContext};
 
+/// An event log, a table of all log messages.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct LogTableView {}
+pub(crate) struct EventLogView {}
 
-impl LogTableView {
+impl EventLogView {
     #[allow(clippy::unused_self)]
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
