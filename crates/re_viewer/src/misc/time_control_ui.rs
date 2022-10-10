@@ -12,14 +12,14 @@ impl TimeControl {
         self.select_a_valid_timeline(timeline_axes);
 
         egui::ComboBox::from_id_source("timeline")
-            .selected_text(self.source().name().as_str())
+            .selected_text(self.timeline().name().as_str())
             .show_ui(ui, |ui| {
-                for source in timeline_axes.0.keys() {
+                for timeline in timeline_axes.0.keys() {
                     if ui
-                        .selectable_label(source == self.source(), source.name().as_str())
+                        .selectable_label(timeline == self.timeline(), timeline.name().as_str())
                         .clicked()
                     {
-                        self.set_source(*source);
+                        self.set_timeline(*timeline);
                     }
                 }
             });
@@ -152,7 +152,7 @@ impl TimeControl {
             self.set_speed(speed);
         }
 
-        if let Some(time_values) = time_points.0.get(self.source()) {
+        if let Some(time_values) = time_points.0.get(self.timeline()) {
             let anything_has_kb_focus = ui.ctx().memory().focus().is_some();
             let step_back = ui
                 .button("⏴")
