@@ -318,13 +318,8 @@ impl TimePanel {
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
-        for (name, child) in &tree.named_children {
-            path.push(ObjPathComp::Name(*name));
-            self.show_tree(ctx, time_area_response, time_area_painter, path, child, ui);
-            path.pop();
-        }
-        for (index, child) in &tree.index_children {
-            path.push(ObjPathComp::Index(index.clone()));
+        for (obj_path_comp, child) in &tree.children {
+            path.push(obj_path_comp.clone());
             self.show_tree(ctx, time_area_response, time_area_painter, path, child, ui);
             path.pop();
         }
