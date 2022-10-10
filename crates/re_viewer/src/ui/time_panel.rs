@@ -17,6 +17,8 @@ use crate::{
 const PROPERY_COLUMN_WIDTH: f32 = 14.0;
 
 /// A panel that shows objects to the left, time on the top.
+///
+/// This includes the timeline controls and streams view.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TimePanel {
