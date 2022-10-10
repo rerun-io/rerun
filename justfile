@@ -1,3 +1,7 @@
+default:
+  @just --list
+
+
 ### Python
 
 # Set up a Pythonvirtual environment for development
