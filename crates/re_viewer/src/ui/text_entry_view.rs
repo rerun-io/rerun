@@ -5,89 +5,149 @@ use re_log_types::*;
 
 // -----------------------------------------------------------------------------
 
-pub(crate) fn show(
-    ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
-    objects: &Objects<'_>,
-) -> egui::Response {
-    crate::profile_function!();
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub(crate) struct TextEntryState {
+    /// Keeps track of the latest time selection made by the user.
+    ///
+    /// We need this because we want the user to be able to manually scroll the
+    /// text entry window however they please when the time cursor isn't moving.
+    latest_time: i64,
+}
 
-    let text_entries = collect_text_entries(ctx, objects);
+impl TextEntryState {
+    pub fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+        objects: &Objects<'_>,
+    ) -> egui::Response {
+        crate::profile_function!();
 
-    // TODO(cmc): There are some rendering issues with horizontal scrolling here
-    // that seem to stem from the interaction between egui's Table and the docking
-    // system.
-    // Specifically, the text from the remainder column is incorrectly clipped.
-    // Relevant: https://github.com/Adanos020/egui_dock/issues/48
-    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-        ui.label(format!("{} text entries", objects.text_entry.len()));
-        ui.separator();
-        show_table(ctx, ui, &text_entries);
-    })
-    .response
+        let text_entries = collect_text_entries(ctx, objects);
+
+        let time = ctx
+            .rec_cfg
+            .time_ctrl
+            .time_query()
+            .map_or(self.latest_time, |q| match q {
+                re_data_store::TimeQuery::LatestAt(time) => time,
+                re_data_store::TimeQuery::Range(range) => *range.start(),
+            });
+
+        // Did the time cursor move since last time?
+        // - If it did, time to autoscroll approriately.
+        // - Otherwise, let the user scroll around freely!
+        let time_cursor_moved = self.latest_time != time;
+        let scroll_to_row = time_cursor_moved.then(|| {
+            crate::profile_scope!("binsearch");
+            let index = text_entries.partition_point(|msg| msg.0.time < time);
+            usize::min(index, index.saturating_sub(1))
+        });
+
+        self.latest_time = time;
+
+        ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+            ui.label(format!("{} text entries", objects.text_entry.len()));
+            ui.separator();
+
+            egui::ScrollArea::horizontal().show(ui, |ui| {
+                crate::profile_scope!("render table");
+                show_table(ctx, ui, &text_entries, scroll_to_row);
+            })
+        })
+        .response
+    }
 }
 
 // -----------------------------------------------------------------------------
 
-struct CompleteTextEntry<'s> {
-    data_path: DataPath,
-    time_point: TimePoint,
-    time: i64,
-    props: &'s InstanceProps<'s>,
-    text_entry: &'s TextEntry<'s>,
-}
-
 fn collect_text_entries<'s>(
-    ctx: &mut ViewerContext<'_>,
+    _ctx: &mut ViewerContext<'_>,
     objects: &'s Objects<'_>,
-) -> Vec<CompleteTextEntry<'s>> {
+) -> Vec<(&'s InstanceProps<'s>, &'s TextEntry<'s>)> {
     crate::profile_function!();
 
-    let mut text_entries = objects
-        .text_entry
-        .iter()
-        .filter_map(|(props, text_entry)| {
-            let msg = ctx.log_db.get_log_msg(props.msg_id).or_else(|| {
-                re_log::warn_once!("Missing LogMsg for {:?}", props.obj_path.obj_type_path());
-                None
-            })?;
+    let mut text_entries = {
+        crate::profile_scope!("collect");
 
-            let data_msg = if let LogMsg::DataMsg(data_msg) = msg {
-                data_msg
-            } else {
-                re_log::warn_once!(
-                    "LogMsg must be a DataMsg ({:?})",
-                    props.obj_path.obj_type_path()
-                );
-                return None;
-            };
+        objects.text_entry.iter().collect::<Vec<_>>()
+    };
 
-            Some(CompleteTextEntry {
-                data_path: data_msg.data_path.clone(),
-                time_point: data_msg.time_point.clone(),
-                time: props.time,
-                props,
-                text_entry,
-            })
-        })
-        .collect::<Vec<_>>();
+    {
+        crate::profile_scope!("sort");
 
-    // First sort along the time axis, then along paths.
-    text_entries.sort_by(|a, b| {
-        a.time
-            .cmp(&b.time)
-            .then_with(|| a.data_path.obj_path().cmp(b.data_path.obj_path()))
-    });
+        text_entries.sort_by(|a, b| {
+            a.0.time
+                .cmp(&b.0.time)
+                .then_with(|| a.0.obj_path.cmp(b.0.obj_path))
+        });
+    }
 
     text_entries
 }
 
-fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[CompleteTextEntry<'_>]) {
+struct CompleteTextEntry<'s> {
+    time_point: TimePoint,
+    props: &'s InstanceProps<'s>,
+    text_entry: &'s TextEntry<'s>,
+}
+
+impl<'s> CompleteTextEntry<'s> {
+    fn try_from_props(
+        ctx: &ViewerContext<'_>,
+        props: &'s InstanceProps<'s>,
+        text_entry: &'s TextEntry<'s>,
+    ) -> Option<Self> {
+        let msg = ctx.log_db.get_log_msg(props.msg_id).or_else(|| {
+            re_log::warn_once!("Missing LogMsg for {:?}", props.obj_path.obj_type_path());
+            None
+        })?;
+
+        let data_msg = if let LogMsg::DataMsg(data_msg) = msg {
+            data_msg
+        } else {
+            re_log::warn_once!(
+                "LogMsg must be a DataMsg ({:?})",
+                props.obj_path.obj_type_path()
+            );
+            return None;
+        };
+
+        Some(CompleteTextEntry {
+            time_point: data_msg.time_point.clone(),
+            props,
+            text_entry,
+        })
+    }
+}
+
+/// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
+/// as opposed to `scroll_to_offset` (computed below) which is how far down we want to
+/// scroll in terms of actual points.
+fn show_table(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    text_entries: &[(&InstanceProps<'_>, &TextEntry<'_>)],
+    scroll_to_row: Option<usize>,
+) {
     use egui_extras::Size;
-    egui_extras::TableBuilder::new(ui)
+    const ROW_HEIGHT: f32 = 18.0;
+
+    let spacing_y = ui.spacing().item_spacing.y;
+
+    let mut builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
         .resizable(true)
-        .scroll(false)
+        .scroll(true);
+
+    if let Some(index) = scroll_to_row {
+        let row_height_full = ROW_HEIGHT + spacing_y;
+        let scroll_to_offset = index as f32 * row_height_full;
+        builder = builder.vertical_scroll_offset(scroll_to_offset);
+    }
+
+    builder
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(
             Size::initial(180.0).at_least(100.0),
@@ -113,15 +173,30 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
             });
         })
         .body(|body| {
-            const ROW_HEIGHT: f32 = 18.0;
-            body.rows(ROW_HEIGHT, messages.len(), |index, mut row| {
+            body.rows(ROW_HEIGHT, text_entries.len(), |index, mut row| {
+                let (props, text_entry) = text_entries[index];
+
+                // NOTE: `try_from_props` is where we actually fetch data from the underlying
+                // store, which is a costly operation.
+                // Doing this here guarantees that it only happens for visible rows.
+                let text_entry =
+                    if let Some(te) = CompleteTextEntry::try_from_props(ctx, props, text_entry) {
+                        te
+                    } else {
+                        row.col(|ui| {
+                            ui.colored_label(
+                                Color32::RED,
+                                "<failed to load TextEntry from data store>",
+                            );
+                        });
+                        return;
+                    };
+
                 let CompleteTextEntry {
                     time_point,
-                    data_path,
-                    time: _,
                     props,
                     text_entry,
-                } = &messages[index];
+                } = text_entry;
 
                 // time(s)
                 for time_source in ctx.log_db.time_points.0.keys() {
@@ -134,7 +209,7 @@ fn show_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[Comple
 
                 // path
                 row.col(|ui| {
-                    ctx.obj_path_button(ui, data_path.obj_path());
+                    ctx.obj_path_button(ui, props.obj_path);
                 });
 
                 // level

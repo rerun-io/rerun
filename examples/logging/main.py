@@ -64,6 +64,8 @@ def main():
                         help='Connect to this ip:port')
     parser.add_argument('--save', type=str, default=None,
                         help='Save data to a .rrd file at this path')
+    parser.add_argument('--repeat', type=int, default=1,
+                        help='How many times do we want to run the log function?')
     parser.add_argument(
         "--serve",
         dest="serve",
@@ -80,7 +82,8 @@ def main():
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    log_stuff()
+    for _ in range(args.repeat):
+        log_stuff()
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
