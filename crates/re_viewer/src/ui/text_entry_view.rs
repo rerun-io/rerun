@@ -38,7 +38,8 @@ impl TextEntryState {
         // Did the time cursor move since last time?
         // - If it did, time to autoscroll approriately.
         // - Otherwise, let the user scroll around freely!
-        let scroll_to_row = (self.latest_time != time).then(|| {
+        let time_cursor_moved = self.latest_time != time;
+        let scroll_to_row = time_cursor_moved.then(|| {
             crate::profile_scope!("binsearch");
             let index = text_entries.partition_point(|msg| msg.0.time < time);
             usize::min(index, index.saturating_sub(1))
@@ -77,15 +78,9 @@ fn collect_text_entries<'s>(
         crate::profile_scope!("sort");
 
         text_entries.sort_by(|a, b| {
-            a.0.time.cmp(&b.0.time)
-            // TODO(cmc): Ideally, we'd want to first sort along the time axis, then
-            // along paths, for a somewhat more elegant output.
-            // In practice, due to the current limitations of our query system, that
-            // requires fetching _everything_ from the data store ahead of time, which
-            // completely destroys performance.
-            // For now we are better off with a slightly less elegant output, and orders
-            // of magnitude better performance.
-            // .then_with(|| a.data_path.obj_path().cmp(b.data_path.obj_path()))
+            a.0.time
+                .cmp(&b.0.time)
+                .then_with(|| a.0.obj_path.cmp(b.0.obj_path))
         });
     }
 
@@ -93,7 +88,6 @@ fn collect_text_entries<'s>(
 }
 
 struct CompleteTextEntry<'s> {
-    data_path: DataPath,
     time_point: TimePoint,
     props: &'s InstanceProps<'s>,
     text_entry: &'s TextEntry<'s>,
@@ -121,7 +115,6 @@ impl<'s> CompleteTextEntry<'s> {
         };
 
         Some(CompleteTextEntry {
-            data_path: data_msg.data_path.clone(),
             time_point: data_msg.time_point.clone(),
             props,
             text_entry,
@@ -201,7 +194,6 @@ fn show_table(
 
                 let CompleteTextEntry {
                     time_point,
-                    data_path,
                     props,
                     text_entry,
                 } = text_entry;
@@ -217,7 +209,7 @@ fn show_table(
 
                 // path
                 row.col(|ui| {
-                    ctx.obj_path_button(ui, data_path.obj_path());
+                    ctx.obj_path_button(ui, props.obj_path);
                 });
 
                 // level
