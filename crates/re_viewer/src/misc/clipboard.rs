@@ -1,64 +1,38 @@
-/// Handles interfacing with the OS clipboard.
-///
-/// If the "clipboard" feature is off, or we cannot connect to the OS clipboard,
-/// then a fallback clipboard that just works works within the same app is used instead.
-pub struct Clipboard {
-    arboard: Option<arboard::Clipboard>,
-}
+//! Handles interfacing with the OS clipboard.
 
-impl Clipboard {
-    fn new() -> Self {
-        Self {
-            arboard: init_arboard(),
+// TODO(emilk): use egui for this instead once https://github.com/emilk/egui/issues/2108 is done
+
+#[allow(unused)] // only used sometimes
+pub fn set_text(text: String) {
+    if let Some(mut clipboard) = clipboard() {
+        if let Err(err) = clipboard.set_text(text) {
+            re_log::error!("Failed to copy image to clipboard: {err}",);
+        } else {
+            re_log::info!("Image copied to clipboard");
         }
-    }
-
-    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))] // only used sometimes
-    pub fn set_text(&mut self, text: String) {
-        if let Some(clipboard) = &mut self.arboard {
-            if let Err(err) = clipboard.set_text(text) {
-                re_log::error!("Failed to copy image to clipboard: {err}",);
-            } else {
-                re_log::info!("Image copied to clipboard");
-            }
-        }
-    }
-
-    pub fn set_image(&mut self, size: [usize; 2], rgba_unmultiplied: &[u8]) {
-        let [width, height] = size;
-        assert_eq!(width * height * 4, rgba_unmultiplied.len());
-
-        if let Some(clipboard) = &mut self.arboard {
-            let image_data = arboard::ImageData {
-                width,
-                height,
-                bytes: rgba_unmultiplied.into(),
-            };
-            // TODO(emilk): show a quick popup in gui instead of logging
-            if let Err(err) = clipboard.set_image(image_data) {
-                re_log::error!("Failed to copy image to clipboard: {err}");
-            } else {
-                re_log::info!("Image copied to clipboard");
-            }
-        }
-    }
-
-    /// Get access to the thread-local [`Clipboard`].
-    pub fn with<R>(f: impl FnOnce(&mut Clipboard) -> R) -> R {
-        use std::cell::RefCell;
-        thread_local! {
-            static CLIPBOARD: RefCell<Option<Clipboard>> = RefCell::new(None);
-        }
-
-        CLIPBOARD.with(|clipboard| {
-            let mut clipboard = clipboard.borrow_mut();
-            let clipboard = clipboard.get_or_insert_with(Clipboard::new);
-            f(clipboard)
-        })
     }
 }
 
-fn init_arboard() -> Option<arboard::Clipboard> {
+pub fn set_image(size: [usize; 2], rgba_unmultiplied: &[u8]) {
+    let [width, height] = size;
+    assert_eq!(width * height * 4, rgba_unmultiplied.len());
+
+    if let Some(mut clipboard) = clipboard() {
+        let image_data = arboard::ImageData {
+            width,
+            height,
+            bytes: rgba_unmultiplied.into(),
+        };
+        // TODO(emilk): show a quick popup in gui instead of logging
+        if let Err(err) = clipboard.set_image(image_data) {
+            re_log::error!("Failed to copy image to clipboard: {err}");
+        } else {
+            re_log::info!("Image copied to clipboard");
+        }
+    }
+}
+
+fn clipboard() -> Option<arboard::Clipboard> {
     match arboard::Clipboard::new() {
         Ok(clipboard) => Some(clipboard),
         Err(err) => {

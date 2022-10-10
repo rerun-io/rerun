@@ -319,12 +319,10 @@ fn image_options(
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Click to copy image").clicked() {
         let rgba = dynamic_image.to_rgba8();
-        crate::Clipboard::with(|clipboard| {
-            clipboard.set_image(
-                [rgba.width() as _, rgba.height() as _],
-                bytemuck::cast_slice(rgba.as_raw()),
-            );
-        });
+        crate::misc::clipboard::set_image(
+            [rgba.width() as _, rgba.height() as _],
+            bytemuck::cast_slice(rgba.as_raw()),
+        );
     }
 
     // TODO(emilk): support saving images on web
