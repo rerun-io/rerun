@@ -38,11 +38,11 @@ from pathlib import Path
 from timeit import default_timer as timer
 from typing import Tuple, cast
 
-import mesh_to_sdf  # type: ignore[import]
+import mesh_to_sdf
 import numpy as np
 import numpy.typing as npt
 import rerun_sdk as rerun
-import trimesh  # type: ignore[import]
+import trimesh
 from rerun_sdk import LogLevel, MeshFormat
 from trimesh import Trimesh
 

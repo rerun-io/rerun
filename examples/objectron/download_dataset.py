@@ -4,7 +4,7 @@ import argparse
 import os
 from pathlib import Path
 
-import cv2  # type: ignore[import]
+import cv2
 import requests
 
 

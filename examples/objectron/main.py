@@ -29,7 +29,7 @@ from typing import Final, Iterable, Iterator, List
 import numpy as np
 import numpy.typing as npt
 import rerun_sdk as rerun
-from proto.objectron.proto import (  # type: ignore[import]
+from proto.objectron.proto import (
     ARCamera,
     ARFrame,
     ARPointCloud,
@@ -39,7 +39,7 @@ from proto.objectron.proto import (  # type: ignore[import]
     Sequence,
 )
 from rerun_sdk import ImageFormat
-from scipy.spatial.transform import Rotation as R  # type: ignore[import]
+from scipy.spatial.transform import Rotation as R
 
 IMAGE_RESOLUTION: Final = (1440, 1920)
 GEOMETRY_FILENAME: Final = "geometry.pbdata"
@@ -160,9 +160,10 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
     """Logs a point cloud from an `ARFrame` using the Rerun SDK."""
 
     for i in range(point_cloud.count):
-        point = point_cloud.point[i]
+        point_raw = point_cloud.point[i]
+        point = np.array([point_raw.x, point_raw.y, point_raw.z], dtype=np.float32)
         ident = point_cloud.identifier[i]
-        rerun.log_point(f"3d/points/{ident}", [point.x, point.y, point.z], color=[255, 255, 255, 255], space="3d")
+        rerun.log_point(f"3d/points/{ident}", point, color=[255, 255, 255, 255], space="3d")
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
@@ -170,7 +171,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
 
     for bbox in bboxes:
         if bbox.type != ObjectType.BOUNDING_BOX:
-            logging.error(f"err: object type not supported: {bbox.type}")  # type: ignore[attr-defined]
+            logging.error(f"err: object type not supported: {bbox.type}")
             continue
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))

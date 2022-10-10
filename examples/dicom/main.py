@@ -31,10 +31,10 @@ DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dico
 
 
 def extract_voxel_data(dicom_files: Iterable[Path]) -> Tuple[npt.NDArray[np.int16], npt.NDArray[np.float32]]:
-    slices = [dicom.read_file(f) for f in dicom_files]
+    slices = [dicom.read_file(f) for f in dicom_files]  # type: ignore[misc]
     try:
         voxel_ndarray, ijk_to_xyz = dicom_numpy.combine_slices(slices)
-    except dicom_numpy.DicomImportException as e:
+    except dicom_numpy.DicomImportException:
         raise  # invalid DICOM data
 
     return voxel_ndarray, ijk_to_xyz
