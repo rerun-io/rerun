@@ -86,6 +86,17 @@ impl ObjectTree {
                 .create_subtrees_recursively(full_path, depth + 1, msg_id, time_point),
         }
     }
+
+    pub fn subtree(&self, path: &ObjPath) -> Option<&Self> {
+        self.subtree_recursive(&path.to_components())
+    }
+
+    fn subtree_recursive(&self, path: &[ObjPathComp]) -> Option<&Self> {
+        match path {
+            [] => Some(self),
+            [first, rest @ ..] => self.children.get(first)?.subtree_recursive(rest),
+        }
+    }
 }
 
 /// Column transform of [`Data`].
