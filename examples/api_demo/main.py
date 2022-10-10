@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
-"""Shows how to use the Rerun SDK."""
+"""Minimal examples of Rerun SDK usage.
+
+set_visible:
+Uses `rerun.set_visible` to toggle the visibility of some rects
+"""
 
 import argparse
 from time import sleep
+from typing import Any
 
 import rerun_sdk as rerun
 
 
-def demo_set_visible(args: argparse.Namespace) -> None:
+def args_set_visible(subparsers: Any) -> None:
+    set_visible_parser = subparsers.add_parser("set_visible")
+    set_visible_parser.set_defaults(func=run_set_visible)
+
+
+def run_set_visible(args: argparse.Namespace) -> None:
     rerun.set_time_seconds("sim_time", 1)
     rerun.log_rect("rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
     rerun.log_rect("rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
@@ -44,8 +54,7 @@ def main() -> None:
 
     subparsers = parser.add_subparsers(required=True)
 
-    set_visible_parser = subparsers.add_parser("set_visible")
-    set_visible_parser.set_defaults(func=demo_set_visible)
+    args_set_visible(subparsers)
 
     args = parser.parse_args()
 
