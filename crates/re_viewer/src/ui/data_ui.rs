@@ -293,6 +293,7 @@ pub(crate) fn ui_data(
     preview: Preview,
 ) -> egui::Response {
     match data {
+        Data::Bool(value) => ui.label(value.to_string()),
         Data::I32(value) => ui.label(value.to_string()),
         Data::F32(value) => ui.label(value.to_string()),
         Data::Color([r, g, b, a]) => {

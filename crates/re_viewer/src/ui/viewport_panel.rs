@@ -357,6 +357,7 @@ impl SpaceStates {
                 .projected_object_properties
                 .get(props.obj_path)
                 .visible
+                && props.visible
         });
 
         // We have a special tensor viewer that only works

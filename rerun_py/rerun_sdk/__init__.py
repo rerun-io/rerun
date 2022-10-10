@@ -763,3 +763,8 @@ def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:
         return np.require(array, float).tolist()  # type: ignore[no-any-return]
 
     return array  # type: ignore[return-value]
+
+
+def set_visible(obj_path: str, visibile: bool) -> None:
+    """Change the visibility of an object."""
+    rerun_rs.set_visible(obj_path, visibile)

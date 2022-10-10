@@ -126,6 +126,7 @@ impl DataColumns {
 
         for (typ, set) in &self.per_type {
             let (stem, plur) = match typ {
+                DataType::Bool => ("bool", "s"),
                 DataType::I32 => ("integer", "s"),
                 DataType::F32 => ("float", "s"),
                 DataType::Color => ("color", "s"),
