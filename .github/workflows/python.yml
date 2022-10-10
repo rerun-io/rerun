@@ -39,12 +39,14 @@ jobs:
         run: |
           just py-lint
 
-  # TODO(cmc): install rerun SDK etc
   py-run-examples:
     name: Run Python examples (headless mode)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - run: sudo apt-get update && apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -55,17 +57,17 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-build.txt
-          pip install -r examples/requirements.txt
+          pip install ./rerun_py
       - name: Run Car example
         run: |
-          ./examples/car/main.py --headless
+          pip install -r examples/car/requirements.txt && ./examples/car/main.py --headless
 
   py-pip-install-linux:
     name: Pip install Rerun SDK (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+      - run: sudo apt-get update && apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
       - name: Setup python for building wheel
