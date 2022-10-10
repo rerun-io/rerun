@@ -555,6 +555,7 @@ def log_obb(
     rotation_q: npt.ArrayLike,
     color: Optional[Sequence[int]] = None,
     stroke_width: Optional[float] = None,
+    label: Optional[str] = None,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
@@ -570,13 +571,14 @@ def log_obb(
     """
     rerun_rs.log_obb(
         obj_path,
-        _to_sequence(half_size),
-        _to_sequence(position),
-        _to_sequence(rotation_q),
-        color,
-        stroke_width,
-        timeless,
-        space,
+        half_size=_to_sequence(half_size),
+        position=_to_sequence(position),
+        rotation_q=_to_sequence(rotation_q),
+        color=color,
+        stroke_width=stroke_width,
+        label=label,
+        timeless=timeless,
+        space=space,
     )
 
 
