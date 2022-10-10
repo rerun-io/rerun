@@ -2945,6 +2945,7 @@ dependencies = [
  "three-d-asset",
  "tracing-wasm",
  "typenum",
+ "uuid",
  "vec1",
  "wasm-bindgen-futures",
  "wgpu",

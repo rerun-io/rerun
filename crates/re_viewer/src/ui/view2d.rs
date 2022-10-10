@@ -6,7 +6,7 @@ use re_log_types::*;
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State2D {
     /// What the mouse is hovering (from previous frame)

@@ -26,7 +26,7 @@ use crate::{
     ViewerContext,
 };
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State3D {
     orbit_eye: Option<OrbitEye>,
@@ -164,6 +164,7 @@ impl State3D {
     }
 }
 
+#[derive(Clone)]
 struct EyeInterpolation {
     elapsed_time: f32,
     target_time: f32,

@@ -1,5 +1,6 @@
 pub(crate) mod data_ui;
 pub(crate) mod event_log_view;
+pub(crate) mod experimental_viewport_panel;
 pub(crate) mod image_ui;
 pub(crate) mod selection_panel;
 pub(crate) mod text_entry_view;
