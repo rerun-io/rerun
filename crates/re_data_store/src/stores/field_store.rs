@@ -167,6 +167,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::Camera => handle_type!(Camera, re_log_types::Camera),
             DataType::Tensor => handle_type!(Tensor, re_log_types::Tensor),
             DataType::Space => handle_type!(Space, ObjPath),
+            DataType::Transform => handle_type!(Transform, re_log_types::Transform),
             DataType::DataVec => handle_type!(DataVec, DataVec),
         }
     }

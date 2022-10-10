@@ -134,6 +134,8 @@ impl DataColumns {
 
                 DataType::Space => ("space", "s"),
 
+                DataType::Transform => ("transform", "s"),
+
                 DataType::DataVec => ("vector", "s"),
             };
 

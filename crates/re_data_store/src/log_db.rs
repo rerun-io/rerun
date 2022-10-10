@@ -39,18 +39,22 @@ impl ObjDb {
         {
             let obj_type_path = &data_path.obj_path.obj_type_path();
             let field_name = &data_path.field_name;
-            if let Some(obj_type) = self.types.get(obj_type_path) {
-                let valid_members = obj_type.members();
-                if !valid_members.contains(&field_name.as_str()) {
+
+            let is_meta_field = re_log_types::objects::META_FIELDS.contains(&field_name.as_str());
+            if !is_meta_field {
+                if let Some(obj_type) = self.types.get(obj_type_path) {
+                    let valid_members = obj_type.members();
+                    if !valid_members.contains(&field_name.as_str()) {
+                        re_log::warn_once!(
+                            "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
+                            valid_members.iter().format(", ")
+                        );
+                    }
+                } else {
                     re_log::warn_once!(
-                        "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
-                        valid_members.iter().format(", ")
+                        "Logging to {obj_type_path}.{field_name} without first registering object type"
                     );
                 }
-            } else {
-                re_log::warn_once!(
-                    "Logging to {obj_type_path}.{field_name} without first registering object type"
-                );
             }
         }
 

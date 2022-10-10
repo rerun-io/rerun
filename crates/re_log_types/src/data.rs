@@ -37,6 +37,8 @@ pub enum DataType {
 
     // ----------------------------
     Space,
+
+    Transform,
 }
 
 // ----------------------------------------------------------------------------
@@ -139,6 +141,12 @@ pub mod data_types {
             DataType::Space
         }
     }
+
+    impl DataTrait for crate::Transform {
+        fn data_typ() -> DataType {
+            DataType::Transform
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -175,6 +183,8 @@ pub enum Data {
     // Meta:
     /// Used for specifying which space data belongs to.
     Space(ObjPath),
+
+    Transform(Transform),
 }
 
 impl Data {
@@ -198,6 +208,8 @@ impl Data {
             Self::DataVec(_) => DataType::DataVec,
 
             Self::Space(_) => DataType::Space,
+
+            Self::Transform(_) => DataType::Transform,
         }
     }
 }
@@ -210,6 +222,7 @@ impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(Camera, Data, Camera);
 impl_into_enum!(ObjPath, Data, Space);
+impl_into_enum!(Transform, Data, Transform);
 
 // ----------------------------------------------------------------------------
 
@@ -237,6 +250,8 @@ pub enum DataVec {
     DataVec(Vec<DataVec>),
 
     Space(Vec<ObjPath>),
+
+    Transform(Vec<Transform>),
 }
 
 /// Do the same thing with all members of a [`Data`].
@@ -263,6 +278,7 @@ macro_rules! data_map(
             $crate::Data::Tensor($value) => $action,
             $crate::Data::DataVec($value) => $action,
             $crate::Data::Space($value) => $action,
+            $crate::Data::Transform($value) => $action,
         }
     });
 );
@@ -291,6 +307,7 @@ macro_rules! data_vec_map(
             $crate::DataVec::Tensor($vec) => $action,
             $crate::DataVec::DataVec($vec) => $action,
             $crate::DataVec::Space($vec) => $action,
+            $crate::DataVec::Transform($vec) => $action,
         }
     });
 );
@@ -316,6 +333,8 @@ impl DataVec {
             Self::DataVec(_) => DataType::DataVec,
 
             Self::Space(_) => DataType::Space,
+
+            Self::Transform(_) => DataType::Transform,
         }
     }
 
@@ -346,6 +365,8 @@ impl DataVec {
             Self::DataVec(vec) => vec.last().cloned().map(Data::DataVec),
 
             Self::Space(vec) => vec.last().cloned().map(Data::Space),
+
+            Self::Transform(vec) => vec.last().cloned().map(Data::Transform),
         }
     }
 }
@@ -488,6 +509,19 @@ impl CameraSpaceConvention {
             }
         }
     }
+}
+
+// ----------------------------------------------------------------------------
+
+/// A transform between two spaces.
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum Transform {
+    /// The parent is a 3D space, the child a camera space.
+    Extrinsics(Extrinsics),
+
+    /// The parent is some local camera space, the child an image space.
+    Intrinsics(Intrinsics),
 }
 
 // ----------------------------------------------------------------------------
@@ -684,14 +718,14 @@ impl std::fmt::Debug for TensorDimension {
     }
 }
 
-/// An N-dimensional colelction of numbers.
+/// An N-dimensional collection of numbers.
 ///
 /// Most often used to describe image pixels.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tensor {
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
-    /// The order martches that of numpy etc, and is ordered so that
+    /// The order matches that of numpy etc, and is ordered so that
     /// the "tighest wound" dimension is last.
     ///
     /// An empty shape means this tensor is a scale, i.e. of length 1.

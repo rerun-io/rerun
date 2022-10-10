@@ -1,6 +1,6 @@
 /// The built-in object types supported by Rerun.
 ///
-/// In the future we will extend this to support user-defined types aswell.
+/// In the future we will extend this to support user-defined types as well.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjectType {
@@ -55,3 +55,6 @@ impl ObjectType {
         }
     }
 }
+
+/// These are fields not part of the actual object, but express meta-info about paths.
+pub const META_FIELDS: &[&str] = &["_transform"];

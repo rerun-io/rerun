@@ -99,7 +99,7 @@ def read_annotations(dirpath: Path) -> Sequence:
 def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
-    rerun.set_space_up("world", [0, 1, 0])
+    rerun.set_space_up("3d", [0, 1, 0])
 
     frame_times = []
     for sample in samples:
@@ -108,7 +108,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
         frame_times.append(sample.timestamp)
 
         img_path = Path(os.path.join(sample.dirpath, f"video/{sample.index}.jpg"))
-        rerun.log_image_file("video", img_path, img_format=ImageFormat.JPEG, space="image")
+        rerun.log_image_file("3d/camera/video", img_path, img_format=ImageFormat.JPEG, space="image")
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
@@ -128,8 +128,7 @@ def log_camera(cam: ARCamera):
     # Because the dataset was collected in portrait:
     swizzle_x_y = np.asarray([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
     intrinsics = swizzle_x_y @ intrinsics @ swizzle_x_y
-    axis = R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
-    rot = rot * axis
+    rot = rot * R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
     (w, h) = (h, w)
 
     rerun.log_camera("camera",
@@ -138,8 +137,18 @@ def log_camera(cam: ARCamera):
                      rotation_q=rot.as_quat(),
                      position=translation,
                      camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
-                     space="world",
+                     space="3d",
                      target_space="image")
+
+    # Experimental new API:
+    rerun._log_extrinsics("3d/camera",
+                          rotation_q=rot.as_quat(),
+                          position=translation,
+                          camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK)
+
+    rerun._log_intrinsics("3d/camera/video",
+                          resolution=[w, h],
+                          intrinsics_matrix=intrinsics)
 
 
 def log_point_cloud(point_cloud: ARPointCloud):
@@ -148,10 +157,10 @@ def log_point_cloud(point_cloud: ARPointCloud):
     for i in range(point_cloud.count):
         point = point_cloud.point[i]
         ident = point_cloud.identifier[i]
-        rerun.log_point(f"points/{ident}",
+        rerun.log_point(f"3d/points/{ident}",
                         [point.x, point.y, point.z],
                         color=[255, 255, 255, 255],
-                        space="world")
+                        space="3d")
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]):
@@ -164,14 +173,14 @@ def log_annotated_bboxes(bboxes: Iterable[Object]):
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
         rerun.log_obb(
-            f"objects/{bbox.id}/bbox3d",
+            f"3d/objects/{bbox.id}/bbox3d",
             bbox.scale,
             bbox.translation,
             rot.as_quat(),
             color=[130, 160, 250, 255],
             label=bbox.category,
             timeless=True,
-            space="world",
+            space="3d",
         )
 
 
@@ -190,7 +199,7 @@ def log_frame_annotations(
         rerun.set_time_seconds("time", time)
 
         for obj_ann in frame_ann.annotations:
-            path = f"objects/{obj_ann.object_id}"
+            path = f"3d/objects/{obj_ann.object_id}"
 
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
             keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y]
