@@ -30,7 +30,9 @@ DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dicom.zip"
 
 
-def extract_voxel_data(dicom_files: Iterable[Path]) -> Tuple[npt.NDArray[np.int16], npt.NDArray[np.float32]]:
+def extract_voxel_data(
+    dicom_files: Iterable[Path],
+) -> Tuple[npt.NDArray[np.int16], npt.NDArray[np.float32]]:
     slices = [dicom.read_file(f) for f in dicom_files]
     try:
         voxel_ndarray, ijk_to_xyz = dicom_numpy.combine_slices(slices)
@@ -50,7 +52,6 @@ def list_dicom_files(dir: Path) -> Iterable[Path]:
 def read_and_log_dicom_dataset() -> None:
     dicom_files = list_dicom_files(DATASET_DIR)
     voxels_volume, _ = extract_voxel_data(dicom_files)
-    voxels_volume = voxels_volume.astype("uint16")  # the data is i16, but in range [0, 536].
 
     # the data is i16, but in range [0, 536].
     voxels_volume_u16: npt.NDArray[np.uint16] = np.require(voxels_volume, np.uint16)
