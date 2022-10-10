@@ -45,12 +45,8 @@ def main() -> None:
         action="store_true",
         help="Serve a web viewer (WARNING: experimental feature)",
     )
-    parser.add_argument(
-        "--addr", type=str, default=None, help="Connect to this ip:port"
-    )
-    parser.add_argument(
-        "--save", type=str, default=None, help="Save data to a .rrd file at this path"
-    )
+    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
 
     subparsers = parser.add_subparsers(required=True)
 
