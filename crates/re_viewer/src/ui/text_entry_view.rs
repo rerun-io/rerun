@@ -157,9 +157,9 @@ fn show_table(
         .column(Size::initial(60.0).at_least(60.0)) // level
         .column(Size::remainder().at_least(200.0)) // body
         .header(20.0, |mut header| {
-            for time_source in ctx.log_db.time_points.0.keys() {
+            for timeline in ctx.log_db.time_points.0.keys() {
                 header.col(|ui| {
-                    ui.heading(time_source.name().as_str());
+                    ui.heading(timeline.name().as_str());
                 });
             }
             header.col(|ui| {
@@ -199,10 +199,10 @@ fn show_table(
                 } = text_entry;
 
                 // time(s)
-                for time_source in ctx.log_db.time_points.0.keys() {
+                for timeline in ctx.log_db.time_points.0.keys() {
                     row.col(|ui| {
-                        if let Some(value) = time_point.0.get(time_source) {
-                            ctx.time_button(ui, time_source, *value);
+                        if let Some(value) = time_point.0.get(timeline) {
+                            ctx.time_button(ui, timeline, *value);
                         }
                     });
                 }

@@ -14,7 +14,7 @@ pub struct Point3<'s> {
 }
 
 pub fn points_from_store<'store, Time: 'static + Copy + Ord>(
-    store: &'store TimeLineStore<Time>,
+    store: &'store TimelineStore<Time>,
     time_query: &TimeQuery<Time>,
 ) -> Vec<Point3<'store>> {
     let mut points = vec![];
@@ -51,7 +51,7 @@ fn s(s: &str) -> String {
 
 #[test]
 fn test_singular() -> re_data_store::Result<()> {
-    fn points_at(store: &TimeLineStore<Time>, frame: i64) -> Vec<Point3<'_>> {
+    fn points_at(store: &TimelineStore<Time>, frame: i64) -> Vec<Point3<'_>> {
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut points: Vec<_> = points_from_store(store, &time_query);
         points.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -67,7 +67,7 @@ fn test_singular() -> re_data_store::Result<()> {
         )
     }
 
-    let mut store = TimeLineStore::default();
+    let mut store = TimelineStore::default();
 
     store.insert_mono::<[f32; 3]>(
         obj_data_path("left", 0),
@@ -150,7 +150,7 @@ fn test_batches() -> re_data_store::Result<()> {
         obj_path!("camera", Index::String(cam.into()), "points",)
     }
 
-    fn values(store: &TimeLineStore<Time>, frame: i64) -> Vec<(i32, Option<String>)> {
+    fn values(store: &TimelineStore<Time>, frame: i64) -> Vec<(i32, Option<String>)> {
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut values = vec![];
         for (_, obj_store) in store.iter() {
@@ -172,7 +172,7 @@ fn test_batches() -> re_data_store::Result<()> {
         Index::Sequence(seq)
     }
 
-    let mut store = TimeLineStore::default();
+    let mut store = TimelineStore::default();
 
     store.insert_batch(
         obj_path("left"),

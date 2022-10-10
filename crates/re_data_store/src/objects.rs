@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntMap;
 use re_log_types::{objects::*, DataVec, FieldName, IndexHash, MsgId, ObjPath, ObjTypePath};
 
-use crate::{query::*, ObjStore, TimeLineStore, TimeQuery};
+use crate::{query::*, ObjStore, TimeQuery, TimelineStore};
 
 /// Common properties of an object instance.
 #[derive(Copy, Clone, Debug)]
@@ -644,7 +644,7 @@ pub struct Objects<'s> {
 impl<'s> Objects<'s> {
     pub fn query<Time: 'static + Copy + Ord + Into<i64>>(
         &mut self,
-        store: &'s TimeLineStore<Time>,
+        store: &'s TimelineStore<Time>,
         time_query: &'_ TimeQuery<Time>,
         obj_types: &IntMap<ObjTypePath, ObjectType>,
     ) {

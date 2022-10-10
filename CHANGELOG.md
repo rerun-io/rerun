@@ -35,7 +35,7 @@ A rough time-line of major user-facing things added, removed and changed. Newest
 * 2022-05-12: Click on a point to center camera on that point in the 3D view.
 * 2022-05-12: Use WSAD and QE to move camera in 3D view.
 * 2022-05-09: Step forward/back in time with arrow keys.
-* 2022-05-09: Hover image in context panel to zoom in on individual pixels.
+* 2022-05-09: Hover image in selection panel to zoom in on individual pixels.
 * 2022-05-02: Improve the time ticks in the time panel.
 * 2022-04-28: Follow camera in 3D by selecting a camera message or object path.
 * 2022-04-26: Toggle visibility of object tree nodes on/off in time panel.

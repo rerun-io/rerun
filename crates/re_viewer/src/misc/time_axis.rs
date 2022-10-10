@@ -6,16 +6,16 @@ use re_log_types::{Duration, TimeInt, TimeType};
 
 use super::TimeRange;
 
-/// A piece-wise linear view of a single time source.
+/// A piece-wise linear view of a single timeline.
 ///
 /// It is piece-wise linear because we sometimes have huge gaps in the data,
 /// and we want to present a compressed view of it.
 #[derive(Clone, Debug)]
-pub(crate) struct TimeSourceAxis {
+pub(crate) struct TimelineAxis {
     pub ranges: vec1::Vec1<TimeRange>,
 }
 
-impl TimeSourceAxis {
+impl TimelineAxis {
     pub fn new(time_type: TimeType, values: &BTreeSet<TimeInt>) -> Self {
         crate::profile_function!();
 

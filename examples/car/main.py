@@ -25,7 +25,7 @@ def log_car_data(args):
     rerun.set_space_up("projected_space", [0, -1, 0])
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
-        # This will assign logged objects a "time source" called `frame_nr`.
+        # This will assign logged objects a timeline called `frame_nr`.
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
         rerun.set_time_sequence("frame_nr", sample.frame_idx)
 

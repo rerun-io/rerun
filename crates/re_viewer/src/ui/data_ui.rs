@@ -82,14 +82,14 @@ pub(crate) fn view_data(
     ui: &mut egui::Ui,
     data_path: &DataPath,
 ) -> Option<()> {
-    let time_source = ctx.rec_cfg.time_ctrl.source();
+    let timeline = ctx.rec_cfg.time_ctrl.source();
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
 
     match ctx
         .log_db
         .obj_db
         .store
-        .query_data_path(time_source, &time_query, data_path)?
+        .query_data_path(timeline, &time_query, data_path)?
     {
         Ok((time_msgid_index, data_vec)) => {
             if data_vec.len() == 1 {
@@ -256,9 +256,9 @@ pub(crate) fn ui_time_point(
 ) {
     ui.vertical(|ui| {
         egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
-            for (time_source, value) in &time_point.0 {
-                ui.label(format!("{}:", time_source.name()));
-                ctx.time_button(ui, time_source, *value);
+            for (timeline, value) in &time_point.0 {
+                ui.label(format!("{}:", timeline.name()));
+                ctx.time_button(ui, timeline, *value);
                 ui.end_row();
             }
         });

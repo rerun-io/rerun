@@ -3,11 +3,12 @@ use re_log_types::LogMsg;
 
 use crate::{data_ui::*, Preview, Selection, ViewerContext};
 
+/// The "Selection View" side-bar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct ContextPanel {}
+pub(crate) struct SelectionPanel {}
 
-impl ContextPanel {
+impl SelectionPanel {
     #[allow(clippy::unused_self)]
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();

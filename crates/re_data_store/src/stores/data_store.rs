@@ -3,15 +3,15 @@ use nohash_hasher::IntMap;
 use re_log_types::*;
 
 use crate::{
-    ArcBatch, BadBatchError, Batch, BatchOrSplat, FieldQueryOutput, Result, TimeLineStore,
-    TimeQuery,
+    ArcBatch, BadBatchError, Batch, BatchOrSplat, FieldQueryOutput, Result, TimeQuery,
+    TimelineStore,
 };
 
 /// Stores all timelines of all objects.
 #[derive(Default)]
 pub struct DataStore {
-    /// We store a copy of the data for each time source.
-    store_from_time_source: IntMap<TimeSource, (TimeType, TimeLineStore<i64>)>,
+    /// We store a copy of the data for each timeline.
+    store_from_timeline: IntMap<Timeline, (TimeType, TimelineStore<i64>)>,
 
     /// In many places we just store the hashes, so we need a way to translate back.
     obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
@@ -21,8 +21,8 @@ pub struct DataStore {
 }
 
 impl DataStore {
-    pub fn get(&self, time_source: &TimeSource) -> Option<&TimeLineStore<i64>> {
-        Some(&self.store_from_time_source.get(time_source)?.1)
+    pub fn get(&self, timeline: &Timeline) -> Option<&TimelineStore<i64>> {
+        Some(&self.store_from_timeline.get(timeline)?.1)
     }
 
     #[inline]
@@ -35,14 +35,14 @@ impl DataStore {
         self.index_from_hash.get(index_hash)
     }
 
-    fn entry(&mut self, time_source: &TimeSource, time_type: TimeType) -> &mut TimeLineStore<i64> {
-        match self.store_from_time_source.entry(*time_source) {
+    fn entry(&mut self, timeline: &Timeline, time_type: TimeType) -> &mut TimelineStore<i64> {
+        match self.store_from_timeline.entry(*timeline) {
             std::collections::hash_map::Entry::Vacant(entry) => {
-                &mut entry.insert((time_type, TimeLineStore::default())).1
+                &mut entry.insert((time_type, TimelineStore::default())).1
             }
             std::collections::hash_map::Entry::Occupied(entry) => {
                 if entry.get().0 != time_type {
-                    re_log::warn!("Time source {time_source:?} has multiple time types");
+                    re_log::warn!("Timeline {timeline:?} has multiple time types");
                 }
                 &mut entry.into_mut().1
             }
@@ -54,11 +54,11 @@ impl DataStore {
     /// Return `None` if there were no such timeline, object, or field.
     pub fn query_data_path(
         &self,
-        time_source: &TimeSource,
+        timeline: &Timeline,
         time_query: &TimeQuery<i64>,
         data_path: &DataPath,
     ) -> Option<Result<FieldQueryOutput<i64>>> {
-        let store = self.get(time_source)?;
+        let store = self.get(timeline)?;
         let obj_store = store.get(&data_path.obj_path)?;
         let field_store = obj_store.get(&data_path.field_name)?;
         Some(field_store.query_field_to_datavec(time_query, None))
@@ -99,8 +99,8 @@ impl DataStore {
             None
         };
 
-        for (time_source, time_int) in &time_point.0 {
-            let store = self.entry(time_source, time_source.typ());
+        for (timeline, time_int) in &time_point.0 {
+            let store = self.entry(timeline, timeline.typ());
 
             insert_msg_into_timeline_store(
                 store,
@@ -133,7 +133,7 @@ impl DataStore {
 }
 
 fn insert_msg_into_timeline_store(
-    timeline_store: &mut TimeLineStore<i64>,
+    timeline_store: &mut TimelineStore<i64>,
     data_path: &DataPath,
     msg_id: MsgId,
     time_i64: i64,

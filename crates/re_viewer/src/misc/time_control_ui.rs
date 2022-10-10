@@ -8,13 +8,13 @@ use re_log_types::*;
 use super::{time_control::*, TimeRangeF, TimeReal};
 
 impl TimeControl {
-    pub fn time_source_selector_ui(&mut self, time_source_axes: &TimePoints, ui: &mut egui::Ui) {
-        self.select_a_valid_time_source(time_source_axes);
+    pub fn timeline_selector_ui(&mut self, timeline_axes: &TimePoints, ui: &mut egui::Ui) {
+        self.select_a_valid_timeline(timeline_axes);
 
-        egui::ComboBox::from_id_source("time_source")
+        egui::ComboBox::from_id_source("timeline")
             .selected_text(self.source().name().as_str())
             .show_ui(ui, |ui| {
-                for source in time_source_axes.0.keys() {
+                for source in timeline_axes.0.keys() {
                     if ui
                         .selectable_label(source == self.source(), source.name().as_str())
                         .clicked()

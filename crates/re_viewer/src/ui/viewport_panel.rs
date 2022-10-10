@@ -252,13 +252,13 @@ fn first_tab(tree: &egui_dock::Tree<Tab>) -> Option<Tab> {
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct SpacesPanel {
+pub(crate) struct ViewportPanel {
     // In the future we will support multiple user-defined views,
     // but for now we only have one.
     view: View,
 }
 
-impl SpacesPanel {
+impl ViewportPanel {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
