@@ -1463,7 +1463,7 @@ fn clear_object(obj_path: &str) -> PyResult<()> {
     sdk.send_data(
         &time_point,
         (&obj_path, "_visible"),
-        LoggedData::Single(Data::I32(0)),
+        LoggedData::Single(Data::Bool(false)),
     );
 
     Ok(())
