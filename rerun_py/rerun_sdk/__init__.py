@@ -137,7 +137,7 @@ def save(path: str) -> None:
     rerun_rs.save(path)
 
 
-def set_time_sequence(time_source: str, sequence: Optional[int]) -> None:
+def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
     """
     Set the current time for this thread.
 
@@ -146,14 +146,14 @@ def set_time_sequence(time_source: str, sequence: Optional[int]) -> None:
 
     For instance: `set_time_sequence("frame_nr", frame_nr)`.
 
-    You can remove a time source again using `set_time_sequence("frame_nr", None)`.
+    You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_rs.set_time_sequence(time_source, sequence)
+    rerun_rs.set_time_sequence(timeline, sequence)
 
 
-def set_time_seconds(time_source: str, seconds: Optional[float]) -> None:
+def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     """
     Set the current time for this thread.
 
@@ -162,7 +162,7 @@ def set_time_seconds(time_source: str, seconds: Optional[float]) -> None:
 
     For instance: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
 
-    You can remove a time source again using `set_time_seconds("capture_time", None)`.
+    You can remove a timeline again using `set_time_seconds("capture_time", None)`.
 
     The argument should be in seconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
@@ -172,10 +172,10 @@ def set_time_seconds(time_source: str, seconds: Optional[float]) -> None:
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_rs.set_time_seconds(time_source, seconds)
+    rerun_rs.set_time_seconds(timeline, seconds)
 
 
-def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
+def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     """
     Set the current time for this thread.
 
@@ -184,7 +184,7 @@ def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
 
     For instance: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
 
-    You can remove a time source again using `set_time_nanos("capture_time", None)`.
+    You can remove a timeline again using `set_time_nanos("capture_time", None)`.
 
     The argument should be in nanoseconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
@@ -194,7 +194,7 @@ def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_rs.set_time_nanos(time_source, nanos)
+    rerun_rs.set_time_nanos(timeline, nanos)
 
 
 def set_space_up(space: str, up: Sequence[float]) -> None:
