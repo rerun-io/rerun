@@ -3,8 +3,10 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use re_log_types::*;
 
 /// Tree of data paths.
-#[derive(Default)]
 pub struct ObjectTree {
+    /// Full path to the root of this tree.
+    pub path: ObjPath,
+
     pub children: BTreeMap<ObjPathComp, ObjectTree>,
 
     /// When do we or a child have data?
@@ -17,9 +19,26 @@ pub struct ObjectTree {
 }
 
 impl ObjectTree {
+    pub fn root() -> Self {
+        Self::new(ObjPath::root())
+    }
+
+    pub fn new(path: ObjPath) -> Self {
+        Self {
+            path,
+            children: Default::default(),
+            prefix_times: Default::default(),
+            fields: Default::default(),
+        }
+    }
+
     /// Has no child objects.
     pub fn is_leaf(&self) -> bool {
         self.children.is_empty()
+    }
+
+    pub fn num_children_and_fields(&self) -> usize {
+        self.children.len() + self.fields.len()
     }
 
     pub fn add_data_msg(
@@ -33,6 +52,7 @@ impl ObjectTree {
         let obj_path = data_path.obj_path.to_components();
         self.add_path(
             obj_path.as_slice(),
+            0,
             data_path.field_name,
             msg_id,
             time_point,
@@ -42,7 +62,8 @@ impl ObjectTree {
 
     pub(crate) fn add_path(
         &mut self,
-        path: &[ObjPathComp],
+        full_path: &[ObjPathComp],
+        depth: usize,
         field_name: FieldName,
         msg_id: MsgId,
         time_point: &TimePoint,
@@ -57,18 +78,19 @@ impl ObjectTree {
                 .insert(msg_id);
         }
 
-        match path {
-            [] => {
+        match full_path.get(depth) {
+            None => {
+                // end of path
                 self.fields
                     .entry(field_name)
                     .or_default()
                     .add(msg_id, time_point, data);
             }
-            [first, rest @ ..] => {
+            Some(component) => {
                 self.children
-                    .entry(first.clone())
-                    .or_default()
-                    .add_path(rest, field_name, msg_id, time_point, data);
+                    .entry(component.clone())
+                    .or_insert_with(|| ObjectTree::new(full_path[..depth + 1].into()))
+                    .add_path(full_path, depth + 1, field_name, msg_id, time_point, data);
             }
         }
     }
