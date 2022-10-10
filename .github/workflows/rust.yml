@@ -1,10 +1,14 @@
-name: CI
+name: CI (Rust)
 
 on:
   push:
     branches:
       - "main"
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
@@ -16,33 +20,8 @@ env:
   RUSTDOCFLAGS: -D warnings -D rustdoc::missing_crate_level_docs
 
 jobs:
-  check_wasm:
-    name: Check wasm32 + wasm-bindgen
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.64.0
-          target: wasm32-unknown-unknown
-          override: true
-      - run: sudo apt-get update && sudo apt-get install libgtk-3-dev
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-      - name: Check wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: -p re_viewer --all-features --lib --target wasm32-unknown-unknown
-      - name: wasm-bindgen
-        uses: jetli/wasm-bindgen-action@v0.1.0
-        with:
-          version: "0.2.83"
-      - run: ./scripts/wasm_bindgen_check.sh --skip-setup
-
-  fmt-crank-check-test:
-    name: Format + check + test
+  rs-lints:
+    name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -105,8 +84,42 @@ jobs:
           command: check
           args: -p re_viewer --no-default-features --features wgpu
 
-  maturin-linux:
-    name: Maturin Wheel
+  rs-check-wasm:
+    name: Check Rust web build (wasm32 + wasm-bindgen)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.64.0
+          target: wasm32-unknown-unknown
+          override: true
+      - run: sudo apt-get update && sudo apt-get install libgtk-3-dev
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+      - name: Check wasm32
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: -p re_viewer --all-features --lib --target wasm32-unknown-unknown
+      - name: wasm-bindgen
+        uses: jetli/wasm-bindgen-action@v0.1.0
+        with:
+          version: "0.2.83"
+      - run: ./scripts/wasm_bindgen_check.sh --skip-setup
+
+  rs-cargo-deny:
+    name: Check Rust dependencies (cargo-deny)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          rust-version: "1.64.0"
+
+  rs-maturin-linux:
+    name: Build Rust SDK Maturin Wheel (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -129,17 +142,8 @@ jobs:
       - name: Build wheels
         run: maturin build -m rerun_py/Cargo.toml -o dist
 
-  cargo-deny:
-    name: cargo deny
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: EmbarkStudios/cargo-deny-action@v1
-        with:
-          rust-version: "1.64.0"
-
-  maturin-windows:
-    name: Maturin Windows
+  rs-maturin-windows:
+    name: Build Rust SDK Maturin Wheel (Windows)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -157,8 +161,8 @@ jobs:
           command: build
           args: -m rerun_py/Cargo.toml -o dist
 
-  maturin-macos:
-    name: Maturin MacOS
+  rs-maturin-macos:
+    name: Build Rust SDK Maturin Wheel (macOS)
     runs-on: macos-latest
     if: "startsWith(github.ref, 'refs/tags/')" # slow; uses up a lot of CI minutes
     steps:

@@ -1,4 +1,4 @@
-name: CI
+name: CI (TOML)
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  toml-check:
+  toml-lints:
     name: Lint TOML files
     runs-on: ubuntu-latest
     steps:
