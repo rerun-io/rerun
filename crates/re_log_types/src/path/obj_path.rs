@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     hash::Hash128,
     path::{obj_path_impl::ObjPathImpl, IndexPath, ObjTypePath},
@@ -54,14 +56,18 @@ impl std::fmt::Debug for ObjPathHash {
 // ----------------------------------------------------------------------------
 
 /// `camera / "left" / points / #42`
+///
+/// Cheap to clone.
+///
+/// Implements [`nohash_hasher::IsEnabled`].
 #[derive(Clone, Debug, Eq)]
 pub struct ObjPath {
     /// precomputed hash
     hash: ObjPathHash,
 
-    // boxed to keep down the size of [`ObjPath`].
+    // [`Arc`] used for cheap cloning, and to keep down the size of [`ObjPath`].
     // We mostly use the hash for lookups and comparisons anyway!
-    path: Box<ObjPathImpl>,
+    path: Arc<ObjPathImpl>,
 }
 
 impl ObjPath {
@@ -118,8 +124,8 @@ impl ObjPath {
     }
 
     #[inline]
-    pub fn into_type_path_and_index_path(self) -> (ObjTypePath, IndexPath) {
-        self.path.into_type_path_and_index_path()
+    pub fn to_type_path_and_index_path(&self) -> (ObjTypePath, IndexPath) {
+        self.path.to_type_path_and_index_path()
     }
 
     #[must_use]
@@ -134,7 +140,7 @@ impl From<ObjPathImpl> for ObjPath {
     fn from(path: ObjPathImpl) -> Self {
         Self {
             hash: ObjPathHash(Hash128::hash(&path)),
-            path: Box::new(path),
+            path: Arc::new(path),
         }
     }
 }

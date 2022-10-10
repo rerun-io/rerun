@@ -75,6 +75,11 @@ impl ObjPathImpl {
         (self.obj_type_path, self.index_path)
     }
 
+    #[inline]
+    pub fn to_type_path_and_index_path(&self) -> (ObjTypePath, IndexPath) {
+        self.clone().into_type_path_and_index_path()
+    }
+
     #[must_use]
     pub fn parent(&self) -> Self {
         let mut obj_type_path = self.obj_type_path.as_slice().to_vec();
