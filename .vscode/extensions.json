@@ -1,15 +1,16 @@
 {
-	// See https://go.microsoft.com/fwlink/?LinkId=827846
-	// for the documentation about the extensions.json format
-	"recommendations": [
-		"ms-vsliveshare.vsliveshare", // Live Share
-		"rust-lang.rust-analyzer", // Rust-analyzer
-		"vadimcn.vscode-lldb", // CodeLLDB
-		"wayou.vscode-todo-highlight", // TODO Highlight
-		"webfreak.debug", // Native Debug
-		"zxh404.vscode-proto3", // vscode-proto3
-		"ms-python.python",
-		"polymeilex.wgsl",
-		"streetsidesoftware.code-spell-checker"
-	]
+    // See https://go.microsoft.com/fwlink/?LinkId=827846
+    // for the documentation about the extensions.json format
+    "recommendations": [
+        "ms-vsliveshare.vsliveshare", // Live Share
+        "rust-lang.rust-analyzer", // Rust-analyzer
+        "vadimcn.vscode-lldb", // CodeLLDB
+        "wayou.vscode-todo-highlight", // TODO Highlight
+        "webfreak.debug", // Native Debug
+        "zxh404.vscode-proto3", // vscode-proto3
+        "ms-python.python",
+        "polymeilex.wgsl",
+        "streetsidesoftware.code-spell-checker",
+        tamasfe.even-better-toml // TOML LSP
+    ]
 }
