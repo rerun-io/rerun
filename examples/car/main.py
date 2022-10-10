@@ -8,7 +8,7 @@ from pathlib import Path
 from time import sleep
 from typing import Final, Iterator, Tuple
 
-import cv2  # type: ignore[import]
+import cv2
 import numpy as np
 import numpy.typing as npt
 import rerun_sdk as rerun
