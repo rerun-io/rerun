@@ -48,6 +48,7 @@ ANNOTATIONS_FILENAME: Final = "annotation.pbdata"
 @dataclass
 class SampleARFrame:
     """An `ARFrame` sample and the relevant associated metadata."""
+
     index: int
     timestamp: float
     dirpath: Path
@@ -67,14 +68,11 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
 
     frame_idx = 0
     while len(data) > 0 and frame_idx < nb_frames:
-        next_len = int.from_bytes(data[:4], byteorder='little', signed=False)
+        next_len = int.from_bytes(data[:4], byteorder="little", signed=False)
         data = data[4:]
 
         frame = ARFrame().parse(data[:next_len])
-        yield SampleARFrame(index=frame_idx,
-                            timestamp=frame.timestamp,
-                            dirpath=dirpath,
-                            frame=frame)
+        yield SampleARFrame(index=frame_idx, timestamp=frame.timestamp, dirpath=dirpath, frame=frame)
 
         data = data[next_len:]
         frame_idx += 1
@@ -131,24 +129,30 @@ def log_camera(cam: ARCamera):
     rot = rot * R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
     (w, h) = (h, w)
 
-    rerun.log_camera("camera",
-                     resolution=[w, h],
-                     intrinsics=intrinsics,
-                     rotation_q=rot.as_quat(),
-                     position=translation,
-                     camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
-                     space="3d",
-                     target_space="image")
+    rerun.log_camera(
+        "camera",
+        resolution=[w, h],
+        intrinsics=intrinsics,
+        rotation_q=rot.as_quat(),
+        position=translation,
+        camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
+        space="3d",
+        target_space="image",
+    )
 
     # Experimental new API:
-    rerun._log_extrinsics("3d/camera",
-                          rotation_q=rot.as_quat(),
-                          position=translation,
-                          camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK)
+    rerun._log_extrinsics(
+        "3d/camera",
+        rotation_q=rot.as_quat(),
+        position=translation,
+        camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
+    )
 
-    rerun._log_intrinsics("3d/camera/video",
-                          resolution=[w, h],
-                          intrinsics_matrix=intrinsics)
+    rerun._log_intrinsics(
+        "3d/camera/video",
+        resolution=[w, h],
+        intrinsics_matrix=intrinsics,
+    )
 
 
 def log_point_cloud(point_cloud: ARPointCloud):
@@ -157,10 +161,7 @@ def log_point_cloud(point_cloud: ARPointCloud):
     for i in range(point_cloud.count):
         point = point_cloud.point[i]
         ident = point_cloud.identifier[i]
-        rerun.log_point(f"3d/points/{ident}",
-                        [point.x, point.y, point.z],
-                        color=[255, 255, 255, 255],
-                        space="3d")
+        rerun.log_point(f"3d/points/{ident}", [point.x, point.y, point.z], color=[255, 255, 255, 255], space="3d")
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]):
@@ -184,9 +185,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]):
         )
 
 
-def log_frame_annotations(
-    frame_times: List[float], frame_annotations: List[FrameAnnotation]
-):
+def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]):
     """Maps annotations to their associated `ARFrame` then logs them using the Rerun SDK."""
 
     for frame_ann in frame_annotations:
@@ -202,8 +201,7 @@ def log_frame_annotations(
             path = f"3d/objects/{obj_ann.object_id}"
 
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
-            keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y]
-                                         for kp in obj_ann.keypoints])
+            keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y] for kp in obj_ann.keypoints])
             # NOTE: These are normalized points, so we need to bring them back to image space
             keypoint_pos2s *= IMAGE_RESOLUTION
 
@@ -211,10 +209,7 @@ def log_frame_annotations(
                 log_projected_bbox(f"{path}/bbox2d", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
-                    rerun.log_point(f"{path}/bbox2d/{id}",
-                                    pos2,
-                                    color=[130, 160, 250, 255],
-                                    space="image")
+                    rerun.log_point(f"{path}/bbox2d/{id}", pos2, color=[130, 160, 250, 255], space="image")
 
 
 def log_projected_bbox(path: str, keypoints: np.ndarray):
@@ -230,6 +225,7 @@ def log_projected_bbox(path: str, keypoints: np.ndarray):
     # this doesn't make sense, that'll make everything clearer.
     #
     # TODO(cmc): replace once we can project 3D bboxes on 2D views
+    # fmt: off
     segments = [keypoints[1], keypoints[2],
                 keypoints[1], keypoints[3],
                 keypoints[4], keypoints[2],
@@ -244,28 +240,21 @@ def log_projected_bbox(path: str, keypoints: np.ndarray):
                 keypoints[2], keypoints[6],
                 keypoints[3], keypoints[7],
                 keypoints[4], keypoints[8]]
+    # fmt: on
 
-    rerun.log_line_segments(path,
-                            segments,
-                            space="image",
-                            color=[130, 160, 250, 255])
+    rerun.log_line_segments(path, segments, space="image", color=[130, 160, 250, 255])
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Logs Objectron data using the Rerun SDK.')
-    parser.add_argument('--headless', action='store_true',
-                        help="Don't show GUI")
-    parser.add_argument('--connect', dest='connect', action='store_true',
-                        help='Connect to an external viewer')
-    parser.add_argument('--addr', type=str, default=None,
-                        help='Connect to this ip:port')
-    parser.add_argument('--save', type=str, default=None,
-                        help='Save data to a .rrd file at this path')
-    parser.add_argument('--frames', type=int, default=sys.maxsize,
-                        help='If specifies, limits the number of frames logged')
-    parser.add_argument('dir', type=Path, nargs='+',
-                        help='Directories to log (e.g. `dataset/bike/batch-8/16/`)')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
+    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
+    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
+    parser.add_argument(
+        "--frames", type=int, default=sys.maxsize, help="If specifies, limits the number of frames logged"
+    )
+    parser.add_argument("dir", type=Path, nargs="+", help="Directories to log (e.g. `dataset/bike/batch-8/16/`)")
     args = parser.parse_args()
 
     if args.connect:

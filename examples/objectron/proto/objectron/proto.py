@@ -176,9 +176,7 @@ class ARLightEstimate(betterproto.Message):
     spherical_harmonics_coefficients: List[float] = betterproto.float_field(3)
     # A vector indicating the orientation of the strongest directional light
     # source, normalized in the world-coordinate space.
-    primary_light_direction: "ARLightEstimateDirectionVector" = (
-        betterproto.message_field(4)
-    )
+    primary_light_direction: "ARLightEstimateDirectionVector" = betterproto.message_field(4)
     # The estimated intensity, in lumens, of the strongest directional light
     # source in the scene.
     primary_light_intensity: float = betterproto.float_field(5)
@@ -237,9 +235,7 @@ class ARFaceGeometry(betterproto.Message):
     vertices: List["ARFaceGeometryVertex"] = betterproto.message_field(1)
     # The number of elements in the vertices list.
     vertex_count: int = betterproto.int32_field(2)
-    texture_coordinates: List[
-        "ARFaceGeometryTextureCoordinate"
-    ] = betterproto.message_field(3)
+    texture_coordinates: List["ARFaceGeometryTextureCoordinate"] = betterproto.message_field(3)
     # The number of elements in the texture_coordinates list.
     texture_coordinate_count: int = betterproto.int32_field(4)
     # Each integer value in this ordered list represents an index into the
@@ -322,9 +318,7 @@ class ARPlaneGeometry(betterproto.Message):
     # The number of elements in the vertices buffer.
     vertex_count: int = betterproto.int32_field(2)
     # A buffer of texture coordinate values for each point in the plane mesh.
-    texture_coordinates: List[
-        "ARPlaneGeometryTextureCoordinate"
-    ] = betterproto.message_field(3)
+    texture_coordinates: List["ARPlaneGeometryTextureCoordinate"] = betterproto.message_field(3)
     # The number of elements in the texture_coordinates buffer.
     texture_coordinate_count: int = betterproto.int32_field(4)
     # Each integer value in this ordered list represents an index into the
@@ -399,9 +393,7 @@ class ARPlaneAnchor(betterproto.Message):
     # property's value is KNOWN, the classification property represents
     # characterization of the real-world surface corresponding to the plane
     # anchor.
-    classification_status: "ARPlaneAnchorPlaneClassificationStatus" = (
-        betterproto.enum_field(9)
-    )
+    classification_status: "ARPlaneAnchorPlaneClassificationStatus" = betterproto.enum_field(9)
 
 
 @dataclass
@@ -455,9 +447,7 @@ class CMCalibratedMagneticField(betterproto.Message):
     # Vector of magnetic field estimate.
     field: "CMVector" = betterproto.message_field(1)
     # Calibration accuracy of a magnetic field estimate.
-    calibration_accuracy: "CMCalibratedMagneticFieldCalibrationAccuracy" = (
-        betterproto.enum_field(2)
-    )
+    calibration_accuracy: "CMCalibratedMagneticFieldCalibrationAccuracy" = betterproto.enum_field(2)
 
 
 @dataclass
