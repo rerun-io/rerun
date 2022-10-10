@@ -1,16 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use re_log_types::*;
-use re_string_interner::InternedString;
 
 /// Tree of data paths.
 #[derive(Default)]
 pub struct ObjectTree {
-    /// Children of type [`ObjPathComp::Name`].
-    pub named_children: BTreeMap<InternedString, ObjectTree>,
-
-    /// Children of type [`ObjPathComp::Index`].
-    pub index_children: BTreeMap<Index, ObjectTree>,
+    pub children: BTreeMap<ObjPathComp, ObjectTree>,
 
     /// When do we or a child have data?
     ///
@@ -24,7 +19,7 @@ pub struct ObjectTree {
 impl ObjectTree {
     /// Has no child objects.
     pub fn is_leaf(&self) -> bool {
-        self.named_children.is_empty() && self.index_children.is_empty()
+        self.children.is_empty()
     }
 
     pub fn add_data_msg(
@@ -69,20 +64,12 @@ impl ObjectTree {
                     .or_default()
                     .add(msg_id, time_point, data);
             }
-            [first, rest @ ..] => match first {
-                ObjPathComp::Name(name) => {
-                    self.named_children
-                        .entry(*name)
-                        .or_default()
-                        .add_path(rest, field_name, msg_id, time_point, data);
-                }
-                ObjPathComp::Index(index) => {
-                    self.index_children
-                        .entry(index.clone())
-                        .or_default()
-                        .add_path(rest, field_name, msg_id, time_point, data);
-                }
-            },
+            [first, rest @ ..] => {
+                self.children
+                    .entry(first.clone())
+                    .or_default()
+                    .add_path(rest, field_name, msg_id, time_point, data);
+            }
         }
     }
 }
