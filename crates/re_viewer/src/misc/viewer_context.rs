@@ -199,7 +199,7 @@ pub(crate) struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: crate::TimeControl,
 
-    /// Currently selected thing; shown in the [`crate::ui::SelectionPanel`].
+    /// Currently selected thing; shown in the [`crate::selection_panel::SelectionPanel`].
     pub selection: Selection,
 
     /// Individual settings. Mutate this.
