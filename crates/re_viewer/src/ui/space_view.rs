@@ -205,6 +205,7 @@ impl View {
             let dock_style = egui_dock::Style {
                 separator_width: 2.0,
                 show_close_buttons: false,
+                tab_include_scrollarea: false,
                 ..egui_dock::Style::from_egui(ui.style().as_ref())
             };
 
@@ -328,6 +329,8 @@ pub(crate) struct SpaceStates {
     state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
 
     state_tensor: ahash::HashMap<Option<ObjPath>, crate::view_tensor::TensorViewState>,
+
+    state_text_entry: ahash::HashMap<Option<ObjPath>, crate::text_entry_view::TextEntryState>,
 }
 
 impl SpaceStates {
@@ -433,9 +436,8 @@ impl SpaceStates {
     /// the time panel.
     ///
     /// Returns `true` if hovered.
-    #[allow(clippy::unused_self)] // we do not keep any state... yet.
     fn show_sticky_space(
-        &self,
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         sticky_objects: &ObjectsBySpace<'_>,
         space: Option<&ObjPath>,
@@ -470,7 +472,8 @@ impl SpaceStates {
         }
 
         if objects.has_any_text_entries() {
-            let response = crate::text_entry_view::show(ui, ctx, &objects);
+            let state = self.state_text_entry.entry(space.cloned()).or_default();
+            let response = state.show(ui, ctx, &objects);
             hovered |= response.hovered();
         }
 
