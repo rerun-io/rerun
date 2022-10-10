@@ -1451,7 +1451,7 @@ fn log_image_file(
     Ok(())
 }
 
-/// Clear the visibility falg of an object
+/// Clear the visibility flag of an object
 #[pyfunction]
 fn clear_object(obj_path: &str) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;

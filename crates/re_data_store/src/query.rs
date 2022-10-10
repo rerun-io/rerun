@@ -479,7 +479,6 @@ pub fn visit_type_data_4<
     Some(())
 }
 
-// TODO it's time to learn macros...
 pub fn visit_type_data_5<
     's,
     Time: 'static + Copy + Ord,
