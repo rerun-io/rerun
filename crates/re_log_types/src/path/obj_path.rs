@@ -85,6 +85,13 @@ impl ObjPath {
         self.path.is_root()
     }
 
+    /// Number of components
+    #[inline]
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.path.len()
+    }
+
     #[inline]
     pub fn hash(&self) -> &ObjPathHash {
         &self.hash

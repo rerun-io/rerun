@@ -50,6 +50,12 @@ impl ObjPathImpl {
         self.obj_type_path.is_root()
     }
 
+    /// Number of components
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.obj_type_path.len()
+    }
+
     #[inline]
     pub fn obj_type_path(&self) -> &ObjTypePath {
         &self.obj_type_path
