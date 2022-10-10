@@ -2,6 +2,16 @@ default:
   @just --list
 
 
+### Common
+# Format all of our code
+format: toml-format py-format
+    cargo fmt --all
+
+# Lint all of our code
+lint: toml-lint py-lint
+    cargo cranky
+
+
 ### Python
 
 # Set up a Pythonvirtual environment for development
@@ -30,7 +40,6 @@ py-format:
     blackdoc .
     isort .
     pyupgrade --py37-plus `find rerun_py/rerun_sdk/ -name "*.py" -type f`
-    cargo fmt --all
 
 # Run linting
 py-lint:
@@ -57,11 +66,14 @@ rs-doc:
 
 ### TOML
 
+# Format .toml files
 toml-format:
     taplo fmt
 
+# Lint .toml files
 toml-lint:
     taplo fmt --check
+
 
 ### Misc
 
