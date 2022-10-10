@@ -30,8 +30,8 @@ impl ThreadInfo {
         Self::with(|ti| ti.now())
     }
 
-    pub fn set_thread_time(time_source: TimeSource, time_int: Option<TimeInt>) {
-        Self::with(|ti| ti.set_time(time_source, time_int));
+    pub fn set_thread_time(timeline: Timeline, time_int: Option<TimeInt>) {
+        Self::with(|ti| ti.set_time(timeline, time_int));
     }
 
     /// Get access to the thread-local [`ThreadInfo`].
@@ -51,17 +51,17 @@ impl ThreadInfo {
     fn now(&self) -> TimePoint {
         let mut time_point = self.time_point.clone();
         time_point.0.insert(
-            TimeSource::new("log_time", TimeType::Time),
+            Timeline::new("log_time", TimeType::Time),
             Time::now().into(),
         );
         time_point
     }
 
-    fn set_time(&mut self, time_source: TimeSource, time_int: Option<TimeInt>) {
+    fn set_time(&mut self, timeline: Timeline, time_int: Option<TimeInt>) {
         if let Some(time_int) = time_int {
-            self.time_point.0.insert(time_source, time_int);
+            self.time_point.0.insert(timeline, time_int);
         } else {
-            self.time_point.0.remove(&time_source);
+            self.time_point.0.remove(&timeline);
         }
     }
 }
@@ -353,27 +353,27 @@ fn save(path: &str) -> PyResult<()> {
 ///
 /// For instance: `set_time_sequence("frame_nr", frame_nr)`.
 ///
-/// You can remove a time source again using `set_time_sequence("frame_nr", None)`.
+/// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
 #[pyfunction]
-fn set_time_sequence(time_source: &str, sequence: Option<i64>) {
+fn set_time_sequence(timeline: &str, sequence: Option<i64>) {
     ThreadInfo::set_thread_time(
-        TimeSource::new(time_source, TimeType::Sequence),
+        Timeline::new(timeline, TimeType::Sequence),
         sequence.map(TimeInt::from),
     );
 }
 
 #[pyfunction]
-fn set_time_seconds(time_source: &str, seconds: Option<f64>) {
+fn set_time_seconds(timeline: &str, seconds: Option<f64>) {
     ThreadInfo::set_thread_time(
-        TimeSource::new(time_source, TimeType::Time),
+        Timeline::new(timeline, TimeType::Time),
         seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
     );
 }
 
 #[pyfunction]
-fn set_time_nanos(time_source: &str, ns: Option<i64>) {
+fn set_time_nanos(timeline: &str, ns: Option<i64>) {
     ThreadInfo::set_thread_time(
-        TimeSource::new(time_source, TimeType::Time),
+        Timeline::new(timeline, TimeType::Time),
         ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
     );
 }

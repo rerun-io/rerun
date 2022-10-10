@@ -15,7 +15,7 @@ pub struct ObjectTree {
     /// When do we or a child have data?
     ///
     /// Data logged at this exact path or any child path.
-    pub prefix_times: BTreeMap<TimeSource, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
+    pub prefix_times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
 
     /// Data logged at this object path.
     pub fields: BTreeMap<FieldName, DataColumns>,
@@ -53,9 +53,9 @@ impl ObjectTree {
         time_point: &TimePoint,
         data: &LoggedData,
     ) {
-        for (time_source, time_value) in &time_point.0 {
+        for (timeline, time_value) in &time_point.0 {
             self.prefix_times
-                .entry(*time_source)
+                .entry(*timeline)
                 .or_default()
                 .entry(*time_value)
                 .or_default()
@@ -91,15 +91,15 @@ impl ObjectTree {
 #[derive(Default)]
 pub struct DataColumns {
     /// When do we have data?
-    pub times: BTreeMap<TimeSource, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
+    pub times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
     pub per_type: HashMap<DataType, BTreeSet<MsgId>>,
 }
 
 impl DataColumns {
     pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: &LoggedData) {
-        for (time_source, time_value) in &time_point.0 {
+        for (timeline, time_value) in &time_point.0 {
             self.times
-                .entry(*time_source)
+                .entry(*timeline)
                 .or_default()
                 .entry(*time_value)
                 .or_default()

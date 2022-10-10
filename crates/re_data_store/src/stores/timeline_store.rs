@@ -5,7 +5,7 @@ use re_log_types::{DataTrait, FieldName, MsgId, ObjPath};
 use crate::{BatchOrSplat, ObjStore, Result};
 
 /// Stores all objects for a specific timeline.
-pub struct TimeLineStore<Time> {
+pub struct TimelineStore<Time> {
     // There is room for optimization here!
     // A lot of objects will share the same `ObjectType`,
     // and will therefore have the same `ObjStore` implementation (mono vs multi).
@@ -15,7 +15,7 @@ pub struct TimeLineStore<Time> {
     objects: IntMap<ObjPath, ObjStore<Time>>,
 }
 
-impl<Time> Default for TimeLineStore<Time> {
+impl<Time> Default for TimelineStore<Time> {
     fn default() -> Self {
         Self {
             objects: Default::default(),
@@ -23,7 +23,7 @@ impl<Time> Default for TimeLineStore<Time> {
     }
 }
 
-impl<Time: 'static + Copy + Ord> TimeLineStore<Time> {
+impl<Time: 'static + Copy + Ord> TimelineStore<Time> {
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&ObjPath, &ObjStore<Time>)> {
         self.objects.iter()
     }

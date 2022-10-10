@@ -12,7 +12,7 @@ use crate::{BatchOrSplat, Error, Result, TimeQuery};
 /// Second has the matching data.
 pub type FieldQueryOutput<Time> = (Vec<(Time, MsgId, Option<Index>)>, DataVec);
 
-/// Stores data for a specific [`re_log_types::FieldName`] of a specific [`ObjPath`] on a specific [`re_log_types::TimeSource`].
+/// Stores data for a specific [`re_log_types::FieldName`] of a specific [`ObjPath`] on a specific [`re_log_types::Timeline`].
 pub struct FieldStore<Time> {
     data_store: Box<dyn std::any::Any>,
     mono: bool,

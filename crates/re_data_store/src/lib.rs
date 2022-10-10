@@ -1,14 +1,14 @@
 //! This is how we store and index logging data.
 //!
 //! We partion the data in this order:
-//! * [`TimeSource`]
+//! * [`Timeline`]
 //! * [`ObjPath`]
 //! * [`FieldName`]
 //! * [`TimeInt`]
 //!
 //! The stores are in order:
-//! * [`DataStore`], which maps [`TimeSource`] to…
-//! * [`TimeLineStore`], which maps [`ObjPath`] to…
+//! * [`DataStore`], which maps [`Timeline`] to…
+//! * [`TimelineStore`], which maps [`ObjPath`] to…
 //! * [`ObjStore`], which maps [`FieldName`] to…
 //! * [`FieldStore`], which maps [`TimeInt`] to values.
 //!
@@ -36,8 +36,7 @@ pub use stores::*;
 use re_log_types::DataType;
 
 pub use re_log_types::{
-    FieldName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, TimeInt, TimeSource,
-    TypePathComp,
+    FieldName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, TimeInt, Timeline, TypePathComp,
 };
 
 // ----------------------------------------------------------------------------

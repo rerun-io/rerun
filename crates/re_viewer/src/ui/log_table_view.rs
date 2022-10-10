@@ -48,9 +48,9 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
             header.col(|ui| {
                 ui.heading("Message Type");
             });
-            for time_source in ctx.log_db.time_points.0.keys() {
+            for timeline in ctx.log_db.time_points.0.keys() {
                 header.col(|ui| {
-                    ui.heading(time_source.name().as_str());
+                    ui.heading(timeline.name().as_str());
                 });
             }
             header.col(|ui| {
@@ -150,10 +150,10 @@ fn table_row(
             row.col(|ui| {
                 ui.monospace("DataMsg");
             });
-            for time_source in ctx.log_db.time_points.0.keys() {
+            for timeline in ctx.log_db.time_points.0.keys() {
                 row.col(|ui| {
-                    if let Some(value) = time_point.0.get(time_source) {
-                        ctx.time_button(ui, time_source, *value);
+                    if let Some(value) = time_point.0.get(timeline) {
+                        ctx.time_button(ui, timeline, *value);
                     }
                 });
             }

@@ -9,7 +9,7 @@ use re_log_types::*;
 
 /// An aggregate of [`TimePoint`]:s.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
+pub struct TimePoints(pub BTreeMap<Timeline, BTreeSet<TimeInt>>);
 
 // ----------------------------------------------------------------------------
 
@@ -182,8 +182,8 @@ impl LogDb {
             if !self.time_points.0.is_empty() {
                 // Add to existing timelines (if any):
                 let mut time_point = TimePoint::default();
-                for &time_source in self.time_points.0.keys() {
-                    time_point.0.insert(time_source, TimeInt::BEGINNING);
+                for &timeline in self.time_points.0.keys() {
+                    time_point.0.insert(timeline, TimeInt::BEGINNING);
                 }
                 self.add_data_msg(msg_id, &time_point, data_path, data);
             }
@@ -199,11 +199,11 @@ impl LogDb {
         {
             let mut new_timelines = TimePoint::default();
 
-            for (time_source, value) in &time_point.0 {
-                match self.time_points.0.entry(*time_source) {
+            for (timeline, value) in &time_point.0 {
+                match self.time_points.0.entry(*timeline) {
                     std::collections::btree_map::Entry::Vacant(entry) => {
-                        re_log::debug!("New timeline added: {time_source:?}");
-                        new_timelines.0.insert(*time_source, TimeInt::BEGINNING);
+                        re_log::debug!("New timeline added: {timeline:?}");
+                        new_timelines.0.insert(*timeline, TimeInt::BEGINNING);
                         entry.insert(Default::default())
                     }
                     std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),

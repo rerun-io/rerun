@@ -1,7 +1,7 @@
 use macaw::Ray3;
 
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath, ObjectTree};
-use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, TimeSource};
+use re_log_types::{DataPath, MsgId, ObjPath, ObjPathComp, TimeInt, Timeline};
 
 /// Common things needed by many parts of the viewer.
 pub(crate) struct ViewerContext<'a> {
@@ -126,19 +126,17 @@ impl<'a> ViewerContext<'a> {
     pub fn time_button(
         &mut self,
         ui: &mut egui::Ui,
-        time_source: &TimeSource,
+        timeline: &Timeline,
         value: TimeInt,
     ) -> egui::Response {
         let is_selected = self
             .rec_cfg
             .time_ctrl
-            .is_time_selected(time_source, value.into());
+            .is_time_selected(timeline, value.into());
 
-        let response = ui.selectable_label(is_selected, time_source.typ().format(value));
+        let response = ui.selectable_label(is_selected, timeline.typ().format(value));
         if response.clicked() {
-            self.rec_cfg
-                .time_ctrl
-                .set_source_and_time(*time_source, value);
+            self.rec_cfg.time_ctrl.set_source_and_time(*timeline, value);
             self.rec_cfg.time_ctrl.pause();
         }
         response

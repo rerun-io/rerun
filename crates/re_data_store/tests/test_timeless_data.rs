@@ -19,7 +19,7 @@ fn test_timeless_data() {
         log_db: &mut LogDb,
         data_path: &DataPath,
         what: &str,
-        timeline: TimeSource,
+        timeline: Timeline,
         time: i64,
     ) {
         let mut time_point = TimePoint::default();
@@ -38,7 +38,7 @@ fn test_timeless_data() {
 
     fn query_time_and_data(
         store: &LogDb,
-        timeline: &TimeSource,
+        timeline: &Timeline,
         data_path: &DataPath,
         query_time: i64,
     ) -> String {
@@ -62,8 +62,8 @@ fn test_timeless_data() {
 
     let data_path_foo = DataPath::new(obj_path!("point"), FieldName::new("pos"));
     let data_path_badger = DataPath::new(obj_path!("point"), FieldName::new("badger"));
-    let timeline_a = TimeSource::new("timeline_a", TimeType::Sequence);
-    let timeline_b = TimeSource::new("timeline_b", TimeType::Sequence);
+    let timeline_a = Timeline::new("timeline_a", TimeType::Sequence);
+    let timeline_b = Timeline::new("timeline_b", TimeType::Sequence);
 
     insert_timeless(&mut log_db, &data_path_foo, "timeless__foo__first");
     insert_at_time(
