@@ -16,7 +16,7 @@ import logging
 import rerun_sdk as rerun
 
 
-def log_stuff():
+def log_stuff() -> None:
     # That's really all there is to it: attach a Rerun logging handler to one
     # or more loggers of your choosing and your logs will be forwarded.
     #
@@ -39,7 +39,7 @@ def log_stuff():
     logging.log(42, "end-user deemed this important")
 
     # Log anything
-    logging.info("here's some data: %s", { "some": 42, "data": True })
+    logging.info("here's some data: %s", {"some": 42, "data": True})
 
     # Use child loggers to map to arbitrary object paths
     inner_logger = logging.getLogger("foo.bar.baz")
@@ -47,25 +47,31 @@ def log_stuff():
 
     # Use spaces to create distinct logging streams
     other_logger = logging.getLogger("totally.unrelated")
-    other_logger.propagate = False # don't want root logger to catch those
+    other_logger.propagate = False  # don't want root logger to catch those
     other_logger.addHandler(rerun.LoggingHandler("3rd-party logs"))
     for _ in range(10):
         other_logger.debug("look ma, got my very own window!")
 
 
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="demonstrates how to integrate python's native `logging` with the Rerun SDK")
-    parser.add_argument('--headless', action='store_true',
-                        help="Don't show GUI")
-    parser.add_argument('--connect', dest='connect', action='store_true',
-                        help='Connect to an external viewer')
-    parser.add_argument('--addr', type=str, default=None,
-                        help='Connect to this ip:port')
-    parser.add_argument('--save', type=str, default=None,
-                        help='Save data to a .rrd file at this path')
-    parser.add_argument('--repeat', type=int, default=1,
-                        help='How many times do we want to run the log function?')
+        description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
+    )
+    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
+    parser.add_argument(
+        "--connect",
+        dest="connect",
+        action="store_true",
+        help="Connect to an external viewer",
+    )
+    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="How many times do we want to run the log function?",
+    )
     parser.add_argument(
         "--serve",
         dest="serve",
@@ -89,6 +95,7 @@ def main():
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
         try:
             from time import sleep
+
             sleep(100_000)
         except:
             pass
@@ -98,7 +105,3 @@ def main():
         pass
     elif not args.connect:
         rerun.show()
-
-
-if __name__ == '__main__':
-    main()

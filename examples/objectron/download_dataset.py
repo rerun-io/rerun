@@ -41,9 +41,7 @@ def download_data(video_id, reprocess_video):
     download(f"{public_url}/videos/{video_id}/video.MOV", f"{dir}/video.MOV")
 
     # use object.proto
-    download(
-        f"{public_url}/videos/{video_id}/geometry.pbdata", f"{dir}/geometry.pbdata"
-    )
+    download(f"{public_url}/videos/{video_id}/geometry.pbdata", f"{dir}/geometry.pbdata")
 
     # Please refer to Parse Annotation tutorial to see how to parse the annotation files.
     download(f"{public_url}/annotations/{video_id}.pbdata", f"{dir}/annotation.pbdata")
