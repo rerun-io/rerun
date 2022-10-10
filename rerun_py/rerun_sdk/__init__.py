@@ -766,7 +766,5 @@ def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:
 
 
 def set_visible(obj_path: str, visibile: bool) -> None:
-    """
-    Change the visibility of an object
-    """
+    """Change the visibility of an object."""
     rerun_rs.set_visible(obj_path, visibile)
