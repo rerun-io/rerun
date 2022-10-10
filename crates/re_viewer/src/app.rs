@@ -253,6 +253,14 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
 
 // ------------------------------------------------------------------------------------
 
+#[derive(Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+enum PanelSelection {
+    #[default]
+    Viewport,
+
+    EventLog,
+}
+
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 struct AppState {
@@ -269,7 +277,7 @@ struct AppState {
     recording_configs: IntMap<RecordingId, RecordingConfig>,
     viewport_panel: IntMap<RecordingId, crate::viewport_panel::ViewportPanel>,
 
-    view_index: usize,
+    panel_selection: PanelSelection,
     event_log_view: crate::event_log_view::EventLogView,
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: crate::time_panel::TimePanel,
@@ -292,7 +300,7 @@ impl AppState {
             cache,
             selected_rec_id: selected_recording_id,
             recording_configs,
-            view_index,
+            panel_selection,
             event_log_view,
             viewport_panel,
             selection_panel,
@@ -324,13 +332,12 @@ impl AppState {
                 time_panel.ui(&mut ctx, ui);
             });
 
-        egui::CentralPanel::default().show(egui_ctx, |ui| match view_index {
-            0 => viewport_panel
+        egui::CentralPanel::default().show(egui_ctx, |ui| match *panel_selection {
+            PanelSelection::Viewport => viewport_panel
                 .entry(*selected_recording_id)
                 .or_default()
                 .ui(&mut ctx, ui),
-            1 => event_log_view.ui(&mut ctx, ui),
-            _ => {}
+            PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
         });
 
         // move time last, so we get to see the first data first!
@@ -376,8 +383,16 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
             ui.separator();
 
             if !app.log_db().is_empty() {
-                ui.selectable_value(&mut app.state.view_index, 0, "Viewport");
-                ui.selectable_value(&mut app.state.view_index, 1, "Event Log");
+                ui.selectable_value(
+                    &mut app.state.panel_selection,
+                    PanelSelection::Viewport,
+                    "Viewport",
+                );
+                ui.selectable_value(
+                    &mut app.state.panel_selection,
+                    PanelSelection::EventLog,
+                    "Event Log",
+                );
             }
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
