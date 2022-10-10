@@ -16,7 +16,7 @@ import logging
 import rerun_sdk as rerun
 
 
-def log_stuff():
+def log_stuff() -> None:
     # That's really all there is to it: attach a Rerun logging handler to one
     # or more loggers of your choosing and your logs will be forwarded.
     #
@@ -53,7 +53,7 @@ def log_stuff():
         other_logger.debug("look ma, got my very own window!")
 
 
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
     )
@@ -95,7 +95,3 @@ def main():
         pass
     elif not args.connect:
         rerun.show()
-
-
-if __name__ == "__main__":
-    main()

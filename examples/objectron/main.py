@@ -149,7 +149,11 @@ def log_camera(cam: ARCamera) -> None:
         camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
     )
 
-    rerun._log_intrinsics("3d/camera/video", resolution=[w, h], intrinsics_matrix=intrinsics)
+    rerun._log_intrinsics(
+        "3d/camera/video",
+        resolution=[w, h],
+        intrinsics_matrix=intrinsics,
+    )
 
 
 def log_point_cloud(point_cloud: ARPointCloud) -> None:
@@ -158,9 +162,7 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
     for i in range(point_cloud.count):
         point = point_cloud.point[i]
         ident = point_cloud.identifier[i]
-        rerun.log_point(
-            f"3d/points/{ident}", np.array([point.x, point.y, point.z]), color=[255, 255, 255, 255], space="3d"
-        )
+        rerun.log_point(f"3d/points/{ident}", [point.x, point.y, point.z], color=[255, 255, 255, 255], space="3d")
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:

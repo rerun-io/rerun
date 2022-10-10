@@ -7,7 +7,7 @@ import threading
 import rerun_sdk as rerun
 
 
-def task(title):
+def task(title: str) -> None:
     # All processes spawned with `multiprocessing` will automatically
     # be assigned the same default recording_id.
     print(
