@@ -3,6 +3,7 @@
 pub struct RenderContext {
     /// The color format used by the eframe output buffer.
     output_format_color: wgpu::TextureFormat,
+    
     /// The depth format used by the eframe output buffer.
     /// TODO(andreas): Should we maintain depth buffers per view and ask for no depth from eframe?
     output_format_depth: Option<wgpu::TextureFormat>,
