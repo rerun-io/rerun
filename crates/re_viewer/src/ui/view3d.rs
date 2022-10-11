@@ -7,8 +7,6 @@ mod glow_rendering;
 #[cfg(feature = "glow")]
 mod mesh_cache;
 
-use std::sync::{Arc, RwLock};
-
 #[cfg(feature = "glow")]
 pub use mesh_cache::CpuMeshCache;
 
@@ -423,8 +421,7 @@ pub(crate) fn view_3d(
     let show_axes = state.show_axes;
 
     let _callback = {
-        // FrameBuilder should drop together with the callback so we don't leak any resources when the ui disappears again!
-        let frame_builder_prepare = Arc::new(RwLock::new(FrameBuilder::new()));
+        let frame_builder_prepare = FrameBuilder::new_shared(); // Don't put FrameBuidler on paint_callback_resources, so it doesn't outlive the frame!
         let frame_builder_draw = frame_builder_prepare.clone();
 
         egui::PaintCallback {

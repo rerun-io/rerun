@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use crate::context::{RenderContext, RenderPipelineHandle};
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
@@ -17,6 +19,8 @@ pub struct FrameBuilder {
     render_pipeline: Option<RenderPipelineHandle>,
 }
 
+pub type SharedFrameBuilder = Arc<RwLock<FrameBuilder>>;
+
 impl FrameBuilder {
     pub fn new() -> Self {
         FrameBuilder {
@@ -24,18 +28,18 @@ impl FrameBuilder {
         }
     }
 
+    pub fn new_shared() -> SharedFrameBuilder {
+        Arc::new(RwLock::new(FrameBuilder::new()))
+    }
+
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
         self.render_pipeline = Some(ctx.request_render_pipeline(device));
         self
     }
 
-    /// Consumes the frame builder and draws it as configured.
+    /// Draws the final result of a `FrameBuilder` to a given output `RenderPass`
     ///
-    /// TODO(andreas) getting the final eframe pass in here as the only rendering avenue is fine for simple stuff, but breaks
-    /// once we need multi-pass rendering (some of them compute)
-    /// Loosely related to
-    /// * [egui #2022](https://github.com/emilk/egui/issues/2022)
-    /// * [egui #2084](https://github.com/emilk/egui/issues/2084)
+    /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
     pub fn draw<'a>(&self, ctx: &'a RenderContext, pass: &mut wgpu::RenderPass<'a>) {
         if let Some(handle) = self.render_pipeline {
             let render_pipeline = ctx.render_pipeline(handle);
