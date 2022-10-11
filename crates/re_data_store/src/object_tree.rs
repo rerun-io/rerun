@@ -134,7 +134,7 @@ impl DataColumns {
 
                 DataType::Tensor => ("tensor", "s"),
 
-                DataType::Space => ("space", "s"),
+                DataType::ObjPath => ("path", "s"),
 
                 DataType::Transform => ("transform", "s"),
 

@@ -203,7 +203,9 @@ impl LogDb {
         self.obj_db
             .add_data_msg(msg_id, time_point, data_path, data);
 
-        self.register_spaces(data);
+        if data_path.field_name == "space" {
+            self.register_spaces(data);
+        }
 
         {
             let mut new_timelines = TimePoint::default();
@@ -244,12 +246,14 @@ impl LogDb {
 
         // This is a bit hacky, and I don't like it,
         // but we need a single place to find all the spaces (ignoring time).
+        // This will be properly fixed when https://linear.app/rerun/issue/PRO-98/refactor-spaces is done
         match data {
-            LoggedData::Single(Data::Space(space)) | LoggedData::BatchSplat(Data::Space(space)) => {
+            LoggedData::Single(Data::ObjPath(space))
+            | LoggedData::BatchSplat(Data::ObjPath(space)) => {
                 register_space(space);
             }
             LoggedData::Batch {
-                data: DataVec::Space(spaces),
+                data: DataVec::ObjPath(spaces),
                 ..
             } => {
                 for space in spaces {

@@ -279,10 +279,10 @@ pub enum LoggedData {
 
     /// Log multiple values at once to a "multi-object".
     ///
-    /// The index becomes an "instance index" that, togher with the object-path, forms an "instance".
+    /// The index becomes an "instance index" that, together with the object-path, forms an "instance".
     Batch { indices: Vec<Index>, data: DataVec },
 
-    /// Log the same value for all instances of a mult-object.
+    /// Log the same value for all instances of a multi-object.
     ///
     /// You can only use this for optional fields such as `color`, `space` etc.
     /// You can NOT use it for primary fields such as `pos`.
@@ -325,7 +325,7 @@ impl_into_logged_data!(Tensor, Tensor);
 impl_into_logged_data!(Box3, Box3);
 impl_into_logged_data!(Mesh3D, Mesh3D);
 impl_into_logged_data!(Camera, Camera);
-impl_into_logged_data!(ObjPath, Space);
+impl_into_logged_data!(ObjPath, ObjPath);
 
 // ----------------------------------------------------------------------------
 
