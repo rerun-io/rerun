@@ -74,7 +74,7 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) {
         // TODO(andreas): Query used surface format from eframe/renderer.
         #[cfg(target_arch = "wasm32")]
         let (output_format_color, output_format_depth) =
-            (wgpu::TextureFormat::Rgba8UnormSrgb, None); // TODO(andreas) fix for not using srgb is in flight!
+            (wgpu::TextureFormat::Rgba8UnormSrgb, None); // TODO(andreas) fix for not using srgb will be released in `wgpu 0.15`. See https://github.com/gfx-rs/wgpu/pull/3070
         #[cfg(not(target_arch = "wasm32"))]
         let (output_format_color, output_format_depth) = (
             wgpu::TextureFormat::Bgra8Unorm,
