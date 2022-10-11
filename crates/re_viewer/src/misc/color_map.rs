@@ -264,3 +264,27 @@ pub fn turbo_color_map(t: f32) -> [u8; 3] {
     let index = (t * 255.0 + 0.5) as usize;
     TURBO_SRGB_BYTES[index]
 }
+
+pub(crate) fn into_image<T: Copy>(
+    slice: &ndarray::ArrayView2<'_, T>,
+    color_from_value: impl Fn(T) -> egui::Color32,
+) -> egui::ColorImage {
+    crate::profile_function!();
+
+    use ndarray::Dimension as _;
+    let (height, width) = slice.raw_dim().into_pattern();
+    let mut image = egui::ColorImage::new([width, height], egui::Color32::DEBUG_COLOR);
+
+    let image_view =
+        ndarray::ArrayViewMut2::from_shape(slice.raw_dim(), image.pixels.as_mut_slice())
+            .expect("Mismatched length.");
+
+    crate::profile_scope!("color_mapper");
+    ndarray::Zip::from(image_view)
+        .and(slice)
+        .for_each(|pixel, value| {
+            *pixel = color_from_value(*value);
+        });
+
+    image
+}

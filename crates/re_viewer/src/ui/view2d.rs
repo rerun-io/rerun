@@ -6,6 +6,8 @@ use re_log_types::*;
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
+use crate::legend::{find_legend, ColorMapping, Legend};
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State2D {
@@ -323,7 +325,7 @@ fn view_2d_scrollable(
         let re_data_store::Image {
             tensor,
             meter,
-            legend: _,
+            legend,
         } = obj;
         let paint_props = paint_properties(
             ctx,
@@ -337,11 +339,38 @@ fn view_2d_scrollable(
             continue; // not an image. don't know how to display this!
         }
 
-        let texture_id = ctx
-            .cache
-            .image
-            .get(props.msg_id, tensor)
-            .texture_id(ui.ctx());
+        let cached_img = ctx.cache.image.get(props.msg_id, tensor);
+        let cached_texture_id = cached_img.texture_id(ui.ctx());
+
+        let texture_id = match find_legend(*legend, objects) {
+            Legend::None => {
+                // If no legend, use the cached image
+                cached_texture_id
+            }
+            Legend::SegmentationMap(seg_map) => {
+                let mapping = seg_map.map_func();
+
+                match re_tensor_ops::as_ndarray::<u8>(tensor) {
+                    Ok(tensor) => {
+                        if let Ok(slice) = tensor.into_dimensionality::<ndarray::Ix2>() {
+                            let image = crate::misc::color_map::into_image(&slice, mapping);
+                            let texture = ui.ctx().load_texture(
+                                "colored_image",
+                                image,
+                                egui::TextureFilter::Nearest,
+                            );
+                            texture.id()
+                        } else {
+                            // This shouldn't happen.
+                            cached_texture_id
+                        }
+                    }
+                    // TODO: handle this error properly
+                    Err(_err) => cached_texture_id,
+                }
+            }
+        };
+
         let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
             vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),

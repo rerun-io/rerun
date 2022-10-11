@@ -362,7 +362,7 @@ fn slice_ui<T: Copy>(
             ]
         };
 
-        let image = into_image(&slice, color_from_value);
+        let image = crate::misc::color_map::into_image(&slice, color_from_value);
         image_ui(ui, view_state, image, dimension_labels);
     } else {
         ui.colored_label(
@@ -382,30 +382,6 @@ fn dimension_name(shape: &[TensorDimension], dim_idx: usize) -> String {
     } else {
         format!("{} ({})", dim.name, dim.size)
     }
-}
-
-fn into_image<T: Copy>(
-    slice: &ndarray::ArrayView2<'_, T>,
-    color_from_value: impl Fn(T) -> Color32,
-) -> ColorImage {
-    crate::profile_function!();
-
-    use ndarray::Dimension as _;
-    let (height, width) = slice.raw_dim().into_pattern();
-    let mut image = egui::ColorImage::new([width, height], Color32::DEBUG_COLOR);
-
-    let image_view =
-        ndarray::ArrayViewMut2::from_shape(slice.raw_dim(), image.pixels.as_mut_slice())
-            .expect("Mismatched length.");
-
-    crate::profile_scope!("color_mapper");
-    ndarray::Zip::from(image_view)
-        .and(slice)
-        .for_each(|pixel, value| {
-            *pixel = color_from_value(*value);
-        });
-
-    image
 }
 
 fn image_ui(
