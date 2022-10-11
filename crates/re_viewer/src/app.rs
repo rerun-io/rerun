@@ -57,7 +57,7 @@ impl App {
     }
 
     fn new(
-        egui_ctx: &egui::Context,
+        _egui_ctx: &egui::Context,
         storage: Option<&dyn eframe::Storage>,
         rx: Option<Receiver<LogMsg>>,
         log_db: LogDb,
@@ -70,7 +70,7 @@ impl App {
             // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
 
             let ctrl_c = ctrl_c.clone();
-            let egui_ctx = egui_ctx.clone();
+            let egui_ctx = _egui_ctx.clone();
 
             ctrlc::set_handler(move || {
                 re_log::debug!("Ctrl-C detected - Closing viewer.");

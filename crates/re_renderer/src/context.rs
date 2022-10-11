@@ -9,7 +9,6 @@ pub struct RenderContext {
 
     // TODO(andreas): Introduce a pipeline manager
     test_triangle: Option<wgpu::RenderPipeline>,
-
     // TODO(andreas): Strongly consider https://docs.rs/slotmap/latest/slotmap/ for resource pools
 }
 
