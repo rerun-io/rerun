@@ -37,7 +37,7 @@ pub enum DataType {
     DataVec,
 
     // ----------------------------
-    Space,
+    ObjPath,
 
     Transform,
 }
@@ -146,7 +146,7 @@ pub mod data_types {
 
     impl DataTrait for crate::ObjPath {
         fn data_typ() -> DataType {
-            DataType::Space
+            DataType::ObjPath
         }
     }
 
@@ -190,8 +190,8 @@ pub enum Data {
 
     // ----------------------------
     // Meta:
-    /// Used for specifying which space data belongs to.
-    Space(ObjPath),
+    /// One object referring to another (a pointer).
+    ObjPath(ObjPath),
 
     Transform(Transform),
 }
@@ -217,7 +217,7 @@ impl Data {
             Self::Tensor(_) => DataType::Tensor,
             Self::DataVec(_) => DataType::DataVec,
 
-            Self::Space(_) => DataType::Space,
+            Self::ObjPath(_) => DataType::ObjPath,
 
             Self::Transform(_) => DataType::Transform,
         }
@@ -232,7 +232,7 @@ impl_into_enum!(Tensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(Camera, Data, Camera);
-impl_into_enum!(ObjPath, Data, Space);
+impl_into_enum!(ObjPath, Data, ObjPath);
 impl_into_enum!(Transform, Data, Transform);
 
 // ----------------------------------------------------------------------------
@@ -261,7 +261,7 @@ pub enum DataVec {
     /// A vector of [`DataVec`] (vector of vectors)
     DataVec(Vec<DataVec>),
 
-    Space(Vec<ObjPath>),
+    ObjPath(Vec<ObjPath>),
 
     Transform(Vec<Transform>),
 }
@@ -290,7 +290,7 @@ macro_rules! data_map(
             $crate::Data::Camera($value) => $action,
             $crate::Data::Tensor($value) => $action,
             $crate::Data::DataVec($value) => $action,
-            $crate::Data::Space($value) => $action,
+            $crate::Data::ObjPath($value) => $action,
             $crate::Data::Transform($value) => $action,
         }
     });
@@ -320,7 +320,7 @@ macro_rules! data_vec_map(
             $crate::DataVec::Camera($vec) => $action,
             $crate::DataVec::Tensor($vec) => $action,
             $crate::DataVec::DataVec($vec) => $action,
-            $crate::DataVec::Space($vec) => $action,
+            $crate::DataVec::ObjPath($vec) => $action,
             $crate::DataVec::Transform($vec) => $action,
         }
     });
@@ -347,7 +347,7 @@ impl DataVec {
             Self::Tensor(_) => DataType::Tensor,
             Self::DataVec(_) => DataType::DataVec,
 
-            Self::Space(_) => DataType::Space,
+            Self::ObjPath(_) => DataType::ObjPath,
 
             Self::Transform(_) => DataType::Transform,
         }
@@ -380,7 +380,7 @@ impl DataVec {
             Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
             Self::DataVec(vec) => vec.last().cloned().map(Data::DataVec),
 
-            Self::Space(vec) => vec.last().cloned().map(Data::Space),
+            Self::ObjPath(vec) => vec.last().cloned().map(Data::ObjPath),
 
             Self::Transform(vec) => vec.last().cloned().map(Data::Transform),
         }

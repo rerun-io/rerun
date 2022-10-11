@@ -474,7 +474,7 @@ fn log_camera(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -591,7 +591,7 @@ fn log_text_entry(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -691,7 +691,7 @@ fn log_rect(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -780,7 +780,7 @@ fn log_rects(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::BatchSplat(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -853,7 +853,7 @@ fn log_point(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -928,7 +928,7 @@ fn log_points(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::BatchSplat(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1050,7 +1050,7 @@ fn log_path(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1132,7 +1132,7 @@ fn log_line_segments(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1203,7 +1203,7 @@ fn log_obb(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1283,7 +1283,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     if let Some(meter) = meter {
@@ -1366,7 +1366,7 @@ fn log_mesh_file(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1445,7 +1445,7 @@ fn log_image_file(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
