@@ -12,6 +12,7 @@ pub use mesh_cache::CpuMeshCache;
 
 use eye::*;
 use re_data_store::{InstanceId, InstanceIdHash};
+#[cfg(feature = "wgpu")]
 use re_renderer::frame_builder::FrameBuilder;
 use scene::*;
 
@@ -452,6 +453,7 @@ pub(crate) fn view_3d(
     let dark_mode = ui.visuals().dark_mode;
     let show_axes = state.show_axes;
 
+    #[cfg(feature = "wgpu")]
     let _callback = {
         let frame_builder_prepare = FrameBuilder::new_shared(); // Don't put FrameBuidler on paint_callback_resources, so it doesn't outlive the frame!
         let frame_builder_draw = frame_builder_prepare.clone();

@@ -18,6 +18,7 @@ pub(crate) use misc::*;
 pub(crate) use ui::*;
 
 pub use app::App;
+#[cfg(feature = "wgpu")]
 use re_renderer::context::RenderContext;
 pub use remote_viewer_app::RemoteViewerApp;
 
@@ -65,7 +66,6 @@ macro_rules! profile_scope {
 // ---------------------------------------------------------------------------
 
 pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) {
-    // TODO(andreas) can we move this into app creation? We lack the creation context there which would lead us to the renderer
     #[cfg(feature = "wgpu")]
     {
         let render_state = cc.wgpu_render_state.as_ref().unwrap();
