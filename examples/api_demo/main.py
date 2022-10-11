@@ -43,10 +43,10 @@ def run_segmentation(args: argparse.Namespace) -> None:
         "seg", {13: ("label1", (255, 0, 0)), 42: ("label2", (0, 255, 0)), 99: ("label3", (0, 0, 255))}
     )
 
-    segmentation_img = np.zeros([128, 128])
+    segmentation_img = np.zeros([128, 128], dtype="uint8")
     segmentation_img[10:20, 30:40] = 13
 
-    rerun.log_image("img", segmentation_img)
+    rerun.log_image("img", segmentation_img, legend="seg")
 
 
 def main() -> None:

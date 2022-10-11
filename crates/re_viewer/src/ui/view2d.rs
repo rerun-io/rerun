@@ -320,7 +320,11 @@ fn view_2d_scrollable(
         .map_or(InstanceIdHash::NONE, InstanceId::hash);
 
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
-        let re_data_store::Image { tensor, meter } = obj;
+        let re_data_store::Image {
+            tensor,
+            meter,
+            legend: _,
+        } = obj;
         let paint_props = paint_properties(
             ctx,
             &hovered_instance_id_hash,

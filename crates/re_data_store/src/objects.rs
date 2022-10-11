@@ -91,6 +91,10 @@ pub struct Image<'s> {
     /// `meter == 1000.0` for millimeter precision
     /// up to a ~65m range.
     pub meter: Option<f32>,
+
+    /// A thing that provides additional semantic context for your dtype
+    /// Currrently must point to a SegmentationMap
+    pub legend: Option<&'s ObjPath>,
 }
 
 impl<'s> Image<'s> {
@@ -102,11 +106,11 @@ impl<'s> Image<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_5(
             obj_store,
             &FieldName::from("tensor"),
             time_query,
-            ("_visible", "space", "color", "meter"),
+            ("_visible", "space", "color", "meter", "legend"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
@@ -114,7 +118,8 @@ impl<'s> Image<'s> {
              visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
-             meter: Option<&f32>| {
+             meter: Option<&f32>,
+             legend: Option<&ObjPath>| {
                 out.image.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
@@ -128,6 +133,7 @@ impl<'s> Image<'s> {
                     data: Image {
                         tensor,
                         meter: meter.copied(),
+                        legend,
                     },
                 });
             },

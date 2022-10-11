@@ -678,6 +678,7 @@ def log_image(
     obj_path: str,
     image: Colors,
     *,
+    legend: Optional[str] = None,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
@@ -706,7 +707,7 @@ def log_image(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}"
             )
 
-    log_tensor(obj_path, image, timeless=timeless, space=space)
+    log_tensor(obj_path, image, legend=legend, timeless=timeless, space=space)
 
 
 def log_depth_image(
@@ -740,6 +741,7 @@ def log_tensor(
     tensor: npt.NDArray[Union[np.uint8, np.uint16, np.float32, np.float64]],
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
+    legend: Optional[str] = None,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
@@ -749,13 +751,13 @@ def log_tensor(
         assert len(tensor.shape) == len(names)
 
     if tensor.dtype == "uint8":
-        rerun_rs.log_tensor_u8(obj_path, tensor, names, meter, timeless, space)
+        rerun_rs.log_tensor_u8(obj_path, tensor, names, meter, legend, timeless, space)
     elif tensor.dtype == "uint16":
-        rerun_rs.log_tensor_u16(obj_path, tensor, names, meter, timeless, space)
+        rerun_rs.log_tensor_u16(obj_path, tensor, names, meter, legend, timeless, space)
     elif tensor.dtype == "float32":
-        rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, timeless, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, legend, timeless, space)
     elif tensor.dtype == "float64":
-        rerun_rs.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, timeless, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, legend, timeless, space)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 

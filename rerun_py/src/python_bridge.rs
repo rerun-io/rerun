@@ -1282,10 +1282,11 @@ fn log_tensor_u8(
     img: numpy::PyReadonlyArrayDyn<'_, u8>,
     names: Option<&PyList>,
     meter: Option<f32>,
+    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1296,10 +1297,11 @@ fn log_tensor_u16(
     img: numpy::PyReadonlyArrayDyn<'_, u16>,
     names: Option<&PyList>,
     meter: Option<f32>,
+    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1310,10 +1312,11 @@ fn log_tensor_f32(
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
     names: Option<&PyList>,
     meter: Option<f32>,
+    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1322,6 +1325,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     img: numpy::PyReadonlyArrayDyn<'_, T>,
     names: Option<&PyList>,
     meter: Option<f32>,
+    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -1356,6 +1360,14 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
             &time_point,
             (&obj_path, "meter"),
             LoggedData::Single(Data::F32(meter)),
+        );
+    }
+
+    if let Some(legend) = legend {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "legend"),
+            LoggedData::Single(Data::ObjPath(parse_obj_path(&legend)?)),
         );
     }
 
