@@ -51,7 +51,7 @@ impl ObjectType {
         #[allow(clippy::match_same_arms)]
         match self {
             Self::Space => &["up"],
-            Self::SegmentationLabel => &["index", "label", "color"],
+            Self::SegmentationLabel => &["id", "label", "color"],
 
             Self::TextEntry => &["space", "color", "body", "level"],
 

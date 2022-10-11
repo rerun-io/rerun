@@ -699,11 +699,14 @@ impl<'s> Space<'s> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct SegmentationLabel<'s> {
-    // TODO: this is redundant in the way the Batch is stored
-    // but seems hard to recover.
-    pub index: &'s i32,
+    // TODO(jleibs)
+    // Segmentation maps currently store their id redundantly with the the MultiObject
+    // index. This is a workaround related to the fact that the DataStore isn't available
+    // at the time that we are building up our mapping. This can be refactored away in
+    // the future.
+    pub id: i32,
     pub label: Option<&'s str>,
-    pub color: Option<&'s [u8; 4]>,
+    pub color: Option<[u8; 4]>,
 }
 
 // TODO: Unclear if we should be holding on to InstanceProps
@@ -718,13 +721,13 @@ impl<'s> SegmentationLabel<'s> {
 
         visit_type_data_2(
             obj_store,
-            &FieldName::from("index"),
+            &FieldName::from("id"),
             time_query,
             ("label", "color"),
             |_instance_index: Option<&IndexHash>,
              _time,
              _msg_id: &MsgId,
-             index: &i32,
+             id: &i32,
              label: Option<&String>,
              color: Option<&[u8; 4]>| {
                 let segmentation_map = out
@@ -733,11 +736,11 @@ impl<'s> SegmentationLabel<'s> {
                     .or_insert_with(IntMap::<i32, SegmentationLabel<'s>>::default);
 
                 segmentation_map.insert(
-                    *index,
+                    *id,
                     SegmentationLabel {
-                        index,
+                        id: *id,
                         label: label.map(|s| s.as_str()),
-                        color,
+                        color: color.cloned(),
                     },
                 );
             },

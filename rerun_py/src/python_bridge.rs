@@ -1534,6 +1534,10 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
     Ok(())
 }
 
+// Unzip supports nested, but not 3 or 4-length parallel structures
+// ((id, index), (label, color))
+type UnzipSegMap = ((Vec<i32>, Vec<Index>), (Vec<String>, Vec<[u8; 4]>));
+
 #[pyfunction]
 fn log_segmentation_map(
     obj_path: &str,
@@ -1544,17 +1548,15 @@ fn log_segmentation_map(
 
     let obj_path = parse_obj_path(obj_path)?;
 
-    // TODO: Cranky doesn't like this
-    let ((keys, indices), (labels, colors)): ((Vec<i32>, Vec<Index>), (Vec<String>, Vec<[u8; 4]>)) =
-        id_map
-            .iter()
-            .map(|(k, v)| {
-                (
-                    (k, Index::Integer(*k as i128)),
-                    (v.0.clone(), convert_color(v.1.clone()).unwrap()),
-                )
-            })
-            .unzip();
+    let ((ids, indices), (labels, colors)): UnzipSegMap = id_map
+        .iter()
+        .map(|(k, v)| {
+            (
+                (k, Index::Integer(*k as i128)),
+                (v.0.clone(), convert_color(v.1.clone()).unwrap()),
+            )
+        })
+        .unzip();
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::SegmentationLabel);
 
@@ -1562,10 +1564,10 @@ fn log_segmentation_map(
 
     sdk.send_data(
         &time_point,
-        (&obj_path, "index"),
+        (&obj_path, "id"),
         LoggedData::Batch {
             indices: indices.clone(),
-            data: DataVec::I32(keys),
+            data: DataVec::I32(ids),
         },
     );
 
