@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Final, Iterable, Iterator, List
 
 import numpy as np
+import numpy.typing as npt
 import rerun_sdk as rerun
 from proto.objectron.proto import (
     ARCamera,
@@ -94,7 +95,7 @@ def read_annotations(dirpath: Path) -> Sequence:
     return seq
 
 
-def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
+def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
     rerun.set_space_up("3d", [0, 1, 0])
@@ -114,7 +115,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence):
     log_frame_annotations(frame_times, seq.frame_annotations)
 
 
-def log_camera(cam: ARCamera):
+def log_camera(cam: ARCamera) -> None:
     """Logs a camera from an `ARFrame` using the Rerun SDK."""
 
     world_from_cam = np.asarray(cam.transform).reshape((4, 4))
@@ -155,16 +156,17 @@ def log_camera(cam: ARCamera):
     )
 
 
-def log_point_cloud(point_cloud: ARPointCloud):
+def log_point_cloud(point_cloud: ARPointCloud) -> None:
     """Logs a point cloud from an `ARFrame` using the Rerun SDK."""
 
     for i in range(point_cloud.count):
-        point = point_cloud.point[i]
+        point_raw = point_cloud.point[i]
+        point = np.array([point_raw.x, point_raw.y, point_raw.z], dtype=np.float32)
         ident = point_cloud.identifier[i]
-        rerun.log_point(f"3d/points/{ident}", [point.x, point.y, point.z], color=[255, 255, 255, 255], space="3d")
+        rerun.log_point(f"3d/points/{ident}", point, color=[255, 255, 255, 255], space="3d")
 
 
-def log_annotated_bboxes(bboxes: Iterable[Object]):
+def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
     """Logs all the bounding boxes annotated in an `ARFrame` sequence using the Rerun SDK."""
 
     for bbox in bboxes:
@@ -185,7 +187,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]):
         )
 
 
-def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]):
+def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]) -> None:
     """Maps annotations to their associated `ARFrame` then logs them using the Rerun SDK."""
 
     for frame_ann in frame_annotations:
@@ -201,7 +203,7 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             path = f"3d/objects/{obj_ann.object_id}"
 
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
-            keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y] for kp in obj_ann.keypoints])
+            keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y] for kp in obj_ann.keypoints], dtype=np.float32)
             # NOTE: These are normalized points, so we need to bring them back to image space
             keypoint_pos2s *= IMAGE_RESOLUTION
 
@@ -212,7 +214,7 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
                     rerun.log_point(f"{path}/bbox2d/{id}", pos2, color=[130, 160, 250, 255], space="image")
 
 
-def log_projected_bbox(path: str, keypoints: np.ndarray):
+def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
     """
     Projects the 3D bounding box described by the keypoints of an `ObjectAnnotation`
     to a 2D plane, using line segments.
@@ -226,20 +228,21 @@ def log_projected_bbox(path: str, keypoints: np.ndarray):
     #
     # TODO(cmc): replace once we can project 3D bboxes on 2D views
     # fmt: off
-    segments = [keypoints[1], keypoints[2],
-                keypoints[1], keypoints[3],
-                keypoints[4], keypoints[2],
-                keypoints[4], keypoints[3],
+    segments = np.array([keypoints[1], keypoints[2],
+                         keypoints[1], keypoints[3],
+                         keypoints[4], keypoints[2],
+                         keypoints[4], keypoints[3],
 
-                keypoints[5], keypoints[6],
-                keypoints[5], keypoints[7],
-                keypoints[8], keypoints[6],
-                keypoints[8], keypoints[7],
+                         keypoints[5], keypoints[6],
+                         keypoints[5], keypoints[7],
+                         keypoints[8], keypoints[6],
+                         keypoints[8], keypoints[7],
 
-                keypoints[1], keypoints[5],
-                keypoints[2], keypoints[6],
-                keypoints[3], keypoints[7],
-                keypoints[4], keypoints[8]]
+                         keypoints[1], keypoints[5],
+                         keypoints[2], keypoints[6],
+                         keypoints[3], keypoints[7],
+                         keypoints[4], keypoints[8]],
+                         dtype=np.float32)
     # fmt: on
 
     rerun.log_line_segments(path, segments, space="image", color=[130, 160, 250, 255])

@@ -10,6 +10,7 @@ format: toml-format py-format
 # Lint all of our code
 lint: toml-lint py-lint
     cargo cranky
+    scripts/lint.py
 
 
 ### Python
@@ -43,7 +44,7 @@ py-format:
 
 # Run linting
 py-lint:
-    black --check --config rerun_py/pyproject.toml .
+    black --check --config rerun_py/pyproject.toml --diff .
     blackdoc --check .
     isort --check .
     mypy

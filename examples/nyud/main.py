@@ -16,13 +16,13 @@ Within the dataset are 3 subsets, corresponding to `--folder-idx` argument value
 
 import argparse
 import zipfile
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Final, Tuple
 
 import cv2
 import numpy as np
+import numpy.typing as npt
 import rerun_sdk as rerun
 
 # Logging depth images is slow, so we don't log every frame
@@ -42,14 +42,14 @@ def camera_for_image(h: float, w: float) -> Tuple[float, float, float]:
     return (w / 2, h / 2, 0.7 * w)
 
 
-def camera_intrinsics(image: np.ndarray) -> np.ndarray:
+def camera_intrinsics(image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     """Create reasonable camera intrinsics given the resolution."""
     (h, w) = image.shape
     (u_center, v_center, focal_length) = camera_for_image(h, w)
     return np.array(((focal_length, 0, u_center), (0, focal_length, v_center), (0, 0, 1)))
 
 
-def back_project(depth_image: np.ndarray) -> np.ndarray:
+def back_project(depth_image: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
     """Given a depth image, generate a matching point cloud."""
     (h, w) = depth_image.shape
     (u_center, v_center, focal_length) = camera_for_image(h, w)
@@ -66,19 +66,19 @@ def back_project(depth_image: np.ndarray) -> np.ndarray:
     return back_projected
 
 
-def read_image_rgb(buf: bytes) -> np.ndarray:
+def read_image_rgb(buf: bytes) -> npt.NDArray[np.uint8]:
     """Decode an image provided in `buf`, and interpret it as RGB data."""
-    np_buf: np.ndarray = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
+    np_buf: npt.NDArray[np.uint8] = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
     # OpenCV reads images in BGR rather than RGB format
     img_bgr = cv2.imdecode(np_buf, cv2.IMREAD_COLOR)
-    img_rgb: np.ndarray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    img_rgb: npt.NDArray[np.uint8] = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     return img_rgb
 
 
-def read_image(buf: bytes) -> np.ndarray:
+def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
     """Decode an image provided in `buf`."""
-    np_buf: np.ndarray = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
-    img: np.ndarray = cv2.imdecode(np_buf, cv2.IMREAD_UNCHANGED)
+    np_buf: npt.NDArray[np.uint8] = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
+    img: npt.NDArray[np.uint8] = cv2.imdecode(np_buf, cv2.IMREAD_UNCHANGED)
     return img
 
 

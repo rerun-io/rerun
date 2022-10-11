@@ -2,12 +2,13 @@
 
 import argparse
 import os
+from pathlib import Path
 
 import cv2
 import requests
 
 
-def download(url, path):
+def download(url: str, path: str) -> None:
     if not os.path.exists(path):
         print(f"downloading {url}…")
         response = requests.get(url)
@@ -15,7 +16,7 @@ def download(url, path):
             file.write(response.content)
 
 
-def split_video_into_frames(video_path, frames_path, reprocess_video):
+def split_video_into_frames(video_path: str, frames_path: str, reprocess_video: bool) -> None:
     if not os.path.exists(frames_path) or reprocess_video:
         print("Splitting video into frames…")
         os.makedirs(frames_path, exist_ok=True)
@@ -32,7 +33,7 @@ def split_video_into_frames(video_path, frames_path, reprocess_video):
 public_url = "https://storage.googleapis.com/objectron"
 
 
-def download_data(video_id, reprocess_video):
+def download_data(video_id: str, reprocess_video: bool) -> None:
     print(f"downloading {video_id}…")
 
     dir = f"dataset/{video_id}"
@@ -49,9 +50,9 @@ def download_data(video_id, reprocess_video):
     split_video_into_frames(f"{dir}/video.MOV", f"{dir}/video", reprocess_video)
 
 
-def download_dataset(name, reprocess_video):
-    video_ids = requests.get(f"{public_url}/v1/index/{name}_annotations_test").text
-    video_ids = video_ids.split("\n")
+def download_dataset(name: str, reprocess_video: bool) -> None:
+    video_ids_raw = requests.get(f"{public_url}/v1/index/{name}_annotations_test").text
+    video_ids = video_ids_raw.split("\n")
     for i in range(3):
         download_data(video_ids[i], reprocess_video)
 
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "datasets",
         nargs="*",
-        choices=available_datasets + [[]],
+        choices=available_datasets,
         help="Which datasets to download",
     )
 

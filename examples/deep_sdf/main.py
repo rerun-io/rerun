@@ -40,28 +40,28 @@ from typing import Tuple, cast
 
 import mesh_to_sdf
 import numpy as np
+import numpy.typing as npt
 import rerun_sdk as rerun
 import trimesh
 from rerun_sdk import LogLevel, MeshFormat
-from scipy.spatial.transform import Rotation as R
 from trimesh import Trimesh
 
 
-def announcement(body: str):
-    announcement.counter += 1
-    rerun.log_text_entry(f"ann/#{announcement.counter}", body, color=[255, 215, 0], timeless=True)
+def announcement(body: str) -> None:
+    announcement.counter += 1  # type: ignore[attr-defined]
+    rerun.log_text_entry(f"ann/#{announcement.counter}", body, color=[255, 215, 0], timeless=True)  # type: ignore[attr-defined]
 
 
-announcement.counter = 0
+announcement.counter = 0  # type: ignore[attr-defined]
 
 
-def log_timing_decorator(objpath: str, level: str):
+def log_timing_decorator(objpath: str, level: str):  # type: ignore[no-untyped-def]
     """
     Times the inner method using `timeit`, and logs the result using Rerun.
     """
 
-    def inner(func):
-        def wrapper(*args, **kwargs):
+    def inner(func):  # type: ignore[no-untyped-def]
+        def wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
             now = timer()
             result = func(*args, **kwargs)
             elapsed_ms = (timer() - now) * 1_000.0
@@ -92,22 +92,22 @@ def read_mesh(path: Path) -> Trimesh:
     return cast(Trimesh, mesh)
 
 
-@log_timing_decorator("global/voxel_sdf", LogLevel.DEBUG)
-def compute_voxel_sdf(mesh: Trimesh, resolution: int) -> np.ndarray:
+@log_timing_decorator("global/voxel_sdf", LogLevel.DEBUG)  # type: ignore[misc]
+def compute_voxel_sdf(mesh: Trimesh, resolution: int) -> npt.NDArray[np.float32]:
     print("computing voxel-based SDF")
-    voxvol = mesh_to_sdf.mesh_to_voxels(mesh, voxel_resolution=resolution)
+    voxvol = np.array(mesh_to_sdf.mesh_to_voxels(mesh, voxel_resolution=resolution), dtype=np.float32)
     return voxvol
 
 
-@log_timing_decorator("global/sample_sdf", LogLevel.DEBUG)
-def compute_sample_sdf(mesh: Trimesh, num_points: int) -> Tuple[np.ndarray, np.ndarray]:
+@log_timing_decorator("global/sample_sdf", LogLevel.DEBUG)  # type: ignore[misc]
+def compute_sample_sdf(mesh: Trimesh, num_points: int) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     print("computing sample-based SDF")
     points, sdf, _ = mesh_to_sdf.sample_sdf_near_surface(mesh, number_of_points=num_points, return_gradients=True)
     return (points, sdf)
 
 
-@log_timing_decorator("global/log_mesh", LogLevel.DEBUG)
-def log_mesh(path: Path, mesh: Trimesh):
+@log_timing_decorator("global/log_mesh", LogLevel.DEBUG)  # type: ignore[misc]
+def log_mesh(path: Path, mesh: Trimesh) -> None:
     # Internally, `mesh_to_sdf` will normalize everything to a unit sphere centered around the
     # center of mass.
     # We need to compute a proper transform to map the mesh we're logging with the point clouds
@@ -127,7 +127,7 @@ def log_mesh(path: Path, mesh: Trimesh):
         )
 
 
-def log_sampled_sdf(points: np.ndarray, sdf: np.ndarray):
+def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:
     rerun.set_space_up("world", [0, 1, 0])  # TODO(cmc): depends on the mesh really
 
     inside = points[sdf <= 0]
@@ -141,7 +141,7 @@ def log_sampled_sdf(points: np.ndarray, sdf: np.ndarray):
     rerun.log_points("sdf/outside", points[sdf > 0], colors=np.array([0, 255, 0, 255]), space="world")
 
 
-def log_volumetric_sdf(voxvol: np.ndarray):
+def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
     names = ["width", "height", "depth"]
     rerun.log_tensor("sdf/tensor", voxvol, names=names, space="tensor")
 

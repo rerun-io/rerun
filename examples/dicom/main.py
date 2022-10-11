@@ -36,7 +36,7 @@ def extract_voxel_data(
     slices = [dicom.read_file(f) for f in dicom_files]
     try:
         voxel_ndarray, ijk_to_xyz = dicom_numpy.combine_slices(slices)
-    except dicom_numpy.DicomImportException as e:
+    except dicom_numpy.DicomImportException:
         raise  # invalid DICOM data
 
     return voxel_ndarray, ijk_to_xyz

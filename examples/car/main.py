@@ -16,7 +16,7 @@ import rerun_sdk as rerun
 CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
 
 
-def log_car_data(args: argparse.Namespace) -> None:
+def log_car_data() -> None:
     """Log a few frames of generated data to show how the Rerun SDK is used."""
     NUM_FRAMES = 40
 
@@ -293,6 +293,7 @@ def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
     parser.add_argument(
         "--connect",
         dest="connect",
@@ -317,7 +318,7 @@ def main() -> None:
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    log_car_data(args)
+    log_car_data()
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
@@ -325,9 +326,10 @@ def main() -> None:
             sleep(100_000)
         except:
             pass
-
     elif args.save is not None:
         rerun.save(args.save)
+    elif args.headless:
+        pass
     elif not args.connect:
         # Show the logged data inside the Python process:
         rerun.show()

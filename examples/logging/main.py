@@ -58,20 +58,10 @@ if __name__ == "__main__":
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
     )
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
-    parser.add_argument(
-        "--connect",
-        dest="connect",
-        action="store_true",
-        help="Connect to an external viewer",
-    )
+    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
-    parser.add_argument(
-        "--repeat",
-        type=int,
-        default=1,
-        help="How many times do we want to run the log function?",
-    )
+    parser.add_argument("--repeat", type=int, default=1, help="How many times do we want to run the log function?")
     parser.add_argument(
         "--serve",
         dest="serve",

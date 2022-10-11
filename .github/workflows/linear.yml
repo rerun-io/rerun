@@ -9,12 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
       - uses: actions/setup-node@v3
         with:
           node-version: 16
           cache: npm
           cache-dependency-path: ./.github/actions/create-linear-issue/package-lock.json
+
       - run: npm install ./.github/actions/create-linear-issue
+
       - name: Create Linear Issue
         uses: ./.github/actions/create-linear-issue
         with:

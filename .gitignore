@@ -13,3 +13,4 @@ __pycache__
 *.so
 
 .gdb_history
+perf.data*
