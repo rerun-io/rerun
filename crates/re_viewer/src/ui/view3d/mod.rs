@@ -450,9 +450,6 @@ pub(crate) fn view_3d(
         }
     }
 
-    let dark_mode = ui.visuals().dark_mode;
-    let show_axes = state.show_axes;
-
     #[cfg(feature = "wgpu")]
     let _callback = {
         let frame_builder_prepare = FrameBuilder::new_shared(); // Don't put FrameBuidler on paint_callback_resources, so it doesn't outlive the frame!
@@ -480,15 +477,19 @@ pub(crate) fn view_3d(
     let callback = _callback;
 
     #[cfg(feature = "glow")]
-    let callback = egui::PaintCallback {
-        rect,
-        callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
-            glow_rendering::with_three_d_context(painter.gl(), |rendering| {
-                glow_rendering::paint_with_three_d(
-                    rendering, &eye, &info, &scene, dark_mode, show_axes, painter,
-                );
-            });
-        })),
+    let callback = {
+        let dark_mode = ui.visuals().dark_mode;
+        let show_axes = state.show_axes;
+        egui::PaintCallback {
+            rect,
+            callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
+                glow_rendering::with_three_d_context(painter.gl(), |rendering| {
+                    glow_rendering::paint_with_three_d(
+                        rendering, &eye, &info, &scene, dark_mode, show_axes, painter,
+                    );
+                });
+            })),
+        }
     };
 
     ui.painter().add(callback);

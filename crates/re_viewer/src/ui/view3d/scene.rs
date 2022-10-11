@@ -1,16 +1,31 @@
-use std::sync::Arc;
-
+#[cfg(feature = "glow")]
 use egui::util::hash;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
+use std::sync::Arc;
 
 use re_data_store::{InstanceId, InstanceIdHash};
-use re_log_types::{Box3, Mesh3D};
+
+use re_log_types::Box3;
+#[cfg(feature = "glow")]
+use re_log_types::Mesh3D;
 
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
 #[cfg(feature = "glow")]
 use crate::misc::mesh_loader::CpuMesh;
+
+// TODO(andreas): Dummy for disabling glow. Need a threed independent mesh obv.
+#[cfg(not(feature = "glow"))]
+pub struct CpuMesh {
+    bbox: macaw::BoundingBox,
+}
+#[cfg(not(feature = "glow"))]
+impl CpuMesh {
+    pub fn bbox(&self) -> &macaw::BoundingBox {
+        &self.bbox
+    }
+}
 
 use super::eye::Eye;
 
@@ -28,6 +43,7 @@ pub struct LineSegments {
     pub color: [u8; 4],
 }
 
+#[cfg(feature = "glow")]
 pub enum MeshSourceData {
     Mesh3D(Mesh3D),
     /// e.g. the camera mesh
@@ -38,7 +54,6 @@ pub struct MeshSource {
     pub instance_id: InstanceIdHash,
     pub mesh_id: u64,
     pub world_from_mesh: glam::Affine3A,
-    #[cfg(feature = "glow")]
     pub cpu_mesh: Arc<CpuMesh>,
 }
 
@@ -540,7 +555,6 @@ impl Scene {
             }
         }
 
-        #[cfg(feature = "glow")]
         {
             crate::profile_scope!("meshes");
             for mesh in meshes {
