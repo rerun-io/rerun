@@ -50,6 +50,12 @@ impl ObjPathImpl {
         self.obj_type_path.is_root()
     }
 
+    /// Number of components
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.obj_type_path.len()
+    }
+
     #[inline]
     pub fn obj_type_path(&self) -> &ObjTypePath {
         &self.obj_type_path
@@ -69,16 +75,25 @@ impl ObjPathImpl {
         (self.obj_type_path, self.index_path)
     }
 
+    #[inline]
+    pub fn to_type_path_and_index_path(&self) -> (ObjTypePath, IndexPath) {
+        self.clone().into_type_path_and_index_path()
+    }
+
+    /// Return [`None`] if root.
     #[must_use]
-    pub fn parent(&self) -> Self {
+    pub fn parent(&self) -> Option<Self> {
         let mut obj_type_path = self.obj_type_path.as_slice().to_vec();
         let mut index_path = self.index_path.as_slice().to_vec();
 
-        if matches!(obj_type_path.pop(), Some(TypePathComp::Index)) {
+        if matches!(obj_type_path.pop()?, TypePathComp::Index) {
             index_path.pop();
         }
 
-        Self::new(ObjTypePath::new(obj_type_path), IndexPath::new(index_path))
+        Some(Self::new(
+            ObjTypePath::new(obj_type_path),
+            IndexPath::new(index_path),
+        ))
     }
 }
 

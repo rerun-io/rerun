@@ -3,8 +3,10 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use re_log_types::*;
 
 /// Tree of data paths.
-#[derive(Default)]
 pub struct ObjectTree {
+    /// Full path to the root of this tree.
+    pub path: ObjPath,
+
     pub children: BTreeMap<ObjPathComp, ObjectTree>,
 
     /// When do we or a child have data?
@@ -17,9 +19,26 @@ pub struct ObjectTree {
 }
 
 impl ObjectTree {
+    pub fn root() -> Self {
+        Self::new(ObjPath::root())
+    }
+
+    pub fn new(path: ObjPath) -> Self {
+        Self {
+            path,
+            children: Default::default(),
+            prefix_times: Default::default(),
+            fields: Default::default(),
+        }
+    }
+
     /// Has no child objects.
     pub fn is_leaf(&self) -> bool {
         self.children.is_empty()
+    }
+
+    pub fn num_children_and_fields(&self) -> usize {
+        self.children.len() + self.fields.len()
     }
 
     pub fn add_data_msg(
@@ -31,23 +50,22 @@ impl ObjectTree {
     ) {
         crate::profile_function!();
         let obj_path = data_path.obj_path.to_components();
-        self.add_path(
-            obj_path.as_slice(),
-            data_path.field_name,
-            msg_id,
-            time_point,
-            data,
-        );
+
+        let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, msg_id, time_point);
+
+        leaf.fields
+            .entry(data_path.field_name)
+            .or_default()
+            .add(msg_id, time_point, data);
     }
 
-    pub(crate) fn add_path(
+    fn create_subtrees_recursively(
         &mut self,
-        path: &[ObjPathComp],
-        field_name: FieldName,
+        full_path: &[ObjPathComp],
+        depth: usize,
         msg_id: MsgId,
         time_point: &TimePoint,
-        data: &LoggedData,
-    ) {
+    ) -> &mut Self {
         for (timeline, time_value) in &time_point.0 {
             self.prefix_times
                 .entry(*timeline)
@@ -57,19 +75,15 @@ impl ObjectTree {
                 .insert(msg_id);
         }
 
-        match path {
-            [] => {
-                self.fields
-                    .entry(field_name)
-                    .or_default()
-                    .add(msg_id, time_point, data);
+        match full_path.get(depth) {
+            None => {
+                self // end of path
             }
-            [first, rest @ ..] => {
-                self.children
-                    .entry(first.clone())
-                    .or_default()
-                    .add_path(rest, field_name, msg_id, time_point, data);
-            }
+            Some(component) => self
+                .children
+                .entry(component.clone())
+                .or_insert_with(|| ObjectTree::new(full_path[..depth + 1].into()))
+                .create_subtrees_recursively(full_path, depth + 1, msg_id, time_point),
         }
     }
 }
@@ -104,6 +118,7 @@ impl DataColumns {
 
         for (typ, set) in &self.per_type {
             let (stem, plur) = match typ {
+                DataType::Bool => ("bool", "s"),
                 DataType::I32 => ("integer", "s"),
                 DataType::F32 => ("float", "s"),
                 DataType::Color => ("color", "s"),

@@ -14,7 +14,6 @@ pub struct TimePoints(pub BTreeMap<Timeline, BTreeSet<TimeInt>>);
 // ----------------------------------------------------------------------------
 
 /// Stored objects and their types, with easy indexing of the paths.
-#[derive(Default)]
 pub struct ObjDb {
     /// The types of all the objects.
     /// Must be registered before adding them.
@@ -25,6 +24,16 @@ pub struct ObjDb {
 
     /// The actual store of data.
     pub store: crate::DataStore,
+}
+
+impl Default for ObjDb {
+    fn default() -> Self {
+        Self {
+            types: Default::default(),
+            tree: crate::ObjectTree::root(),
+            store: Default::default(),
+        }
+    }
 }
 
 impl ObjDb {

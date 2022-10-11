@@ -155,6 +155,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
         use re_log_types::data_types;
 
         match self.data_type {
+            DataType::Bool => handle_type!(Bool, bool),
             DataType::I32 => handle_type!(I32, i32),
             DataType::F32 => handle_type!(F32, f32),
             DataType::String => handle_type!(String, String),

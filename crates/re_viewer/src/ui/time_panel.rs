@@ -177,12 +177,10 @@ impl TimePanel {
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
-        let mut path = vec![];
         self.show_children(
             ctx,
             time_area_response,
             time_area_painter,
-            &mut path,
             &ctx.log_db.obj_db.tree,
             ui,
         );
@@ -193,7 +191,8 @@ impl TimePanel {
         ctx: &mut ViewerContext<'_>,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        path: &mut Vec<ObjPathComp>,
+        // the parent path of the name component
+        last_component: &ObjPathComp,
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
@@ -206,30 +205,25 @@ impl TimePanel {
             return; // ignore objects that have no data for the current timeline
         }
 
-        let obj_path = ObjPath::from(path.clone());
-
         // The last part of the the path component
-        let text = if let Some(last) = path.last() {
-            if tree.is_leaf() {
-                last.to_string()
-            } else {
-                format!("{}/", last) // show we have children with a /
-            }
+        let text = if tree.is_leaf() {
+            last_component.to_string()
         } else {
-            "/".to_owned()
+            format!("{}/", last_component) // show we have children with a /
         };
 
-        let collapsing_header_id = ui.make_persistent_id(&path);
-        let default_open = path.is_empty();
+        let collapsing_header_id = ui.make_persistent_id(&tree.path);
+        let default_open = tree.path.len() <= 1 && tree.num_children_and_fields() <= 10
+            || tree.num_children_and_fields() <= 2;
         let (header_response, _, body_returned) =
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 collapsing_header_id,
                 default_open,
             )
-            .show_header(ui, |ui| ctx.obj_path_button_to(ui, text, &obj_path))
+            .show_header(ui, |ui| ctx.obj_path_button_to(ui, text, &tree.path))
             .body(|ui| {
-                self.show_children(ctx, time_area_response, time_area_painter, path, tree, ui);
+                self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
             });
 
         let is_closed = body_returned.is_none();
@@ -246,7 +240,7 @@ impl TimePanel {
 
         if is_visible {
             response.on_hover_ui(|ui| {
-                ui.label(obj_path.to_string());
+                ui.label(tree.path.to_string());
             });
         }
 
@@ -263,14 +257,12 @@ impl TimePanel {
         // Property column:
 
         if is_visible {
-            let are_all_ancestors_visible = obj_path.is_root()
-                || ctx
-                    .rec_cfg
-                    .projected_object_properties
-                    .get(&obj_path.parent())
-                    .visible;
+            let are_all_ancestors_visible = match tree.path.parent() {
+                None => true, // root
+                Some(parent) => ctx.rec_cfg.projected_object_properties.get(&parent).visible,
+            };
 
-            let mut props = ctx.rec_cfg.individual_object_properties.get(&obj_path);
+            let mut props = ctx.rec_cfg.individual_object_properties.get(&tree.path);
             let property_rect =
                 Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response_rect.y_range());
             let mut ui = ui.child_ui(
@@ -282,7 +274,7 @@ impl TimePanel {
                 .on_hover_text("Toggle visibility");
             ctx.rec_cfg
                 .individual_object_properties
-                .set(obj_path.clone(), props);
+                .set(tree.path.clone(), props);
         }
 
         // ----------------------------------------------
@@ -302,7 +294,7 @@ impl TimePanel {
                     full_width_rect,
                     &self.time_ranges_ui,
                     Some(Selection::Instance(InstanceId {
-                        obj_path,
+                        obj_path: tree.path.clone(),
                         instance_index: None,
                     })),
                 );
@@ -315,27 +307,30 @@ impl TimePanel {
         ctx: &mut ViewerContext<'_>,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        path: &mut Vec<ObjPathComp>,
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
-        for (obj_path_comp, child) in &tree.children {
-            path.push(obj_path_comp.clone());
-            self.show_tree(ctx, time_area_response, time_area_painter, path, child, ui);
-            path.pop();
+        for (last_component, child) in &tree.children {
+            self.show_tree(
+                ctx,
+                time_area_response,
+                time_area_painter,
+                last_component,
+                child,
+                ui,
+            );
         }
 
         // If this is an object:
         if !tree.fields.is_empty() {
             let indent = ui.spacing().indent;
 
-            let obj_path = ObjPath::from(path.clone());
             for (field_name, data) in &tree.fields {
                 if !data.times.contains_key(ctx.rec_cfg.time_ctrl.timeline()) {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
-                let data_path = DataPath::new(obj_path.clone(), *field_name);
+                let data_path = DataPath::new(tree.path.clone(), *field_name);
 
                 let response = ui
                     .horizontal(|ui| {
