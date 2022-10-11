@@ -23,8 +23,7 @@ pub(crate) fn find_legend<'s>(
 }
 
 pub(crate) trait ColorMapping {
-    ///
-    fn map_func<T>(&self) -> Box<dyn Fn(T) -> Color32 + '_>;
+    fn map_func(&self) -> Box<dyn Fn(u8) -> Color32 + '_>;
 }
 
 pub(crate) struct SegmentationMapS<'s> {
@@ -32,13 +31,24 @@ pub(crate) struct SegmentationMapS<'s> {
 }
 
 impl<'s> SegmentationMapS<'s> {
-    fn apply<T>(&self, _val: T) -> Color32 {
-        Color32::from_rgb(0, 255, 0)
+    fn apply(&self, val: u8) -> Color32 {
+        let color = if let Some(seg_label) = self.map.get(&(val as i32)) {
+            if let Some(color) = seg_label.color {
+                color
+            } else {
+                // TODO: Better color for set label with unset color
+                [0, 0, 0, 0]
+            }
+        } else {
+            // TODO: Better color for non-defined label
+            [0, 0, 0, 0]
+        };
+        Color32::from_rgb(color[0], color[1], color[2])
     }
 }
 
 impl<'s> ColorMapping for SegmentationMapS<'s> {
-    fn map_func<T>(&self) -> Box<dyn Fn(T) -> Color32 + '_> {
-        Box::new(|t: T| self.apply(t))
+    fn map_func(&self) -> Box<dyn Fn(u8) -> Color32 + '_> {
+        Box::new(|t| self.apply(t))
     }
 }

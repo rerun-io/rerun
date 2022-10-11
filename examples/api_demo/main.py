@@ -44,7 +44,9 @@ def run_segmentation(args: argparse.Namespace) -> None:
     )
 
     segmentation_img = np.zeros([128, 128], dtype="uint8")
-    segmentation_img[10:20, 30:40] = 13
+    segmentation_img[10:20, 30:50] = 13
+    segmentation_img[80:100, 60:80] = 42
+    segmentation_img[20:50, 90:110] = 99
 
     rerun.log_image("img", segmentation_img, legend="seg")
 
