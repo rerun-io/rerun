@@ -11,3 +11,6 @@
 __pycache__
 *.pyc
 *.so
+
+.gdb_history
+perf.data*

@@ -152,7 +152,7 @@ impl eframe::App for App {
                 .recording_configs
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
             self.state
-                .spaces_panels
+                .viewport_panel
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
@@ -252,6 +252,14 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
 
 // ------------------------------------------------------------------------------------
 
+#[derive(Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+enum PanelSelection {
+    #[default]
+    Viewport,
+
+    EventLog,
+}
+
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 struct AppState {
@@ -266,11 +274,11 @@ struct AppState {
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
-    spaces_panels: IntMap<RecordingId, crate::space_view::SpacesPanel>,
+    viewport_panel: IntMap<RecordingId, crate::viewport_panel::ViewportPanel>,
 
-    view_index: usize,
-    log_table_view: crate::log_table_view::LogTableView,
-    context_panel: crate::context_panel::ContextPanel,
+    panel_selection: PanelSelection,
+    event_log_view: crate::event_log_view::EventLogView,
+    selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: crate::time_panel::TimePanel,
 
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -291,10 +299,10 @@ impl AppState {
             cache,
             selected_rec_id: selected_recording_id,
             recording_configs,
-            view_index,
-            log_table_view,
-            spaces_panels,
-            context_panel,
+            panel_selection,
+            event_log_view,
+            viewport_panel,
+            selection_panel,
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
@@ -311,8 +319,8 @@ impl AppState {
         };
 
         if ctx.rec_cfg.selection.is_some() {
-            egui::SidePanel::right("context").show(egui_ctx, |ui| {
-                context_panel.ui(&mut ctx, ui);
+            egui::SidePanel::right("selection_view").show(egui_ctx, |ui| {
+                selection_panel.ui(&mut ctx, ui);
             });
         }
 
@@ -323,13 +331,12 @@ impl AppState {
                 time_panel.ui(&mut ctx, ui);
             });
 
-        egui::CentralPanel::default().show(egui_ctx, |ui| match view_index {
-            0 => spaces_panels
+        egui::CentralPanel::default().show(egui_ctx, |ui| match *panel_selection {
+            PanelSelection::Viewport => viewport_panel
                 .entry(*selected_recording_id)
                 .or_default()
                 .ui(&mut ctx, ui),
-            1 => log_table_view.ui(&mut ctx, ui),
-            _ => {}
+            PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
         });
 
         // move time last, so we get to see the first data first!
@@ -362,7 +369,7 @@ impl AppState {
 fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App) {
     crate::profile_function!();
 
-    egui::TopBottomPanel::top("View").show(egui_ctx, |ui| {
+    egui::TopBottomPanel::top("top_bar").show(egui_ctx, |ui| {
         egui::menu::bar(ui, |ui| {
             ui.menu_button("File", |ui| {
                 file_menu(ui, app, frame);
@@ -375,8 +382,16 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
             ui.separator();
 
             if !app.log_db().is_empty() {
-                ui.selectable_value(&mut app.state.view_index, 0, "Spaces");
-                ui.selectable_value(&mut app.state.view_index, 1, "Table");
+                ui.selectable_value(
+                    &mut app.state.panel_selection,
+                    PanelSelection::Viewport,
+                    "Viewport",
+                );
+                ui.selectable_value(
+                    &mut app.state.panel_selection,
+                    PanelSelection::EventLog,
+                    "Event Log",
+                );
             }
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-mod clipboard;
+pub mod clipboard;
 pub(crate) mod color_map;
 pub(crate) mod image_cache;
 #[cfg(feature = "glow")]
@@ -12,9 +12,6 @@ pub(crate) mod time_control_ui;
 mod time_range;
 mod time_real;
 mod viewer_context;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) use clipboard::Clipboard;
 
 use image_cache::ImageCache;
 pub(crate) use time_control::{TimeControl, TimeView};

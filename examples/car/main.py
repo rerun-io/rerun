@@ -8,16 +8,15 @@ from pathlib import Path
 from time import sleep
 from typing import Final, Iterator, Tuple
 
-import cv2  # type: ignore
+import cv2
 import numpy as np
+import numpy.typing as npt
 import rerun_sdk as rerun
 
-CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath(
-    "../../crates/re_viewer/data/camera.glb"
-)
+CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
 
 
-def log_car_data(args):
+def log_car_data() -> None:
     """Log a few frames of generated data to show how the Rerun SDK is used."""
     NUM_FRAMES = 40
 
@@ -25,16 +24,14 @@ def log_car_data(args):
     rerun.set_space_up("projected_space", [0, -1, 0])
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
-        # This will assign logged objects a "time source" called `frame_nr`.
+        # This will assign logged objects a timeline called `frame_nr`.
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
         rerun.set_time_sequence("frame_nr", sample.frame_idx)
 
         rerun.log_image("rgb", sample.rgb_image)
 
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rerun.log_rect(
-            "bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255)
-        )
+        rerun.log_rect("bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
 
         # Lets log the projected points into a separate "space", called 'projected_space'.
         # The default spaces are "2D" and "3D" (based on what you log).
@@ -64,13 +61,9 @@ def log_car_data(args):
             [0, 0, 2, 0],
         ]
     )
-    rerun.log_mesh_file(
-        "example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform
-    )
+    rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
 
-    rerun.log_path(
-        "a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]])
-    )
+    rerun.log_path("a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]))
 
 
 class DummyCar:
@@ -80,49 +73,46 @@ class DummyCar:
     TIRES_COLOR = (0, 0, 0)
 
     def __init__(
-        self, center: Tuple[int, int], size: Tuple[int, int], distance_mm: float
+        self,
+        center: Tuple[int, int],
+        size: Tuple[int, int],
+        distance_mm: float,
     ):
-        self.center = np.array(center)
-        self.size = np.array(size)
+        self.center: npt.NDArray[np.int32] = np.array(center, dtype=np.int32)
+        self.size: npt.NDArray[np.int32] = np.array(size, dtype=np.int32)
         self.distance_mm = distance_mm
 
     @property
-    def min(self) -> np.ndarray:
-        return self.center - self.size / 2
+    def min(self) -> npt.NDArray[np.int32]:
+        return np.array(self.center - self.size / 2, dtype=np.int32)
 
     @property
-    def max(self) -> np.ndarray:
-        return self.center + self.size / 2
+    def max(self) -> npt.NDArray[np.int32]:
+        return np.array(self.center + self.size / 2, dtype=np.int32)
 
-    def drive_one_step(self):
+    def drive_one_step(self) -> None:
         self.center[0] += 5
         self.distance_mm -= 1
 
-    def draw(self, depth_image_mm: np.ndarray, rgb: np.ndarray):
+    def draw(
+        self,
+        depth_image_mm: npt.NDArray[np.float32],
+        rgb: npt.NDArray[np.float32],
+    ) -> None:
         # 1. Draw the tires of the car
         tire_radius = (self.size[1] * (1.0 / 5)).astype(int)
         tire_center_y = self.max[1] - tire_radius
         tire_distance_mm = self.distance_mm + 200
 
         # 1.1 Draw the left tire
-        left_tire_center = np.array(
-            (self.center[0] - 2 * tire_radius, tire_center_y)
-        ).astype(int)
-        cv2.circle(
-            depth_image_mm, left_tire_center, tire_radius, tire_distance_mm, cv2.FILLED
-        )
+        left_tire_center = np.array((self.center[0] - 2 * tire_radius, tire_center_y)).astype(int)
+        cv2.circle(depth_image_mm, left_tire_center, tire_radius, tire_distance_mm, cv2.FILLED)
         cv2.circle(rgb, left_tire_center, tire_radius, DummyCar.TIRES_COLOR, cv2.FILLED)
 
         # 1.2 Draw the right tire
-        right_tire_center = np.array(
-            (self.center[0] + 2 * tire_radius, tire_center_y)
-        ).astype(int)
-        cv2.circle(
-            depth_image_mm, right_tire_center, tire_radius, tire_distance_mm, cv2.FILLED
-        )
-        cv2.circle(
-            rgb, right_tire_center, tire_radius, DummyCar.TIRES_COLOR, cv2.FILLED
-        )
+        right_tire_center = np.array((self.center[0] + 2 * tire_radius, tire_center_y)).astype(int)
+        cv2.circle(depth_image_mm, right_tire_center, tire_radius, tire_distance_mm, cv2.FILLED)
+        cv2.circle(rgb, right_tire_center, tire_radius, DummyCar.TIRES_COLOR, cv2.FILLED)
 
         # 2. Draw the body
         body_section_height = self.size[1] * (2.0 / 5)
@@ -170,10 +160,10 @@ class DummyCar:
 class CameraParameters:
     """Holds the intrinsic and extrinsic parameters of a camera."""
 
-    resolution: np.ndarray
-    intrinsics: np.ndarray
-    rotation_q: np.ndarray
-    position: np.ndarray
+    resolution: npt.NDArray[np.int32]
+    intrinsics: npt.NDArray[np.float32]
+    rotation_q: npt.NDArray[np.float32]
+    position: npt.NDArray[np.float32]
 
 
 @dataclass
@@ -182,10 +172,10 @@ class SampleFrame:
 
     frame_idx: int
     camera: CameraParameters
-    depth_image_mm: np.ndarray
-    point_cloud: np.ndarray
-    rgb_image: np.ndarray
-    car_bbox: Tuple[np.ndarray, np.ndarray]
+    depth_image_mm: npt.NDArray[np.float32]
+    point_cloud: npt.NDArray[np.float32]
+    rgb_image: npt.NDArray[np.float32]
+    car_bbox: Tuple[npt.NDArray[np.int32], npt.NDArray[np.int32]]
 
 
 class SimpleDepthCamera:
@@ -199,58 +189,55 @@ class SimpleDepthCamera:
         self.focal_length = (self.h * self.w) ** 0.5
 
         # Pre-generate image containing the x and y coordinates per pixel
-        self.u_coords, self.v_coords = np.meshgrid(
-            np.arange(0, self.w), np.arange(0, self.h)
-        )
+        self.u_coords, self.v_coords = np.meshgrid(np.arange(0, self.w), np.arange(0, self.h))
 
-    def back_project(self, depth_image_mm: np.ndarray) -> np.ndarray:
-        """Given a depth image, generate a matching point cloud.
+    def back_project(
+        self,
+        depth_image_mm: npt.NDArray[np.float32],
+    ) -> npt.NDArray[np.float32]:
+        """
+        Given a depth image, generate a matching point cloud.
+
+        Args:
         - `depth_image_mm`: Depth image expressed in millimeters
         """
 
         # Apply inverse of the intrinsics matrix:
         z = depth_image_mm.reshape(-1) / 1000.0
-        x = (
-            (self.u_coords.reshape(-1).astype(float) - self.u_center)
-            * z
-            / self.focal_length
-        )
-        y = (
-            (self.v_coords.reshape(-1).astype(float) - self.v_center)
-            * z
-            / self.focal_length
-        )
+        x = (self.u_coords.reshape(-1).astype(float) - self.u_center) * z / self.focal_length
+        y = (self.v_coords.reshape(-1).astype(float) - self.v_center) * z / self.focal_length
 
         back_projected = np.vstack((x, y, z)).T
         return back_projected
 
-    def render_dummy_slanted_plane_mm(self) -> np.ndarray:
+    def render_dummy_slanted_plane_mm(self) -> npt.NDArray[np.float32]:
         """Renders a depth image of a slanted plane in millimeters."""
         return 1000.0 * 1.0 / (0.01 + 0.4 * self.v_coords / self.h)
 
     @property
-    def intrinsics(self) -> np.ndarray:
+    def intrinsics(self) -> npt.NDArray[np.float32]:
         """The camera's row-major intrinsics matrix."""
         return np.array(
             (
                 (self.focal_length, 0, self.u_center),
                 (0, self.focal_length, self.v_center),
                 (0, 0, 1),
-            )
+            ),
+            dtype=np.float32,
         )
 
     @property
-    def rotation_q(self) -> np.ndarray:
+    def rotation_q(self) -> npt.NDArray[np.float32]:
         """The camera's rotation (world from camera) as a xyzw encoded quaternion."""
-        return np.array((0, 0, 0, 1))  # Dummy "identity" value
+        return np.array((0, 0, 0, 1), dtype=np.float32)  # Dummy "identity" value
 
     @property
-    def position(self) -> np.ndarray:
+    def position(self) -> npt.NDArray[np.float32]:
         """The camera's position in world space."""
-        return np.array((0, 0, 0))  # Dummy "identity" value
+        return np.array((0, 0, 0), dtype=np.float32)  # Dummy "identity" value
 
     @property
-    def resolution(self) -> np.ndarray:
+    def resolution(self) -> npt.NDArray[np.int32]:
         """Image resolution as [width, height]."""
         return np.array([self.w, self.h])
 
@@ -281,9 +268,7 @@ def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
     sand_color = (194, 178, 128)
     intensity = 1.0 / depth_background_mm
     intensity /= intensity.max()
-    rgb_background = (
-        intensity[:, :, np.newaxis] * np.array(sand_color)[np.newaxis, np.newaxis, :]
-    )
+    rgb_background = intensity[:, :, np.newaxis] * np.array(sand_color)[np.newaxis, np.newaxis, :]
     rgb_background = rgb_background.astype(np.uint8)
 
     # Generate `num_frames` sample data
@@ -308,6 +293,7 @@ def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
     parser.add_argument(
         "--connect",
         dest="connect",
@@ -320,12 +306,8 @@ def main() -> None:
         action="store_true",
         help="Serve a web viewer (WARNING: experimental feature)",
     )
-    parser.add_argument(
-        "--addr", type=str, default=None, help="Connect to this ip:port"
-    )
-    parser.add_argument(
-        "--save", type=str, default=None, help="Save data to a .rrd file at this path"
-    )
+    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     args = parser.parse_args()
 
     if args.serve:
@@ -336,7 +318,7 @@ def main() -> None:
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    log_car_data(args)
+    log_car_data()
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
@@ -344,9 +326,10 @@ def main() -> None:
             sleep(100_000)
         except:
             pass
-
     elif args.save is not None:
         rerun.save(args.save)
+    elif args.headless:
+        pass
     elif not args.connect:
         # Show the logged data inside the Python process:
         rerun.show()

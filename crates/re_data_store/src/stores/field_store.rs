@@ -12,7 +12,7 @@ use crate::{BatchOrSplat, Error, Result, TimeQuery};
 /// Second has the matching data.
 pub type FieldQueryOutput<Time> = (Vec<(Time, MsgId, Option<Index>)>, DataVec);
 
-/// Stores data for a specific [`re_log_types::FieldName`] of a specific [`ObjPath`] on a specific [`re_log_types::TimeSource`].
+/// Stores data for a specific [`re_log_types::FieldName`] of a specific [`ObjPath`] on a specific [`re_log_types::Timeline`].
 pub struct FieldStore<Time> {
     data_store: Box<dyn std::any::Any>,
     mono: bool,
@@ -155,6 +155,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
         use re_log_types::data_types;
 
         match self.data_type {
+            DataType::Bool => handle_type!(Bool, bool),
             DataType::I32 => handle_type!(I32, i32),
             DataType::F32 => handle_type!(F32, f32),
             DataType::String => handle_type!(String, String),
@@ -166,7 +167,8 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::Mesh3D => handle_type!(Mesh3D, re_log_types::Mesh3D),
             DataType::Camera => handle_type!(Camera, re_log_types::Camera),
             DataType::Tensor => handle_type!(Tensor, re_log_types::Tensor),
-            DataType::Space => handle_type!(Space, ObjPath),
+            DataType::ObjPath => handle_type!(ObjPath, ObjPath),
+            DataType::Transform => handle_type!(Transform, re_log_types::Transform),
             DataType::DataVec => handle_type!(DataVec, DataVec),
         }
     }

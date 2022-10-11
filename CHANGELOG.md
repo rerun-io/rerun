@@ -2,8 +2,11 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-10-10: Python SDK: add `set_visible` API ([#176](https://github.com/rerun-io/rerun/pull/176)).
 * 2022-10-07: Implement zooming and panning of 2D view ([#160](https://github.com/rerun-io/rerun/pull/160)).
-* 2022-10-06: Improve rendering of bounding box labels for small bounding boxes ([#157](https://github.com/rerun-io/rerun/pull/157))
+* 2022-10-06: Support labels for 3D bounding boxes ([#159](https://github.com/rerun-io/rerun/pull/159)).
+* 2022-10-06: Implement text entries ("logging logs") ([#153](https://github.com/rerun-io/rerun/pull/153), [#167](https://github.com/rerun-io/rerun/pull/167))
+* 2022-10-06: Improve rendering of bounding box labels for small bounding boxes ([#157](https://github.com/rerun-io/rerun/pull/157)).
 * 2022-10-06: Fix bug object visibility toggling ([#155](https://github.com/rerun-io/rerun/pull/155)).
 * 2022-10-04: Update pinned rust version to 1.64 and use workspace inheritance ([#110](https://github.com/rerun-io/rerun/pull/110)).
 * 2022-09-21: Python SDK: add `log_point` ([#106](https://github.com/rerun-io/rerun/pull/106)).
@@ -33,7 +36,7 @@ A rough time-line of major user-facing things added, removed and changed. Newest
 * 2022-05-12: Click on a point to center camera on that point in the 3D view.
 * 2022-05-12: Use WSAD and QE to move camera in 3D view.
 * 2022-05-09: Step forward/back in time with arrow keys.
-* 2022-05-09: Hover image in context panel to zoom in on individual pixels.
+* 2022-05-09: Hover image in selection panel to zoom in on individual pixels.
 * 2022-05-02: Improve the time ticks in the time panel.
 * 2022-04-28: Follow camera in 3D by selecting a camera message or object path.
 * 2022-04-26: Toggle visibility of object tree nodes on/off in time panel.

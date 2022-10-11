@@ -1,3 +1,18 @@
+default:
+  @just --list
+
+
+### Common
+# Format all of our code
+format: toml-format py-format
+    cargo fmt --all
+
+# Lint all of our code
+lint: toml-lint py-lint
+    cargo cranky
+    scripts/lint.py
+
+
 ### Python
 
 # Set up a Pythonvirtual environment for development
@@ -25,12 +40,11 @@ py-format:
     black --config rerun_py/pyproject.toml .
     blackdoc .
     isort .
-    pyupgrade --py37-plus `find rerun_sdk/ tests/ -name "*.py" -type f`
-    cargo fmt --all
+    pyupgrade --py37-plus `find rerun_py/rerun_sdk/ -name "*.py" -type f`
 
 # Run linting
 py-lint:
-    black --check --config rerun_py/pyproject.toml .
+    black --check --config rerun_py/pyproject.toml --diff .
     blackdoc --check .
     isort --check .
     mypy
@@ -49,6 +63,18 @@ py-test:
 # This is an unstable flag, available only on nightly.
 rs-doc:
     cargo +nightly doc --all --open --keep-going --all-features -Zunstable-options
+
+
+### TOML
+
+# Format .toml files
+toml-format:
+    taplo fmt
+
+# Lint .toml files
+toml-lint:
+    taplo fmt --check
+
 
 ### Misc
 

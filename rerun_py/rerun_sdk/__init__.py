@@ -1,6 +1,7 @@
 """The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk."""
 
 import atexit
+import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -136,7 +137,7 @@ def save(path: str) -> None:
     rerun_rs.save(path)
 
 
-def set_time_sequence(time_source: str, sequence: Optional[int]) -> None:
+def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
     """
     Set the current time for this thread.
 
@@ -145,14 +146,14 @@ def set_time_sequence(time_source: str, sequence: Optional[int]) -> None:
 
     For instance: `set_time_sequence("frame_nr", frame_nr)`.
 
-    You can remove a time source again using `set_time_sequence("frame_nr", None)`.
+    You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_rs.set_time_sequence(time_source, sequence)
+    rerun_rs.set_time_sequence(timeline, sequence)
 
 
-def set_time_seconds(time_source: str, seconds: Optional[float]) -> None:
+def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     """
     Set the current time for this thread.
 
@@ -161,7 +162,7 @@ def set_time_seconds(time_source: str, seconds: Optional[float]) -> None:
 
     For instance: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
 
-    You can remove a time source again using `set_time_seconds("capture_time", None)`.
+    You can remove a timeline again using `set_time_seconds("capture_time", None)`.
 
     The argument should be in seconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
@@ -171,10 +172,10 @@ def set_time_seconds(time_source: str, seconds: Optional[float]) -> None:
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_rs.set_time_seconds(time_source, seconds)
+    rerun_rs.set_time_seconds(timeline, seconds)
 
 
-def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
+def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     """
     Set the current time for this thread.
 
@@ -183,7 +184,7 @@ def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
 
     For instance: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
 
-    You can remove a time source again using `set_time_nanos("capture_time", None)`.
+    You can remove a timeline again using `set_time_nanos("capture_time", None)`.
 
     The argument should be in nanoseconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
@@ -193,7 +194,7 @@ def set_time_nanos(time_source: str, nanos: Optional[int]) -> None:
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_rs.set_time_nanos(time_source, nanos)
+    rerun_rs.set_time_nanos(timeline, nanos)
 
 
 def set_space_up(space: str, up: Sequence[float]) -> None:
@@ -215,6 +216,8 @@ class LogLevel:
     arbitrary strings as level (e.g. for user-defined levels).
     """
 
+    # """ Designates catastrophic failures. """
+    CRITICAL: Final = "CRITICAL"
     # """ Designates very serious errors. """
     ERROR: Final = "ERROR"
     # """ Designates hazardous situations. """
@@ -225,6 +228,50 @@ class LogLevel:
     DEBUG: Final = "DEBUG"
     # """ Designates very low priority, often extremely verbose, information. """
     TRACE: Final = "TRACE"
+
+
+class LoggingHandler(logging.Handler):
+    """
+    Provides a logging handler that forwards all events to the Rerun SDK.
+
+    Because Rerun's data model doesn't match 1-to-1 with the different concepts from
+    python's logging ecosystem, we need a way to map the latter to the former:
+
+    * Object path: the name of the logger responsible for the creation of the LogRecord
+                   is used as the final object path.
+
+    * Level: the log level is mapped as-is.
+
+    * Body: the body of the text entry corresponds to the formatted output of
+            the LogRecord using the standard formatter of the logging package,
+            unless it has been overridden by the user.
+
+    * Space: the notion of a Rerun space has no equivalence on the python side, and
+             is manually specified during the creation of the handler.
+             This feature allows you to maintain multiple distinct logging streams.
+
+    Read more about logging handlers at https://docs.python.org/3/howto/logging.html#handlers.
+    """
+
+    LVL2NAME: Final = {
+        logging.CRITICAL: LogLevel.CRITICAL,
+        logging.ERROR: LogLevel.ERROR,
+        logging.WARNING: LogLevel.WARN,
+        logging.INFO: LogLevel.INFO,
+        logging.DEBUG: LogLevel.DEBUG,
+    }
+
+    def __init__(self, space: Optional[str] = None):
+        logging.Handler.__init__(self)
+        self.space = space
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Emits a record to the Rerun SDK."""
+        objpath = record.name.replace(".", "/")
+        level = self.LVL2NAME.get(record.levelno)
+        if level is None:  # user-defined level
+            level = record.levelname
+        log_text_entry(objpath, record.getMessage(), level=level, space=self.space)
 
 
 def log_text_entry(
@@ -441,6 +488,46 @@ def log_camera(
     )
 
 
+def _log_extrinsics(
+    obj_path: str,
+    rotation_q: npt.ArrayLike,
+    position: npt.ArrayLike,
+    camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+    timeless: bool = False,
+) -> None:
+    """
+    EXPERIMENTAL: Log camera extrinsics.
+
+    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
+    `position`: Array with [x, y, z] position of the camera in world space.
+    `camera_space_convention`: The convention used for the orientation of the camera's 3D coordinate system.
+    """
+    rerun_rs.log_extrinsics(
+        obj_path,
+        rotation_q=_to_sequence(rotation_q),
+        position=_to_sequence(position),
+        camera_space_convention=camera_space_convention.value,
+        timeless=timeless,
+    )
+
+
+def _log_intrinsics(
+    obj_path: str, intrinsics_matrix: npt.ArrayLike, resolution: npt.ArrayLike, timeless: bool = False
+) -> None:
+    """
+    EXPERIMENTAL: Log a perspective camera model.
+
+    `intrinsics_matrix`: Row-major intrinsics matrix for projecting from camera space to image space
+    `resolution`: Array with [width, height] image resolution in pixels.
+    """
+    rerun_rs.log_intrinsics(
+        obj_path,
+        resolution=_to_sequence(resolution),
+        intrinsics_matrix=np.asarray(intrinsics_matrix).T.tolist(),
+        timeless=timeless,
+    )
+
+
 def log_path(
     obj_path: str,
     positions: npt.NDArray[np.float32],
@@ -508,6 +595,7 @@ def log_obb(
     rotation_q: npt.ArrayLike,
     color: Optional[Sequence[int]] = None,
     stroke_width: Optional[float] = None,
+    label: Optional[str] = None,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
@@ -523,13 +611,14 @@ def log_obb(
     """
     rerun_rs.log_obb(
         obj_path,
-        _to_sequence(half_size),
-        _to_sequence(position),
-        _to_sequence(rotation_q),
-        color,
-        stroke_width,
-        timeless,
-        space,
+        half_size=_to_sequence(half_size),
+        position=_to_sequence(position),
+        rotation_q=_to_sequence(rotation_q),
+        color=color,
+        stroke_width=stroke_width,
+        label=label,
+        timeless=timeless,
+        space=space,
     )
 
 
@@ -674,3 +763,8 @@ def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:
         return np.require(array, float).tolist()  # type: ignore[no-any-return]
 
     return array  # type: ignore[return-value]
+
+
+def set_visible(obj_path: str, visibile: bool) -> None:
+    """Change the visibility of an object."""
+    rerun_rs.set_visible(obj_path, visibile)

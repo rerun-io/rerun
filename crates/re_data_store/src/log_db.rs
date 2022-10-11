@@ -9,12 +9,11 @@ use re_log_types::*;
 
 /// An aggregate of [`TimePoint`]:s.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct TimePoints(pub BTreeMap<TimeSource, BTreeSet<TimeInt>>);
+pub struct TimePoints(pub BTreeMap<Timeline, BTreeSet<TimeInt>>);
 
 // ----------------------------------------------------------------------------
 
 /// Stored objects and their types, with easy indexing of the paths.
-#[derive(Default)]
 pub struct ObjDb {
     /// The types of all the objects.
     /// Must be registered before adding them.
@@ -25,6 +24,16 @@ pub struct ObjDb {
 
     /// The actual store of data.
     pub store: crate::DataStore,
+}
+
+impl Default for ObjDb {
+    fn default() -> Self {
+        Self {
+            types: Default::default(),
+            tree: crate::ObjectTree::root(),
+            store: Default::default(),
+        }
+    }
 }
 
 impl ObjDb {
@@ -39,18 +48,22 @@ impl ObjDb {
         {
             let obj_type_path = &data_path.obj_path.obj_type_path();
             let field_name = &data_path.field_name;
-            if let Some(obj_type) = self.types.get(obj_type_path) {
-                let valid_members = obj_type.members();
-                if !valid_members.contains(&field_name.as_str()) {
+
+            let is_meta_field = re_log_types::objects::META_FIELDS.contains(&field_name.as_str());
+            if !is_meta_field {
+                if let Some(obj_type) = self.types.get(obj_type_path) {
+                    let valid_members = obj_type.members();
+                    if !valid_members.contains(&field_name.as_str()) {
+                        re_log::warn_once!(
+                            "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
+                            valid_members.iter().format(", ")
+                        );
+                    }
+                } else {
                     re_log::warn_once!(
-                        "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
-                        valid_members.iter().format(", ")
+                        "Logging to {obj_type_path}.{field_name} without first registering object type"
                     );
                 }
-            } else {
-                re_log::warn_once!(
-                    "Logging to {obj_type_path}.{field_name} without first registering object type"
-                );
             }
         }
 
@@ -178,8 +191,8 @@ impl LogDb {
             if !self.time_points.0.is_empty() {
                 // Add to existing timelines (if any):
                 let mut time_point = TimePoint::default();
-                for &time_source in self.time_points.0.keys() {
-                    time_point.0.insert(time_source, TimeInt::BEGINNING);
+                for &timeline in self.time_points.0.keys() {
+                    time_point.0.insert(timeline, TimeInt::BEGINNING);
                 }
                 self.add_data_msg(msg_id, &time_point, data_path, data);
             }
@@ -190,16 +203,18 @@ impl LogDb {
         self.obj_db
             .add_data_msg(msg_id, time_point, data_path, data);
 
-        self.register_spaces(data);
+        if data_path.field_name == "space" {
+            self.register_spaces(data);
+        }
 
         {
             let mut new_timelines = TimePoint::default();
 
-            for (time_source, value) in &time_point.0 {
-                match self.time_points.0.entry(*time_source) {
+            for (timeline, value) in &time_point.0 {
+                match self.time_points.0.entry(*timeline) {
                     std::collections::btree_map::Entry::Vacant(entry) => {
-                        re_log::debug!("New timeline added: {time_source:?}");
-                        new_timelines.0.insert(*time_source, TimeInt::BEGINNING);
+                        re_log::debug!("New timeline added: {timeline:?}");
+                        new_timelines.0.insert(*timeline, TimeInt::BEGINNING);
                         entry.insert(Default::default())
                     }
                     std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
@@ -231,12 +246,14 @@ impl LogDb {
 
         // This is a bit hacky, and I don't like it,
         // but we need a single place to find all the spaces (ignoring time).
+        // This will be properly fixed when https://linear.app/rerun/issue/PRO-98/refactor-spaces is done
         match data {
-            LoggedData::Single(Data::Space(space)) | LoggedData::BatchSplat(Data::Space(space)) => {
+            LoggedData::Single(Data::ObjPath(space))
+            | LoggedData::BatchSplat(Data::ObjPath(space)) => {
                 register_space(space);
             }
             LoggedData::Batch {
-                data: DataVec::Space(spaces),
+                data: DataVec::ObjPath(spaces),
                 ..
             } => {
                 for space in spaces {

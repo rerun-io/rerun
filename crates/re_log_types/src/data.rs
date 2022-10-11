@@ -10,6 +10,7 @@ use self::data_types::Vec3;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum DataType {
     // 1D:
+    Bool,
     I32,
     F32,
     Color,
@@ -36,7 +37,9 @@ pub enum DataType {
     DataVec,
 
     // ----------------------------
-    Space,
+    ObjPath,
+
+    Transform,
 }
 
 // ----------------------------------------------------------------------------
@@ -58,11 +61,18 @@ pub mod data_types {
         }
     }
 
+    impl DataTrait for bool {
+        fn data_typ() -> DataType {
+            DataType::Bool
+        }
+    }
+
     impl DataTrait for i32 {
         fn data_typ() -> DataType {
             DataType::I32
         }
     }
+
     impl DataTrait for f32 {
         fn data_typ() -> DataType {
             DataType::F32
@@ -136,7 +146,13 @@ pub mod data_types {
 
     impl DataTrait for crate::ObjPath {
         fn data_typ() -> DataType {
-            DataType::Space
+            DataType::ObjPath
+        }
+    }
+
+    impl DataTrait for crate::Transform {
+        fn data_typ() -> DataType {
+            DataType::Transform
         }
     }
 }
@@ -147,6 +163,7 @@ pub mod data_types {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Data {
     // 1D:
+    Bool(bool),
     I32(i32),
     F32(f32),
     Color(data_types::Color),
@@ -173,14 +190,17 @@ pub enum Data {
 
     // ----------------------------
     // Meta:
-    /// Used for specifying which space data belongs to.
-    Space(ObjPath),
+    /// One object referring to another (a pointer).
+    ObjPath(ObjPath),
+
+    Transform(Transform),
 }
 
 impl Data {
     #[inline]
     pub fn data_type(&self) -> DataType {
         match self {
+            Self::Bool(_) => DataType::Bool,
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
             Self::Color(_) => DataType::Color,
@@ -197,11 +217,14 @@ impl Data {
             Self::Tensor(_) => DataType::Tensor,
             Self::DataVec(_) => DataType::DataVec,
 
-            Self::Space(_) => DataType::Space,
+            Self::ObjPath(_) => DataType::ObjPath,
+
+            Self::Transform(_) => DataType::Transform,
         }
     }
 }
 
+impl_into_enum!(bool, Data, Bool);
 impl_into_enum!(i32, Data, I32);
 impl_into_enum!(f32, Data, F32);
 impl_into_enum!(BBox2D, Data, BBox2D);
@@ -209,7 +232,8 @@ impl_into_enum!(Tensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(Camera, Data, Camera);
-impl_into_enum!(ObjPath, Data, Space);
+impl_into_enum!(ObjPath, Data, ObjPath);
+impl_into_enum!(Transform, Data, Transform);
 
 // ----------------------------------------------------------------------------
 
@@ -218,6 +242,7 @@ impl_into_enum!(ObjPath, Data, Space);
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum DataVec {
+    Bool(Vec<bool>),
     I32(Vec<i32>),
     F32(Vec<f32>),
     Color(Vec<data_types::Color>),
@@ -236,7 +261,9 @@ pub enum DataVec {
     /// A vector of [`DataVec`] (vector of vectors)
     DataVec(Vec<DataVec>),
 
-    Space(Vec<ObjPath>),
+    ObjPath(Vec<ObjPath>),
+
+    Transform(Vec<Transform>),
 }
 
 /// Do the same thing with all members of a [`Data`].
@@ -250,6 +277,7 @@ pub enum DataVec {
 macro_rules! data_map(
     ($data: expr, |$value: pat_param| $action: expr) => ({
         match $data {
+            $crate::Data::Bool($value) => $action,
             $crate::Data::I32($value) => $action,
             $crate::Data::F32($value) => $action,
             $crate::Data::Color($value) => $action,
@@ -262,7 +290,8 @@ macro_rules! data_map(
             $crate::Data::Camera($value) => $action,
             $crate::Data::Tensor($value) => $action,
             $crate::Data::DataVec($value) => $action,
-            $crate::Data::Space($value) => $action,
+            $crate::Data::ObjPath($value) => $action,
+            $crate::Data::Transform($value) => $action,
         }
     });
 );
@@ -278,6 +307,7 @@ macro_rules! data_map(
 macro_rules! data_vec_map(
     ($data_vec: expr, |$vec: pat_param| $action: expr) => ({
         match $data_vec {
+            $crate::DataVec::Bool($vec) => $action,
             $crate::DataVec::I32($vec) => $action,
             $crate::DataVec::F32($vec) => $action,
             $crate::DataVec::Color($vec) => $action,
@@ -290,7 +320,8 @@ macro_rules! data_vec_map(
             $crate::DataVec::Camera($vec) => $action,
             $crate::DataVec::Tensor($vec) => $action,
             $crate::DataVec::DataVec($vec) => $action,
-            $crate::DataVec::Space($vec) => $action,
+            $crate::DataVec::ObjPath($vec) => $action,
+            $crate::DataVec::Transform($vec) => $action,
         }
     });
 );
@@ -299,6 +330,7 @@ impl DataVec {
     #[inline]
     pub fn element_data_type(&self) -> DataType {
         match self {
+            Self::Bool(_) => DataType::Bool,
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
             Self::Color(_) => DataType::Color,
@@ -315,7 +347,9 @@ impl DataVec {
             Self::Tensor(_) => DataType::Tensor,
             Self::DataVec(_) => DataType::DataVec,
 
-            Self::Space(_) => DataType::Space,
+            Self::ObjPath(_) => DataType::ObjPath,
+
+            Self::Transform(_) => DataType::Transform,
         }
     }
 
@@ -329,6 +363,7 @@ impl DataVec {
 
     pub fn last(&self) -> Option<Data> {
         match self {
+            Self::Bool(vec) => vec.last().cloned().map(Data::Bool),
             Self::I32(vec) => vec.last().cloned().map(Data::I32),
             Self::F32(vec) => vec.last().cloned().map(Data::F32),
             Self::Color(vec) => vec.last().cloned().map(Data::Color),
@@ -345,7 +380,9 @@ impl DataVec {
             Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
             Self::DataVec(vec) => vec.last().cloned().map(Data::DataVec),
 
-            Self::Space(vec) => vec.last().cloned().map(Data::Space),
+            Self::ObjPath(vec) => vec.last().cloned().map(Data::ObjPath),
+
+            Self::Transform(vec) => vec.last().cloned().map(Data::Transform),
         }
     }
 }
@@ -488,6 +525,19 @@ impl CameraSpaceConvention {
             }
         }
     }
+}
+
+// ----------------------------------------------------------------------------
+
+/// A transform between two spaces.
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum Transform {
+    /// The parent is a 3D space, the child a camera space.
+    Extrinsics(Extrinsics),
+
+    /// The parent is some local camera space, the child an image space.
+    Intrinsics(Intrinsics),
 }
 
 // ----------------------------------------------------------------------------
@@ -684,14 +734,14 @@ impl std::fmt::Debug for TensorDimension {
     }
 }
 
-/// An N-dimensional colelction of numbers.
+/// An N-dimensional collection of numbers.
 ///
 /// Most often used to describe image pixels.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tensor {
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
-    /// The order martches that of numpy etc, and is ordered so that
+    /// The order matches that of numpy etc, and is ordered so that
     /// the "tighest wound" dimension is last.
     ///
     /// An empty shape means this tensor is a scale, i.e. of length 1.

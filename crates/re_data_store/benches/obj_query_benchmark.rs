@@ -19,8 +19,8 @@ const NUM_FRAMES: i64 = 1;
 #[cfg(debug_assertions)]
 const NUM_POINTS: i64 = 1;
 
-fn time_source() -> TimeSource {
-    TimeSource::new("frame", TimeType::Sequence)
+fn timeline() -> Timeline {
+    Timeline::new("frame", TimeType::Sequence)
 }
 
 fn do_query<'s>(
@@ -29,7 +29,7 @@ fn do_query<'s>(
 ) -> Objects<'s> {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let mut objects = Objects::default();
-    let timeline_store = data_store.get(&time_source()).unwrap();
+    let timeline_store = data_store.get(&timeline()).unwrap();
     objects.query(timeline_store, &time_query, obj_types);
     assert_eq!(objects.point3d.len(), NUM_POINTS as usize);
     objects
@@ -40,7 +40,7 @@ fn mono_data_messages() -> Vec<DataMsg> {
     for frame_idx in 0..NUM_FRAMES {
         for point_idx in 0..NUM_POINTS {
             let mut time_point = TimePoint::default();
-            time_point.0.insert(time_source(), TimeInt::from(frame_idx));
+            time_point.0.insert(timeline(), TimeInt::from(frame_idx));
 
             let obj_path = obj_path!("points", Index::Sequence(point_idx as _));
 
@@ -60,7 +60,7 @@ fn mono_data_messages() -> Vec<DataMsg> {
                 msg_id: MsgId::random(),
                 time_point: time_point.clone(),
                 data_path: DataPath::new(obj_path, "space".into()),
-                data: LoggedData::Single(Data::Space("world".into())),
+                data: LoggedData::Single(Data::ObjPath("world".into())),
             });
         }
     }
@@ -78,7 +78,7 @@ fn batch_data_messages() -> Vec<DataMsg> {
 
     for frame_idx in 0..NUM_FRAMES {
         let mut time_point = TimePoint::default();
-        time_point.0.insert(time_source(), TimeInt::from(frame_idx));
+        time_point.0.insert(timeline(), TimeInt::from(frame_idx));
 
         let obj_path = obj_path!("points");
 
@@ -104,7 +104,7 @@ fn batch_data_messages() -> Vec<DataMsg> {
             msg_id: MsgId::random(),
             time_point: time_point.clone(),
             data_path: DataPath::new(obj_path, "space".into()),
-            data: LoggedData::BatchSplat(Data::Space("world".into())),
+            data: LoggedData::BatchSplat(Data::ObjPath("world".into())),
         });
     }
 

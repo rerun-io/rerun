@@ -31,6 +31,13 @@ impl ObjTypePath {
         self.components.is_empty()
     }
 
+    /// Number of components
+    #[inline]
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.components.len()
+    }
+
     #[inline]
     pub fn iter(&self) -> Iter<'_> {
         self.components.iter()

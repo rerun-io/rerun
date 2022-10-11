@@ -30,8 +30,8 @@ impl ThreadInfo {
         Self::with(|ti| ti.now())
     }
 
-    pub fn set_thread_time(time_source: TimeSource, time_int: Option<TimeInt>) {
-        Self::with(|ti| ti.set_time(time_source, time_int));
+    pub fn set_thread_time(timeline: Timeline, time_int: Option<TimeInt>) {
+        Self::with(|ti| ti.set_time(timeline, time_int));
     }
 
     /// Get access to the thread-local [`ThreadInfo`].
@@ -51,17 +51,17 @@ impl ThreadInfo {
     fn now(&self) -> TimePoint {
         let mut time_point = self.time_point.clone();
         time_point.0.insert(
-            TimeSource::new("log_time", TimeType::Time),
+            Timeline::new("log_time", TimeType::Time),
             Time::now().into(),
         );
         time_point
     }
 
-    fn set_time(&mut self, time_source: TimeSource, time_int: Option<TimeInt>) {
+    fn set_time(&mut self, timeline: Timeline, time_int: Option<TimeInt>) {
         if let Some(time_int) = time_int {
-            self.time_point.0.insert(time_source, time_int);
+            self.time_point.0.insert(timeline, time_int);
         } else {
-            self.time_point.0.remove(&time_source);
+            self.time_point.0.remove(&timeline);
         }
     }
 }
@@ -104,6 +104,9 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_camera, m)?)?;
+    m.add_function(wrap_pyfunction!(log_extrinsics, m)?)?;
+    m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
+
     m.add_function(wrap_pyfunction!(log_point, m)?)?;
     m.add_function(wrap_pyfunction!(log_points, m)?)?;
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
@@ -116,6 +119,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
+    m.add_function(wrap_pyfunction!(set_visible, m)?)?;
 
     Ok(())
 }
@@ -350,27 +354,27 @@ fn save(path: &str) -> PyResult<()> {
 ///
 /// For instance: `set_time_sequence("frame_nr", frame_nr)`.
 ///
-/// You can remove a time source again using `set_time_sequence("frame_nr", None)`.
+/// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
 #[pyfunction]
-fn set_time_sequence(time_source: &str, sequence: Option<i64>) {
+fn set_time_sequence(timeline: &str, sequence: Option<i64>) {
     ThreadInfo::set_thread_time(
-        TimeSource::new(time_source, TimeType::Sequence),
+        Timeline::new(timeline, TimeType::Sequence),
         sequence.map(TimeInt::from),
     );
 }
 
 #[pyfunction]
-fn set_time_seconds(time_source: &str, seconds: Option<f64>) {
+fn set_time_seconds(timeline: &str, seconds: Option<f64>) {
     ThreadInfo::set_thread_time(
-        TimeSource::new(time_source, TimeType::Time),
+        Timeline::new(timeline, TimeType::Time),
         seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
     );
 }
 
 #[pyfunction]
-fn set_time_nanos(time_source: &str, ns: Option<i64>) {
+fn set_time_nanos(timeline: &str, ns: Option<i64>) {
     ThreadInfo::set_thread_time(
-        TimeSource::new(time_source, TimeType::Time),
+        Timeline::new(timeline, TimeType::Time),
         ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
     );
 }
@@ -403,6 +407,17 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
     }
 }
 
+fn parse_camera_space_convention(s: &str) -> PyResult<CameraSpaceConvention> {
+    match s {
+        "XRightYUpZBack" => Ok(re_log_types::CameraSpaceConvention::XRightYUpZBack),
+        "XRightYDownZFwd" => Ok(re_log_types::CameraSpaceConvention::XRightYDownZFwd),
+        _ => Err(PyTypeError::new_err(format!(
+            "Unknown camera space convetions format {s:?}.
+                Expected one of: XRightYUpZBack, XRightYDownZFwd"
+        ))),
+    }
+}
+
 /// Log a 3D camera
 #[allow(clippy::too_many_arguments)]
 #[pyfunction]
@@ -418,17 +433,7 @@ fn log_camera(
     target_space: Option<String>,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
-
-    let convention = match camera_space_convention {
-        "XRightYUpZBack" => re_log_types::CameraSpaceConvention::XRightYUpZBack,
-        "XRightYDownZFwd" => re_log_types::CameraSpaceConvention::XRightYDownZFwd,
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Unknown camera space convetions format {camera_space_convention:?}.
-                Expected one of: XRightYUpZBack, XRightYDownZFwd"
-            )));
-        }
-    };
+    let convention = parse_camera_space_convention(camera_space_convention)?;
 
     let target_space = if let Some(target_space) = target_space {
         Some(parse_obj_path(&target_space)?)
@@ -469,7 +474,70 @@ fn log_camera(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
+/// NOTE(emilk): EXPERIMENTAL!
+#[pyfunction]
+fn log_extrinsics(
+    obj_path: &str,
+    rotation_q: re_log_types::Quaternion,
+    position: [f32; 3],
+    camera_space_convention: &str,
+    timeless: bool,
+) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+    let convention = parse_camera_space_convention(camera_space_convention)?;
+
+    let transform = re_log_types::Transform::Extrinsics(re_log_types::Extrinsics {
+        rotation: rotation_q,
+        position,
+        camera_space_convention: convention,
+    });
+
+    let mut sdk = Sdk::global();
+
+    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "_transform"),
+        LoggedData::Single(Data::Transform(transform)),
+    );
+
+    Ok(())
+}
+
+/// NOTE(emilk): EXPERIMENTAL!
+#[pyfunction]
+fn log_intrinsics(
+    obj_path: &str,
+    resolution: [f32; 2],
+    intrinsics_matrix: [[f32; 3]; 3],
+    timeless: bool,
+) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let transform = re_log_types::Transform::Intrinsics(re_log_types::Intrinsics {
+        intrinsics_matrix,
+        resolution,
+    });
+
+    let mut sdk = Sdk::global();
+
+    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "_transform"),
+        LoggedData::Single(Data::Transform(transform)),
     );
 
     Ok(())
@@ -523,7 +591,7 @@ fn log_text_entry(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -623,7 +691,7 @@ fn log_rect(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -712,7 +780,7 @@ fn log_rects(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::BatchSplat(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -785,7 +853,7 @@ fn log_point(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -860,7 +928,7 @@ fn log_points(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::BatchSplat(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::BatchSplat(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -982,7 +1050,7 @@ fn log_path(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1064,7 +1132,7 @@ fn log_line_segments(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1083,6 +1151,7 @@ fn log_obb(
     rotation_q: re_log_types::Quaternion,
     color: Option<Vec<u8>>,
     stroke_width: Option<f32>,
+    label: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -1122,11 +1191,19 @@ fn log_obb(
         );
     }
 
+    if let Some(label) = label {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "label"),
+            LoggedData::Single(Data::String(label)),
+        );
+    }
+
     let space = space.unwrap_or_else(|| "3D".to_owned());
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1206,7 +1283,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     if let Some(meter) = meter {
@@ -1289,7 +1366,7 @@ fn log_mesh_file(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1368,7 +1445,25 @@ fn log_image_file(
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),
-        LoggedData::Single(Data::Space(parse_obj_path(&space)?)),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
+/// Clear the visibility flag of an object
+#[pyfunction]
+fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let mut sdk = Sdk::global();
+
+    let time_point = time(false);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "_visible"),
+        LoggedData::Single(Data::Bool(visibile)),
     );
 
     Ok(())

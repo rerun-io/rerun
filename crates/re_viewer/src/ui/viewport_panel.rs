@@ -205,6 +205,7 @@ impl View {
             let dock_style = egui_dock::Style {
                 separator_width: 2.0,
                 show_close_buttons: false,
+                tab_include_scrollarea: false,
                 ..egui_dock::Style::from_egui(ui.style().as_ref())
             };
 
@@ -251,13 +252,13 @@ fn first_tab(tree: &egui_dock::Tree<Tab>) -> Option<Tab> {
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct SpacesPanel {
+pub(crate) struct ViewportPanel {
     // In the future we will support multiple user-defined views,
     // but for now we only have one.
     view: View,
 }
 
-impl SpacesPanel {
+impl ViewportPanel {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
@@ -325,6 +326,8 @@ pub(crate) struct SpaceStates {
     state_2d: ahash::HashMap<Option<ObjPath>, crate::view2d::State2D>,
     state_3d: ahash::HashMap<Option<ObjPath>, crate::view3d::State3D>,
     state_tensor: ahash::HashMap<Option<ObjPath>, crate::view_tensor::TensorViewState>,
+
+    state_text_entry: ahash::HashMap<Option<ObjPath>, crate::text_entry_view::TextEntryState>,
 }
 
 impl SpaceStates {
@@ -351,6 +354,7 @@ impl SpaceStates {
                 .projected_object_properties
                 .get(props.obj_path)
                 .visible
+                && props.visible
         });
 
         // We have a special tensor viewer that only works
@@ -420,9 +424,8 @@ impl SpaceStates {
     /// the time panel.
     ///
     /// Returns `true` if hovered.
-    #[allow(clippy::unused_self)] // we do not keep any state... yet.
     fn show_sticky_space(
-        &self,
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         sticky_objects: &ObjectsBySpace<'_>,
         space: Option<&ObjPath>,
@@ -457,7 +460,8 @@ impl SpaceStates {
         }
 
         if objects.has_any_text_entries() {
-            let response = crate::text_entry_view::show(ui, ctx, &objects);
+            let state = self.state_text_entry.entry(space.cloned()).or_default();
+            let response = state.show(ui, ctx, &objects);
             hovered |= response.hovered();
         }
 

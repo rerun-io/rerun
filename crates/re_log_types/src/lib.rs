@@ -279,10 +279,10 @@ pub enum LoggedData {
 
     /// Log multiple values at once to a "multi-object".
     ///
-    /// The index becomes an "instance index" that, togher with the object-path, forms an "instance".
+    /// The index becomes an "instance index" that, together with the object-path, forms an "instance".
     Batch { indices: Vec<Index>, data: DataVec },
 
-    /// Log the same value for all instances of a mult-object.
+    /// Log the same value for all instances of a multi-object.
     ///
     /// You can only use this for optional fields such as `color`, `space` etc.
     /// You can NOT use it for primary fields such as `pos`.
@@ -325,16 +325,16 @@ impl_into_logged_data!(Tensor, Tensor);
 impl_into_logged_data!(Box3, Box3);
 impl_into_logged_data!(Mesh3D, Mesh3D);
 impl_into_logged_data!(Camera, Camera);
-impl_into_logged_data!(ObjPath, Space);
+impl_into_logged_data!(ObjPath, ObjPath);
 
 // ----------------------------------------------------------------------------
 
 re_string_interner::declare_new_type!(
-    /// The name of a time source. Often something like `"log_time"` or `"frame_nr"`.
-    pub struct TimeSourceName;
+    /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.
+    pub struct TimelineName;
 );
 
-impl Default for TimeSourceName {
+impl Default for TimelineName {
     fn default() -> Self {
         Self::new("")
     }
@@ -346,26 +346,26 @@ impl Default for TimeSourceName {
 /// it keeps.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimeSource {
-    /// Name of the time source (e.g. "log_time").
-    name: TimeSourceName,
+pub struct Timeline {
+    /// Name of the timeline (e.g. "log_time").
+    name: TimelineName,
 
     /// Sequence or time?
     typ: TimeType,
 }
 
-impl Default for TimeSource {
+impl Default for Timeline {
     fn default() -> Self {
         Self {
-            name: TimeSourceName::new(""),
+            name: TimelineName::new(""),
             typ: TimeType::Sequence,
         }
     }
 }
 
-impl TimeSource {
+impl Timeline {
     #[inline]
-    pub fn new(name: impl Into<TimeSourceName>, typ: TimeType) -> Self {
+    pub fn new(name: impl Into<TimelineName>, typ: TimeType) -> Self {
         Self {
             name: name.into(),
             typ,
@@ -373,7 +373,7 @@ impl TimeSource {
     }
 
     #[inline]
-    pub fn name(&self) -> &TimeSourceName {
+    pub fn name(&self) -> &TimelineName {
         &self.name
     }
 
@@ -383,11 +383,11 @@ impl TimeSource {
     }
 }
 
-impl nohash_hasher::IsEnabled for TimeSource {}
+impl nohash_hasher::IsEnabled for Timeline {}
 
 // required for [`nohash_hasher`].
 #[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for TimeSource {
+impl std::hash::Hash for Timeline {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.name.hash() | self.typ.hash());
@@ -405,7 +405,7 @@ impl std::hash::Hash for TimeSource {
 /// and will hit all time queries. In other words, it is always there.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimePoint(pub BTreeMap<TimeSource, TimeInt>);
+pub struct TimePoint(pub BTreeMap<Timeline, TimeInt>);
 
 impl TimePoint {
     /// Logging to this time means the data will show upp in all timelines,
@@ -585,7 +585,7 @@ pub fn time_point(
     TimePoint(
         fields
             .into_iter()
-            .map(|(name, tt, ti)| (TimeSource::new(name, tt), ti))
+            .map(|(name, tt, ti)| (Timeline::new(name, tt), ti))
             .collect(),
     )
 }

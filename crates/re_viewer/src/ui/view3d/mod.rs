@@ -398,6 +398,38 @@ pub(crate) fn view_3d(
     project_onto_other_spaces(ctx, state, space, &response, orbit_eye, objects);
     show_projections_from_2d_space(ctx, objects, state, orbit_eye, &mut scene);
 
+    // Draw labels
+    let ui_from_world = eye.ui_from_world(&rect);
+    ui.with_layer_id(
+        egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
+        |ui| {
+            for label in &scene.labels {
+                let pt = ui_from_world.project_point3(label.origin);
+                let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+
+                let galley = ui.fonts().layout(
+                    (*label.text).to_owned(),
+                    font_id,
+                    ui.style().visuals.text_color(),
+                    100.0,
+                );
+
+                let text_rect = egui::Align2::CENTER_TOP.anchor_rect(egui::Rect::from_min_size(
+                    egui::pos2(pt.x, pt.y),
+                    galley.size(),
+                ));
+
+                let bg_rect = text_rect.expand2(egui::vec2(6.0, 2.0));
+                ui.painter().add(egui::Shape::rect_filled(
+                    bg_rect,
+                    3.0,
+                    ui.style().visuals.code_bg_color,
+                ));
+                ui.painter().add(egui::Shape::galley(text_rect.min, galley));
+            }
+        },
+    );
+
     {
         let orbit_center_alpha = egui::remap_clamp(
             ui.input().time - state.last_eye_interact_time,

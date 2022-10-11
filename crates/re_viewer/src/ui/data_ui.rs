@@ -34,7 +34,7 @@ pub(crate) fn view_instance(
         .log_db
         .obj_db
         .store
-        .get(ctx.rec_cfg.time_ctrl.source())?;
+        .get(ctx.rec_cfg.time_ctrl.timeline())?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
 
@@ -82,14 +82,14 @@ pub(crate) fn view_data(
     ui: &mut egui::Ui,
     data_path: &DataPath,
 ) -> Option<()> {
-    let time_source = ctx.rec_cfg.time_ctrl.source();
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
 
     match ctx
         .log_db
         .obj_db
         .store
-        .query_data_path(time_source, &time_query, data_path)?
+        .query_data_path(timeline, &time_query, data_path)?
     {
         Ok((time_msgid_index, data_vec)) => {
             if data_vec.len() == 1 {
@@ -256,9 +256,9 @@ pub(crate) fn ui_time_point(
 ) {
     ui.vertical(|ui| {
         egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
-            for (time_source, value) in &time_point.0 {
-                ui.label(format!("{}:", time_source.name()));
-                ctx.time_button(ui, time_source, *value);
+            for (timeline, value) in &time_point.0 {
+                ui.label(format!("{}:", timeline.name()));
+                ctx.time_button(ui, timeline, *value);
                 ui.end_row();
             }
         });
@@ -293,6 +293,7 @@ pub(crate) fn ui_data(
     preview: Preview,
 ) -> egui::Response {
     match data {
+        Data::Bool(value) => ui.label(value.to_string()),
         Data::I32(value) => ui.label(value.to_string()),
         Data::F32(value) => ui.label(value.to_string()),
         Data::Color([r, g, b, a]) => {
@@ -319,6 +320,10 @@ pub(crate) fn ui_data(
         Data::Camera(cam) => match preview {
             Preview::Small | Preview::Specific(_) => ui.label("Camera"),
             Preview::Medium => ui_camera(ui, cam),
+        },
+        Data::Transform(transform) => match preview {
+            Preview::Small | Preview::Specific(_) => ui.label("Transform"),
+            Preview::Medium => ui_transform(ui, transform),
         },
 
         Data::Tensor(tensor) => {
@@ -352,9 +357,21 @@ pub(crate) fn ui_data(
             .response
         }
 
-        Data::Space(space) => {
-            // ui.label(space.to_string())
-            ctx.space_button(ui, space)
+        Data::ObjPath(obj_path) => {
+            // NOTE(emilk): Hack that will be fixed by https://linear.app/rerun/issue/PRO-98/refactor-spaces
+            let is_space = ctx.log_db.get_log_msg(msg_id).map_or(false, |log_msg| {
+                if let LogMsg::DataMsg(data_msg) = log_msg {
+                    data_msg.data_path.field_name == "space"
+                } else {
+                    false
+                }
+            });
+
+            if is_space {
+                ctx.space_button(ui, obj_path)
+            } else {
+                ctx.obj_path_button(ui, obj_path)
+            }
         }
 
         Data::DataVec(data_vec) => ui_data_vec(ui, data_vec),
@@ -375,6 +392,13 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
         intrinsics,
         target_space,
     } = cam;
+
+    let Extrinsics {
+        rotation,
+        position,
+        camera_space_convention,
+    } = extrinsics;
+
     ui.vertical(|ui| {
         ui.label("Camera");
         ui.indent("camera", |ui| {
@@ -382,12 +406,6 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
-                    let Extrinsics {
-                        rotation,
-                        position,
-                        camera_space_convention,
-                    } = extrinsics;
-
                     ui.label("rotation");
                     ui.monospace(format!("{rotation:?}"));
                     ui.end_row();
@@ -405,7 +423,7 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
                         resolution,
                     }) = intrinsics
                     {
-                        ui.label("intrinsics");
+                        ui.label("intrinsics matrix");
                         ui_intrinsics_matrix(ui, intrinsics_matrix);
                         ui.end_row();
 
@@ -418,6 +436,70 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
                     if let Some(target_space) = target_space {
                         ui.monospace(target_space.to_string());
                     }
+                    ui.end_row();
+                });
+        });
+    })
+    .response
+}
+
+fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
+    match transform {
+        Transform::Extrinsics(extrinsics) => ui_extrinsics(ui, extrinsics),
+        Transform::Intrinsics(intrinsics) => ui_intrinsics(ui, intrinsics),
+    }
+}
+
+fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
+    let Extrinsics {
+        rotation,
+        position,
+        camera_space_convention,
+    } = extrinsics;
+
+    ui.vertical(|ui| {
+        ui.label("Extrinsics");
+        ui.indent("extrinsics", |ui| {
+            egui::Grid::new("extrinsics")
+                .striped(true)
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("rotation");
+                    ui.monospace(format!("{rotation:?}"));
+                    ui.end_row();
+
+                    ui.label("position");
+                    ui.monospace(format!("{position:?}"));
+                    ui.end_row();
+
+                    ui.label("camera_space_convention");
+                    ui.monospace(format!("{camera_space_convention:?}"));
+                    ui.end_row();
+                });
+        });
+    })
+    .response
+}
+
+fn ui_intrinsics(ui: &mut egui::Ui, intrinsics: &Intrinsics) -> egui::Response {
+    let Intrinsics {
+        intrinsics_matrix,
+        resolution,
+    } = intrinsics;
+
+    ui.vertical(|ui| {
+        ui.label("Intrinsics");
+        ui.indent("intrinsics", |ui| {
+            egui::Grid::new("intrinsics")
+                .striped(true)
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("intrinsics matrix");
+                    ui_intrinsics_matrix(ui, intrinsics_matrix);
+                    ui.end_row();
+
+                    ui.label("resolution");
+                    ui.monospace(format!("{resolution:?}"));
                     ui.end_row();
                 });
         });

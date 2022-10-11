@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntMap;
 use re_log_types::{objects::*, DataVec, FieldName, IndexHash, MsgId, ObjPath, ObjTypePath};
 
-use crate::{query::*, ObjStore, TimeLineStore, TimeQuery};
+use crate::{query::*, ObjStore, TimeQuery, TimelineStore};
 
 /// Common properties of an object instance.
 #[derive(Copy, Clone, Debug)]
@@ -24,6 +24,9 @@ pub struct InstanceProps<'s> {
     /// If it is a multi-object, this is the instance index,
     /// else it is [`IndexHash::NONE`].
     pub instance_index: IndexHash,
+
+    /// Whether or not the object is visible
+    pub visible: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -99,15 +102,16 @@ impl<'s> Image<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("tensor"),
             time_query,
-            ("space", "color", "meter"),
+            ("_visible", "space", "color", "meter"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              tensor: &re_log_types::Tensor,
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              meter: Option<&f32>| {
@@ -119,6 +123,7 @@ impl<'s> Image<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&true),
                     },
                     data: Image {
                         tensor,
@@ -145,15 +150,16 @@ impl<'s> Point2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("pos"),
             time_query,
-            ("space", "color", "radius"),
+            ("_visible", "space", "color", "radius"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              pos: &[f32; 2],
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
@@ -165,6 +171,7 @@ impl<'s> Point2D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&true),
                     },
                     data: Point2D {
                         pos,
@@ -191,15 +198,16 @@ impl<'s> Point3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("pos"),
             time_query,
-            ("space", "color", "radius"),
+            ("_visible", "space", "color", "radius"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              pos: &[f32; 3],
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
@@ -211,6 +219,7 @@ impl<'s> Point3D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&true),
                     },
                     data: Point3D {
                         pos,
@@ -238,15 +247,16 @@ impl<'s> BBox2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_5(
             obj_store,
             &FieldName::from("bbox"),
             time_query,
-            ("space", "color", "stroke_width", "label"),
+            ("_visible", "space", "color", "stroke_width", "label"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              bbox: &re_log_types::BBox2D,
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>,
@@ -259,6 +269,7 @@ impl<'s> BBox2D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&true),
                     },
                     data: BBox2D {
                         bbox,
@@ -275,6 +286,7 @@ impl<'s> BBox2D<'s> {
 pub struct Box3D<'s> {
     pub obb: &'s re_log_types::Box3,
     pub stroke_width: Option<f32>,
+    pub label: Option<&'s str>,
 }
 
 impl<'s> Box3D<'s> {
@@ -286,18 +298,20 @@ impl<'s> Box3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_5(
             obj_store,
             &FieldName::from("obb"),
             time_query,
-            ("space", "color", "stroke_width"),
+            ("_visible", "space", "color", "stroke_width", "label"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              obb: &re_log_types::Box3,
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
-             stroke_width: Option<&f32>| {
+             stroke_width: Option<&f32>,
+             label: Option<&String>| {
                 out.box3d.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
@@ -306,10 +320,12 @@ impl<'s> Box3D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&true),
                     },
                     data: Box3D {
                         obb,
                         stroke_width: stroke_width.copied(),
+                        label: label.map(|s| s.as_str()),
                     },
                 });
             },
@@ -332,15 +348,16 @@ impl<'s> Path3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("points"),
             time_query,
-            ("space", "color", "stroke_width"),
+            ("_visible", "space", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              points: &DataVec,
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
@@ -353,6 +370,7 @@ impl<'s> Path3D<'s> {
                             color: color.copied(),
                             obj_path,
                             instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                            visible: *visible.unwrap_or(&true),
                         },
                         data: Path3D {
                             points,
@@ -381,15 +399,16 @@ impl<'s> LineSegments2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("points"),
             time_query,
-            ("space", "color", "stroke_width"),
+            ("_visible", "space", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              points: &DataVec,
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
@@ -402,6 +421,7 @@ impl<'s> LineSegments2D<'s> {
                             color: color.copied(),
                             obj_path,
                             instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                            visible: *visible.unwrap_or(&true),
                         },
                         data: LineSegments2D {
                             points,
@@ -430,15 +450,16 @@ impl<'s> LineSegments3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("points"),
             time_query,
-            ("space", "color", "stroke_width"),
+            ("_visible", "space", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              points: &DataVec,
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
@@ -451,6 +472,7 @@ impl<'s> LineSegments3D<'s> {
                             color: color.copied(),
                             obj_path,
                             instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                            visible: *visible.unwrap_or(&true),
                         },
                         data: LineSegments3D {
                             points,
@@ -477,15 +499,16 @@ impl<'s> Mesh3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_2(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("mesh"),
             time_query,
-            ("space", "color"),
+            ("_visible", "space", "color"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              mesh: &re_log_types::Mesh3D,
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.mesh3d.0.push(Object {
@@ -496,6 +519,7 @@ impl<'s> Mesh3D<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&true),
                     },
                     data: Mesh3D { mesh },
                 });
@@ -519,15 +543,16 @@ impl<'s> Camera<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_2(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("camera"),
             time_query,
-            ("space", "color"),
+            ("_visible", "space", "color"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              camera: &re_log_types::Camera,
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.camera.0.push(Object {
@@ -538,6 +563,7 @@ impl<'s> Camera<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&true),
                     },
                     data: Camera { camera },
                 });
@@ -587,15 +613,16 @@ impl<'s> TextEntry<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("body"),
             time_query,
-            ("space", "level", "color"),
+            ("_visible", "space", "level", "color"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              body: &String,
+             visible: Option<&bool>,
              space: Option<&ObjPath>,
              level: Option<&String>,
              color: Option<&[u8; 4]>| {
@@ -607,6 +634,7 @@ impl<'s> TextEntry<'s> {
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&true),
                     },
                     data: TextEntry {
                         body: body.as_str(),
@@ -641,7 +669,7 @@ pub struct Objects<'s> {
 impl<'s> Objects<'s> {
     pub fn query<Time: 'static + Copy + Ord + Into<i64>>(
         &mut self,
-        store: &'s TimeLineStore<Time>,
+        store: &'s TimelineStore<Time>,
         time_query: &'_ TimeQuery<Time>,
         obj_types: &IntMap<ObjTypePath, ObjectType>,
     ) {
@@ -651,7 +679,8 @@ impl<'s> Objects<'s> {
             if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
                 self.query_object(obj_store, time_query, obj_path, obj_type);
             } else {
-                re_log::warn_once!("Missing ObjectType for {:?}", obj_path.obj_type_path());
+                // Not every path is an object, and that's fine.
+                // Some paths just contains a `_transform`, for instance.
             }
         }
     }

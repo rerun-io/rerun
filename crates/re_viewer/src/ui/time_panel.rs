@@ -9,7 +9,7 @@ use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::*;
 
 use crate::{
-    misc::time_control::TimeSelectionType, time_axis::TimeSourceAxis, Selection, TimeControl,
+    misc::time_control::TimeSelectionType, time_axis::TimelineAxis, Selection, TimeControl,
     TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
 };
 
@@ -17,6 +17,8 @@ use crate::{
 const PROPERY_COLUMN_WIDTH: f32 = 14.0;
 
 /// A panel that shows objects to the left, time on the top.
+///
+/// This includes the timeline controls and streams view.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TimePanel {
@@ -88,7 +90,7 @@ impl TimePanel {
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
 
-        let time_line_rect = {
+        let timeline_rect = {
             let response = ui
                 .horizontal(|ui| {
                     ctx.rec_cfg
@@ -113,9 +115,9 @@ impl TimePanel {
             &self.time_ranges_ui,
             ui,
             &time_area_painter,
-            time_selection_rect.top()..=time_line_rect.bottom(),
-            // time_line_rect.y_range(),
-            time_line_rect.top()..=time_area_rect.bottom(),
+            time_selection_rect.top()..=timeline_rect.bottom(),
+            // timeline_rect.y_range(),
+            timeline_rect.top()..=time_area_rect.bottom(),
             ctx.rec_cfg.time_ctrl.time_type(),
         );
         time_selection_ui(
@@ -130,7 +132,7 @@ impl TimePanel {
             &mut ctx.rec_cfg.time_ctrl,
             ui,
             &time_area_painter,
-            &time_line_rect,
+            &timeline_rect,
             time_area_rect.bottom(),
         );
         let time_area_response = interact_with_time_area(
@@ -175,12 +177,10 @@ impl TimePanel {
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
-        let mut path = vec![];
         self.show_children(
             ctx,
             time_area_response,
             time_area_painter,
-            &mut path,
             &ctx.log_db.obj_db.tree,
             ui,
         );
@@ -191,7 +191,8 @@ impl TimePanel {
         ctx: &mut ViewerContext<'_>,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        path: &mut Vec<ObjPathComp>,
+        // the parent path of the name component
+        last_component: &ObjPathComp,
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
@@ -199,35 +200,30 @@ impl TimePanel {
 
         if !tree
             .prefix_times
-            .contains_key(ctx.rec_cfg.time_ctrl.source())
+            .contains_key(ctx.rec_cfg.time_ctrl.timeline())
         {
-            return; // ignore objects that have no data for the current time source
+            return; // ignore objects that have no data for the current timeline
         }
 
-        let obj_path = ObjPath::from(path.clone());
-
         // The last part of the the path component
-        let text = if let Some(last) = path.last() {
-            if tree.is_leaf() {
-                last.to_string()
-            } else {
-                format!("{}/", last) // show we have children with a /
-            }
+        let text = if tree.is_leaf() {
+            last_component.to_string()
         } else {
-            "/".to_owned()
+            format!("{}/", last_component) // show we have children with a /
         };
 
-        let collapsing_header_id = ui.make_persistent_id(&path);
-        let default_open = path.is_empty();
+        let collapsing_header_id = ui.make_persistent_id(&tree.path);
+        let default_open = tree.path.len() <= 1 && tree.num_children_and_fields() <= 10
+            || tree.num_children_and_fields() <= 2;
         let (header_response, _, body_returned) =
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 collapsing_header_id,
                 default_open,
             )
-            .show_header(ui, |ui| ctx.obj_path_button_to(ui, text, &obj_path))
+            .show_header(ui, |ui| ctx.obj_path_button_to(ui, text, &tree.path))
             .body(|ui| {
-                self.show_children(ctx, time_area_response, time_area_painter, path, tree, ui);
+                self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
             });
 
         let is_closed = body_returned.is_none();
@@ -244,7 +240,7 @@ impl TimePanel {
 
         if is_visible {
             response.on_hover_ui(|ui| {
-                ui.label(obj_path.to_string());
+                ui.label(tree.path.to_string());
             });
         }
 
@@ -261,14 +257,12 @@ impl TimePanel {
         // Property column:
 
         if is_visible {
-            let are_all_ancestors_visible = obj_path.is_root()
-                || ctx
-                    .rec_cfg
-                    .projected_object_properties
-                    .get(&obj_path.parent())
-                    .visible;
+            let are_all_ancestors_visible = match tree.path.parent() {
+                None => true, // root
+                Some(parent) => ctx.rec_cfg.projected_object_properties.get(&parent).visible,
+            };
 
-            let mut props = ctx.rec_cfg.individual_object_properties.get(&obj_path);
+            let mut props = ctx.rec_cfg.individual_object_properties.get(&tree.path);
             let property_rect =
                 Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response_rect.y_range());
             let mut ui = ui.child_ui(
@@ -280,7 +274,7 @@ impl TimePanel {
                 .on_hover_text("Toggle visibility");
             ctx.rec_cfg
                 .individual_object_properties
-                .set(obj_path.clone(), props);
+                .set(tree.path.clone(), props);
         }
 
         // ----------------------------------------------
@@ -288,7 +282,8 @@ impl TimePanel {
         // show the data in the time area:
 
         if is_visible && is_closed {
-            if let Some(messages_over_time) = tree.prefix_times.get(ctx.rec_cfg.time_ctrl.source())
+            if let Some(messages_over_time) =
+                tree.prefix_times.get(ctx.rec_cfg.time_ctrl.timeline())
             {
                 show_data_over_time(
                     ctx,
@@ -299,7 +294,7 @@ impl TimePanel {
                     full_width_rect,
                     &self.time_ranges_ui,
                     Some(Selection::Instance(InstanceId {
-                        obj_path,
+                        obj_path: tree.path.clone(),
                         instance_index: None,
                     })),
                 );
@@ -312,32 +307,30 @@ impl TimePanel {
         ctx: &mut ViewerContext<'_>,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        path: &mut Vec<ObjPathComp>,
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
-        for (name, child) in &tree.named_children {
-            path.push(ObjPathComp::Name(*name));
-            self.show_tree(ctx, time_area_response, time_area_painter, path, child, ui);
-            path.pop();
-        }
-        for (index, child) in &tree.index_children {
-            path.push(ObjPathComp::Index(index.clone()));
-            self.show_tree(ctx, time_area_response, time_area_painter, path, child, ui);
-            path.pop();
+        for (last_component, child) in &tree.children {
+            self.show_tree(
+                ctx,
+                time_area_response,
+                time_area_painter,
+                last_component,
+                child,
+                ui,
+            );
         }
 
         // If this is an object:
         if !tree.fields.is_empty() {
             let indent = ui.spacing().indent;
 
-            let obj_path = ObjPath::from(path.clone());
             for (field_name, data) in &tree.fields {
-                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.source()) {
-                    continue; // ignore fields that have no data for the current time source
+                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.timeline()) {
+                    continue; // ignore fields that have no data for the current timeline
                 }
 
-                let data_path = DataPath::new(obj_path.clone(), *field_name);
+                let data_path = DataPath::new(tree.path.clone(), *field_name);
 
                 let response = ui
                     .horizontal(|ui| {
@@ -382,7 +375,8 @@ impl TimePanel {
                 // show the data in the time area:
 
                 if is_visible {
-                    if let Some(messages_over_time) = data.times.get(ctx.rec_cfg.time_ctrl.source())
+                    if let Some(messages_over_time) =
+                        data.times.get(ctx.rec_cfg.time_ctrl.timeline())
                     {
                         show_data_over_time(
                             ctx,
@@ -405,7 +399,7 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ctx.rec_cfg
             .time_ctrl
-            .time_source_selector_ui(&ctx.log_db.time_points, ui);
+            .timeline_selector_ui(&ctx.log_db.time_points, ui);
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             crate::misc::help_hover_button(ui).on_hover_text(
@@ -623,13 +617,17 @@ fn initialize_time_ranges_ui(
     time_x_range: RangeInclusive<f32>,
 ) -> TimeRangesUi {
     crate::profile_function!();
-    if let Some(time_points) = ctx.log_db.time_points.0.get(ctx.rec_cfg.time_ctrl.source()) {
-        let time_source_axis = TimeSourceAxis::new(ctx.rec_cfg.time_ctrl.time_type(), time_points);
+    if let Some(time_points) = ctx
+        .log_db
+        .time_points
+        .0
+        .get(ctx.rec_cfg.time_ctrl.timeline())
+    {
+        let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), time_points);
         let time_view = ctx.rec_cfg.time_ctrl.time_view();
-        let time_view =
-            time_view.unwrap_or_else(|| view_everything(&time_x_range, &time_source_axis));
+        let time_view = time_view.unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis));
 
-        TimeRangesUi::new(time_x_range, time_view, &time_source_axis.ranges)
+        TimeRangesUi::new(time_x_range, time_view, &timeline_axis.ranges)
     } else {
         Default::default()
     }
@@ -1029,15 +1027,15 @@ fn time_marker_ui(
     time_ctrl: &mut TimeControl,
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
-    time_line_rect: &Rect,
+    timeline_rect: &Rect,
     bottom_y: f32,
 ) {
     // full_rect: full area.
-    // time_line_rect: top part with the second ticks and time marker
+    // timeline_rect: top part with the second ticks and time marker
 
     let pointer_pos = ui.input().pointer.hover_pos();
-    let is_pointer_in_time_line_rect =
-        pointer_pos.map_or(false, |pointer_pos| time_line_rect.contains(pointer_pos));
+    let is_pointer_in_timeline_rect =
+        pointer_pos.map_or(false, |pointer_pos| timeline_rect.contains(pointer_pos));
 
     // ------------------------------------------------
 
@@ -1046,7 +1044,7 @@ fn time_marker_ui(
     let mut is_hovering = false;
     let mut is_dragging = ui.memory().is_being_dragged(time_drag_id);
 
-    if is_pointer_in_time_line_rect {
+    if is_pointer_in_timeline_rect {
         ui.output().cursor_icon = CursorIcon::ResizeHorizontal;
     }
 
@@ -1056,7 +1054,7 @@ fn time_marker_ui(
     if let Some(time) = time_ctrl.time() {
         if let Some(x) = time_ranges_ui.x_from_time(time) {
             if let Some(pointer_pos) = pointer_pos {
-                let line_rect = Rect::from_x_y_ranges(x..=x, time_line_rect.top()..=bottom_y);
+                let line_rect = Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=bottom_y);
 
                 is_hovering = line_rect.distance_to_pos(pointer_pos)
                     <= ui.style().interaction.resize_grab_radius_side;
@@ -1089,32 +1087,32 @@ fn time_marker_ui(
 
             let w = 10.0;
             let triangle = vec![
-                pos2(x - 0.5 * w, time_line_rect.top()), // left top
-                pos2(x + 0.5 * w, time_line_rect.top()), // right top
-                pos2(x, time_line_rect.top() + w),       // bottom
+                pos2(x - 0.5 * w, timeline_rect.top()), // left top
+                pos2(x + 0.5 * w, timeline_rect.top()), // right top
+                pos2(x, timeline_rect.top() + w),       // bottom
             ];
             time_area_painter.add(egui::Shape::convex_polygon(
                 triangle,
                 stroke.color,
                 egui::Stroke::none(),
             ));
-            time_area_painter.vline(x, (time_line_rect.top() + w)..=bottom_y, stroke);
+            time_area_painter.vline(x, (timeline_rect.top() + w)..=bottom_y, stroke);
         }
     }
 
     // Show preview: "click here to view time here"
     if let Some(pointer_pos) = pointer_pos {
-        if !is_hovering && !is_anything_being_dragged && is_pointer_in_time_line_rect {
+        if !is_hovering && !is_anything_being_dragged && is_pointer_in_timeline_rect {
             time_area_painter.vline(
                 pointer_pos.x,
-                time_line_rect.top()..=ui.max_rect().bottom(),
+                timeline_rect.top()..=ui.max_rect().bottom(),
                 ui.visuals().widgets.noninteractive.bg_stroke,
             );
         }
 
         if is_dragging
             || (ui.input().pointer.primary_down()
-                && is_pointer_in_time_line_rect
+                && is_pointer_in_timeline_rect
                 && !is_anything_being_dragged)
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
@@ -1147,9 +1145,9 @@ fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
 }
 
 /// Find a nice view of everything.
-fn view_everything(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceAxis) -> TimeView {
-    let gap_width = gap_width(x_range, &time_source_axis.ranges);
-    let num_gaps = time_source_axis.ranges.len().saturating_sub(1);
+fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) -> TimeView {
+    let gap_width = gap_width(x_range, &timeline_axis.ranges);
+    let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
     let width = *x_range.end() - *x_range.start();
     let width_sans_gaps = width - num_gaps as f32 * gap_width;
 
@@ -1159,8 +1157,8 @@ fn view_everything(x_range: &RangeInclusive<f32>, time_source_axis: &TimeSourceA
         1.0 // too narrow to fit everything anyways
     };
 
-    let min = time_source_axis.min();
-    let time_spanned = time_source_axis.sum_time_lengths().as_f64() * factor as f64;
+    let min = timeline_axis.min();
+    let time_spanned = timeline_axis.sum_time_lengths().as_f64() * factor as f64;
 
     // Leave some room on the margins:
     let time_margin = time_spanned * (SIDE_MARGIN / width.at_least(64.0)) as f64;
