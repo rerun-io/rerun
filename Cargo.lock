@@ -2762,6 +2762,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_renderer"
+version = "0.1.0"
+dependencies = [
+ "parking_lot",
+ "wgpu",
+]
+
+[[package]]
 name = "re_sdk_comms"
 version = "0.1.0"
 dependencies = [
@@ -2861,6 +2869,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_log_types",
+ "re_renderer",
  "re_string_interner",
  "re_tensor_ops",
  "re_ws_comms",

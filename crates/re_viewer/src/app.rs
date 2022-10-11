@@ -1,12 +1,11 @@
 use std::sync::mpsc::Receiver;
 
+use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 use egui_extras::RetainedImage;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
-
-use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 
 const WATERMARK: bool = false; // Nice for recording media material
 

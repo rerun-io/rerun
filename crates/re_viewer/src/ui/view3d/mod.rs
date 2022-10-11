@@ -12,6 +12,8 @@ pub use mesh_cache::CpuMeshCache;
 
 use eye::*;
 use re_data_store::{InstanceId, InstanceIdHash};
+#[cfg(feature = "wgpu")]
+use re_renderer::frame_builder::FrameBuilder;
 use scene::*;
 
 use egui::NumExt as _;
@@ -448,19 +450,45 @@ pub(crate) fn view_3d(
         }
     }
 
-    let dark_mode = ui.visuals().dark_mode;
-    let show_axes = state.show_axes;
+    #[cfg(feature = "wgpu")]
+    let _callback = {
+        let frame_builder_prepare = FrameBuilder::new_shared();
+        let frame_builder_draw = frame_builder_prepare.clone();
 
-    let callback = egui::PaintCallback {
-        rect,
-        callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
-            glow_rendering::with_three_d_context(painter.gl(), |rendering| {
-                glow_rendering::paint_with_three_d(
-                    rendering, &eye, &info, &scene, dark_mode, show_axes, painter,
-                );
-            });
-        })),
+        egui::PaintCallback {
+            rect,
+            callback: std::sync::Arc::new(
+                egui_wgpu::CallbackFn::new()
+                    .prepare(move |device, _queue, paint_callback_resources| {
+                        let ctx = paint_callback_resources.get_mut().unwrap();
+                        frame_builder_prepare.write().test_triangle(ctx, device);
+                    })
+                    .paint(move |_info, render_pass, paint_callback_resources| {
+                        let ctx = paint_callback_resources.get().unwrap();
+                        frame_builder_draw.read().draw(ctx, render_pass);
+                    }),
+            ),
+        }
     };
+    #[cfg(not(feature = "glow"))]
+    let callback = _callback;
+
+    #[cfg(feature = "glow")]
+    let callback = {
+        let dark_mode = ui.visuals().dark_mode;
+        let show_axes = state.show_axes;
+        egui::PaintCallback {
+            rect,
+            callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
+                glow_rendering::with_three_d_context(painter.gl(), |rendering| {
+                    glow_rendering::paint_with_three_d(
+                        rendering, &eye, &info, &scene, dark_mode, show_axes, painter,
+                    );
+                });
+            })),
+        }
+    };
+
     ui.painter().add(callback);
 
     response

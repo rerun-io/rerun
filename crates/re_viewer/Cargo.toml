@@ -34,7 +34,7 @@ glow = [
 ]
 
 ## Enable the [`wgpu`](https://crates.io/crates/wgpu) renderer.
-wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:wgpu"]
+wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:re_renderer", "dep:wgpu"]
 
 
 [dependencies]
@@ -45,6 +45,7 @@ re_log_types = { path = "../re_log_types", features = ["save", "load"] }
 re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
+re_renderer = { path = "../re_renderer", optional = true }
 
 eframe = { version = "0.19", default-features = false, features = [
   "default_fonts",
@@ -52,7 +53,6 @@ eframe = { version = "0.19", default-features = false, features = [
 ] }
 egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { version = "0.19", features = ["tracing"] }
-
 
 ahash = "0.8"
 anyhow = "1.0"
@@ -96,7 +96,7 @@ three-d-asset = { version = "0.3.0", optional = true, default-features = false, 
 ] }
 
 egui-wgpu = { version = "0.19", optional = true }
-wgpu = { version = "0.14", optional = true, features = ["webgl"] }
+wgpu = { version = "0.14", optional = true }
 
 
 # native dependencies:

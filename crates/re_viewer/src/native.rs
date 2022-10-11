@@ -27,7 +27,7 @@ pub fn run_native_app(app_creator: eframe::AppCreator) {
         "Rerun Viewer",
         native_options,
         Box::new(move |cc| {
-            crate::customize_egui(&cc.egui_ctx);
+            crate::customize_eframe(cc);
             app_creator(cc)
         }),
     );

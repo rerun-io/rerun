@@ -20,6 +20,9 @@ pub(crate) use ui::*;
 pub use app::App;
 pub use remote_viewer_app::RemoteViewerApp;
 
+#[cfg(feature = "wgpu")]
+use re_renderer::context::RenderContext;
+
 // ----------------------------------------------------------------------------
 // When compiling for native:
 
@@ -63,6 +66,29 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
-pub(crate) fn customize_egui(ctx: &egui::Context) {
-    design_tokens::apply_design_tokens(ctx);
+pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) {
+    #[cfg(feature = "wgpu")]
+    {
+        let render_state = cc.wgpu_render_state.as_ref().unwrap();
+        let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
+
+        // TODO(andreas): Query used surface format from eframe/renderer.
+        #[cfg(target_arch = "wasm32")]
+        let (output_format_color, output_format_depth) =
+            (wgpu::TextureFormat::Rgba8UnormSrgb, None); // TODO(andreas) fix for not using srgb will be released in `wgpu 0.15`. See https://github.com/gfx-rs/wgpu/pull/3070
+        #[cfg(not(target_arch = "wasm32"))]
+        let (output_format_color, output_format_depth) = (
+            wgpu::TextureFormat::Bgra8Unorm,
+            Some(wgpu::TextureFormat::Depth32Float),
+        );
+
+        paint_callback_resources.insert(RenderContext::new(
+            &render_state.device,
+            &render_state.queue,
+            output_format_color,
+            output_format_depth,
+        ));
+    }
+
+    design_tokens::apply_design_tokens(&cc.egui_ctx);
 }
