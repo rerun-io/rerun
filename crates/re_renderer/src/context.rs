@@ -90,7 +90,7 @@ impl RenderContext {
         RenderPipelineHandle
     }
 
-    /// Retrieves a `wgpu::RenderPipeline` given a handle.
+    /// Retrieves a [`wgpu::RenderPipeline`] given a handle.
     /// Returns None if the pipeline does not exist or failed to create.
     pub(crate) fn render_pipeline(
         &self,
