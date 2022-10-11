@@ -6,6 +6,8 @@
 pub enum ObjectType {
     /// Information about a space (up axis etc).
     Space,
+    // A colored label that can be used for Segmentation Masks
+    SegmentationLabel,
 
     /// A logging message.
     TextEntry,
@@ -49,6 +51,7 @@ impl ObjectType {
         #[allow(clippy::match_same_arms)]
         match self {
             Self::Space => &["up"],
+            Self::SegmentationLabel => &["index", "label", "color"],
 
             Self::TextEntry => &["space", "color", "body", "level"],
 
