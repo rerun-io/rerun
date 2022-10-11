@@ -9,6 +9,7 @@ import argparse
 from time import sleep
 from typing import Any
 
+import numpy as np
 import rerun_sdk as rerun
 
 
@@ -31,6 +32,23 @@ def run_set_visible(args: argparse.Namespace) -> None:
     rerun.set_visible("rect/1", True)
 
 
+def args_segmentation(subparsers: Any) -> None:
+    segmentation_parser = subparsers.add_parser("segmentation")
+    segmentation_parser.set_defaults(func=run_segmentation)
+
+
+def run_segmentation(args: argparse.Namespace) -> None:
+    rerun.set_time_seconds("sim_time", 1)
+    rerun.log_segmentation_map(
+        "seg", {13: ("label1", (255, 0, 0)), 42: ("label2", (0, 255, 0)), 99: ("label3", (0, 0, 255))}
+    )
+
+    segmentation_img = np.zeros([128, 128])
+    segmentation_img[10:20, 30:40] = 13
+
+    rerun.log_image("img", segmentation_img)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
@@ -51,6 +69,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(required=True)
 
     args_set_visible(subparsers)
+    args_segmentation(subparsers)
 
     args = parser.parse_args()
 
