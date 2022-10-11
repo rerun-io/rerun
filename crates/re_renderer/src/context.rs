@@ -1,3 +1,5 @@
+use crate::texture_pool::TexturePool;
+
 /// Any resource involving wgpu rendering which can be re-used accross different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
@@ -10,7 +12,11 @@ pub struct RenderContext {
 
     // TODO(andreas): Introduce a pipeline manager
     test_triangle: Option<wgpu::RenderPipeline>,
-    // TODO(andreas): Strongly consider https://docs.rs/slotmap/latest/slotmap/ for resource pools
+
+    // TODO(andreas): Establish a trait for pools to give them a similar interface and allow iterating over them etc.
+    pub(crate) texture_pool: TexturePool,
+
+    frame_counter: u64,
 }
 
 /// Render pipeline handle that needs to be requested from the `RenderContext` and can be resolved to a `wgpu::RenderPipeline` before drawing.
@@ -28,6 +34,8 @@ impl RenderContext {
             output_format_color,
             output_format_depth,
             test_triangle: None,
+            texture_pool: TexturePool::new(),
+            frame_counter: 0,
         }
     }
 
@@ -98,5 +106,14 @@ impl RenderContext {
     ) -> Option<&wgpu::RenderPipeline> {
         // TODO(andreas)render_context
         self.test_triangle.as_ref()
+    }
+
+    pub fn frame_maintenance(&mut self) {
+        self.texture_pool.frame_maintenance();
+        self.frame_counter += 1;
+    }
+
+    pub(crate) fn frame_counter(&self) -> u64 {
+        self.frame_counter
     }
 }

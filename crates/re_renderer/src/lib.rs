@@ -5,3 +5,4 @@
 
 pub mod context;
 pub mod frame_builder;
+mod texture_pool;
