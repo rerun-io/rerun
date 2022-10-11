@@ -730,7 +730,7 @@ impl<'s> SegmentationLabel<'s> {
                 let segmentation_map = out
                     .segmentation_maps
                     .entry(obj_path)
-                    .or_insert_with(|| IntMap::<i32, SegmentationLabel>::default());
+                    .or_insert_with(IntMap::<i32, SegmentationLabel<'s>>::default);
 
                 segmentation_map.insert(
                     *index,

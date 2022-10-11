@@ -1544,6 +1544,7 @@ fn log_segmentation_map(
 
     let obj_path = parse_obj_path(obj_path)?;
 
+    // TODO: Cranky doesn't like this
     let ((keys, indices), (labels, colors)): ((Vec<i32>, Vec<Index>), (Vec<String>, Vec<[u8; 4]>)) =
         id_map
             .iter()
@@ -1581,7 +1582,7 @@ fn log_segmentation_map(
         &time_point,
         (&obj_path, "color"),
         LoggedData::Batch {
-            indices: indices.clone(),
+            indices,
             data: DataVec::Color(colors),
         },
     );
