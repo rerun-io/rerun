@@ -2,6 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
+use std::collections::HashMap;
 use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
 use bytemuck::allocation::pod_collect_to_vec;
@@ -113,6 +114,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
     m.add_function(wrap_pyfunction!(log_obb, m)?)?;
+    m.add_function(wrap_pyfunction!(log_segmentation_map, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
@@ -1527,6 +1529,61 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
         &time_point,
         (&obj_path, "_visible"),
         LoggedData::Single(Data::Bool(visibile)),
+    );
+
+    Ok(())
+}
+
+#[pyfunction]
+fn log_segmentation_map(
+    obj_path: &str,
+    id_map: HashMap<i32, (String, Vec<u8>)>,
+    timeless: bool,
+) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let ((keys, indices), (labels, colors)): ((Vec<i32>, Vec<Index>), (Vec<String>, Vec<[u8; 4]>)) =
+        id_map
+            .iter()
+            .map(|(k, v)| {
+                (
+                    (k, Index::Integer(*k as i128)),
+                    (v.0.clone(), convert_color(v.1.clone()).unwrap()),
+                )
+            })
+            .unzip();
+
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::SegmentationLabel);
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "index"),
+        LoggedData::Batch {
+            indices: indices.clone(),
+            data: DataVec::I32(keys),
+        },
+    );
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "label"),
+        LoggedData::Batch {
+            indices: indices.clone(),
+            data: DataVec::String(labels),
+        },
+    );
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "color"),
+        LoggedData::Batch {
+            indices: indices.clone(),
+            data: DataVec::Color(colors),
+        },
     );
 
     Ok(())

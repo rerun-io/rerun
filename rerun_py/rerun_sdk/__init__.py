@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Final, Iterable, Optional, Sequence, Union
+from typing import Dict, Final, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -820,3 +820,18 @@ def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:
 def set_visible(obj_path: str, visibile: bool) -> None:
     """Change the visibility of an object."""
     rerun_rs.set_visible(obj_path, visibile)
+
+
+# TODO(jleibs) More ergonomic type / validation
+# Do I need to normalize colors here?
+def log_segmentation_map(
+    obj_path: str,
+    id_map: Dict[int, Tuple[str, Sequence[int]]],
+    *,
+    timeless: bool = False,
+) -> None:
+    """
+    Log a segmentation map
+    """
+
+    rerun_rs.log_segmentation_map(obj_path, id_map, timeless)
