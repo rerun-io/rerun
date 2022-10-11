@@ -334,7 +334,7 @@ pub(crate) fn ui_data(
         },
 
         Data::Tensor(tensor) => {
-            let egui_image = ctx.cache.image.get(msg_id, tensor);
+            let egui_image = ctx.cache.image.get(msg_id, || tensor.clone());
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {
                     Preview::Small => 32.0,

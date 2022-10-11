@@ -11,11 +11,18 @@ pub struct ImageCache {
     generation: u64,
 }
 
+// TODO: the tensor_inserter now precludes passing a reference through,
+// causing unncessary clones. This needs to be returned to a reference
+// compatible form.
 impl ImageCache {
-    pub fn get_pair(&mut self, msg_id: &MsgId, tensor: &Tensor) -> (&DynamicImage, &RetainedImage) {
+    pub fn get_pair(
+        &mut self,
+        msg_id: &MsgId,
+        tensor_inserter: impl FnOnce() -> Tensor,
+    ) -> (&DynamicImage, &RetainedImage) {
         let ci = self.images.entry(*msg_id).or_insert_with(|| {
             // TODO(emilk): proper debug name for images
-            let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor);
+            let ci = CachedImage::from_tensor(format!("{msg_id:?}"), &tensor_inserter());
             self.memory_used += ci.memory_used;
             ci
         });
@@ -23,8 +30,12 @@ impl ImageCache {
         (&ci.dynamic_img, &ci.retained_img)
     }
 
-    pub fn get(&mut self, msg_id: &MsgId, tensor: &Tensor) -> &RetainedImage {
-        self.get_pair(msg_id, tensor).1
+    pub fn get(
+        &mut self,
+        msg_id: &MsgId,
+        tensor_insert: impl FnOnce() -> Tensor,
+    ) -> &RetainedImage {
+        self.get_pair(msg_id, tensor_insert).1
     }
 
     /// Call once per frame to (potentially) flush the cache.

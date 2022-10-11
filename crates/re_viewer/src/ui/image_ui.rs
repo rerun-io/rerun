@@ -9,7 +9,7 @@ pub(crate) fn show_tensor(
     msg_id: &MsgId,
     tensor: &re_log_types::Tensor,
 ) {
-    let (dynamic_image, egui_image) = ctx.cache.image.get_pair(msg_id, tensor);
+    let (dynamic_image, egui_image) = ctx.cache.image.get_pair(msg_id, || tensor.clone());
     let max_size = ui.available_size().min(egui_image.size_vec2());
     let response = egui_image.show_max_size(ui, max_size);
 

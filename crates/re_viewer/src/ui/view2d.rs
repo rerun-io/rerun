@@ -339,37 +339,44 @@ fn view_2d_scrollable(
             continue; // not an image. don't know how to display this!
         }
 
-        let cached_img = ctx.cache.image.get(props.msg_id, tensor);
-        let cached_texture_id = cached_img.texture_id(ui.ctx());
+        let legend = find_legend(*legend, objects);
 
-        let texture_id = match find_legend(*legend, objects) {
-            Legend::None => {
-                // If no legend, use the cached image
-                cached_texture_id
-            }
-            Legend::SegmentationMap(seg_map) => {
-                let mapping = seg_map.map_func();
+        // TODO: This cache needs to include an ID related to the legend
+        // and/or state.
+        //
+        // TODO: This is a bit ugly / circuitous: We want both an updated
+        // dynamic_img and cached_img because the cached img texture is used by
+        // the image view and the dynamic image is used by the hover preview.
+        // the internals of cached image are (currently) responsible for building
+        // this pair from a tensor.
+        let (dynamic_img, cached_img) = ctx.cache.image.get_pair(props.msg_id, || {
+            match &legend {
+                Legend::None => (*tensor).clone(),
+                Legend::SegmentationMap(seg_map) => {
+                    let mapping = seg_map.map_func();
 
-                match re_tensor_ops::as_ndarray::<u8>(tensor) {
-                    Ok(tensor) => {
-                        if let Ok(slice) = tensor.into_dimensionality::<ndarray::Ix2>() {
-                            let image = crate::misc::color_map::into_image(&slice, mapping);
-                            let texture = ui.ctx().load_texture(
-                                "colored_image",
-                                image,
-                                egui::TextureFilter::Nearest,
-                            );
-                            texture.id()
-                        } else {
-                            // This shouldn't happen.
-                            cached_texture_id
+                    match re_tensor_ops::as_ndarray::<u8>(tensor) {
+                        Ok(nd_tensor) => {
+                            if let Ok(slice) = nd_tensor.into_dimensionality::<ndarray::Ix2>() {
+                                let colored_tensor =
+                                    crate::misc::color_map::into_ndarray(&slice, mapping);
+                                match re_tensor_ops::to_rerun_tensor(&colored_tensor, None) {
+                                    Ok(colored_tensor) => colored_tensor,
+                                    Err(_err) => (*tensor).clone(),
+                                }
+                            } else {
+                                // This shouldn't happen.
+                                (*tensor).clone()
+                            }
                         }
+                        // TODO: handle this error properly
+                        Err(_err) => (*tensor).clone(),
                     }
-                    // TODO: handle this error properly
-                    Err(_err) => cached_texture_id,
                 }
             }
-        };
+        });
+
+        let texture_id = cached_img.texture_id(ui.ctx());
 
         let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
@@ -396,12 +403,11 @@ fn view_2d_scrollable(
             check_hovering(props, dist);
 
             if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
-                let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
                 response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
                     ui,
                     response,
                     tensor,
-                    dynamic_image,
+                    dynamic_img,
                     rect_in_ui,
                     pointer_pos,
                     *meter,

@@ -288,3 +288,26 @@ pub(crate) fn into_image<T: Copy>(
 
     image
 }
+
+pub(crate) fn into_ndarray<T: Copy>(
+    slice: &ndarray::ArrayView2<'_, T>,
+    color_from_value: impl Fn(T) -> egui::Color32,
+) -> ndarray::Array3<u8> {
+    crate::profile_function!();
+
+    let dim = slice.raw_dim();
+    let mut tensor = ndarray::Array3::<u8>::default((dim[0], dim[1], 3));
+    let inner2 = tensor.lanes_mut(ndarray::Axis(2));
+
+    crate::profile_scope!("color_mapper");
+    ndarray::Zip::from(inner2)
+        .and(slice)
+        .for_each(|mut pixel, value| {
+            let color = color_from_value(*value);
+            pixel[0] = color.r();
+            pixel[1] = color.g();
+            pixel[2] = color.b();
+        });
+
+    tensor
+}
