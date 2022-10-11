@@ -34,7 +34,7 @@ glow = [
 ]
 
 ## Enable the [`wgpu`](https://crates.io/crates/wgpu) renderer.
-wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:re_renderer", "dep:wgpu" ]
+wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:re_renderer", "dep:wgpu"]
 
 
 [dependencies]
