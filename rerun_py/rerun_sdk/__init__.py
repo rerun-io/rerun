@@ -830,8 +830,5 @@ def log_segmentation_map(
     *,
     timeless: bool = False,
 ) -> None:
-    """
-    Log a segmentation map
-    """
-
+    """Log a segmentation map."""
     rerun_rs.log_segmentation_map(obj_path, id_map, timeless)
