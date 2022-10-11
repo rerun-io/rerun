@@ -47,7 +47,7 @@ py-lint:
     black --check --config rerun_py/pyproject.toml --diff .
     blackdoc --check .
     isort --check .
-    mypy
+    mypy --no-warn-unused-ignore
     flake8
 
 # Run fast unittests
