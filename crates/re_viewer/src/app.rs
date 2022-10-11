@@ -1,13 +1,11 @@
 use std::sync::mpsc::Receiver;
 
+use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 use egui_extras::RetainedImage;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
-use re_renderer::context::RenderContext;
-
-use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -117,33 +115,6 @@ impl eframe::App for App {
         if self.ctrl_c.load(std::sync::atomic::Ordering::SeqCst) {
             frame.close();
             return;
-        }
-
-        // TODO(andreas) can we move this into app creation? We lack the creation context there which would lead us to the renderer
-        #[cfg(feature = "wgpu")]
-        {
-            let egui_render_state = &mut frame.wgpu_render_state().unwrap();
-            let paint_callback_resources =
-                &mut egui_render_state.renderer.write().paint_callback_resources;
-
-            if !paint_callback_resources.contains::<RenderContext>() {
-                // TODO(andreas): Query used surface format from eframe/renderer.
-                #[cfg(target_arch = "wasm32")]
-                let (output_format_color, output_format_depth) =
-                    (wgpu::TextureFormat::Rgba8UnormSrgb, None); // TODO(andreas) fix for not using srgb is in flight!
-                #[cfg(not(target_arch = "wasm32"))]
-                let (output_format_color, output_format_depth) = (
-                    wgpu::TextureFormat::Bgra8Unorm,
-                    Some(wgpu::TextureFormat::Depth32Float),
-                );
-
-                paint_callback_resources.insert(RenderContext::new(
-                    &egui_render_state.device,
-                    &egui_render_state.queue,
-                    output_format_color,
-                    output_format_depth,
-                ));
-            }
         }
 
         self.state.cache.new_frame();

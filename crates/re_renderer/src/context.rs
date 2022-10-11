@@ -9,6 +9,8 @@ pub struct RenderContext {
 
     // TODO(andreas): Introduce a pipeline manager
     test_triangle: Option<wgpu::RenderPipeline>,
+
+    // TODO(andreas): Strongly consider https://docs.rs/slotmap/latest/slotmap/ for resource pools
 }
 
 /// Render pipeline handle that needs to be requested from the `RenderContext` and can be resolved to a `wgpu::RenderPipeline` before drawing.

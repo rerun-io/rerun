@@ -18,6 +18,7 @@ pub(crate) use misc::*;
 pub(crate) use ui::*;
 
 pub use app::App;
+use re_renderer::context::RenderContext;
 pub use remote_viewer_app::RemoteViewerApp;
 
 // ----------------------------------------------------------------------------
@@ -63,6 +64,30 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
-pub(crate) fn customize_egui(ctx: &egui::Context) {
-    design_tokens::apply_design_tokens(ctx);
+pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) {
+    // TODO(andreas) can we move this into app creation? We lack the creation context there which would lead us to the renderer
+    #[cfg(feature = "wgpu")]
+    {
+        let render_state = cc.wgpu_render_state.as_ref().unwrap();
+        let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
+
+        // TODO(andreas): Query used surface format from eframe/renderer.
+        #[cfg(target_arch = "wasm32")]
+        let (output_format_color, output_format_depth) =
+            (wgpu::TextureFormat::Rgba8UnormSrgb, None); // TODO(andreas) fix for not using srgb is in flight!
+        #[cfg(not(target_arch = "wasm32"))]
+        let (output_format_color, output_format_depth) = (
+            wgpu::TextureFormat::Bgra8Unorm,
+            Some(wgpu::TextureFormat::Depth32Float),
+        );
+
+        paint_callback_resources.insert(RenderContext::new(
+            &render_state.device,
+            &render_state.queue,
+            output_format_color,
+            output_format_depth,
+        ));
+    }
+
+    design_tokens::apply_design_tokens(&cc.egui_ctx);
 }
