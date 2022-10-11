@@ -175,7 +175,9 @@ impl Blueprint {
         blueprint
     }
 
-    pub fn tree_ui(&mut self, ui: &mut egui::Ui, obj_tree: &ObjectTree) {
+    pub fn tree_ui(&mut self, ui: &mut egui::Ui, spaces_info: &SpacesInfo, obj_tree: &ObjectTree) {
+        crate::profile_function!();
+
         ui.heading("Blueprint");
 
         let focused = self.tree.find_active_focused().map(|(_, id)| *id);
@@ -206,8 +208,12 @@ impl Blueprint {
                         }
                     })
                     .body(|ui| {
-                        if let Some(tree) = obj_tree.subtree(&space_view.space_path) {
-                            show_children(ui, tree);
+                        if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
+                            if let Some(tree) = obj_tree.subtree(&space_view.space_path) {
+                                show_children(ui, space_info, tree);
+                            } else {
+                                todo!()
+                            }
                         } else {
                             todo!()
                         }
@@ -217,14 +223,16 @@ impl Blueprint {
     }
 }
 
-fn show_children(ui: &mut egui::Ui, tree: &ObjectTree) {
+fn show_children(ui: &mut egui::Ui, space_info: &SpaceInfo, tree: &ObjectTree) {
     for (path_comp, child) in &tree.children {
-        if child.is_leaf() {
-            ui.label(path_comp.to_string());
-        } else {
-            ui.collapsing(path_comp.to_string(), |ui| {
-                show_children(ui, child);
-            });
+        if space_info.objects.contains(&child.path) {
+            if child.is_leaf() {
+                ui.label(path_comp.to_string());
+            } else {
+                ui.collapsing(path_comp.to_string(), |ui| {
+                    show_children(ui, space_info, child);
+                });
+            }
         }
     }
 }
@@ -503,7 +511,8 @@ impl ExperimentalViewportPanel {
             .resizable(true)
             .default_width(350.0)
             .show_inside(ui, |ui| {
-                self.blueprint.tree_ui(ui, &ctx.log_db.obj_db.tree);
+                self.blueprint
+                    .tree_ui(ui, &spaces_info, &ctx.log_db.obj_db.tree);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
