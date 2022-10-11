@@ -425,7 +425,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
             .clicked()
         {
             if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
-                save_to_file(log_db, &path);
+                save_to_file(log_db, path);
             }
         }
     }
@@ -510,28 +510,42 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
-    fn save_to_file_impl(log_db: &LogDb, path: &std::path::PathBuf) -> anyhow::Result<()> {
+fn save_to_file(log_db: &LogDb, path: std::path::PathBuf) {
+    fn save_to_file_impl(msgs: &[LogMsg], path: &std::path::PathBuf) -> anyhow::Result<()> {
         crate::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::create(path).context("Failed to create file")?;
-        re_log_types::encoding::encode(log_db.chronological_log_messages(), file)
+        re_log_types::encoding::encode(msgs.iter(), file)
     }
 
-    match save_to_file_impl(log_db, path) {
-        // TODO(emilk): show a popup instead of logging result
-        Ok(()) => {
-            re_log::info!("Data saved to {:?}", path);
+    // On some platforms, the window manager will consider an application irresponsive
+    // if it hasn't refreshed the contents of its window for too long.
+    // This is exactly what happens when writing a big .rrd file to disk: we're blocking
+    // the UI thread while waiting for I/O, and the window manager shuts us down.
+    //
+    // Workaround: spawn a fire-and-forget thread to do the I/O in the background for now.
+    let _ = std::thread::spawn({
+        let msgs = log_db
+            .chronological_log_messages()
+            .cloned()
+            .collect::<Vec<_>>();
+        move || {
+            match save_to_file_impl(&msgs, &path) {
+                // TODO(emilk): show a popup instead of logging result
+                Ok(()) => {
+                    re_log::info!("Data saved to {:?}", path);
+                }
+                Err(err) => {
+                    let msg = format!("Failed saving data to {path:?}: {}", re_error::format(&err));
+                    re_log::error!("{msg}");
+                    rfd::MessageDialog::new()
+                        .set_level(rfd::MessageLevel::Error)
+                        .set_description(&msg)
+                        .show();
+                }
+            }
         }
-        Err(err) => {
-            let msg = format!("Failed saving data to {path:?}: {}", re_error::format(&err));
-            re_log::error!("{msg}");
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_description(&msg)
-                .show();
-        }
-    }
+    });
 }
 
 #[allow(unused_mut)]
