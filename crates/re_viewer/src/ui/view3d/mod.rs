@@ -452,7 +452,7 @@ pub(crate) fn view_3d(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
-        let frame_builder_prepare = FrameBuilder::new_shared(); // Don't put FrameBuidler on paint_callback_resources, so it doesn't outlive the frame!
+        let frame_builder_prepare = FrameBuilder::new_shared();
         let frame_builder_draw = frame_builder_prepare.clone();
 
         egui::PaintCallback {
@@ -461,14 +461,11 @@ pub(crate) fn view_3d(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, _queue, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
-                        frame_builder_prepare
-                            .write()
-                            .unwrap()
-                            .test_triangle(ctx, device);
+                        frame_builder_prepare.write().test_triangle(ctx, device);
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();
-                        frame_builder_draw.read().unwrap().draw(ctx, render_pass);
+                        frame_builder_draw.read().draw(ctx, render_pass);
                     }),
             ),
         }

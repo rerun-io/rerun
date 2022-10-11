@@ -1,4 +1,5 @@
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 use crate::context::{RenderContext, RenderPipelineHandle};
 
@@ -7,7 +8,6 @@ use crate::context::{RenderContext, RenderPipelineHandle};
 /// (does not contain information that is special to a particular renderer or global to the Context)
 //struct FrameUniformBuffer {
 // TODO(andreas): camera matrix and the like.
-// What does not go here are even more global things like
 //}
 
 /// The highest level rendering block in `re_renderer`.

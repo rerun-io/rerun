@@ -18,9 +18,10 @@ pub(crate) use misc::*;
 pub(crate) use ui::*;
 
 pub use app::App;
+pub use remote_viewer_app::RemoteViewerApp;
+
 #[cfg(feature = "wgpu")]
 use re_renderer::context::RenderContext;
-pub use remote_viewer_app::RemoteViewerApp;
 
 // ----------------------------------------------------------------------------
 // When compiling for native:
