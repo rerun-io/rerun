@@ -14,6 +14,7 @@ impl Resource for PipelineLayout {}
 pub(crate) struct PipelineLayoutDesc {
     /// Debug label of the pipeline layout. This will show up in graphics debuggers for easy identification.
     pub label: String, // TODO(andreas): Ignore for hashing/comparing?
+    // TODO(andreas) use SmallVec or similar, limited to 4
     pub entries: Vec<BindGroupLayoutHandle>,
 }
 

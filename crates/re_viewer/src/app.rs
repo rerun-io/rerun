@@ -177,6 +177,17 @@ impl eframe::App for App {
         }
 
         self.handle_dropping_files(egui_ctx);
+
+        #[cfg(feature = "wgpu")]
+        {
+            let render_state = frame.wgpu_render_state().unwrap();
+            let paint_callback_resources =
+                &mut render_state.renderer.write().paint_callback_resources;
+            paint_callback_resources
+                .get_mut::<re_renderer::context::RenderContext>()
+                .unwrap()
+                .frame_maintenance();
+        }
     }
 }
 

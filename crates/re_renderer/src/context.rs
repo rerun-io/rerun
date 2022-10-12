@@ -45,9 +45,11 @@ impl RenderContext {
 
         // Note that not all pools require frame maintenance.
         // (the ones that don't don't do any resource cleanup as their resources are lightweight and rare enough)
-        self.textures.frame_maintenance(self.frame_index);
         self.renderpipelines.frame_maintenance(self.frame_index);
-        self.bind_groups.frame_maintenance(self.frame_index);
+        // Bind group maintenance must come before texture/buffer maintenance since it registers texture/buffer use
+        self.bind_groups
+            .frame_maintenance(self.frame_index, &mut self.textures);
+        self.textures.frame_maintenance(self.frame_index);
     }
 
     pub(crate) fn output_format(&self) -> wgpu::TextureFormat {

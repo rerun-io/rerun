@@ -11,6 +11,7 @@ parking_lot = "0.12"
 slotmap = "1.0.6"
 anyhow = "1.0.56"
 thiserror = "1.0"
+re_log = { path = "../re_log" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wgpu = { version = "0.14", default-features = false }

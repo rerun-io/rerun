@@ -23,13 +23,13 @@ impl UsageTrackedResource for BindGroup {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) enum BindGroupEntry {
     TextureView(TextureHandle), // TODO(andreas) what about non-default views?
     Sampler(SamplerHandle),
 }
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct BindGroupDesc {
     /// Debug label of the bind group. This will show up in graphics debuggers for easy identification.
     pub label: String, // TODO(andreas): Ignore for hashing/comparing?
@@ -87,8 +87,20 @@ impl BindGroupPool {
         })
     }
 
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
-        self.pool.frame_maintenance(frame_index);
+    pub fn frame_maintenance(&mut self, frame_index: u64, textures: &mut TexturePool) {
+        self.pool.discard_unused_resources(frame_index);
+
+        // Of what's left, update dependent resources.
+        for desc in self.pool.resource_descs() {
+            for entry in &desc.entries {
+                match entry {
+                    BindGroupEntry::TextureView(handle) => {
+                        textures.register_resource_usage(*handle);
+                    }
+                    BindGroupEntry::Sampler(_) => {} // Samplers don't track frame index
+                }
+            }
+        }
     }
 
     pub fn get(&self, handle: BindGroupHandle) -> Result<&BindGroup, PoolError> {

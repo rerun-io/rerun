@@ -16,7 +16,7 @@ impl UsageTrackedResource for RenderPipeline {
     }
 }
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct ShaderDesc {
     // TODO(andreas) needs to be a path for reloading.
     // Our goal is to have shipped software embed the source (single file yay) and any development state reload automatically
@@ -25,12 +25,11 @@ pub(crate) struct ShaderDesc {
 }
 
 /// Renderpipeline descriptor, can be converted into `wgpu::RenderPipeline` (which isn't hashable or comparable)
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
     pub label: String, // TODO(andreas): Ignore for hashing/comparing?
 
-    // TODO(andreas) use SmallVec or simliar, limited to 4
     pub pipeline_layout: PipelineLayoutHandle,
 
     pub vertex_shader: ShaderDesc,
@@ -115,8 +114,9 @@ impl RenderPipelinePool {
 
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         // TODO(andreas) shader reloading goes here
-        // TODO(andreas) update usage timer of all dependent resources (via atomic max)
-        self.pool.frame_maintenance(frame_index);
+
+        // Kill any renderpipelines that haven't been used in this last frame
+        self.pool.discard_unused_resources(frame_index);
     }
 
     pub fn get(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {

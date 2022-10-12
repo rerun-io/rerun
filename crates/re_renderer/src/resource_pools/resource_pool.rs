@@ -1,5 +1,6 @@
 use std::{
-    collections::HashMap,
+    collections::{hash_map::Keys, HashMap},
+    fmt::Debug,
     hash::Hash,
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -31,7 +32,7 @@ pub(crate) trait UsageTrackedResource {
 impl<T: UsageTrackedResource> Resource for T {
     fn on_handle_resolve(&self, current_frame_index: u64) {
         self.last_frame_used()
-            .fetch_max(current_frame_index, Ordering::Relaxed);
+            .fetch_max(current_frame_index, Ordering::Release);
     }
 }
 
@@ -78,15 +79,30 @@ where
                 }
             })
     }
+
+    pub fn resource_descs(&self) -> Keys<'_, Desc, Handle> {
+        self.lookup.keys()
+    }
 }
 
 impl<Handle, Desc, Res> ResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
     Res: UsageTrackedResource,
+    Desc: Debug,
 {
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
-        // TODO: Remove resource that we haven't used for a while. Details should be configurable
+    pub fn discard_unused_resources(&mut self, frame_index: u64) {
+        self.resources.retain(|_, resource| {
+            resource.last_frame_used().load(Ordering::Acquire) >= self.current_frame_index
+        });
+        self.lookup.retain(|desc, handle| {
+            let retain = self.resources.contains_key(*handle);
+            if !retain {
+                re_log::debug!("discarded resource with desc {:?}", desc);
+            }
+            retain
+        });
+
         self.current_frame_index = frame_index;
     }
 }
