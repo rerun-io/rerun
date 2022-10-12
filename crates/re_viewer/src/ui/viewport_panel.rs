@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use re_data_store::ObjectsBySpace;
 use re_log_types::*;
 
-use crate::{misc::HoveredSpace, ViewerContext};
+use crate::ViewerContext;
 
 // ----------------------------------------------------------------------------
 
@@ -58,7 +58,6 @@ struct TabViewer<'a, 'b> {
     objects: ObjectsBySpace<'b>,
     sticky_objects: ObjectsBySpace<'b>,
     space_states: &'a mut SpaceStates,
-    hovered_space: Option<ObjPath>,
     maximized: &'a mut Option<Tab>,
 }
 
@@ -71,19 +70,14 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 *self.maximized = Some(tab.clone());
             }
 
-            let mut hovered =
-                self.space_states
-                    .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
-            hovered |= self.space_states.show_sticky_space(
+            self.space_states
+                .show_space(self.ctx, &self.objects, tab.space.as_ref(), ui);
+            self.space_states.show_sticky_space(
                 self.ctx,
                 &self.sticky_objects,
                 tab.space.as_ref(),
                 ui,
             );
-
-            if hovered {
-                self.hovered_space = tab.space.clone();
-            }
         });
     }
 
@@ -164,9 +158,6 @@ impl View {
             let tab = first_tab(&self.tree).unwrap();
 
             ui.strong(space_name(tab.space.as_ref()));
-            if tab.space.as_ref() != ctx.rec_cfg.hovered_space.space() {
-                ctx.rec_cfg.hovered_space = HoveredSpace::None;
-            }
 
             self.space_states
                 .show_space(ctx, &objects, tab.space.as_ref(), ui);
@@ -184,10 +175,6 @@ impl View {
                 ui.strong(space_name(tab.space.as_ref()));
             });
 
-            if tab.space.as_ref() != ctx.rec_cfg.hovered_space.space() {
-                ctx.rec_cfg.hovered_space = HoveredSpace::None;
-            }
-
             self.space_states
                 .show_space(ctx, &objects, tab.space.as_ref(), ui);
             self.space_states
@@ -198,7 +185,6 @@ impl View {
                 objects,
                 sticky_objects,
                 space_states: &mut self.space_states,
-                hovered_space: None,
                 maximized: &mut self.maximized,
             };
 
@@ -213,12 +199,6 @@ impl View {
                     .style(dock_style)
                     .show_inside(ui, &mut tab_viewer);
             });
-
-            let hovered_space = tab_viewer.hovered_space;
-
-            if hovered_space.as_ref() != ctx.rec_cfg.hovered_space.space() {
-                ctx.rec_cfg.hovered_space = HoveredSpace::None;
-            }
         }
     }
 }
@@ -329,22 +309,19 @@ pub(crate) struct SpaceStates {
 }
 
 impl SpaceStates {
-    /// Returns `true` if hovered.
     fn show_space(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         objects: &ObjectsBySpace<'_>,
         space: Option<&ObjPath>,
         ui: &mut egui::Ui,
-    ) -> bool {
+    ) {
         crate::profile_function!(space_name(space));
-
-        let mut hovered = false;
 
         let objects = if let Some(objects) = objects.get(&space) {
             objects
         } else {
-            return hovered;
+            return;
         };
 
         let objects = objects.filter(|props| {
@@ -374,14 +351,11 @@ impl SpaceStates {
                     .entry(space.cloned())
                     .or_insert_with(|| crate::ui::view_tensor::TensorViewState::create(tensor));
 
-                hovered |= ui
-                    .vertical(|ui| {
-                        crate::view_tensor::view_tensor(ui, state_tensor, tensor);
-                    })
-                    .response
-                    .hovered;
+                ui.vertical(|ui| {
+                    crate::view_tensor::view_tensor(ui, state_tensor, tensor);
+                });
 
-                return hovered;
+                return;
             }
         }
 
@@ -398,45 +372,33 @@ impl SpaceStates {
 
         if objects.has_any_2d() {
             let state_2d = self.state_2d.entry(space.cloned()).or_default();
-            let response = crate::view2d::view_2d(ctx, ui, state_2d, space, &objects);
-            hovered |= response.hovered();
+            crate::view2d::view_2d(ctx, ui, state_2d, space, &objects);
         }
 
         if objects.has_any_3d() {
             ui.vertical(|ui| {
                 let state_3d = self.state_3d.entry(space.cloned()).or_default();
-                let response = crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
-                hovered |= response.hovered();
+                crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
             });
         }
-
-        if !hovered && ctx.rec_cfg.hovered_space.space() == space {
-            ctx.rec_cfg.hovered_space = HoveredSpace::None;
-        }
-
-        hovered
     }
 
     /// Shows a sticky space, i.e. a space that always shows its entire dataset,
     /// irrelevant of time, as opposed to only what's currently selected in
     /// the time panel.
-    ///
-    /// Returns `true` if hovered.
     fn show_sticky_space(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         sticky_objects: &ObjectsBySpace<'_>,
         space: Option<&ObjPath>,
         ui: &mut egui::Ui,
-    ) -> bool {
+    ) {
         crate::profile_function!(space_name(space));
-
-        let mut hovered = false;
 
         let objects = if let Some(objects) = sticky_objects.get(&space) {
             objects
         } else {
-            return hovered;
+            return;
         };
 
         let objects = objects.filter(|props| {
@@ -459,15 +421,8 @@ impl SpaceStates {
 
         if objects.has_any_text_entries() {
             let state = self.state_text_entry.entry(space.cloned()).or_default();
-            let response = state.show(ui, ctx, &objects);
-            hovered |= response.hovered();
+            state.show(ui, ctx, &objects);
         }
-
-        if !hovered && ctx.rec_cfg.hovered_space.space() == space {
-            ctx.rec_cfg.hovered_space = HoveredSpace::None;
-        }
-
-        hovered
     }
 }
 

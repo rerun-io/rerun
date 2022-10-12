@@ -180,16 +180,6 @@ pub enum HoveredSpace {
     },
 }
 
-impl HoveredSpace {
-    pub fn space(&self) -> Option<&ObjPath> {
-        match self {
-            Self::None => None,
-            Self::TwoD { space_2d, .. } => space_2d.as_ref(),
-            Self::ThreeD { space_3d, .. } => space_3d.as_ref(),
-        }
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// UI config for the current recording (found in [`LogDb`]).
@@ -211,15 +201,22 @@ pub(crate) struct RecordingConfig {
     #[serde(skip)]
     pub projected_object_properties: ObjectsProperties,
 
-    /// What space is the pointer hovering over?
+    /// What space is the pointer hovering over? Read from this.
     #[serde(skip)]
-    pub hovered_space: HoveredSpace,
+    pub hovered_space_previous_frame: HoveredSpace,
+
+    /// What space is the pointer hovering over? Write to this.
+    #[serde(skip)]
+    pub hovered_space_this_frame: HoveredSpace,
 }
 
 impl RecordingConfig {
     /// Called at the start of each frame
     pub fn on_frame_start(&mut self, log_db: &LogDb) {
         crate::profile_function!();
+
+        self.hovered_space_previous_frame =
+            std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
 
         self.project_object_properties(log_db);
     }
