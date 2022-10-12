@@ -941,6 +941,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui-notify"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c70bdf41680aae6219f56d54af786ec4aed8cdb1eda1a3d422badeea297dc01b"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "egui-wgpu"
 version = "0.19.0"
 source = "git+https://github.com/emilk/egui?rev=7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b#7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b"
@@ -2857,6 +2866,7 @@ dependencies = [
  "document-features",
  "eframe",
  "egui",
+ "egui-notify",
  "egui-wgpu",
  "egui_dock",
  "egui_extras",

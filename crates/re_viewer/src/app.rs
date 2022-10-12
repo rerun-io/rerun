@@ -3,6 +3,7 @@ use std::{any::Any, sync::mpsc::Receiver};
 use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 use ahash::HashMap;
 use egui_extras::RetainedImage;
+use egui_notify::Toasts;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
@@ -27,7 +28,11 @@ pub struct App {
     #[cfg(not(target_arch = "wasm32"))]
     ctrl_c: std::sync::Arc<std::sync::atomic::AtomicBool>,
 
+    /// Pending background tasks, using `poll_promise`.
     pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
+
+    /// Toast notifications, using `egui-notify`.
+    toasts: Toasts,
 }
 
 impl App {
@@ -101,6 +106,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
             pending_promises: Default::default(),
+            toasts: Toasts::new(),
         }
     }
 
@@ -235,6 +241,8 @@ impl eframe::App for App {
         }
 
         self.handle_dropping_files(egui_ctx);
+
+        self.toasts.show(egui_ctx);
     }
 }
 
@@ -478,16 +486,17 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     {
         use anyhow::Result as AnyResult;
         use std::path::PathBuf;
+        use std::time::Duration as StdDuration;
 
         const FILE_SAVER_PROMISE: &str = "file_saver";
+        const NOTIFICATIONS_DURATION: StdDuration = StdDuration::from_secs(5);
 
         if app.promise_exists(FILE_SAVER_PROMISE) {
             // There's already a file save running in the background.
 
             ui.add_enabled_ui(false, |ui| {
                 ui.horizontal(|ui| {
-                    ui.button("Save…")
-                        .on_hover_text("A file save is already in progress...");
+                    let _ = ui.button("Save…");
                     ui.spinner();
                 })
             });
@@ -497,21 +506,24 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
 
                 match res {
                     Ok(path) => {
-                        // TODO(cmc): replace this with a toast
-                        re_log::info!("Data saved to {:?}", path);
+                        let msg = format!("Successfully wrote to {path:?}");
+                        re_log::info!(msg);
+                        app.toasts
+                            .info(msg)
+                            .set_duration(NOTIFICATIONS_DURATION.into());
                     }
                     Err(err) => {
-                        // TODO(cmc): replace this with a toast
-                        re_log::error!("{err}");
-                        rfd::MessageDialog::new()
-                            .set_level(rfd::MessageLevel::Error)
-                            .set_description(&err.to_string())
-                            .show();
+                        let msg = format!("{err}");
+                        re_log::error!(msg);
+                        app.toasts
+                            .error(msg)
+                            .set_duration(NOTIFICATIONS_DURATION.into());
                     }
                 }
             } else {
                 // File save promise is still running in the background.
 
+                // NOTE: not a toast, want something a bit more discreet here.
                 egui::Window::new("file_saver_spin")
                     .anchor(egui::Align2::RIGHT_BOTTOM, egui::Vec2::ZERO)
                     .title_bar(false)
@@ -519,7 +531,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                     .show(ui.ctx(), |ui| {
                         ui.horizontal(|ui| {
                             ui.spinner();
-                            ui.label("Writing to file...");
+                            ui.label(egui::RichText::new("Writing file to disk…").italics());
                         })
                     });
             }
@@ -534,11 +546,9 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
             if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
                 let f = save_to_file(app, path);
                 if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
-                    // TODO(cmc): replace this with a toast
-                    rfd::MessageDialog::new()
-                        .set_level(rfd::MessageLevel::Error)
-                        .set_description(&err.to_string())
-                        .show();
+                    app.toasts
+                        .error(err.to_string())
+                        .set_duration(NOTIFICATIONS_DURATION.into());
                 }
             }
         };
