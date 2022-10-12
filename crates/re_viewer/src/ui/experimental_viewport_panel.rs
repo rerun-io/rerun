@@ -565,22 +565,57 @@ impl ExperimentalViewportPanel {
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
-            dock_style.separator_width = 2.0;
-            dock_style.show_close_buttons = false;
-            dock_style.tab_include_scrollarea = false;
+            let mut hovered_space = None;
 
-            let mut tab_viewer = TabViewer {
-                ctx,
-                spaces_info: &spaces_info,
-                space_views: &mut self.blueprint.space_views,
-                hovered_space: None,
-                maximized: &mut self.blueprint.maximized,
-            };
+            if let Some(space_view_id) = self.blueprint.maximized.clone() {
+                let space_view = self
+                    .blueprint
+                    .space_views
+                    .get_mut(&space_view_id)
+                    .expect("Should have been populated beforehand");
 
-            egui_dock::DockArea::new(&mut self.blueprint.tree)
-                .style(dock_style)
-                .show_inside(ui, &mut tab_viewer);
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("⬅")
+                        .on_hover_text("Restore - show all spaces")
+                        .clicked()
+                    {
+                        self.blueprint.maximized = None;
+                    }
+                    ui.strong(&space_view.name);
+                });
+
+                if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
+                    let response = space_view.ui(ctx, space_info, ui);
+
+                    if response.hovered() {
+                        hovered_space = Some(space_view.space_path.clone());
+                    }
+                } else {
+                    ui.label("[Missing space]"); // TODO
+                }
+            } else {
+                let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
+                dock_style.separator_width = 2.0;
+                dock_style.show_close_buttons = false;
+                dock_style.tab_include_scrollarea = false;
+
+                let mut tab_viewer = TabViewer {
+                    ctx,
+                    spaces_info: &spaces_info,
+                    space_views: &mut self.blueprint.space_views,
+                    hovered_space: None,
+                    maximized: &mut self.blueprint.maximized,
+                };
+
+                egui_dock::DockArea::new(&mut self.blueprint.tree)
+                    .style(dock_style)
+                    .show_inside(ui, &mut tab_viewer);
+
+                hovered_space = tab_viewer.hovered_space;
+            }
+
+            // TODO: use hovered_space
         });
     }
 }
