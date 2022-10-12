@@ -6,7 +6,7 @@ use crate::{
     context::*,
     resource_pools::{
         bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, texture_pool::*,
+        render_pipeline_pool::*, sampler_pool::SamplerDesc, texture_pool::*,
     },
 };
 
@@ -37,7 +37,7 @@ pub struct FrameBuilder {
 pub type SharedFrameBuilder = Arc<RwLock<FrameBuilder>>;
 
 impl FrameBuilder {
-    const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+    const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
     const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
     pub fn new() -> Self {
@@ -93,7 +93,21 @@ impl FrameBuilder {
                     },
                     // TODO(andreas): a bunch of basic sampler should go to future bind-group 0 which will always be bound
                     // (handle for that one should probably live on the context or some other object encapsulating knowledge about it)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        count: None,
+                    },
                 ],
+            },
+        );
+
+        let nearest_sampler = ctx.samplers.request(
+            device,
+            &SamplerDesc {
+                label: "nearest".to_owned(),
+                ..Default::default()
             },
         );
 
@@ -101,11 +115,15 @@ impl FrameBuilder {
             device,
             &BindGroupDesc {
                 label: "tonemapping".to_owned(),
-                entries: vec![BindGroupEntry::TextureView(self.hdr_render_target)],
+                entries: vec![
+                    BindGroupEntry::TextureView(self.hdr_render_target),
+                    BindGroupEntry::Sampler(nearest_sampler),
+                ],
                 layout: self.tonemapping_bind_group_layout,
             },
             &ctx.bind_group_layouts,
             &ctx.textures,
+            &ctx.samplers,
         );
 
         self.tonemapping_pipeline = ctx.renderpipelines.request(

@@ -17,6 +17,7 @@ impl Resource for BindGroupLayout {
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct BindGroupLayoutDesc {
+    /// Debug label of the bind group layout. This will show up in graphics debuggers for easy identification.
     pub label: String, // TODO(andreas): Ignore for hashing/comparing?
     pub entries: Vec<wgpu::BindGroupLayoutEntry>,
 }

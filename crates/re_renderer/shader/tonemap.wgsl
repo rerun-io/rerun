@@ -1,28 +1,24 @@
 struct VertexOutput {
-    @builtin(position) pos: vec4<f32>,
-    @location(0) coord: vec2<f32>,
+    @builtin(position) position: vec4<f32>,
+    @location(0) texcoord: vec2<f32>,
 };
+
+@group(0) @binding(0)
+var hdr_texture: texture_2d<f32>;
+
+@group(0) @binding(1)
+var nearest_sampler: sampler;
+
+fn linear_to_srgb(color_linear: vec3<f32>) -> vec3<f32>  {
+    var selector = ceil(color_linear - 0.0031308); // 0 if under value, 1 if over
+    var under = 12.92 * color_linear;
+    var over = 1.055 * pow(color_linear, vec3<f32>(0.41666)) - 0.055;
+    return mix(under, over, selector);
+}
 
 @fragment
 fn main(in: VertexOutput) -> @location(0) vec4<f32> {
-    var c: vec2<f32> = vec2<f32>(-0.79, 0.15);
-    var max_iter: u32 = 200u;
-    var z: vec2<f32> = (in.coord.xy - vec2<f32>(0.5, 0.5)) * 3.0;
-
-    var i: u32 = 0u;
-    loop {
-        if (i >= max_iter) {
-            break;
-        }
-        z = vec2<f32>(z.x * z.x - z.y * z.y, z.x * z.y + z.y * z.x) + c;
-        if (dot(z, z) > 4.0) {
-            break;
-        }
-        continuing {
-            i = i + 1u;
-        }
-    }
-
-    var t: f32 = f32(i) / f32(max_iter);
-    return vec4<f32>(t * 3.0, t * 3.0 - 1.0, t * 3.0 - 2.0, 1.0);
+    // Note that textureLoad with pixel coordinates won't work for us since seems to ignore viewport cutouts which we need to support here
+    var hdr = textureSample(hdr_texture, nearest_sampler, in.texcoord);
+    return hdr; //vec4<f32>(linear_to_srgb(hdr.rgb), 1.0);
 }

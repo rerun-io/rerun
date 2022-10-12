@@ -1,7 +1,7 @@
 use crate::resource_pools::{
     bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,
     pipeline_layout_pool::PipelineLayoutPool, render_pipeline_pool::RenderPipelinePool,
-    texture_pool::TexturePool,
+    sampler_pool::SamplerPool, texture_pool::TexturePool,
 };
 
 /// Any resource involving wgpu rendering which can be re-used accross different scenes.
@@ -15,6 +15,7 @@ pub struct RenderContext {
     pub(crate) pipeline_layouts: PipelineLayoutPool,
     pub(crate) bind_group_layouts: BindGroupLayoutPool,
     pub(crate) bind_groups: BindGroupPool,
+    pub(crate) samplers: SamplerPool,
 
     frame_index: u64,
 }
@@ -33,6 +34,7 @@ impl RenderContext {
             pipeline_layouts: PipelineLayoutPool::new(),
             bind_group_layouts: BindGroupLayoutPool::new(),
             bind_groups: BindGroupPool::new(),
+            samplers: SamplerPool::new(),
 
             frame_index: 0,
         }
@@ -40,6 +42,9 @@ impl RenderContext {
 
     pub fn frame_maintenance(&mut self) {
         self.frame_index += 1;
+
+        // Note that not all pools require frame maintenance.
+        // (the ones that don't don't do any resource cleanup as their resources are lightweight and rare enough)
         self.textures.frame_maintenance(self.frame_index);
         self.renderpipelines.frame_maintenance(self.frame_index);
         self.pipeline_layouts.frame_maintenance(self.frame_index);

@@ -3,6 +3,7 @@ use slotmap::new_key_type;
 use super::{
     bind_group_layout_pool::{BindGroupLayoutHandle, BindGroupLayoutPool},
     resource_pool::*,
+    sampler_pool::{SamplerHandle, SamplerPool},
     texture_pool::{TextureHandle, TexturePool},
 };
 
@@ -22,10 +23,12 @@ impl Resource for BindGroup {
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub(crate) enum BindGroupEntry {
     TextureView(TextureHandle), // TODO(andreas) what about non-default views?
+    Sampler(SamplerHandle),
 }
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct BindGroupDesc {
+    /// Debug label of the bind group. This will show up in graphics debuggers for easy identification.
     pub label: String, // TODO(andreas): Ignore for hashing/comparing?
     pub entries: Vec<BindGroupEntry>,
     pub layout: BindGroupLayoutHandle,
@@ -46,8 +49,9 @@ impl BindGroupPool {
         &mut self,
         device: &wgpu::Device,
         desc: &BindGroupDesc,
-        bind_group_layout_pool: &BindGroupLayoutPool,
-        texture_pool: &TexturePool,
+        bind_group_layout: &BindGroupLayoutPool,
+        textures: &TexturePool,
+        samplers: &SamplerPool,
     ) -> BindGroupHandle {
         self.pool.request(desc, |desc| {
             // TODO(andreas): error handling
@@ -62,13 +66,16 @@ impl BindGroupPool {
                         resource: match entry {
                             BindGroupEntry::TextureView(handle) => {
                                 wgpu::BindingResource::TextureView(
-                                    &texture_pool.get(*handle).unwrap().default_view,
+                                    &textures.get(*handle).unwrap().default_view,
                                 )
                             }
+                            BindGroupEntry::Sampler(handle) => wgpu::BindingResource::Sampler(
+                                &samplers.get(*handle).unwrap().sampler,
+                            ),
                         },
                     })
                     .collect::<Vec<_>>(),
-                layout: &bind_group_layout_pool.get(desc.layout).unwrap().layout,
+                layout: &bind_group_layout.get(desc.layout).unwrap().layout,
             });
             BindGroup { bind_group }
         })

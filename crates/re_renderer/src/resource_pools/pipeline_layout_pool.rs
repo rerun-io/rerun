@@ -17,6 +17,7 @@ impl Resource for PipelineLayout {
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct PipelineLayoutDesc {
+    /// Debug label of the pipeline layout. This will show up in graphics debuggers for easy identification.
     pub label: String, // TODO(andreas): Ignore for hashing/comparing?
     pub entries: Vec<BindGroupLayoutHandle>,
 }
