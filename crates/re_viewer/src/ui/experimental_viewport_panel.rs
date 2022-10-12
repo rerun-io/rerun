@@ -496,7 +496,6 @@ struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
     spaces_info: &'a SpacesInfo,
     space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
-    hovered_space: Option<ObjPath>,
     maximized: &'a mut Option<SpaceViewId>,
 }
 
@@ -517,11 +516,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 .expect("Should have been populated beforehand");
 
             if let Some(space_info) = self.spaces_info.spaces.get(&space_view.space_path) {
-                let response = space_view.ui(self.ctx, space_info, ui);
-
-                if response.hovered() {
-                    self.hovered_space = Some(space_view.space_path.clone());
-                }
+                space_view.ui(self.ctx, space_info, ui);
             } else {
                 ui.label("[Missing space]"); // TODO
             }
@@ -617,7 +612,6 @@ impl ExperimentalViewportPanel {
                     ctx,
                     spaces_info: &spaces_info,
                     space_views: &mut self.blueprint.space_views,
-                    hovered_space: None,
                     maximized: &mut self.blueprint.maximized,
                 };
 
