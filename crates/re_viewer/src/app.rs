@@ -220,7 +220,7 @@ impl eframe::App for App {
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
-        file_saver(egui_ctx, self);
+        file_saver(egui_ctx, self); // toasts for background file saver
         top_panel(egui_ctx, frame, self);
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
@@ -484,7 +484,8 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
 // ---
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
-const FILE_SAVER_NOTIF_DURATION: std::time::Duration = std::time::Duration::from_secs(5);
+const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
+    Some(std::time::Duration::from_secs(4));
 
 fn file_saver(egui_ctx: &egui::Context, app: &mut App) {
     // TODO(emilk): support saving data on web
@@ -503,16 +504,14 @@ fn file_saver(egui_ctx: &egui::Context, app: &mut App) {
                     Ok(path) => {
                         let msg = format!("Successfully wrote to {path:?}");
                         re_log::info!(msg);
-                        app.toasts
-                            .info(msg)
-                            .set_duration(FILE_SAVER_NOTIF_DURATION.into());
+                        app.toasts.info(msg).set_duration(FILE_SAVER_NOTIF_DURATION);
                     }
                     Err(err) => {
                         let msg = format!("{err}");
                         re_log::error!(msg);
                         app.toasts
                             .error(msg)
-                            .set_duration(FILE_SAVER_NOTIF_DURATION.into());
+                            .set_duration(FILE_SAVER_NOTIF_DURATION);
                     }
                 }
             } else {
@@ -523,10 +522,11 @@ fn file_saver(egui_ctx: &egui::Context, app: &mut App) {
                     .anchor(egui::Align2::RIGHT_BOTTOM, egui::Vec2::ZERO)
                     .title_bar(false)
                     .enabled(false)
+                    .auto_sized()
                     .show(egui_ctx, |ui| {
                         ui.horizontal(|ui| {
                             ui.spinner();
-                            ui.label(egui::RichText::new("Writing file to disk…").italics());
+                            ui.label("Writing file to disk…");
                         })
                     });
             }
@@ -538,11 +538,6 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use std::time::Duration as StdDuration;
-
-        const FILE_SAVER_PROMISE: &str = "file_saver";
-        const NOTIFICATIONS_DURATION: StdDuration = StdDuration::from_secs(5);
-
         if app.promise_exists(FILE_SAVER_PROMISE) {
             // There's already a file save running in the background.
 
@@ -567,7 +562,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                     // grayed out at this point... better safe than sorry though.
                     app.toasts
                         .error(err.to_string())
-                        .set_duration(NOTIFICATIONS_DURATION.into());
+                        .set_duration(FILE_SAVER_NOTIF_DURATION);
                 }
             }
         };
