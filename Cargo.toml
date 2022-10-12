@@ -35,4 +35,4 @@ egui-wgpu = { git = "https://github.com/emilk/egui", rev = "c414af7aa2858703d2ff
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }
 
 # 2022-10-12 - Eq for DepthBiasState and DepthStencilState
-wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "aed3b1ae59ee097901b852d934493c7ec167d344"}
+wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "aed3b1ae59ee097901b852d934493c7ec167d344" }
