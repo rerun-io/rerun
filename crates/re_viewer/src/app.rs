@@ -476,16 +476,72 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let log_db = app.log_db();
-        if ui
-            .add_enabled(!log_db.is_empty(), egui::Button::new("Save…"))
+        use anyhow::Result as AnyResult;
+        use std::path::PathBuf;
+
+        const FILE_SAVER_PROMISE: &str = "file_saver";
+
+        if app.promise_exists(FILE_SAVER_PROMISE) {
+            // There's already a file save running in the background.
+
+            ui.add_enabled_ui(false, |ui| {
+                ui.horizontal(|ui| {
+                    ui.button("Save…")
+                        .on_hover_text("A file save is already in progress...");
+                    ui.spinner();
+                })
+            });
+
+            if let Some(res) = app.poll_promise::<AnyResult<PathBuf>>(FILE_SAVER_PROMISE) {
+                // File save promise has returned.
+
+                match res {
+                    Ok(path) => {
+                        // TODO(cmc): replace this with a toast
+                        re_log::info!("Data saved to {:?}", path);
+                    }
+                    Err(err) => {
+                        // TODO(cmc): replace this with a toast
+                        re_log::error!("{err}");
+                        rfd::MessageDialog::new()
+                            .set_level(rfd::MessageLevel::Error)
+                            .set_description(&err.to_string())
+                            .show();
+                    }
+                }
+            } else {
+                // File save promise is still running in the background.
+
+                egui::Window::new("file_saver_spin")
+                    .anchor(egui::Align2::RIGHT_BOTTOM, egui::Vec2::ZERO)
+                    .title_bar(false)
+                    .enabled(false)
+                    .show(ui.ctx(), |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spinner();
+                            ui.label("Writing to file...");
+                        })
+                    });
+            }
+        } else if ui
+            .add_enabled(!app.log_db().is_empty(), egui::Button::new("Save…"))
             .on_hover_text("Save all data to a Rerun data file (.rrd)")
             .clicked()
         {
+            // There is no other file save running, and the DB isn't empty: let's spawn
+            // a new one.
+
             if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
-                save_to_file(log_db, path);
+                let f = save_to_file(app, path);
+                if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
+                    // TODO(cmc): replace this with a toast
+                    rfd::MessageDialog::new()
+                        .set_level(rfd::MessageLevel::Error)
+                        .set_description(&err.to_string())
+                        .show();
+                }
             }
-        }
+        };
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -567,43 +623,28 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 }
 
+/// Returns a closure that will save the file to disk when run.
 #[cfg(not(target_arch = "wasm32"))]
-fn save_to_file(log_db: &LogDb, path: std::path::PathBuf) {
-    fn save_to_file_impl(msgs: &[LogMsg], path: &std::path::PathBuf) -> anyhow::Result<()> {
-        crate::profile_function!();
-        use anyhow::Context as _;
-        let file = std::fs::File::create(path).context("Failed to create file")?;
-        re_log_types::encoding::encode(msgs.iter(), file)
-    }
+fn save_to_file(
+    app: &mut App,
+    path: std::path::PathBuf,
+) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
+    let msgs = app
+        .log_db()
+        .chronological_log_messages()
+        .cloned()
+        .collect::<Vec<_>>();
 
-    // On some platforms, the window manager will consider an application irresponsive
-    // if it hasn't refreshed the contents of its window for too long.
-    // This is exactly what happens when writing a big .rrd file to disk: we're blocking
-    // the UI thread while waiting for I/O, and the window manager shuts us down.
-    //
-    // Workaround: spawn a fire-and-forget thread to do the I/O in the background for now.
-    let _ = std::thread::spawn({
-        let msgs = log_db
-            .chronological_log_messages()
-            .cloned()
-            .collect::<Vec<_>>();
-        move || {
-            match save_to_file_impl(&msgs, &path) {
-                // TODO(emilk): show a popup instead of logging result
-                Ok(()) => {
-                    re_log::info!("Data saved to {:?}", path);
-                }
-                Err(err) => {
-                    let msg = format!("Failed saving data to {path:?}: {}", re_error::format(&err));
-                    re_log::error!("{msg}");
-                    rfd::MessageDialog::new()
-                        .set_level(rfd::MessageLevel::Error)
-                        .set_description(&msg)
-                        .show();
-                }
-            }
-        }
-    });
+    move || {
+        crate::profile_scope!("save_to_file");
+
+        use anyhow::Context as _;
+        let file = std::fs::File::create(path.as_path())
+            .with_context(|| format!("Failed to create file at {:?}", path))?;
+
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        re_log_types::encoding::encode(msgs.iter(), file).map(|_| path)
+    }
 }
 
 #[allow(unused_mut)]
