@@ -565,11 +565,11 @@ impl ExperimentalViewportPanel {
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            let num_tabs = num_tabs(&self.blueprint.tree);
+            let num_space_views = num_tabs(&self.blueprint.tree);
 
-            if num_tabs == 0 {
+            if num_space_views == 0 {
                 // nothing to show
-            } else if num_tabs == 1 {
+            } else if num_space_views == 1 {
                 let space_view_id = first_tab(&self.blueprint.tree).unwrap();
                 let space_view = self
                     .blueprint
