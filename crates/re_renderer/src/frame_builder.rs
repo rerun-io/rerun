@@ -4,7 +4,12 @@ use std::sync::Arc;
 
 use crate::{
     context::*,
-    resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, texture_pool::*},
+    resource_pools::{
+        bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
+        pipeline_layout_pool::*,
+        render_pipeline_pool::*,
+        texture_pool::*,
+    },
 };
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
@@ -21,7 +26,10 @@ use crate::{
 #[derive(Default)]
 pub struct FrameBuilder {
     test_render_pipeline: RenderPipelineHandle,
+
+    // TODO(andreas): Tonemapper should go into its own module
     tonemapping_pipeline: RenderPipelineHandle,
+    tonemapping_bind_group_layout: BindGroupLayoutHandle,
 
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
@@ -36,7 +44,9 @@ impl FrameBuilder {
     pub fn new() -> Self {
         FrameBuilder {
             test_render_pipeline: RenderPipelineHandle::default(),
+
             tonemapping_pipeline: RenderPipelineHandle::default(),
+            tonemapping_bind_group_layout: BindGroupLayoutHandle::default(),
 
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
@@ -65,6 +75,28 @@ impl FrameBuilder {
             &render_target_2d_desc(Self::FORMAT_DEPTH, width, height, 1),
         );
 
+        self.tonemapping_bind_group_layout = ctx.bindgroup_layouts.request(
+            device,
+            // TODO(andreas) got some builder utilities for this in blub. should bring them over
+            &BindGroupLayoutDesc {
+                label: "tonemapping".to_owned(),
+                entries: vec![
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::default(),
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // TODO(andreas): a bunch of basic sampler should go to future bind-group 0 which will always be bound
+                    // (handle for that one should probably live on the context or some other object encapsulating knowledge about it)
+                ],
+            },
+        );
+
         self.tonemapping_pipeline = ctx.renderpipelines.request(
             device,
             &RenderPipelineDesc {
@@ -73,7 +105,7 @@ impl FrameBuilder {
                     device,
                     &PipelineLayoutDesc {
                         label: "empty".to_owned(),
-                        entries: Vec::new(),
+                        entries: vec![self.tonemapping_bind_group_layout],
                     },
                     &ctx.bindgroup_layouts,
                 ),

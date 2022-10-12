@@ -23,6 +23,7 @@ impl Resource for Texture {
 }
 
 pub(crate) struct TexturePool {
+    // TODO(andreas): Ignore label for hashing/comparing?
     pool: ResourcePool<TextureHandle, wgpu::TextureDescriptor<'static>, Texture>,
 }
 

@@ -30,7 +30,7 @@ pub(crate) struct ShaderDesc {
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
-    pub label: String,
+    pub label: String, // TODO(andreas): Ignore for hashing/comparing?
 
     // TODO(andreas) use SmallVec or simliar, limited to 4
     pub pipeline_layout: PipelineLayoutHandle,

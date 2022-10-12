@@ -9,7 +9,7 @@ pub(crate) struct BindGroupLayout {
 }
 
 impl Resource for BindGroupLayout {
-    fn register_use(&self, current_frame_index: u64) {
+    fn register_use(&self, _current_frame_index: u64) {
         // TODO(andreas): When a bind group layout is last used doesn't tell us all that much since it's needed for pipeline creation only.
         // We need a way to propagate use to dependent resources
     }
@@ -17,7 +17,7 @@ impl Resource for BindGroupLayout {
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct BindGroupLayoutDesc {
-    pub label: String,
+    pub label: String, // TODO(andreas): Ignore for hashing/comparing?
     pub entries: Vec<wgpu::BindGroupLayoutEntry>,
 }
 
