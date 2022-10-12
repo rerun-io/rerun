@@ -149,7 +149,7 @@ impl App {
     ///
     /// Returns `Some<T>` it it's ready, or `None` otherwise.
     ///
-    /// Panics if `T` does match the actual return value of the promise.
+    /// Panics if `T` does not match the actual return value of the promise.
     pub fn poll_promise<T: Any>(&mut self, name: impl AsRef<str>) -> Option<T> {
         self.pending_promises
             .remove(name.as_ref())
