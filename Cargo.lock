@@ -903,6 +903,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=c414af7aa2858703d2ff5d72b8dbf1a657da5991#c414af7aa2858703d2ff5d72b8dbf1a657da5991"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -929,6 +930,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=c414af7aa2858703d2ff5d72b8dbf1a657da5991#c414af7aa2858703d2ff5d72b8dbf1a657da5991"
 dependencies = [
  "ahash 0.8.0",
  "epaint",
@@ -941,6 +943,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=c414af7aa2858703d2ff5d72b8dbf1a657da5991#c414af7aa2858703d2ff5d72b8dbf1a657da5991"
 dependencies = [
  "bytemuck",
  "egui",
@@ -954,6 +957,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=c414af7aa2858703d2ff5d72b8dbf1a657da5991#c414af7aa2858703d2ff5d72b8dbf1a657da5991"
 dependencies = [
  "arboard",
  "egui",
@@ -978,6 +982,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=c414af7aa2858703d2ff5d72b8dbf1a657da5991#c414af7aa2858703d2ff5d72b8dbf1a657da5991"
 dependencies = [
  "egui",
  "tracing",
@@ -986,6 +991,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=c414af7aa2858703d2ff5d72b8dbf1a657da5991#c414af7aa2858703d2ff5d72b8dbf1a657da5991"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1007,6 +1013,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=c414af7aa2858703d2ff5d72b8dbf1a657da5991#c414af7aa2858703d2ff5d72b8dbf1a657da5991"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1015,6 +1022,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=c414af7aa2858703d2ff5d72b8dbf1a657da5991#c414af7aa2858703d2ff5d72b8dbf1a657da5991"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.0",
@@ -2758,6 +2766,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "parking_lot",
+ "re_log",
  "slotmap",
  "thiserror",
  "wgpu",
@@ -4087,6 +4096,7 @@ checksum = "9193164d4de03a926d909d3bc7c30543cecb35400c02114792c2cae20d5e2dbb"
 [[package]]
 name = "wgpu"
 version = "0.14.0"
+source = "git+https://github.com/gfx-rs/wgpu.git#cf3ea638ee8b635b1a92b0f1812a8c193c48911e"
 dependencies = [
  "arrayvec 0.7.2",
  "js-sys",
@@ -4107,6 +4117,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.14.0"
+source = "git+https://github.com/gfx-rs/wgpu.git#cf3ea638ee8b635b1a92b0f1812a8c193c48911e"
 dependencies = [
  "arrayvec 0.7.2",
  "bit-vec",
@@ -4129,6 +4140,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.14.0"
+source = "git+https://github.com/gfx-rs/wgpu.git#cf3ea638ee8b635b1a92b0f1812a8c193c48911e"
 dependencies = [
  "android_system_properties",
  "arrayvec 0.7.2",
@@ -4166,6 +4178,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.14.0"
+source = "git+https://github.com/gfx-rs/wgpu.git#cf3ea638ee8b635b1a92b0f1812a8c193c48911e"
 dependencies = [
  "bitflags",
 ]
