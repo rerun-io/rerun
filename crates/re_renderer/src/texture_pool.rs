@@ -33,7 +33,7 @@ impl TexturePool {
         }
     }
 
-    pub fn request_texture(
+    pub fn request(
         &mut self,
         device: &wgpu::Device,
         desc: &wgpu::TextureDescriptor<'static>,
@@ -49,39 +49,32 @@ impl TexturePool {
         })
     }
 
-    // TODO: Make this a descriptor generator
-    pub fn request_2d_render_target(
-        &mut self,
-        device: &wgpu::Device,
-        format: wgpu::TextureFormat,
-        width: u32,
-        height: u32,
-        sample_count: u32,
-    ) -> TextureHandle {
-        self.request_texture(
-            device,
-            &wgpu::TextureDescriptor {
-                label: Some("rendertarget"),
-                size: wgpu::Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count,
-                dimension: wgpu::TextureDimension::D2,
-                format,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
-            },
-        )
-    }
-
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         self.pool.frame_maintenance(frame_index);
     }
 
-    pub fn texture(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
-        self.pool.resource(handle)
+    pub fn get(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
+        self.pool.get(handle)
+    }
+}
+
+pub(crate) fn render_target_2d_desc(
+    format: wgpu::TextureFormat,
+    width: u32,
+    height: u32,
+    sample_count: u32,
+) -> wgpu::TextureDescriptor<'static> {
+    wgpu::TextureDescriptor {
+        label: Some("rendertarget"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
     }
 }

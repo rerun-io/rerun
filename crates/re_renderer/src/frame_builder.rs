@@ -2,7 +2,12 @@ use anyhow::Context;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-use crate::{context::*, render_pipeline_pool::*, texture_pool::TextureHandle};
+use crate::{
+    context::*,
+    pipeline_layout_pool::PipelineLayoutDesc,
+    render_pipeline_pool::*,
+    texture_pool::{render_target_2d_desc, TextureHandle},
+};
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
 /// Contains information that is constant for a single frame like camera.
@@ -53,18 +58,27 @@ impl FrameBuilder {
     ) -> &mut Self {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
         // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
-        self.hdr_render_target =
-            ctx.texture_pool
-                .request_2d_render_target(device, Self::FORMAT_HDR, width, height, 1);
-        self.depth_buffer =
-            ctx.texture_pool
-                .request_2d_render_target(device, Self::FORMAT_DEPTH, width, height, 1);
+        self.hdr_render_target = ctx.textures.request(
+            device,
+            &render_target_2d_desc(Self::FORMAT_HDR, width, height, 1),
+        );
+        self.depth_buffer = ctx.textures.request(
+            device,
+            &render_target_2d_desc(Self::FORMAT_DEPTH, width, height, 1),
+        );
 
-        self.tonemapping_pipeline = ctx.renderpipeline_pool.request_render_pipeline(
+        self.tonemapping_pipeline = ctx.renderpipelines.request(
             device,
             &RenderPipelineDesc {
                 label: "Tonemapping".into(),
-                pipeline_layout: Vec::new(),
+                pipeline_layout: ctx.pipeline_layouts.request(
+                    device,
+                    &PipelineLayoutDesc {
+                        label: "empty".to_string(),
+                        entries: Vec::new(),
+                    },
+                    &ctx.bindgroup_layouts,
+                ),
                 vertex_shader: ShaderDesc {
                     shader_code: include_str!("../shader/screen_triangle.wgsl").into(),
                     entry_point: "main",
@@ -79,17 +93,25 @@ impl FrameBuilder {
                 depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),
             },
+            &ctx.pipeline_layouts,
         );
 
         self
     }
 
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        self.test_render_pipeline = ctx.renderpipeline_pool.request_render_pipeline(
+        self.test_render_pipeline = ctx.renderpipelines.request(
             device,
             &RenderPipelineDesc {
                 label: "Test Triangle".into(),
-                pipeline_layout: Vec::new(),
+                pipeline_layout: ctx.pipeline_layouts.request(
+                    device,
+                    &PipelineLayoutDesc {
+                        label: "empty".to_string(),
+                        entries: Vec::new(),
+                    },
+                    &ctx.bindgroup_layouts,
+                ),
                 vertex_shader: ShaderDesc {
                     shader_code: include_str!("../shader/test_triangle.wgsl").into(),
                     entry_point: "vs_main",
@@ -110,6 +132,7 @@ impl FrameBuilder {
                 }),
                 multisample: wgpu::MultisampleState::default(),
             },
+            &ctx.pipeline_layouts,
         );
         self
     }
@@ -121,12 +144,12 @@ impl FrameBuilder {
         encoder: &mut wgpu::CommandEncoder,
     ) -> anyhow::Result<()> {
         let color = ctx
-            .texture_pool
-            .texture(self.hdr_render_target)
+            .textures
+            .get(self.hdr_render_target)
             .with_context(|| "hdr render target")?;
         let depth = ctx
-            .texture_pool
-            .texture(self.depth_buffer)
+            .textures
+            .get(self.depth_buffer)
             .with_context(|| "depth buffer")?;
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -149,10 +172,7 @@ impl FrameBuilder {
             }),
         });
 
-        if let Ok(render_pipeline) = ctx
-            .renderpipeline_pool
-            .render_pipeline(self.test_render_pipeline)
-        {
+        if let Ok(render_pipeline) = ctx.renderpipelines.get(self.test_render_pipeline) {
             pass.set_pipeline(&render_pipeline.pipeline);
             pass.draw(0..3, 0..1);
         }
@@ -164,10 +184,7 @@ impl FrameBuilder {
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
     pub fn finish<'a>(&self, ctx: &'a RenderContext, pass: &mut wgpu::RenderPass<'a>) {
-        if let Ok(render_pipeline) = ctx
-            .renderpipeline_pool
-            .render_pipeline(self.tonemapping_pipeline)
-        {
+        if let Ok(render_pipeline) = ctx.renderpipelines.get(self.tonemapping_pipeline) {
             pass.set_pipeline(&render_pipeline.pipeline);
             pass.draw(0..3, 0..1);
         }

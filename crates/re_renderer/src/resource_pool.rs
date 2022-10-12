@@ -49,7 +49,7 @@ where
         self.current_frame_index = frame_index;
     }
 
-    pub fn resource(&self, handle: Handle) -> Result<&Res, PoolError> {
+    pub fn get(&self, handle: Handle) -> Result<&Res, PoolError> {
         self.resources
             .get(handle)
             .map(|resource| {

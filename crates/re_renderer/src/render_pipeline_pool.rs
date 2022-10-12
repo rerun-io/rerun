@@ -1,7 +1,10 @@
 use slotmap::new_key_type;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::resource_pool::*;
+use crate::{
+    pipeline_layout_pool::{PipelineLayoutHandle, PipelineLayoutPool},
+    resource_pool::*,
+};
 
 new_key_type! { pub(crate) struct RenderPipelineHandle; }
 
@@ -32,9 +35,8 @@ pub(crate) struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
     pub label: String,
 
-    // TODO(andreas) make it easier to re-use bindgroup layouts
     // TODO(andreas) use SmallVec or simliar, limited to 4
-    pub pipeline_layout: Vec<Vec<wgpu::BindGroupLayoutEntry>>,
+    pub pipeline_layout: PipelineLayoutHandle,
 
     pub vertex_shader: ShaderDesc,
     pub fragment_shader: ShaderDesc,
@@ -65,10 +67,11 @@ impl RenderPipelinePool {
         }
     }
 
-    pub fn request_render_pipeline(
+    pub fn request(
         &mut self,
         device: &wgpu::Device,
         desc: &RenderPipelineDesc,
+        pipeline_layout_pool: &PipelineLayoutPool,
     ) -> RenderPipelineHandle {
         self.pool.request(desc, |desc| {
             // TODO(andreas): Stop reading. Think. Add error handling. Some pointers https://github.com/gfx-rs/wgpu/issues/2130
@@ -86,28 +89,12 @@ impl RenderPipelinePool {
                     ),
                 });
 
-            // TODO(andreas): Manage pipeline/bindgroup layouts similar to other pools. Important difference though that a user won't need a handle, so we can do special stuff there?
-            let bind_group_layouts = desc
-                .pipeline_layout
-                .iter()
-                .map(|layout_entries| {
-                    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                        label: None, // TODO:
-                        entries: layout_entries,
-                    })
-                })
-                .collect::<Vec<wgpu::BindGroupLayout>>();
-            let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(&desc.label),
-                bind_group_layouts: &bind_group_layouts
-                    .iter()
-                    .collect::<Vec<&wgpu::BindGroupLayout>>(),
-                push_constant_ranges: &[], // Sadly, push constants aren't widely enough supported yet.
-            });
+            // TODO(andreas): Manage pipeline layouts similar to other pools
+            let pipeline_layout = pipeline_layout_pool.get(desc.pipeline_layout).unwrap();
 
             let wgpu_desc = wgpu::RenderPipelineDescriptor {
                 label: Some(&desc.label),
-                layout: Some(&pipeline_layout),
+                layout: Some(&pipeline_layout.layout),
                 vertex: wgpu::VertexState {
                     module: &vertex_shader_module,
                     entry_point: desc.vertex_shader.entry_point,
@@ -136,10 +123,7 @@ impl RenderPipelinePool {
         self.pool.frame_maintenance(frame_index);
     }
 
-    pub fn render_pipeline(
-        &self,
-        handle: RenderPipelineHandle,
-    ) -> Result<&RenderPipeline, PoolError> {
-        self.pool.resource(handle)
+    pub fn get(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
+        self.pool.get(handle)
     }
 }
