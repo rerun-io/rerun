@@ -488,48 +488,44 @@ const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
     Some(std::time::Duration::from_secs(4));
 
 fn file_saver(egui_ctx: &egui::Context, app: &mut App) {
-    // TODO(emilk): support saving data on web
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use anyhow::Result as AnyResult;
-        use std::path::PathBuf;
+    use anyhow::Result as AnyResult;
+    use std::path::PathBuf;
 
-        if app.promise_exists(FILE_SAVER_PROMISE) {
-            // There's already a file save running in the background.
+    if app.promise_exists(FILE_SAVER_PROMISE) {
+        // There's already a file save running in the background.
 
-            if let Some(res) = app.poll_promise::<AnyResult<PathBuf>>(FILE_SAVER_PROMISE) {
-                // File save promise has returned.
+        if let Some(res) = app.poll_promise::<AnyResult<PathBuf>>(FILE_SAVER_PROMISE) {
+            // File save promise has returned.
 
-                match res {
-                    Ok(path) => {
-                        let msg = format!("Successfully wrote to {path:?}");
-                        re_log::info!(msg);
-                        app.toasts.info(msg).set_duration(FILE_SAVER_NOTIF_DURATION);
-                    }
-                    Err(err) => {
-                        let msg = format!("{err}");
-                        re_log::error!(msg);
-                        app.toasts
-                            .error(msg)
-                            .set_duration(FILE_SAVER_NOTIF_DURATION);
-                    }
+            match res {
+                Ok(path) => {
+                    let msg = format!("Successfully wrote to {path:?}");
+                    re_log::info!(msg);
+                    app.toasts.info(msg).set_duration(FILE_SAVER_NOTIF_DURATION);
                 }
-            } else {
-                // File save promise is still running in the background.
-
-                // NOTE: not a toast, want something a bit more discreet here.
-                egui::Window::new("file_saver_spin")
-                    .anchor(egui::Align2::RIGHT_BOTTOM, egui::Vec2::ZERO)
-                    .title_bar(false)
-                    .enabled(false)
-                    .auto_sized()
-                    .show(egui_ctx, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.spinner();
-                            ui.label("Writing file to disk…");
-                        })
-                    });
+                Err(err) => {
+                    let msg = format!("{err}");
+                    re_log::error!(msg);
+                    app.toasts
+                        .error(msg)
+                        .set_duration(FILE_SAVER_NOTIF_DURATION);
+                }
             }
+        } else {
+            // File save promise is still running in the background.
+
+            // NOTE: not a toast, want something a bit more discreet here.
+            egui::Window::new("file_saver_spin")
+                .anchor(egui::Align2::RIGHT_BOTTOM, egui::Vec2::ZERO)
+                .title_bar(false)
+                .enabled(false)
+                .auto_sized()
+                .show(egui_ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label("Writing file to disk…");
+                    })
+                });
         }
     }
 }
