@@ -112,8 +112,4 @@ impl RenderContext {
         self.frame_index += 1;
         self.texture_pool.frame_maintenance(self.frame_index);
     }
-
-    pub(crate) fn frame_index(&self) -> u64 {
-        self.frame_index
-    }
 }

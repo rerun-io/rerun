@@ -1,10 +1,8 @@
+use slotmap::{new_key_type, Key, SlotMap};
 use std::{
-    cell::Cell,
     collections::HashMap,
     sync::atomic::{AtomicU64, Ordering},
 };
-
-use slotmap::{new_key_type, Key, SlotMap};
 use thiserror::Error;
 
 new_key_type! { pub(crate) struct TextureHandle; }
@@ -45,7 +43,7 @@ impl TexturePool {
         desc: &wgpu::TextureDescriptor<'static>,
     ) -> TextureHandle {
         *self.texture_lookup.entry(desc.clone()).or_insert_with(|| {
-            let texture = device.create_texture(&desc);
+            let texture = device.create_texture(desc);
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             self.textures.insert(Texture {
                 last_frame_used: AtomicU64::new(0),
@@ -84,7 +82,7 @@ impl TexturePool {
 
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         // TODO: Remove texture that we haven't used for a while.
-        self.current_frame_index = frame_index
+        self.current_frame_index = frame_index;
     }
 
     pub fn texture(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
@@ -100,7 +98,7 @@ impl TexturePool {
                 if handle.is_null() {
                     PoolError::NullHandle
                 } else {
-                    PoolError::NullHandle
+                    PoolError::ResourceNotAvailable
                 }
             })
     }

@@ -464,7 +464,8 @@ pub(crate) fn view_3d(
                         frame_builder_prepare
                             .write()
                             .test_triangle(ctx, device)
-                            .draw(ctx, encoder);
+                            .draw(ctx, encoder)
+                            .unwrap(); // TODO(andreas): Graceful error handling
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();

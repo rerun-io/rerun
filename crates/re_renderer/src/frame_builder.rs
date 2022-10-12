@@ -48,15 +48,13 @@ impl FrameBuilder {
         height: u32,
     ) -> &mut Self {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
-
-        // TODO(andreas): How should we treat multisampling.
-        // Doing hardcoded 4 right now because it's typically fairly cheap and prepares our workflows for dealing with it.
+        // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
         self.hdr_render_target =
             ctx.texture_pool
-                .request_2d_render_target(device, Self::FORMAT_HDR, width, height, 4);
+                .request_2d_render_target(device, Self::FORMAT_HDR, width, height, 1);
         self.depth_buffer =
             ctx.texture_pool
-                .request_2d_render_target(device, Self::FORMAT_DEPTH, width, height, 4);
+                .request_2d_render_target(device, Self::FORMAT_DEPTH, width, height, 1);
 
         self
     }
@@ -75,11 +73,34 @@ impl FrameBuilder {
         let color = ctx.texture_pool.texture(self.hdr_render_target)?;
         let depth = ctx.texture_pool.texture(self.depth_buffer)?;
 
-        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some(""), // TODO(andreas): This should be specified from the outside so we know which view we're rendering
-            color_attachments: todo!(),
-            depth_stencil_attachment: None,
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("frame builder hdr pass"), // TODO(andreas): It would be nice to specify this from the outside so we know which view we're rendering
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &color.default_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &depth.default_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: false, // discards the depth buffer after use, can be faster
+                }),
+                stencil_ops: None,
+            }),
         });
+
+        if let Some(handle) = self.test_render_pipeline {
+            let render_pipeline = ctx.render_pipeline(handle);
+
+            if let Some(render_pipeline) = render_pipeline {
+                pass.set_pipeline(render_pipeline);
+                pass.draw(0..3, 0..1);
+            }
+        }
 
         Ok(())
     }
@@ -88,6 +109,8 @@ impl FrameBuilder {
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
     pub fn finish<'a>(&self, ctx: &'a RenderContext, pass: &mut wgpu::RenderPass<'a>) {
+        // TODO: tonemapping
+
         if let Some(handle) = self.test_render_pipeline {
             let render_pipeline = ctx.render_pipeline(handle);
 
