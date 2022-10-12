@@ -202,12 +202,10 @@ impl View {
                 maximized: &mut self.maximized,
             };
 
-            let dock_style = egui_dock::Style {
-                separator_width: 2.0,
-                show_close_buttons: false,
-                tab_include_scrollarea: false,
-                ..egui_dock::Style::from_egui(ui.style().as_ref())
-            };
+            let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
+            dock_style.separator_width = 2.0;
+            dock_style.show_close_buttons = false;
+            dock_style.tab_include_scrollarea = false;
 
             // TODO(emilk): fix egui_dock: this scope shouldn't be needed
             ui.scope(|ui| {
