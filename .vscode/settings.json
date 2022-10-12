@@ -18,5 +18,8 @@
         "rerun_py/pyproject.toml"
     ],
     "python.linting.mypyEnabled": true,
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "cSpell.words": [
+        "Wgsl"
+    ]
 }
