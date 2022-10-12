@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicU64;
+
 use slotmap::new_key_type;
 
 use super::{
@@ -10,13 +12,14 @@ use super::{
 new_key_type! { pub(crate) struct BindGroupHandle; }
 
 pub(crate) struct BindGroup {
+    last_frame_used: AtomicU64,
     pub(crate) bind_group: wgpu::BindGroup,
 }
 
-impl Resource for BindGroup {
-    fn register_use(&self, _current_frame_index: u64) {
-        // TODO(andreas): When a bind group  is last used doesn't tell us all that much since it's needed for pipeline creation only.
-        // We need a way to propagate use to dependent resources
+// BindGroup is relatively lightweight, but since buffers and textures are recreated a lot, we might pile them up, so let's keep track!
+impl UsageTrackedResource for BindGroup {
+    fn last_frame_used(&self) -> &AtomicU64 {
+        &self.last_frame_used
     }
 }
 
@@ -77,7 +80,10 @@ impl BindGroupPool {
                     .collect::<Vec<_>>(),
                 layout: &bind_group_layout.get(desc.layout).unwrap().layout,
             });
-            BindGroup { bind_group }
+            BindGroup {
+                bind_group,
+                last_frame_used: AtomicU64::new(0),
+            }
         })
     }
 

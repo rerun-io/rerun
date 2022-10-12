@@ -1,8 +1,5 @@
 use slotmap::new_key_type;
-use std::{
-    hash::Hash,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::{hash::Hash, sync::atomic::AtomicU64};
 
 use super::resource_pool::*;
 
@@ -15,11 +12,9 @@ pub(crate) struct Texture {
     // TODO(andreas) what about custom views
 }
 
-impl Resource for Texture {
-    fn register_use(&self, current_frame_index: u64) {
-        // TODO(andreas) what about use of its views in bind groups
-        self.last_frame_used
-            .fetch_max(current_frame_index, Ordering::Relaxed);
+impl UsageTrackedResource for Texture {
+    fn last_frame_used(&self) -> &AtomicU64 {
+        &self.last_frame_used
     }
 }
 

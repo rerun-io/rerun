@@ -47,8 +47,6 @@ impl RenderContext {
         // (the ones that don't don't do any resource cleanup as their resources are lightweight and rare enough)
         self.textures.frame_maintenance(self.frame_index);
         self.renderpipelines.frame_maintenance(self.frame_index);
-        self.pipeline_layouts.frame_maintenance(self.frame_index);
-        self.bind_group_layouts.frame_maintenance(self.frame_index);
         self.bind_groups.frame_maintenance(self.frame_index);
     }
 

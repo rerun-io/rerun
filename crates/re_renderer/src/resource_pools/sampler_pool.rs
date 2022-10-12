@@ -13,12 +13,7 @@ pub(crate) struct Sampler {
     pub(crate) sampler: wgpu::Sampler,
 }
 
-impl Resource for Sampler {
-    fn register_use(&self, _current_frame_index: u64) {
-        // TODO(andreas): When a pipeline layout is last used doesn't tell us all that much since it's needed for pipeline creation only.
-        // We need a way to propagate use to dependent resources
-    }
-}
+impl Resource for Sampler {}
 
 #[derive(Clone)]
 pub(crate) struct SamplerDesc {

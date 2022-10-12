@@ -8,12 +8,7 @@ pub(crate) struct PipelineLayout {
     pub(crate) layout: wgpu::PipelineLayout,
 }
 
-impl Resource for PipelineLayout {
-    fn register_use(&self, _current_frame_index: u64) {
-        // TODO(andreas): When a pipeline layout is last used doesn't tell us all that much since it's needed for pipeline creation only.
-        // We need a way to propagate use to dependent resources
-    }
-}
+impl Resource for PipelineLayout {}
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct PipelineLayoutDesc {
@@ -52,10 +47,6 @@ impl PipelineLayoutPool {
             });
             PipelineLayout { layout }
         })
-    }
-
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
-        self.pool.frame_maintenance(frame_index);
     }
 
     pub fn get(&self, handle: PipelineLayoutHandle) -> Result<&PipelineLayout, PoolError> {

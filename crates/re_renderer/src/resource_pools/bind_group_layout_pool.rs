@@ -8,12 +8,7 @@ pub(crate) struct BindGroupLayout {
     pub(crate) layout: wgpu::BindGroupLayout,
 }
 
-impl Resource for BindGroupLayout {
-    fn register_use(&self, _current_frame_index: u64) {
-        // TODO(andreas): When a bind group layout is last used doesn't tell us all that much since it's needed for pipeline creation only.
-        // We need a way to propagate use to dependent resources
-    }
-}
+impl Resource for BindGroupLayout {}
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct BindGroupLayoutDesc {
@@ -46,10 +41,6 @@ impl BindGroupLayoutPool {
             });
             BindGroupLayout { layout }
         })
-    }
-
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
-        self.pool.frame_maintenance(frame_index);
     }
 
     pub fn get(&self, handle: BindGroupLayoutHandle) -> Result<&BindGroupLayout, PoolError> {

@@ -1,5 +1,5 @@
 use slotmap::new_key_type;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 
 use super::{pipeline_layout_pool::*, resource_pool::*};
 
@@ -10,11 +10,9 @@ pub(crate) struct RenderPipeline {
     pub(crate) pipeline: wgpu::RenderPipeline,
 }
 
-impl Resource for RenderPipeline {
-    fn register_use(&self, current_frame_index: u64) {
-        // TODO: register use for dependent resources?
-        self.last_frame_used
-            .fetch_max(current_frame_index, Ordering::Relaxed);
+impl UsageTrackedResource for RenderPipeline {
+    fn last_frame_used(&self) -> &AtomicU64 {
+        &self.last_frame_used
     }
 }
 
@@ -117,6 +115,7 @@ impl RenderPipelinePool {
 
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         // TODO(andreas) shader reloading goes here
+        // TODO(andreas) update usage timer of all dependent resources (via atomic max)
         self.pool.frame_maintenance(frame_index);
     }
 
