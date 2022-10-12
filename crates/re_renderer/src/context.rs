@@ -10,9 +10,6 @@ pub struct RenderContext {
     /// TODO(andreas): Should we maintain depth buffers per view and ask for no depth from eframe?
     output_format_depth: Option<wgpu::TextureFormat>,
 
-    // TODO(andreas): Introduce a pipeline manager
-    test_triangle: Option<wgpu::RenderPipeline>,
-
     // TODO(andreas): Establish a trait for pools to give them a similar interface and allow iterating over them etc.
     pub(crate) texture_pool: TexturePool,
     pub(crate) renderpipeline_pool: RenderPipelinePool,
@@ -30,7 +27,6 @@ impl RenderContext {
         RenderContext {
             output_format_color,
             output_format_depth,
-            test_triangle: None,
 
             texture_pool: TexturePool::new(),
             renderpipeline_pool: RenderPipelinePool::new(),
@@ -43,5 +39,9 @@ impl RenderContext {
         self.frame_index += 1;
         self.texture_pool.frame_maintenance(self.frame_index);
         self.renderpipeline_pool.frame_maintenance(self.frame_index);
+    }
+
+    pub(crate) fn output_format(&self) -> wgpu::TextureFormat {
+        self.output_format_color
     }
 }

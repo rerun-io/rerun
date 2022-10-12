@@ -18,6 +18,7 @@ use crate::{context::*, render_pipeline_pool::*, texture_pool::TextureHandle};
 #[derive(Default)]
 pub struct FrameBuilder {
     test_render_pipeline: RenderPipelineHandle,
+    tonemapping_pipeline: RenderPipelineHandle,
 
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
@@ -32,6 +33,8 @@ impl FrameBuilder {
     pub fn new() -> Self {
         FrameBuilder {
             test_render_pipeline: RenderPipelineHandle::default(),
+            tonemapping_pipeline: RenderPipelineHandle::default(),
+
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
         }
@@ -56,6 +59,27 @@ impl FrameBuilder {
         self.depth_buffer =
             ctx.texture_pool
                 .request_2d_render_target(device, Self::FORMAT_DEPTH, width, height, 1);
+
+        self.tonemapping_pipeline = ctx.renderpipeline_pool.request_render_pipeline(
+            device,
+            &RenderPipelineDesc {
+                label: "Tonemapping".into(),
+                pipeline_layout: Vec::new(),
+                vertex_shader: ShaderDesc {
+                    shader_code: include_str!("../shader/screen_triangle.wgsl").into(),
+                    entry_point: "main",
+                },
+                fragment_shader: ShaderDesc {
+                    shader_code: include_str!("../shader/tonemap.wgsl").into(),
+                    entry_point: "main",
+                },
+                vertex_buffers: vec![],
+                render_targets: vec![Some(ctx.output_format().into())],
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+            },
+        );
 
         self
     }
@@ -140,15 +164,12 @@ impl FrameBuilder {
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
     pub fn finish<'a>(&self, ctx: &'a RenderContext, pass: &mut wgpu::RenderPass<'a>) {
-        // TODO: tonemapping
-
-        // if let Some(handle) = self.test_render_pipeline {
-        //     let render_pipeline = ctx.render_pipeline(handle);
-
-        //     if let Some(render_pipeline) = render_pipeline {
-        //         pass.set_pipeline(render_pipeline);
-        //         pass.draw(0..3, 0..1);
-        //     }
-        // }
+        if let Ok(render_pipeline) = ctx
+            .renderpipeline_pool
+            .render_pipeline(self.tonemapping_pipeline)
+        {
+            pass.set_pipeline(&render_pipeline.pipeline);
+            pass.draw(0..3, 0..1);
+        }
     }
 }

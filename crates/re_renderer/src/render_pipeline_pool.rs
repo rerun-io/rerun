@@ -87,7 +87,7 @@ impl RenderPipelinePool {
                     device.create_shader_module(wgpu::ShaderModuleDescriptor {
                         label: Some(&format!("fragment shader - {}", desc.label)),
                         source: wgpu::ShaderSource::Wgsl(
-                            desc.vertex_shader.shader_code.clone().into(),
+                            desc.fragment_shader.shader_code.clone().into(),
                         ),
                     });
 
