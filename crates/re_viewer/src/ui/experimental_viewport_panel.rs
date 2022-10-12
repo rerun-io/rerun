@@ -8,7 +8,7 @@ use re_data_store::{
     log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, Timeline,
     TimelineStore,
 };
-use re_log_types::{ObjectType, Tensor, Transform};
+use re_log_types::{ObjectType, Transform};
 
 use crate::misc::ViewerContext;
 
@@ -160,7 +160,7 @@ impl Blueprint {
                     name: path.to_string(),
                     space_path: path.clone(),
                     view_state: Default::default(),
-                    tree: Default::default(),
+                    selected_category: ViewCategory::TwoD,
                 },
             );
             space_make_infos.push(SpaceMakeInfo {
@@ -237,58 +237,12 @@ fn show_children(ui: &mut egui::Ui, space_info: &SpaceInfo, tree: &ObjectTree) {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 enum ViewCategory {
     TwoD,
     ThreeD,
     Tensor,
     Text,
-}
-
-struct CategoriesViewer<'a, 'b> {
-    ctx: &'a mut ViewerContext<'b>,
-    space_path: ObjPath,
-    view_state: &'a mut ViewState,
-    multidim_tensor: Option<&'a Tensor>,
-    time_objects: &'a Objects<'a>,
-    sticky_objects: &'a Objects<'a>,
-}
-
-impl<'a, 'b> egui_dock::TabViewer for CategoriesViewer<'a, 'b> {
-    type Tab = ViewCategory;
-
-    fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
-        crate::profile_function!();
-
-        match *tab {
-            ViewCategory::TwoD => {
-                self.view_state
-                    .ui_2d(self.ctx, ui, &self.space_path, self.time_objects);
-            }
-            ViewCategory::ThreeD => {
-                self.view_state
-                    .ui_3d(self.ctx, ui, &self.space_path, self.time_objects);
-            }
-            ViewCategory::Tensor => {
-                if let Some(multidim_tensor) = self.multidim_tensor {
-                    self.view_state.ui_tensor(ui, multidim_tensor);
-                }
-            }
-            ViewCategory::Text => {
-                self.view_state.ui_text(self.ctx, ui, self.sticky_objects);
-            }
-        }
-    }
-
-    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
-        match *tab {
-            ViewCategory::TwoD => "2D",
-            ViewCategory::ThreeD => "3D",
-            ViewCategory::Tensor => "Tensor",
-            ViewCategory::Text => "Text",
-        }
-        .into()
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -299,8 +253,8 @@ struct SpaceView {
     space_path: ObjPath,
     view_state: ViewState,
 
-    /// In case we are a mix of 2d/3d/tensor/text, we show tabs:
-    tree: egui_dock::Tree<ViewCategory>,
+    /// In case we are a mix of 2d/3d/tensor/text, we show what?
+    selected_category: ViewCategory,
 }
 
 impl SpaceView {
@@ -410,28 +364,42 @@ impl SpaceView {
                 }
             }
             _ => {
-                if self.tree.is_empty() {
-                    self.tree = egui_dock::Tree::new(categories);
-                }
+                // Show tabs to let user select which category to view
+                ui.vertical(|ui| {
+                    if !categories.contains(&self.selected_category) {
+                        self.selected_category = categories[0];
+                    }
 
-                let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
-                dock_style.separator_width = 2.0;
-                dock_style.show_close_buttons = false;
-                dock_style.tab_include_scrollarea = false;
+                    ui.horizontal(|ui| {
+                        for category in categories {
+                            let text = match category {
+                                ViewCategory::TwoD => "2D",
+                                ViewCategory::ThreeD => "3D",
+                                ViewCategory::Tensor => "Tensor",
+                                ViewCategory::Text => "Text",
+                            };
+                            ui.selectable_value(&mut self.selected_category, category, text);
+                            // TODO(emilk): make it look like tabs
+                        }
+                    });
+                    ui.separator();
 
-                let mut tab_viewer = CategoriesViewer {
-                    ctx,
-                    view_state: &mut self.view_state,
-                    space_path: self.space_path.clone(),
-                    multidim_tensor,
-                    time_objects,
-                    sticky_objects,
-                };
-
-                ui.scope(|ui| {
-                    egui_dock::DockArea::new(&mut self.tree)
-                        .style(dock_style)
-                        .show_inside(ui, &mut tab_viewer);
+                    match self.selected_category {
+                        ViewCategory::TwoD => {
+                            self.view_state
+                                .ui_2d(ctx, ui, &self.space_path, time_objects);
+                        }
+                        ViewCategory::ThreeD => {
+                            self.view_state
+                                .ui_3d(ctx, ui, &self.space_path, time_objects);
+                        }
+                        ViewCategory::Tensor => {
+                            self.view_state.ui_tensor(ui, multidim_tensor.unwrap());
+                        }
+                        ViewCategory::Text => {
+                            self.view_state.ui_text(ctx, ui, sticky_objects);
+                        }
+                    }
                 })
                 .response
             }
