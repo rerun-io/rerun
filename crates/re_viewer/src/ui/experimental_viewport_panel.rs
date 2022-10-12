@@ -565,9 +565,26 @@ impl ExperimentalViewportPanel {
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            let mut hovered_space = None;
+            let num_tabs = num_tabs(&self.blueprint.tree);
 
-            if let Some(space_view_id) = self.blueprint.maximized.clone() {
+            if num_tabs == 0 {
+                // nothing to show
+            } else if num_tabs == 1 {
+                let space_view_id = first_tab(&self.blueprint.tree).unwrap();
+                let space_view = self
+                    .blueprint
+                    .space_views
+                    .get_mut(&space_view_id)
+                    .expect("Should have been populated beforehand");
+
+                ui.strong(&space_view.name);
+
+                if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
+                    space_view.ui(ctx, space_info, ui);
+                } else {
+                    ui.label("[Missing space]"); // TODO
+                }
+            } else if let Some(space_view_id) = self.blueprint.maximized {
                 let space_view = self
                     .blueprint
                     .space_views
@@ -586,11 +603,7 @@ impl ExperimentalViewportPanel {
                 });
 
                 if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-                    let response = space_view.ui(ctx, space_info, ui);
-
-                    if response.hovered() {
-                        hovered_space = Some(space_view.space_path.clone());
-                    }
+                    space_view.ui(ctx, space_info, ui);
                 } else {
                     ui.label("[Missing space]"); // TODO
                 }
@@ -611,11 +624,7 @@ impl ExperimentalViewportPanel {
                 egui_dock::DockArea::new(&mut self.blueprint.tree)
                     .style(dock_style)
                     .show_inside(ui, &mut tab_viewer);
-
-                hovered_space = tab_viewer.hovered_space;
             }
-
-            // TODO: use hovered_space
         });
     }
 }
@@ -773,4 +782,29 @@ fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>
         .iter()
         .map(|space| vec![space.clone()])
         .collect()
+}
+
+// ----------------------------------------------------------------------------
+
+// TODO(emilk): move this into `egui_dock`
+fn num_tabs(tree: &egui_dock::Tree<SpaceViewId>) -> usize {
+    let mut count = 0;
+    for node in tree.iter() {
+        if let egui_dock::Node::Leaf { tabs, .. } = node {
+            count += tabs.len();
+        }
+    }
+    count
+}
+
+// TODO(emilk): move this into `egui_dock`
+fn first_tab(tree: &egui_dock::Tree<SpaceViewId>) -> Option<SpaceViewId> {
+    for node in tree.iter() {
+        if let egui_dock::Node::Leaf { tabs, .. } = node {
+            if let Some(first) = tabs.first() {
+                return Some(*first);
+            }
+        }
+    }
+    None
 }
