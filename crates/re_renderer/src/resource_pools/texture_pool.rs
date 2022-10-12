@@ -10,13 +10,14 @@ new_key_type! { pub(crate) struct TextureHandle; }
 
 pub(crate) struct Texture {
     last_frame_used: AtomicU64,
-    pub(crate) texture: wgpu::Texture,
+    pub(crate) _texture: wgpu::Texture,
     pub(crate) default_view: wgpu::TextureView,
     // TODO(andreas) what about custom views
 }
 
 impl Resource for Texture {
     fn register_use(&self, current_frame_index: u64) {
+        // TODO(andreas) what about use of its views in bind groups
         self.last_frame_used
             .fetch_max(current_frame_index, Ordering::Relaxed);
     }
@@ -44,7 +45,7 @@ impl TexturePool {
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             Texture {
                 last_frame_used: AtomicU64::new(0),
-                texture,
+                _texture: texture,
                 default_view: view,
             }
         })

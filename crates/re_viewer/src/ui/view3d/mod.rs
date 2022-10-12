@@ -470,7 +470,8 @@ pub(crate) fn view_3d(
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();
-                        frame_builder_draw.read().finish(ctx, render_pass);
+                        frame_builder_draw.read().finish(ctx, render_pass).unwrap();
+                        // TODO(andreas): Graceful error handling
                     }),
             ),
         }

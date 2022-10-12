@@ -5,10 +5,8 @@ use std::sync::Arc;
 use crate::{
     context::*,
     resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
-        pipeline_layout_pool::*,
-        render_pipeline_pool::*,
-        texture_pool::*,
+        bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
+        render_pipeline_pool::*, texture_pool::*,
     },
 };
 
@@ -30,6 +28,7 @@ pub struct FrameBuilder {
     // TODO(andreas): Tonemapper should go into its own module
     tonemapping_pipeline: RenderPipelineHandle,
     tonemapping_bind_group_layout: BindGroupLayoutHandle,
+    tonemapping_bind_group: BindGroupHandle,
 
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
@@ -47,6 +46,7 @@ impl FrameBuilder {
 
             tonemapping_pipeline: RenderPipelineHandle::default(),
             tonemapping_bind_group_layout: BindGroupLayoutHandle::default(),
+            tonemapping_bind_group: BindGroupHandle::default(),
 
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
@@ -75,7 +75,7 @@ impl FrameBuilder {
             &render_target_2d_desc(Self::FORMAT_DEPTH, width, height, 1),
         );
 
-        self.tonemapping_bind_group_layout = ctx.bindgroup_layouts.request(
+        self.tonemapping_bind_group_layout = ctx.bind_group_layouts.request(
             device,
             // TODO(andreas) got some builder utilities for this in blub. should bring them over
             &BindGroupLayoutDesc {
@@ -97,6 +97,17 @@ impl FrameBuilder {
             },
         );
 
+        self.tonemapping_bind_group = ctx.bind_groups.request(
+            device,
+            &BindGroupDesc {
+                label: "tonemapping".to_owned(),
+                entries: vec![BindGroupEntry::TextureView(self.hdr_render_target)],
+                layout: self.tonemapping_bind_group_layout,
+            },
+            &ctx.bind_group_layouts,
+            &ctx.textures,
+        );
+
         self.tonemapping_pipeline = ctx.renderpipelines.request(
             device,
             &RenderPipelineDesc {
@@ -107,7 +118,7 @@ impl FrameBuilder {
                         label: "empty".to_owned(),
                         entries: vec![self.tonemapping_bind_group_layout],
                     },
-                    &ctx.bindgroup_layouts,
+                    &ctx.bind_group_layouts,
                 ),
                 vertex_shader: ShaderDesc {
                     shader_code: include_str!("../shader/screen_triangle.wgsl").into(),
@@ -140,7 +151,7 @@ impl FrameBuilder {
                         label: "empty".to_owned(),
                         entries: Vec::new(),
                     },
-                    &ctx.bindgroup_layouts,
+                    &ctx.bind_group_layouts,
                 ),
                 vertex_shader: ShaderDesc {
                     shader_code: include_str!("../shader/test_triangle.wgsl").into(),
@@ -176,11 +187,11 @@ impl FrameBuilder {
         let color = ctx
             .textures
             .get(self.hdr_render_target)
-            .with_context(|| "hdr render target")?;
+            .context("hdr render target")?;
         let depth = ctx
             .textures
             .get(self.depth_buffer)
-            .with_context(|| "depth buffer")?;
+            .context("depth buffer")?;
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("frame builder hdr pass"), // TODO(andreas): It would be nice to specify this from the outside so we know which view we're rendering
@@ -213,10 +224,24 @@ impl FrameBuilder {
     /// Applies tonemapping and draws the final result of a `FrameBuilder` to a given output `RenderPass`.
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
-    pub fn finish<'a>(&self, ctx: &'a RenderContext, pass: &mut wgpu::RenderPass<'a>) {
-        if let Ok(render_pipeline) = ctx.renderpipelines.get(self.tonemapping_pipeline) {
-            pass.set_pipeline(&render_pipeline.pipeline);
-            pass.draw(0..3, 0..1);
-        }
+    pub fn finish<'a>(
+        &self,
+        ctx: &'a RenderContext,
+        pass: &mut wgpu::RenderPass<'a>,
+    ) -> anyhow::Result<()> {
+        let pipeline = ctx
+            .renderpipelines
+            .get(self.tonemapping_pipeline)
+            .context("tonemapping pipeline")?;
+        let bind_group = ctx
+            .bind_groups
+            .get(self.tonemapping_bind_group)
+            .context("tonemapping bind group")?;
+
+        pass.set_pipeline(&pipeline.pipeline);
+        pass.set_bind_group(0, &bind_group.bind_group, &[]);
+        pass.draw(0..3, 0..1);
+
+        Ok(())
     }
 }
