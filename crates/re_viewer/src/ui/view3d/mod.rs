@@ -463,6 +463,7 @@ pub(crate) fn view_3d(
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         frame_builder_prepare
                             .write()
+                            .setup_target(ctx, device, rect.width() as u32, rect.height() as u32)
                             .test_triangle(ctx, device)
                             .draw(ctx, encoder)
                             .unwrap(); // TODO(andreas): Graceful error handling

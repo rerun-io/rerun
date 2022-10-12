@@ -3,7 +3,8 @@ use std::{
     collections::HashMap,
     sync::atomic::{AtomicU64, Ordering},
 };
-use thiserror::Error;
+
+use crate::pool_error::PoolError;
 
 new_key_type! { pub(crate) struct TextureHandle; }
 
@@ -18,14 +19,6 @@ pub(crate) struct TexturePool {
     textures: SlotMap<TextureHandle, Texture>,
     texture_lookup: HashMap<wgpu::TextureDescriptor<'static>, TextureHandle>,
     current_frame_index: u64,
-}
-
-#[derive(Error, Debug)]
-pub enum PoolError {
-    #[error("Requested resource isn't available yet of the handle is no longer valid")]
-    ResourceNotAvailable,
-    #[error("The passed resource handle was null")]
-    NullHandle,
 }
 
 impl TexturePool {
@@ -53,6 +46,7 @@ impl TexturePool {
         })
     }
 
+    // TODO: Make this a descriptor generator
     pub fn request_2d_render_target(
         &mut self,
         device: &wgpu::Device,

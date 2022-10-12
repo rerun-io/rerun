@@ -5,4 +5,6 @@
 
 pub mod context;
 pub mod frame_builder;
+mod pool_error;
+mod render_pipeline_pool;
 mod texture_pool;
