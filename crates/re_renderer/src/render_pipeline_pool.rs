@@ -26,7 +26,7 @@ pub(crate) struct ShaderDesc {
     pub entry_point: &'static str,
 }
 
-/// Renderpipeline descriptor, can be converted into wgpu::RenderPipeline (which isn't hashable or comparable)
+/// Renderpipeline descriptor, can be converted into `wgpu::RenderPipeline` (which isn't hashable or comparable)
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
@@ -93,7 +93,7 @@ impl RenderPipelinePool {
                 .map(|layout_entries| {
                     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                         label: None, // TODO:
-                        entries: &layout_entries,
+                        entries: layout_entries,
                     })
                 })
                 .collect::<Vec<wgpu::BindGroupLayout>>();
@@ -101,7 +101,6 @@ impl RenderPipelinePool {
                 label: Some(&desc.label),
                 bind_group_layouts: &bind_group_layouts
                     .iter()
-                    .map(|layout| layout)
                     .collect::<Vec<&wgpu::BindGroupLayout>>(),
                 push_constant_ranges: &[], // Sadly, push constants aren't widely enough supported yet.
             });

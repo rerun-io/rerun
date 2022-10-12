@@ -6,10 +6,6 @@ pub struct RenderContext {
     /// The color format used by the eframe output buffer.
     output_format_color: wgpu::TextureFormat,
 
-    /// The depth format used by the eframe output buffer.
-    /// TODO(andreas): Should we maintain depth buffers per view and ask for no depth from eframe?
-    output_format_depth: Option<wgpu::TextureFormat>,
-
     pub(crate) texture_pool: TexturePool,
     pub(crate) renderpipeline_pool: RenderPipelinePool,
 
@@ -21,11 +17,9 @@ impl RenderContext {
         _device: &wgpu::Device,
         _queue: &wgpu::Queue,
         output_format_color: wgpu::TextureFormat,
-        output_format_depth: Option<wgpu::TextureFormat>,
     ) -> Self {
         RenderContext {
             output_format_color,
-            output_format_depth,
 
             texture_pool: TexturePool::new(),
             renderpipeline_pool: RenderPipelinePool::new(),

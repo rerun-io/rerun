@@ -123,11 +123,11 @@ impl FrameBuilder {
         let color = ctx
             .texture_pool
             .texture(self.hdr_render_target)
-            .with_context(|| format!("hdr render target"))?;
+            .with_context(|| "hdr render target")?;
         let depth = ctx
             .texture_pool
             .texture(self.depth_buffer)
-            .with_context(|| format!("depth buffer"))?;
+            .with_context(|| "depth buffer")?;
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("frame builder hdr pass"), // TODO(andreas): It would be nice to specify this from the outside so we know which view we're rendering
