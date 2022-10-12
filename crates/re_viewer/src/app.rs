@@ -664,7 +664,6 @@ fn save_to_file(
         let file = std::fs::File::create(path.as_path())
             .with_context(|| format!("Failed to create file at {:?}", path))?;
 
-        std::thread::sleep(std::time::Duration::from_secs(3));
         re_log_types::encoding::encode(msgs.iter(), file).map(|_| path)
     }
 }
