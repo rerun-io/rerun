@@ -1,7 +1,8 @@
+use anyhow::Context;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-use crate::{context::*, texture_pool::TextureHandle};
+use crate::{context::*, render_pipeline_pool::*, texture_pool::TextureHandle};
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
 /// Contains information that is constant for a single frame like camera.
@@ -16,7 +17,7 @@ use crate::{context::*, texture_pool::TextureHandle};
 /// Collecting objects in this fashion allows for re-use of common resources (e.g. camera)
 #[derive(Default)]
 pub struct FrameBuilder {
-    test_render_pipeline: Option<RenderPipelineHandle>,
+    test_render_pipeline: RenderPipelineHandle,
 
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
@@ -30,7 +31,7 @@ impl FrameBuilder {
 
     pub fn new() -> Self {
         FrameBuilder {
-            test_render_pipeline: None,
+            test_render_pipeline: RenderPipelineHandle::default(),
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
         }
@@ -60,7 +61,32 @@ impl FrameBuilder {
     }
 
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        self.test_render_pipeline = Some(ctx.request_render_pipeline(device));
+        self.test_render_pipeline = ctx.renderpipeline_pool.request_render_pipeline(
+            device,
+            &RenderPipelineDesc {
+                label: "Test Triangle".into(),
+                pipeline_layout: Vec::new(),
+                vertex_shader: ShaderDesc {
+                    shader_code: include_str!("../shader/test_triangle.wgsl").into(),
+                    entry_point: "vs_main",
+                },
+                fragment_shader: ShaderDesc {
+                    shader_code: include_str!("../shader/test_triangle.wgsl").into(),
+                    entry_point: "fs_main",
+                },
+                vertex_buffers: vec![],
+                render_targets: vec![Some(Self::FORMAT_HDR.into())],
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: Self::FORMAT_DEPTH,
+                    depth_compare: wgpu::CompareFunction::Always,
+                    depth_write_enabled: false,
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
+                multisample: wgpu::MultisampleState::default(),
+            },
+        );
         self
     }
 
@@ -70,8 +96,14 @@ impl FrameBuilder {
         ctx: &mut RenderContext,
         encoder: &mut wgpu::CommandEncoder,
     ) -> anyhow::Result<()> {
-        let color = ctx.texture_pool.texture(self.hdr_render_target)?;
-        let depth = ctx.texture_pool.texture(self.depth_buffer)?;
+        let color = ctx
+            .texture_pool
+            .texture(self.hdr_render_target)
+            .with_context(|| format!("hdr render target"))?;
+        let depth = ctx
+            .texture_pool
+            .texture(self.depth_buffer)
+            .with_context(|| format!("depth buffer"))?;
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("frame builder hdr pass"), // TODO(andreas): It would be nice to specify this from the outside so we know which view we're rendering
@@ -93,13 +125,12 @@ impl FrameBuilder {
             }),
         });
 
-        if let Some(handle) = self.test_render_pipeline {
-            let render_pipeline = ctx.render_pipeline(handle);
-
-            if let Some(render_pipeline) = render_pipeline {
-                pass.set_pipeline(render_pipeline);
-                pass.draw(0..3, 0..1);
-            }
+        if let Ok(render_pipeline) = ctx
+            .renderpipeline_pool
+            .render_pipeline(self.test_render_pipeline)
+        {
+            pass.set_pipeline(&render_pipeline.pipeline);
+            pass.draw(0..3, 0..1);
         }
 
         Ok(())
@@ -111,13 +142,13 @@ impl FrameBuilder {
     pub fn finish<'a>(&self, ctx: &'a RenderContext, pass: &mut wgpu::RenderPass<'a>) {
         // TODO: tonemapping
 
-        if let Some(handle) = self.test_render_pipeline {
-            let render_pipeline = ctx.render_pipeline(handle);
+        // if let Some(handle) = self.test_render_pipeline {
+        //     let render_pipeline = ctx.render_pipeline(handle);
 
-            if let Some(render_pipeline) = render_pipeline {
-                pass.set_pipeline(render_pipeline);
-                pass.draw(0..3, 0..1);
-            }
-        }
+        //     if let Some(render_pipeline) = render_pipeline {
+        //         pass.set_pipeline(render_pipeline);
+        //         pass.draw(0..3, 0..1);
+        //     }
+        // }
     }
 }

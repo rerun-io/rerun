@@ -1,6 +1,5 @@
 use slotmap::{new_key_type, Key, SlotMap};
 use std::{
-    borrow::Cow,
     collections::HashMap,
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -36,9 +35,10 @@ pub(crate) struct RenderPipelineDesc {
     pub fragment_shader: ShaderDesc,
 
     /// The format of any vertex buffers used with this pipeline.
-    pub vertex_buffers: &'static [wgpu::VertexBufferLayout<'static>], // TODO(andreas) 'static is likely not something we can do in the long run
+    // TODO(andreas) use SmallVec or simliar, limited to <?>
+    pub vertex_buffers: Vec<wgpu::VertexBufferLayout<'static>>,
 
-    // TODO(andreas) use SmallVec or simliar, limited to 4
+    // TODO(andreas) use SmallVec or simliar, limited to <?>
     pub render_targets: Vec<Option<wgpu::ColorTargetState>>,
 
     /// The properties of the pipeline at the primitive assembly and rasterization level.
@@ -79,16 +79,16 @@ impl RenderPipelinePool {
                 let vertex_shader_module =
                     device.create_shader_module(wgpu::ShaderModuleDescriptor {
                         label: Some(&format!("vertex shader - {}", desc.label)),
-                        source: wgpu::ShaderSource::Wgsl(Cow::from(
-                            &desc.vertex_shader.shader_code,
-                        )),
+                        source: wgpu::ShaderSource::Wgsl(
+                            desc.vertex_shader.shader_code.clone().into(),
+                        ),
                     });
                 let fragment_shader_module =
                     device.create_shader_module(wgpu::ShaderModuleDescriptor {
                         label: Some(&format!("fragment shader - {}", desc.label)),
-                        source: wgpu::ShaderSource::Wgsl(Cow::from(
-                            &desc.vertex_shader.shader_code,
-                        )),
+                        source: wgpu::ShaderSource::Wgsl(
+                            desc.vertex_shader.shader_code.clone().into(),
+                        ),
                     });
 
                 // TODO(andreas): Manage pipeline/bindgroup layouts similar to other pools. Important difference though that a user won't need a handle, so we can do special stuff there?
@@ -118,7 +118,7 @@ impl RenderPipelinePool {
                     vertex: wgpu::VertexState {
                         module: &vertex_shader_module,
                         entry_point: desc.vertex_shader.entry_point,
-                        buffers: desc.vertex_buffers,
+                        buffers: &desc.vertex_buffers,
                     },
                     primitive: desc.primitive,
                     depth_stencil: desc.depth_stencil.clone(),
