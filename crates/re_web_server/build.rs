@@ -18,7 +18,6 @@ fn rerun_if_changed(path: &str) {
 
 struct Packages<'a> {
     pkgs: HashMap<&'a str, &'a Package>,
-    pkgs_workspace: HashMap<&'a str, &'a Package>,
 }
 
 impl<'a> Packages<'a> {
@@ -29,16 +28,7 @@ impl<'a> Packages<'a> {
             .map(|pkg| (pkg.name.as_str(), pkg))
             .collect::<HashMap<_, _>>();
 
-        let pkgs_workspace = metadata.workspace_packages();
-        let pkgs_workspace = pkgs_workspace
-            .iter()
-            .map(|pkg| (pkg.name.as_str(), *pkg))
-            .collect::<HashMap<_, _>>();
-
-        Self {
-            pkgs,
-            pkgs_workspace,
-        }
+        Self { pkgs }
     }
 
     /// Generates all the appropriate `cargo:rerun-if-changed` lines so that all locally
@@ -60,9 +50,8 @@ impl<'a> Packages<'a> {
             // and use that instead.
             .filter_map(|dep| self.pkgs.get(dep.name.as_str()))
         {
-            let is_in_workspace = self.pkgs_workspace.contains_key(dep_pkg.name.as_str());
             let exists_on_local_disk = dep_pkg.source.is_none();
-            if !is_in_workspace && exists_on_local_disk {
+            if exists_on_local_disk {
                 let mut dep_path = dep_pkg.manifest_path.clone();
                 dep_path.pop();
 
