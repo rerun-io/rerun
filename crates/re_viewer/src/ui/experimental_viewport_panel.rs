@@ -386,20 +386,10 @@ impl ViewState {
         objects: &Objects<'_>,
     ) -> egui::Response {
         #[cfg(feature = "glow")]
-        return ui
-            .vertical(|ui| {
-                crate::view3d::view_3d(ctx, ui, &mut self.state_3d, Some(space), objects);
-            })
-            .response;
-
-        #[cfg(not(feature = "glow"))]
-        return ui.label(
-            egui::RichText::new(
-                "3D view not available (Rerun was compiled without the 'glow' feature)",
-            )
-            .size(24.0)
-            .color(ui.visuals().warn_fg_color),
-        );
+        ui.vertical(|ui| {
+            crate::view3d::view_3d(ctx, ui, &mut self.state_3d, Some(space), objects);
+        })
+        .response
     }
 
     fn ui_tensor(&mut self, ui: &mut egui::Ui, tensor: &re_log_types::Tensor) -> egui::Response {
