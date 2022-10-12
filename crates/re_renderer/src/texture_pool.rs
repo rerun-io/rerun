@@ -1,10 +1,10 @@
-use slotmap::{new_key_type, Key, SlotMap};
+use slotmap::new_key_type;
 use std::{
-    collections::HashMap,
+    hash::Hash,
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::pool_error::PoolError;
+use crate::resource_pool::*;
 
 new_key_type! { pub(crate) struct TextureHandle; }
 
@@ -15,18 +15,21 @@ pub(crate) struct Texture {
     // TODO(andreas) what about custom views
 }
 
+impl Resource for Texture {
+    fn register_use(&self, current_frame_index: u64) {
+        self.last_frame_used
+            .fetch_max(current_frame_index, Ordering::Relaxed);
+    }
+}
+
 pub(crate) struct TexturePool {
-    textures: SlotMap<TextureHandle, Texture>,
-    texture_lookup: HashMap<wgpu::TextureDescriptor<'static>, TextureHandle>,
-    current_frame_index: u64,
+    pool: ResourcePool<TextureHandle, wgpu::TextureDescriptor<'static>, Texture>,
 }
 
 impl TexturePool {
     pub fn new() -> Self {
         TexturePool {
-            textures: SlotMap::with_key(),
-            texture_lookup: HashMap::new(),
-            current_frame_index: 0,
+            pool: ResourcePool::new(),
         }
     }
 
@@ -35,14 +38,14 @@ impl TexturePool {
         device: &wgpu::Device,
         desc: &wgpu::TextureDescriptor<'static>,
     ) -> TextureHandle {
-        *self.texture_lookup.entry(desc.clone()).or_insert_with(|| {
+        self.pool.request(desc, |desc| {
             let texture = device.create_texture(desc);
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            self.textures.insert(Texture {
+            Texture {
                 last_frame_used: AtomicU64::new(0),
                 texture,
                 default_view: view,
-            })
+            }
         })
     }
 
@@ -75,25 +78,10 @@ impl TexturePool {
     }
 
     pub fn frame_maintenance(&mut self, frame_index: u64) {
-        // TODO: Remove texture that we haven't used for a while.
-        self.current_frame_index = frame_index;
+        self.pool.frame_maintenance(frame_index);
     }
 
     pub fn texture(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
-        self.textures
-            .get(handle)
-            .map(|texture| {
-                texture
-                    .last_frame_used
-                    .fetch_max(self.current_frame_index, Ordering::Relaxed);
-                texture
-            })
-            .ok_or_else(|| {
-                if handle.is_null() {
-                    PoolError::NullHandle
-                } else {
-                    PoolError::ResourceNotAvailable
-                }
-            })
+        self.pool.resource(handle)
     }
 }

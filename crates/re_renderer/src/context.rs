@@ -10,7 +10,6 @@ pub struct RenderContext {
     /// TODO(andreas): Should we maintain depth buffers per view and ask for no depth from eframe?
     output_format_depth: Option<wgpu::TextureFormat>,
 
-    // TODO(andreas): Establish a trait for pools to give them a similar interface and allow iterating over them etc.
     pub(crate) texture_pool: TexturePool,
     pub(crate) renderpipeline_pool: RenderPipelinePool,
 
