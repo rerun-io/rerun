@@ -220,6 +220,7 @@ impl eframe::App for App {
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
+        file_saver(egui_ctx, self);
         top_panel(egui_ctx, frame, self);
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
@@ -480,12 +481,63 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
     });
 }
 
-fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
+// ---
+
+const FILE_SAVER_PROMISE: &str = "file_saver";
+const FILE_SAVER_NOTIF_DURATION: std::time::Duration = std::time::Duration::from_secs(5);
+
+fn file_saver(egui_ctx: &egui::Context, app: &mut App) {
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     {
         use anyhow::Result as AnyResult;
         use std::path::PathBuf;
+
+        if app.promise_exists(FILE_SAVER_PROMISE) {
+            // There's already a file save running in the background.
+
+            if let Some(res) = app.poll_promise::<AnyResult<PathBuf>>(FILE_SAVER_PROMISE) {
+                // File save promise has returned.
+
+                match res {
+                    Ok(path) => {
+                        let msg = format!("Successfully wrote to {path:?}");
+                        re_log::info!(msg);
+                        app.toasts
+                            .info(msg)
+                            .set_duration(FILE_SAVER_NOTIF_DURATION.into());
+                    }
+                    Err(err) => {
+                        let msg = format!("{err}");
+                        re_log::error!(msg);
+                        app.toasts
+                            .error(msg)
+                            .set_duration(FILE_SAVER_NOTIF_DURATION.into());
+                    }
+                }
+            } else {
+                // File save promise is still running in the background.
+
+                // NOTE: not a toast, want something a bit more discreet here.
+                egui::Window::new("file_saver_spin")
+                    .anchor(egui::Align2::RIGHT_BOTTOM, egui::Vec2::ZERO)
+                    .title_bar(false)
+                    .enabled(false)
+                    .show(egui_ctx, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spinner();
+                            ui.label(egui::RichText::new("Writing file to disk…").italics());
+                        })
+                    });
+            }
+        }
+    }
+}
+
+fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
+    // TODO(emilk): support saving data on web
+    #[cfg(not(target_arch = "wasm32"))]
+    {
         use std::time::Duration as StdDuration;
 
         const FILE_SAVER_PROMISE: &str = "file_saver";
@@ -500,41 +552,6 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                     ui.spinner();
                 })
             });
-
-            if let Some(res) = app.poll_promise::<AnyResult<PathBuf>>(FILE_SAVER_PROMISE) {
-                // File save promise has returned.
-
-                match res {
-                    Ok(path) => {
-                        let msg = format!("Successfully wrote to {path:?}");
-                        re_log::info!(msg);
-                        app.toasts
-                            .info(msg)
-                            .set_duration(NOTIFICATIONS_DURATION.into());
-                    }
-                    Err(err) => {
-                        let msg = format!("{err}");
-                        re_log::error!(msg);
-                        app.toasts
-                            .error(msg)
-                            .set_duration(NOTIFICATIONS_DURATION.into());
-                    }
-                }
-            } else {
-                // File save promise is still running in the background.
-
-                // NOTE: not a toast, want something a bit more discreet here.
-                egui::Window::new("file_saver_spin")
-                    .anchor(egui::Align2::RIGHT_BOTTOM, egui::Vec2::ZERO)
-                    .title_bar(false)
-                    .enabled(false)
-                    .show(ui.ctx(), |ui| {
-                        ui.horizontal(|ui| {
-                            ui.spinner();
-                            ui.label(egui::RichText::new("Writing file to disk…").italics());
-                        })
-                    });
-            }
         } else if ui
             .add_enabled(!app.log_db().is_empty(), egui::Button::new("Save…"))
             .on_hover_text("Save all data to a Rerun data file (.rrd)")
@@ -546,6 +563,8 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
             if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
                 let f = save_to_file(app, path);
                 if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
+                    // NOTE: Shouldn't even be possible as the "Save" button is already
+                    // grayed out at this point... better safe than sorry though.
                     app.toasts
                         .error(err.to_string())
                         .set_duration(NOTIFICATIONS_DURATION.into());
@@ -605,6 +624,8 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
         _frame.close();
     }
 }
+
+// ---
 
 fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     let log_dbs = app
