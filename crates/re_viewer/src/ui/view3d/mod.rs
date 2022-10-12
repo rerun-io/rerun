@@ -459,13 +459,16 @@ pub(crate) fn view_3d(
             rect,
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
-                    .prepare(move |device, _queue, paint_callback_resources| {
+                    .prepare(move |device, _queue, encoder, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
-                        frame_builder_prepare.write().test_triangle(ctx, device);
+                        frame_builder_prepare
+                            .write()
+                            .test_triangle(ctx, device)
+                            .draw(ctx, encoder);
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();
-                        frame_builder_draw.read().draw(ctx, render_pass);
+                        frame_builder_draw.read().finish(ctx, render_pass);
                     }),
             ),
         }

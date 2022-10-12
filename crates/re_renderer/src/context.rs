@@ -16,7 +16,7 @@ pub struct RenderContext {
     // TODO(andreas): Establish a trait for pools to give them a similar interface and allow iterating over them etc.
     pub(crate) texture_pool: TexturePool,
 
-    frame_counter: u64,
+    frame_index: u64,
 }
 
 /// Render pipeline handle that needs to be requested from the `RenderContext` and can be resolved to a `wgpu::RenderPipeline` before drawing.
@@ -35,7 +35,7 @@ impl RenderContext {
             output_format_depth,
             test_triangle: None,
             texture_pool: TexturePool::new(),
-            frame_counter: 0,
+            frame_index: 0,
         }
     }
 
@@ -109,11 +109,11 @@ impl RenderContext {
     }
 
     pub fn frame_maintenance(&mut self) {
-        self.texture_pool.frame_maintenance();
-        self.frame_counter += 1;
+        self.frame_index += 1;
+        self.texture_pool.frame_maintenance(self.frame_index);
     }
 
-    pub(crate) fn frame_counter(&self) -> u64 {
-        self.frame_counter
+    pub(crate) fn frame_index(&self) -> u64 {
+        self.frame_index
     }
 }
