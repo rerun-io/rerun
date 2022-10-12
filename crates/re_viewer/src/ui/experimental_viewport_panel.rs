@@ -8,7 +8,7 @@ use re_data_store::{
     log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, Timeline,
     TimelineStore,
 };
-use re_log_types::{ObjectType, Transform};
+use re_log_types::{ObjectType, Tensor, Transform};
 
 use crate::misc::ViewerContext;
 
@@ -30,6 +30,7 @@ struct SpaceInfo {
     /// All paths in this space (including self and children connected by the identity transform).
     objects: IntSet<ObjPath>,
 
+    #[allow(unused)] // TODO(emilk): support projecting parent space(s) into this space
     parent: Option<(ObjPath, Transform)>,
     child_spaces: BTreeMap<ObjPath, Transform>,
 }
@@ -158,7 +159,8 @@ impl Blueprint {
                 SpaceView {
                     name: path.to_string(),
                     space_path: path.clone(),
-                    view_state: ViewState::default(),
+                    view_state: Default::default(),
+                    tree: Default::default(),
                 },
             );
             space_make_infos.push(SpaceMakeInfo {
@@ -211,11 +213,7 @@ impl Blueprint {
                         if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
                             if let Some(tree) = obj_tree.subtree(&space_view.space_path) {
                                 show_children(ui, space_info, tree);
-                            } else {
-                                todo!()
                             }
-                        } else {
-                            todo!()
                         }
                     });
                 }
@@ -239,11 +237,70 @@ fn show_children(ui: &mut egui::Ui, space_info: &SpaceInfo, tree: &ObjectTree) {
 
 // ----------------------------------------------------------------------------
 
+#[derive(Copy, Clone, serde::Deserialize, serde::Serialize)]
+enum ViewCategory {
+    TwoD,
+    ThreeD,
+    Tensor,
+    Text,
+}
+
+struct CategoriesViewer<'a, 'b> {
+    ctx: &'a mut ViewerContext<'b>,
+    space_path: ObjPath,
+    view_state: &'a mut ViewState,
+    multidim_tensor: Option<&'a Tensor>,
+    time_objects: &'a Objects<'a>,
+    sticky_objects: &'a Objects<'a>,
+}
+
+impl<'a, 'b> egui_dock::TabViewer for CategoriesViewer<'a, 'b> {
+    type Tab = ViewCategory;
+
+    fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
+        crate::profile_function!();
+
+        match *tab {
+            ViewCategory::TwoD => {
+                self.view_state
+                    .ui_2d(self.ctx, ui, &self.space_path, self.time_objects);
+            }
+            ViewCategory::ThreeD => {
+                self.view_state
+                    .ui_3d(self.ctx, ui, &self.space_path, self.time_objects);
+            }
+            ViewCategory::Tensor => {
+                if let Some(multidim_tensor) = self.multidim_tensor {
+                    self.view_state.ui_tensor(ui, multidim_tensor);
+                }
+            }
+            ViewCategory::Text => {
+                self.view_state.ui_text(self.ctx, ui, self.sticky_objects);
+            }
+        }
+    }
+
+    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
+        match *tab {
+            ViewCategory::TwoD => "2D",
+            ViewCategory::ThreeD => "3D",
+            ViewCategory::Tensor => "Tensor",
+            ViewCategory::Text => "Text",
+        }
+        .into()
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(serde::Deserialize, serde::Serialize)]
 struct SpaceView {
     name: String,
     space_path: ObjPath,
     view_state: ViewState,
+
+    /// In case we are a mix of 2d/3d/tensor/text, we show tabs:
+    tree: egui_dock::Tree<ViewCategory>,
 }
 
 impl SpaceView {
@@ -306,8 +363,79 @@ impl SpaceView {
             }
         }
 
-        self.view_state
-            .ui(ctx, ui, &self.space_path, &time_objects, &sticky_objects)
+        self.objects_ui(ctx, ui, &time_objects, &sticky_objects)
+    }
+
+    fn objects_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        time_objects: &Objects<'_>,
+        sticky_objects: &Objects<'_>,
+    ) -> egui::Response {
+        crate::profile_function!();
+
+        let has_2d = time_objects.has_any_2d();
+        let has_3d = time_objects.has_any_3d();
+        let multidim_tensor = multidim_tensor(time_objects);
+        let has_text = sticky_objects.has_any_text_entries();
+
+        let mut categories = vec![];
+        if has_2d {
+            categories.push(ViewCategory::TwoD);
+        }
+        if has_3d {
+            categories.push(ViewCategory::ThreeD);
+        }
+        if multidim_tensor.is_some() {
+            categories.push(ViewCategory::Tensor);
+        }
+        if has_text {
+            categories.push(ViewCategory::Text);
+        }
+
+        match categories.len() {
+            0 => ui.label("(empty)"),
+            1 => {
+                if has_2d {
+                    self.view_state
+                        .ui_2d(ctx, ui, &self.space_path, time_objects)
+                } else if has_3d {
+                    self.view_state
+                        .ui_3d(ctx, ui, &self.space_path, time_objects)
+                } else if let Some(multidim_tensor) = multidim_tensor {
+                    self.view_state.ui_tensor(ui, multidim_tensor)
+                } else {
+                    self.view_state.ui_text(ctx, ui, sticky_objects)
+                }
+            }
+            _ => {
+                if self.tree.is_empty() {
+                    self.tree = egui_dock::Tree::new(categories);
+                }
+
+                let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
+                dock_style.separator_width = 2.0;
+                dock_style.show_close_buttons = false;
+                dock_style.tab_include_scrollarea = false;
+
+                let mut tab_viewer = CategoriesViewer {
+                    ctx,
+                    view_state: &mut self.view_state,
+                    space_path: self.space_path.clone(),
+                    multidim_tensor,
+                    time_objects,
+                    sticky_objects,
+                };
+
+                ui.scope(|ui| {
+                    egui_dock::DockArea::new(&mut self.tree)
+                        .style(dock_style)
+                        .show_inside(ui, &mut tab_viewer);
+                })
+                .response
+            }
+        }
     }
 }
 
@@ -331,43 +459,6 @@ struct ViewState {
 }
 
 impl ViewState {
-    pub fn ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        space: &ObjPath,
-        time_objects: &Objects<'_>,
-        sticky_objects: &Objects<'_>,
-    ) -> egui::Response {
-        crate::profile_function!();
-
-        let has_2d = time_objects.has_any_2d();
-        let has_3d = time_objects.has_any_3d();
-        let multidim_tensor = multidim_tensor(time_objects);
-        let has_text = sticky_objects.has_any_text_entries();
-
-        let num_categories =
-            has_2d as u32 + has_3d as u32 + multidim_tensor.is_some() as u32 + has_text as u32;
-
-        match num_categories {
-            0 => ui.label("(empty)"),
-            1 => {
-                if has_2d {
-                    self.ui_2d(ctx, ui, space, time_objects)
-                } else if has_3d {
-                    self.ui_3d(ctx, ui, space, time_objects)
-                } else if let Some(multidim_tensor) = multidim_tensor {
-                    self.ui_tensor(ui, multidim_tensor)
-                } else {
-                    self.ui_text(ctx, ui, sticky_objects)
-                }
-            }
-            _ => {
-                todo!("Support mixing types by showing tabs for the different types")
-            }
-        }
-    }
-
     fn ui_2d(
         &mut self,
         ctx: &mut ViewerContext<'_>,
