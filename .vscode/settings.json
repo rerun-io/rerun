@@ -20,6 +20,7 @@
     "python.linting.mypyEnabled": true,
     "python.linting.enabled": true,
     "cSpell.words": [
+        "tonemapping",
         "Wgsl"
     ]
 }
