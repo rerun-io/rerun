@@ -1,9 +1,11 @@
-use std::sync::mpsc::Receiver;
+use std::{any::Any, sync::mpsc::Receiver};
 
 use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
+use ahash::HashMap;
 use egui_extras::RetainedImage;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+use poll_promise::Promise;
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
 
@@ -24,6 +26,8 @@ pub struct App {
     /// Set to `true` on Ctrl-C.
     #[cfg(not(target_arch = "wasm32"))]
     ctrl_c: std::sync::Arc<std::sync::atomic::AtomicBool>,
+
+    pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
 }
 
 impl App {
@@ -96,12 +100,66 @@ impl App {
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
+            pending_promises: Default::default(),
         }
     }
 
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
     pub fn set_profiler(&mut self, profiler: crate::Profiler) {
         self.state.profiler = profiler;
+    }
+
+    /// Creates a promise with the specified name that will run `f` on a background
+    /// thread using the `poll_promise` crate.
+    ///
+    /// Names can only be re-used once the promise with that name has finished running,
+    /// otherwise an other is returned.
+    // TODO(cmc): offer `spawn_async_promise` once we open save_file to the web
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn spawn_threaded_promise<F, T>(
+        &mut self,
+        name: impl Into<String>,
+        f: F,
+    ) -> anyhow::Result<()>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let name = name.into();
+
+        if self.pending_promises.contains_key(&name) {
+            anyhow::bail!("there's already a promise \"{name}\" running!");
+        }
+
+        let f = move || Box::new(f()) as Box<dyn Any + Send>; // erase it
+        let promise = Promise::spawn_thread(&name, f);
+
+        self.pending_promises.insert(name, promise);
+
+        Ok(())
+    }
+
+    /// Polls the promise with the given name.
+    ///
+    /// Returns `Some<T>` it it's ready, or `None` otherwise.
+    ///
+    /// Panics if `T` does match the actual return value of the promise.
+    pub fn poll_promise<T: Any>(&mut self, name: impl AsRef<str>) -> Option<T> {
+        self.pending_promises
+            .remove(name.as_ref())
+            .and_then(|promise| match promise.try_take() {
+                Ok(any) => Some(*any.downcast::<T>().unwrap()),
+                Err(promise) => {
+                    self.pending_promises
+                        .insert(name.as_ref().to_owned(), promise);
+                    None
+                }
+            })
+    }
+
+    /// Returns whether a promise with the given name is currently running.
+    pub fn promise_exists(&mut self, name: impl AsRef<str>) -> bool {
+        self.pending_promises.contains_key(name.as_ref())
     }
 }
 

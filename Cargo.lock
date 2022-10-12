@@ -2466,6 +2466,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "poll-promise"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "260817b339544e5b23d4bb66d4522d89dd64af88d16b6dcd7b2a2409ee2e095d"
+dependencies = [
+ "static_assertions",
+]
+
+[[package]]
 name = "pollster"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2862,6 +2871,7 @@ dependencies = [
  "mint",
  "ndarray",
  "nohash-hasher",
+ "poll-promise",
  "puffin",
  "puffin_http",
  "rand",
