@@ -4,9 +4,7 @@ use std::sync::Arc;
 
 use crate::{
     context::*,
-    pipeline_layout_pool::PipelineLayoutDesc,
-    render_pipeline_pool::*,
-    texture_pool::{render_target_2d_desc, TextureHandle},
+    resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, texture_pool::*},
 };
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
@@ -70,11 +68,11 @@ impl FrameBuilder {
         self.tonemapping_pipeline = ctx.renderpipelines.request(
             device,
             &RenderPipelineDesc {
-                label: "Tonemapping".into(),
+                label: "Tonemapping".to_owned(),
                 pipeline_layout: ctx.pipeline_layouts.request(
                     device,
                     &PipelineLayoutDesc {
-                        label: "empty".to_string(),
+                        label: "empty".to_owned(),
                         entries: Vec::new(),
                     },
                     &ctx.bindgroup_layouts,
@@ -107,7 +105,7 @@ impl FrameBuilder {
                 pipeline_layout: ctx.pipeline_layouts.request(
                     device,
                     &PipelineLayoutDesc {
-                        label: "empty".to_string(),
+                        label: "empty".to_owned(),
                         entries: Vec::new(),
                     },
                     &ctx.bindgroup_layouts,

@@ -1,6 +1,6 @@
 use slotmap::new_key_type;
 
-use crate::resource_pool::*;
+use super::resource_pool::*;
 
 new_key_type! { pub(crate) struct BindGroupLayoutHandle; }
 

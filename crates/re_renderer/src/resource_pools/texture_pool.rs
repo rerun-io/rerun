@@ -4,7 +4,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::resource_pool::*;
+use super::resource_pool::*;
 
 new_key_type! { pub(crate) struct TextureHandle; }
 

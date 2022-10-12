@@ -1,9 +1,6 @@
 use slotmap::new_key_type;
 
-use crate::{
-    bind_group_layout_pool::{BindGroupLayoutHandle, BindGroupLayoutPool},
-    resource_pool::*,
-};
+use super::{bind_group_layout_pool::*, resource_pool::*};
 
 new_key_type! { pub(crate) struct PipelineLayoutHandle; }
 

@@ -1,10 +1,7 @@
 use slotmap::new_key_type;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::{
-    pipeline_layout_pool::{PipelineLayoutHandle, PipelineLayoutPool},
-    resource_pool::*,
-};
+use super::{pipeline_layout_pool::*, resource_pool::*};
 
 new_key_type! { pub(crate) struct RenderPipelineHandle; }
 

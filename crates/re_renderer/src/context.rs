@@ -1,4 +1,4 @@
-use crate::{
+use crate::resource_pools::{
     bind_group_layout_pool::BindGroupLayoutPool, pipeline_layout_pool::PipelineLayoutPool,
     render_pipeline_pool::RenderPipelinePool, texture_pool::TexturePool,
 };
