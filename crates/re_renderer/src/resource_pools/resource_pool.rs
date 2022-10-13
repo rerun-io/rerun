@@ -45,20 +45,22 @@ pub(super) struct ResourcePool<Handle: Key, Desc, Res> {
     current_frame_index: u64,
 }
 
+impl<Handle: Key, Desc, Res> Default for ResourcePool<Handle, Desc, Res> {
+    fn default() -> Self {
+        Self {
+            resources: Default::default(),
+            lookup: Default::default(),
+            current_frame_index: Default::default(),
+        }
+    }
+}
+
 impl<Handle, Desc, Res> ResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
     Desc: Clone + Eq + Hash,
     Res: Resource,
 {
-    pub fn new() -> Self {
-        ResourcePool {
-            resources: SlotMap::with_key(),
-            lookup: HashMap::new(),
-            current_frame_index: 0,
-        }
-    }
-
     pub fn request<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Handle {
         *self.lookup.entry(desc.clone()).or_insert_with(|| {
             let resource = creation_func(desc); // TODO(andreas): Handle creation failure

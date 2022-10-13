@@ -16,17 +16,12 @@ pub(crate) struct PipelineLayoutDesc {
     pub entries: Vec<BindGroupLayoutHandle>,
 }
 
+#[derive(Default)]
 pub(crate) struct PipelineLayoutPool {
     pool: ResourcePool<PipelineLayoutHandle, PipelineLayoutDesc, PipelineLayout>,
 }
 
 impl PipelineLayoutPool {
-    pub fn new() -> Self {
-        PipelineLayoutPool {
-            pool: ResourcePool::new(),
-        }
-    }
-
     pub fn request(
         &mut self,
         device: &wgpu::Device,

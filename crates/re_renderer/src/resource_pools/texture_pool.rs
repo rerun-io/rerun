@@ -17,18 +17,13 @@ impl UsageTrackedResource for Texture {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct TexturePool {
     // TODO(andreas): Ignore label for hashing/comparing?
     pool: ResourcePool<TextureHandle, wgpu::TextureDescriptor<'static>, Texture>,
 }
 
 impl TexturePool {
-    pub fn new() -> Self {
-        TexturePool {
-            pool: ResourcePool::new(),
-        }
-    }
-
     pub fn request(
         &mut self,
         device: &wgpu::Device,

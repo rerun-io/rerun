@@ -29,12 +29,12 @@ impl RenderContext {
         RenderContext {
             output_format_color,
 
-            textures: TexturePool::new(),
-            renderpipelines: RenderPipelinePool::new(),
-            pipeline_layouts: PipelineLayoutPool::new(),
-            bind_group_layouts: BindGroupLayoutPool::new(),
-            bind_groups: BindGroupPool::new(),
-            samplers: SamplerPool::new(),
+            textures: TexturePool::default(),
+            renderpipelines: RenderPipelinePool::default(),
+            pipeline_layouts: PipelineLayoutPool::default(),
+            bind_group_layouts: BindGroupLayoutPool::default(),
+            bind_groups: BindGroupPool::default(),
+            samplers: SamplerPool::default(),
 
             frame_index: 0,
         }

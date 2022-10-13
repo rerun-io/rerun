@@ -51,17 +51,12 @@ pub(crate) struct RenderPipelineDesc {
     pub multisample: wgpu::MultisampleState,
 }
 
+#[derive(Default)]
 pub(crate) struct RenderPipelinePool {
     pool: ResourcePool<RenderPipelineHandle, RenderPipelineDesc, RenderPipeline>,
 }
 
 impl RenderPipelinePool {
-    pub fn new() -> Self {
-        RenderPipelinePool {
-            pool: ResourcePool::new(),
-        }
-    }
-
     pub fn request(
         &mut self,
         device: &wgpu::Device,

@@ -8,24 +8,19 @@ pub(crate) struct BindGroupLayout {
 
 impl Resource for BindGroupLayout {}
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq, Default)]
 pub(crate) struct BindGroupLayoutDesc {
     /// Debug label of the bind group layout. This will show up in graphics debuggers for easy identification.
     pub label: String,
     pub entries: Vec<wgpu::BindGroupLayoutEntry>,
 }
 
+#[derive(Default)]
 pub(crate) struct BindGroupLayoutPool {
     pool: ResourcePool<BindGroupLayoutHandle, BindGroupLayoutDesc, BindGroupLayout>,
 }
 
 impl BindGroupLayoutPool {
-    pub fn new() -> Self {
-        BindGroupLayoutPool {
-            pool: ResourcePool::new(),
-        }
-    }
-
     pub fn request(
         &mut self,
         device: &wgpu::Device,

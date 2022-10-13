@@ -86,17 +86,12 @@ impl Default for SamplerDesc {
 
 impl Eq for SamplerDesc {}
 
+#[derive(Default)]
 pub(crate) struct SamplerPool {
     pool: ResourcePool<SamplerHandle, SamplerDesc, Sampler>,
 }
 
 impl SamplerPool {
-    pub fn new() -> Self {
-        SamplerPool {
-            pool: ResourcePool::new(),
-        }
-    }
-
     pub fn request(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> SamplerHandle {
         self.pool.request(desc, |desc| {
             // TODO(andreas): error handling

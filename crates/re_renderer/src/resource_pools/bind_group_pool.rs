@@ -35,17 +35,12 @@ pub(crate) struct BindGroupDesc {
     pub layout: BindGroupLayoutHandle,
 }
 
+#[derive(Default)]
 pub(crate) struct BindGroupPool {
     pool: ResourcePool<BindGroupHandle, BindGroupDesc, BindGroup>,
 }
 
 impl BindGroupPool {
-    pub fn new() -> Self {
-        BindGroupPool {
-            pool: ResourcePool::new(),
-        }
-    }
-
     pub fn request(
         &mut self,
         device: &wgpu::Device,
