@@ -560,7 +560,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                         return (true, None);
                     }
 
-                    // We need to know the time query _before_ we can even display the
+                    // We need to know the time selection _before_ we can even display the
                     // button, as this will determine wether its grayed out or not!
                     // TODO(cmc): In practice the loop (green) selection is always there
                     // at the moment so...
@@ -695,10 +695,8 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 /// Returns a closure that, when run, will save the contents of the current database
 /// to disk, at the specified `path`.
 ///
-/// If `time_query` is specified, then only data for that specific timeline over that
+/// If `time_selection` is specified, then only data for that specific timeline over that
 /// specific time range will be accounted for.
-///
-/// Panics if `time_query` is not a range query.
 #[cfg(not(target_arch = "wasm32"))]
 fn save_database_to_file(
     app: &mut App,
