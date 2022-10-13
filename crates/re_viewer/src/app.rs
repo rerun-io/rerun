@@ -8,8 +8,10 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
 use re_data_store::log_db::LogDb;
-use re_data_store::TimeQuery;
 use re_log_types::*;
+
+#[cfg(not(target_arch = "wasm32"))]
+use re_data_store::TimeQuery;
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -711,10 +713,9 @@ fn save_database_to_file(
                 .filter(|msg| {
                     match msg {
                         LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true, // timeless
-                        LogMsg::DataMsg(msg) => {
-                            msg.time_point.is_timeless() || {
-                                let is_within_range = msg
-                                    .time_point
+                        LogMsg::DataMsg(DataMsg { time_point, .. }) => {
+                            time_point.is_timeless() || {
+                                let is_within_range = time_point
                                     .0
                                     .get(&timeline)
                                     .map_or(false, |t| range.contains(t));
