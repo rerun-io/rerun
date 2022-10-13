@@ -17,4 +17,7 @@ re_log = { path = "../re_log" }
 wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = { version = "0.14", default-features = false, features = ["webgl", "wgsl"] }
+wgpu = { version = "0.14", default-features = false, features = [
+  "webgl",
+  "wgsl",
+] }
