@@ -147,7 +147,7 @@ impl FrameBuilder {
                     entry_point: "main",
                 },
                 vertex_buffers: vec![],
-                render_targets: vec![Some(ctx.output_format().into())],
+                render_targets: vec![Some(ctx.output_format_color().into())],
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),

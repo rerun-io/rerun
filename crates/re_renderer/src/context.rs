@@ -52,7 +52,7 @@ impl RenderContext {
         self.textures.frame_maintenance(self.frame_index);
     }
 
-    pub(crate) fn output_format(&self) -> wgpu::TextureFormat {
+    pub(crate) fn output_format_color(&self) -> wgpu::TextureFormat {
         self.output_format_color
     }
 }
