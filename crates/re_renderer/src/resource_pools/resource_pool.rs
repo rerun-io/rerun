@@ -6,25 +6,27 @@ use std::{
 };
 
 use slotmap::{Key, SlotMap};
-use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum PoolError {
     #[error("Requested resource isn't available yet of the handle is no longer valid")]
     ResourceNotAvailable,
+
     #[error("The passed resource handle was null")]
     NullHandle,
 }
 
+/// A resource that can be owned & lifetime tracked by `ResourcePool`
 pub(crate) trait Resource {
+    /// Called every time a resource handle was resolved to its `Resource` object.
+    /// (typically on `ResourcePool::get`)
     fn on_handle_resolve(&self, _current_frame_index: u64) {}
 }
 
 /// A resource that keeps track of the last frame it was used.
 ///
-/// In contrast, there are some resource that we don't care about when it was used the last time!
-/// This makes sense for resources that are regarded lightweight enough
-/// to keep around indefinitely but heavy enough that we don't want to create them every frame.
+/// All resources should implement this, except those which are regarded lightweight enough to keep around indefinitely but heavy enough
+/// that we don't want to create them every frame (i.e. need a `ResourcePool`)
 pub(crate) trait UsageTrackedResource {
     fn last_frame_used(&self) -> &AtomicU64;
 }
@@ -37,7 +39,7 @@ impl<T: UsageTrackedResource> Resource for T {
 }
 
 /// Generic resource pool used as base for specialized pools
-pub(crate) struct ResourcePool<Handle: Key, Desc, Res> {
+pub(super) struct ResourcePool<Handle: Key, Desc, Res> {
     resources: SlotMap<Handle, Res>,
     lookup: HashMap<Desc, Handle>,
     current_frame_index: u64,

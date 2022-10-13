@@ -27,7 +27,7 @@ pub(crate) struct ShaderDesc {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
-    pub label: String, // TODO(andreas): Ignore for hashing/comparing?
+    pub label: String,
 
     pub pipeline_layout: PipelineLayoutHandle,
 
@@ -43,8 +43,10 @@ pub(crate) struct RenderPipelineDesc {
 
     /// The properties of the pipeline at the primitive assembly and rasterization level.
     pub primitive: wgpu::PrimitiveState,
+
     /// The effect of draw calls on the depth and stencil aspects of the output target, if any.
     pub depth_stencil: Option<wgpu::DepthStencilState>,
+
     /// The multi-sampling properties of the pipeline.
     pub multisample: wgpu::MultisampleState,
 }

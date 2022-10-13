@@ -70,7 +70,7 @@ impl PartialEq for SamplerDesc {
 impl Default for SamplerDesc {
     fn default() -> Self {
         Self {
-            label: "".to_owned(),
+            label: "[UNNAMED]".to_owned(),
             address_mode_u: Default::default(),
             address_mode_v: Default::default(),
             address_mode_w: Default::default(),
