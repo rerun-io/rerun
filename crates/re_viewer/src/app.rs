@@ -543,7 +543,11 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                 ui.horizontal(|ui| {
                     let _ = ui.button("Save…");
                     ui.spinner();
-                })
+                });
+                ui.horizontal(|ui| {
+                    let _ = ui.button("Save time selection…");
+                    ui.spinner();
+                });
             });
         } else {
             let (clicked, time_selection) = ui
