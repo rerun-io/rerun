@@ -62,6 +62,7 @@ document-features = "0.2"
 egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "5f5a877a34d17ad31640b5a1a2eb771aff26a3a1", features = [
   "serde",
 ] } # 2022-10-07
+egui-notify = "0.4"
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = [
   "mint",
@@ -76,6 +77,7 @@ macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"
+poll-promise = "0.1"
 rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
