@@ -1,9 +1,8 @@
-use slotmap::new_key_type;
 use std::sync::atomic::AtomicU64;
 
 use super::{pipeline_layout_pool::*, resource_pool::*};
 
-new_key_type! { pub(crate) struct RenderPipelineHandle; }
+slotmap::new_key_type! { pub(crate) struct RenderPipelineHandle; }
 
 pub(crate) struct RenderPipeline {
     last_frame_used: AtomicU64,

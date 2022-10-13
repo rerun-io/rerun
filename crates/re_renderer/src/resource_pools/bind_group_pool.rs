@@ -1,7 +1,5 @@
 use std::sync::atomic::AtomicU64;
 
-use slotmap::new_key_type;
-
 use super::{
     bind_group_layout_pool::{BindGroupLayoutHandle, BindGroupLayoutPool},
     resource_pool::*,
@@ -9,7 +7,7 @@ use super::{
     texture_pool::{TextureHandle, TexturePool},
 };
 
-new_key_type! { pub(crate) struct BindGroupHandle; }
+slotmap::new_key_type! { pub(crate) struct BindGroupHandle; }
 
 pub(crate) struct BindGroup {
     last_frame_used: AtomicU64,
@@ -32,7 +30,7 @@ pub(crate) enum BindGroupEntry {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct BindGroupDesc {
     /// Debug label of the bind group. This will show up in graphics debuggers for easy identification.
-    pub label: String, // TODO(andreas): Ignore for hashing/comparing?
+    pub label: String,
     pub entries: Vec<BindGroupEntry>,
     pub layout: BindGroupLayoutHandle,
 }

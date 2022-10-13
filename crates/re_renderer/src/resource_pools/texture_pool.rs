@@ -1,9 +1,8 @@
-use slotmap::new_key_type;
 use std::{hash::Hash, sync::atomic::AtomicU64};
 
 use super::resource_pool::*;
 
-new_key_type! { pub(crate) struct TextureHandle; }
+slotmap::new_key_type! { pub(crate) struct TextureHandle; }
 
 pub(crate) struct Texture {
     last_frame_used: AtomicU64,

@@ -3,11 +3,9 @@ use std::{
     num::NonZeroU8,
 };
 
-use slotmap::new_key_type;
-
 use super::resource_pool::*;
 
-new_key_type! { pub(crate) struct SamplerHandle; }
+slotmap::new_key_type! { pub(crate) struct SamplerHandle; }
 
 pub(crate) struct Sampler {
     pub(crate) sampler: wgpu::Sampler,
@@ -17,7 +15,7 @@ impl Resource for Sampler {}
 
 #[derive(Clone)]
 pub(crate) struct SamplerDesc {
-    /// Debug label of the sampler. This will show up in graphics debuggers for easy identification. Ignored for hashing & equality!
+    /// Debug label of the sampler. This will show up in graphics debuggers for easy identification.
     pub label: String,
     /// How to deal with out of bounds accesses in the u (i.e. x) direction
     pub address_mode_u: wgpu::AddressMode,
@@ -41,7 +39,6 @@ pub(crate) struct SamplerDesc {
 
 impl Hash for SamplerDesc {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        // ignore label!
         self.address_mode_u.hash(state);
         self.address_mode_v.hash(state);
         self.address_mode_w.hash(state);
@@ -51,12 +48,12 @@ impl Hash for SamplerDesc {
         self.lod_min_clamp.to_bits().hash(state);
         self.lod_max_clamp.to_bits().hash(state);
         self.anisotropy_clamp.hash(state);
+        self.label.hash(state);
     }
 }
 
 impl PartialEq for SamplerDesc {
     fn eq(&self, other: &Self) -> bool {
-        // ignore label!
         self.address_mode_u == other.address_mode_u
             && self.address_mode_v == other.address_mode_v
             && self.address_mode_w == other.address_mode_w
@@ -66,6 +63,7 @@ impl PartialEq for SamplerDesc {
             && self.lod_min_clamp.to_bits() == other.lod_min_clamp.to_bits()
             && self.lod_max_clamp.to_bits() == other.lod_max_clamp.to_bits()
             && self.anisotropy_clamp == other.anisotropy_clamp
+            && self.label == other.label
     }
 }
 

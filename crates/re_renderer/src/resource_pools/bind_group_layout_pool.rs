@@ -1,8 +1,6 @@
-use slotmap::new_key_type;
-
 use super::resource_pool::*;
 
-new_key_type! { pub(crate) struct BindGroupLayoutHandle; }
+slotmap::new_key_type! { pub(crate) struct BindGroupLayoutHandle; }
 
 pub(crate) struct BindGroupLayout {
     pub(crate) layout: wgpu::BindGroupLayout,
@@ -13,7 +11,7 @@ impl Resource for BindGroupLayout {}
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct BindGroupLayoutDesc {
     /// Debug label of the bind group layout. This will show up in graphics debuggers for easy identification.
-    pub label: String, // TODO(andreas): Ignore for hashing/comparing?
+    pub label: String,
     pub entries: Vec<wgpu::BindGroupLayoutEntry>,
 }
 
