@@ -134,7 +134,7 @@ impl App {
         let name = name.into();
 
         if self.pending_promises.contains_key(&name) {
-            anyhow::bail!("there's already a promise \"{name}\" running!");
+            anyhow::bail!("there's already a promise {name:?} running!");
         }
 
         let f = move || Box::new(f()) as Box<dyn Any + Send>; // erase it
@@ -220,7 +220,7 @@ impl eframe::App for App {
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
-        file_saver(egui_ctx, self); // toasts for background file saver
+        file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
         top_panel(egui_ctx, frame, self);
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
@@ -487,14 +487,14 @@ const FILE_SAVER_PROMISE: &str = "file_saver";
 const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
     Some(std::time::Duration::from_secs(4));
 
-fn file_saver(egui_ctx: &egui::Context, app: &mut App) {
-    use anyhow::Result as AnyResult;
+fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     use std::path::PathBuf;
 
-    if app.promise_exists(FILE_SAVER_PROMISE) {
+    let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
+    if file_save_in_progress {
         // There's already a file save running in the background.
 
-        if let Some(res) = app.poll_promise::<AnyResult<PathBuf>>(FILE_SAVER_PROMISE) {
+        if let Some(res) = app.poll_promise::<anyhow::Result<PathBuf>>(FILE_SAVER_PROMISE) {
             // File save promise has returned.
 
             match res {
@@ -534,9 +534,8 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     {
-        if app.promise_exists(FILE_SAVER_PROMISE) {
-            // There's already a file save running in the background.
-
+        let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
+        if file_save_in_progress {
             ui.add_enabled_ui(false, |ui| {
                 ui.horizontal(|ui| {
                     let _ = ui.button("Save…");
@@ -548,8 +547,8 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
             .on_hover_text("Save all data to a Rerun data file (.rrd)")
             .clicked()
         {
-            // There is no other file save running, and the DB isn't empty: let's spawn
-            // a new one.
+            // User clicked the Save button, there is no other file save running, and
+            // the DB isn't empty: let's spawn a new one.
 
             if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
                 let f = save_to_file(app, path);
