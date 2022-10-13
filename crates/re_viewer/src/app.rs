@@ -11,7 +11,7 @@ use re_data_store::log_db::LogDb;
 use re_log_types::*;
 
 #[cfg(not(target_arch = "wasm32"))]
-use re_data_store::TimeQuery;
+use crate::misc::TimeRangeF;
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -546,7 +546,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                 })
             });
         } else {
-            let (clicked, time_query) = ui
+            let (clicked, time_selection) = ui
                 .add_enabled_ui(!app.log_db().is_empty(), |ui| {
                     if ui
                         .button("Save…")
@@ -558,7 +558,9 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
 
                     // We need to know the time query _before_ we can even display the
                     // button, as this will determine wether its grayed out or not!
-                    let time_query = app
+                    // TODO(cmc): In practice the loop (green) selection is always there
+                    // at the moment so...
+                    let time_selection = app
                         .state
                         .recording_configs
                         .get(&app.state.selected_rec_id)
@@ -566,19 +568,21 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                         .and_then(|rec_cfg| {
                             rec_cfg
                                 .time_ctrl
-                                .time_query()
+                                .time_selection()
                                 .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
-                        })
-                        .filter(|(_, query)| matches!(query, TimeQuery::Range(_)));
+                        });
 
                     if ui
-                        .add_enabled(time_query.is_some(), egui::Button::new("Save section…"))
+                        .add_enabled(
+                            time_selection.is_some(),
+                            egui::Button::new("Save time selection…"),
+                        )
                         .on_hover_text(
                             "Save data for the current time selection to a Rerun data file (.rrd)",
                         )
                         .clicked()
                     {
-                        return (true, time_query);
+                        return (true, time_selection);
                     }
 
                     (false, None)
@@ -590,7 +594,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                 // the DB isn't empty: let's spawn a new one.
 
                 if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
-                    let f = save_database_to_file(app, path, time_query);
+                    let f = save_database_to_file(app, path, time_selection);
                     if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
                         // NOTE: Shouldn't even be possible as the "Save" button is already
                         // grayed out at this point... better safe than sorry though.
@@ -695,9 +699,9 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 fn save_database_to_file(
     app: &mut App,
     path: std::path::PathBuf,
-    time_query: Option<(Timeline, TimeQuery<i64>)>,
+    time_selection: Option<(Timeline, TimeRangeF)>,
 ) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
-    let msgs = match time_query {
+    let msgs = match time_selection {
         // Fast path: no query, just dump everything.
         None => app
             .log_db()
@@ -705,9 +709,9 @@ fn save_database_to_file(
             .cloned()
             .collect::<Vec<_>>(),
         // Query path: time to filter!
-        Some((timeline, TimeQuery::Range(range))) => {
+        Some((timeline, range)) => {
             use std::ops::RangeInclusive;
-            let range: RangeInclusive<TimeInt> = (*range.start()).into()..=(*range.end()).into();
+            let range: RangeInclusive<TimeInt> = range.min.floor()..=range.max.ceil();
             app.log_db()
                 .chronological_log_messages()
                 .filter(|msg| {
@@ -726,9 +730,6 @@ fn save_database_to_file(
                 })
                 .cloned()
                 .collect::<Vec<_>>()
-        }
-        Some(_) => {
-            panic!("only range queries are supported for now")
         }
     };
 
