@@ -1,3 +1,5 @@
+use crate::debug_label::DebugLabel;
+
 use super::resource_pool::*;
 
 slotmap::new_key_type! { pub(crate) struct BindGroupLayoutHandle; }
@@ -11,7 +13,7 @@ impl Resource for BindGroupLayout {}
 #[derive(Clone, Hash, PartialEq, Eq, Default)]
 pub(crate) struct BindGroupLayoutDesc {
     /// Debug label of the bind group layout. This will show up in graphics debuggers for easy identification.
-    pub label: String,
+    pub label: DebugLabel,
     pub entries: Vec<wgpu::BindGroupLayoutEntry>,
 }
 
@@ -29,7 +31,7 @@ impl BindGroupLayoutPool {
         self.pool.get_handle(desc, |desc| {
             // TODO(andreas): error handling
             let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some(&desc.label),
+                label: desc.label.get(),
                 entries: &desc.entries,
             });
             BindGroupLayout { layout }

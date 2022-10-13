@@ -1,5 +1,7 @@
 use std::sync::atomic::AtomicU64;
 
+use crate::debug_label::DebugLabel;
+
 use super::{
     bind_group_layout_pool::{BindGroupLayoutHandle, BindGroupLayoutPool},
     resource_pool::*,
@@ -30,7 +32,7 @@ pub(crate) enum BindGroupEntry {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct BindGroupDesc {
     /// Debug label of the bind group. This will show up in graphics debuggers for easy identification.
-    pub label: String,
+    pub label: DebugLabel,
     pub entries: Vec<BindGroupEntry>,
     pub layout: BindGroupLayoutHandle,
 }
@@ -52,7 +54,7 @@ impl BindGroupPool {
         self.pool.get_handle(desc, |desc| {
             // TODO(andreas): error handling
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(&desc.label),
+                label: desc.label.get(),
                 entries: &desc
                     .entries
                     .iter()

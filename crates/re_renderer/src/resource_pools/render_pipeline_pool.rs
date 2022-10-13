@@ -1,5 +1,7 @@
 use std::sync::atomic::AtomicU64;
 
+use crate::debug_label::DebugLabel;
+
 use super::{pipeline_layout_pool::*, resource_pool::*};
 
 slotmap::new_key_type! { pub(crate) struct RenderPipelineHandle; }
@@ -27,7 +29,7 @@ pub(crate) struct ShaderDesc {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
-    pub label: String,
+    pub label: DebugLabel,
 
     pub pipeline_layout: PipelineLayoutHandle,
 
@@ -68,12 +70,12 @@ impl RenderPipelinePool {
             // TODO(andreas): Shader need to be managed separately - it's not uncommon to reuse a vertex shader across many pipelines.
             // TODO(andreas): Flawed assumption to have separate source per shader module. May or may not be the case!
             let vertex_shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(&format!("vertex shader - {}", desc.label)),
+                label: Some(&format!("vertex shader - {:?}", desc.label.get())),
                 source: wgpu::ShaderSource::Wgsl(desc.vertex_shader.shader_code.clone().into()),
             });
             let fragment_shader_module =
                 device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some(&format!("fragment shader - {}", desc.label)),
+                    label: Some(&format!("fragment shader - {:?}", desc.label.get())),
                     source: wgpu::ShaderSource::Wgsl(
                         desc.fragment_shader.shader_code.clone().into(),
                     ),
@@ -83,7 +85,7 @@ impl RenderPipelinePool {
             let pipeline_layout = pipeline_layout_pool.get(desc.pipeline_layout).unwrap();
 
             let wgpu_desc = wgpu::RenderPipelineDescriptor {
-                label: Some(&desc.label),
+                label: desc.label.get(),
                 layout: Some(&pipeline_layout.layout),
                 vertex: wgpu::VertexState {
                     module: &vertex_shader_module,
