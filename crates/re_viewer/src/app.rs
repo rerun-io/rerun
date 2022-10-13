@@ -1,9 +1,12 @@
-use std::sync::mpsc::Receiver;
+use std::{any::Any, sync::mpsc::Receiver};
 
 use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
+use ahash::HashMap;
 use egui_extras::RetainedImage;
+use egui_notify::Toasts;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+use poll_promise::Promise;
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
 
@@ -24,6 +27,12 @@ pub struct App {
     /// Set to `true` on Ctrl-C.
     #[cfg(not(target_arch = "wasm32"))]
     ctrl_c: std::sync::Arc<std::sync::atomic::AtomicBool>,
+
+    /// Pending background tasks, using `poll_promise`.
+    pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
+
+    /// Toast notifications, using `egui-notify`.
+    toasts: Toasts,
 }
 
 impl App {
@@ -96,12 +105,67 @@ impl App {
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
+            pending_promises: Default::default(),
+            toasts: Toasts::new(),
         }
     }
 
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
     pub fn set_profiler(&mut self, profiler: crate::Profiler) {
         self.state.profiler = profiler;
+    }
+
+    /// Creates a promise with the specified name that will run `f` on a background
+    /// thread using the `poll_promise` crate.
+    ///
+    /// Names can only be re-used once the promise with that name has finished running,
+    /// otherwise an other is returned.
+    // TODO(cmc): offer `spawn_async_promise` once we open save_file to the web
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn spawn_threaded_promise<F, T>(
+        &mut self,
+        name: impl Into<String>,
+        f: F,
+    ) -> anyhow::Result<()>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let name = name.into();
+
+        if self.pending_promises.contains_key(&name) {
+            anyhow::bail!("there's already a promise {name:?} running!");
+        }
+
+        let f = move || Box::new(f()) as Box<dyn Any + Send>; // erase it
+        let promise = Promise::spawn_thread(&name, f);
+
+        self.pending_promises.insert(name, promise);
+
+        Ok(())
+    }
+
+    /// Polls the promise with the given name.
+    ///
+    /// Returns `Some<T>` it it's ready, or `None` otherwise.
+    ///
+    /// Panics if `T` does not match the actual return value of the promise.
+    pub fn poll_promise<T: Any>(&mut self, name: impl AsRef<str>) -> Option<T> {
+        self.pending_promises
+            .remove(name.as_ref())
+            .and_then(|promise| match promise.try_take() {
+                Ok(any) => Some(*any.downcast::<T>().unwrap()),
+                Err(promise) => {
+                    self.pending_promises
+                        .insert(name.as_ref().to_owned(), promise);
+                    None
+                }
+            })
+    }
+
+    /// Returns whether a promise with the given name is currently running.
+    pub fn promise_exists(&mut self, name: impl AsRef<str>) -> bool {
+        self.pending_promises.contains_key(name.as_ref())
     }
 }
 
@@ -156,6 +220,7 @@ impl eframe::App for App {
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
+        file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
         top_panel(egui_ctx, frame, self);
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
@@ -177,6 +242,7 @@ impl eframe::App for App {
         }
 
         self.handle_dropping_files(egui_ctx);
+        self.toasts.show(egui_ctx);
 
         #[cfg(feature = "wgpu")]
         {
@@ -425,20 +491,86 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
     });
 }
 
+// ---
+
+const FILE_SAVER_PROMISE: &str = "file_saver";
+const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
+    Some(std::time::Duration::from_secs(4));
+
+fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
+    use std::path::PathBuf;
+
+    let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
+    if file_save_in_progress {
+        // There's already a file save running in the background.
+
+        if let Some(res) = app.poll_promise::<anyhow::Result<PathBuf>>(FILE_SAVER_PROMISE) {
+            // File save promise has returned.
+
+            match res {
+                Ok(path) => {
+                    let msg = format!("Successfully wrote to {path:?}");
+                    re_log::info!(msg);
+                    app.toasts.info(msg).set_duration(FILE_SAVER_NOTIF_DURATION);
+                }
+                Err(err) => {
+                    let msg = format!("{err}");
+                    re_log::error!(msg);
+                    app.toasts
+                        .error(msg)
+                        .set_duration(FILE_SAVER_NOTIF_DURATION);
+                }
+            }
+        } else {
+            // File save promise is still running in the background.
+
+            // NOTE: not a toast, want something a bit more discreet here.
+            egui::Window::new("file_saver_spin")
+                .anchor(egui::Align2::RIGHT_BOTTOM, egui::Vec2::ZERO)
+                .title_bar(false)
+                .enabled(false)
+                .auto_sized()
+                .show(egui_ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label("Writing file to disk…");
+                    })
+                });
+        }
+    }
+}
+
 fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let log_db = app.log_db();
-        if ui
-            .add_enabled(!log_db.is_empty(), egui::Button::new("Save…"))
+        let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
+        if file_save_in_progress {
+            ui.add_enabled_ui(false, |ui| {
+                ui.horizontal(|ui| {
+                    let _ = ui.button("Save…");
+                    ui.spinner();
+                })
+            });
+        } else if ui
+            .add_enabled(!app.log_db().is_empty(), egui::Button::new("Save…"))
             .on_hover_text("Save all data to a Rerun data file (.rrd)")
             .clicked()
         {
+            // User clicked the Save button, there is no other file save running, and
+            // the DB isn't empty: let's spawn a new one.
+
             if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
-                save_to_file(log_db, &path);
+                let f = save_to_file(app, path);
+                if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
+                    // NOTE: Shouldn't even be possible as the "Save" button is already
+                    // grayed out at this point... better safe than sorry though.
+                    app.toasts
+                        .error(err.to_string())
+                        .set_duration(FILE_SAVER_NOTIF_DURATION);
+                }
             }
-        }
+        };
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -493,6 +625,8 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     }
 }
 
+// ---
+
 fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     let log_dbs = app
         .log_dbs
@@ -520,28 +654,26 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 }
 
+/// Returns a closure that will save the file to disk when run.
 #[cfg(not(target_arch = "wasm32"))]
-fn save_to_file(log_db: &LogDb, path: &std::path::PathBuf) {
-    fn save_to_file_impl(log_db: &LogDb, path: &std::path::PathBuf) -> anyhow::Result<()> {
-        crate::profile_function!();
-        use anyhow::Context as _;
-        let file = std::fs::File::create(path).context("Failed to create file")?;
-        re_log_types::encoding::encode(log_db.chronological_log_messages(), file)
-    }
+fn save_to_file(
+    app: &mut App,
+    path: std::path::PathBuf,
+) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
+    let msgs = app
+        .log_db()
+        .chronological_log_messages()
+        .cloned()
+        .collect::<Vec<_>>();
 
-    match save_to_file_impl(log_db, path) {
-        // TODO(emilk): show a popup instead of logging result
-        Ok(()) => {
-            re_log::info!("Data saved to {:?}", path);
-        }
-        Err(err) => {
-            let msg = format!("Failed saving data to {path:?}: {}", re_error::format(&err));
-            re_log::error!("{msg}");
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_description(&msg)
-                .show();
-        }
+    move || {
+        crate::profile_scope!("save_to_file");
+
+        use anyhow::Context as _;
+        let file = std::fs::File::create(path.as_path())
+            .with_context(|| format!("Failed to create file at {:?}", path))?;
+
+        re_log_types::encoding::encode(msgs.iter(), file).map(|_| path)
     }
 }
 

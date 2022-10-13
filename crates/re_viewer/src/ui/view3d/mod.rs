@@ -509,7 +509,7 @@ fn show_projections_from_2d_space(
 ) {
     let eye_pos = orbit_eye.position();
 
-    if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space {
+    if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
         for (_, cam) in objects.camera.iter() {
             let cam = cam.camera;
             if &cam.target_space == space_2d {
@@ -588,7 +588,7 @@ fn project_onto_other_spaces(
                 target_spaces.push((target_space, ray_in_2d, point_in_2d));
             }
         }
-        ctx.rec_cfg.hovered_space = HoveredSpace::ThreeD {
+        ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
             space_3d: space.cloned(),
             target_spaces,
         }
