@@ -19,7 +19,9 @@ fn srgb_from_linear(color_linear: vec3<f32>) -> vec3<f32>  {
 
 @fragment
 fn main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Note that textureLoad with pixel coordinates won't work for us since seems to ignore viewport cutouts which we need to support here
+    // Note that we can't use a simple textureLoad using @builtin(position) here despite the lack of filtering.
+    // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
+    // but are about the location of the texel in the target texture.
     var hdr = textureSample(hdr_texture, nearest_sampler, in.texcoord);
     return vec4<f32>(srgb_from_linear(hdr.rgb), 1.0);
 }
