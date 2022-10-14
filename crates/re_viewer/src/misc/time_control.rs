@@ -523,17 +523,15 @@ fn range(values: &BTreeSet<TimeInt>) -> TimeRange {
 
 /// Pick the timeline that should be the default.
 fn default_time_line<'a>(timelines: impl Iterator<Item = &'a Timeline>) -> Option<&'a Timeline> {
-    let mut default_timeline = None; // the default timelines
-    let mut first_user_timeline = None;
+    let mut log_time_timeline = None;
 
     for timeline in timelines {
         if timeline.name().as_str() == "log_time" {
-            default_timeline = Some(timeline);
+            log_time_timeline = Some(timeline);
         } else {
-            first_user_timeline = first_user_timeline.or(Some(timeline));
+            return Some(timeline); // user timeline - always prefer!
         }
     }
 
-    // prefer users own timelines
-    first_user_timeline.or(default_timeline)
+    log_time_timeline
 }
