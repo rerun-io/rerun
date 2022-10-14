@@ -157,6 +157,13 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
         bbox.extend(obj.camera.extrinsics.position.into());
     }
 
+    for (_, obj) in objects.arrow3d.iter() {
+        let origin = obj.arrow.origin.into();
+        let vector: glam::Vec3 = obj.arrow.vector.into();
+        bbox.extend(origin);
+        bbox.extend(origin + vector);
+    }
+
     bbox
 }
 

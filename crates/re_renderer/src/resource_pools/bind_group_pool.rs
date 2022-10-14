@@ -82,7 +82,12 @@ impl BindGroupPool {
         })
     }
 
-    pub fn frame_maintenance(&mut self, frame_index: u64, textures: &mut TexturePool) {
+    pub fn frame_maintenance(
+        &mut self,
+        frame_index: u64,
+        textures: &mut TexturePool,
+        samplers: &mut SamplerPool,
+    ) {
         self.pool.discard_unused_resources(frame_index);
 
         // Of what's left, update dependent resources.
@@ -92,7 +97,9 @@ impl BindGroupPool {
                     BindGroupEntry::TextureView(handle) => {
                         textures.register_resource_usage(*handle);
                     }
-                    BindGroupEntry::Sampler(_) => {} // Samplers don't track frame index
+                    BindGroupEntry::Sampler(handle) => {
+                        samplers.register_resource_usage(*handle);
+                    }
                 }
             }
         }

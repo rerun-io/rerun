@@ -1,5 +1,6 @@
 use super::scene::MeshSourceData;
 use crate::mesh_loader::{CpuMesh, GpuMesh};
+use egui::util::hash;
 use re_log_types::MeshFormat;
 use std::sync::Arc;
 
@@ -38,6 +39,38 @@ impl CpuMeshCache {
                 }
             })
             .clone()
+    }
+
+    /// Returns a cached cylinder mesh built around the x-axis in the range [0..1] and with radius 1. The default material is used.
+    pub fn cylinder(&mut self) -> (u64, Arc<CpuMesh>) {
+        crate::profile_function!();
+        let mesh_id = hash("CYLINDER_MESH");
+        let mesh = self
+            .0
+            .entry(mesh_id)
+            .or_insert_with(|| {
+                re_log::debug!("Generating CPU mesh for cylinder.");
+                Some(Arc::new(CpuMesh::cylinder(4)))
+            })
+            .clone()
+            .unwrap();
+        (mesh_id, mesh)
+    }
+
+    /// Returns a cached cone mesh built around the x-axis in the range [0..1] and with radius 1 at -1.0. The default material is used.
+    pub fn cone(&mut self) -> (u64, Arc<CpuMesh>) {
+        crate::profile_function!();
+        let mesh_id = hash("CONE_MESH");
+        let mesh = self
+            .0
+            .entry(mesh_id)
+            .or_insert_with(|| {
+                re_log::debug!("Generating CPU mesh for cone.");
+                Some(Arc::new(CpuMesh::cone(4)))
+            })
+            .clone()
+            .unwrap();
+        (mesh_id, mesh)
     }
 }
 
