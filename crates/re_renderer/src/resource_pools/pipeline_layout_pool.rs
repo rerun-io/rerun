@@ -28,7 +28,7 @@ impl PipelineLayoutPool {
         desc: &PipelineLayoutDesc,
         bind_group_layout_pool: &BindGroupLayoutPool,
     ) -> PipelineLayoutHandle {
-        self.pool.request(desc, |desc| {
+        self.pool.get_handle(desc, |desc| {
             // TODO(andreas): error handling
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(&desc.label),
@@ -44,6 +44,6 @@ impl PipelineLayoutPool {
     }
 
     pub fn get(&self, handle: PipelineLayoutHandle) -> Result<&PipelineLayout, PoolError> {
-        self.pool.get(handle)
+        self.pool.get_resource(handle)
     }
 }

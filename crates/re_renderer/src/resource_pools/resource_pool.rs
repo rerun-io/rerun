@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Keys, HashMap},
+    collections::HashMap,
     fmt::Debug,
     hash::Hash,
     sync::atomic::{AtomicU64, Ordering},
@@ -9,7 +9,7 @@ use slotmap::{Key, SlotMap};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PoolError {
-    #[error("Requested resource isn't available yet of the handle is no longer valid")]
+    #[error("Requested resource isn't available yet because the handle is no longer valid")]
     ResourceNotAvailable,
 
     #[error("The passed resource handle was null")]
@@ -61,14 +61,14 @@ where
     Desc: Clone + Eq + Hash,
     Res: Resource,
 {
-    pub fn request<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Handle {
+    pub fn get_handle<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Handle {
         *self.lookup.entry(desc.clone()).or_insert_with(|| {
             let resource = creation_func(desc); // TODO(andreas): Handle creation failure
             self.resources.insert(resource)
         })
     }
 
-    pub fn get(&self, handle: Handle) -> Result<&Res, PoolError> {
+    pub fn get_resource(&self, handle: Handle) -> Result<&Res, PoolError> {
         self.resources
             .get(handle)
             .map(|resource| {
@@ -84,7 +84,7 @@ where
             })
     }
 
-    pub fn resource_descs(&self) -> Keys<'_, Desc, Handle> {
+    pub fn resource_descs(&self) -> impl Iterator<Item = &Desc> {
         self.lookup.keys()
     }
 }

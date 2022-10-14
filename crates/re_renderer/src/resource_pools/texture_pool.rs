@@ -19,7 +19,6 @@ impl UsageTrackedResource for Texture {
 
 #[derive(Default)]
 pub(crate) struct TexturePool {
-    // TODO(andreas): Ignore label for hashing/comparing?
     pool: ResourcePool<TextureHandle, wgpu::TextureDescriptor<'static>, Texture>,
 }
 
@@ -29,7 +28,7 @@ impl TexturePool {
         device: &wgpu::Device,
         desc: &wgpu::TextureDescriptor<'static>,
     ) -> TextureHandle {
-        self.pool.request(desc, |desc| {
+        self.pool.get_handle(desc, |desc| {
             let texture = device.create_texture(desc);
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             Texture {
@@ -45,7 +44,7 @@ impl TexturePool {
     }
 
     pub fn get(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
-        self.pool.get(handle)
+        self.pool.get_resource(handle)
     }
 
     pub(super) fn register_resource_usage(&mut self, handle: TextureHandle) {

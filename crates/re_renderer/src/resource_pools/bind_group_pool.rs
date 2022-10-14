@@ -49,7 +49,7 @@ impl BindGroupPool {
         textures: &TexturePool,
         samplers: &SamplerPool,
     ) -> BindGroupHandle {
-        self.pool.request(desc, |desc| {
+        self.pool.get_handle(desc, |desc| {
             // TODO(andreas): error handling
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some(&desc.label),
@@ -97,6 +97,6 @@ impl BindGroupPool {
     }
 
     pub fn get(&self, handle: BindGroupHandle) -> Result<&BindGroup, PoolError> {
-        self.pool.get(handle)
+        self.pool.get_resource(handle)
     }
 }

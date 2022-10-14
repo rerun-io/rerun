@@ -63,7 +63,7 @@ impl RenderPipelinePool {
         desc: &RenderPipelineDesc,
         pipeline_layout_pool: &PipelineLayoutPool,
     ) -> RenderPipelineHandle {
-        self.pool.request(desc, |desc| {
+        self.pool.get_handle(desc, |desc| {
             // TODO(andreas): Stop reading. Think. Add error handling. Some pointers https://github.com/gfx-rs/wgpu/issues/2130
             // TODO(andreas): Shader need to be managed separately - it's not uncommon to reuse a vertex shader across many pipelines.
             // TODO(andreas): Flawed assumption to have separate source per shader module. May or may not be the case!
@@ -116,6 +116,6 @@ impl RenderPipelinePool {
     }
 
     pub fn get(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
-        self.pool.get(handle)
+        self.pool.get_resource(handle)
     }
 }

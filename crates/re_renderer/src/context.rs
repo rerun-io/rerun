@@ -11,7 +11,7 @@ pub struct RenderContext {
     output_format_color: wgpu::TextureFormat,
 
     pub(crate) textures: TexturePool,
-    pub(crate) renderpipelines: RenderPipelinePool,
+    pub(crate) render_pipelines: RenderPipelinePool,
     pub(crate) pipeline_layouts: PipelineLayoutPool,
     pub(crate) bind_group_layouts: BindGroupLayoutPool,
     pub(crate) bind_groups: BindGroupPool,
@@ -30,7 +30,7 @@ impl RenderContext {
             output_format_color,
 
             textures: TexturePool::default(),
-            renderpipelines: RenderPipelinePool::default(),
+            render_pipelines: RenderPipelinePool::default(),
             pipeline_layouts: PipelineLayoutPool::default(),
             bind_group_layouts: BindGroupLayoutPool::default(),
             bind_groups: BindGroupPool::default(),
@@ -41,15 +41,26 @@ impl RenderContext {
     }
 
     pub fn frame_maintenance(&mut self) {
-        self.frame_index += 1;
+        let Self {
+            textures,
+            render_pipelines,
+            pipeline_layouts: _,
+            bind_group_layouts: _,
+            bind_groups,
+            samplers: _,
+            output_format_color: _,
+            frame_index,
+        } = self; // not all pools require maintenance
 
-        // Note that not all pools require frame maintenance.
-        // (the ones that don't don't do any resource cleanup as their resources are lightweight and rare enough)
-        self.renderpipelines.frame_maintenance(self.frame_index);
-        // Bind group maintenance must come before texture/buffer maintenance since it registers texture/buffer use
-        self.bind_groups
-            .frame_maintenance(self.frame_index, &mut self.textures);
-        self.textures.frame_maintenance(self.frame_index);
+        *frame_index += 1;
+
+        render_pipelines.frame_maintenance(*frame_index);
+
+        // Bind group maintenance must come before texture/buffer maintenance since it
+        // registers texture/buffer use
+        bind_groups.frame_maintenance(*frame_index, textures);
+
+        textures.frame_maintenance(*frame_index);
     }
 
     pub(crate) fn output_format_color(&self) -> wgpu::TextureFormat {

@@ -26,7 +26,7 @@ impl BindGroupLayoutPool {
         device: &wgpu::Device,
         desc: &BindGroupLayoutDesc,
     ) -> BindGroupLayoutHandle {
-        self.pool.request(desc, |desc| {
+        self.pool.get_handle(desc, |desc| {
             // TODO(andreas): error handling
             let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some(&desc.label),
@@ -37,6 +37,6 @@ impl BindGroupLayoutPool {
     }
 
     pub fn get(&self, handle: BindGroupLayoutHandle) -> Result<&BindGroupLayout, PoolError> {
-        self.pool.get(handle)
+        self.pool.get_resource(handle)
     }
 }

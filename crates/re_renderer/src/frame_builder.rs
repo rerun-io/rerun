@@ -126,7 +126,7 @@ impl FrameBuilder {
             &ctx.samplers,
         );
 
-        self.tonemapping_pipeline = ctx.renderpipelines.request(
+        self.tonemapping_pipeline = ctx.render_pipelines.request(
             device,
             &RenderPipelineDesc {
                 label: "Tonemapping".to_owned(),
@@ -159,7 +159,7 @@ impl FrameBuilder {
     }
 
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        self.test_render_pipeline = ctx.renderpipelines.request(
+        self.test_render_pipeline = ctx.render_pipelines.request(
             device,
             &RenderPipelineDesc {
                 label: "Test Triangle".into(),
@@ -231,7 +231,7 @@ impl FrameBuilder {
             }),
         });
 
-        if let Ok(render_pipeline) = ctx.renderpipelines.get(self.test_render_pipeline) {
+        if let Ok(render_pipeline) = ctx.render_pipelines.get(self.test_render_pipeline) {
             pass.set_pipeline(&render_pipeline.pipeline);
             pass.draw(0..3, 0..1);
         }
@@ -248,7 +248,7 @@ impl FrameBuilder {
         pass: &mut wgpu::RenderPass<'a>,
     ) -> anyhow::Result<()> {
         let pipeline = ctx
-            .renderpipelines
+            .render_pipelines
             .get(self.tonemapping_pipeline)
             .context("tonemapping pipeline")?;
         let bind_group = ctx
