@@ -573,6 +573,57 @@ impl<'s> Camera<'s> {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub struct Arrow3D<'s> {
+    pub arrow: &'s re_log_types::Arrow3D,
+    pub label: Option<&'s str>,
+    pub width_scale: Option<f32>,
+}
+
+impl<'s> Arrow3D<'s> {
+    fn query<Time: 'static + Copy + Ord + Into<i64>>(
+        obj_path: &'s ObjPath,
+        obj_store: &'s ObjStore<Time>,
+        time_query: &TimeQuery<Time>,
+        out: &mut Objects<'s>,
+    ) {
+        crate::profile_function!();
+
+        visit_type_data_5(
+            obj_store,
+            &FieldName::from("arrow3d"),
+            time_query,
+            ("_visible", "space", "color", "width_scale", "label"),
+            |instance_index: Option<&IndexHash>,
+             time: Time,
+             msg_id: &MsgId,
+             arrow: &re_log_types::Arrow3D,
+             visible: Option<&bool>,
+             space: Option<&ObjPath>,
+             color: Option<&[u8; 4]>,
+             width_scale: Option<&f32>,
+             label: Option<&String>| {
+                out.arrow3d.0.push(Object {
+                    props: InstanceProps {
+                        time: time.into(),
+                        msg_id,
+                        space,
+                        color: color.copied(),
+                        obj_path,
+                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
+                        visible: *visible.unwrap_or(&true),
+                    },
+                    data: Arrow3D {
+                        arrow,
+                        label: label.map(|s| s.as_str()),
+                        width_scale: width_scale.cloned(),
+                    },
+                });
+            },
+        );
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 pub struct Space<'s> {
     /// The up axis
     pub up: &'s [f32; 3],
@@ -663,6 +714,7 @@ pub struct Objects<'s> {
     pub line_segments3d: ObjectVec<'s, LineSegments3D<'s>>,
     pub mesh3d: ObjectVec<'s, Mesh3D<'s>>,
     pub camera: ObjectVec<'s, Camera<'s>>,
+    pub arrow3d: ObjectVec<'s, Arrow3D<'s>>,
     // be very careful when adding to this to update everything, including `viwer::misc::calc_bbox_3d`.
 }
 
@@ -705,6 +757,7 @@ impl<'s> Objects<'s> {
             ObjectType::LineSegments3D => LineSegments3D::query,
             ObjectType::Mesh3D => Mesh3D::query,
             ObjectType::Camera => Camera::query,
+            ObjectType::Arrow3D => Arrow3D::query,
         };
 
         query_fn(obj_path, obj_store, time_query, self);
@@ -729,6 +782,7 @@ impl<'s> Objects<'s> {
             line_segments3d: self.line_segments3d.filter(&keep),
             mesh3d: self.mesh3d.filter(&keep),
             camera: self.camera.filter(&keep),
+            arrow3d: self.arrow3d.filter(&keep),
         }
     }
 
@@ -746,6 +800,7 @@ impl<'s> Objects<'s> {
             line_segments3d,
             mesh3d,
             camera,
+            arrow3d,
         } = self;
         space.is_empty()
             && image.is_empty()
@@ -759,6 +814,7 @@ impl<'s> Objects<'s> {
             && line_segments3d.is_empty()
             && mesh3d.is_empty()
             && camera.is_empty()
+            && arrow3d.is_empty()
     }
 
     pub fn has_any_2d(&self) -> bool {
@@ -775,6 +831,7 @@ impl<'s> Objects<'s> {
             || !self.line_segments3d.is_empty()
             || !self.mesh3d.is_empty()
             || !self.camera.is_empty()
+            || !self.arrow3d.is_empty()
     }
 
     pub fn has_any_text_entries(&self) -> bool {
@@ -799,6 +856,7 @@ impl<'s> Objects<'s> {
             line_segments3d,
             mesh3d,
             camera,
+            arrow3d,
         } = self;
 
         for obj in text_entry.0 {
@@ -843,6 +901,9 @@ impl<'s> Objects<'s> {
         }
         for obj in camera.0 {
             partitioner.slot(obj.props.space).camera.0.push(obj);
+        }
+        for obj in arrow3d.0 {
+            partitioner.slot(obj.props.space).arrow3d.0.push(obj);
         }
 
         let mut partitioned = partitioner.finish();

@@ -104,6 +104,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_camera, m)?)?;
+    m.add_function(wrap_pyfunction!(log_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(log_extrinsics, m)?)?;
     m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
 
@@ -1129,6 +1130,68 @@ fn log_line_segments(
     }
 
     let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "space"),
+        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
+    );
+
+    Ok(())
+}
+
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+fn log_arrow(
+    obj_path: &str,
+    origin: [f32; 3],
+    vector: [f32; 3],
+    color: Option<Vec<u8>>,
+    label: Option<String>,
+    width_scale: Option<f32>,
+    timeless: bool,
+    space: Option<String>,
+) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Arrow3D);
+
+    let time_point = time(timeless);
+
+    let arrow = re_log_types::Arrow3D { origin, vector };
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "arrow3d"),
+        LoggedData::Single(Data::Arrow3D(arrow)),
+    );
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
+    }
+
+    if let Some(width_scale) = width_scale {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "width_scale"),
+            LoggedData::Single(Data::F32(width_scale)),
+        );
+    }
+
+    if let Some(label) = label {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "label"),
+            LoggedData::Single(Data::String(label)),
+        );
+    }
+
+    let space = space.unwrap_or_else(|| "3D".to_owned());
     sdk.send_data(
         &time_point,
         (&obj_path, "space"),

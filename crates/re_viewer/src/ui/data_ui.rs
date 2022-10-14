@@ -321,6 +321,13 @@ pub(crate) fn ui_data(
             Preview::Small | Preview::Specific(_) => ui.label("Camera"),
             Preview::Medium => ui_camera(ui, cam),
         },
+        Data::Arrow3D(Arrow3D { origin, vector }) => {
+            let &[x, y, z] = origin;
+            let &[v0, v1, v2] = vector;
+            ui.label(format!(
+                "Arrow3D(origin: [{x:.1},{y:.1},{z:.1}], vector: [{v0:.1},{v1:.1},{v2:.1}])"
+            ))
+        }
         Data::Transform(transform) => match preview {
             Preview::Small | Preview::Specific(_) => ui.label("Transform"),
             Preview::Medium => ui_transform(ui, transform),

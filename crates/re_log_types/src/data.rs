@@ -27,6 +27,7 @@ pub enum DataType {
     Box3,
     Mesh3D,
     Camera,
+    Arrow3D,
 
     // ----------------------------
     // N-D:
@@ -142,6 +143,12 @@ pub mod data_types {
         }
     }
 
+    impl DataTrait for crate::Arrow3D {
+        fn data_typ() -> DataType {
+            DataType::Arrow3D
+        }
+    }
+
     // ---
 
     impl DataTrait for crate::ObjPath {
@@ -180,6 +187,7 @@ pub enum Data {
     Box3(Box3),
     Mesh3D(Mesh3D),
     Camera(Camera),
+    Arrow3D(Arrow3D),
 
     // ----------------------------
     // N-D:
@@ -213,6 +221,7 @@ impl Data {
             Self::Box3(_) => DataType::Box3,
             Self::Mesh3D(_) => DataType::Mesh3D,
             Self::Camera(_) => DataType::Camera,
+            Self::Arrow3D(_) => DataType::Arrow3D,
 
             Self::Tensor(_) => DataType::Tensor,
             Self::DataVec(_) => DataType::DataVec,
@@ -255,6 +264,7 @@ pub enum DataVec {
     Box3(Vec<Box3>),
     Mesh3D(Vec<Mesh3D>),
     Camera(Vec<Camera>),
+    Arrow3D(Vec<Arrow3D>),
 
     Tensor(Vec<Tensor>),
 
@@ -288,6 +298,7 @@ macro_rules! data_map(
             $crate::Data::Box3($value) => $action,
             $crate::Data::Mesh3D($value) => $action,
             $crate::Data::Camera($value) => $action,
+            $crate::Data::Arrow3D($value) => $action,
             $crate::Data::Tensor($value) => $action,
             $crate::Data::DataVec($value) => $action,
             $crate::Data::ObjPath($value) => $action,
@@ -318,6 +329,7 @@ macro_rules! data_vec_map(
             $crate::DataVec::Box3($vec) => $action,
             $crate::DataVec::Mesh3D($vec) => $action,
             $crate::DataVec::Camera($vec) => $action,
+            $crate::DataVec::Arrow3D($vec) => $action,
             $crate::DataVec::Tensor($vec) => $action,
             $crate::DataVec::DataVec($vec) => $action,
             $crate::DataVec::ObjPath($vec) => $action,
@@ -343,6 +355,7 @@ impl DataVec {
             Self::Box3(_) => DataType::Box3,
             Self::Mesh3D(_) => DataType::Mesh3D,
             Self::Camera(_) => DataType::Camera,
+            Self::Arrow3D(_) => DataType::Arrow3D,
 
             Self::Tensor(_) => DataType::Tensor,
             Self::DataVec(_) => DataType::DataVec,
@@ -376,6 +389,7 @@ impl DataVec {
             Self::Box3(vec) => vec.last().cloned().map(Data::Box3),
             Self::Mesh3D(vec) => vec.last().cloned().map(Data::Mesh3D),
             Self::Camera(vec) => vec.last().cloned().map(Data::Camera),
+            Self::Arrow3D(vec) => vec.last().cloned().map(Data::Arrow3D),
 
             Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
             Self::DataVec(vec) => vec.last().cloned().map(Data::DataVec),
@@ -414,6 +428,13 @@ pub struct Box3 {
     pub rotation: Quaternion,
     pub translation: [f32; 3],
     pub half_size: [f32; 3],
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct Arrow3D {
+    pub origin: [f32; 3],
+    pub vector: [f32; 3],
 }
 
 /// Order: XYZW

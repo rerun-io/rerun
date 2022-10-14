@@ -12,25 +12,36 @@ pub enum ObjectType {
 
     /// An image. Could be gray, RGB, a depth map, ….
     Image,
+
     /// A point in 2D space.
     Point2D,
+
     /// 2D rectangle.
     BBox2D,
+
     /// Many 2D line segments.
     LineSegments2D,
 
     /// A point in 3D space.
     Point3D,
+
     /// 3D oriented bounding box (OBB).
     Box3D,
+
     /// A path through 3D space.
     Path3D,
+
     /// Many 3D line segments.
     LineSegments3D,
+
     /// A 3D mesh.
     Mesh3D,
+
     /// Camera extrinsics and intrinsics.
     Camera,
+
+    /// A 3D arrow
+    Arrow3D,
 }
 
 impl ObjectType {
@@ -52,6 +63,14 @@ impl ObjectType {
             Self::LineSegments3D => &["space", "color", "points", "stroke_width"],
             Self::Mesh3D => &["space", "color", "mesh"],
             Self::Camera => &["space", "color", "camera"],
+            Self::Arrow3D => &[
+                "space",
+                "color",
+                "origin",
+                "arrow3d",
+                "width_scale",
+                "label",
+            ],
         }
     }
 }
