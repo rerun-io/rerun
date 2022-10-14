@@ -161,7 +161,7 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
         let origin = obj.arrow.origin.into();
         let vector: glam::Vec3 = obj.arrow.vector.into();
         bbox.extend(origin);
-        bbox.extend(origin + vector)
+        bbox.extend(origin + vector);
     }
 
     bbox

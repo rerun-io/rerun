@@ -1140,6 +1140,7 @@ fn log_line_segments(
 }
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 fn log_arrow(
     obj_path: &str,
     origin: [f32; 3],

@@ -6,11 +6,11 @@ An analog clock is built with Rerun Arrow3D primitives.
 """
 
 import argparse
-from typing import Final, Tuple
-import rerun_sdk as rerun
 import math
-import numpy as np
+from typing import Final, Tuple
 
+import numpy as np
+import rerun_sdk as rerun
 
 LENGTH_S: Final = 20.0
 LENGTH_M: Final = 10.0

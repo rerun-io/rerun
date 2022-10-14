@@ -601,6 +601,11 @@ def log_arrow(
     """
     Log a 3D arrow.
 
+    An arrow is defined with an `origin`, and a `vector`. This can also be considered as `start` and `end` positions for the arrow.
+
+    The shaft is rendered as a cylinder with `radius = 0.5 * width_scale`.
+    The tip is rendered as a cone with `height = 2.0 * width_scale` and `radius = 1.0 * width_scale`.
+
     Parameters
     ----------
     origin
@@ -610,11 +615,11 @@ def log_arrow(
     color
         An optional RGB or RGBA triplet in 0-255 sRGB.
     label
-        An optional text to show inside the rectangle.
+        An optional text to show beside the arrow.
     width_scale
-        An optional scaling factor, default=1.0
+        An optional scaling factor, default=1.0.
     timeless
-        Object is ephemeral
+        Object is not time-dependend, and will be visible at any time point.
     space
         The 3D space the OBB is in. Will default to "3D".
     """
@@ -649,7 +654,7 @@ def log_obb(
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
     `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     `stroke_width`: width of the OBB edges.
-    `label` is an optional text to show inside the rectangle.
+    `label` is an optional text label placed at `position`.
     `space`: The 3D space the OBB is in. Will default to "3D".
     """
     rerun_rs.log_obb(

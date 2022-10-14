@@ -427,7 +427,7 @@ impl Scene {
         instance_id: InstanceIdHash,
         color: [u8; 4],
         width_scale: Option<f32>,
-        label: Option<&str>,
+        _label: Option<&str>,
         arrow: &re_log_types::Arrow3D,
     ) {
         let re_log_types::Arrow3D { origin, vector } = arrow;
@@ -443,23 +443,25 @@ impl Scene {
         let width_scale = width_scale.unwrap_or(1.0);
         let tip_length = 2.0 * width_scale;
 
+        let cylinder_transform = glam::Affine3A::from_scale_rotation_translation(
+            vec3(
+                vector.length() - tip_length,
+                0.5 * width_scale,
+                0.5 * width_scale,
+            ),
+            rotation,
+            origin,
+        );
+
         self.meshes.push(MeshSource {
             instance_id,
             mesh_id: cylinder_id,
-            world_from_mesh: glam::Affine3A::from_scale_rotation_translation(
-                vec3(
-                    vector.length() - tip_length,
-                    0.5 * width_scale,
-                    0.5 * width_scale,
-                ),
-                rotation,
-                origin,
-            ),
-            cpu_mesh: cylinder_mesh.clone(),
+            world_from_mesh: cylinder_transform,
+            cpu_mesh: cylinder_mesh,
             color: Some(color),
         });
 
-        let xform = glam::Affine3A::from_scale_rotation_translation(
+        let cone_transform = glam::Affine3A::from_scale_rotation_translation(
             vec3(tip_length, 1.0 * width_scale, 1.0 * width_scale),
             rotation,
             origin + vector,
@@ -468,8 +470,8 @@ impl Scene {
         self.meshes.push(MeshSource {
             instance_id,
             mesh_id: cone_id,
-            world_from_mesh: xform,
-            cpu_mesh: cone_mesh.clone(),
+            world_from_mesh: cone_transform,
+            cpu_mesh: cone_mesh,
             color: Some(color),
         });
     }
