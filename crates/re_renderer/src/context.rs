@@ -1,108 +1,78 @@
-use type_map::{TypeMap, VacantEntry};
+use type_map::concurrent::{self, TypeMap};
 
-use crate::{
-    renderer::renderer::{Renderer, RendererImpl},
-    resource_pools::{
-        bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,
-        pipeline_layout_pool::PipelineLayoutPool, render_pipeline_pool::RenderPipelinePool,
-        sampler_pool::SamplerPool, texture_pool::TexturePool,
-    },
-};
+use crate::{renderer::Renderer, resource_pools::WgpuResourcePools};
 
 /// Any resource involving wgpu rendering which can be re-used accross different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
-    /// The color format used by the eframe output buffer.
-    output_format_color: wgpu::TextureFormat,
+    pub(crate) config: RenderContextConfig,
+    pub(crate) renderers: Renderers,
+    pub(crate) resource_pools: WgpuResourcePools,
 
-    renderers: TypeMap,
-
-    pub(crate) textures: TexturePool,
-    pub(crate) render_pipelines: RenderPipelinePool,
-    pub(crate) pipeline_layouts: PipelineLayoutPool,
-    pub(crate) bind_group_layouts: BindGroupLayoutPool,
-    pub(crate) bind_groups: BindGroupPool,
-    pub(crate) samplers: SamplerPool,
-
+    // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
 }
 
+pub struct RenderContextConfig {
+    /// The color format used by the eframe output buffer.
+    pub output_format_color: wgpu::TextureFormat,
+}
+
+pub(crate) struct Renderers {
+    renderers: concurrent::TypeMap,
+}
+
+impl Renderers {
+    pub fn get_or_create<R: Renderer + 'static + Send + Sync>(
+        &mut self,
+        ctx_config: &RenderContextConfig,
+        resource_pools: &mut WgpuResourcePools,
+        device: &wgpu::Device,
+    ) -> &R {
+        self.renderers
+            .entry()
+            .or_insert_with(|| R::new(ctx_config, resource_pools, device))
+    }
+
+    pub fn get<R: Renderer + 'static>(&self) -> Option<&R> {
+        self.renderers.get::<R>()
+    }
+}
+
 impl RenderContext {
-    pub fn new(
-        _device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        output_format_color: wgpu::TextureFormat,
-    ) -> Self {
+    pub fn new(_device: &wgpu::Device, _queue: &wgpu::Queue, config: RenderContextConfig) -> Self {
         RenderContext {
-            output_format_color,
+            config,
 
-            renderers: TypeMap::new(),
-
-            textures: TexturePool::default(),
-            render_pipelines: RenderPipelinePool::default(),
-            pipeline_layouts: PipelineLayoutPool::default(),
-            bind_group_layouts: BindGroupLayoutPool::default(),
-            bind_groups: BindGroupPool::default(),
-            samplers: SamplerPool::default(),
+            renderers: Renderers {
+                renderers: TypeMap::new(),
+            },
+            resource_pools: WgpuResourcePools::default(),
 
             frame_index: 0,
         }
     }
 
-    pub fn build_draw_data<R: RendererImpl<DrawInput, DrawData> + 'static, DrawInput, DrawData>(
-        &mut self,
-        device: &wgpu::Device,
-        draw_input: &DrawInput,
-    ) -> DrawData {
-        if !self.renderers.contains::<R>() {
-            let renderer = R::new(self, device);
-            self.renderers.insert(renderer);
-        }
-        let renderer = self.renderers.get::<R>().unwrap();
-        renderer.build_draw_data(self, device, draw_input)
-    }
-
-    pub fn draw<'a, R: RendererImpl<DrawInput, DrawData>, DrawInput, DrawData>(
-        &self,
-        pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &DrawData,
-    ) -> anyhow::Result<()> {
-        let renderer = self.renderers.get::<R>().unwrap(); // TODO: pass on error
-        renderer.draw(self, pass, draw_data)
-    }
-
-    pub fn get_renderer<R: Renderer + 'static>(&self) -> Option<&R> {
-        self.renderers.get::<R>()
-    }
-
     pub fn frame_maintenance(&mut self) {
-        let Self {
-            output_format_color: _,
+        {
+            let WgpuResourcePools {
+                textures,
+                render_pipelines,
+                pipeline_layouts: _,
+                bind_group_layouts: _,
+                bind_groups,
+                samplers,
+            } = &mut self.resource_pools; // not all pools require maintenance
 
-            renderers: _,
+            render_pipelines.frame_maintenance(self.frame_index);
 
-            textures,
-            render_pipelines,
-            pipeline_layouts: _,
-            bind_group_layouts: _,
-            bind_groups,
-            samplers,
+            // Bind group maintenance must come before texture/buffer maintenance since it
+            // registers texture/buffer use
+            bind_groups.frame_maintenance(self.frame_index, textures, samplers);
 
-            frame_index,
-        } = self; // not all pools require maintenance
+            textures.frame_maintenance(self.frame_index);
+        }
 
-        *frame_index += 1;
-
-        render_pipelines.frame_maintenance(*frame_index);
-
-        // Bind group maintenance must come before texture/buffer maintenance since it
-        // registers texture/buffer use
-        bind_groups.frame_maintenance(*frame_index, textures, samplers);
-
-        textures.frame_maintenance(*frame_index);
-    }
-
-    pub(crate) fn output_format_color(&self) -> wgpu::TextureFormat {
-        self.output_format_color
+        self.frame_index += 1;
     }
 }

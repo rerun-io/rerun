@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::{
     context::*,
-    renderer::{renderer::RendererImpl, tonemapper::*},
+    renderer::{tonemapper::*, Renderer},
     resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, texture_pool::*},
 };
 
@@ -59,39 +59,42 @@ impl FrameBuilder {
     ) -> &mut Self {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
         // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
-        self.hdr_render_target = ctx.textures.request(
+        self.hdr_render_target = ctx.resource_pools.textures.request(
             device,
             &render_target_2d_desc(Self::FORMAT_HDR, width, height, 1),
         );
-        self.depth_buffer = ctx.textures.request(
+        self.depth_buffer = ctx.resource_pools.textures.request(
             device,
             &render_target_2d_desc(Self::FORMAT_DEPTH, width, height, 1),
         );
 
         // TODO: how to supply less templaty things
-        self.tonemapping_draw_data = ctx
-            .build_draw_data::<Tonemapper, TonemapperDrawInput, TonemapperDrawData>(
-                device,
-                &TonemapperDrawInput {
-                    hdr_target: self.hdr_render_target,
-                },
-            );
+        let tonemapper =
+            ctx.renderers
+                .get_or_create::<Tonemapper>(&ctx.config, &mut ctx.resource_pools, device);
+        self.tonemapping_draw_data = tonemapper.prepare(
+            &mut ctx.resource_pools,
+            device,
+            &TonemapperPrepareData {
+                hdr_target: self.hdr_render_target,
+            },
+        );
 
         self
     }
 
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        self.test_render_pipeline = ctx.render_pipelines.request(
+        self.test_render_pipeline = ctx.resource_pools.render_pipelines.request(
             device,
             &RenderPipelineDesc {
                 label: "Test Triangle".into(),
-                pipeline_layout: ctx.pipeline_layouts.request(
+                pipeline_layout: ctx.resource_pools.pipeline_layouts.request(
                     device,
                     &PipelineLayoutDesc {
                         label: "empty".into(),
                         entries: Vec::new(),
                     },
-                    &ctx.bind_group_layouts,
+                    &ctx.resource_pools.bind_group_layouts,
                 ),
                 vertex_shader: ShaderDesc {
                     shader_code: include_str!("../shader/test_triangle.wgsl").into(),
@@ -113,7 +116,7 @@ impl FrameBuilder {
                 }),
                 multisample: wgpu::MultisampleState::default(),
             },
-            &ctx.pipeline_layouts,
+            &ctx.resource_pools.pipeline_layouts,
         );
         self
     }
@@ -125,10 +128,12 @@ impl FrameBuilder {
         encoder: &mut wgpu::CommandEncoder,
     ) -> anyhow::Result<()> {
         let color = ctx
+            .resource_pools
             .textures
             .get(self.hdr_render_target)
             .context("hdr render target")?;
         let depth = ctx
+            .resource_pools
             .textures
             .get(self.depth_buffer)
             .context("depth buffer")?;
@@ -153,7 +158,11 @@ impl FrameBuilder {
             }),
         });
 
-        if let Ok(render_pipeline) = ctx.render_pipelines.get(self.test_render_pipeline) {
+        if let Ok(render_pipeline) = ctx
+            .resource_pools
+            .render_pipelines
+            .get(self.test_render_pipeline)
+        {
             pass.set_pipeline(&render_pipeline.pipeline);
             pass.draw(0..3, 0..1);
         }
@@ -169,10 +178,12 @@ impl FrameBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
     ) -> anyhow::Result<()> {
-        ctx.draw::<Tonemapper, TonemapperDrawInput, TonemapperDrawData>(
-            pass,
-            &self.tonemapping_draw_data,
-        )
-        .context("perform tonemapping")
+        let tonemapper = ctx
+            .renderers
+            .get::<Tonemapper>()
+            .context("get tonemapper")?;
+        tonemapper
+            .draw(&ctx.resource_pools, pass, &self.tonemapping_draw_data)
+            .context("perform tonemapping")
     }
 }
