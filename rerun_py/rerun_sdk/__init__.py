@@ -622,7 +622,7 @@ def log_arrow(
     width_scale
         An optional scaling factor, default=1.0.
     timeless
-        Object is not time-dependend, and will be visible at any time point.
+        Object is not time-dependent, and will be visible at any time point.
     space
         The 3D space the OBB is in. Will default to "3D".
 
