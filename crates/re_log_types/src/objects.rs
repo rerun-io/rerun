@@ -6,28 +6,40 @@
 pub enum ObjectType {
     /// Information about a space (up axis etc).
     Space,
+
     /// A logging message.
     TextEntry,
+
     /// An image. Could be gray, RGB, a depth map, ….
     Image,
+
     /// A point in 2D space.
     Point2D,
+
     /// 2D rectangle.
     BBox2D,
+
     /// Many 2D line segments.
     LineSegments2D,
+
     /// A point in 3D space.
     Point3D,
+
     /// 3D oriented bounding box (OBB).
     Box3D,
+
     /// A path through 3D space.
     Path3D,
+
     /// Many 3D line segments.
     LineSegments3D,
+
     /// A 3D mesh.
     Mesh3D,
+
     /// Camera extrinsics and intrinsics.
     Camera,
+
     /// A 3D arrow
     Arrow3D,
 }

@@ -41,7 +41,7 @@ impl CpuMeshCache {
             .clone()
     }
 
-    /// Returns a cached cylinder mesh.
+    /// Returns a cached cylinder mesh built around the x-axis in the range [0..1] and with radius 1. The default material is used.
     pub fn cylinder(&mut self) -> (u64, Arc<CpuMesh>) {
         crate::profile_function!();
         let mesh_id = hash("CYLINDER_MESH");
@@ -57,7 +57,7 @@ impl CpuMeshCache {
         (mesh_id, mesh)
     }
 
-    /// Returns a cached cone mesh.
+    /// Returns a cached cone mesh built around the x-axis in the range [0..1] and with radius 1 at -1.0. The default material is used.
     pub fn cone(&mut self) -> (u64, Arc<CpuMesh>) {
         crate::profile_function!();
         let mesh_id = hash("CONE_MESH");

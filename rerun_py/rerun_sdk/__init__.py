@@ -601,13 +601,16 @@ def log_arrow(
     """
     Log a 3D arrow.
 
-    An arrow is defined with an `origin`, and a `vector`. This can also be considered as `start` and `end` positions for the arrow.
+    An arrow is defined with an `origin`, and a `vector`. This can also be considered as `start` and `end` positions
+    for the arrow.
 
     The shaft is rendered as a cylinder with `radius = 0.5 * width_scale`.
     The tip is rendered as a cone with `height = 2.0 * width_scale` and `radius = 1.0 * width_scale`.
 
     Parameters
     ----------
+    obj_path
+        The path to store the object at.
     origin
         The base position of the arrow.
     vector
@@ -622,6 +625,7 @@ def log_arrow(
         Object is not time-dependend, and will be visible at any time point.
     space
         The 3D space the OBB is in. Will default to "3D".
+
     """
     rerun_rs.log_arrow(
         obj_path,

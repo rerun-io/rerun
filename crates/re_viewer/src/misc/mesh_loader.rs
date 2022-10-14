@@ -121,6 +121,7 @@ impl CpuMesh {
         }
     }
 
+    /// Builds a cylinder mesh around the x-axis in the range [0..1] and with radius 1. The default material is used.
     pub(crate) fn cylinder(angle_subdivisions: u32) -> Self {
         let meshes = vec![three_d::CpuMesh::cylinder(angle_subdivisions)];
         let material = three_d::CpuMaterial {
@@ -136,6 +137,7 @@ impl CpuMesh {
         }
     }
 
+    /// Builds a cone mesh around the x-axis in the range [0..1] and with radius 1 at -1.0. The default material is used.
     pub(crate) fn cone(angle_subdivisions: u32) -> Self {
         let meshes = vec![three_d::CpuMesh::cone(angle_subdivisions)];
         let material = three_d::CpuMaterial {

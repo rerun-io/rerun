@@ -52,7 +52,7 @@ pub struct MeshSource {
     pub mesh_id: u64,
     pub world_from_mesh: glam::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
-    pub color: Option<Color>,
+    pub tint: Option<Color>,
 }
 
 pub struct Label {
@@ -268,7 +268,7 @@ impl Scene {
                         mesh_id,
                         world_from_mesh: glam::Affine3A::IDENTITY,
                         cpu_mesh,
-                        color: None,
+                        tint: None,
                     });
                 }
             }
@@ -328,7 +328,7 @@ impl Scene {
                                 mesh_id,
                                 world_from_mesh,
                                 cpu_mesh,
-                                color: None,
+                                tint: None,
                             });
                         }
                     }
@@ -458,9 +458,10 @@ impl Scene {
             mesh_id: cylinder_id,
             world_from_mesh: cylinder_transform,
             cpu_mesh: cylinder_mesh,
-            color: Some(color),
+            tint: Some(color),
         });
 
+        // The cone has it's origin at the base, so we translate it by [-1,0,0] so the tip lines up with vector.
         let cone_transform = glam::Affine3A::from_scale_rotation_translation(
             vec3(tip_length, 1.0 * width_scale, 1.0 * width_scale),
             rotation,
@@ -472,7 +473,7 @@ impl Scene {
             mesh_id: cone_id,
             world_from_mesh: cone_transform,
             cpu_mesh: cone_mesh,
-            color: Some(color),
+            tint: Some(color),
         });
     }
 

@@ -123,7 +123,7 @@ impl GpuScene {
             instances
                 .colors
                 .get_or_insert_with(Default::default)
-                .push(mesh.color.unwrap_or_default());
+                .push(mesh.tint.unwrap_or(three_d::Color::WHITE));
 
             self.gpu_meshes.load(three_d, mesh.mesh_id, &mesh.cpu_mesh);
         }
