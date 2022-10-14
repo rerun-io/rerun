@@ -79,7 +79,7 @@ impl FrameBuilder {
             device,
             // TODO(andreas) got some builder utilities for this in blub. should bring them over
             &BindGroupLayoutDesc {
-                label: "tonemapping".to_owned(),
+                label: "tonemapping".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -106,7 +106,7 @@ impl FrameBuilder {
         let nearest_sampler = ctx.samplers.request(
             device,
             &SamplerDesc {
-                label: "nearest".to_owned(),
+                label: "nearest".into(),
                 ..Default::default()
             },
         );
@@ -114,7 +114,7 @@ impl FrameBuilder {
         self.tonemapping_bind_group = ctx.bind_groups.request(
             device,
             &BindGroupDesc {
-                label: "tonemapping".to_owned(),
+                label: "tonemapping".into(),
                 entries: vec![
                     BindGroupEntry::TextureView(self.hdr_render_target),
                     BindGroupEntry::Sampler(nearest_sampler),
@@ -129,11 +129,11 @@ impl FrameBuilder {
         self.tonemapping_pipeline = ctx.render_pipelines.request(
             device,
             &RenderPipelineDesc {
-                label: "Tonemapping".to_owned(),
+                label: "Tonemapping".into(),
                 pipeline_layout: ctx.pipeline_layouts.request(
                     device,
                     &PipelineLayoutDesc {
-                        label: "empty".to_owned(),
+                        label: "empty".into(),
                         entries: vec![self.tonemapping_bind_group_layout],
                     },
                     &ctx.bind_group_layouts,
@@ -166,7 +166,7 @@ impl FrameBuilder {
                 pipeline_layout: ctx.pipeline_layouts.request(
                     device,
                     &PipelineLayoutDesc {
-                        label: "empty".to_owned(),
+                        label: "empty".into(),
                         entries: Vec::new(),
                     },
                     &ctx.bind_group_layouts,

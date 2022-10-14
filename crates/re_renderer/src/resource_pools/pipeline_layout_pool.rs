@@ -1,3 +1,5 @@
+use crate::debug_label::DebugLabel;
+
 use super::{bind_group_layout_pool::*, resource_pool::*};
 
 slotmap::new_key_type! { pub(crate) struct PipelineLayoutHandle; }
@@ -11,7 +13,7 @@ impl Resource for PipelineLayout {}
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub(crate) struct PipelineLayoutDesc {
     /// Debug label of the pipeline layout. This will show up in graphics debuggers for easy identification.
-    pub label: String,
+    pub label: DebugLabel,
     // TODO(andreas) use SmallVec or similar, limited to 4
     pub entries: Vec<BindGroupLayoutHandle>,
 }
@@ -31,7 +33,7 @@ impl PipelineLayoutPool {
         self.pool.get_handle(desc, |desc| {
             // TODO(andreas): error handling
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(&desc.label),
+                label: desc.label.get(),
                 bind_group_layouts: &desc
                     .entries
                     .iter()

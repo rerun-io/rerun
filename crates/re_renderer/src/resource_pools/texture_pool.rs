@@ -17,6 +17,7 @@ impl UsageTrackedResource for Texture {
     }
 }
 
+// TODO(andreas) use a custom descriptor type with DebugLabel and a content id.
 #[derive(Default)]
 pub(crate) struct TexturePool {
     pool: ResourcePool<TextureHandle, wgpu::TextureDescriptor<'static>, Texture>,
