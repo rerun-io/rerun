@@ -521,7 +521,7 @@ fn range(values: &BTreeSet<TimeInt>) -> TimeRange {
     TimeRange::new(min(values), max(values))
 }
 
-/// Pick the timeline that should be the default.
+/// Pick the timeline that should be the default, prioritizing user-defined ones.
 fn default_time_line<'a>(timelines: impl Iterator<Item = &'a Timeline>) -> Option<&'a Timeline> {
     let mut log_time_timeline = None;
 
