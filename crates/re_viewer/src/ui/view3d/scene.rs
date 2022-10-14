@@ -3,7 +3,6 @@ use egui::util::hash;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 use std::sync::Arc;
-use three_d::Color;
 
 use re_data_store::{InstanceId, InstanceIdHash};
 
@@ -52,7 +51,7 @@ pub struct MeshSource {
     pub mesh_id: u64,
     pub world_from_mesh: glam::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
-    pub tint: Option<Color>,
+    pub tint: Option<[u8; 4]>,
 }
 
 pub struct Label {
@@ -421,6 +420,7 @@ impl Scene {
         }
     }
 
+    #[cfg(feature = "glow")]
     fn add_arrow(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -438,7 +438,6 @@ impl Scene {
         let vector = glam::Vec3::from_slice(vector);
         let rotation = glam::Quat::from_rotation_arc(glam::Vec3::X, vector.normalize());
         let origin = glam::Vec3::from_slice(origin);
-        let color = three_d::Color::new(color[0], color[1], color[2], color[3]);
 
         let width_scale = width_scale.unwrap_or(1.0);
         let tip_length = 2.0 * width_scale;
