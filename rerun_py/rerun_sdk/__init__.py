@@ -611,6 +611,10 @@ def log_arrow(
         An optional RGB or RGBA triplet in 0-255 sRGB.
     label
         An optional text to show inside the rectangle.
+    width_scale
+        An optional scaling factor, default=1.0
+    timeless
+        Object is ephemeral
     space
         The 3D space the OBB is in. Will default to "3D".
     """
