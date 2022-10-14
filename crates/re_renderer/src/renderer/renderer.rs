@@ -5,13 +5,17 @@ pub trait Renderer {
 }
 
 // TODO(andreas) What purpose does this trait actually serve? It's always fully generic, so all it does is establishing a pattern
-pub trait RendererImpl<DrawInput, DrawData> {
+pub trait RendererImpl<DrawInput, DrawData>
+where
+    Self: Renderer,
+{
     fn build_draw_data(
         &self,
         ctx: &mut RenderContext,
         device: &wgpu::Device,
-        input: &DrawInput,
+        draw_input: &DrawInput,
     ) -> DrawData;
+
     fn draw<'a>(
         &self,
         ctx: &'a RenderContext,

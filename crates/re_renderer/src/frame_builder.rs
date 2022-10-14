@@ -68,14 +68,14 @@ impl FrameBuilder {
             &render_target_2d_desc(Self::FORMAT_DEPTH, width, height, 1),
         );
 
-        let tonemapper = ctx.get_or_create_renderer::<Tonemapper>(device);
-        self.tonemapping_draw_data = tonemapper.build_draw_data(
-            ctx,
-            device,
-            &TonemapperDrawInput {
-                hdr_target: self.hdr_render_target,
-            },
-        );
+        // TODO: how to supply less templaty things
+        self.tonemapping_draw_data = ctx
+            .build_draw_data::<Tonemapper, TonemapperDrawInput, TonemapperDrawData>(
+                device,
+                &TonemapperDrawInput {
+                    hdr_target: self.hdr_render_target,
+                },
+            );
 
         self
     }
@@ -169,11 +169,10 @@ impl FrameBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
     ) -> anyhow::Result<()> {
-        let tonemapper: &Tonemapper = ctx
-            .get_renderer()
-            .context("Tonemapper hasn't been created yet")?;
-        tonemapper
-            .draw(ctx, pass, &self.tonemapping_draw_data)
-            .context("perform tonemapping")
+        ctx.draw::<Tonemapper, TonemapperDrawInput, TonemapperDrawData>(
+            pass,
+            &self.tonemapping_draw_data,
+        )
+        .context("perform tonemapping")
     }
 }

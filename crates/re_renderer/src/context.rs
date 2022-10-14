@@ -1,7 +1,7 @@
 use type_map::{TypeMap, VacantEntry};
 
 use crate::{
-    renderer::renderer::Renderer,
+    renderer::renderer::{Renderer, RendererImpl},
     resource_pools::{
         bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,
         pipeline_layout_pool::PipelineLayoutPool, render_pipeline_pool::RenderPipelinePool,
@@ -49,12 +49,26 @@ impl RenderContext {
         }
     }
 
-    pub fn get_or_create_renderer<R: Renderer + 'static>(&mut self, device: &wgpu::Device) -> &R {
+    pub fn build_draw_data<R: RendererImpl<DrawInput, DrawData> + 'static, DrawInput, DrawData>(
+        &mut self,
+        device: &wgpu::Device,
+        draw_input: &DrawInput,
+    ) -> DrawData {
         if !self.renderers.contains::<R>() {
             let renderer = R::new(self, device);
             self.renderers.insert(renderer);
         }
-        self.renderers.get::<R>().unwrap()
+        let renderer = self.renderers.get::<R>().unwrap();
+        renderer.build_draw_data(self, device, draw_input)
+    }
+
+    pub fn draw<'a, R: RendererImpl<DrawInput, DrawData>, DrawInput, DrawData>(
+        &self,
+        pass: &mut wgpu::RenderPass<'a>,
+        draw_data: &DrawData,
+    ) -> anyhow::Result<()> {
+        let renderer = self.renderers.get::<R>().unwrap(); // TODO: pass on error
+        renderer.draw(self, pass, draw_data)
     }
 
     pub fn get_renderer<R: Renderer + 'static>(&self) -> Option<&R> {
