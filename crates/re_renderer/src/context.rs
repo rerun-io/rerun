@@ -47,7 +47,7 @@ impl RenderContext {
             pipeline_layouts: _,
             bind_group_layouts: _,
             bind_groups,
-            samplers: _,
+            samplers,
             output_format_color: _,
             frame_index,
         } = self; // not all pools require maintenance
@@ -58,7 +58,7 @@ impl RenderContext {
 
         // Bind group maintenance must come before texture/buffer maintenance since it
         // registers texture/buffer use
-        bind_groups.frame_maintenance(*frame_index, textures);
+        bind_groups.frame_maintenance(*frame_index, textures, samplers);
 
         textures.frame_maintenance(*frame_index);
     }

@@ -66,4 +66,8 @@ impl SamplerPool {
     pub fn get(&self, handle: SamplerHandle) -> Result<&Sampler, PoolError> {
         self.pool.get_resource(handle)
     }
+
+    pub(super) fn register_resource_usage(&mut self, handle: SamplerHandle) {
+        let _ = self.get(handle);
+    }
 }
