@@ -6,10 +6,8 @@ Uses `rerun.set_visible` to toggle the visibility of some rects
 """
 
 import argparse
-from math import pi
-import math
 from time import sleep
-from typing import Any, Tuple
+from typing import Any
 
 import rerun_sdk as rerun
 
@@ -33,58 +31,6 @@ def run_set_visible(args: argparse.Namespace) -> None:
     rerun.set_visible("rect/1", True)
 
 
-def test_arrows() -> None:
-    import numpy as np
-
-    def rotate(theta: float, len: float) -> Tuple[float, float, float]:
-        return (
-            math.cos(theta) - len * math.sin(theta),
-            math.sin(theta) + len * math.cos(theta),
-            0.0,
-        )
-
-    rerun.log_obb(
-        "frame",
-        half_size=[20.0, 20.0, 1.0],
-        position=[0.0, 0.0, 0.0],
-        rotation_q=[0.0, 0.0, 0.0, 0.0],
-        timeless=True,
-    )
-
-    for t_secs in range(12 * 60 * 60):
-        rerun.set_time_seconds("sim_time", t_secs / 60)
-
-        scaled_s = (t_secs % 60) / 60.0
-        rerun.log_arrow(
-            "seconds_hand",
-            origin=[0.0, 0.0, 0.0],
-            vector=rotate(2 * pi * scaled_s, 10.0),
-            color=(int(255 - (scaled_s * 255)), int(scaled_s * 255), 0, 128),
-            width_scale=0.25,
-        )
-        rerun.log_point("seconds_pt", position=np.array(rotate(2 * pi * scaled_s, 10.0)))
-
-        scaled_m = (t_secs % (3600)) / (3600)
-        rerun.log_arrow(
-            "minutes_hand",
-            origin=[0.0, 0.0, 0.0],
-            vector=rotate(2 * pi * scaled_m, 5.0),
-            color=(int(255 - (scaled_m * 255)), int(scaled_m * 255), 128, 128),
-            width_scale=0.5,
-        )
-        rerun.log_point("minutes_pt", position=np.array(rotate(2 * pi * scaled_m, 5.0)))
-
-        scaled_h = (t_secs % (43200)) / (43200)
-        rerun.log_arrow(
-            "hours_hand",
-            origin=[0.0, 0.0, 0.0],
-            vector=rotate(2 * pi * scaled_h, 2.0),
-            color=(int(255 - (scaled_h * 255)), int(scaled_h * 255), 255, 128),
-            width_scale=0.8,
-        )
-        rerun.log_point("hours_pt", position=np.array(rotate(2 * pi * scaled_h, 2.0)))
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
@@ -102,10 +48,9 @@ def main() -> None:
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
 
-    # subparsers = parser.add_subparsers(required=True)
+    subparsers = parser.add_subparsers(required=True)
 
-    # args_set_visible(subparsers)
-    test_arrows()
+    args_set_visible(subparsers)
 
     args = parser.parse_args()
 
@@ -117,7 +62,7 @@ def main() -> None:
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    # args.func(args)
+    args.func(args)
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
