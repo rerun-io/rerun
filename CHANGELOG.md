@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-10-14: Add support for logging 3D Arrows ([#199](https://github.com/rerun-io/rerun/pull/199)).
 * 2022-10-10: Python SDK: add `set_visible` API ([#176](https://github.com/rerun-io/rerun/pull/176)).
 * 2022-10-07: Implement zooming and panning of 2D view ([#160](https://github.com/rerun-io/rerun/pull/160)).
 * 2022-10-06: Support labels for 3D bounding boxes ([#159](https://github.com/rerun-io/rerun/pull/159)).
