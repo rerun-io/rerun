@@ -4,10 +4,8 @@ use std::sync::Arc;
 
 use crate::{
     context::*,
-    resource_pools::{
-        bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, sampler_pool::SamplerDesc, texture_pool::*,
-    },
+    renderer::{renderer::RendererImpl, tonemapper::*},
+    resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, texture_pool::*},
 };
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
@@ -25,10 +23,7 @@ use crate::{
 pub struct FrameBuilder {
     test_render_pipeline: RenderPipelineHandle,
 
-    // TODO(andreas): Tonemapper should go into its own module
-    tonemapping_pipeline: RenderPipelineHandle,
-    tonemapping_bind_group_layout: BindGroupLayoutHandle,
-    tonemapping_bind_group: BindGroupHandle,
+    tonemapping_draw_data: TonemapperDrawData,
 
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
@@ -44,9 +39,7 @@ impl FrameBuilder {
         FrameBuilder {
             test_render_pipeline: RenderPipelineHandle::default(),
 
-            tonemapping_pipeline: RenderPipelineHandle::default(),
-            tonemapping_bind_group_layout: BindGroupLayoutHandle::default(),
-            tonemapping_bind_group: BindGroupHandle::default(),
+            tonemapping_draw_data: Default::default(),
 
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
@@ -75,84 +68,13 @@ impl FrameBuilder {
             &render_target_2d_desc(Self::FORMAT_DEPTH, width, height, 1),
         );
 
-        self.tonemapping_bind_group_layout = ctx.bind_group_layouts.request(
+        let tonemapper = ctx.get_or_create_renderer::<Tonemapper>(device);
+        self.tonemapping_draw_data = tonemapper.build_draw_data(
+            ctx,
             device,
-            // TODO(andreas) got some builder utilities for this in blub. should bring them over
-            &BindGroupLayoutDesc {
-                label: "tonemapping".into(),
-                entries: vec![
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::default(),
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    // TODO(andreas): a bunch of basic sampler should go to future bind-group 0 which will always be bound
-                    // (handle for that one should probably live on the context or some other object encapsulating knowledge about it)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
-                        count: None,
-                    },
-                ],
+            &TonemapperDrawInput {
+                hdr_target: self.hdr_render_target,
             },
-        );
-
-        let nearest_sampler = ctx.samplers.request(
-            device,
-            &SamplerDesc {
-                label: "nearest".into(),
-                ..Default::default()
-            },
-        );
-
-        self.tonemapping_bind_group = ctx.bind_groups.request(
-            device,
-            &BindGroupDesc {
-                label: "tonemapping".into(),
-                entries: vec![
-                    BindGroupEntry::TextureView(self.hdr_render_target),
-                    BindGroupEntry::Sampler(nearest_sampler),
-                ],
-                layout: self.tonemapping_bind_group_layout,
-            },
-            &ctx.bind_group_layouts,
-            &ctx.textures,
-            &ctx.samplers,
-        );
-
-        self.tonemapping_pipeline = ctx.render_pipelines.request(
-            device,
-            &RenderPipelineDesc {
-                label: "Tonemapping".into(),
-                pipeline_layout: ctx.pipeline_layouts.request(
-                    device,
-                    &PipelineLayoutDesc {
-                        label: "empty".into(),
-                        entries: vec![self.tonemapping_bind_group_layout],
-                    },
-                    &ctx.bind_group_layouts,
-                ),
-                vertex_shader: ShaderDesc {
-                    shader_code: include_str!("../shader/screen_triangle.wgsl").into(),
-                    entry_point: "main",
-                },
-                fragment_shader: ShaderDesc {
-                    shader_code: include_str!("../shader/tonemap.wgsl").into(),
-                    entry_point: "main",
-                },
-                vertex_buffers: vec![],
-                render_targets: vec![Some(ctx.output_format_color().into())],
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-            },
-            &ctx.pipeline_layouts,
         );
 
         self
@@ -247,19 +169,11 @@ impl FrameBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
     ) -> anyhow::Result<()> {
-        let pipeline = ctx
-            .render_pipelines
-            .get(self.tonemapping_pipeline)
-            .context("tonemapping pipeline")?;
-        let bind_group = ctx
-            .bind_groups
-            .get(self.tonemapping_bind_group)
-            .context("tonemapping bind group")?;
-
-        pass.set_pipeline(&pipeline.pipeline);
-        pass.set_bind_group(0, &bind_group.bind_group, &[]);
-        pass.draw(0..3, 0..1);
-
-        Ok(())
+        let tonemapper: &Tonemapper = ctx
+            .get_renderer()
+            .context("Tonemapper hasn't been created yet")?;
+        tonemapper
+            .draw(ctx, pass, &self.tonemapping_draw_data)
+            .context("perform tonemapping")
     }
 }

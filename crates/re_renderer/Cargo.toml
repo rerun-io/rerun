@@ -13,6 +13,7 @@ re_log = { path = "../re_log" }
 slotmap = "1.0.6"
 thiserror = "1.0"
 ordered-float = "3.2"
+type-map = "0.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }

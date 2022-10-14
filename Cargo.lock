@@ -2828,6 +2828,7 @@ dependencies = [
  "re_log",
  "slotmap",
  "thiserror",
+ "type-map",
  "wgpu",
 ]
 

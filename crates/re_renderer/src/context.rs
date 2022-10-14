@@ -1,7 +1,12 @@
-use crate::resource_pools::{
-    bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,
-    pipeline_layout_pool::PipelineLayoutPool, render_pipeline_pool::RenderPipelinePool,
-    sampler_pool::SamplerPool, texture_pool::TexturePool,
+use type_map::{TypeMap, VacantEntry};
+
+use crate::{
+    renderer::renderer::Renderer,
+    resource_pools::{
+        bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,
+        pipeline_layout_pool::PipelineLayoutPool, render_pipeline_pool::RenderPipelinePool,
+        sampler_pool::SamplerPool, texture_pool::TexturePool,
+    },
 };
 
 /// Any resource involving wgpu rendering which can be re-used accross different scenes.
@@ -9,6 +14,8 @@ use crate::resource_pools::{
 pub struct RenderContext {
     /// The color format used by the eframe output buffer.
     output_format_color: wgpu::TextureFormat,
+
+    renderers: TypeMap,
 
     pub(crate) textures: TexturePool,
     pub(crate) render_pipelines: RenderPipelinePool,
@@ -29,6 +36,8 @@ impl RenderContext {
         RenderContext {
             output_format_color,
 
+            renderers: TypeMap::new(),
+
             textures: TexturePool::default(),
             render_pipelines: RenderPipelinePool::default(),
             pipeline_layouts: PipelineLayoutPool::default(),
@@ -40,15 +49,31 @@ impl RenderContext {
         }
     }
 
+    pub fn get_or_create_renderer<R: Renderer + 'static>(&mut self, device: &wgpu::Device) -> &R {
+        if !self.renderers.contains::<R>() {
+            let renderer = R::new(self, device);
+            self.renderers.insert(renderer);
+        }
+        self.renderers.get::<R>().unwrap()
+    }
+
+    pub fn get_renderer<R: Renderer + 'static>(&self) -> Option<&R> {
+        self.renderers.get::<R>()
+    }
+
     pub fn frame_maintenance(&mut self) {
         let Self {
+            output_format_color: _,
+
+            renderers: _,
+
             textures,
             render_pipelines,
             pipeline_layouts: _,
             bind_group_layouts: _,
             bind_groups,
             samplers: _,
-            output_format_color: _,
+
             frame_index,
         } = self; // not all pools require maintenance
 
