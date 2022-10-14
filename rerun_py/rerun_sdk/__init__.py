@@ -588,6 +588,44 @@ def log_line_segments(
     rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless, space)
 
 
+def log_arrow(
+    obj_path: str,
+    origin: npt.ArrayLike,
+    vector: npt.ArrayLike,
+    color: Optional[Sequence[int]] = None,
+    label: Optional[str] = None,
+    width_scale: Optional[float] = None,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
+    """
+    Log a 3D arrow.
+
+    Parameters
+    ----------
+    origin
+        The base position of the arrow.
+    vector
+        The vector along which the arrow will be drawn.
+    color
+        An optional RGB or RGBA triplet in 0-255 sRGB.
+    label
+        An optional text to show inside the rectangle.
+    space
+        The 3D space the OBB is in. Will default to "3D".
+    """
+    rerun_rs.log_arrow(
+        obj_path,
+        origin=_to_sequence(origin),
+        vector=_to_sequence(vector),
+        color=color,
+        label=label,
+        width_scale=width_scale,
+        timeless=timeless,
+        space=space,
+    )
+
+
 def log_obb(
     obj_path: str,
     half_size: npt.ArrayLike,
@@ -607,6 +645,7 @@ def log_obb(
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
     `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     `stroke_width`: width of the OBB edges.
+    `label` is an optional text to show inside the rectangle.
     `space`: The 3D space the OBB is in. Will default to "3D".
     """
     rerun_rs.log_obb(

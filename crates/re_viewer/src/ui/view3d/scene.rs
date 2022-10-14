@@ -3,12 +3,9 @@ use egui::util::hash;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 use std::sync::Arc;
+use three_d::Color;
 
 use re_data_store::{InstanceId, InstanceIdHash};
-
-use re_log_types::Box3;
-#[cfg(feature = "glow")]
-use re_log_types::Mesh3D;
 
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
@@ -45,7 +42,7 @@ pub struct LineSegments {
 
 #[cfg(feature = "glow")]
 pub enum MeshSourceData {
-    Mesh3D(Mesh3D),
+    Mesh3D(re_log_types::Mesh3D),
     /// e.g. the camera mesh
     StaticGlb(&'static [u8]),
 }
@@ -55,6 +52,7 @@ pub struct MeshSource {
     pub mesh_id: u64,
     pub world_from_mesh: glam::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
+    pub color: Option<Color>,
 }
 
 pub struct Label {
@@ -270,8 +268,25 @@ impl Scene {
                         mesh_id,
                         world_from_mesh: glam::Affine3A::IDENTITY,
                         cpu_mesh,
+                        color: None,
                     });
                 }
+            }
+        }
+
+        #[cfg(feature = "glow")]
+        {
+            crate::profile_scope!("arrow3d");
+            for (props, obj) in objects.arrow3d.iter() {
+                let re_data_store::Arrow3D {
+                    arrow,
+                    label,
+                    width_scale,
+                } = obj;
+                let width = boost_size_on_hover(props, width_scale.unwrap_or(1.0));
+                let color = object_color(ctx, props);
+                let instance_id = InstanceIdHash::from_props(props);
+                scene.add_arrow(ctx, instance_id, color, Some(width), *label, arrow);
             }
         }
 
@@ -313,6 +328,7 @@ impl Scene {
                                 mesh_id,
                                 world_from_mesh,
                                 cpu_mesh,
+                                color: None,
                             });
                         }
                     }
@@ -405,15 +421,68 @@ impl Scene {
         }
     }
 
+    fn add_arrow(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        instance_id: InstanceIdHash,
+        color: [u8; 4],
+        width_scale: Option<f32>,
+        label: Option<&str>,
+        arrow: &re_log_types::Arrow3D,
+    ) {
+        let re_log_types::Arrow3D { origin, vector } = arrow;
+
+        let (cylinder_id, cylinder_mesh) = ctx.cache.cpu_mesh.cylinder();
+        let (cone_id, cone_mesh) = ctx.cache.cpu_mesh.cone();
+
+        let vector = glam::Vec3::from_slice(vector);
+        let rotation = glam::Quat::from_rotation_arc(glam::Vec3::X, vector.normalize());
+        let origin = glam::Vec3::from_slice(origin);
+        let color = three_d::Color::new(color[0], color[1], color[2], color[3]);
+
+        let width_scale = width_scale.unwrap_or(1.0);
+        let tip_length = 2.0 * width_scale;
+
+        self.meshes.push(MeshSource {
+            instance_id,
+            mesh_id: cylinder_id,
+            world_from_mesh: glam::Affine3A::from_scale_rotation_translation(
+                vec3(
+                    vector.length() - tip_length,
+                    0.5 * width_scale,
+                    0.5 * width_scale,
+                ),
+                rotation,
+                origin,
+            ),
+            cpu_mesh: cylinder_mesh.clone(),
+            color: Some(color),
+        });
+
+        let xform = glam::Affine3A::from_scale_rotation_translation(
+            vec3(tip_length, 1.0 * width_scale, 1.0 * width_scale),
+            rotation,
+            origin + vector,
+        ) * glam::Affine3A::from_translation(-glam::Vec3::X);
+
+        self.meshes.push(MeshSource {
+            instance_id,
+            mesh_id: cone_id,
+            world_from_mesh: xform,
+            cpu_mesh: cone_mesh.clone(),
+            color: Some(color),
+        });
+    }
+
     fn add_box(
         &mut self,
         instance_id: InstanceIdHash,
         color: [u8; 4],
         line_radius: f32,
         label: Option<&str>,
-        box3: &Box3,
+        box3: &re_log_types::Box3,
     ) {
-        let Box3 {
+        let re_log_types::Box3 {
             rotation,
             translation,
             half_size,

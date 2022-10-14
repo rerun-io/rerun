@@ -121,6 +121,36 @@ impl CpuMesh {
         }
     }
 
+    pub(crate) fn cylinder(angle_subdivisions: u32) -> Self {
+        let meshes = vec![three_d::CpuMesh::cylinder(angle_subdivisions)];
+        let material = three_d::CpuMaterial {
+            name: "cylinder_material".to_owned(),
+            ..Default::default()
+        };
+        let bbox = bbox(&meshes);
+        Self {
+            name: "cylinder".to_owned(),
+            meshes,
+            materials: vec![material],
+            bbox,
+        }
+    }
+
+    pub(crate) fn cone(angle_subdivisions: u32) -> Self {
+        let meshes = vec![three_d::CpuMesh::cone(angle_subdivisions)];
+        let material = three_d::CpuMaterial {
+            name: "cone_material".to_owned(),
+            ..Default::default()
+        };
+        let bbox = bbox(&meshes);
+        Self {
+            name: "cone".to_owned(),
+            meshes,
+            materials: vec![material],
+            bbox,
+        }
+    }
+
     #[allow(dead_code)]
     pub fn name(&self) -> &str {
         &self.name
