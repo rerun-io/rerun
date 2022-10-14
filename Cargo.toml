@@ -24,12 +24,15 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-10-11 - wgpu update
-eframe = { git = "https://github.com/emilk/egui", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
-egui = { git = "https://github.com/emilk/egui", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
+# 2022-10-11 - wgpu renderer passes encoder in callbacks now
+eframe = { git = "https://github.com/emilk/egui", rev = "c414af7aa2858703d2ff5d72b8dbf1a657da5991" }
+egui = { git = "https://github.com/emilk/egui", rev = "c414af7aa2858703d2ff5d72b8dbf1a657da5991" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "c414af7aa2858703d2ff5d72b8dbf1a657da5991" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "c414af7aa2858703d2ff5d72b8dbf1a657da5991" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "c414af7aa2858703d2ff5d72b8dbf1a657da5991" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }
+
+# 2022-10-12 - Eq for DepthBiasState and DepthStencilState
+wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "aed3b1ae59ee097901b852d934493c7ec167d344" }

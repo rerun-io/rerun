@@ -7,7 +7,10 @@ compile_error!("You must enable either the 'glow' or 'wgpu' feature of re_viewer
 
 pub fn run_native_app(app_creator: eframe::AppCreator) {
     let native_options = eframe::NativeOptions {
+        #[cfg(not(feature = "wgpu"))]
         depth_buffer: 24,
+        #[cfg(feature = "wgpu")]
+        depth_buffer: 0,
 
         #[cfg(not(feature = "wgpu"))]
         multisampling: 8,
