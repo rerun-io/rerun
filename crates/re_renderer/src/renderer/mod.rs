@@ -1,3 +1,4 @@
+pub(crate) mod test_triangle;
 pub(crate) mod tonemapper;
 
 use crate::{context::RenderContextConfig, resource_pools::WgpuResourcePools};

@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use crate::{
     context::*,
-    renderer::{tonemapper::*, Renderer},
-    resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, texture_pool::*},
+    renderer::{test_triangle::*, tonemapper::*, Renderer},
+    resource_pools::texture_pool::*,
 };
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
@@ -21,9 +21,8 @@ use crate::{
 /// Collecting objects in this fashion allows for re-use of common resources (e.g. camera)
 #[derive(Default)]
 pub struct FrameBuilder {
-    test_render_pipeline: RenderPipelineHandle,
-
     tonemapping_draw_data: TonemapperDrawData,
+    test_triangle_draw_data: Option<TestTriangleDrawData>,
 
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
@@ -32,14 +31,13 @@ pub struct FrameBuilder {
 pub type SharedFrameBuilder = Arc<RwLock<FrameBuilder>>;
 
 impl FrameBuilder {
-    const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-    const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+    pub const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+    pub const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
     pub fn new() -> Self {
         FrameBuilder {
-            test_render_pipeline: RenderPipelineHandle::default(),
-
             tonemapping_draw_data: Default::default(),
+            test_triangle_draw_data: None,
 
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
@@ -68,56 +66,27 @@ impl FrameBuilder {
             &render_target_2d_desc(Self::FORMAT_DEPTH, width, height, 1),
         );
 
-        // TODO: how to supply less templaty things
-        let tonemapper =
-            ctx.renderers
-                .get_or_create::<Tonemapper>(&ctx.config, &mut ctx.resource_pools, device);
-        self.tonemapping_draw_data = tonemapper.prepare(
-            &mut ctx.resource_pools,
-            device,
-            &TonemapperPrepareData {
-                hdr_target: self.hdr_render_target,
-            },
-        );
+        self.tonemapping_draw_data = ctx
+            .renderers
+            .get_or_create::<Tonemapper>(&ctx.config, &mut ctx.resource_pools, device)
+            .prepare(
+                &mut ctx.resource_pools,
+                device,
+                &TonemapperPrepareData {
+                    hdr_target: self.hdr_render_target,
+                },
+            );
 
         self
     }
 
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        self.test_render_pipeline = ctx.resource_pools.render_pipelines.request(
-            device,
-            &RenderPipelineDesc {
-                label: "Test Triangle".into(),
-                pipeline_layout: ctx.resource_pools.pipeline_layouts.request(
-                    device,
-                    &PipelineLayoutDesc {
-                        label: "empty".into(),
-                        entries: Vec::new(),
-                    },
-                    &ctx.resource_pools.bind_group_layouts,
-                ),
-                vertex_shader: ShaderDesc {
-                    shader_code: include_str!("../shader/test_triangle.wgsl").into(),
-                    entry_point: "vs_main",
-                },
-                fragment_shader: ShaderDesc {
-                    shader_code: include_str!("../shader/test_triangle.wgsl").into(),
-                    entry_point: "fs_main",
-                },
-                vertex_buffers: vec![],
-                render_targets: vec![Some(Self::FORMAT_HDR.into())],
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: Self::FORMAT_DEPTH,
-                    depth_compare: wgpu::CompareFunction::Always,
-                    depth_write_enabled: false,
-                    stencil: Default::default(),
-                    bias: Default::default(),
-                }),
-                multisample: wgpu::MultisampleState::default(),
-            },
-            &ctx.resource_pools.pipeline_layouts,
+        self.test_triangle_draw_data = Some(
+            ctx.renderers
+                .get_or_create::<TestTriangle>(&ctx.config, &mut ctx.resource_pools, device)
+                .prepare(&mut ctx.resource_pools, device, &TestTrianglePrepareData {}),
         );
+
         self
     }
 
@@ -158,13 +127,14 @@ impl FrameBuilder {
             }),
         });
 
-        if let Ok(render_pipeline) = ctx
-            .resource_pools
-            .render_pipelines
-            .get(self.test_render_pipeline)
-        {
-            pass.set_pipeline(&render_pipeline.pipeline);
-            pass.draw(0..3, 0..1);
+        if let Some(test_triangle_data) = self.test_triangle_draw_data.as_ref() {
+            let test_triangle_renderer = ctx
+                .renderers
+                .get::<TestTriangle>()
+                .context("get test triangle renderer")?;
+            test_triangle_renderer
+                .draw(&ctx.resource_pools, &mut pass, test_triangle_data)
+                .context("draw test triangle")?;
         }
 
         Ok(())
