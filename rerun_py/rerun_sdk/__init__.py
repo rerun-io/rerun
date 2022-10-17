@@ -2,6 +2,7 @@
 
 import atexit
 import logging
+from collections import namedtuple
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -824,13 +825,25 @@ def set_visible(obj_path: str, visibile: bool) -> None:
     rerun_rs.set_visible(obj_path, visibile)
 
 
-# TODO(jleibs) More ergonomic type / validation
+Mapping = namedtuple("Mapping", ("label", "color"), defaults=(None, None))
+
+
+def expand_mapping(mapping: Union[str, Tuple[str, Sequence[int]], Mapping]) -> Mapping:
+    if isinstance(mapping, str):
+        return Mapping(mapping)
+    elif isinstance(mapping, tuple):
+        return Mapping(mapping[0], mapping[1])
+    else:
+        return mapping
+
+
 # Do I need to normalize colors here?
 def log_segmentation_map(
     obj_path: str,
-    id_map: Dict[int, Tuple[str, Sequence[int]]],
+    id_map: Dict[int, Union[str, Tuple[str, Sequence[int]], Mapping]],
     *,
     timeless: bool = False,
 ) -> None:
     """Log a segmentation map."""
-    rerun_rs.log_segmentation_map(obj_path, id_map, timeless)
+    id_map_typed = {id: expand_mapping(mapping) for id, mapping in id_map.items()}
+    rerun_rs.log_segmentation_map(obj_path, id_map_typed, timeless)

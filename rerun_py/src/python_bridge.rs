@@ -1548,12 +1548,15 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
 
 // Unzip supports nested, but not 3 or 4-length parallel structures
 // ((id, index), (label, color))
-type UnzipSegMap = ((Vec<i32>, Vec<Index>), (Vec<String>, Vec<[u8; 4]>));
+type UnzipSegMap = (
+    (Vec<i32>, Vec<Index>),
+    (Vec<Option<String>>, Vec<Option<[u8; 4]>>),
+);
 
 #[pyfunction]
 fn log_segmentation_map(
     obj_path: &str,
-    id_map: HashMap<i32, (String, Vec<u8>)>,
+    id_map: HashMap<i32, (Option<String>, Option<Vec<u8>>)>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -1563,9 +1566,12 @@ fn log_segmentation_map(
     let ((ids, indices), (labels, colors)): UnzipSegMap = id_map
         .iter()
         .map(|(k, v)| {
+            let corrected_color =
+                v.1.as_ref()
+                    .map(|color| convert_color(color.clone()).unwrap());
             (
                 (k, Index::Integer(*k as i128)),
-                (v.0.clone(), convert_color(v.1.clone()).unwrap()),
+                (v.0.clone(), corrected_color),
             )
         })
         .unzip();
@@ -1583,20 +1589,32 @@ fn log_segmentation_map(
         },
     );
 
+    // Strip out any indices with unset labels
+    let (label_indices, labels) = std::iter::zip(indices.clone(), labels)
+        .filter(|(_, l)| l.is_some())
+        .map(|(i, l)| (i, l.unwrap()))
+        .unzip();
+
     sdk.send_data(
         &time_point,
         (&obj_path, "label"),
         LoggedData::Batch {
-            indices: indices.clone(),
+            indices: label_indices,
             data: DataVec::String(labels),
         },
     );
+
+    // Strip out any indices with unset colors
+    let (color_indices, colors) = std::iter::zip(indices, colors)
+        .filter(|(_, c)| c.is_some())
+        .map(|(i, c)| (i, c.unwrap()))
+        .unzip();
 
     sdk.send_data(
         &time_point,
         (&obj_path, "color"),
         LoggedData::Batch {
-            indices,
+            indices: color_indices,
             data: DataVec::Color(colors),
         },
     );

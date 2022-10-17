@@ -28,6 +28,15 @@ impl<'s> Legend<'s> {
     }
 }
 
+// default colors
+// Borrowed from `egui::PlotUi`
+pub fn auto_color(val: u8) -> [u8; 4] {
+    let golden_ratio = (5.0_f32.sqrt() - 1.0) / 2.0; // 0.61803398875
+    let h = val as f32 * golden_ratio;
+    let color: egui::Color32 = egui::color::Hsva::new(h, 0.85, 0.5, 1.0).into();
+    color.to_array()
+}
+
 // TODO(jleibs) should this use egui::Color type
 // Currently using a pair [u8;4] since it converts more easily
 // to DynamicImage
@@ -44,9 +53,10 @@ impl<'s> ColorMapping for Legend<'s> {
                     if let Some(color) = seg_label.color {
                         color
                     } else {
-                        [0, 0, 0, 0]
+                        auto_color(val)
                     }
                 } else {
+                    // Should we use a special color for unset labels?
                     [0, 0, 0, 0]
                 }
             }

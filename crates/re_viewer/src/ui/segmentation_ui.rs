@@ -19,6 +19,7 @@ pub(crate) fn view_segmentation_map(
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
 
+    // TODO(jleibs) This should really used a shared implementation with objects.rs
     let mut map = IntMap::<i32, (Option<&str>, egui::Color32)>::default();
 
     visit_type_data_2(
@@ -32,7 +33,8 @@ pub(crate) fn view_segmentation_map(
          id: &i32,
          label: Option<&String>,
          color: Option<&[u8; 4]>| {
-            let color = color.unwrap_or(&[0, 0, 0, 0]);
+            let val = u8::try_from(*id % 255).unwrap();
+            let color = *color.unwrap_or(&super::legend::auto_color(val));
             map.insert(
                 *id,
                 (

@@ -11,6 +11,7 @@ from typing import Any
 
 import numpy as np
 import rerun_sdk as rerun
+from rerun_sdk import Mapping
 
 
 def args_set_visible(subparsers: Any) -> None:
@@ -39,16 +40,23 @@ def args_segmentation(subparsers: Any) -> None:
 
 def run_segmentation(args: argparse.Namespace) -> None:
     rerun.set_time_seconds("sim_time", 1)
-    rerun.log_segmentation_map(
-        "seg", {13: ("label1", (255, 0, 0)), 42: ("label2", (0, 255, 0)), 99: ("label3", (0, 0, 255))}
-    )
 
+    # Log an image
     segmentation_img = np.zeros([128, 128], dtype="uint8")
     segmentation_img[10:20, 30:50] = 13
     segmentation_img[80:100, 60:80] = 42
     segmentation_img[20:50, 90:110] = 99
-
     rerun.log_image("img", segmentation_img, legend="seg")
+
+    # Log an initial segmentation map with arbitrary colors
+    rerun.log_segmentation_map("seg", {13: "label1", 42: "label2", 99: "label3"})
+
+    # Log an updated segmentation map with specific colors
+    rerun.set_time_seconds("sim_time", 2)
+
+    rerun.log_segmentation_map(
+        "seg", {13: ("label1", (255, 0, 0)), 42: ("label2", (0, 255, 0)), 99: ("label3", (0, 0, 255))}
+    )
 
 
 def main() -> None:
