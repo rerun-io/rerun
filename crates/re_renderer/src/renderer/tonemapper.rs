@@ -54,6 +54,9 @@ impl Renderer for Tonemapper {
             },
         );
 
+        // TODO: all these useless clones too
+        let entrypoint = "main".to_owned();
+
         let render_pipeline = pools.render_pipelines.request(
             device,
             &RenderPipelineDesc {
@@ -66,18 +69,26 @@ impl Renderer for Tonemapper {
                     },
                     &pools.bind_group_layouts,
                 ),
-                vertex_shader: ShaderModuleDesc {
-                    label: "screen_triangle".into(),
-                    entrypoint: "main".into(),
-                    stage: ShaderStage::Vertex,
-                    source: include_file!("../../shader/screen_triangle.wgsl"),
-                },
-                fragment_shader: ShaderModuleDesc {
-                    label: "tonemap".into(),
-                    entrypoint: "main".into(),
-                    stage: ShaderStage::Vertex,
-                    source: include_file!(include_str!("../../shader/tonemap.wgsl")),
-                },
+                vertex_entrypoint: entrypoint.clone(),
+                vertex_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "screen_triangle".into(),
+                        entrypoint: entrypoint.clone(),
+                        stage: ShaderStage::Vertex,
+                        source: include_file!("../../shader/screen_triangle.wgsl"),
+                    },
+                ),
+                fragment_entrypoint: entrypoint.clone(),
+                fragment_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "tonemap".into(),
+                        entrypoint: entrypoint.clone(),
+                        stage: ShaderStage::Vertex,
+                        source: include_file!("../../shader/tonemap.wgsl"),
+                    },
+                ),
                 vertex_buffers: vec![],
                 render_targets: vec![Some(shared_data.config.output_format_color.into())],
                 primitive: wgpu::PrimitiveState::default(),

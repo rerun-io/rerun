@@ -27,6 +27,9 @@ impl Renderer for TestTriangle {
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> Self {
+        let vertex_entrypoint = "vs_main".to_owned();
+        let fragment_entrypoint = "fs_main".to_owned();
+
         let render_pipeline = pools.render_pipelines.request(
             device,
             &RenderPipelineDesc {
@@ -39,18 +42,26 @@ impl Renderer for TestTriangle {
                     },
                     &pools.bind_group_layouts,
                 ),
-                vertex_shader: ShaderModuleDesc {
-                    label: "test_triangle".into(),
-                    entrypoint: "vs_main".into(),
-                    stage: ShaderStage::Vertex,
-                    source: include_file!("../../shader/test_triangle.wgsl"),
-                },
-                fragment_shader: ShaderModuleDesc {
-                    label: "test_triangle".into(),
-                    entrypoint: "fs_main".into(),
-                    stage: ShaderStage::Vertex,
-                    source: include_file!("../../shader/test_triangle.wgsl"),
-                },
+                vertex_entrypoint: vertex_entrypoint.clone(),
+                vertex_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "test_triangle".into(),
+                        entrypoint: vertex_entrypoint.clone(),
+                        stage: ShaderStage::Vertex,
+                        source: include_file!("../../shader/test_triangle.wgsl"),
+                    },
+                ),
+                fragment_entrypoint: fragment_entrypoint.clone(),
+                fragment_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "test_triangle".into(),
+                        entrypoint: fragment_entrypoint.clone(),
+                        stage: ShaderStage::Vertex,
+                        source: include_file!("../../shader/test_triangle.wgsl"),
+                    },
+                ),
                 vertex_buffers: vec![],
                 render_targets: vec![Some(FrameBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState::default(),

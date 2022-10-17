@@ -83,6 +83,22 @@ where
                 }
             })
     }
+    pub fn get_resource_mut(&mut self, handle: Handle) -> Result<&mut Res, PoolError> {
+        self.resources
+            .get_mut(handle)
+            .map(|resource| {
+                // TODO: not even sure we should resolve here actually
+                resource.on_handle_resolve(self.current_frame_index);
+                resource
+            })
+            .ok_or_else(|| {
+                if handle.is_null() {
+                    PoolError::NullHandle
+                } else {
+                    PoolError::ResourceNotAvailable
+                }
+            })
+    }
 
     pub fn resource_descs(&self) -> impl Iterator<Item = &Desc> {
         self.lookup.keys()

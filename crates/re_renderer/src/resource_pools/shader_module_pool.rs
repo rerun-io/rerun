@@ -1,5 +1,8 @@
 use std::fmt::Display;
+use std::sync::atomic::Ordering;
 use std::{hash::Hash, path::PathBuf, sync::atomic::AtomicU64};
+
+use ahash::HashSet;
 
 use crate::debug_label::DebugLabel;
 use crate::resource_pools::resource_pool::*;
@@ -11,10 +14,11 @@ slotmap::new_key_type! { pub struct ShaderModuleHandle; }
 
 pub struct ShaderModule {
     last_frame_used: AtomicU64,
+    pub last_frame_modified: AtomicU64, // TODO: need associated slotmaps
     pub shader_module: wgpu::ShaderModule,
 }
 
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ShaderModuleDesc {
     /// Debug label of the shader.
     /// This will show up in graphics debuggers for easy identification.
@@ -24,6 +28,20 @@ pub struct ShaderModuleDesc {
     pub entrypoint: String,
     pub stage: ShaderStage,
     pub source: FileContents,
+}
+impl Hash for ShaderModuleDesc {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.source.hash(state)
+    }
+}
+impl ShaderModuleDesc {
+    fn label(&self) -> String {
+        if let Some(label) = self.label.get() {
+            ["shader", &self.stage.to_string(), label].join("/")
+        } else {
+            ["shader", &self.stage.to_string()].join("/")
+        }
+    }
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -40,29 +58,6 @@ impl Display for ShaderStage {
             ShaderStage::Fragment => "fragment",
             ShaderStage::Compute => "compute",
         })
-    }
-}
-
-// TODO(cmc): This abstraction probably does not belong here.
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub enum ShaderSource {
-    /// Inlined shader source code.
-    // TODO(cmc): what about non-WGSL?
-    Wgsl { data: String },
-    /// A canonicalize filesystem path.
-    Path { path: PathBuf },
-    // TODO(cmc): fetch over network?
-}
-impl ShaderSource {
-    pub fn from_wgsl(wgsl: &str) -> Self {
-        Self::Wgsl { data: wgsl.into() }
-    }
-
-    pub fn data(&self) -> &str {
-        match self {
-            ShaderSource::Wgsl { data } => data,
-            ShaderSource::Path { path: _ } => todo!(),
-        }
     }
 }
 
@@ -86,31 +81,58 @@ impl ShaderModulePool {
         desc: &ShaderModuleDesc,
     ) -> ShaderModuleHandle {
         self.pool.get_handle(desc, |desc| {
-            let label = if let Some(label) = desc.label.get() {
-                ["shader", &desc.stage.to_string(), label].join("/")
-            } else {
-                ["shader", &desc.stage.to_string()].join("/")
-            };
             // TODO(cmc): https://github.com/gfx-rs/wgpu/issues/2130
             let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: label.as_str().into(),
+                label: desc.label().as_str().into(),
                 // TODO: what about non-WGSL?
                 source: wgpu::ShaderSource::Wgsl(
                     desc.source.contents().unwrap().into(), // TODO: handle err
                 ),
             });
+
             ShaderModule {
                 last_frame_used: AtomicU64::new(0),
+                last_frame_modified: AtomicU64::new(0),
                 shader_module,
             }
         })
     }
 
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
+    pub fn frame_maintenance(
+        &mut self,
+        device: &wgpu::Device,
+        frame_index: u64,
+        updated_paths: &HashSet<PathBuf>,
+    ) {
         self.pool.discard_unused_resources(frame_index);
 
-        for desc in self.pool.resource_descs() {
-            // TODO(cmc): maybe that should be where the magic happens then
+        let descs = self.pool.resource_descs().cloned().collect::<Vec<_>>(); // TODO
+        for desc in descs {
+            let modified = match &desc.source {
+                FileContents::Inlined(_) => false,
+                FileContents::Path(path) => updated_paths.contains(path),
+            };
+
+            if modified {
+                println!("rebuilding shader module");
+
+                // TODO: clearly this is horrible ^_^
+                let handle = self.pool.get_handle(&desc, |_| unreachable!());
+                let res = self.pool.get_resource_mut(handle).unwrap(); // TODO
+
+                // TODO(cmc): https://github.com/gfx-rs/wgpu/issues/2130
+                let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: desc.label().as_str().into(),
+                    // TODO: what about non-WGSL?
+                    source: wgpu::ShaderSource::Wgsl(
+                        desc.source.contents().unwrap().into(), // TODO: handle err
+                    ),
+                });
+
+                res.shader_module = shader_module;
+                res.last_frame_modified
+                    .store(frame_index + 1, Ordering::Release);
+            }
         }
     }
 

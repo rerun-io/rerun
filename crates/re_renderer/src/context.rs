@@ -78,19 +78,14 @@ impl RenderContext {
         }
     }
 
-    pub fn frame_maintenance(&mut self) {
-        let updated_paths = FileWatcher::get_mut(|fw| {
-            fw.dequeue(self.frame_index).unwrap_or_else(|err| {
-                re_log::error!(%err, "file watcher error'd");
-                HashSet::new()
-            })
-        });
+    pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
+        let updated_paths = FileWatcher::get_mut(|fw| fw.dequeue());
 
         {
             let WgpuResourcePools {
                 bind_group_layouts: _,
                 bind_groups,
-                pipeline_layouts: _,
+                pipeline_layouts,
                 render_pipelines,
                 samplers,
                 shader_modules,
@@ -102,9 +97,14 @@ impl RenderContext {
             // 3. recreate pipelines
 
             // RenderPipelines refer to ShaderModules and thus must me maintained first.
-            render_pipelines.frame_maintenance(self.frame_index);
+            render_pipelines.frame_maintenance(
+                device,
+                self.frame_index,
+                shader_modules,
+                pipeline_layouts,
+            );
 
-            shader_modules.frame_maintenance(self.frame_index);
+            shader_modules.frame_maintenance(device, self.frame_index, &updated_paths);
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use

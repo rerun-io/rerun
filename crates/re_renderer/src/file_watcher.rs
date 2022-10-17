@@ -4,7 +4,11 @@ use std::path::PathBuf;
 #[macro_export]
 macro_rules! include_file {
     ($path:expr $(,)?) => {{
-        $crate::FileWatcher::get_mut(|fw| fw.watch(0, $path, false)).unwrap()
+        let path = ::std::path::Path::new(file!())
+            .parent()
+            .unwrap()
+            .join($path);
+        $crate::FileWatcher::get_mut(|fw| fw.watch(&path, false)).unwrap()
     }};
 }
 
@@ -12,7 +16,7 @@ macro_rules! include_file {
 #[macro_export]
 macro_rules! include_file {
     ($path:expr $(,)?) => {{
-        $crate::FileContents::Inline(include_str!($path))
+        $crate::FileContents::Inlined(include_str!($path).to_owned())
     }};
 }
 
@@ -53,8 +57,6 @@ mod file_watcher_impl {
     pub struct FileWatcher {
         watcher: RecommendedWatcher,
         events_rx: Receiver<Event>,
-        /// When was a given path last modified?
-        state: HashMap<PathBuf, u64>,
     }
 
     impl FileWatcher {
@@ -73,11 +75,7 @@ mod file_watcher_impl {
                 }
             })?;
 
-            Ok(Self {
-                watcher,
-                events_rx,
-                state: Default::default(),
-            })
+            Ok(Self { watcher, events_rx })
         }
 
         pub fn get<T>(mut f: impl FnMut(&FileWatcher) -> T) -> T {
@@ -103,12 +101,11 @@ mod file_watcher_impl {
                 *global = Some(fw);
             }
 
-            f(FILE_WATCHER.write().as_mut().unwrap())
+            f(global.as_mut().unwrap())
         }
 
         pub fn watch(
             &mut self,
-            frame_index: u64,
             path: impl AsRef<Path>,
             recursive: bool,
         ) -> anyhow::Result<FileContents> {
@@ -128,41 +125,34 @@ mod file_watcher_impl {
 
         pub fn unwatch(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
             let path = std::fs::canonicalize(path.as_ref())?;
-            self.watcher.unwatch(path.as_ref()).map_err(Into::into)
+            self.watcher
+                .unwatch(path.as_ref())
+                .with_context(|| "couldn't watch file at {path:?}")
         }
 
         /// Reads all pending events.
-        pub fn dequeue(&mut self, frame_index: u64) -> anyhow::Result<HashSet<PathBuf>> {
-            let mut updated = HashSet::new();
-
-            for ev in self.events_rx.try_iter() {
-                use notify::EventKind::*;
-                match ev.kind {
-                    Access(_) | Create(_) | Modify(_) | Any => {
-                        for path in ev.paths {
-                            let path = match std::fs::canonicalize(path) {
-                                Ok(path) => path,
+        // TODO: what an awful name
+        pub fn dequeue(&mut self) -> HashSet<PathBuf> {
+            self.events_rx
+                .try_iter()
+                .flat_map(|ev| {
+                    use notify::EventKind::*;
+                    match ev.kind {
+                        Access(_) | Create(_) | Modify(_) | Any => ev
+                            .paths
+                            .into_iter()
+                            .filter_map(|path| match std::fs::canonicalize(path) {
+                                Ok(path) => Some(path),
                                 Err(err) => {
                                     re_log::error!(%err, "couldn't canonicalize path");
-                                    continue;
+                                    None
                                 }
-                            };
-
-                            updated.insert(path.clone()); // TODO: no clone?
-
-                            self.state
-                                .entry(path)
-                                .and_modify(|latest_frame_index| {
-                                    *latest_frame_index = u64::max(*latest_frame_index, frame_index)
-                                })
-                                .or_insert(frame_index);
-                        }
+                            })
+                            .collect::<Vec<_>>(),
+                        Remove(_) | Other => vec![],
                     }
-                    Remove(_) | Other => {} // don't care
-                }
-            }
-
-            Ok(updated)
+                })
+                .collect()
         }
     }
 }
@@ -184,8 +174,12 @@ mod file_watcher_impl {
             Ok(Self)
         }
 
-        pub fn get<T>(_f: impl FnMut(&FileWatcher) -> T) -> T {}
-        pub fn get_mut<T>(_f: impl FnMut(&mut FileWatcher) -> T) -> T {}
+        pub fn get<T>(mut f: impl FnMut(&FileWatcher) -> T) -> T {
+            f(&Self)
+        }
+        pub fn get_mut<T>(mut f: impl FnMut(&mut FileWatcher) -> T) -> T {
+            f(&mut Self)
+        }
 
         pub fn watch(
             &mut self,
@@ -201,7 +195,7 @@ mod file_watcher_impl {
         }
 
         /// Reads all pending events.
-        pub fn dequeue(&mut self, _frame_index: u64) -> anyhow::Result<HashSet<PathBuf>> {
+        pub fn dequeue(&mut self) -> anyhow::Result<HashSet<PathBuf>> {
             Ok(HashSet::new())
         }
     }

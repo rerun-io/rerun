@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::debug_label::DebugLabel;
 
@@ -25,8 +25,11 @@ pub(crate) struct RenderPipelineDesc {
 
     pub pipeline_layout: PipelineLayoutHandle,
 
-    pub vertex_shader: ShaderModuleDesc,
-    pub fragment_shader: ShaderModuleDesc,
+    // TODO: eeeeeeeeeeehhhhhhhhhhhhhh
+    pub vertex_handle: ShaderModuleHandle,
+    pub vertex_entrypoint: String,
+    pub fragment_handle: ShaderModuleHandle,
+    pub fragment_entrypoint: String,
 
     /// The format of any vertex buffers used with this pipeline.
     // TODO(andreas) use SmallVec or simliar, limited to <?>
@@ -59,26 +62,23 @@ impl RenderPipelinePool {
         shader_module_pool: &mut ShaderModulePool,
     ) -> RenderPipelineHandle {
         self.pool.get_handle(desc, |desc| {
-            // TODO(cmc): certainly not unwrapping here
-            let vertex_shader_handle = shader_module_pool.request(device, &desc.vertex_shader);
-            let fragment_shader_handle = shader_module_pool.request(device, &desc.fragment_shader);
-            let vertex_shader_module = shader_module_pool.get(vertex_shader_handle).unwrap();
-            let fragment_shader_module = shader_module_pool.get(fragment_shader_handle).unwrap();
-
             // TODO(andreas): Manage pipeline layouts similar to other pools
             let pipeline_layout = pipeline_layout_pool.get(desc.pipeline_layout).unwrap();
+            // TODO(cmc): certainly not unwrapping here
+            let vertex_shader_module = shader_module_pool.get(desc.vertex_handle).unwrap();
+            let fragment_shader_module = shader_module_pool.get(desc.fragment_handle).unwrap();
 
             let wgpu_desc = wgpu::RenderPipelineDescriptor {
                 label: desc.label.get(),
                 layout: Some(&pipeline_layout.layout),
                 vertex: wgpu::VertexState {
                     module: &vertex_shader_module.shader_module,
-                    entry_point: &desc.vertex_shader.entrypoint,
+                    entry_point: &desc.vertex_entrypoint,
                     buffers: &desc.vertex_buffers,
                 },
                 fragment: wgpu::FragmentState {
                     module: &fragment_shader_module.shader_module,
-                    entry_point: &desc.fragment_shader.entrypoint,
+                    entry_point: &desc.fragment_entrypoint,
                     targets: &desc.render_targets,
                 }
                 .into(),
@@ -95,11 +95,72 @@ impl RenderPipelinePool {
         })
     }
 
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
+    pub fn frame_maintenance(
+        &mut self,
+        device: &wgpu::Device,
+        frame_index: u64,
+        shader_modules: &mut ShaderModulePool,
+        pipeline_layouts: &mut PipelineLayoutPool,
+    ) {
         // Kill any renderpipelines that haven't been used in this last frame
         self.pool.discard_unused_resources(frame_index);
 
-        // TODO: walk over descriptors, find outdated handles
+        let descs = self.pool.resource_descs().cloned().collect::<Vec<_>>(); // TODO
+        for desc in descs {
+            // Make sure the shader modules we rely on don't get GC'd!
+            shader_modules.register_resource_usage(desc.vertex_handle);
+            shader_modules.register_resource_usage(desc.fragment_handle);
+
+            let last_frame_modified = {
+                let vertex_last_modified = shader_modules
+                    .get(desc.vertex_handle)
+                    .map(|sm| sm.last_frame_modified.load(Ordering::Acquire))
+                    .unwrap();
+                // .unwrap_or(0);
+                let fragment_last_modified = shader_modules
+                    .get(desc.fragment_handle)
+                    .map(|sm| sm.last_frame_modified.load(Ordering::Acquire))
+                    .unwrap();
+                // .unwrap_or(0);
+                u64::max(vertex_last_modified, fragment_last_modified)
+            };
+
+            if last_frame_modified >= frame_index {
+                println!("rebuilding shader pipeline");
+
+                // TODO: clearly this is horrible ^_^
+                let handle = self.pool.get_handle(&desc, |_| unreachable!());
+                let res = self.pool.get_resource_mut(handle).unwrap(); // TODO
+
+                // TODO(andreas): Manage pipeline layouts similar to other pools
+                let pipeline_layout = pipeline_layouts.get(desc.pipeline_layout).unwrap();
+                // TODO(cmc): certainly not unwrapping here
+                let vertex_shader_module = shader_modules.get(desc.vertex_handle).unwrap();
+                let fragment_shader_module = shader_modules.get(desc.fragment_handle).unwrap();
+
+                let wgpu_desc = wgpu::RenderPipelineDescriptor {
+                    label: desc.label.get(),
+                    layout: Some(&pipeline_layout.layout),
+                    vertex: wgpu::VertexState {
+                        module: &vertex_shader_module.shader_module,
+                        entry_point: &desc.vertex_entrypoint,
+                        buffers: &desc.vertex_buffers,
+                    },
+                    fragment: wgpu::FragmentState {
+                        module: &fragment_shader_module.shader_module,
+                        entry_point: &desc.fragment_entrypoint,
+                        targets: &desc.render_targets,
+                    }
+                    .into(),
+                    primitive: desc.primitive,
+                    depth_stencil: desc.depth_stencil.clone(),
+                    multisample: desc.multisample,
+                    multiview: None, // Multi-layered render target support isn't widespread
+                };
+
+                res.pipeline = device.create_render_pipeline(&wgpu_desc);
+            }
+        }
     }
 
     pub fn get(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
