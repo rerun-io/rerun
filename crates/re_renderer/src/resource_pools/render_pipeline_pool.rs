@@ -2,7 +2,7 @@ use std::sync::atomic::AtomicU64;
 
 use crate::debug_label::DebugLabel;
 
-use super::{pipeline_layout_pool::*, resource_pool::*};
+use super::{pipeline_layout_pool::*, resource_pool::*, shader_module_pool::*};
 
 slotmap::new_key_type! { pub(crate) struct RenderPipelineHandle; }
 
@@ -17,14 +17,6 @@ impl UsageTrackedResource for RenderPipeline {
     }
 }
 
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub(crate) struct ShaderDesc {
-    // TODO(andreas) needs to be a path for reloading.
-    // Our goal is to have shipped software embed the source (single file yay) and any development state reload automatically
-    pub shader_code: String,
-    pub entry_point: &'static str,
-}
-
 /// Renderpipeline descriptor, can be converted into [`wgpu::RenderPipeline`] (which isn't hashable or comparable)
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct RenderPipelineDesc {
@@ -33,8 +25,8 @@ pub(crate) struct RenderPipelineDesc {
 
     pub pipeline_layout: PipelineLayoutHandle,
 
-    pub vertex_shader: ShaderDesc,
-    pub fragment_shader: ShaderDesc,
+    pub vertex_shader: ShaderModuleDesc,
+    pub fragment_shader: ShaderModuleDesc,
 
     /// The format of any vertex buffers used with this pipeline.
     // TODO(andreas) use SmallVec or simliar, limited to <?>
@@ -64,22 +56,14 @@ impl RenderPipelinePool {
         device: &wgpu::Device,
         desc: &RenderPipelineDesc,
         pipeline_layout_pool: &PipelineLayoutPool,
+        shader_module_pool: &mut ShaderModulePool,
     ) -> RenderPipelineHandle {
         self.pool.get_handle(desc, |desc| {
-            // TODO(andreas): Stop reading. Think. Add error handling. Some pointers https://github.com/gfx-rs/wgpu/issues/2130
-            // TODO(andreas): Shader need to be managed separately - it's not uncommon to reuse a vertex shader across many pipelines.
-            // TODO(andreas): Flawed assumption to have separate source per shader module. May or may not be the case!
-            let vertex_shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(&format!("vertex shader - {:?}", desc.label.get())),
-                source: wgpu::ShaderSource::Wgsl(desc.vertex_shader.shader_code.clone().into()),
-            });
-            let fragment_shader_module =
-                device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some(&format!("fragment shader - {:?}", desc.label.get())),
-                    source: wgpu::ShaderSource::Wgsl(
-                        desc.fragment_shader.shader_code.clone().into(),
-                    ),
-                });
+            // TODO(cmc): certainly not unwrapping here
+            let vertex_shader_handle = shader_module_pool.request(device, &desc.vertex_shader);
+            let fragment_shader_handle = shader_module_pool.request(device, &desc.fragment_shader);
+            let vertex_shader_module = shader_module_pool.get(vertex_shader_handle).unwrap();
+            let fragment_shader_module = shader_module_pool.get(fragment_shader_handle).unwrap();
 
             // TODO(andreas): Manage pipeline layouts similar to other pools
             let pipeline_layout = pipeline_layout_pool.get(desc.pipeline_layout).unwrap();
@@ -88,18 +72,19 @@ impl RenderPipelinePool {
                 label: desc.label.get(),
                 layout: Some(&pipeline_layout.layout),
                 vertex: wgpu::VertexState {
-                    module: &vertex_shader_module,
-                    entry_point: desc.vertex_shader.entry_point,
+                    module: &vertex_shader_module.shader_module,
+                    entry_point: &desc.vertex_shader.entrypoint,
                     buffers: &desc.vertex_buffers,
                 },
+                fragment: wgpu::FragmentState {
+                    module: &fragment_shader_module.shader_module,
+                    entry_point: &desc.fragment_shader.entrypoint,
+                    targets: &desc.render_targets,
+                }
+                .into(),
                 primitive: desc.primitive,
                 depth_stencil: desc.depth_stencil.clone(),
                 multisample: desc.multisample,
-                fragment: Some(wgpu::FragmentState {
-                    module: &fragment_shader_module,
-                    entry_point: desc.fragment_shader.entry_point,
-                    targets: &desc.render_targets,
-                }),
                 multiview: None, // Multi-layered render target support isn't widespread
             };
 

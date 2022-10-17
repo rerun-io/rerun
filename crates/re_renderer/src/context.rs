@@ -79,15 +79,19 @@ impl RenderContext {
     pub fn frame_maintenance(&mut self) {
         {
             let WgpuResourcePools {
-                textures,
-                render_pipelines,
-                pipeline_layouts: _,
                 bind_group_layouts: _,
                 bind_groups,
+                pipeline_layouts: _,
+                render_pipelines,
                 samplers,
+                shader_modules,
+                textures,
             } = &mut self.resource_pools; // not all pools require maintenance
 
+            // RenderPipelines refer to ShaderModules and thus must me maintained first.
             render_pipelines.frame_maintenance(self.frame_index);
+
+            shader_modules.frame_maintenance(self.frame_index);
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use

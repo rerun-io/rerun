@@ -2,7 +2,8 @@ use crate::{
     context::SharedRendererData,
     resource_pools::{
         bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, texture_pool::TextureHandle, WgpuResourcePools,
+        render_pipeline_pool::*, sampler_pool::*, shader_module_pool::*,
+        texture_pool::TextureHandle, WgpuResourcePools,
     },
 };
 
@@ -63,13 +64,19 @@ impl Renderer for Tonemapper {
                     },
                     &pools.bind_group_layouts,
                 ),
-                vertex_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/screen_triangle.wgsl").into(),
-                    entry_point: "main",
+                vertex_shader: ShaderModuleDesc {
+                    label: "screen_triangle".into(),
+                    entrypoint: "main".into(),
+                    stage: ShaderStage::Vertex,
+                    source: ShaderSource::from_wgsl(include_str!(
+                        "../../shader/screen_triangle.wgsl"
+                    )),
                 },
-                fragment_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/tonemap.wgsl").into(),
-                    entry_point: "main",
+                fragment_shader: ShaderModuleDesc {
+                    label: "tonemap".into(),
+                    entrypoint: "main".into(),
+                    stage: ShaderStage::Vertex,
+                    source: ShaderSource::from_wgsl(include_str!("../../shader/tonemap.wgsl")),
                 },
                 vertex_buffers: vec![],
                 render_targets: vec![Some(shared_data.config.output_format_color.into())],
@@ -78,6 +85,7 @@ impl Renderer for Tonemapper {
                 multisample: wgpu::MultisampleState::default(),
             },
             &pools.pipeline_layouts,
+            &mut pools.shader_modules,
         );
 
         Tonemapper {

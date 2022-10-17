@@ -1,7 +1,9 @@
 use crate::{
     context::SharedRendererData,
     frame_builder::FrameBuilder,
-    resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, WgpuResourcePools},
+    resource_pools::{
+        pipeline_layout_pool::*, render_pipeline_pool::*, shader_module_pool::*, WgpuResourcePools,
+    },
 };
 
 use super::Renderer;
@@ -36,13 +38,21 @@ impl Renderer for TestTriangle {
                     },
                     &pools.bind_group_layouts,
                 ),
-                vertex_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/test_triangle.wgsl").into(),
-                    entry_point: "vs_main",
+                vertex_shader: ShaderModuleDesc {
+                    label: "test_triangle".into(),
+                    entrypoint: "vs_main".into(),
+                    stage: ShaderStage::Vertex,
+                    source: ShaderSource::from_wgsl(include_str!(
+                        "../../shader/test_triangle.wgsl"
+                    )),
                 },
-                fragment_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/test_triangle.wgsl").into(),
-                    entry_point: "fs_main",
+                fragment_shader: ShaderModuleDesc {
+                    label: "test_triangle".into(),
+                    entrypoint: "fs_main".into(),
+                    stage: ShaderStage::Vertex,
+                    source: ShaderSource::from_wgsl(include_str!(
+                        "../../shader/test_triangle.wgsl"
+                    )),
                 },
                 vertex_buffers: vec![],
                 render_targets: vec![Some(FrameBuilder::FORMAT_HDR.into())],
@@ -57,6 +67,7 @@ impl Renderer for TestTriangle {
                 multisample: wgpu::MultisampleState::default(),
             },
             &pools.pipeline_layouts,
+            &mut pools.shader_modules,
         );
 
         TestTriangle { render_pipeline }
