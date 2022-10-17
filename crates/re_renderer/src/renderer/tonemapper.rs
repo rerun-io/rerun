@@ -21,7 +21,7 @@ pub(crate) struct TonemapperPrepareData {
 
 #[derive(Default)]
 pub(crate) struct TonemapperDrawData {
-    /// `BindGroup` pointing at the current HDR source and
+    /// [`BindGroup`] pointing at the current HDR source and
     /// a uniform buffer for describing a tonemapper configuration.
     hdr_target_bind_group: BindGroupHandle,
 }

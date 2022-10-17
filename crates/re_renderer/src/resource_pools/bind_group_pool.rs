@@ -16,7 +16,7 @@ pub(crate) struct BindGroup {
     pub(crate) bind_group: wgpu::BindGroup,
 }
 
-// BindGroup is relatively lightweight, but since buffers and textures are recreated a lot, we might pile them up, so let's keep track!
+// [`BindGroup`] is relatively lightweight, but since buffers and textures are recreated a lot, we might pile them up, so let's keep track!
 impl UsageTrackedResource for BindGroup {
     fn last_frame_used(&self) -> &AtomicU64 {
         &self.last_frame_used

@@ -25,7 +25,7 @@ pub(crate) struct ShaderDesc {
     pub entry_point: &'static str,
 }
 
-/// Renderpipeline descriptor, can be converted into `wgpu::RenderPipeline` (which isn't hashable or comparable)
+/// Renderpipeline descriptor, can be converted into [`wgpu::RenderPipeline`] (which isn't hashable or comparable)
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
