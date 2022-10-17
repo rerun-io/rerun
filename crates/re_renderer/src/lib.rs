@@ -7,4 +7,5 @@ pub mod context;
 pub mod frame_builder;
 
 mod debug_label;
+mod renderer;
 mod resource_pools;

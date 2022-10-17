@@ -21,7 +21,7 @@ pub use app::App;
 pub use remote_viewer_app::RemoteViewerApp;
 
 #[cfg(feature = "wgpu")]
-use re_renderer::context::RenderContext;
+use re_renderer::context::{RenderContext, RenderContextConfig};
 
 // ----------------------------------------------------------------------------
 // When compiling for native:
@@ -82,7 +82,9 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) {
         paint_callback_resources.insert(RenderContext::new(
             &render_state.device,
             &render_state.queue,
-            output_format_color,
+            RenderContextConfig {
+                output_format_color,
+            },
         ));
     }
 

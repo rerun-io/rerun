@@ -1,69 +1,84 @@
-use crate::resource_pools::{
-    bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,
-    pipeline_layout_pool::PipelineLayoutPool, render_pipeline_pool::RenderPipelinePool,
-    sampler_pool::SamplerPool, texture_pool::TexturePool,
-};
+use type_map::concurrent::{self, TypeMap};
 
-/// Any resource involving wgpu rendering which can be re-used accross different scenes.
+use crate::{renderer::Renderer, resource_pools::WgpuResourcePools};
+
+/// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
-    /// The color format used by the eframe output buffer.
-    output_format_color: wgpu::TextureFormat,
+    pub(crate) config: RenderContextConfig,
+    pub(crate) renderers: Renderers,
+    pub(crate) resource_pools: WgpuResourcePools,
 
-    pub(crate) textures: TexturePool,
-    pub(crate) render_pipelines: RenderPipelinePool,
-    pub(crate) pipeline_layouts: PipelineLayoutPool,
-    pub(crate) bind_group_layouts: BindGroupLayoutPool,
-    pub(crate) bind_groups: BindGroupPool,
-    pub(crate) samplers: SamplerPool,
-
+    // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
 }
 
-impl RenderContext {
-    pub fn new(
-        _device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        output_format_color: wgpu::TextureFormat,
-    ) -> Self {
-        RenderContext {
-            output_format_color,
+/// Startup configuration for a [`RenderContext`]
+///
+/// Contains any kind of configuration that doesn't change for the entire lifetime of a [`RenderContext`].
+/// (flipside, if we do want to change any of these, the [`RenderContext`] needs to be re-created)
+pub struct RenderContextConfig {
+    /// The color format used by the eframe output buffer.
+    pub output_format_color: wgpu::TextureFormat,
+}
 
-            textures: TexturePool::default(),
-            render_pipelines: RenderPipelinePool::default(),
-            pipeline_layouts: PipelineLayoutPool::default(),
-            bind_group_layouts: BindGroupLayoutPool::default(),
-            bind_groups: BindGroupPool::default(),
-            samplers: SamplerPool::default(),
+/// Struct owning *all* [`Renderer`].
+/// [`Renderer`] are created lazily and stay around indefinitely.
+pub(crate) struct Renderers {
+    renderers: concurrent::TypeMap,
+}
+
+impl Renderers {
+    pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
+        &mut self,
+        ctx_config: &RenderContextConfig,
+        resource_pools: &mut WgpuResourcePools,
+        device: &wgpu::Device,
+    ) -> &R {
+        self.renderers
+            .entry()
+            .or_insert_with(|| R::create_renderer(ctx_config, resource_pools, device))
+    }
+
+    pub fn get<R: 'static + Renderer>(&self) -> Option<&R> {
+        self.renderers.get::<R>()
+    }
+}
+
+impl RenderContext {
+    pub fn new(_device: &wgpu::Device, _queue: &wgpu::Queue, config: RenderContextConfig) -> Self {
+        RenderContext {
+            config,
+
+            renderers: Renderers {
+                renderers: TypeMap::new(),
+            },
+            resource_pools: WgpuResourcePools::default(),
 
             frame_index: 0,
         }
     }
 
     pub fn frame_maintenance(&mut self) {
-        let Self {
-            textures,
-            render_pipelines,
-            pipeline_layouts: _,
-            bind_group_layouts: _,
-            bind_groups,
-            samplers,
-            output_format_color: _,
-            frame_index,
-        } = self; // not all pools require maintenance
+        {
+            let WgpuResourcePools {
+                textures,
+                render_pipelines,
+                pipeline_layouts: _,
+                bind_group_layouts: _,
+                bind_groups,
+                samplers,
+            } = &mut self.resource_pools; // not all pools require maintenance
 
-        *frame_index += 1;
+            render_pipelines.frame_maintenance(self.frame_index);
 
-        render_pipelines.frame_maintenance(*frame_index);
+            // Bind group maintenance must come before texture/buffer maintenance since it
+            // registers texture/buffer use
+            bind_groups.frame_maintenance(self.frame_index, textures, samplers);
 
-        // Bind group maintenance must come before texture/buffer maintenance since it
-        // registers texture/buffer use
-        bind_groups.frame_maintenance(*frame_index, textures, samplers);
+            textures.frame_maintenance(self.frame_index);
+        }
 
-        textures.frame_maintenance(*frame_index);
-    }
-
-    pub(crate) fn output_format_color(&self) -> wgpu::TextureFormat {
-        self.output_format_color
+        self.frame_index += 1;
     }
 }

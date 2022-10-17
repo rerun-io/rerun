@@ -4,10 +4,8 @@ use std::sync::Arc;
 
 use crate::{
     context::*,
-    resource_pools::{
-        bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, sampler_pool::SamplerDesc, texture_pool::*,
-    },
+    renderer::{test_triangle::*, tonemapper::*, Renderer},
+    resource_pools::texture_pool::*,
 };
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
@@ -23,12 +21,8 @@ use crate::{
 /// Collecting objects in this fashion allows for re-use of common resources (e.g. camera)
 #[derive(Default)]
 pub struct FrameBuilder {
-    test_render_pipeline: RenderPipelineHandle,
-
-    // TODO(andreas): Tonemapper should go into its own module
-    tonemapping_pipeline: RenderPipelineHandle,
-    tonemapping_bind_group_layout: BindGroupLayoutHandle,
-    tonemapping_bind_group: BindGroupHandle,
+    tonemapping_draw_data: TonemapperDrawData,
+    test_triangle_draw_data: Option<TestTriangleDrawData>,
 
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
@@ -37,16 +31,13 @@ pub struct FrameBuilder {
 pub type SharedFrameBuilder = Arc<RwLock<FrameBuilder>>;
 
 impl FrameBuilder {
-    const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-    const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+    pub const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+    pub const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
     pub fn new() -> Self {
         FrameBuilder {
-            test_render_pipeline: RenderPipelineHandle::default(),
-
-            tonemapping_pipeline: RenderPipelineHandle::default(),
-            tonemapping_bind_group_layout: BindGroupLayoutHandle::default(),
-            tonemapping_bind_group: BindGroupHandle::default(),
+            tonemapping_draw_data: Default::default(),
+            test_triangle_draw_data: None,
 
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
@@ -66,133 +57,36 @@ impl FrameBuilder {
     ) -> &mut Self {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
         // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
-        self.hdr_render_target = ctx.textures.request(
+        self.hdr_render_target = ctx.resource_pools.textures.request(
             device,
             &render_target_2d_desc(Self::FORMAT_HDR, width, height, 1),
         );
-        self.depth_buffer = ctx.textures.request(
+        self.depth_buffer = ctx.resource_pools.textures.request(
             device,
             &render_target_2d_desc(Self::FORMAT_DEPTH, width, height, 1),
         );
 
-        self.tonemapping_bind_group_layout = ctx.bind_group_layouts.request(
-            device,
-            // TODO(andreas) got some builder utilities for this in blub. should bring them over
-            &BindGroupLayoutDesc {
-                label: "tonemapping".into(),
-                entries: vec![
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::default(),
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    // TODO(andreas): a bunch of basic sampler should go to future bind-group 0 which will always be bound
-                    // (handle for that one should probably live on the context or some other object encapsulating knowledge about it)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
-                        count: None,
-                    },
-                ],
-            },
-        );
-
-        let nearest_sampler = ctx.samplers.request(
-            device,
-            &SamplerDesc {
-                label: "nearest".into(),
-                ..Default::default()
-            },
-        );
-
-        self.tonemapping_bind_group = ctx.bind_groups.request(
-            device,
-            &BindGroupDesc {
-                label: "tonemapping".into(),
-                entries: vec![
-                    BindGroupEntry::TextureView(self.hdr_render_target),
-                    BindGroupEntry::Sampler(nearest_sampler),
-                ],
-                layout: self.tonemapping_bind_group_layout,
-            },
-            &ctx.bind_group_layouts,
-            &ctx.textures,
-            &ctx.samplers,
-        );
-
-        self.tonemapping_pipeline = ctx.render_pipelines.request(
-            device,
-            &RenderPipelineDesc {
-                label: "Tonemapping".into(),
-                pipeline_layout: ctx.pipeline_layouts.request(
-                    device,
-                    &PipelineLayoutDesc {
-                        label: "empty".into(),
-                        entries: vec![self.tonemapping_bind_group_layout],
-                    },
-                    &ctx.bind_group_layouts,
-                ),
-                vertex_shader: ShaderDesc {
-                    shader_code: include_str!("../shader/screen_triangle.wgsl").into(),
-                    entry_point: "main",
+        self.tonemapping_draw_data = ctx
+            .renderers
+            .get_or_create::<Tonemapper>(&ctx.config, &mut ctx.resource_pools, device)
+            .prepare(
+                &mut ctx.resource_pools,
+                device,
+                &TonemapperPrepareData {
+                    hdr_target: self.hdr_render_target,
                 },
-                fragment_shader: ShaderDesc {
-                    shader_code: include_str!("../shader/tonemap.wgsl").into(),
-                    entry_point: "main",
-                },
-                vertex_buffers: vec![],
-                render_targets: vec![Some(ctx.output_format_color().into())],
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-            },
-            &ctx.pipeline_layouts,
-        );
+            );
 
         self
     }
 
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        self.test_render_pipeline = ctx.render_pipelines.request(
-            device,
-            &RenderPipelineDesc {
-                label: "Test Triangle".into(),
-                pipeline_layout: ctx.pipeline_layouts.request(
-                    device,
-                    &PipelineLayoutDesc {
-                        label: "empty".into(),
-                        entries: Vec::new(),
-                    },
-                    &ctx.bind_group_layouts,
-                ),
-                vertex_shader: ShaderDesc {
-                    shader_code: include_str!("../shader/test_triangle.wgsl").into(),
-                    entry_point: "vs_main",
-                },
-                fragment_shader: ShaderDesc {
-                    shader_code: include_str!("../shader/test_triangle.wgsl").into(),
-                    entry_point: "fs_main",
-                },
-                vertex_buffers: vec![],
-                render_targets: vec![Some(Self::FORMAT_HDR.into())],
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: Self::FORMAT_DEPTH,
-                    depth_compare: wgpu::CompareFunction::Always,
-                    depth_write_enabled: false,
-                    stencil: Default::default(),
-                    bias: Default::default(),
-                }),
-                multisample: wgpu::MultisampleState::default(),
-            },
-            &ctx.pipeline_layouts,
+        self.test_triangle_draw_data = Some(
+            ctx.renderers
+                .get_or_create::<TestTriangle>(&ctx.config, &mut ctx.resource_pools, device)
+                .prepare(&mut ctx.resource_pools, device, &TestTrianglePrepareData {}),
         );
+
         self
     }
 
@@ -203,10 +97,12 @@ impl FrameBuilder {
         encoder: &mut wgpu::CommandEncoder,
     ) -> anyhow::Result<()> {
         let color = ctx
+            .resource_pools
             .textures
             .get(self.hdr_render_target)
             .context("hdr render target")?;
         let depth = ctx
+            .resource_pools
             .textures
             .get(self.depth_buffer)
             .context("depth buffer")?;
@@ -231,9 +127,14 @@ impl FrameBuilder {
             }),
         });
 
-        if let Ok(render_pipeline) = ctx.render_pipelines.get(self.test_render_pipeline) {
-            pass.set_pipeline(&render_pipeline.pipeline);
-            pass.draw(0..3, 0..1);
+        if let Some(test_triangle_data) = self.test_triangle_draw_data.as_ref() {
+            let test_triangle_renderer = ctx
+                .renderers
+                .get::<TestTriangle>()
+                .context("get test triangle renderer")?;
+            test_triangle_renderer
+                .draw(&ctx.resource_pools, &mut pass, test_triangle_data)
+                .context("draw test triangle")?;
         }
 
         Ok(())
@@ -247,19 +148,12 @@ impl FrameBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
     ) -> anyhow::Result<()> {
-        let pipeline = ctx
-            .render_pipelines
-            .get(self.tonemapping_pipeline)
-            .context("tonemapping pipeline")?;
-        let bind_group = ctx
-            .bind_groups
-            .get(self.tonemapping_bind_group)
-            .context("tonemapping bind group")?;
-
-        pass.set_pipeline(&pipeline.pipeline);
-        pass.set_bind_group(0, &bind_group.bind_group, &[]);
-        pass.draw(0..3, 0..1);
-
-        Ok(())
+        let tonemapper = ctx
+            .renderers
+            .get::<Tonemapper>()
+            .context("get tonemapper")?;
+        tonemapper
+            .draw(&ctx.resource_pools, pass, &self.tonemapping_draw_data)
+            .context("perform tonemapping")
     }
 }
