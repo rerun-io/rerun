@@ -1,5 +1,7 @@
+use ahash::{HashSet, HashSetExt};
 use type_map::concurrent::{self, TypeMap};
 
+use crate::FileWatcher;
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
@@ -77,6 +79,13 @@ impl RenderContext {
     }
 
     pub fn frame_maintenance(&mut self) {
+        let updated_paths = FileWatcher::get_mut(|fw| {
+            fw.dequeue(self.frame_index).unwrap_or_else(|err| {
+                re_log::error!(%err, "file watcher error'd");
+                HashSet::new()
+            })
+        });
+
         {
             let WgpuResourcePools {
                 bind_group_layouts: _,
@@ -87,6 +96,10 @@ impl RenderContext {
                 shader_modules,
                 textures,
             } = &mut self.resource_pools; // not all pools require maintenance
+
+            // 1. maintain pipeline so that shader modules don't get GC
+            // 2. check filewatcher to see whether modules were updated
+            // 3. recreate pipelines
 
             // RenderPipelines refer to ShaderModules and thus must me maintained first.
             render_pipelines.frame_maintenance(self.frame_index);

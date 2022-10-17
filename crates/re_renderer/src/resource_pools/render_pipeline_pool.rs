@@ -96,10 +96,10 @@ impl RenderPipelinePool {
     }
 
     pub fn frame_maintenance(&mut self, frame_index: u64) {
-        // TODO(andreas) shader reloading goes here
-
         // Kill any renderpipelines that haven't been used in this last frame
         self.pool.discard_unused_resources(frame_index);
+
+        // TODO: walk over descriptors, find outdated handles
     }
 
     pub fn get(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {

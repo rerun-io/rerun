@@ -3,6 +3,7 @@ use std::{hash::Hash, path::PathBuf, sync::atomic::AtomicU64};
 
 use crate::debug_label::DebugLabel;
 use crate::resource_pools::resource_pool::*;
+use crate::FileContents;
 
 // ---
 
@@ -22,7 +23,7 @@ pub struct ShaderModuleDesc {
     // TODO(cmc): Cow?
     pub entrypoint: String,
     pub stage: ShaderStage,
-    pub source: ShaderSource,
+    pub source: FileContents,
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -48,7 +49,7 @@ pub enum ShaderSource {
     /// Inlined shader source code.
     // TODO(cmc): what about non-WGSL?
     Wgsl { data: String },
-    /// Filesystem path.
+    /// A canonicalize filesystem path.
     Path { path: PathBuf },
     // TODO(cmc): fetch over network?
 }
@@ -93,7 +94,10 @@ impl ShaderModulePool {
             // TODO(cmc): https://github.com/gfx-rs/wgpu/issues/2130
             let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: label.as_str().into(),
-                source: wgpu::ShaderSource::Wgsl(desc.source.data().into()),
+                // TODO: what about non-WGSL?
+                source: wgpu::ShaderSource::Wgsl(
+                    desc.source.contents().unwrap().into(), // TODO: handle err
+                ),
             });
             ShaderModule {
                 last_frame_used: AtomicU64::new(0),
@@ -104,6 +108,10 @@ impl ShaderModulePool {
 
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         self.pool.discard_unused_resources(frame_index);
+
+        for desc in self.pool.resource_descs() {
+            // TODO(cmc): maybe that should be where the magic happens then
+        }
     }
 
     pub fn get(&self, handle: ShaderModuleHandle) -> Result<&ShaderModule, PoolError> {

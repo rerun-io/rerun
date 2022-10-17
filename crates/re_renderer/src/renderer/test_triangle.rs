@@ -1,6 +1,7 @@
 use crate::{
     context::SharedRendererData,
     frame_builder::FrameBuilder,
+    include_file,
     resource_pools::{
         pipeline_layout_pool::*, render_pipeline_pool::*, shader_module_pool::*, WgpuResourcePools,
     },
@@ -42,17 +43,13 @@ impl Renderer for TestTriangle {
                     label: "test_triangle".into(),
                     entrypoint: "vs_main".into(),
                     stage: ShaderStage::Vertex,
-                    source: ShaderSource::from_wgsl(include_str!(
-                        "../../shader/test_triangle.wgsl"
-                    )),
+                    source: include_file!("../../shader/test_triangle.wgsl"),
                 },
                 fragment_shader: ShaderModuleDesc {
                     label: "test_triangle".into(),
                     entrypoint: "fs_main".into(),
                     stage: ShaderStage::Vertex,
-                    source: ShaderSource::from_wgsl(include_str!(
-                        "../../shader/test_triangle.wgsl"
-                    )),
+                    source: include_file!("../../shader/test_triangle.wgsl"),
                 },
                 vertex_buffers: vec![],
                 render_targets: vec![Some(FrameBuilder::FORMAT_HDR.into())],

@@ -1,5 +1,7 @@
 use crate::{
+    context::RenderContextConfig,
     context::SharedRendererData,
+    include_file,
     resource_pools::{
         bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
         render_pipeline_pool::*, sampler_pool::*, shader_module_pool::*,
@@ -68,15 +70,13 @@ impl Renderer for Tonemapper {
                     label: "screen_triangle".into(),
                     entrypoint: "main".into(),
                     stage: ShaderStage::Vertex,
-                    source: ShaderSource::from_wgsl(include_str!(
-                        "../../shader/screen_triangle.wgsl"
-                    )),
+                    source: include_file!("../../shader/screen_triangle.wgsl"),
                 },
                 fragment_shader: ShaderModuleDesc {
                     label: "tonemap".into(),
                     entrypoint: "main".into(),
                     stage: ShaderStage::Vertex,
-                    source: ShaderSource::from_wgsl(include_str!("../../shader/tonemap.wgsl")),
+                    source: include_file!(include_str!("../../shader/tonemap.wgsl")),
                 },
                 vertex_buffers: vec![],
                 render_targets: vec![Some(shared_data.config.output_format_color.into())],

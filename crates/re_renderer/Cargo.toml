@@ -16,6 +16,9 @@ thiserror = "1.0"
 type-map = "0.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ahash = "0.8"
+crossbeam = "0.8"
+notify = "5.0"
 wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

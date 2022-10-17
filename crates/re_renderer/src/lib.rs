@@ -11,4 +11,5 @@ mod global_bindings;
 mod renderer;
 mod resource_pools;
 
-mod file_loader;
+mod file_watcher;
+pub use self::file_watcher::{FileContents, FileWatcher};
