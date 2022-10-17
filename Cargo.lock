@@ -558,6 +558,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "const_panic"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ed2b28323eee4fb66bb824401daa3e46bd445b9a9298a3d382b320710ba69dd"
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1060,6 +1066,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "encase"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a516181e9a36e8982cb37933c5e7dba638c42938cacde46ee4e5b4156f881b9"
+dependencies = [
+ "const_panic",
+ "encase_derive",
+ "glam 0.21.3",
+ "thiserror",
+]
+
+[[package]]
+name = "encase_derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5b802412eea315f29f2bb2da3a5963cd6121f56eaa06aebcdc0c54eea578f22"
+dependencies = [
+ "encase_derive_impl",
+]
+
+[[package]]
+name = "encase_derive_impl"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f2f4de457d974f548d2c2a16f709ebd81013579e543bd1a9b19ced88132c2cf"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "epaint"
 version = "0.19.0"
 source = "git+https://github.com/emilk/egui?rev=3d36a20376a8479647557d172e1abc82abbff135#3d36a20376a8479647557d172e1abc82abbff135"
@@ -1410,6 +1448,12 @@ dependencies = [
  "mint",
  "serde",
 ]
+
+[[package]]
+name = "glam"
+version = "0.21.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "518faa5064866338b013ff9b2350dc318e14cc4fcd6cb8206d7e7c9886c98815"
 
 [[package]]
 name = "glib-sys"
@@ -1999,7 +2043,7 @@ version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7781d94ea559f76030086786c74fdf28d768535269653382f39824562fd02e73"
 dependencies = [
- "glam",
+ "glam 0.20.5",
  "num-traits",
  "serde",
 ]
@@ -2823,6 +2867,8 @@ name = "re_renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "encase",
+ "glam 0.21.3",
  "ordered-float",
  "parking_lot",
  "re_log",
@@ -2917,7 +2963,7 @@ dependencies = [
  "egui_extras",
  "egui_glow",
  "fixed",
- "glam",
+ "glam 0.20.5",
  "glow",
  "image",
  "instant",

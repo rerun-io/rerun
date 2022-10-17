@@ -4,6 +4,7 @@ use crate::debug_label::DebugLabel;
 
 use super::{
     bind_group_layout_pool::{BindGroupLayoutHandle, BindGroupLayoutPool},
+    buffer_pool::{BufferHandle, BufferPool},
     resource_pool::*,
     sampler_pool::{SamplerHandle, SamplerPool},
     texture_pool::{TextureHandle, TexturePool},
@@ -23,9 +24,22 @@ impl UsageTrackedResource for BindGroup {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) enum BindGroupEntry {
     TextureView(TextureHandle), // TODO(andreas) what about non-default views?
+    Buffer {
+        handle: BufferHandle,
+
+        /// Base offset of the buffer. For bindings with `dynamic == true`, this offset
+        /// will be added to the dynamic offset provided in [`wgpu::RenderPass::set_bind_group`].
+        ///
+        /// The offset has to be aligned to [`wgpu::Limits::min_uniform_buffer_offset_alignment`]
+        /// or [`wgpu::Limits::min_storage_buffer_offset_alignment`] appropriately.
+        offset: wgpu::BufferAddress,
+
+        /// Size of the binding, or `None` for using the rest of the buffer.
+        size: Option<wgpu::BufferSize>,
+    },
     Sampler(SamplerHandle),
 }
 
@@ -49,6 +63,7 @@ impl BindGroupPool {
         desc: &BindGroupDesc,
         bind_group_layout: &BindGroupLayoutPool,
         textures: &TexturePool,
+        buffers: &BufferPool,
         samplers: &SamplerPool,
     ) -> BindGroupHandle {
         self.pool.get_handle(desc, |desc| {
@@ -67,6 +82,15 @@ impl BindGroupPool {
                                     &textures.get(*handle).unwrap().default_view,
                                 )
                             }
+                            BindGroupEntry::Buffer {
+                                handle,
+                                offset,
+                                size,
+                            } => wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                                buffer: &buffers.get(*handle).unwrap().buffer,
+                                offset: *offset,
+                                size: *size,
+                            }),
                             BindGroupEntry::Sampler(handle) => wgpu::BindingResource::Sampler(
                                 &samplers.get(*handle).unwrap().sampler,
                             ),
@@ -86,6 +110,7 @@ impl BindGroupPool {
         &mut self,
         frame_index: u64,
         textures: &mut TexturePool,
+        buffers: &mut BufferPool,
         samplers: &mut SamplerPool,
     ) {
         self.pool.discard_unused_resources(frame_index);
@@ -96,6 +121,9 @@ impl BindGroupPool {
                 match entry {
                     BindGroupEntry::TextureView(handle) => {
                         textures.register_resource_usage(*handle);
+                    }
+                    BindGroupEntry::Buffer { handle, .. } => {
+                        buffers.register_resource_usage(*handle);
                     }
                     BindGroupEntry::Sampler(handle) => {
                         samplers.register_resource_usage(*handle);

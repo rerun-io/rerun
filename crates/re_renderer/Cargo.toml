@@ -8,6 +8,8 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.56"
+encase = { version = "0.3", features = ["glam"] }
+glam = "0.21"
 ordered-float = "3.2"
 parking_lot = "0.12"
 re_log = { path = "../re_log" }

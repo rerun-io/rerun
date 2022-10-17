@@ -4,8 +4,13 @@ use std::sync::Arc;
 
 use crate::{
     context::*,
+    global_bindings::FrameUniformBuffer,
     renderer::{generic_skybox::*, test_triangle::*, tonemapper::*, Renderer},
-    resource_pools::{bind_group_pool::BindGroupHandle, texture_pool::*},
+    resource_pools::{
+        bind_group_pool::BindGroupHandle,
+        buffer_pool::{BufferDesc, BufferHandle},
+        texture_pool::*,
+    },
 };
 
 /// The highest level rendering block in `re_renderer`.
@@ -20,6 +25,7 @@ pub struct FrameBuilder {
 
     bind_group_0: BindGroupHandle,
 
+    frame_uniform_buffer: BufferHandle,
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
 }
@@ -38,6 +44,7 @@ impl FrameBuilder {
 
             bind_group_0: BindGroupHandle::default(),
 
+            frame_uniform_buffer: BufferHandle::default(),
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
         }
@@ -76,13 +83,26 @@ impl FrameBuilder {
                 },
             );
 
-        self.bind_group_0 = ctx
-            .shared_renderer_data
-            .global_bindings
-            .create_bind_group(&mut ctx.resource_pools, device);
+        self.frame_uniform_buffer = ctx.resource_pools.buffers.request(
+            device,
+            &BufferDesc {
+                label: "frame uniform buffer".into(),
+                size: std::mem::size_of::<FrameUniformBuffer>() as _,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                content_id: 0,
+            },
+        );
+
+        self.bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
+            &mut ctx.resource_pools,
+            device,
+            self.frame_uniform_buffer,
+        );
 
         self
     }
+
+    pub fn set_camera(&mut self) {}
 
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
         let pools = &mut ctx.resource_pools;

@@ -4,7 +4,7 @@ struct VertexOutput {
 };
 
 // TODO(andreas): Move global bindings to shared include
-@group(0) @binding(0)
+@group(0) @binding(1)
 var nearest_sampler: sampler;
 
 @group(1) @binding(0)

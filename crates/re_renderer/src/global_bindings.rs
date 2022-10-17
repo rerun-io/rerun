@@ -1,17 +1,27 @@
+use std::num::NonZeroU64;
+
 use crate::resource_pools::{
     bind_group_layout_pool::*,
     bind_group_pool::*,
+    buffer_pool::BufferHandle,
     sampler_pool::{SamplerDesc, SamplerHandle},
     WgpuResourcePools,
 };
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
+///
 /// Contains information that is constant for a single frame like camera.
-/// (does not contain information that is special to a particular renderer or global to the Context)
-//#[repr(C)]
-// pub(crate) struct FrameUniformBuffer {
-//     //TODO(andreas): camera matrix and the like.
-// }
+/// (does not contain information that is special to a particular renderer)
+#[derive(encase::ShaderType)]
+pub(crate) struct FrameUniformBuffer {
+    projection_from_world: glam::Mat4,
+    view_from_world: glam::Mat4,
+    // Rarely needed, left out for now
+    //projection_from_view: glam::Mat4,
+    // Camera position in world space.
+    // (camera_direction is not listed as it's simply view_from_world[2])
+    //camera_position: glam::Vec3,
+}
 
 pub(crate) struct GlobalBindings {
     pub(crate) layout: BindGroupLayoutHandle,
@@ -28,21 +38,23 @@ impl GlobalBindings {
 
                     entries: vec![
                         // The global per-frame uniform buffer.
-                        // wgpu::BindGroupLayoutEntry {
-                        //     binding: 0,
-                        //     visibility: wgpu::ShaderStages::all(),
-                        //     ty: wgpu::BindingType::Buffer {
-                        //         ty: wgpu::BufferBindingType::Uniform,
-                        //         has_dynamic_offset: false,
-                        //         min_binding_size: NonZeroU64::new(
-                        //             std::mem::size_of::<FrameUniformBuffer>() as _,
-                        //         ),
-                        //     },
-                        //     count: None,
-                        // },
-                        // Sampler without any filtering.
                         wgpu::BindGroupLayoutEntry {
                             binding: 0,
+                            visibility: wgpu::ShaderStages::all(),
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: NonZeroU64::new(std::mem::size_of::<
+                                    FrameUniformBuffer,
+                                >(
+                                )
+                                    as _),
+                            },
+                            count: None,
+                        },
+                        // Sampler without any filtering.
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
                             visibility: wgpu::ShaderStages::FRAGMENT,
                             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                             count: None,
@@ -65,19 +77,25 @@ impl GlobalBindings {
         &self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
+        frame_uniform_buffer: BufferHandle,
     ) -> BindGroupHandle {
         pools.bind_groups.request(
             device,
             &BindGroupDesc {
                 label: "global bind group".into(),
                 entries: vec![
-                    //BindGroupEntry::TextureView(data.hdr_target),
+                    BindGroupEntry::Buffer {
+                        handle: frame_uniform_buffer,
+                        offset: 0,
+                        size: None,
+                    },
                     BindGroupEntry::Sampler(self.nearest_neighbor_sampler),
                 ],
                 layout: self.layout,
             },
             &pools.bind_group_layouts,
             &pools.textures,
+            &pools.buffers,
             &pools.samplers,
         )
     }
