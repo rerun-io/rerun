@@ -30,6 +30,8 @@ pub struct TensorImageView<'store, 'cache> {
     pub retained_img: &'cache RetainedImage,
 }
 
+// Use a MsgIdPair for the cache index so that we don't cache across
+// changes to the legend
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct MsgIdPair(MsgId, Option<MsgId>);
 impl nohash_hasher::IsEnabled for MsgIdPair {}
@@ -47,7 +49,7 @@ impl std::hash::Hash for MsgIdPair {
             0
         };
 
-        // TODO: I believe XOR makes sense to combine two UUIDs
+        // TODO(jleibs): I believe XOR makes sense to combine two UUIDs
         // but this probably warrants some discussion
         state.write_u64(uuid0 ^ uuid1);
     }
@@ -60,7 +62,6 @@ pub struct ImageCache {
     generation: u64,
 }
 
-// TODO: New error type
 impl ImageCache {
     pub(crate) fn get_view<'store, 'cache>(
         &'cache mut self,
@@ -68,8 +69,6 @@ impl ImageCache {
         tensor: &'store Tensor,
         legend: &'store Legend<'store>,
     ) -> TensorImageView<'store, 'cache> {
-        // TODO: handle jpeg again
-
         let ci = self
             .images
             .entry(MsgIdPair(*msg_id, legend.get_msgid()))
