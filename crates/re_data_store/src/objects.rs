@@ -703,6 +703,12 @@ impl<'s> Space<'s> {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct SegmentationMap<'s> {
+    pub msg_id: &'s MsgId,
+    pub map: IntMap<i32, SegmentationLabel<'s>>,
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct SegmentationLabel<'s> {
     // TODO(jleibs)
@@ -732,16 +738,19 @@ impl<'s> SegmentationLabel<'s> {
             ("label", "color"),
             |_instance_index: Option<&IndexHash>,
              _time,
-             _msg_id: &MsgId,
+             msg_id: &MsgId,
              id: &i32,
              label: Option<&String>,
              color: Option<&[u8; 4]>| {
-                let segmentation_map = out
-                    .segmentation_maps
-                    .entry(obj_path)
-                    .or_insert_with(IntMap::<i32, SegmentationLabel<'s>>::default);
+                let segmentation_map =
+                    out.segmentation_map
+                        .entry(obj_path)
+                        .or_insert_with(|| SegmentationMap {
+                            msg_id,
+                            map: IntMap::<i32, SegmentationLabel<'s>>::default(),
+                        });
 
-                segmentation_map.insert(
+                segmentation_map.map.insert(
                     *id,
                     SegmentationLabel {
                         id: *id,
@@ -757,7 +766,7 @@ impl<'s> SegmentationLabel<'s> {
 #[derive(Clone, Debug, Default)]
 pub struct Objects<'s> {
     pub space: BTreeMap<&'s ObjPath, Space<'s>>, // SPECIAL!
-    pub segmentation_maps: BTreeMap<&'s ObjPath, IntMap<i32, SegmentationLabel<'s>>>,
+    pub segmentation_map: BTreeMap<&'s ObjPath, SegmentationMap<'s>>,
 
     pub text_entry: ObjectVec<'s, TextEntry<'s>>,
 
@@ -826,8 +835,8 @@ impl<'s> Objects<'s> {
         crate::profile_function!();
 
         Self {
-            space: self.space.clone(),                         // SPECIAL - can't filter
-            segmentation_maps: self.segmentation_maps.clone(), // SPECIAL - can't filter
+            space: self.space.clone(),                       // SPECIAL - can't filter
+            segmentation_map: self.segmentation_map.clone(), // SPECIAL - can't filter
 
             text_entry: self.text_entry.filter(&keep),
 
@@ -849,7 +858,7 @@ impl<'s> Objects<'s> {
     pub fn is_empty(&self) -> bool {
         let Self {
             space,
-            segmentation_maps,
+            segmentation_map,
             text_entry,
             image,
             point2d,
@@ -864,7 +873,7 @@ impl<'s> Objects<'s> {
             arrow3d,
         } = self;
         space.is_empty()
-            && segmentation_maps.is_empty()
+            && segmentation_map.is_empty()
             && image.is_empty()
             && text_entry.is_empty()
             && point2d.is_empty()
@@ -907,7 +916,7 @@ impl<'s> Objects<'s> {
 
         let Self {
             space: _, // yes, this is intentional
-            segmentation_maps: _,
+            segmentation_map: _,
             text_entry,
             image,
             point2d,
@@ -973,7 +982,7 @@ impl<'s> Objects<'s> {
 
         for part in partitioned.values_mut() {
             part.space = self.space.clone(); // TODO(emilk): probably only extract the relevant space
-            part.segmentation_maps = self.segmentation_maps.clone(); // TODO(emilk): probably only extract the relevant space
+            part.segmentation_map = self.segmentation_map.clone(); // TODO(emilk): probably only extract the relevant space
         }
 
         partitioned

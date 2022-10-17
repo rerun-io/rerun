@@ -3,39 +3,108 @@ use egui_extras::RetainedImage;
 
 use image::DynamicImage;
 use re_log_types::*;
+use re_tensor_ops::TensorCastError;
+
+use crate::ui::legend::{ColorMapping, Legend};
+
+// TODO: Consider renaming this whole module `TensorImageCache`
+
+/// Type-erased tensor view
+pub(crate) enum TensorView<'view> {
+    U8(ndarray::ArrayViewD<'view, u8>),
+    U16(ndarray::ArrayViewD<'view, u16>),
+    F32(ndarray::ArrayViewD<'view, f32>),
+}
+
+/// The `TensorImageView` is a wrapper on top of `re_log_types::Tensor`
+///
+/// It consolidates the common operations of going from the raw tensor storage
+/// into an object that can be more natively displayed as an Image.
+///
+/// The `dynamic_img` and `retained_img` are cached to keep the overhead low.
+///
+/// In the case of images that leverage a `ColorMapping` this includes conversion from
+/// the native Tensor type A -> Color32 which is stored for the cached dynamic /
+/// retained images.
+pub(crate) struct TensorImageView<'store, 'cache, 'view> {
+    /// Borrowed tensor from the object store
+    pub tensor: &'store Tensor,
+
+    /// View into the underlying tensor memory or the decoded jpeg.
+    pub view: TensorView<'view>,
+
+    /// DynamicImage helper for things like zoom
+    /// TODO: Can this be fully replaced by view?
+    pub dynamic_img: &'cache DynamicImage,
+
+    /// For egui
+    pub retained_img: &'cache RetainedImage,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct MsgIdPair(MsgId, Option<MsgId>);
+impl nohash_hasher::IsEnabled for MsgIdPair {}
+
+// required for [`nohash_hasher`].
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for MsgIdPair {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let uuid0 = self.0 .0.as_u128() as u64;
+
+        let uuid1 = if let Some(uuid) = self.1 {
+            uuid.0.as_u128() as u64
+        } else {
+            0
+        };
+
+        // TODO: I believe XOR makes sense to combine two UUIDs
+        // but this probably warrants some discussion
+        state.write_u64(uuid0 ^ uuid1);
+    }
+}
 
 #[derive(Default)]
 pub struct ImageCache {
-    images: nohash_hasher::IntMap<MsgId, CachedImage>,
+    images: nohash_hasher::IntMap<MsgIdPair, CachedImage>,
     memory_used: u64,
     generation: u64,
 }
 
-// TODO: the tensor_inserter now precludes passing a reference through,
-// causing unncessary clones. This needs to be returned to a reference
-// compatible form.
+// TODO: New error type
 impl ImageCache {
-    pub fn get_pair(
-        &mut self,
+    pub(crate) fn get_view<'store, 'cache>(
+        &'cache mut self,
         msg_id: &MsgId,
-        tensor_inserter: impl FnOnce() -> Tensor,
-    ) -> (&DynamicImage, &RetainedImage) {
-        let ci = self.images.entry(*msg_id).or_insert_with(|| {
-            // TODO(emilk): proper debug name for images
-            let ci = CachedImage::from_tensor(format!("{msg_id:?}"), &tensor_inserter());
-            self.memory_used += ci.memory_used;
-            ci
-        });
-        ci.last_use_generation = self.generation;
-        (&ci.dynamic_img, &ci.retained_img)
-    }
+        tensor: &'store Tensor,
+        legend: &Legend<'store>,
+    ) -> Result<TensorImageView<'store, 'cache, 'store>, TensorCastError> {
+        // TODO: handle jpeg again
 
-    pub fn get(
-        &mut self,
-        msg_id: &MsgId,
-        tensor_insert: impl FnOnce() -> Tensor,
-    ) -> &RetainedImage {
-        self.get_pair(msg_id, tensor_insert).1
+        let ci = self
+            .images
+            .entry(MsgIdPair(*msg_id, legend.get_msgid()))
+            .or_insert_with(|| {
+                // TODO(emilk): proper debug name for images
+                let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor, legend);
+                self.memory_used += ci.memory_used;
+                ci
+            });
+        ci.last_use_generation = self.generation;
+
+        // First extract the view
+        let view = match tensor.dtype {
+            TensorDataType::U8 => TensorView::U8(re_tensor_ops::as_ndarray::<u8>(tensor)?),
+            TensorDataType::U16 => TensorView::U16(re_tensor_ops::as_ndarray::<u16>(tensor)?),
+            TensorDataType::F32 => TensorView::F32(re_tensor_ops::as_ndarray::<f32>(tensor)?),
+        };
+
+        Ok(TensorImageView::<'store, '_, '_> {
+            tensor,
+            view,
+            dynamic_img: &ci.dynamic_img,
+            retained_img: &ci.retained_img,
+        })
     }
 
     /// Call once per frame to (potentially) flush the cache.
@@ -81,9 +150,9 @@ struct CachedImage {
 }
 
 impl CachedImage {
-    fn from_tensor(debug_name: String, tensor: &Tensor) -> Self {
+    fn from_tensor<'store>(debug_name: String, tensor: &Tensor, legend: &Legend<'store>) -> Self {
         crate::profile_function!();
-        let dynamic_img = match tensor_to_dynamic_image(tensor) {
+        let dynamic_img = match tensor_to_dynamic_image(tensor, legend) {
             Ok(dynamic_image) => dynamic_image,
             Err(err) => {
                 re_log::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
@@ -107,7 +176,7 @@ impl CachedImage {
     }
 }
 
-fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
+fn tensor_to_dynamic_image(tensor: &Tensor, legend: &Legend<'_>) -> anyhow::Result<DynamicImage> {
     crate::profile_function!();
     use anyhow::Context as _;
 
@@ -145,10 +214,25 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
 
             match (depth, tensor.dtype) {
                 (1, TensorDataType::U8) => {
-                    // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
-                    image::GrayImage::from_raw(width, height, bytes.to_vec())
-                        .context("Bad Luminance8")
-                        .map(DynamicImage::ImageLuma8)
+                    match legend {
+                        Legend::None => {
+                            // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
+                            image::GrayImage::from_raw(width, height, bytes.to_vec())
+                                .context("Bad Luminance8")
+                                .map(DynamicImage::ImageLuma8)
+                        }
+                        Legend::SegmentationMap(_) => image::RgbaImage::from_raw(
+                            width,
+                            height,
+                            bytes
+                                .to_vec()
+                                .iter()
+                                .flat_map(|p| legend.map_val(*p))
+                                .collect(),
+                        )
+                        .context("Bad RGBA8")
+                        .map(DynamicImage::ImageRgba8),
+                    }
                 }
                 (1, TensorDataType::U16) => {
                     // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.

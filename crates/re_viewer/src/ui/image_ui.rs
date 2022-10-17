@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_log_types::*;
 
-use crate::misc::ViewerContext;
+use crate::misc::{image_cache::TensorImageView, ViewerContext};
 
 pub(crate) fn show_tensor(
     ctx: &mut ViewerContext<'_>,
@@ -9,33 +9,43 @@ pub(crate) fn show_tensor(
     msg_id: &MsgId,
     tensor: &re_log_types::Tensor,
 ) {
-    let (dynamic_image, egui_image) = ctx.cache.image.get_pair(msg_id, || tensor.clone());
-    let max_size = ui.available_size().min(egui_image.size_vec2());
-    let response = egui_image.show_max_size(ui, max_size);
+    if let Ok(TensorImageView {
+        tensor: _,
+        view: _,
+        dynamic_img,
+        retained_img,
+    }) = ctx
+        .cache
+        .image
+        .get_view(msg_id, tensor, &crate::legend::Legend::None)
+    {
+        let max_size = ui.available_size().min(retained_img.size_vec2());
+        let response = retained_img.show_max_size(ui, max_size);
 
-    let image_rect = response.rect;
+        let image_rect = response.rect;
 
-    if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
-        show_zoomed_image_region_tooltip(
-            ui,
-            response,
-            tensor,
-            dynamic_image,
-            image_rect,
-            pointer_pos,
-            None,
-        );
-    }
+        if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
+            show_zoomed_image_region_tooltip(
+                ui,
+                response,
+                tensor,
+                dynamic_img,
+                image_rect,
+                pointer_pos,
+                None,
+            );
+        }
 
-    // TODO(emilk): support copying and saving images on web
-    #[cfg(not(target_arch = "wasm32"))]
-    ui.horizontal(|ui| image_options(ui, tensor, dynamic_image));
+        // TODO(emilk): support copying and saving images on web
+        #[cfg(not(target_arch = "wasm32"))]
+        ui.horizontal(|ui| image_options(ui, tensor, dynamic_img));
 
-    // TODO(emilk): support histograms of non-RGB images too
-    if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_image {
-        ui.collapsing("Histogram", |ui| {
-            histogram_ui(ui, rgb_image);
-        });
+        // TODO(emilk): support histograms of non-RGB images too
+        if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_img {
+            ui.collapsing("Histogram", |ui| {
+                histogram_ui(ui, rgb_image);
+            });
+        }
     }
 }
 

@@ -334,34 +334,43 @@ pub(crate) fn ui_data(
         },
 
         Data::Tensor(tensor) => {
-            let egui_image = ctx.cache.image.get(msg_id, || tensor.clone());
-            ui.horizontal_centered(|ui| {
-                let max_width = match preview {
-                    Preview::Small => 32.0,
-                    Preview::Medium => 128.0,
-                    Preview::Specific(height) => height,
-                };
+            if let Ok(tensor_view) =
+                ctx.cache
+                    .image
+                    .get_view(msg_id, tensor, &crate::legend::Legend::None)
+            {
+                ui.horizontal_centered(|ui| {
+                    let max_width = match preview {
+                        Preview::Small => 32.0,
+                        Preview::Medium => 128.0,
+                        Preview::Specific(height) => height,
+                    };
 
-                egui_image
-                    .show_max_size(ui, Vec2::new(4.0 * max_width, max_width))
-                    .on_hover_ui(|ui| {
-                        egui_image.show(ui);
+                    tensor_view
+                        .retained_img
+                        .show_max_size(ui, Vec2::new(4.0 * max_width, max_width))
+                        .on_hover_ui(|ui| {
+                            tensor_view.retained_img.show(ui);
+                        });
+
+                    ui.vertical(|ui| {
+                        ui.set_min_width(100.0);
+                        ui.label(format!("dtype: {:?}", tensor.dtype));
+
+                        if tensor.shape.len() == 2 {
+                            ui.label(format!("shape: {:?} (height, width)", tensor.shape));
+                        } else if tensor.shape.len() == 3 {
+                            ui.label(format!("shape: {:?} (height, width, depth)", tensor.shape));
+                        } else {
+                            ui.label(format!("shape: {:?}", tensor.shape));
+                        }
                     });
-
-                ui.vertical(|ui| {
-                    ui.set_min_width(100.0);
-                    ui.label(format!("dtype: {:?}", tensor.dtype));
-
-                    if tensor.shape.len() == 2 {
-                        ui.label(format!("shape: {:?} (height, width)", tensor.shape));
-                    } else if tensor.shape.len() == 3 {
-                        ui.label(format!("shape: {:?} (height, width, depth)", tensor.shape));
-                    } else {
-                        ui.label(format!("shape: {:?}", tensor.shape));
-                    }
-                });
-            })
-            .response
+                })
+                .response
+            } else {
+                // TODO: what is idiomatic for returning errors here?
+                ui.label("Tensor error message here?")
+            }
         }
 
         Data::ObjPath(obj_path) => {

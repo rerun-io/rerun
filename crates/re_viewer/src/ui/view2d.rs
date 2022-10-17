@@ -6,7 +6,7 @@ use re_log_types::*;
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use crate::legend::{find_legend, ColorMapping, Legend};
+use crate::legend::find_legend;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -341,88 +341,63 @@ fn view_2d_scrollable(
 
         let legend = find_legend(*legend, objects);
 
-        // TODO: This cache needs to include an ID related to the legend
-        // and/or state.
-        //
-        // TODO: This is a bit ugly / circuitous: We want both an updated
-        // dynamic_img and cached_img because the cached img texture is used by
-        // the image view and the dynamic image is used by the hover preview.
-        // the internals of cached image are (currently) responsible for building
-        // this pair from a tensor.
-        let (dynamic_img, cached_img) = ctx.cache.image.get_pair(props.msg_id, || {
-            match &legend {
-                Legend::None => (*tensor).clone(),
-                Legend::SegmentationMap(seg_map) => {
-                    let mapping = seg_map.map_func();
+        match ctx.cache.image.get_view(props.msg_id, tensor, &legend) {
+            Ok(tensor_view) => {
+                let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
 
-                    match re_tensor_ops::as_ndarray::<u8>(tensor) {
-                        Ok(nd_tensor) => {
-                            if let Ok(slice) = nd_tensor.into_dimensionality::<ndarray::Ix2>() {
-                                let colored_tensor =
-                                    crate::misc::color_map::into_ndarray(&slice, mapping);
-                                match re_tensor_ops::to_rerun_tensor(&colored_tensor, None) {
-                                    Ok(colored_tensor) => colored_tensor,
-                                    Err(_err) => (*tensor).clone(),
-                                }
-                            } else {
-                                // This shouldn't happen.
-                                (*tensor).clone()
-                            }
+                let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
+                    Pos2::ZERO,
+                    vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
+                ));
+                let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+
+                let opacity = if image_idx == 0 {
+                    1.0 // bottom image
+                } else {
+                    // make top images transparent
+                    1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+                };
+                let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
+                shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
+
+                if paint_props.is_hovered {
+                    shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
+                }
+
+                if let Some(pointer_pos) = pointer_pos {
+                    let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
+                    let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
+                    check_hovering(props, dist);
+
+                    if hovered_instance_id_hash.is_instance(props)
+                        && rect_in_ui.contains(pointer_pos)
+                    {
+                        response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
+                            ui,
+                            response,
+                            tensor,
+                            tensor_view.dynamic_img,
+                            rect_in_ui,
+                            pointer_pos,
+                            *meter,
+                        );
+                    }
+
+                    if let Some(meter) = *meter {
+                        let pos_in_image = space_from_ui.transform_pos(pointer_pos);
+                        if let Some(raw_value) =
+                            tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
+                        {
+                            let raw_value = raw_value.as_f64();
+                            let depth_in_meters = raw_value / meter as f64;
+                            depths_at_pointer.push(depth_in_meters);
                         }
-                        // TODO: handle this error properly
-                        Err(_err) => (*tensor).clone(),
                     }
                 }
             }
-        });
-
-        let texture_id = cached_img.texture_id(ui.ctx());
-
-        let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
-            Pos2::ZERO,
-            vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
-        ));
-        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-
-        let opacity = if image_idx == 0 {
-            1.0 // bottom image
-        } else {
-            // make top images transparent
-            1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
-        };
-        let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
-        shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
-
-        if paint_props.is_hovered {
-            shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
-        }
-
-        if let Some(pointer_pos) = pointer_pos {
-            let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
-            let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
-            check_hovering(props, dist);
-
-            if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
-                response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
-                    ui,
-                    response,
-                    tensor,
-                    dynamic_img,
-                    rect_in_ui,
-                    pointer_pos,
-                    *meter,
-                );
-            }
-
-            if let Some(meter) = *meter {
-                let pos_in_image = space_from_ui.transform_pos(pointer_pos);
-                if let Some(raw_value) =
-                    tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
-                {
-                    let raw_value = raw_value.as_f64();
-                    let depth_in_meters = raw_value / meter as f64;
-                    depths_at_pointer.push(depth_in_meters);
-                }
+            Err(err) => {
+                // TODO: do something better here
+                re_log::error!("Unhandled tensor error: {:?}", err);
             }
         }
     }
