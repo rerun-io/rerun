@@ -53,10 +53,13 @@ def run_segmentation(args: argparse.Namespace) -> None:
 
     # Log an updated segmentation map with specific colors
     rerun.set_time_seconds("sim_time", 2)
-
     rerun.log_segmentation_map(
         "seg", {13: ("label1", (255, 0, 0)), 42: ("label2", (0, 255, 0)), 99: ("label3", (0, 0, 255))}
     )
+
+    # Log with a mixture of set and unset colors / labels
+    rerun.set_time_seconds("sim_time", 3)
+    rerun.log_segmentation_map("seg", {13: Mapping(color=(255, 0, 0)), 42: ("label2", (0, 255, 0)), 99: "label3"})
 
 
 def main() -> None:
