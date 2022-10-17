@@ -1,11 +1,11 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clipboard;
 pub(crate) mod color_map;
-pub(crate) mod image_cache;
 #[cfg(feature = "glow")]
 pub(crate) mod mesh_loader;
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub(crate) mod profiler;
+pub(crate) mod tensor_image_cache;
 pub(crate) mod time_axis;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
@@ -13,7 +13,7 @@ mod time_range;
 mod time_real;
 mod viewer_context;
 
-use image_cache::ImageCache;
+use tensor_image_cache::ImageCache;
 pub(crate) use time_control::{TimeControl, TimeView};
 pub(crate) use time_range::{TimeRange, TimeRangeF};
 pub(crate) use time_real::TimeReal;

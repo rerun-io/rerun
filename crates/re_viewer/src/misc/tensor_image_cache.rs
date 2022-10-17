@@ -6,8 +6,6 @@ use re_log_types::*;
 
 use crate::ui::legend::{ColorMapping, Legend};
 
-// TODO: Consider renaming this whole module `TensorImageCache`
-
 /// The `TensorImageView` is a wrapper on top of `re_log_types::Tensor`
 ///
 /// It consolidates the common operations of going from the raw tensor storage
