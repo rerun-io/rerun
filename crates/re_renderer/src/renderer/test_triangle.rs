@@ -19,7 +19,7 @@ impl Renderer for TestTriangle {
     type PrepareData = TestTrianglePrepareData;
     type DrawData = TestTriangleDrawData;
 
-    fn new(
+    fn create_renderer(
         _ctx_config: &RenderContextConfig,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,

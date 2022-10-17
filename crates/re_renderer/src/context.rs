@@ -29,7 +29,7 @@ pub(crate) struct Renderers {
 }
 
 impl Renderers {
-    pub fn get_or_create<R: Renderer + 'static + Send + Sync>(
+    pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
         &mut self,
         ctx_config: &RenderContextConfig,
         resource_pools: &mut WgpuResourcePools,
@@ -37,10 +37,10 @@ impl Renderers {
     ) -> &R {
         self.renderers
             .entry()
-            .or_insert_with(|| R::new(ctx_config, resource_pools, device))
+            .or_insert_with(|| R::create_renderer(ctx_config, resource_pools, device))
     }
 
-    pub fn get<R: Renderer + 'static>(&self) -> Option<&R> {
+    pub fn get<R: 'static + Renderer>(&self) -> Option<&R> {
         self.renderers.get::<R>()
     }
 }

@@ -13,7 +13,7 @@ pub(crate) trait Renderer {
     type PrepareData;
     type DrawData;
 
-    fn new(
+    fn create_renderer(
         ctx_config: &RenderContextConfig,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,

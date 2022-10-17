@@ -30,7 +30,7 @@ impl Renderer for Tonemapper {
     type PrepareData = TonemapperPrepareData;
     type DrawData = TonemapperDrawData;
 
-    fn new(
+    fn create_renderer(
         ctx_config: &RenderContextConfig,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
