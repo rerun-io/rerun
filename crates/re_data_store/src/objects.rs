@@ -630,6 +630,32 @@ impl<'s> Arrow3D<'s> {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub struct Space<'s> {
+    /// The up axis
+    pub up: &'s [f32; 3],
+}
+
+impl<'s> Space<'s> {
+    fn query<Time: 'static + Copy + Ord + Into<i64>>(
+        obj_path: &'s ObjPath,
+        obj_store: &'s ObjStore<Time>,
+        time_query: &TimeQuery<Time>,
+        out: &mut Objects<'s>,
+    ) {
+        crate::profile_function!();
+
+        visit_type_data(
+            obj_store,
+            &FieldName::from("up"),
+            time_query,
+            |_instance_index: Option<&IndexHash>, _time, _msg_id: &MsgId, up: &[f32; 3]| {
+                out.space.insert(obj_path, Space { up });
+            },
+        );
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 pub struct TextEntry<'s> {
     pub body: &'s str,
     pub level: Option<&'s str>,
@@ -672,32 +698,6 @@ impl<'s> TextEntry<'s> {
                         level: level.map(|s| s.as_str()),
                     },
                 });
-            },
-        );
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct Space<'s> {
-    /// The up axis
-    pub up: &'s [f32; 3],
-}
-
-impl<'s> Space<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data(
-            obj_store,
-            &FieldName::from("up"),
-            time_query,
-            |_instance_index: Option<&IndexHash>, _time, _msg_id: &MsgId, up: &[f32; 3]| {
-                out.space.insert(obj_path, Space { up });
             },
         );
     }
