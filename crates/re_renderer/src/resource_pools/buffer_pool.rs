@@ -29,7 +29,7 @@ pub(crate) struct BufferDesc {
     pub usage: wgpu::BufferUsages,
 
     /// Content id used to distinguish otherwise identical buffer descriptions.
-    pub content_id: u32,
+    pub content_id: u64,
     // TODO(andreas) support buffers that are mapped on creation.
     // This is *not* the same as mapping the buffer right after creation as it allows mapping even without
     // [`wgpu::BufferUsages::MAP_WRITE`] flag set!

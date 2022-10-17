@@ -32,6 +32,22 @@ pub struct FrameBuilder {
 
 pub type SharedFrameBuilder = Arc<RwLock<FrameBuilder>>;
 
+/// Basic configuration for a target view.
+pub struct TargetConfiguration {
+    pub pixel_width: u32,
+    pub pixel_height: u32,
+
+    pub camera_position: glam::Vec3,
+    pub camera_orientation: glam::Quat,
+
+    pub fov_y: f32,
+    pub near_plane_distance: f32,
+
+    /// Every target needs an individual as persistent as possible identifier.
+    /// This is used to facilitate easier resource re-use.
+    pub target_identifier: u64,
+}
+
 impl FrameBuilder {
     pub const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
     pub const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
@@ -58,18 +74,23 @@ impl FrameBuilder {
         &mut self,
         ctx: &mut RenderContext,
         device: &wgpu::Device,
-        width: u32,
-        height: u32,
-    ) -> &mut Self {
+        queue: &wgpu::Queue,
+        config: &TargetConfiguration,
+    ) -> anyhow::Result<&mut Self> {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
         // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
         self.hdr_render_target = ctx.resource_pools.textures.request(
             device,
-            &render_target_2d_desc(Self::FORMAT_HDR, width, height, 1),
+            &render_target_2d_desc(Self::FORMAT_HDR, config.pixel_width, config.pixel_height, 1),
         );
         self.depth_buffer = ctx.resource_pools.textures.request(
             device,
-            &render_target_2d_desc(Self::FORMAT_DEPTH, width, height, 1),
+            &render_target_2d_desc(
+                Self::FORMAT_DEPTH,
+                config.pixel_width,
+                config.pixel_height,
+                1,
+            ),
         );
 
         self.tonemapping_draw_data = ctx
@@ -83,15 +104,56 @@ impl FrameBuilder {
                 },
             );
 
-        self.frame_uniform_buffer = ctx.resource_pools.buffers.request(
-            device,
-            &BufferDesc {
-                label: "frame uniform buffer".into(),
-                size: std::mem::size_of::<FrameUniformBuffer>() as _,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                content_id: 0,
-            },
-        );
+        // Setup frame uniform buffer
+        {
+            self.frame_uniform_buffer = ctx.resource_pools.buffers.request(
+                device,
+                &BufferDesc {
+                    label: "frame uniform buffer".into(),
+                    size: std::mem::size_of::<FrameUniformBuffer>() as _,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+
+                    // We need to make sure that every target gets a different frame uniform buffer.
+                    // If we don't do that, frame uniform buffers from different [`FrameBuilder`] might overwrite each other.
+                    // (note thought that we do *not* want to hash the current contents of the uniform buffer
+                    // because then we'd create a new buffer every frame!)
+                    content_id: config.target_identifier,
+                },
+            );
+
+            let camera_target =
+                config.camera_position * config.camera_orientation.mul_vec3(-glam::Vec3::Z);
+            let camera_up = config.camera_orientation.mul_vec3(glam::Vec3::Y);
+            let view_from_world =
+                glam::Mat4::look_at_rh(config.camera_position, camera_target, camera_up);
+            // We use infinite reverse-z projection matrix.
+            // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
+            // * no need to worry about far plane
+            // * 0 depth == near is more intuitive anyway!
+            let projection_from_view = glam::Mat4::perspective_infinite_reverse_rh(
+                config.fov_y,
+                config.pixel_width as f32 / config.pixel_height as f32,
+                config.near_plane_distance,
+            );
+            let projection_from_world = projection_from_view * view_from_world;
+
+            let mut frame_uniform_buffer_content = encase::UniformBuffer::new(Vec::new());
+            frame_uniform_buffer_content
+                .write(&FrameUniformBuffer {
+                    view_from_world,
+                    projection_from_world,
+                })
+                .context("fill frame uniform buffer")?;
+            queue.write_buffer(
+                &ctx.resource_pools
+                    .buffers
+                    .get(self.frame_uniform_buffer)
+                    .unwrap()
+                    .buffer,
+                0,
+                &frame_uniform_buffer_content.into_inner(),
+            );
+        }
 
         self.bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
             &mut ctx.resource_pools,
@@ -99,10 +161,8 @@ impl FrameBuilder {
             self.frame_uniform_buffer,
         );
 
-        self
+        Ok(self)
     }
-
-    pub fn set_camera(&mut self) {}
 
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
         let pools = &mut ctx.resource_pools;

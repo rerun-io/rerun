@@ -14,13 +14,8 @@ use crate::resource_pools::{
 /// (does not contain information that is special to a particular renderer)
 #[derive(encase::ShaderType)]
 pub(crate) struct FrameUniformBuffer {
-    projection_from_world: glam::Mat4,
-    view_from_world: glam::Mat4,
-    // Rarely needed, left out for now
-    //projection_from_view: glam::Mat4,
-    // Camera position in world space.
-    // (camera_direction is not listed as it's simply view_from_world[2])
-    //camera_position: glam::Vec3,
+    pub view_from_world: glam::Mat4,
+    pub projection_from_world: glam::Mat4,
 }
 
 pub(crate) struct GlobalBindings {
