@@ -1,5 +1,5 @@
 use crate::{
-    context::RenderContextConfig,
+    context::SharedRendererData,
     frame_builder::FrameBuilder,
     resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, WgpuResourcePools},
 };
@@ -24,7 +24,7 @@ impl Renderer for GenericSkybox {
     type DrawData = GenericSkyboxDrawData;
 
     fn create_renderer(
-        ctx_config: &RenderContextConfig,
+        shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> Self {
@@ -35,8 +35,8 @@ impl Renderer for GenericSkybox {
                 pipeline_layout: pools.pipeline_layouts.request(
                     device,
                     &PipelineLayoutDesc {
-                        label: "empty".into(),
-                        entries: Vec::new(),
+                        label: "global only".into(),
+                        entries: vec![shared_data.global_bindings.layout],
                     },
                     &pools.bind_group_layouts,
                 ),

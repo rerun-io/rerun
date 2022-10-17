@@ -2,7 +2,7 @@ pub(crate) mod generic_skybox;
 pub(crate) mod test_triangle;
 pub(crate) mod tonemapper;
 
-use crate::{context::RenderContextConfig, resource_pools::WgpuResourcePools};
+use crate::{context::SharedRendererData, resource_pools::WgpuResourcePools};
 
 /// A Renderer encapsulate the knowledge of how to render a certain kind of primitives.
 ///
@@ -15,7 +15,7 @@ pub(crate) trait Renderer {
     type DrawData;
 
     fn create_renderer(
-        ctx_config: &RenderContextConfig,
+        shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> Self;

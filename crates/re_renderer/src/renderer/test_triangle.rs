@@ -1,5 +1,5 @@
 use crate::{
-    context::RenderContextConfig,
+    context::SharedRendererData,
     frame_builder::FrameBuilder,
     resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, WgpuResourcePools},
 };
@@ -20,7 +20,7 @@ impl Renderer for TestTriangle {
     type DrawData = TestTriangleDrawData;
 
     fn create_renderer(
-        _ctx_config: &RenderContextConfig,
+        _shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> Self {

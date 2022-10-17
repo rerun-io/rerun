@@ -5,15 +5,8 @@ use std::sync::Arc;
 use crate::{
     context::*,
     renderer::{generic_skybox::*, test_triangle::*, tonemapper::*, Renderer},
-    resource_pools::texture_pool::*,
+    resource_pools::{bind_group_pool::BindGroupHandle, texture_pool::*},
 };
-
-/// Mirrors the GPU contents of a frame-global uniform buffer.
-/// Contains information that is constant for a single frame like camera.
-/// (does not contain information that is special to a particular renderer or global to the Context)
-//struct FrameUniformBuffer {
-// TODO(andreas): camera matrix and the like.
-//}
 
 /// The highest level rendering block in `re_renderer`.
 ///
@@ -24,6 +17,8 @@ pub struct FrameBuilder {
     tonemapping_draw_data: TonemapperDrawData,
     test_triangle_draw_data: Option<TestTriangleDrawData>,
     generic_skybox_draw_data: Option<GenericSkyboxDrawData>,
+
+    bind_group_0: BindGroupHandle,
 
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
@@ -40,6 +35,8 @@ impl FrameBuilder {
             tonemapping_draw_data: Default::default(),
             test_triangle_draw_data: None,
             generic_skybox_draw_data: None,
+
+            bind_group_0: BindGroupHandle::default(),
 
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
@@ -70,7 +67,7 @@ impl FrameBuilder {
 
         self.tonemapping_draw_data = ctx
             .renderers
-            .get_or_create::<Tonemapper>(&ctx.config, &mut ctx.resource_pools, device)
+            .get_or_create::<Tonemapper>(&ctx.shared_renderer_data, &mut ctx.resource_pools, device)
             .prepare(
                 &mut ctx.resource_pools,
                 device,
@@ -79,6 +76,11 @@ impl FrameBuilder {
                 },
             );
 
+        self.bind_group_0 = ctx
+            .shared_renderer_data
+            .global_bindings
+            .create_bind_group(&mut ctx.resource_pools, device);
+
         self
     }
 
@@ -86,7 +88,7 @@ impl FrameBuilder {
         let pools = &mut ctx.resource_pools;
         self.test_triangle_draw_data = Some(
             ctx.renderers
-                .get_or_create::<TestTriangle>(&ctx.config, pools, device)
+                .get_or_create::<TestTriangle>(&ctx.shared_renderer_data, pools, device)
                 .prepare(pools, device, &TestTrianglePrepareData {}),
         );
 
@@ -97,7 +99,7 @@ impl FrameBuilder {
         let pools = &mut ctx.resource_pools;
         self.generic_skybox_draw_data = Some(
             ctx.renderers
-                .get_or_create::<GenericSkybox>(&ctx.config, pools, device)
+                .get_or_create::<GenericSkybox>(&ctx.shared_renderer_data, pools, device)
                 .prepare(pools, device, &GenericSkyboxPrepareData {}),
         );
 
@@ -141,6 +143,16 @@ impl FrameBuilder {
             }),
         });
 
+        pass.set_bind_group(
+            0,
+            &ctx.resource_pools
+                .bind_groups
+                .get(self.bind_group_0)
+                .context("get global bind group")?
+                .bind_group,
+            &[],
+        );
+
         if let Some(test_triangle_data) = self.test_triangle_draw_data.as_ref() {
             let test_triangle_renderer = ctx
                 .renderers
@@ -172,6 +184,16 @@ impl FrameBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
     ) -> anyhow::Result<()> {
+        pass.set_bind_group(
+            0,
+            &ctx.resource_pools
+                .bind_groups
+                .get(self.bind_group_0)
+                .context("get global bind group")?
+                .bind_group,
+            &[],
+        );
+
         let tonemapper = ctx
             .renderers
             .get::<Tonemapper>()
