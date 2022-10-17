@@ -5,7 +5,7 @@ pub use re_log_types::*;
 
 use crate::misc::ViewerContext;
 
-use super::Preview;
+use super::{segmentation_ui::view_segmentation_map, Preview};
 
 pub(crate) fn view_object(
     ctx: &mut ViewerContext<'_>,
@@ -30,6 +30,23 @@ pub(crate) fn view_instance(
     instance_id: &InstanceId,
     preview: Preview,
 ) -> Option<()> {
+    match ctx
+        .log_db
+        .obj_db
+        .types
+        .get(instance_id.obj_path.obj_type_path())
+    {
+        Some(ObjectType::SegmentationLabel) => view_segmentation_map(ctx, ui, instance_id),
+        _ => view_instance_generic(ctx, ui, instance_id, preview),
+    }
+}
+
+pub(crate) fn view_instance_generic(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    instance_id: &InstanceId,
+    preview: Preview,
+) -> Option<()> {
     let store = ctx
         .log_db
         .obj_db
@@ -37,7 +54,6 @@ pub(crate) fn view_instance(
         .get(ctx.rec_cfg.time_ctrl.timeline())?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
-
     egui::Grid::new("object_instance")
         .striped(true)
         .num_columns(2)
