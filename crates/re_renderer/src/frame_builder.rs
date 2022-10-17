@@ -122,7 +122,7 @@ impl FrameBuilder {
             );
 
             let camera_target =
-                config.camera_position * config.camera_orientation.mul_vec3(-glam::Vec3::Z);
+                config.camera_position + config.camera_orientation.mul_vec3(-glam::Vec3::Z);
             let camera_up = config.camera_orientation.mul_vec3(glam::Vec3::Y);
             let view_from_world =
                 glam::Mat4::look_at_rh(config.camera_position, camera_target, camera_up);
@@ -141,6 +141,7 @@ impl FrameBuilder {
             frame_uniform_buffer_content
                 .write(&FrameUniformBuffer {
                     view_from_world,
+                    projection_from_view,
                     projection_from_world,
                 })
                 .context("fill frame uniform buffer")?;

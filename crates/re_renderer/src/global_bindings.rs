@@ -15,6 +15,7 @@ use crate::resource_pools::{
 #[derive(encase::ShaderType)]
 pub(crate) struct FrameUniformBuffer {
     pub view_from_world: glam::Mat4,
+    pub projection_from_view: glam::Mat4,
     pub projection_from_world: glam::Mat4,
 }
 
