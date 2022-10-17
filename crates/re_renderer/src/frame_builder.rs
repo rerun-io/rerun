@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::{
     context::*,
-    renderer::{test_triangle::*, tonemapper::*, Renderer},
+    renderer::{generic_skybox::*, test_triangle::*, tonemapper::*, Renderer},
     resource_pools::texture_pool::*,
 };
 
@@ -23,6 +23,7 @@ use crate::{
 pub struct FrameBuilder {
     tonemapping_draw_data: TonemapperDrawData,
     test_triangle_draw_data: Option<TestTriangleDrawData>,
+    generic_skybox_draw_data: Option<GenericSkyboxDrawData>,
 
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
@@ -38,6 +39,7 @@ impl FrameBuilder {
         FrameBuilder {
             tonemapping_draw_data: Default::default(),
             test_triangle_draw_data: None,
+            generic_skybox_draw_data: None,
 
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
@@ -81,10 +83,22 @@ impl FrameBuilder {
     }
 
     pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
+        let pools = &mut ctx.resource_pools;
         self.test_triangle_draw_data = Some(
             ctx.renderers
-                .get_or_create::<TestTriangle>(&ctx.config, &mut ctx.resource_pools, device)
-                .prepare(&mut ctx.resource_pools, device, &TestTrianglePrepareData {}),
+                .get_or_create::<TestTriangle>(&ctx.config, pools, device)
+                .prepare(pools, device, &TestTrianglePrepareData {}),
+        );
+
+        self
+    }
+
+    pub fn generic_skybox(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
+        let pools = &mut ctx.resource_pools;
+        self.generic_skybox_draw_data = Some(
+            ctx.renderers
+                .get_or_create::<GenericSkybox>(&ctx.config, pools, device)
+                .prepare(pools, device, &GenericSkyboxPrepareData {}),
         );
 
         self
@@ -135,6 +149,16 @@ impl FrameBuilder {
             test_triangle_renderer
                 .draw(&ctx.resource_pools, &mut pass, test_triangle_data)
                 .context("draw test triangle")?;
+        }
+
+        if let Some(generic_skybox_data) = self.generic_skybox_draw_data.as_ref() {
+            let generic_skybox_renderer = ctx
+                .renderers
+                .get::<GenericSkybox>()
+                .context("get skybox renderer")?;
+            generic_skybox_renderer
+                .draw(&ctx.resource_pools, &mut pass, generic_skybox_data)
+                .context("draw skybox")?;
         }
 
         Ok(())

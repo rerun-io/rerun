@@ -74,11 +74,11 @@ impl Renderer for Tonemapper {
         let render_pipeline = pools.render_pipelines.request(
             device,
             &RenderPipelineDesc {
-                label: "Tonemapping".into(),
+                label: "tonemapping".into(),
                 pipeline_layout: pools.pipeline_layouts.request(
                     device,
                     &PipelineLayoutDesc {
-                        label: "empty".into(),
+                        label: "tonemapping".into(),
                         entries: vec![bind_group_layout],
                     },
                     &pools.bind_group_layouts,

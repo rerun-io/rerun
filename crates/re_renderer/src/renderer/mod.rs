@@ -1,3 +1,4 @@
+pub(crate) mod generic_skybox;
 pub(crate) mod test_triangle;
 pub(crate) mod tonemapper;
 
