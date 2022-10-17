@@ -64,7 +64,7 @@ impl<'s> ColorMapping for Legend<'s> {
     }
 }
 
-// TODO: sort out lifetime of label
+// TODO(jleibs): sort out lifetime of label
 pub(crate) trait LabelMapping {
     fn map_label(&self, val: u8) -> String;
 }

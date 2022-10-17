@@ -721,7 +721,6 @@ pub struct SegmentationLabel<'s> {
     pub color: Option<[u8; 4]>,
 }
 
-// TODO: Unclear if we should be holding on to InstanceProps
 impl<'s> SegmentationLabel<'s> {
     fn query<Time: 'static + Copy + Ord + Into<i64>>(
         obj_path: &'s ObjPath,
