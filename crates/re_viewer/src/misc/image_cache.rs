@@ -33,6 +33,9 @@ pub struct TensorImageView<'store, 'cache, 'view> {
     /// View into the underlying tensor memory or the decoded jpeg.
     pub view: TensorView<'view>,
 
+    /// Legend used to create the view
+    pub legend: &'store Legend<'store>,
+
     /// DynamicImage helper for things like zoom
     /// TODO: Can this be fully replaced by view?
     pub dynamic_img: &'cache DynamicImage,
@@ -77,7 +80,7 @@ impl ImageCache {
         &'cache mut self,
         msg_id: &MsgId,
         tensor: &'store Tensor,
-        legend: &Legend<'store>,
+        legend: &'store Legend<'store>,
     ) -> Result<TensorImageView<'store, 'cache, 'store>, TensorCastError> {
         // TODO: handle jpeg again
 
@@ -102,6 +105,7 @@ impl ImageCache {
         Ok(TensorImageView::<'store, '_, '_> {
             tensor,
             view,
+            legend,
             dynamic_img: &ci.dynamic_img,
             retained_img: &ci.retained_img,
         })
@@ -227,7 +231,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor, legend: &Legend<'_>) -> anyhow::Resu
                             bytes
                                 .to_vec()
                                 .iter()
-                                .flat_map(|p| legend.map_val(*p))
+                                .flat_map(|p| legend.map_color(*p))
                                 .collect(),
                         )
                         .context("Bad RGBA8")

@@ -1,4 +1,4 @@
-pub(crate) enum Legend<'s> {
+pub enum Legend<'s> {
     None,
     SegmentationMap(&'s re_data_store::SegmentationMap<'s>),
 }
@@ -32,11 +32,11 @@ impl<'s> Legend<'s> {
 // Currently using a pair [u8;4] since it converts more easily
 // to DynamicImage
 pub(crate) trait ColorMapping {
-    fn map_val(&self, val: u8) -> [u8; 4];
+    fn map_color(&self, val: u8) -> [u8; 4];
 }
 
 impl<'s> ColorMapping for Legend<'s> {
-    fn map_val(&self, val: u8) -> [u8; 4] {
+    fn map_color(&self, val: u8) -> [u8; 4] {
         match &self {
             Legend::None => [val, val, val, 255],
             Legend::SegmentationMap(map) => {
@@ -48,6 +48,30 @@ impl<'s> ColorMapping for Legend<'s> {
                     }
                 } else {
                     [0, 0, 0, 0]
+                }
+            }
+        }
+    }
+}
+
+// TODO: sort out lifetime of label
+pub(crate) trait LabelMapping {
+    fn map_label(&self, val: u8) -> String;
+}
+
+impl<'s> LabelMapping for Legend<'s> {
+    fn map_label(&self, val: u8) -> String {
+        match &self {
+            Legend::None => "".to_owned(),
+            Legend::SegmentationMap(map) => {
+                if let Some(seg_label) = map.map.get(&(val as i32)) {
+                    if let Some(label) = seg_label.label {
+                        label.to_owned()
+                    } else {
+                        seg_label.id.to_string()
+                    }
+                } else {
+                    "unknown".to_owned()
                 }
             }
         }

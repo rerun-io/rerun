@@ -1,9 +1,12 @@
 use itertools::Itertools as _;
 use re_log_types::*;
 
-use crate::misc::{
-    image_cache::{self, TensorImageView},
-    ViewerContext,
+use crate::{
+    misc::{
+        image_cache::{self, TensorView},
+        ViewerContext,
+    },
+    ui::legend::{LabelMapping, Legend},
 };
 
 pub(crate) fn show_tensor(
@@ -51,7 +54,7 @@ pub(crate) fn show_tensor(
 pub fn show_zoomed_image_region_tooltip(
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor_view: &image_cache::TensorImageView,
+    tensor_view: &image_cache::TensorImageView<'_, '_, '_>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
@@ -76,7 +79,7 @@ pub fn show_zoomed_image_region_tooltip(
 fn show_zoomed_image_region(
     parent_ui: &mut egui::Ui,
     tooltip_ui: &mut egui::Ui,
-    tensor_view: &image_cache::TensorImageView,
+    tensor_view: &image_cache::TensorImageView<'_, '_, '_>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
@@ -173,6 +176,16 @@ fn show_zoomed_image_region(
                     }
                 }
                 ui.monospace(s);
+            }
+
+            // Legend currently only supported for U8 types
+            if let TensorView::U8(view) = &tensor_view.view {
+                if let Legend::SegmentationMap(_) = tensor_view.legend {
+                    ui.monospace(format!(
+                        "Label: {}",
+                        tensor_view.legend.map_label(view[[y as usize, x as usize]])
+                    ));
+                }
             }
 
             let image::Rgba([r, g, b, a]) = color;
