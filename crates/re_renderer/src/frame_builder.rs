@@ -143,6 +143,8 @@ impl FrameBuilder {
                     view_from_world,
                     projection_from_view,
                     projection_from_world,
+                    world_from_projection: projection_from_world.inverse(),
+                    camera_position: config.camera_position,
                 })
                 .context("fill frame uniform buffer")?;
             queue.write_buffer(
