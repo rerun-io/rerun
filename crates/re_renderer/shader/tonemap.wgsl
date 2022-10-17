@@ -3,11 +3,12 @@ struct VertexOutput {
     @location(0) texcoord: vec2<f32>,
 };
 
+// TODO(andreas): Move global bindings to shared include
 @group(0) @binding(0)
-var hdr_texture: texture_2d<f32>;
-
-@group(0) @binding(1)
 var nearest_sampler: sampler;
+
+@group(1) @binding(0)
+var hdr_texture: texture_2d<f32>;
 
 /// 0-1 gamma from 0-1 linear
 fn srgb_from_linear(color_linear: vec3<f32>) -> vec3<f32>  {

@@ -1,11 +1,13 @@
 use type_map::concurrent::{self, TypeMap};
 
-use crate::{renderer::Renderer, resource_pools::WgpuResourcePools};
+use crate::{
+    global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
+};
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
-    pub(crate) config: RenderContextConfig,
+    pub(crate) shared_renderer_data: SharedRendererData,
     pub(crate) renderers: Renderers,
     pub(crate) resource_pools: WgpuResourcePools,
 
@@ -22,6 +24,15 @@ pub struct RenderContextConfig {
     pub output_format_color: wgpu::TextureFormat,
 }
 
+/// Immutable data that is shared between all [`Renderer`]
+pub(crate) struct SharedRendererData {
+    pub(crate) config: RenderContextConfig,
+
+    /// Global bindings, always bound to 0 bind group slot zero.
+    /// [`Renderer`] are not allowed to use bind group 0 themselves!
+    pub(crate) global_bindings: GlobalBindings,
+}
+
 /// Struct owning *all* [`Renderer`].
 /// [`Renderer`] are created lazily and stay around indefinitely.
 pub(crate) struct Renderers {
@@ -31,13 +42,13 @@ pub(crate) struct Renderers {
 impl Renderers {
     pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
         &mut self,
-        ctx_config: &RenderContextConfig,
+        shared_data: &SharedRendererData,
         resource_pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> &R {
         self.renderers
             .entry()
-            .or_insert_with(|| R::create_renderer(ctx_config, resource_pools, device))
+            .or_insert_with(|| R::create_renderer(shared_data, resource_pools, device))
     }
 
     pub fn get<R: 'static + Renderer>(&self) -> Option<&R> {
@@ -46,14 +57,20 @@ impl Renderers {
 }
 
 impl RenderContext {
-    pub fn new(_device: &wgpu::Device, _queue: &wgpu::Queue, config: RenderContextConfig) -> Self {
+    pub fn new(device: &wgpu::Device, _queue: &wgpu::Queue, config: RenderContextConfig) -> Self {
+        let mut resource_pools = WgpuResourcePools::default();
+        let global_bindings = GlobalBindings::new(&mut resource_pools, device);
+
         RenderContext {
-            config,
+            shared_renderer_data: SharedRendererData {
+                config,
+                global_bindings,
+            },
 
             renderers: Renderers {
                 renderers: TypeMap::new(),
             },
-            resource_pools: WgpuResourcePools::default(),
+            resource_pools,
 
             frame_index: 0,
         }
