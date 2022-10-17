@@ -30,7 +30,6 @@ pub(crate) struct SharedRendererData {
 
     /// Global bindings, always bound to 0 bind group slot zero.
     /// [`Renderer`] are not allowed to use bind group 0 themselves!
-    /// See [`global_bindings`]
     pub(crate) global_bindings: GlobalBindings,
 }
 

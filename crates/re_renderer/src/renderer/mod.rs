@@ -7,7 +7,7 @@ use crate::{context::SharedRendererData, resource_pools::WgpuResourcePools};
 /// A Renderer encapsulate the knowledge of how to render a certain kind of primitives.
 ///
 /// It is an immutable, long-lived datastructure that only holds onto resources that will be needed
-/// for each of its [`Renderer::draw`] invocations. (typically [`RenderPipeline`]s and [`BindGroupLayout`]s)
+/// for each of its [`Renderer::draw`] invocations.
 /// Any data that might be different per specific [`Renderer::draw`] invocation is stored in
 /// [`Renderer::DrawData`] and created using [`Renderer::PrepareData`] by [`Renderer::prepare`].
 pub(crate) trait Renderer {

@@ -60,7 +60,7 @@ impl GlobalBindings {
         }
     }
 
-    /// Creates a bind group matching for the bind group layout defined by [`create_global_bind_group_layout`]
+    /// Creates a bind group that follows the global bind group layout.
     pub fn create_bind_group(
         &self,
         pools: &mut WgpuResourcePools,
