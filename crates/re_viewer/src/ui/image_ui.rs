@@ -2,10 +2,7 @@ use itertools::Itertools as _;
 use re_log_types::*;
 
 use crate::{
-    misc::{
-        image_cache::{self, TensorView},
-        ViewerContext,
-    },
+    misc::{image_cache, ViewerContext},
     ui::legend::{LabelMapping, Legend},
 };
 
@@ -15,46 +12,38 @@ pub(crate) fn show_tensor(
     msg_id: &MsgId,
     tensor: &re_log_types::Tensor,
 ) {
-    if let Ok(tensor_view) = ctx
+    let tensor_view = ctx
         .cache
         .image
-        .get_view(msg_id, tensor, &crate::legend::Legend::None)
-    {
-        let max_size = ui
-            .available_size()
-            .min(tensor_view.retained_img.size_vec2());
-        let response = tensor_view.retained_img.show_max_size(ui, max_size);
+        .get_view(msg_id, tensor, &crate::legend::Legend::None);
 
-        let image_rect = response.rect;
+    let max_size = ui
+        .available_size()
+        .min(tensor_view.retained_img.size_vec2());
+    let response = tensor_view.retained_img.show_max_size(ui, max_size);
 
-        if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
-            show_zoomed_image_region_tooltip(
-                ui,
-                response,
-                &tensor_view,
-                image_rect,
-                pointer_pos,
-                None,
-            );
-        }
+    let image_rect = response.rect;
 
-        // TODO(emilk): support copying and saving images on web
-        #[cfg(not(target_arch = "wasm32"))]
-        ui.horizontal(|ui| image_options(ui, tensor, tensor_view.dynamic_img));
+    if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
+        show_zoomed_image_region_tooltip(ui, response, &tensor_view, image_rect, pointer_pos, None);
+    }
 
-        // TODO(emilk): support histograms of non-RGB images too
-        if let image::DynamicImage::ImageRgb8(rgb_image) = tensor_view.dynamic_img {
-            ui.collapsing("Histogram", |ui| {
-                histogram_ui(ui, rgb_image);
-            });
-        }
+    // TODO(emilk): support copying and saving images on web
+    #[cfg(not(target_arch = "wasm32"))]
+    ui.horizontal(|ui| image_options(ui, tensor, tensor_view.dynamic_img));
+
+    // TODO(emilk): support histograms of non-RGB images too
+    if let image::DynamicImage::ImageRgb8(rgb_image) = tensor_view.dynamic_img {
+        ui.collapsing("Histogram", |ui| {
+            histogram_ui(ui, rgb_image);
+        });
     }
 }
 
 pub fn show_zoomed_image_region_tooltip(
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor_view: &image_cache::TensorImageView<'_, '_, '_>,
+    tensor_view: &image_cache::TensorImageView<'_, '_>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
@@ -79,7 +68,7 @@ pub fn show_zoomed_image_region_tooltip(
 fn show_zoomed_image_region(
     parent_ui: &mut egui::Ui,
     tooltip_ui: &mut egui::Ui,
-    tensor_view: &image_cache::TensorImageView<'_, '_, '_>,
+    tensor_view: &image_cache::TensorImageView<'_, '_>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
@@ -166,6 +155,16 @@ fn show_zoomed_image_region(
             if tensor_view.tensor.num_dim() == 2 {
                 if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
                     ui.monospace(format!("Raw value: {}", raw_value.as_f64()));
+
+                    // Legend currently only supported for U8 types
+                    if let TensorElement::U8(raw_u8) = raw_value {
+                        if let Legend::SegmentationMap(_) = tensor_view.legend {
+                            ui.monospace(format!(
+                                "Label: {}",
+                                tensor_view.legend.map_label(raw_u8)
+                            ));
+                        }
+                    }
                 }
             } else if tensor_view.tensor.num_dim() == 3 {
                 let mut s = "Raw values:".to_owned();
@@ -176,16 +175,6 @@ fn show_zoomed_image_region(
                     }
                 }
                 ui.monospace(s);
-            }
-
-            // Legend currently only supported for U8 types
-            if let TensorView::U8(view) = &tensor_view.view {
-                if let Legend::SegmentationMap(_) = tensor_view.legend {
-                    ui.monospace(format!(
-                        "Label: {}",
-                        tensor_view.legend.map_label(view[[y as usize, x as usize]])
-                    ));
-                }
             }
 
             let image::Rgba([r, g, b, a]) = color;

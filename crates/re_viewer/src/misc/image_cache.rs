@@ -3,18 +3,10 @@ use egui_extras::RetainedImage;
 
 use image::DynamicImage;
 use re_log_types::*;
-use re_tensor_ops::TensorCastError;
 
 use crate::ui::legend::{ColorMapping, Legend};
 
 // TODO: Consider renaming this whole module `TensorImageCache`
-
-/// Type-erased tensor view
-pub enum TensorView<'view> {
-    U8(ndarray::ArrayViewD<'view, u8>),
-    U16(ndarray::ArrayViewD<'view, u16>),
-    F32(ndarray::ArrayViewD<'view, f32>),
-}
 
 /// The `TensorImageView` is a wrapper on top of `re_log_types::Tensor`
 ///
@@ -26,18 +18,14 @@ pub enum TensorView<'view> {
 /// In the case of images that leverage a `ColorMapping` this includes conversion from
 /// the native Tensor type A -> Color32 which is stored for the cached dynamic /
 /// retained images.
-pub struct TensorImageView<'store, 'cache, 'view> {
+pub struct TensorImageView<'store, 'cache> {
     /// Borrowed tensor from the object store
     pub tensor: &'store Tensor,
-
-    /// View into the underlying tensor memory or the decoded jpeg.
-    pub view: TensorView<'view>,
 
     /// Legend used to create the view
     pub legend: &'store Legend<'store>,
 
     /// DynamicImage helper for things like zoom
-    /// TODO: Can this be fully replaced by view?
     pub dynamic_img: &'cache DynamicImage,
 
     /// For egui
@@ -81,7 +69,7 @@ impl ImageCache {
         msg_id: &MsgId,
         tensor: &'store Tensor,
         legend: &'store Legend<'store>,
-    ) -> Result<TensorImageView<'store, 'cache, 'store>, TensorCastError> {
+    ) -> TensorImageView<'store, 'cache> {
         // TODO: handle jpeg again
 
         let ci = self
@@ -95,20 +83,12 @@ impl ImageCache {
             });
         ci.last_use_generation = self.generation;
 
-        // First extract the view
-        let view = match tensor.dtype {
-            TensorDataType::U8 => TensorView::U8(re_tensor_ops::as_ndarray::<u8>(tensor)?),
-            TensorDataType::U16 => TensorView::U16(re_tensor_ops::as_ndarray::<u16>(tensor)?),
-            TensorDataType::F32 => TensorView::F32(re_tensor_ops::as_ndarray::<f32>(tensor)?),
-        };
-
-        Ok(TensorImageView::<'store, '_, '_> {
+        TensorImageView::<'store, '_> {
             tensor,
-            view,
             legend,
             dynamic_img: &ci.dynamic_img,
             retained_img: &ci.retained_img,
-        })
+        }
     }
 
     /// Call once per frame to (potentially) flush the cache.

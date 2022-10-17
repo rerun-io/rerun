@@ -341,62 +341,54 @@ fn view_2d_scrollable(
 
         let legend = find_legend(*legend, objects);
 
-        match ctx.cache.image.get_view(props.msg_id, tensor, &legend) {
-            Ok(tensor_view) => {
-                let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
+        let tensor_view = ctx.cache.image.get_view(props.msg_id, tensor, &legend);
 
-                let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
-                    Pos2::ZERO,
-                    vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
-                ));
-                let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+        let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
 
-                let opacity = if image_idx == 0 {
-                    1.0 // bottom image
-                } else {
-                    // make top images transparent
-                    1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
-                };
-                let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
-                shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
+        let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
+            Pos2::ZERO,
+            vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
+        ));
+        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
 
-                if paint_props.is_hovered {
-                    shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
-                }
+        let opacity = if image_idx == 0 {
+            1.0 // bottom image
+        } else {
+            // make top images transparent
+            1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+        };
+        let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
+        shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
 
-                if let Some(pointer_pos) = pointer_pos {
-                    let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
-                    let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
-                    check_hovering(props, dist);
+        if paint_props.is_hovered {
+            shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
+        }
 
-                    if hovered_instance_id_hash.is_instance(props)
-                        && rect_in_ui.contains(pointer_pos)
-                    {
-                        response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
-                            ui,
-                            response,
-                            &tensor_view,
-                            rect_in_ui,
-                            pointer_pos,
-                            *meter,
-                        );
-                    }
+        if let Some(pointer_pos) = pointer_pos {
+            let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
+            let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
+            check_hovering(props, dist);
 
-                    if let Some(meter) = *meter {
-                        let pos_in_image = space_from_ui.transform_pos(pointer_pos);
-                        if let Some(raw_value) =
-                            tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
-                        {
-                            let raw_value = raw_value.as_f64();
-                            let depth_in_meters = raw_value / meter as f64;
-                            depths_at_pointer.push(depth_in_meters);
-                        }
-                    }
-                }
+            if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
+                response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
+                    ui,
+                    response,
+                    &tensor_view,
+                    rect_in_ui,
+                    pointer_pos,
+                    *meter,
+                );
             }
-            Err(err) => {
-                // TODO: do something better here
-                re_log::error!("Unhandled tensor error: {:?}", err);
+
+            if let Some(meter) = *meter {
+                let pos_in_image = space_from_ui.transform_pos(pointer_pos);
+                if let Some(raw_value) =
+                    tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
+                {
+                    let raw_value = raw_value.as_f64();
+                    let depth_in_meters = raw_value / meter as f64;
+                    depths_at_pointer.push(depth_in_meters);
+                }
             }
         }
     }
