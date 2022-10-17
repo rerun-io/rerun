@@ -1,5 +1,6 @@
 use crate::{
     context::RenderContextConfig,
+    frame_builder::FrameBuilder,
     resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, WgpuResourcePools},
 };
 
@@ -48,14 +49,21 @@ impl Renderer for GenericSkybox {
                     entry_point: "main",
                 },
                 vertex_buffers: vec![],
-                render_targets: vec![Some(ctx_config.output_format_color.into())],
+                render_targets: vec![Some(FrameBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: FrameBuilder::FORMAT_DEPTH,
+                    // Pass depth test only if the fragment hasn't been written to.
+                    // This allows us to draw the skybox last which is much more efficient than using it as a clear pass!
+                    depth_compare: wgpu::CompareFunction::Equal,
+                    depth_write_enabled: false,
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
                 multisample: wgpu::MultisampleState::default(),
             },
             &pools.pipeline_layouts,
         );
-
         GenericSkybox { render_pipeline }
     }
 

@@ -50,7 +50,7 @@ impl Renderer for TestTriangle {
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: FrameBuilder::FORMAT_DEPTH,
                     depth_compare: wgpu::CompareFunction::Always,
-                    depth_write_enabled: false,
+                    depth_write_enabled: true, // writes some depth for testing
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
