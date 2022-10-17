@@ -13,11 +13,17 @@ pub struct RenderContext {
     frame_index: u64,
 }
 
+/// Startup configuration for a `RenderContext`
+///
+/// Contains any kind of configuration that doesn't change for the entire lifetime of a `RenderContext`.
+/// (flipside, if we do want to change any of these, the `RenderContext` needs to be re-created)
 pub struct RenderContextConfig {
     /// The color format used by the eframe output buffer.
     pub output_format_color: wgpu::TextureFormat,
 }
 
+/// Struct owning *all* `Renderer`.
+/// `Renderer` are created lazily and stay around indefinitely.
 pub(crate) struct Renderers {
     renderers: concurrent::TypeMap,
 }
