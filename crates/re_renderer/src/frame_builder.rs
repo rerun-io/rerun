@@ -137,14 +137,20 @@ impl FrameBuilder {
             );
             let projection_from_world = projection_from_view * view_from_world;
 
+            let view_from_projection = projection_from_view.inverse();
+            let top_right_screen_corner_in_view = view_from_projection
+                .transform_point3(glam::vec3(1.0, 1.0, 0.0))
+                .truncate()
+                .normalize();
+
             let mut frame_uniform_buffer_content = encase::UniformBuffer::new(Vec::new());
             frame_uniform_buffer_content
                 .write(&FrameUniformBuffer {
                     view_from_world,
                     projection_from_view,
                     projection_from_world,
-                    world_from_projection: projection_from_world.inverse(),
                     camera_position: config.camera_position,
+                    top_right_screen_corner_in_view,
                 })
                 .context("fill frame uniform buffer")?;
             queue.write_buffer(

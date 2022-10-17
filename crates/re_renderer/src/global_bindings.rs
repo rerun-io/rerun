@@ -17,8 +17,9 @@ pub(crate) struct FrameUniformBuffer {
     pub view_from_world: glam::Mat4,
     pub projection_from_view: glam::Mat4,
     pub projection_from_world: glam::Mat4,
-    pub world_from_projection: glam::Mat4,
+
     pub camera_position: glam::Vec3,
+    pub top_right_screen_corner_in_view: glam::Vec2,
 }
 
 pub(crate) struct GlobalBindings {
