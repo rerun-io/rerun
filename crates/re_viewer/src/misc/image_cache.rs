@@ -10,7 +10,7 @@ use crate::ui::legend::{ColorMapping, Legend};
 // TODO: Consider renaming this whole module `TensorImageCache`
 
 /// Type-erased tensor view
-pub(crate) enum TensorView<'view> {
+pub enum TensorView<'view> {
     U8(ndarray::ArrayViewD<'view, u8>),
     U16(ndarray::ArrayViewD<'view, u16>),
     F32(ndarray::ArrayViewD<'view, f32>),
@@ -26,7 +26,7 @@ pub(crate) enum TensorView<'view> {
 /// In the case of images that leverage a `ColorMapping` this includes conversion from
 /// the native Tensor type A -> Color32 which is stored for the cached dynamic /
 /// retained images.
-pub(crate) struct TensorImageView<'store, 'cache, 'view> {
+pub struct TensorImageView<'store, 'cache, 'view> {
     /// Borrowed tensor from the object store
     pub tensor: &'store Tensor,
 

@@ -375,8 +375,7 @@ fn view_2d_scrollable(
                         response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
                             ui,
                             response,
-                            tensor,
-                            tensor_view.dynamic_img,
+                            &tensor_view,
                             rect_in_ui,
                             pointer_pos,
                             *meter,
