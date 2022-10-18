@@ -1311,10 +1311,11 @@ fn log_tensor_f32(
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
     names: Option<&PyList>,
     meter: Option<f32>,
+    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, None, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1576,7 +1577,7 @@ fn log_class_descriptions(
 
     // Avoid duplicate indices
     let dups: Vec<&i32> = ids.iter().duplicates().collect();
-    if dups.len() > 0 {
+    if !dups.is_empty() {
         return Err(PyTypeError::new_err(format!(
             "ClassDescription contains duplicate ids {:?}",
             dups
