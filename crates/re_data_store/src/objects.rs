@@ -975,7 +975,7 @@ impl<'s> Objects<'s> {
 
         for part in partitioned.values_mut() {
             part.space = self.space.clone(); // TODO(emilk): probably only extract the relevant space
-            part.class_description_map = self.class_description_map.clone(); // TODO(emilk): probably only extract the relevant space
+            part.class_description_map = self.class_description_map.clone();
         }
 
         partitioned
