@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use ahash::HashMap;
 use nohash_hasher::IntMap;
 use re_log_types::{objects::*, DataVec, FieldName, IndexHash, MsgId, ObjPath, ObjTypePath};
 
@@ -706,7 +707,7 @@ impl<'s> TextEntry<'s> {
 #[derive(Clone, Debug)]
 pub struct SegmentationMap<'s> {
     pub msg_id: &'s MsgId,
-    pub map: IntMap<i32, SegmentationLabel<'s>>,
+    pub map: HashMap<i32, SegmentationLabel<'s>>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -740,7 +741,7 @@ impl<'s> SegmentationLabel<'s> {
                         .entry(obj_path)
                         .or_insert_with(|| SegmentationMap {
                             msg_id,
-                            map: IntMap::<i32, SegmentationLabel<'s>>::default(),
+                            map: HashMap::<i32, SegmentationLabel<'s>>::default(),
                         });
 
                 segmentation_map.map.insert(

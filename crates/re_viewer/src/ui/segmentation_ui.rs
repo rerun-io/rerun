@@ -1,6 +1,7 @@
+use std::collections::BTreeMap;
+
 use egui::{color_picker, Vec2};
 use egui_extras::{Size, TableBuilder};
-use nohash_hasher::IntMap;
 use re_data_store::{query::visit_type_data_2, FieldName, InstanceId};
 use re_log_types::{IndexHash, MsgId};
 
@@ -20,7 +21,7 @@ pub(crate) fn view_segmentation_map(
     let obj_store = store.get(&instance_id.obj_path)?;
 
     // TODO(jleibs) This should really used a shared implementation with objects.rs
-    let mut map = IntMap::<i32, (Option<&str>, egui::Color32)>::default();
+    let mut map = BTreeMap::<i32, (Option<&str>, egui::Color32)>::default();
 
     visit_type_data_2(
         obj_store,
