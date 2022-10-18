@@ -64,7 +64,7 @@ pub struct ImageCache {
 }
 
 impl ImageCache {
-    pub(crate) fn get_view<'store, 'cache>(
+    pub(crate) fn get_view_with_legend<'store, 'cache>(
         &'cache mut self,
         msg_id: &MsgId,
         tensor: &'store Tensor,
@@ -90,6 +90,14 @@ impl ImageCache {
             dynamic_img: &ci.dynamic_img,
             retained_img: &ci.retained_img,
         }
+    }
+
+    pub(crate) fn get_view<'store, 'cache>(
+        &'cache mut self,
+        msg_id: &MsgId,
+        tensor: &'store Tensor,
+    ) -> TensorImageView<'store, 'cache> {
+        self.get_view_with_legend(msg_id, tensor, &Legend::None)
     }
 
     /// Call once per frame to (potentially) flush the cache.

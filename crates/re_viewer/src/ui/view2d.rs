@@ -341,7 +341,10 @@ fn view_2d_scrollable(
 
         let legend = find_legend(*legend, objects);
 
-        let tensor_view = ctx.cache.image.get_view(props.msg_id, tensor, &legend);
+        let tensor_view = ctx
+            .cache
+            .image
+            .get_view_with_legend(props.msg_id, tensor, &legend);
 
         let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
 

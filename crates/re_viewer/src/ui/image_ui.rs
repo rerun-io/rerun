@@ -12,10 +12,7 @@ pub(crate) fn show_tensor(
     msg_id: &MsgId,
     tensor: &re_log_types::Tensor,
 ) {
-    let tensor_view = ctx
-        .cache
-        .image
-        .get_view(msg_id, tensor, &crate::legend::Legend::None);
+    let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
 
     let max_size = ui
         .available_size()

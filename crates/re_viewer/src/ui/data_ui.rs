@@ -350,10 +350,7 @@ pub(crate) fn ui_data(
         },
 
         Data::Tensor(tensor) => {
-            let tensor_view =
-                ctx.cache
-                    .image
-                    .get_view(msg_id, tensor, &crate::legend::Legend::None);
+            let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
 
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {
