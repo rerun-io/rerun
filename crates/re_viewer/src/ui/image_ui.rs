@@ -3,7 +3,7 @@ use re_log_types::*;
 
 use crate::{
     misc::{tensor_image_cache, ViewerContext},
-    ui::legend::{LabelMapping, Legend},
+    ui::legend::LabelMapping,
 };
 
 pub(crate) fn show_tensor(
@@ -153,13 +153,14 @@ fn show_zoomed_image_region(
                 if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
                     ui.monospace(format!("Raw value: {}", raw_value.as_f64()));
 
-                    // Legend currently only supported for U8 types
-                    if let TensorElement::U8(raw_u8) = raw_value {
-                        if let Legend::SegmentationMap(_) = tensor_view.legend {
-                            ui.monospace(format!(
-                                "Label: {}",
-                                tensor_view.legend.map_label(raw_u8)
-                            ));
+                    if let Some(legend) = tensor_view.legend {
+                        let raw_value = match raw_value {
+                            TensorElement::U8(raw_u8) => Some(raw_u8 as u16),
+                            TensorElement::U16(raw_u16) => Some(raw_u16),
+                            TensorElement::F32(_) => None,
+                        };
+                        if let Some(raw_value) = raw_value {
+                            ui.monospace(format!("Label: {}", legend.map_label(raw_value)));
                         }
                     }
                 }

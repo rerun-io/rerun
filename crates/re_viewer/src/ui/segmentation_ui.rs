@@ -33,7 +33,7 @@ pub(crate) fn view_segmentation_map(
          id: &i32,
          label: Option<&String>,
          color: Option<&[u8; 4]>| {
-            let val = u8::try_from(*id % 255).unwrap();
+            let val = u16::try_from(*id % (u16::MAX as i32)).unwrap();
             let color = *color.unwrap_or(&super::legend::auto_color(val));
             map.insert(
                 *id,
