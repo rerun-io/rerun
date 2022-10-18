@@ -292,70 +292,6 @@ struct SpaceView {
 }
 
 impl SpaceView {
-    pub fn ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        space_info: &SpaceInfo,
-        ui: &mut egui::Ui,
-    ) -> egui::Response {
-        crate::profile_function!(self.name.as_str());
-
-        // Get the latest objects for the currently selected time:
-        let mut time_objects = Objects::default();
-        {
-            crate::profile_scope!("time_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
-                    for obj_path in &space_info.objects {
-                        if let Some(obj_store) = timeline_store.get(obj_path) {
-                            if let Some(obj_type) =
-                                ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                            {
-                                if !is_sticky_type(obj_type) {
-                                    time_objects.query_object(
-                                        obj_store,
-                                        &time_query,
-                                        obj_path,
-                                        obj_type,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Get the "sticky" objects (e.g. text logs)
-        // that don't care about the current time:
-        let mut sticky_objects = Objects::default();
-        {
-            crate::profile_scope!("sticky_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                for obj_path in &space_info.objects {
-                    if let Some(obj_store) = timeline_store.get(obj_path) {
-                        if let Some(obj_type) =
-                            ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                        {
-                            if is_sticky_type(obj_type) {
-                                sticky_objects.query_object(
-                                    obj_store,
-                                    &TimeQuery::EVERYTHING,
-                                    obj_path,
-                                    obj_type,
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        self.objects_ui(ctx, ui, &time_objects, &sticky_objects)
-    }
-
     fn objects_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -550,11 +486,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 .get_mut(space_view_id)
                 .expect("Should have been populated beforehand");
 
-            if let Some(space_info) = self.spaces_info.spaces.get(&space_view.space_path) {
-                space_view.ui(self.ctx, space_info, ui);
-            } else {
-                unknown_space_label(ui, &space_view.space_path);
-            }
+            space_view_ui(self.ctx, ui, self.spaces_info, space_view);
         });
     }
 
@@ -567,11 +499,77 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     }
 }
 
-fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) {
+fn space_view_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    spaces_info: &SpacesInfo,
+    space_view: &mut SpaceView,
+) -> egui::Response {
+    if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
+        // Get the latest objects for the currently selected time:
+        let mut time_objects = Objects::default();
+        {
+            crate::profile_scope!("time_query");
+            let timeline = ctx.rec_cfg.time_ctrl.timeline();
+            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
+                if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
+                    for obj_path in &space_info.objects {
+                        if let Some(obj_store) = timeline_store.get(obj_path) {
+                            if let Some(obj_type) =
+                                ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
+                            {
+                                if !is_sticky_type(obj_type) {
+                                    time_objects.query_object(
+                                        obj_store,
+                                        &time_query,
+                                        obj_path,
+                                        obj_type,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Get the "sticky" objects (e.g. text logs)
+        // that don't care about the current time:
+        let mut sticky_objects = Objects::default();
+        {
+            crate::profile_scope!("sticky_query");
+            let timeline = ctx.rec_cfg.time_ctrl.timeline();
+            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
+                for obj_path in &space_info.objects {
+                    if let Some(obj_store) = timeline_store.get(obj_path) {
+                        if let Some(obj_type) =
+                            ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
+                        {
+                            if is_sticky_type(obj_type) {
+                                sticky_objects.query_object(
+                                    obj_store,
+                                    &TimeQuery::EVERYTHING,
+                                    obj_path,
+                                    obj_type,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        space_view.objects_ui(ctx, ui, &time_objects, &sticky_objects)
+    } else {
+        unknown_space_label(ui, &space_view.space_path)
+    }
+}
+
+fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
     ui.colored_label(
         ui.visuals().warn_fg_color,
         format!("Unknown space {space_path}"),
-    );
+    )
 }
 
 // ----------------------------------------------------------------------------
@@ -616,11 +614,7 @@ impl ExperimentalViewportPanel {
 
                 ui.strong(&space_view.name);
 
-                if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-                    space_view.ui(ctx, space_info, ui);
-                } else {
-                    unknown_space_label(ui, &space_view.space_path);
-                }
+                space_view_ui(ctx, ui, &spaces_info, space_view);
             } else if let Some(space_view_id) = self.blueprint.maximized {
                 let space_view = self
                     .blueprint
@@ -639,11 +633,7 @@ impl ExperimentalViewportPanel {
                     ui.strong(&space_view.name);
                 });
 
-                if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-                    space_view.ui(ctx, space_info, ui);
-                } else {
-                    unknown_space_label(ui, &space_view.space_path);
-                }
+                space_view_ui(ctx, ui, &spaces_info, space_view);
             } else {
                 let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
                 dock_style.separator_width = 2.0;
