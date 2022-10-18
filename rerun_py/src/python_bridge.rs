@@ -2,7 +2,6 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::collections::HashMap;
 use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
 use bytemuck::allocation::pod_collect_to_vec;
@@ -1555,25 +1554,34 @@ type UnzipSegMap = (
 #[pyfunction]
 fn log_class_descriptions(
     obj_path: &str,
-    id_map: HashMap<i32, (Option<String>, Option<Vec<u8>>)>,
+    class_descriptions: Vec<(i32, Option<String>, Option<Vec<u8>>)>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
     let obj_path = parse_obj_path(obj_path)?;
 
-    let ((ids, indices), (labels, colors)): UnzipSegMap = id_map
+    let ((ids, indices), (labels, colors)): UnzipSegMap = class_descriptions
         .iter()
-        .map(|(k, v)| {
-            let corrected_color =
-                v.1.as_ref()
-                    .map(|color| convert_color(color.clone()).unwrap());
+        .map(|(id, label, color)| {
+            let corrected_color = color
+                .as_ref()
+                .map(|color| convert_color(color.clone()).unwrap());
             (
-                (k, Index::Integer(*k as i128)),
-                (v.0.clone(), corrected_color),
+                (id, Index::Integer(*id as i128)),
+                (label.clone(), corrected_color),
             )
         })
         .unzip();
+
+    // Avoid duplicate indices
+    let dups: Vec<&i32> = ids.iter().duplicates().collect();
+    if dups.len() > 0 {
+        return Err(PyTypeError::new_err(format!(
+            "ClassDescription contains duplicate ids {:?}",
+            dups
+        )));
+    }
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::ClassDescription);
 

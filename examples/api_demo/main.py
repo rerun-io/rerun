@@ -11,7 +11,7 @@ from typing import Any
 
 import numpy as np
 import rerun_sdk as rerun
-from rerun_sdk import Mapping
+from rerun_sdk import ClassDescription
 
 
 def args_set_visible(subparsers: Any) -> None:
@@ -49,17 +49,20 @@ def run_segmentation(args: argparse.Namespace) -> None:
     rerun.log_segmentation_image("img", segmentation_img, "labels")
 
     # Log an initial segmentation map with arbitrary colors
-    rerun.log_class_descriptions("labels", {13: "label1", 42: "label2", 99: "label3"})
+    rerun.log_class_descriptions("labels", [(13, "label1"), (42, "label2"), (99, "label3")])
 
     # Log an updated segmentation map with specific colors
     rerun.set_time_seconds("sim_time", 2)
     rerun.log_class_descriptions(
-        "labels", {13: ("label1", (255, 0, 0)), 42: ("label2", (0, 255, 0)), 99: ("label3", (0, 0, 255))}
+        "labels", [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]
     )
 
     # Log with a mixture of set and unset colors / labels
     rerun.set_time_seconds("sim_time", 3)
-    rerun.log_class_descriptions("labels", {13: Mapping(color=(255, 0, 0)), 42: ("label2", (0, 255, 0)), 99: "label3"})
+    rerun.log_class_descriptions(
+        "labels",
+        [ClassDescription(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), ClassDescription(99, label="label3")],
+    )
 
 
 def main() -> None:
