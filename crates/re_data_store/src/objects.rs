@@ -705,18 +705,18 @@ impl<'s> TextEntry<'s> {
 }
 
 #[derive(Clone, Debug)]
-pub struct SegmentationMap<'s> {
+pub struct ClassDescriptionMap<'s> {
     pub msg_id: &'s MsgId,
-    pub map: HashMap<i32, SegmentationLabel<'s>>,
+    pub map: HashMap<i32, ClassDescription<'s>>,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct SegmentationLabel<'s> {
+pub struct ClassDescription<'s> {
     pub label: Option<&'s str>,
     pub color: Option<[u8; 4]>,
 }
 
-impl<'s> SegmentationLabel<'s> {
+impl<'s> ClassDescription<'s> {
     fn query<Time: 'static + Copy + Ord + Into<i64>>(
         obj_path: &'s ObjPath,
         obj_store: &'s ObjStore<Time>,
@@ -736,17 +736,17 @@ impl<'s> SegmentationLabel<'s> {
              id: &i32,
              label: Option<&String>,
              color: Option<&[u8; 4]>| {
-                let segmentation_map =
-                    out.segmentation_map
-                        .entry(obj_path)
-                        .or_insert_with(|| SegmentationMap {
-                            msg_id,
-                            map: HashMap::<i32, SegmentationLabel<'s>>::default(),
-                        });
+                let class_description_map = out
+                    .class_description_map
+                    .entry(obj_path)
+                    .or_insert_with(|| ClassDescriptionMap {
+                        msg_id,
+                        map: HashMap::<i32, ClassDescription<'s>>::default(),
+                    });
 
-                segmentation_map.map.insert(
+                class_description_map.map.insert(
                     *id,
-                    SegmentationLabel {
+                    ClassDescription {
                         label: label.map(|s| s.as_str()),
                         color: color.cloned(),
                     },
@@ -759,7 +759,7 @@ impl<'s> SegmentationLabel<'s> {
 #[derive(Clone, Debug, Default)]
 pub struct Objects<'s> {
     pub space: BTreeMap<&'s ObjPath, Space<'s>>, // SPECIAL!
-    pub segmentation_map: BTreeMap<&'s ObjPath, SegmentationMap<'s>>,
+    pub class_description_map: BTreeMap<&'s ObjPath, ClassDescriptionMap<'s>>,
 
     pub text_entry: ObjectVec<'s, TextEntry<'s>>,
 
@@ -806,7 +806,7 @@ impl<'s> Objects<'s> {
     ) {
         let query_fn = match obj_type {
             ObjectType::Space => Space::query,
-            ObjectType::SegmentationLabel => SegmentationLabel::query,
+            ObjectType::ClassDescription => ClassDescription::query,
             ObjectType::TextEntry => TextEntry::query,
             ObjectType::Image => Image::query,
             ObjectType::Point2D => Point2D::query,
@@ -828,8 +828,8 @@ impl<'s> Objects<'s> {
         crate::profile_function!();
 
         Self {
-            space: self.space.clone(),                       // SPECIAL - can't filter
-            segmentation_map: self.segmentation_map.clone(), // SPECIAL - can't filter
+            space: self.space.clone(), // SPECIAL - can't filter
+            class_description_map: self.class_description_map.clone(), // SPECIAL - can't filter
 
             text_entry: self.text_entry.filter(&keep),
 
@@ -851,7 +851,7 @@ impl<'s> Objects<'s> {
     pub fn is_empty(&self) -> bool {
         let Self {
             space,
-            segmentation_map,
+            class_description_map,
             text_entry,
             image,
             point2d,
@@ -866,7 +866,7 @@ impl<'s> Objects<'s> {
             arrow3d,
         } = self;
         space.is_empty()
-            && segmentation_map.is_empty()
+            && class_description_map.is_empty()
             && image.is_empty()
             && text_entry.is_empty()
             && point2d.is_empty()
@@ -909,7 +909,7 @@ impl<'s> Objects<'s> {
 
         let Self {
             space: _, // yes, this is intentional
-            segmentation_map: _,
+            class_description_map: _,
             text_entry,
             image,
             point2d,
@@ -975,7 +975,7 @@ impl<'s> Objects<'s> {
 
         for part in partitioned.values_mut() {
             part.space = self.space.clone(); // TODO(emilk): probably only extract the relevant space
-            part.segmentation_map = self.segmentation_map.clone(); // TODO(emilk): probably only extract the relevant space
+            part.class_description_map = self.class_description_map.clone(); // TODO(emilk): probably only extract the relevant space
         }
 
         partitioned

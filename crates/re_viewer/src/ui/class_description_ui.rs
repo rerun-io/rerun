@@ -7,7 +7,7 @@ use re_log_types::{IndexHash, MsgId};
 
 use crate::misc::ViewerContext;
 
-pub(crate) fn view_segmentation_map(
+pub(crate) fn view_class_description_map(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,

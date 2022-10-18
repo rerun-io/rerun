@@ -1576,7 +1576,7 @@ fn log_segmentation_map(
         })
         .unzip();
 
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::SegmentationLabel);
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::ClassDescription);
 
     let time_point = time(timeless);
 

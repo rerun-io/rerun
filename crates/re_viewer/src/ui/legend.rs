@@ -1,10 +1,10 @@
-pub type Legend<'s> = Option<&'s re_data_store::SegmentationMap<'s>>;
+pub type Legend<'s> = Option<&'s re_data_store::ClassDescriptionMap<'s>>;
 
 pub(crate) fn find_legend<'s>(
     obj_path: Option<&re_data_store::ObjPath>,
     objects: &'s re_data_store::Objects<'s>,
 ) -> Legend<'s> {
-    objects.segmentation_map.get(obj_path?)
+    objects.class_description_map.get(obj_path?)
 }
 
 // default colors
@@ -22,7 +22,7 @@ pub(crate) trait ColorMapping {
     fn map_color(&self, val: u16) -> [u8; 4];
 }
 
-impl<'s> ColorMapping for re_data_store::SegmentationMap<'s> {
+impl<'s> ColorMapping for re_data_store::ClassDescriptionMap<'s> {
     fn map_color(&self, val: u16) -> [u8; 4] {
         if let Some(seg_label) = self.map.get(&(val as i32)) {
             if let Some(color) = seg_label.color {
@@ -44,7 +44,7 @@ pub(crate) trait LabelMapping {
     fn map_label(&self, val: u16) -> String;
 }
 
-impl<'s> LabelMapping for re_data_store::SegmentationMap<'s> {
+impl<'s> LabelMapping for re_data_store::ClassDescriptionMap<'s> {
     fn map_label(&self, val: u16) -> String {
         if let Some(seg_label) = self.map.get(&(val as i32)) {
             if let Some(label) = seg_label.label {

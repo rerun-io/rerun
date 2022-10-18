@@ -5,7 +5,7 @@ pub use re_log_types::*;
 
 use crate::misc::ViewerContext;
 
-use super::{segmentation_ui::view_segmentation_map, Preview};
+use super::{class_description_ui::view_class_description_map, Preview};
 
 pub(crate) fn view_object(
     ctx: &mut ViewerContext<'_>,
@@ -36,7 +36,7 @@ pub(crate) fn view_instance(
         .types
         .get(instance_id.obj_path.obj_type_path())
     {
-        Some(ObjectType::SegmentationLabel) => view_segmentation_map(ctx, ui, instance_id),
+        Some(ObjectType::ClassDescription) => view_class_description_map(ctx, ui, instance_id),
         _ => view_instance_generic(ctx, ui, instance_id, preview),
     }
 }
