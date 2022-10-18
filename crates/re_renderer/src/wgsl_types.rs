@@ -1,8 +1,9 @@
 //! Explicitly padded and/or aligned types following wgsl rules.
+//! See [wgsl spec on alignment and size](https://www.w3.org/TR/WGSL/#alignment-and-size)
+//!
 //! This is especially important for cases where [`glam`] isn't explicit about padding and alignment.
 
-#[repr(C)]
-#[repr(align(8))]
+#[repr(C, align(8))]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct Vec2 {
     pub x: f32,
@@ -16,8 +17,7 @@ impl From<glam::Vec2> for Vec2 {
     }
 }
 
-#[repr(C)]
-#[repr(align(16))]
+#[repr(C, align(16))]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct Vec2Padded {
     pub x: f32,
@@ -38,8 +38,7 @@ impl From<glam::Vec2> for Vec2Padded {
     }
 }
 
-#[repr(C)]
-#[repr(align(16))]
+#[repr(C, align(16))]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct Vec3 {
     pub x: f32,
@@ -72,8 +71,7 @@ impl From<glam::Vec3A> for Vec3 {
     }
 }
 
-#[repr(C)]
-#[repr(align(16))]
+#[repr(C, align(16))]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct Vec4 {
     pub x: f32,
@@ -94,7 +92,7 @@ impl From<glam::Vec4> for Vec4 {
     }
 }
 
-#[repr(C)]
+#[repr(C, align(16))]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct Mat4 {
     c0: Vec4,
@@ -115,7 +113,7 @@ impl From<glam::Mat4> for Mat4 {
     }
 }
 
-#[repr(C)]
+#[repr(C, align(16))]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct Mat4x3 {
     c0: Vec3,
