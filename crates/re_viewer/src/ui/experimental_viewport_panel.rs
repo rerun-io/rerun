@@ -433,7 +433,6 @@ struct ViewState {
     // per space
     state_2d: crate::view2d::State2D,
 
-    #[cfg(feature = "glow")]
     state_3d: crate::view3d::State3D,
 
     state_tensor: Option<crate::view_tensor::TensorViewState>,
@@ -459,7 +458,6 @@ impl ViewState {
         space: &ObjPath,
         objects: &Objects<'_>,
     ) -> egui::Response {
-        #[cfg(feature = "glow")]
         ui.vertical(|ui| {
             crate::view3d::view_3d(ctx, ui, &mut self.state_3d, Some(space), objects);
         })
