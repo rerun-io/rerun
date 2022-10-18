@@ -749,7 +749,7 @@ def log_segmentation_image(
     """
     Log an image made up of uint8 or uint16 class-ids.
 
-    The image should either have 1 channels.
+    The image should have 1 channels.
 
     Supported `dtype`s:
     * uint8: components should be 0-255 class ids
@@ -875,7 +875,7 @@ class ClassDescription:
     color: Optional[Sequence[int]] = None
 
 
-ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Tuple[int, int, int]], ClassDescription]
+ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Sequence[int]], ClassDescription]
 
 
 def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
