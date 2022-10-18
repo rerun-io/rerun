@@ -1,10 +1,27 @@
+use ahash::HashMap;
+use lazy_static::lazy_static;
+use re_log_types::MsgId;
+
 pub type Legend<'s> = Option<&'s re_data_store::ClassDescriptionMap<'s>>;
+
+lazy_static! {
+    pub(crate) static ref MISSING_MSGID: MsgId = MsgId::random();
+    pub(crate) static ref MISSING_LEGEND: re_data_store::ClassDescriptionMap<'static> = {
+        re_data_store::ClassDescriptionMap {
+            msg_id: &MISSING_MSGID,
+            map: HashMap::<i32, re_data_store::ClassDescription<'static>>::default(),
+        }
+    };
+}
 
 pub(crate) fn find_legend<'s>(
     obj_path: Option<&re_data_store::ObjPath>,
     objects: &'s re_data_store::Objects<'s>,
 ) -> Legend<'s> {
-    objects.class_description_map.get(obj_path?)
+    objects
+        .class_description_map
+        .get(obj_path?)
+        .or(Some(&MISSING_LEGEND))
 }
 
 // default colors
@@ -34,7 +51,11 @@ impl<'s> ColorMapping for re_data_store::ClassDescriptionMap<'s> {
             // TODO(jleibs) Unset labels default to transparent black
             // This gives us better behavior for the "0" id, though we
             // should be more explicit about this in the future.
-            [0, 0, 0, 0]
+            if val == 0 {
+                [0, 0, 0, 0]
+            } else {
+                auto_color(val)
+            }
         }
     }
 }
