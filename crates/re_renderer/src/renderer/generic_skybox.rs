@@ -3,9 +3,7 @@ use crate::{
     frame_builder::FrameBuilder,
     include_file,
     resource_pools::{
-        pipeline_layout_pool::*,
-        render_pipeline_pool::*,
-        shader_module_pool::{ShaderModuleDesc, ShaderStage},
+        pipeline_layout_pool::*, render_pipeline_pool::*, shader_module_pool::ShaderModuleDesc,
         WgpuResourcePools,
     },
 };
@@ -34,7 +32,6 @@ impl Renderer for GenericSkybox {
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> Self {
-        let entrypoint = "main".to_owned();
         let render_pipeline = pools.render_pipelines.request(
             device,
             &RenderPipelineDesc {
@@ -48,23 +45,19 @@ impl Renderer for GenericSkybox {
                     &pools.bind_group_layouts,
                 ),
 
-                vertex_entrypoint: entrypoint.clone(),
+                vertex_entrypoint: "main".into(),
                 vertex_handle: pools.shader_modules.request(
                     device,
                     &ShaderModuleDesc {
-                        label: "screen_triangle".into(),
-                        entrypoint: entrypoint.clone(),
-                        stage: ShaderStage::Vertex,
+                        label: "screen_triangle (vertex)".into(),
                         source: include_file!("../../shader/screen_triangle.wgsl"),
                     },
                 ),
-                fragment_entrypoint: entrypoint.clone(),
+                fragment_entrypoint: "main".into(),
                 fragment_handle: pools.shader_modules.request(
                     device,
                     &ShaderModuleDesc {
-                        label: "generic_skybox".into(),
-                        entrypoint: entrypoint.clone(),
-                        stage: ShaderStage::Vertex,
+                        label: "generic_skybox (fragment)".into(),
                         source: include_file!("../../shader/generic_skybox.wgsl"),
                     },
                 ),

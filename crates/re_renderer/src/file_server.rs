@@ -1,5 +1,5 @@
 use anyhow::Context;
-use std::path::PathBuf;
+use std::{borrow::Cow, path::PathBuf};
 
 // ---
 
@@ -33,7 +33,7 @@ macro_rules! include_file {
 #[macro_export]
 macro_rules! include_file {
     ($path:expr $(,)?) => {{
-        $crate::FileContents::Inlined(include_str!($path).to_owned())
+        $crate::FileContentsHandle::Inlined(include_str!($path).to_owned())
     }};
 }
 
@@ -41,27 +41,31 @@ macro_rules! include_file {
 
 /// A handle to the contents of a file.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub enum FileContents {
+pub enum FileContentsHandle {
+    /// Contents inlined as a UTF-8 string.
     Inlined(String),
+    /// Contents sit on disk, path is pre-canonicalized.
     Path(PathBuf),
 }
-impl FileContents {
-    pub fn contents(&self) -> anyhow::Result<String> {
+impl FileContentsHandle {
+    /// Resolve the contents of the handle.
+    // TODO(cmc): #import support
+    pub fn resolve(&self) -> anyhow::Result<Cow<'_, str>> {
         match self {
-            Self::Inlined(data) => Ok(data.clone()),
-            Self::Path(path) => {
-                std::fs::read_to_string(path).with_context(|| "failed to read file at {path:?}")
-            }
+            Self::Inlined(data) => Ok(data.into()),
+            Self::Path(path) => std::fs::read_to_string(path)
+                .with_context(|| "failed to read file at {path:?}")
+                .map(Into::into),
         }
     }
 }
 
-pub use self::file_watcher_impl::FileServer;
+pub use self::file_server_impl::FileServer;
 
 // ---
 
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
-mod file_watcher_impl {
+mod file_server_impl {
     use std::path::{Path, PathBuf};
 
     use ahash::HashSet;
@@ -70,13 +74,13 @@ mod file_watcher_impl {
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::RwLock;
 
-    use super::FileContents;
+    use super::FileContentsHandle;
 
     /// The global [`FileServer`].
     static FILE_SERVER: RwLock<Option<FileServer>> = RwLock::new(None);
 
     /// A file server capable of watching filesystem events in the background and
-    /// (soon) resolve #import/#include clauses in files.
+    /// (soon) resolve #import clauses in files.
     pub struct FileServer {
         watcher: RecommendedWatcher,
         events_rx: Receiver<Event>,
@@ -90,8 +94,7 @@ mod file_watcher_impl {
             let watcher = notify::recommended_watcher(move |res| match res {
                 Ok(event) => {
                     if let Err(err) = events_tx.send(event) {
-                        re_log::debug!(%err, "filesystem watcher shutting down");
-                        return; // receiver disconnected
+                        re_log::error!(%err, "filesystem watcher disconnected, discarding event");
                     }
                 }
                 Err(err) => {
@@ -142,19 +145,21 @@ mod file_watcher_impl {
             &mut self,
             path: impl AsRef<Path>,
             recursive: bool,
-        ) -> anyhow::Result<FileContents> {
+        ) -> anyhow::Result<FileContentsHandle> {
             let path = std::fs::canonicalize(path.as_ref())?;
 
             self.watcher
                 .watch(
                     path.as_ref(),
-                    recursive
-                        .then_some(RecursiveMode::Recursive)
-                        .unwrap_or(RecursiveMode::NonRecursive),
+                    if recursive {
+                        RecursiveMode::Recursive
+                    } else {
+                        RecursiveMode::NonRecursive
+                    },
                 )
                 .with_context(|| "couldn't watch file at {path:?}")?;
 
-            Ok(FileContents::Path(path))
+            Ok(FileContentsHandle::Path(path))
         }
 
         /// Stops watching for file events at the given `path`.
@@ -177,6 +182,7 @@ mod file_watcher_impl {
             self.events_rx
                 .try_iter()
                 .flat_map(|ev| {
+                    #[allow(clippy::enum_glob_use)]
                     use notify::EventKind::*;
                     match ev.kind {
                         Access(_) | Create(_) | Modify(_) | Any => ev
@@ -193,9 +199,9 @@ mod file_watcher_impl {
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
-mod file_watcher_impl {
+mod file_server_impl {
     use ahash::HashSet;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
 
     /// A noop implementation of a `FileServer`.
     pub struct FileServer;

@@ -21,6 +21,11 @@ impl DebugLabel {
 
 impl From<&str> for DebugLabel {
     fn from(str: &str) -> Self {
+        #[cfg(not(debug_assertions))]
+        {
+            _ = str;
+        }
+
         Self {
             #[cfg(debug_assertions)]
             label: str.to_owned(),

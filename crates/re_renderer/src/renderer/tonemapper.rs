@@ -1,11 +1,10 @@
 use crate::{
-    context::RenderContextConfig,
     context::SharedRendererData,
     include_file,
     resource_pools::{
         bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, sampler_pool::*, shader_module_pool::*,
-        texture_pool::TextureHandle, WgpuResourcePools,
+        render_pipeline_pool::*, shader_module_pool::*, texture_pool::TextureHandle,
+        WgpuResourcePools,
     },
 };
 
@@ -54,9 +53,6 @@ impl Renderer for Tonemapper {
             },
         );
 
-        // TODO: all these useless clones too
-        let entrypoint = "main".to_owned();
-
         let render_pipeline = pools.render_pipelines.request(
             device,
             &RenderPipelineDesc {
@@ -69,23 +65,19 @@ impl Renderer for Tonemapper {
                     },
                     &pools.bind_group_layouts,
                 ),
-                vertex_entrypoint: entrypoint.clone(),
+                vertex_entrypoint: "main".into(),
                 vertex_handle: pools.shader_modules.request(
                     device,
                     &ShaderModuleDesc {
-                        label: "screen_triangle".into(),
-                        entrypoint: entrypoint.clone(),
-                        stage: ShaderStage::Vertex,
+                        label: "screen_triangle (vertex)".into(),
                         source: include_file!("../../shader/screen_triangle.wgsl"),
                     },
                 ),
-                fragment_entrypoint: entrypoint.clone(),
+                fragment_entrypoint: "main".into(),
                 fragment_handle: pools.shader_modules.request(
                     device,
                     &ShaderModuleDesc {
-                        label: "tonemap".into(),
-                        entrypoint: entrypoint.clone(),
-                        stage: ShaderStage::Vertex,
+                        label: "tonemap (fragment)".into(),
                         source: include_file!("../../shader/tonemap.wgsl"),
                     },
                 ),

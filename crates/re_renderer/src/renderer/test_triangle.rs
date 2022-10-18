@@ -27,9 +27,6 @@ impl Renderer for TestTriangle {
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> Self {
-        let vertex_entrypoint = "vs_main".to_owned();
-        let fragment_entrypoint = "fs_main".to_owned();
-
         let render_pipeline = pools.render_pipelines.request(
             device,
             &RenderPipelineDesc {
@@ -42,23 +39,19 @@ impl Renderer for TestTriangle {
                     },
                     &pools.bind_group_layouts,
                 ),
-                vertex_entrypoint: vertex_entrypoint.clone(),
+                vertex_entrypoint: "vs_main".into(),
                 vertex_handle: pools.shader_modules.request(
                     device,
                     &ShaderModuleDesc {
-                        label: "test_triangle".into(),
-                        entrypoint: vertex_entrypoint.clone(),
-                        stage: ShaderStage::Vertex,
+                        label: "test_triangle (vertex)".into(),
                         source: include_file!("../../shader/test_triangle.wgsl"),
                     },
                 ),
-                fragment_entrypoint: fragment_entrypoint.clone(),
+                fragment_entrypoint: "fs_main".into(),
                 fragment_handle: pools.shader_modules.request(
                     device,
                     &ShaderModuleDesc {
-                        label: "test_triangle".into(),
-                        entrypoint: fragment_entrypoint.clone(),
-                        stage: ShaderStage::Vertex,
+                        label: "test_triangle (fragment)".into(),
                         source: include_file!("../../shader/test_triangle.wgsl"),
                     },
                 ),

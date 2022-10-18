@@ -1,4 +1,3 @@
-use ahash::{HashSet, HashSetExt};
 use type_map::concurrent::{self, TypeMap};
 
 use crate::FileServer;
@@ -80,7 +79,8 @@ impl RenderContext {
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
         // The set of files on disk that were modified in any way since last frame,
-        // ignoring deletion.
+        // ignoring deletions.
+        // Always an empty set in release builds.
         let modified_paths = FileServer::get_mut(|fs| fs.collect());
 
         {
@@ -94,7 +94,8 @@ impl RenderContext {
                 textures,
             } = &mut self.resource_pools; // not all pools require maintenance
 
-            // RenderPipelines refer to ShaderModules and thus must me maintained first.
+            // Render pipeline maintenance must come before shader module maintenance since
+            // it registers them.
             render_pipelines.frame_maintenance(
                 device,
                 self.frame_index,
