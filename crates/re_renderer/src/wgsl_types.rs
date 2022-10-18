@@ -1,3 +1,6 @@
+//! Explicitly padded and/or aligned types following wgsl rules.
+//! This is especially important for cases where [`glam`] isn't explicit about padding and alignment.
+
 #[repr(C)]
 #[repr(align(8))]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
