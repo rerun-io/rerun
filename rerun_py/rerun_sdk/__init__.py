@@ -742,8 +742,8 @@ def log_depth_image(
 def log_segmentation_image(
     obj_path: str,
     image: ClassIds,
-    *,
     class_descriptions: str = "",
+    *,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
