@@ -1,7 +1,7 @@
 use ahash::{HashSet, HashSetExt};
 use type_map::concurrent::{self, TypeMap};
 
-use crate::FileWatcher;
+use crate::FileServer;
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
@@ -79,7 +79,9 @@ impl RenderContext {
     }
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
-        let updated_paths = FileWatcher::get_mut(|fw| fw.dequeue());
+        // The set of files on disk that were modified in any way since last frame,
+        // ignoring deletion.
+        let modified_paths = FileServer::get_mut(|fs| fs.collect());
 
         {
             let WgpuResourcePools {
@@ -92,10 +94,6 @@ impl RenderContext {
                 textures,
             } = &mut self.resource_pools; // not all pools require maintenance
 
-            // 1. maintain pipeline so that shader modules don't get GC
-            // 2. check filewatcher to see whether modules were updated
-            // 3. recreate pipelines
-
             // RenderPipelines refer to ShaderModules and thus must me maintained first.
             render_pipelines.frame_maintenance(
                 device,
@@ -104,7 +102,7 @@ impl RenderContext {
                 pipeline_layouts,
             );
 
-            shader_modules.frame_maintenance(device, self.frame_index, &updated_paths);
+            shader_modules.frame_maintenance(device, self.frame_index, &modified_paths);
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use

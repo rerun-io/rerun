@@ -1,5 +1,16 @@
+use anyhow::Context;
 use std::path::PathBuf;
 
+// ---
+
+// TODO(cmc): dedupe the macro once #cfg on expressions becomes stable.
+
+/// A macro to read the contents of a file on disk.
+///
+/// - On WASM and/or release builds, this will behave like the standard [`include_str`]
+///   macro.
+/// - On native debug builds, this will actually load the specified path through
+///   our [`FileServer`], and keep watching for changes in the background.
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
 #[macro_export]
 macro_rules! include_file {
@@ -8,10 +19,16 @@ macro_rules! include_file {
             .parent()
             .unwrap()
             .join($path);
-        $crate::FileWatcher::get_mut(|fw| fw.watch(&path, false)).unwrap()
+        $crate::FileServer::get_mut(|fs| fs.watch(&path, false)).unwrap()
     }};
 }
 
+/// A macro to read the contents of a file on disk.
+///
+/// - On WASM and/or release builds, this will behave like the standard [`include_str`]
+///   macro.
+/// - On native debug builds, this will actually load the specified path through
+///   our [`FileServer`], and keep watching for changes in the background.
 #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
 #[macro_export]
 macro_rules! include_file {
@@ -20,6 +37,9 @@ macro_rules! include_file {
     }};
 }
 
+// ---
+
+/// A handle to the contents of a file.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum FileContents {
     Inlined(String),
@@ -36,15 +56,15 @@ impl FileContents {
     }
 }
 
-use anyhow::Context;
+pub use self::file_watcher_impl::FileServer;
 
-pub use self::file_watcher_impl::{FileWatcher, FILE_WATCHER};
+// ---
 
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
 mod file_watcher_impl {
     use std::path::{Path, PathBuf};
 
-    use ahash::{HashMap, HashSet, HashSetExt};
+    use ahash::HashSet;
     use anyhow::Context;
     use crossbeam::channel::Receiver;
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -52,14 +72,18 @@ mod file_watcher_impl {
 
     use super::FileContents;
 
-    pub static FILE_WATCHER: RwLock<Option<FileWatcher>> = RwLock::new(None);
+    /// The global [`FileServer`].
+    static FILE_SERVER: RwLock<Option<FileServer>> = RwLock::new(None);
 
-    pub struct FileWatcher {
+    /// A file server capable of watching filesystem events in the background and
+    /// (soon) resolve #import/#include clauses in files.
+    pub struct FileServer {
         watcher: RecommendedWatcher,
         events_rx: Receiver<Event>,
     }
 
-    impl FileWatcher {
+    // Private details
+    impl FileServer {
         fn new() -> anyhow::Result<Self> {
             let (events_tx, events_rx) = crossbeam::channel::unbounded();
 
@@ -77,33 +101,43 @@ mod file_watcher_impl {
 
             Ok(Self { watcher, events_rx })
         }
+    }
 
-        pub fn get<T>(mut f: impl FnMut(&FileWatcher) -> T) -> T {
-            if let Some(fw) = FILE_WATCHER.read().as_ref() {
-                return f(fw);
+    // Sigleton API
+    impl FileServer {
+        /// Returns a reference to the global `FileServer`.
+        pub fn get<T>(mut f: impl FnMut(&FileServer) -> T) -> T {
+            if let Some(fs) = FILE_SERVER.read().as_ref() {
+                return f(fs);
             }
 
             {
-                let mut global = FILE_WATCHER.write();
+                let mut global = FILE_SERVER.write();
                 if global.is_none() {
-                    let fw = Self::new().unwrap(); // TODO: handle err
-                    *global = Some(fw);
+                    let fs = Self::new().unwrap(); // TODO: handle err
+                    *global = Some(fs);
                 }
             }
 
-            f(FILE_WATCHER.read().as_ref().unwrap())
+            f(FILE_SERVER.read().as_ref().unwrap())
         }
-        pub fn get_mut<T>(mut f: impl FnMut(&mut FileWatcher) -> T) -> T {
-            let mut global = FILE_WATCHER.write();
+
+        /// Returns a mutable reference to the global `FileServer`.
+        pub fn get_mut<T>(mut f: impl FnMut(&mut FileServer) -> T) -> T {
+            let mut global = FILE_SERVER.write();
 
             if global.is_none() {
-                let fw = Self::new().unwrap(); // TODO: handle err
-                *global = Some(fw);
+                let fs = Self::new().unwrap(); // TODO: handle err
+                *global = Some(fs);
             }
 
             f(global.as_mut().unwrap())
         }
+    }
 
+    // Public API
+    impl FileServer {
+        /// Starts watching for file events at the given `path`.
         pub fn watch(
             &mut self,
             path: impl AsRef<Path>,
@@ -123,16 +157,23 @@ mod file_watcher_impl {
             Ok(FileContents::Path(path))
         }
 
+        /// Stops watching for file events at the given `path`.
         pub fn unwatch(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
             let path = std::fs::canonicalize(path.as_ref())?;
             self.watcher
                 .unwatch(path.as_ref())
-                .with_context(|| "couldn't watch file at {path:?}")
+                .with_context(|| "couldn't unwatch file at {path:?}")
         }
 
-        /// Reads all pending events.
-        // TODO: what an awful name
-        pub fn dequeue(&mut self) -> HashSet<PathBuf> {
+        /// Coalesces all filesystem events since the last call to `collect`,
+        /// and returns a set of all modified paths.
+        pub fn collect(&mut self) -> HashSet<PathBuf> {
+            fn canonicalize_opt(path: impl AsRef<Path>) -> Option<PathBuf> {
+                std::fs::canonicalize(path)
+                    .map_err(|err| re_log::error!(%err, "couldn't canonicalize path"))
+                    .ok()
+            }
+
             self.events_rx
                 .try_iter()
                 .flat_map(|ev| {
@@ -141,15 +182,9 @@ mod file_watcher_impl {
                         Access(_) | Create(_) | Modify(_) | Any => ev
                             .paths
                             .into_iter()
-                            .filter_map(|path| match std::fs::canonicalize(path) {
-                                Ok(path) => Some(path),
-                                Err(err) => {
-                                    re_log::error!(%err, "couldn't canonicalize path");
-                                    None
-                                }
-                            })
+                            .filter_map(canonicalize_opt)
                             .collect::<Vec<_>>(),
-                        Remove(_) | Other => vec![],
+                        Remove(_) | Other => Vec::new(),
                     }
                 })
                 .collect()
@@ -159,44 +194,23 @@ mod file_watcher_impl {
 
 #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
 mod file_watcher_impl {
+    use ahash::HashSet;
     use std::path::{Path, PathBuf};
 
-    use ahash::{HashMap, HashSet, HashSetExt};
-    use crossbeam::channel::Receiver;
-    use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
+    /// A noop implementation of a `FileServer`.
+    pub struct FileServer;
 
-    pub static FILE_WATCHER: FileWatcher = FileWatcher;
-
-    pub struct FileWatcher;
-
-    impl FileWatcher {
-        fn new() -> anyhow::Result<Self> {
-            Ok(Self)
-        }
-
-        pub fn get<T>(mut f: impl FnMut(&FileWatcher) -> T) -> T {
+    impl FileServer {
+        pub fn get<T>(mut f: impl FnMut(&FileServer) -> T) -> T {
             f(&Self)
         }
-        pub fn get_mut<T>(mut f: impl FnMut(&mut FileWatcher) -> T) -> T {
+
+        pub fn get_mut<T>(mut f: impl FnMut(&mut FileServer) -> T) -> T {
             f(&mut Self)
         }
 
-        pub fn watch(
-            &mut self,
-            _frame_index: u64,
-            _path: impl AsRef<Path>,
-            _recursive: bool,
-        ) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        pub fn unwatch(&mut self, _path: impl AsRef<Path>) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        /// Reads all pending events.
-        pub fn dequeue(&mut self) -> anyhow::Result<HashSet<PathBuf>> {
-            Ok(HashSet::new())
+        pub fn collect(&mut self) -> HashSet<PathBuf> {
+            Default::default()
         }
     }
 }

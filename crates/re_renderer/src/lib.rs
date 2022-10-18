@@ -12,4 +12,4 @@ mod renderer;
 mod resource_pools;
 
 mod file_watcher;
-pub use self::file_watcher::{FileContents, FileWatcher};
+pub use self::file_watcher::{FileContents, FileServer};
