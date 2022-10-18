@@ -117,7 +117,9 @@ mod file_server_impl {
             {
                 let mut global = FILE_SERVER.write();
                 if global.is_none() {
-                    let fs = Self::new().unwrap(); // TODO: handle err
+                    // NOTE: expect() is more than enough here, considering this can only
+                    // happen in debug builds.
+                    let fs = Self::new().expect("failed to initialize FileServer singleton");
                     *global = Some(fs);
                 }
             }
@@ -130,7 +132,9 @@ mod file_server_impl {
             let mut global = FILE_SERVER.write();
 
             if global.is_none() {
-                let fs = Self::new().unwrap(); // TODO: handle err
+                // NOTE: expect() is more than enough here, considering this can only
+                // happen in debug builds.
+                let fs = Self::new().expect("failed to initialize FileServer singleton");
                 *global = Some(fs);
             }
 

@@ -117,6 +117,7 @@ impl ShaderModulePool {
 
         // Recompile shader modules for outdated descriptors.
         for (path, desc) in descs {
+            // TODO(cmc): obviously terrible, we'll see as things evolve.
             let handle = self.pool.get_handle(&desc, |_| {
                 unreachable!("the pool itself handed us that descriptor")
             });
@@ -132,6 +133,12 @@ impl ShaderModulePool {
                     continue;
                 }
             };
+
+            re_log::debug!(
+                ?path,
+                label = desc.label.get(),
+                "successfully recompiled shader module"
+            );
 
             res.shader_module = shader_module;
             res.last_frame_modified
