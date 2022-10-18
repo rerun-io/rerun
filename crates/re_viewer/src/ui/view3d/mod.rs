@@ -473,9 +473,7 @@ pub(crate) fn view_3d(
                                     pixel_width: rect.width() as _,
                                     pixel_height: rect.height() as _,
 
-                                    camera_position: eye.world_from_view.translation(),
-                                    camera_orientation: eye.world_from_view.rotation(),
-
+                                    world_from_view: eye.world_from_view,
                                     fov_y: eye.fov_y,
                                     near_plane_distance: eye.near(),
 

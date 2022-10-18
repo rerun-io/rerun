@@ -2825,6 +2825,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "glam",
+ "macaw",
  "ordered-float",
  "parking_lot",
  "re_log",

@@ -37,8 +37,7 @@ pub struct TargetConfiguration {
     pub pixel_width: u32,
     pub pixel_height: u32,
 
-    pub camera_position: glam::Vec3,
-    pub camera_orientation: glam::Quat,
+    pub world_from_view: macaw::IsoTransform,
 
     pub fov_y: f32,
     pub near_plane_distance: f32,
@@ -121,11 +120,11 @@ impl FrameBuilder {
                 },
             );
 
-            let camera_target =
-                config.camera_position + config.camera_orientation.mul_vec3(-glam::Vec3::Z);
-            let camera_up = config.camera_orientation.mul_vec3(glam::Vec3::Y);
-            let view_from_world =
-                glam::Mat4::look_at_rh(config.camera_position, camera_target, camera_up);
+            let camera_position = config.world_from_view.translation();
+            let camera_target = config.world_from_view.transform_point3(-glam::Vec3::Z);
+            let camera_up = config.world_from_view.transform_vector3(glam::Vec3::Y);
+            let view_from_world = glam::Mat4::look_at_rh(camera_position, camera_target, camera_up);
+
             // We use infinite reverse-z projection matrix.
             // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
             // * no need to worry about far plane
@@ -158,7 +157,7 @@ impl FrameBuilder {
                     view_from_world: view_from_world.into(),
                     projection_from_view: projection_from_view.into(),
                     projection_from_world: projection_from_world.into(),
-                    camera_position: config.camera_position.into(),
+                    camera_position: config.world_from_view.translation().into(),
                     top_right_screen_corner_in_view: top_right_screen_corner_in_view.into(),
                 }),
             );
