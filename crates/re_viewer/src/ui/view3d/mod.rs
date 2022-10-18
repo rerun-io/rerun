@@ -457,6 +457,9 @@ pub(crate) fn view_3d(
 
         let target_identifier = egui::util::hash(ui.id());
 
+        let resolution_in_pixel = rect.size() * ui.ctx().pixels_per_point();
+        let resolution_in_pixel = [resolution_in_pixel.x as _, resolution_in_pixel.y as _];
+
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(
@@ -470,8 +473,7 @@ pub(crate) fn view_3d(
                                 device,
                                 queue,
                                 &TargetConfiguration {
-                                    pixel_width: rect.width() as _,
-                                    pixel_height: rect.height() as _,
+                                    resolution_in_pixel,
 
                                     world_from_view: eye.world_from_view,
                                     fov_y: eye.fov_y,

@@ -34,8 +34,7 @@ pub type SharedFrameBuilder = Arc<RwLock<FrameBuilder>>;
 
 /// Basic configuration for a target view.
 pub struct TargetConfiguration {
-    pub pixel_width: u32,
-    pub pixel_height: u32,
+    pub resolution_in_pixel: [u32; 2],
 
     pub world_from_view: macaw::IsoTransform,
 
@@ -80,14 +79,19 @@ impl FrameBuilder {
         // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
         self.hdr_render_target = ctx.resource_pools.textures.request(
             device,
-            &render_target_2d_desc(Self::FORMAT_HDR, config.pixel_width, config.pixel_height, 1),
+            &render_target_2d_desc(
+                Self::FORMAT_HDR,
+                config.resolution_in_pixel[0],
+                config.resolution_in_pixel[1],
+                1,
+            ),
         );
         self.depth_buffer = ctx.resource_pools.textures.request(
             device,
             &render_target_2d_desc(
                 Self::FORMAT_DEPTH,
-                config.pixel_width,
-                config.pixel_height,
+                config.resolution_in_pixel[0],
+                config.resolution_in_pixel[1],
                 1,
             ),
         );
@@ -131,7 +135,7 @@ impl FrameBuilder {
             // * 0 depth == near is more intuitive anyway!
             let projection_from_view = glam::Mat4::perspective_infinite_reverse_rh(
                 config.fov_y,
-                config.pixel_width as f32 / config.pixel_height as f32,
+                config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32,
                 config.near_plane_distance,
             );
             let projection_from_world = projection_from_view * view_from_world;
