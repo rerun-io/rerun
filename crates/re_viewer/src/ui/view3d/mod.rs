@@ -12,8 +12,6 @@ pub use mesh_cache::CpuMeshCache;
 
 use eye::*;
 use re_data_store::{InstanceId, InstanceIdHash};
-#[cfg(feature = "wgpu")]
-use re_renderer::frame_builder::FrameBuilder;
 use scene::*;
 
 use egui::NumExt as _;
@@ -452,18 +450,39 @@ pub(crate) fn view_3d(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
+        use re_renderer::frame_builder::{FrameBuilder, TargetConfiguration};
+
         let frame_builder_prepare = FrameBuilder::new_shared();
         let frame_builder_draw = frame_builder_prepare.clone();
+
+        let target_identifier = egui::util::hash(ui.id());
+
+        let resolution_in_pixel = rect.size() * ui.ctx().pixels_per_point();
+        let resolution_in_pixel = [resolution_in_pixel.x as _, resolution_in_pixel.y as _];
 
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
-                    .prepare(move |device, _queue, encoder, paint_callback_resources| {
+                    .prepare(move |device, queue, encoder, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         frame_builder_prepare
                             .write()
-                            .setup_target(ctx, device, rect.width() as u32, rect.height() as u32)
+                            .setup_target(
+                                ctx,
+                                device,
+                                queue,
+                                &TargetConfiguration {
+                                    resolution_in_pixel,
+
+                                    world_from_view: eye.world_from_view,
+                                    fov_y: eye.fov_y,
+                                    near_plane_distance: eye.near(),
+
+                                    target_identifier,
+                                },
+                            )
+                            .unwrap()
                             .test_triangle(ctx, device)
                             .generic_skybox(ctx, device)
                             .draw(ctx, encoder)

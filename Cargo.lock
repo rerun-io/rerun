@@ -2823,6 +2823,9 @@ name = "re_renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytemuck",
+ "glam",
+ "macaw",
  "ordered-float",
  "parking_lot",
  "re_log",
