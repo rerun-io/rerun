@@ -158,7 +158,7 @@ impl FrameBuilder {
                     .buffer,
                 0,
                 bytemuck::bytes_of(&FrameUniformBuffer {
-                    view_from_world: view_from_world.into(),
+                    view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
                     projection_from_view: projection_from_view.into(),
                     projection_from_world: projection_from_world.into(),
                     camera_position: config.world_from_view.translation().into(),

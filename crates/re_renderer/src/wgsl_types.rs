@@ -57,6 +57,18 @@ impl From<glam::Vec3> for Vec3 {
     }
 }
 
+impl From<glam::Vec3A> for Vec3 {
+    #[inline]
+    fn from(v: glam::Vec3A) -> Self {
+        Vec3 {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+            padding: 0.0,
+        }
+    }
+}
+
 #[repr(C)]
 #[repr(align(16))]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
@@ -96,6 +108,27 @@ impl From<glam::Mat4> for Mat4 {
             c1: m.y_axis.into(),
             c2: m.z_axis.into(),
             c3: m.w_axis.into(),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
+pub struct Mat4x3 {
+    c0: Vec3,
+    c1: Vec3,
+    c2: Vec3,
+    c3: Vec3,
+}
+
+impl From<glam::Affine3A> for Mat4x3 {
+    #[inline]
+    fn from(m: glam::Affine3A) -> Self {
+        Mat4x3 {
+            c0: m.matrix3.x_axis.into(),
+            c1: m.matrix3.y_axis.into(),
+            c2: m.matrix3.z_axis.into(),
+            c3: m.translation.into(),
         }
     }
 }

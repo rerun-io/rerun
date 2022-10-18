@@ -18,7 +18,7 @@ use crate::{
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
 pub(crate) struct FrameUniformBuffer {
-    pub view_from_world: wgsl_types::Mat4,
+    pub view_from_world: wgsl_types::Mat4x3,
     pub projection_from_view: wgsl_types::Mat4,
     pub projection_from_world: wgsl_types::Mat4,
 

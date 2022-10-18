@@ -1,5 +1,5 @@
 struct FrameUniformBuffer {
-    view_from_world: mat4x4<f32>,
+    view_from_world: mat4x3<f32>,
     projection_from_view: mat4x4<f32>,
     projection_from_world: mat4x4<f32>,
 
