@@ -823,7 +823,7 @@ fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>
 
 // ----------------------------------------------------------------------------
 
-// TODO(emilk): move this into `egui_dock`
+// TODO(emilk): replace with https://github.com/Adanos020/egui_dock/pull/53 when we update egui_dock
 fn num_tabs(tree: &egui_dock::Tree<SpaceViewId>) -> usize {
     let mut count = 0;
     for node in tree.iter() {
@@ -834,7 +834,7 @@ fn num_tabs(tree: &egui_dock::Tree<SpaceViewId>) -> usize {
     count
 }
 
-// TODO(emilk): move this into `egui_dock`
+// TODO(emilk): replace with https://github.com/Adanos020/egui_dock/pull/53 when we update egui_dock
 fn first_tab(tree: &egui_dock::Tree<SpaceViewId>) -> Option<SpaceViewId> {
     for node in tree.iter() {
         if let egui_dock::Node::Leaf { tabs, .. } = node {
