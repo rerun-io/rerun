@@ -26,6 +26,9 @@ atexit.register(rerun_shutdown)
 ColorDtype = Union[np.uint8, np.float32, np.float64]
 Colors = npt.NDArray[ColorDtype]
 
+ClassIdDtype = Union[np.uint8, np.uint16]
+ClassIds = npt.NDArray[ClassIdDtype]
+
 
 class MeshFormat(Enum):
     # Needs some way of logging materials too, or adding some default material to the
@@ -679,7 +682,6 @@ def log_image(
     obj_path: str,
     image: Colors,
     *,
-    legend: Optional[str] = None,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
@@ -708,7 +710,7 @@ def log_image(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}"
             )
 
-    log_tensor(obj_path, image, legend=legend, timeless=timeless, space=space)
+    log_tensor(obj_path, image, timeless=timeless, space=space)
 
 
 def log_depth_image(
@@ -735,6 +737,38 @@ def log_depth_image(
         raise TypeError(f"Expected 2D depth image, got array of shape {image.shape}")
 
     log_tensor(obj_path, image, meter=meter, timeless=timeless, space=space)
+
+
+def log_segmentation_image(
+    obj_path: str,
+    image: ClassIds,
+    *,
+    class_descriptions: str = "",
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
+    """
+    Log an image made up of uint8 or uint16 class-ids
+
+    The image should either have 1 channels.
+
+    Supported `dtype`s:
+    * uint8: components should be 0-255 class ids
+    * uint16: components should be 0-65535 class ids
+    * class_descriptions: path to a class_descriptions objection logged with `log_class_descriptions`
+
+    If no `space` is given, the space name "2D" will be used.
+    """
+    # Catch some errors early:
+    if len(image.shape) < 2 or 3 < len(image.shape):
+        raise TypeError(f"Expected image, got array of shape {image.shape}")
+
+    if len(image.shape) == 3:
+        depth = image.shape[2]
+        if depth != 1:
+            raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
+
+    log_tensor(obj_path, image, legend=class_descriptions, timeless=timeless, space=space)
 
 
 def log_tensor(
@@ -838,7 +872,7 @@ def expand_mapping(mapping: Union[str, Tuple[str, Sequence[int]], Mapping]) -> M
 
 
 # Do I need to normalize colors here?
-def log_segmentation_map(
+def log_class_descriptions(
     obj_path: str,
     id_map: Dict[int, Union[str, Tuple[str, Sequence[int]], Mapping]],
     *,
@@ -846,4 +880,4 @@ def log_segmentation_map(
 ) -> None:
     """Log a segmentation map."""
     id_map_typed = {id: expand_mapping(mapping) for id, mapping in id_map.items()}
-    rerun_rs.log_segmentation_map(obj_path, id_map_typed, timeless)
+    rerun_rs.log_class_descriptions(obj_path, id_map_typed, timeless)

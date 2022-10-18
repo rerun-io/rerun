@@ -114,7 +114,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
     m.add_function(wrap_pyfunction!(log_obb, m)?)?;
-    m.add_function(wrap_pyfunction!(log_segmentation_map, m)?)?;
+    m.add_function(wrap_pyfunction!(log_class_descriptions, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
@@ -1312,11 +1312,10 @@ fn log_tensor_f32(
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
     names: Option<&PyList>,
     meter: Option<f32>,
-    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, legend, timeless, space)
+    log_tensor(obj_path, img, names, meter, None, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1554,7 +1553,7 @@ type UnzipSegMap = (
 );
 
 #[pyfunction]
-fn log_segmentation_map(
+fn log_class_descriptions(
     obj_path: &str,
     id_map: HashMap<i32, (Option<String>, Option<Vec<u8>>)>,
     timeless: bool,
