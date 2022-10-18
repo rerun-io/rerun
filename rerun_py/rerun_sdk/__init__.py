@@ -5,7 +5,6 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from re import I
 from typing import Final, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -748,7 +747,7 @@ def log_segmentation_image(
     space: Optional[str] = None,
 ) -> None:
     """
-    Log an image made up of uint8 or uint16 class-ids
+    Log an image made up of uint8 or uint16 class-ids.
 
     The image should either have 1 channels.
 
@@ -861,6 +860,12 @@ def set_visible(obj_path: str, visibile: bool) -> None:
 
 @dataclass
 class ClassDescription:
+    """
+    Metadata about a class type identified by an id.
+
+    Color and label will be used to annotate objects which reference the id.
+    """
+
     id: int
     label: Optional[str] = None
     color: Optional[Sequence[int]] = None
@@ -873,11 +878,7 @@ def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
     if type(arg) is ClassDescription:
         return arg
     else:
-        try:
-            class_description = ClassDescription(*arg)  # type: ignore[misc]
-        except:
-            raise TypeError(f"Could not coerce {arg} to ClassDescription")
-        return class_description
+        return ClassDescription(*arg)  # type: ignore[misc]
 
 
 def log_class_descriptions(
@@ -886,8 +887,27 @@ def log_class_descriptions(
     *,
     timeless: bool = False,
 ) -> None:
-    """Log a segmentation map."""
+    """
+    Log a collection of ClassDescriptions which can be used for annotation of other objects.
 
+    This obj_path can be referenced from the `log_segmentation_image` API to
+    indicate this set of descriptions is relevant to the image.
+
+    Each ClassDescription must include an id, which will be used for matching
+    the class and may optionally include a label and color.
+
+    These can either be specified verbosely as:
+    ```
+    [ClassDescription(id=23, label='foo', color=(255, 0, 0)), ...]
+    ```
+
+    Or using short-hand tuples.
+    ```
+    [(23, 'bar'), ...]
+    ```
+
+    Unspecified colors will be filled in by the visualizer randomly.
+    """
     # Coerce tuples into ClassDescription dataclass for convenience
     typed_class_descriptions: list[ClassDescription] = [coerce_class_description(d) for d in class_descriptions]
 
