@@ -147,16 +147,6 @@ impl FrameBuilder {
                 .truncate()
                 .normalize();
 
-            let mut frame_uniform_buffer_content = encase::UniformBuffer::new(Vec::new());
-            frame_uniform_buffer_content
-                .write(&FrameUniformBuffer {
-                    view_from_world,
-                    projection_from_view,
-                    projection_from_world,
-                    camera_position: config.camera_position,
-                    top_right_screen_corner_in_view,
-                })
-                .context("fill frame uniform buffer")?;
             queue.write_buffer(
                 &ctx.resource_pools
                     .buffers
@@ -164,7 +154,13 @@ impl FrameBuilder {
                     .unwrap()
                     .buffer,
                 0,
-                &frame_uniform_buffer_content.into_inner(),
+                bytemuck::bytes_of(&FrameUniformBuffer {
+                    view_from_world: view_from_world.into(),
+                    projection_from_view: projection_from_view.into(),
+                    projection_from_world: projection_from_world.into(),
+                    camera_position: config.camera_position.into(),
+                    top_right_screen_corner_in_view: top_right_screen_corner_in_view.into(),
+                }),
             );
         }
 

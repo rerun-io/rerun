@@ -1,27 +1,31 @@
 use std::num::NonZeroU64;
 
-use crate::resource_pools::{
-    bind_group_layout_pool::*,
-    bind_group_pool::*,
-    buffer_pool::BufferHandle,
-    sampler_pool::{SamplerDesc, SamplerHandle},
-    WgpuResourcePools,
+use crate::{
+    resource_pools::{
+        bind_group_layout_pool::*,
+        bind_group_pool::*,
+        buffer_pool::BufferHandle,
+        sampler_pool::{SamplerDesc, SamplerHandle},
+        WgpuResourcePools,
+    },
+    wgsl_types,
 };
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
 ///
 /// Contains information that is constant for a single frame like camera.
 /// (does not contain information that is special to a particular renderer)
-#[derive(encase::ShaderType)]
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
 pub(crate) struct FrameUniformBuffer {
-    pub view_from_world: glam::Mat4,
-    pub projection_from_view: glam::Mat4,
-    pub projection_from_world: glam::Mat4,
+    pub view_from_world: wgsl_types::Mat4,
+    pub projection_from_view: wgsl_types::Mat4,
+    pub projection_from_world: wgsl_types::Mat4,
 
-    pub camera_position: glam::Vec3,
+    pub camera_position: wgsl_types::Vec3,
 
     /// View space coordinates of the top right screen corner.
-    pub top_right_screen_corner_in_view: glam::Vec2,
+    pub top_right_screen_corner_in_view: wgsl_types::Vec2Padded,
 }
 
 pub(crate) struct GlobalBindings {

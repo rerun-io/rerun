@@ -8,10 +8,8 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.56"
-encase = { version = "0.2", features = [
-  "glam",
-] } # can't upgrade until we upgrade glam
-glam = "0.20" # can't upgrade until macaw gets a new version using glam 0.21
+bytemuck = "1.12"
+glam = "0.20"                   # can't upgrade until macaw gets a new version using glam 0.21
 ordered-float = "3.2"
 parking_lot = "0.12"
 re_log = { path = "../re_log" }
