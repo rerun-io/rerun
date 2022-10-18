@@ -38,7 +38,6 @@ pub(crate) struct BufferDesc {
     //pub mapped_at_creation: bool,
 }
 
-// TODO(andreas) use a custom descriptor type with [`DebugLabel`] and a content id.
 #[derive(Default)]
 pub(crate) struct BufferPool {
     pool: ResourcePool<BufferHandle, BufferDesc, Buffer>,

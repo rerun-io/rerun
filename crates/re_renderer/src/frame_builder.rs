@@ -138,6 +138,10 @@ impl FrameBuilder {
             let projection_from_world = projection_from_view * view_from_world;
 
             let view_from_projection = projection_from_view.inverse();
+
+            // Calculate the top right corner of the screen in view space.
+            // Top right corner in projection space is (also called Normalized Device Coordinates) is (1, 1, 0)
+            // (z zero means it sits on the near-plane)
             let top_right_screen_corner_in_view = view_from_projection
                 .transform_point3(glam::vec3(1.0, 1.0, 0.0))
                 .truncate()

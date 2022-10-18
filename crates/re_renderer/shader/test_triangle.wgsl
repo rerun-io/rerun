@@ -1,12 +1,13 @@
-struct Locals {
+struct FrameUniformBuffer {
     view_from_world: mat4x4<f32>,
     projection_from_view: mat4x4<f32>,
     projection_from_world: mat4x4<f32>,
-    world_from_projection: mat4x4<f32>,
-    camera_position: vec3<f32>
+
+    camera_position: vec3<f32>,
+    top_right_screen_corner_in_view: vec2<f32>,
 };
 @group(0) @binding(0)
-var<uniform> frame_uniform_buffer: Locals;
+var<uniform> frame: FrameUniformBuffer;
 
 struct VertexOut {
     @location(0) color: vec4<f32>,
@@ -29,7 +30,7 @@ var<private> v_colors: array<vec4<f32>, 3> = array<vec4<f32>, 3>(
 fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     var out: VertexOut;
 
-    out.position = frame_uniform_buffer.projection_from_world * vec4<f32>(v_positions[v_idx], 0.0, 1.0);
+    out.position = frame.projection_from_world * vec4<f32>(v_positions[v_idx], 0.0, 1.0);
     out.color = v_colors[v_idx];
 
     return out;

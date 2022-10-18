@@ -1,4 +1,4 @@
-struct Locals {
+struct FrameUniformBuffer {
     view_from_world: mat4x4<f32>,
     projection_from_view: mat4x4<f32>,
     projection_from_world: mat4x4<f32>,
@@ -7,15 +7,15 @@ struct Locals {
     top_right_screen_corner_in_view: vec2<f32>,
 };
 @group(0) @binding(0)
-var<uniform> frame_uniform_buffer: Locals;
+var<uniform> frame: FrameUniformBuffer;
 
 fn camera_dir_from_screenuv(texcoord: vec2<f32>) -> vec3<f32> {
     let x = texcoord.x * 2.0 - 1.0;
     let y = (1.0 - texcoord.y) * 2.0 - 1.0;
-    let dir_view = normalize(vec3<f32>(frame_uniform_buffer.top_right_screen_corner_in_view * vec2<f32>(x, y), 1.0));
+    let dir_view = normalize(vec3<f32>(frame.top_right_screen_corner_in_view * vec2<f32>(x, y), 1.0));
     // the inner 3x3 part of the view_from_world matrix is orthonormal
     // A transpose / multiply from right is therefore its inverse!
-    return (vec4<f32>(dir_view, 0.0) * frame_uniform_buffer.view_from_world).xyz;
+    return (vec4<f32>(dir_view, 0.0) * frame.view_from_world).xyz;
 }
 
 struct VertexOutput {

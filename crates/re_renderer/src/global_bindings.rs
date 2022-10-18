@@ -19,6 +19,8 @@ pub(crate) struct FrameUniformBuffer {
     pub projection_from_world: glam::Mat4,
 
     pub camera_position: glam::Vec3,
+
+    /// View space coordinates of the top right screen corner.
     pub top_right_screen_corner_in_view: glam::Vec2,
 }
 

@@ -12,7 +12,6 @@ pub use mesh_cache::CpuMeshCache;
 
 use eye::*;
 use re_data_store::{InstanceId, InstanceIdHash};
-
 use scene::*;
 
 use egui::NumExt as _;
@@ -452,14 +451,11 @@ pub(crate) fn view_3d(
     #[cfg(feature = "wgpu")]
     let _callback = {
         use re_renderer::frame_builder::{FrameBuilder, TargetConfiguration};
-        use std::hash::{Hash, Hasher};
 
         let frame_builder_prepare = FrameBuilder::new_shared();
         let frame_builder_draw = frame_builder_prepare.clone();
 
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        ui.id().hash(&mut hasher);
-        let target_identifier = hasher.finish();
+        let target_identifier = egui::util::hash(ui.id());
 
         egui::PaintCallback {
             rect,
