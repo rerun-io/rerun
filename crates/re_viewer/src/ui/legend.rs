@@ -78,7 +78,7 @@ impl<'s> LabelMapping for Legend<'s> {
                     if let Some(label) = seg_label.label {
                         label.to_owned()
                     } else {
-                        seg_label.id.to_string()
+                        (val as i32).to_string()
                     }
                 } else {
                     "unknown".to_owned()

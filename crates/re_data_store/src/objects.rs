@@ -711,12 +711,6 @@ pub struct SegmentationMap<'s> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct SegmentationLabel<'s> {
-    // TODO(jleibs)
-    // Segmentation maps currently store their id redundantly with the the MultiObject
-    // index. This is a workaround related to the fact that the DataStore isn't available
-    // at the time that we are building up our mapping. This can be refactored away in
-    // the future.
-    pub id: i32,
     pub label: Option<&'s str>,
     pub color: Option<[u8; 4]>,
 }
@@ -752,7 +746,6 @@ impl<'s> SegmentationLabel<'s> {
                 segmentation_map.map.insert(
                     *id,
                     SegmentationLabel {
-                        id: *id,
                         label: label.map(|s| s.as_str()),
                         color: color.cloned(),
                     },
