@@ -1,3 +1,18 @@
+//! New experimental viewport panel.
+//!
+//! Before the new panel is up-to-par with the existing viewport panel, we need to:
+//!
+//! * [ ] Render the 3D camera
+//! * [ ] Not create extraneous views of "intermediate" spaces (e.g. camera space)
+//! * [ ] Convert existing python examples to the new style
+//! * [ ] Write good docs for how to use the new system
+//! * [ ] Remove the old code path
+//!
+//! After that we can implement:
+//! * [ ] Opening up new Space Views
+//! * [ ] Controlling visibility of objects inside each Space View
+//! * [ ] Transforming objects between spaces
+
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
