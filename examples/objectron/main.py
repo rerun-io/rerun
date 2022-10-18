@@ -209,7 +209,12 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
                 log_projected_bbox(f"3d/camera/video/objects/{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
-                    rerun.log_point(f"3d/camera/video/objects/{obj_ann.object_id}/{id}", pos2, color=[130, 160, 250, 255], space="image")
+                    rerun.log_point(
+                        f"3d/camera/video/objects/{obj_ann.object_id}/{id}",
+                        pos2,
+                        color=[130, 160, 250, 255],
+                        space="image",
+                    )
 
 
 def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
