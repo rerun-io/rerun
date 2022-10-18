@@ -13,14 +13,14 @@ use super::{
 slotmap::new_key_type! { pub(crate) struct BindGroupHandle; }
 
 pub(crate) struct BindGroup {
-    last_frame_used: AtomicU64,
+    usage_state: AtomicU64,
     pub(crate) bind_group: wgpu::BindGroup,
 }
 
 // [`BindGroup`] is relatively lightweight, but since buffers and textures are recreated a lot, we might pile them up, so let's keep track!
 impl UsageTrackedResource for BindGroup {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
+    fn usage_state(&self) -> &AtomicU64 {
+        &self.usage_state
     }
 }
 
@@ -79,7 +79,7 @@ impl BindGroupPool {
                         resource: match entry {
                             BindGroupEntry::TextureView(handle) => {
                                 wgpu::BindingResource::TextureView(
-                                    &textures.get(*handle).unwrap().default_view,
+                                    &textures.get_resource(*handle).unwrap().default_view,
                                 )
                             }
                             BindGroupEntry::Buffer {
@@ -87,21 +87,21 @@ impl BindGroupPool {
                                 offset,
                                 size,
                             } => wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                                buffer: &buffers.get(*handle).unwrap().buffer,
+                                buffer: &buffers.get_resource(*handle).unwrap().buffer,
                                 offset: *offset,
                                 size: *size,
                             }),
                             BindGroupEntry::Sampler(handle) => wgpu::BindingResource::Sampler(
-                                &samplers.get(*handle).unwrap().sampler,
+                                &samplers.get_resource(*handle).unwrap().sampler,
                             ),
                         },
                     })
                     .collect::<Vec<_>>(),
-                layout: &bind_group_layout.get(desc.layout).unwrap().layout,
+                layout: &bind_group_layout.get_resource(desc.layout).unwrap().layout,
             });
             BindGroup {
                 bind_group,
-                last_frame_used: AtomicU64::new(0),
+                usage_state: AtomicU64::new(0),
             }
         })
     }
@@ -132,8 +132,10 @@ impl BindGroupPool {
             }
         }
     }
+}
 
-    pub fn get(&self, handle: BindGroupHandle) -> Result<&BindGroup, PoolError> {
-        self.pool.get_resource(handle)
+impl<'a> ResourcePoolFacade<'a, BindGroupHandle, BindGroupDesc, BindGroup> for BindGroupPool {
+    fn pool(&'a self) -> &ResourcePool<BindGroupHandle, BindGroupDesc, BindGroup> {
+        &self.pool
     }
 }

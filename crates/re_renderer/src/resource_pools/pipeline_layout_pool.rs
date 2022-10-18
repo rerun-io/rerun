@@ -37,15 +37,19 @@ impl PipelineLayoutPool {
                 bind_group_layouts: &desc
                     .entries
                     .iter()
-                    .map(|handle| &bind_group_layout_pool.get(*handle).unwrap().layout)
+                    .map(|handle| &bind_group_layout_pool.get_resource(*handle).unwrap().layout)
                     .collect::<Vec<_>>(),
                 push_constant_ranges: &[], // Sadly not widely supported
             });
             PipelineLayout { layout }
         })
     }
+}
 
-    pub fn get(&self, handle: PipelineLayoutHandle) -> Result<&PipelineLayout, PoolError> {
-        self.pool.get_resource(handle)
+impl<'a> ResourcePoolFacade<'a, PipelineLayoutHandle, PipelineLayoutDesc, PipelineLayout>
+    for PipelineLayoutPool
+{
+    fn pool(&'a self) -> &ResourcePool<PipelineLayoutHandle, PipelineLayoutDesc, PipelineLayout> {
+        &self.pool
     }
 }

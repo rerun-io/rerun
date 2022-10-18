@@ -7,13 +7,13 @@ use super::resource_pool::*;
 slotmap::new_key_type! { pub(crate) struct BufferHandle; }
 
 pub(crate) struct Buffer {
-    last_frame_used: AtomicU64,
+    usage_state: AtomicU64,
     pub(crate) buffer: wgpu::Buffer,
 }
 
 impl UsageTrackedResource for Buffer {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
+    fn usage_state(&self) -> &AtomicU64 {
+        &self.usage_state
     }
 }
 
@@ -53,7 +53,7 @@ impl BufferPool {
                 mapped_at_creation: false,
             });
             Buffer {
-                last_frame_used: AtomicU64::new(0),
+                usage_state: AtomicU64::new(0),
                 buffer,
             }
         })
@@ -62,12 +62,10 @@ impl BufferPool {
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         self.pool.discard_unused_resources(frame_index);
     }
+}
 
-    pub fn get(&self, handle: BufferHandle) -> Result<&Buffer, PoolError> {
-        self.pool.get_resource(handle)
-    }
-
-    pub(super) fn register_resource_usage(&mut self, handle: BufferHandle) {
-        let _ = self.get(handle);
+impl<'a> ResourcePoolFacade<'a, BufferHandle, BufferDesc, Buffer> for BufferPool {
+    fn pool(&'a self) -> &ResourcePool<BufferHandle, BufferDesc, Buffer> {
+        &self.pool
     }
 }

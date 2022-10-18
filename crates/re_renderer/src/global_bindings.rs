@@ -6,7 +6,7 @@ use crate::{
         bind_group_pool::*,
         buffer_pool::BufferHandle,
         sampler_pool::{SamplerDesc, SamplerHandle},
-        WgpuResourcePools,
+        ResourcePoolFacade as _, WgpuResourcePools,
     },
     wgsl_types,
 };
@@ -35,45 +35,49 @@ pub(crate) struct GlobalBindings {
 
 impl GlobalBindings {
     pub fn new(pools: &mut WgpuResourcePools, device: &wgpu::Device) -> Self {
-        Self {
-            layout: pools.bind_group_layouts.request(
-                device,
-                &BindGroupLayoutDesc {
-                    label: "global bind group layout".into(),
+        let layout = pools.bind_group_layouts.request(
+            device,
+            &BindGroupLayoutDesc {
+                label: "global bind group layout".into(),
 
-                    entries: vec![
-                        // The global per-frame uniform buffer.
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::all(),
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: NonZeroU64::new(std::mem::size_of::<
-                                    FrameUniformBuffer,
-                                >(
-                                )
-                                    as _),
-                            },
-                            count: None,
+                entries: vec![
+                    // The global per-frame uniform buffer.
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::all(),
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(
+                                std::mem::size_of::<FrameUniformBuffer>() as _,
+                            ),
                         },
-                        // Sampler without any filtering.
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
-                            count: None,
-                        },
-                    ],
-                },
-            ),
-            nearest_neighbor_sampler: pools.samplers.request(
-                device,
-                &SamplerDesc {
-                    label: "nearest".into(),
-                    ..Default::default()
-                },
-            ),
+                        count: None,
+                    },
+                    // Sampler without any filtering.
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        count: None,
+                    },
+                ],
+            },
+        );
+        pools.bind_group_layouts.pin_resource(layout);
+
+        let nearest_neighbor_sampler = pools.samplers.request(
+            device,
+            &SamplerDesc {
+                label: "nearest".into(),
+                ..Default::default()
+            },
+        );
+        pools.samplers.pin_resource(nearest_neighbor_sampler);
+
+        Self {
+            layout,
+            nearest_neighbor_sampler,
         }
     }
 

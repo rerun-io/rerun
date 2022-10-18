@@ -1,7 +1,10 @@
 use crate::{
     context::SharedRendererData,
     frame_builder::FrameBuilder,
-    resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, WgpuResourcePools},
+    resource_pools::{
+        pipeline_layout_pool::*, render_pipeline_pool::*, ResourcePoolFacade as _,
+        WgpuResourcePools,
+    },
 };
 
 use super::Renderer;
@@ -58,6 +61,7 @@ impl Renderer for TestTriangle {
             },
             &pools.pipeline_layouts,
         );
+        pools.render_pipelines.pin_resource(render_pipeline);
 
         TestTriangle { render_pipeline }
     }
@@ -77,7 +81,7 @@ impl Renderer for TestTriangle {
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
-        let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         pass.set_pipeline(&pipeline.pipeline);
         pass.draw(0..3, 0..1);
         Ok(())

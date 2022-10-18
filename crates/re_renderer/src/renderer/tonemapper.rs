@@ -2,7 +2,8 @@ use crate::{
     context::SharedRendererData,
     resource_pools::{
         bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, texture_pool::TextureHandle, WgpuResourcePools,
+        render_pipeline_pool::*, texture_pool::TextureHandle, ResourcePoolFacade,
+        WgpuResourcePools,
     },
 };
 
@@ -50,6 +51,7 @@ impl Renderer for Tonemapper {
                 }],
             },
         );
+        pools.bind_group_layouts.pin_resource(bind_group_layout);
 
         let render_pipeline = pools.render_pipelines.request(
             device,
@@ -79,6 +81,7 @@ impl Renderer for Tonemapper {
             },
             &pools.pipeline_layouts,
         );
+        pools.render_pipelines.pin_resource(render_pipeline);
 
         Tonemapper {
             render_pipeline,
@@ -114,8 +117,10 @@ impl Renderer for Tonemapper {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
-        let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
-        let bind_group = pools.bind_groups.get(draw_data.hdr_target_bind_group)?;
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let bind_group = pools
+            .bind_groups
+            .get_resource(draw_data.hdr_target_bind_group)?;
 
         pass.set_pipeline(&pipeline.pipeline);
         pass.set_bind_group(1, &bind_group.bind_group, &[]);

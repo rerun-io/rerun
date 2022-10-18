@@ -9,6 +9,7 @@ pub(crate) mod sampler_pool;
 pub(crate) mod texture_pool;
 
 mod resource_pool;
+pub(crate) use resource_pool::ResourcePoolFacade;
 
 use self::{
     bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,

@@ -7,13 +7,13 @@ use super::{pipeline_layout_pool::*, resource_pool::*};
 slotmap::new_key_type! { pub(crate) struct RenderPipelineHandle; }
 
 pub(crate) struct RenderPipeline {
-    last_frame_used: AtomicU64,
+    usage_state: AtomicU64,
     pub(crate) pipeline: wgpu::RenderPipeline,
 }
 
 impl UsageTrackedResource for RenderPipeline {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
+    fn usage_state(&self) -> &AtomicU64 {
+        &self.usage_state
     }
 }
 
@@ -82,7 +82,9 @@ impl RenderPipelinePool {
                 });
 
             // TODO(andreas): Manage pipeline layouts similar to other pools
-            let pipeline_layout = pipeline_layout_pool.get(desc.pipeline_layout).unwrap();
+            let pipeline_layout = pipeline_layout_pool
+                .get_resource(desc.pipeline_layout)
+                .unwrap();
 
             let wgpu_desc = wgpu::RenderPipelineDescriptor {
                 label: desc.label.get(),
@@ -104,7 +106,7 @@ impl RenderPipelinePool {
             };
 
             RenderPipeline {
-                last_frame_used: AtomicU64::new(0),
+                usage_state: AtomicU64::new(0),
                 pipeline: device.create_render_pipeline(&wgpu_desc),
             }
         })
@@ -116,8 +118,12 @@ impl RenderPipelinePool {
         // Kill any renderpipelines that haven't been used in this last frame
         self.pool.discard_unused_resources(frame_index);
     }
+}
 
-    pub fn get(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
-        self.pool.get_resource(handle)
+impl<'a> ResourcePoolFacade<'a, RenderPipelineHandle, RenderPipelineDesc, RenderPipeline>
+    for RenderPipelinePool
+{
+    fn pool(&'a self) -> &ResourcePool<RenderPipelineHandle, RenderPipelineDesc, RenderPipeline> {
+        &self.pool
     }
 }

@@ -72,12 +72,10 @@ impl SamplerPool {
             Sampler { sampler }
         })
     }
+}
 
-    pub fn get(&self, handle: SamplerHandle) -> Result<&Sampler, PoolError> {
-        self.pool.get_resource(handle)
-    }
-
-    pub(super) fn register_resource_usage(&mut self, handle: SamplerHandle) {
-        let _ = self.get(handle);
+impl<'a> ResourcePoolFacade<'a, SamplerHandle, SamplerDesc, Sampler> for SamplerPool {
+    fn pool(&'a self) -> &ResourcePool<SamplerHandle, SamplerDesc, Sampler> {
+        &self.pool
     }
 }

@@ -46,9 +46,11 @@ impl Renderers {
         resource_pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> &R {
-        self.renderers
-            .entry()
-            .or_insert_with(|| R::create_renderer(shared_data, resource_pools, device))
+        self.renderers.entry().or_insert_with(|| {
+            // TODO: How can issue an error/warning if a resource in here wasn't pinned?
+            // Should we have scopes in which everything is pinned?
+            R::create_renderer(shared_data, resource_pools, device)
+        })
     }
 
     pub fn get<R: 'static + Renderer>(&self) -> Option<&R> {

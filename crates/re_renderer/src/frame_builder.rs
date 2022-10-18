@@ -10,6 +10,7 @@ use crate::{
         bind_group_pool::BindGroupHandle,
         buffer_pool::{BufferDesc, BufferHandle},
         texture_pool::*,
+        ResourcePoolFacade as _,
     },
 };
 
@@ -153,7 +154,7 @@ impl FrameBuilder {
             queue.write_buffer(
                 &ctx.resource_pools
                     .buffers
-                    .get(self.frame_uniform_buffer)
+                    .get_resource(self.frame_uniform_buffer)
                     .unwrap()
                     .buffer,
                 0,
@@ -207,12 +208,12 @@ impl FrameBuilder {
         let color = ctx
             .resource_pools
             .textures
-            .get(self.hdr_render_target)
+            .get_resource(self.hdr_render_target)
             .context("hdr render target")?;
         let depth = ctx
             .resource_pools
             .textures
-            .get(self.depth_buffer)
+            .get_resource(self.depth_buffer)
             .context("depth buffer")?;
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -239,7 +240,7 @@ impl FrameBuilder {
             0,
             &ctx.resource_pools
                 .bind_groups
-                .get(self.bind_group_0)
+                .get_resource(self.bind_group_0)
                 .context("get global bind group")?
                 .bind_group,
             &[],
@@ -280,7 +281,7 @@ impl FrameBuilder {
             0,
             &ctx.resource_pools
                 .bind_groups
-                .get(self.bind_group_0)
+                .get_resource(self.bind_group_0)
                 .context("get global bind group")?
                 .bind_group,
             &[],

@@ -5,35 +5,33 @@ use super::resource_pool::*;
 slotmap::new_key_type! { pub(crate) struct TextureHandle; }
 
 pub(crate) struct Texture {
-    last_frame_used: AtomicU64,
+    usage_state: AtomicU64,
     pub(crate) _texture: wgpu::Texture,
     pub(crate) default_view: wgpu::TextureView,
     // TODO(andreas) what about custom views
 }
 
 impl UsageTrackedResource for Texture {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
+    fn usage_state(&self) -> &AtomicU64 {
+        &self.usage_state
     }
 }
 
 // TODO(andreas) use a custom descriptor type with [`DebugLabel`] and a content id.
+type TextureDesc = wgpu::TextureDescriptor<'static>;
+
 #[derive(Default)]
 pub(crate) struct TexturePool {
-    pool: ResourcePool<TextureHandle, wgpu::TextureDescriptor<'static>, Texture>,
+    pool: ResourcePool<TextureHandle, TextureDesc, Texture>,
 }
 
 impl TexturePool {
-    pub fn request(
-        &mut self,
-        device: &wgpu::Device,
-        desc: &wgpu::TextureDescriptor<'static>,
-    ) -> TextureHandle {
+    pub fn request(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> TextureHandle {
         self.pool.get_handle(desc, |desc| {
             let texture = device.create_texture(desc);
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             Texture {
-                last_frame_used: AtomicU64::new(0),
+                usage_state: AtomicU64::new(0),
                 _texture: texture,
                 default_view: view,
             }
@@ -43,14 +41,6 @@ impl TexturePool {
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         self.pool.discard_unused_resources(frame_index);
     }
-
-    pub fn get(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
-        self.pool.get_resource(handle)
-    }
-
-    pub(super) fn register_resource_usage(&mut self, handle: TextureHandle) {
-        let _ = self.get(handle);
-    }
 }
 
 pub(crate) fn render_target_2d_desc(
@@ -58,7 +48,7 @@ pub(crate) fn render_target_2d_desc(
     width: u32,
     height: u32,
     sample_count: u32,
-) -> wgpu::TextureDescriptor<'static> {
+) -> TextureDesc {
     wgpu::TextureDescriptor {
         label: Some("rendertarget"),
         size: wgpu::Extent3d {
@@ -71,5 +61,11 @@ pub(crate) fn render_target_2d_desc(
         dimension: wgpu::TextureDimension::D2,
         format,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+    }
+}
+
+impl<'a> ResourcePoolFacade<'a, TextureHandle, TextureDesc, Texture> for TexturePool {
+    fn pool(&'a self) -> &ResourcePool<TextureHandle, TextureDesc, Texture> {
+        &self.pool
     }
 }

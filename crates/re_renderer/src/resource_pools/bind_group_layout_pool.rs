@@ -37,8 +37,14 @@ impl BindGroupLayoutPool {
             BindGroupLayout { layout }
         })
     }
+}
 
-    pub fn get(&self, handle: BindGroupLayoutHandle) -> Result<&BindGroupLayout, PoolError> {
-        self.pool.get_resource(handle)
+impl<'a> ResourcePoolFacade<'a, BindGroupLayoutHandle, BindGroupLayoutDesc, BindGroupLayout>
+    for BindGroupLayoutPool
+{
+    fn pool(
+        &'a self,
+    ) -> &ResourcePool<BindGroupLayoutHandle, BindGroupLayoutDesc, BindGroupLayout> {
+        &self.pool
     }
 }
