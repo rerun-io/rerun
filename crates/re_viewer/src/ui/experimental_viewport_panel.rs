@@ -29,6 +29,7 @@ use crate::misc::ViewerContext;
 
 // ----------------------------------------------------------------------------
 
+/// A unique id for each space view.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 struct SpaceViewId(uuid::Uuid);
 
@@ -40,22 +41,33 @@ impl SpaceViewId {
 
 // ----------------------------------------------------------------------------
 
+/// Information about one "space".
+///
+/// This is gathered by analyzing the transform hierarchy of the objects.
 #[derive(Default)]
 struct SpaceInfo {
     /// All paths in this space (including self and children connected by the identity transform).
     objects: IntSet<ObjPath>,
 
+    /// Nearest ancestor to whom we are not connected via an identity transform.
     #[allow(unused)] // TODO(emilk): support projecting parent space(s) into this space
     parent: Option<(ObjPath, Transform)>,
+
+    /// Nearest decedents to whom we are not connected with an identity transform.
     child_spaces: BTreeMap<ObjPath, Transform>,
 }
 
+/// Information about all spaces.
+///
+/// This is gathered by analyzing the transform hierarchy of the objects.
 #[derive(Default)]
 struct SpacesInfo {
     spaces: BTreeMap<ObjPath, SpaceInfo>,
 }
 
 impl SpacesInfo {
+    /// Do a graph analysis of the transform hierarchy, and create cuts
+    /// wherever we find a non-identity transform.
     fn new(obj_db: &ObjDb, timeline: &Timeline) -> Self {
         crate::profile_function!();
 
@@ -67,6 +79,7 @@ impl SpacesInfo {
             tree: &ObjectTree,
         ) {
             if let Some(transform) = query_transform(timeline_store, &tree.path) {
+                // A non-identity transform - create a new space.
                 parent_space_info
                     .child_spaces
                     .insert(tree.path.clone(), transform.clone());
@@ -149,17 +162,21 @@ fn query_transform<'s>(
 
 // ----------------------------------------------------------------------------
 
+/// Describes the layout and contents of the Viewport Panel.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 struct Blueprint {
+    /// Where the space views are stored.
+    space_views: HashMap<SpaceViewId, SpaceView>,
+
+    /// The layouts of all the space views.
     tree: egui_dock::Tree<SpaceViewId>,
 
     /// Show one tab as maximized?
     maximized: Option<SpaceViewId>,
-
-    space_views: HashMap<SpaceViewId, SpaceView>,
 }
 
 impl Blueprint {
+    /// Create a default suggested blueprint using some heuristics.
     pub fn new(spaces_info: &SpacesInfo, available_size: egui::Vec2) -> Self {
         crate::profile_function!();
 
@@ -192,6 +209,7 @@ impl Blueprint {
         blueprint
     }
 
+    /// Show the blueprint panel tree view.
     pub fn tree_ui(&mut self, ui: &mut egui::Ui, spaces_info: &SpacesInfo, obj_tree: &ObjectTree) {
         crate::profile_function!();
 
@@ -262,6 +280,7 @@ enum ViewCategory {
 
 // ----------------------------------------------------------------------------
 
+/// A view of a space.
 #[derive(serde::Deserialize, serde::Serialize)]
 struct SpaceView {
     name: String,
@@ -281,8 +300,8 @@ impl SpaceView {
     ) -> egui::Response {
         crate::profile_function!(self.name.as_str());
 
+        // Get the latest objects for the currently selected time:
         let mut time_objects = Objects::default();
-
         {
             crate::profile_scope!("time_query");
             let timeline = ctx.rec_cfg.time_ctrl.timeline();
@@ -308,6 +327,8 @@ impl SpaceView {
             }
         }
 
+        // Get the "sticky" objects (e.g. text logs)
+        // that don't care about the current time:
         let mut sticky_objects = Objects::default();
         {
             crate::profile_scope!("sticky_query");
@@ -428,6 +449,7 @@ fn is_sticky_type(obj_type: &ObjectType) -> bool {
 
 // ----------------------------------------------------------------------------
 
+/// Camera position and similar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 struct ViewState {
     // per space
@@ -644,6 +666,7 @@ impl ExperimentalViewportPanel {
 }
 
 // ----------------------------------------------------------------------------
+// Code for automatic layout of panels:
 
 #[derive(Clone, Debug)]
 struct SpaceMakeInfo {
