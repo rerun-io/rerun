@@ -1,0 +1,40 @@
+[package]
+name = "renderer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+env_logger = "0.9"
+log = "0.4"
+parking_lot = "0.12"
+pollster = "0.2"
+type-map = "0.5"
+winit = "0.27"
+
+re_renderer = { path = "../../crates/re_renderer" }
+
+## TODO(cmc): maybe re_renderer should just expose these though?
+
+# native
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+async-executor = "1.0"
+wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
+
+# wasm
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.7"
+console_log = "0.2"
+wasm-bindgen-futures = "0.4.33"
+web-sys = { version = "0.3.60", features = [
+  "Location",
+  "Blob",
+  "RequestInit",
+  "RequestMode",
+  "Request",
+  "Response",
+] }
+wgpu = { version = "0.14", default-features = false, features = [
+  "webgl",
+  "wgsl",
+] }
