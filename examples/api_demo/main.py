@@ -41,7 +41,7 @@ def args_segmentation(subparsers: Any) -> None:
 def run_segmentation(args: argparse.Namespace) -> None:
     rerun.set_time_seconds("sim_time", 1)
 
-    # Log an image
+    # Log an image before we have set up our labels
     segmentation_img = np.zeros([128, 128], dtype="uint8")
     segmentation_img[10:20, 30:50] = 13
     segmentation_img[80:100, 60:80] = 42
@@ -49,16 +49,17 @@ def run_segmentation(args: argparse.Namespace) -> None:
     rerun.log_segmentation_image("img", segmentation_img, "labels")
 
     # Log an initial segmentation map with arbitrary colors
+    rerun.set_time_seconds("sim_time", 2)
     rerun.log_class_descriptions("labels", [(13, "label1"), (42, "label2"), (99, "label3")])
 
     # Log an updated segmentation map with specific colors
-    rerun.set_time_seconds("sim_time", 2)
+    rerun.set_time_seconds("sim_time", 3)
     rerun.log_class_descriptions(
         "labels", [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]
     )
 
     # Log with a mixture of set and unset colors / labels
-    rerun.set_time_seconds("sim_time", 3)
+    rerun.set_time_seconds("sim_time", 4)
     rerun.log_class_descriptions(
         "labels",
         [ClassDescription(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), ClassDescription(99, label="label3")],

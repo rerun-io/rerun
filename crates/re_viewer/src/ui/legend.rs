@@ -5,8 +5,8 @@ use re_log_types::MsgId;
 pub type Legend<'s> = Option<&'s re_data_store::ClassDescriptionMap<'s>>;
 
 lazy_static! {
-    pub(crate) static ref MISSING_MSGID: MsgId = MsgId::random();
-    pub(crate) static ref MISSING_LEGEND: re_data_store::ClassDescriptionMap<'static> = {
+    static ref MISSING_MSGID: MsgId = MsgId::random();
+    static ref MISSING_LEGEND: re_data_store::ClassDescriptionMap<'static> = {
         re_data_store::ClassDescriptionMap {
             msg_id: &MISSING_MSGID,
             map: HashMap::<i32, re_data_store::ClassDescription<'static>>::default(),
@@ -14,6 +14,9 @@ lazy_static! {
     };
 }
 
+// If the object_path is set on the image, but it doesn't point to a valid legend
+// we return the default MissingLegend which gives us "reasonable" behavior.
+// TODO(jleibs): We should still surface a user-visible error in this case
 pub(crate) fn find_legend<'s>(
     obj_path: Option<&re_data_store::ObjPath>,
     objects: &'s re_data_store::Objects<'s>,
