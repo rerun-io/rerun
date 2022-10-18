@@ -913,9 +913,9 @@ def log_class_descriptions(
     Unspecified colors will be filled in by the visualizer randomly.
     """
     # Coerce tuples into ClassDescription dataclass for convenience
-    typed_class_descriptions: list[ClassDescription] = [coerce_class_description(d) for d in class_descriptions]
+    typed_class_descriptions = (coerce_class_description(d) for d in class_descriptions)
 
-    # Convert back to fixed tuple for easy po3 conversion
+    # Convert back to fixed tuple for easy pyo3 conversion
     tuple_class_descriptions = [(d.id, d.label, d.color) for d in typed_class_descriptions]
 
     rerun_rs.log_class_descriptions(obj_path, tuple_class_descriptions, timeless)
