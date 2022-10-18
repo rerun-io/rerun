@@ -831,6 +831,7 @@ impl<'s> Objects<'s> {
             line_segments3d,
             mesh3d,
             camera,
+            arrow3d,
         } = self;
         space.len()
             + image.len()
@@ -844,6 +845,7 @@ impl<'s> Objects<'s> {
             + line_segments3d.len()
             + mesh3d.len()
             + camera.len()
+            + arrow3d.len()
     }
 
     pub fn has_any_2d(&self) -> bool {
