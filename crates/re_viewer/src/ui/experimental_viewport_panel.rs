@@ -166,7 +166,7 @@ impl Blueprint {
             space_make_infos.push(SpaceMakeInfo {
                 id: space_view_id,
                 path: path.clone(),
-                size2d: None, // TODO
+                size2d: None, // TODO(emilk): figure out the size of spaces somehow. Each object path could have a running bbox?
             });
         }
 
@@ -518,7 +518,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             if let Some(space_info) = self.spaces_info.spaces.get(&space_view.space_path) {
                 space_view.ui(self.ctx, space_info, ui);
             } else {
-                ui.label("[Missing space]"); // TODO
+                unknown_space_label(ui, &space_view.space_path);
             }
         });
     }
@@ -530,6 +530,13 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .expect("Should have been populated beforehand");
         space_view.name.clone().into()
     }
+}
+
+fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) {
+    ui.colored_label(
+        ui.visuals().warn_fg_color,
+        format!("Unknown space {space_path}"),
+    );
 }
 
 // ----------------------------------------------------------------------------
@@ -577,7 +584,7 @@ impl ExperimentalViewportPanel {
                 if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
                     space_view.ui(ctx, space_info, ui);
                 } else {
-                    ui.label("[Missing space]"); // TODO
+                    unknown_space_label(ui, &space_view.space_path);
                 }
             } else if let Some(space_view_id) = self.blueprint.maximized {
                 let space_view = self
@@ -600,7 +607,7 @@ impl ExperimentalViewportPanel {
                 if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
                     space_view.ui(ctx, space_info, ui);
                 } else {
-                    ui.label("[Missing space]"); // TODO
+                    unknown_space_label(ui, &space_view.space_path);
                 }
             } else {
                 let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
