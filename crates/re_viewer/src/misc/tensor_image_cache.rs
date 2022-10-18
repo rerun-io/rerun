@@ -33,31 +33,32 @@ pub struct TensorImageView<'store, 'cache> {
 // Use a MsgIdPair for the cache index so that we don't cache across
 // changes to the legend
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct MsgIdPair(MsgId, Option<MsgId>);
-impl nohash_hasher::IsEnabled for MsgIdPair {}
+struct ImageCacheKey {
+    image_msg_id: MsgId,
+    legend_msg_id: Option<MsgId>,
+}
+impl nohash_hasher::IsEnabled for ImageCacheKey {}
 
 // required for [`nohash_hasher`].
 #[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for MsgIdPair {
+impl std::hash::Hash for ImageCacheKey {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let uuid0 = self.0 .0.as_u128() as u64;
+        let msg_hash = self.image_msg_id.0.as_u128() as u64;
 
-        let uuid1 = if let Some(uuid) = self.1 {
-            uuid.0.as_u128() as u64
+        let legend_hash = if let Some(legend_msg_id) = self.legend_msg_id {
+            (legend_msg_id.0.as_u128() >> 1) as u64
         } else {
             0
         };
 
-        // TODO(jleibs): I believe XOR makes sense to combine two UUIDs
-        // but this probably warrants some discussion
-        state.write_u64(uuid0 ^ uuid1);
+        state.write_u64(msg_hash ^ legend_hash);
     }
 }
 
 #[derive(Default)]
 pub struct ImageCache {
-    images: nohash_hasher::IntMap<MsgIdPair, CachedImage>,
+    images: nohash_hasher::IntMap<ImageCacheKey, CachedImage>,
     memory_used: u64,
     generation: u64,
 }
@@ -71,7 +72,10 @@ impl ImageCache {
     ) -> TensorImageView<'store, 'cache> {
         let ci = self
             .images
-            .entry(MsgIdPair(*msg_id, legend.get_msgid()))
+            .entry(ImageCacheKey {
+                image_msg_id: *msg_id,
+                legend_msg_id: legend.get_msgid(),
+            })
             .or_insert_with(|| {
                 // TODO(emilk): proper debug name for images
                 let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor, legend);
