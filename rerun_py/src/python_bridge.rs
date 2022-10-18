@@ -1591,8 +1591,7 @@ fn log_segmentation_map(
 
     // Strip out any indices with unset labels
     let (label_indices, labels) = std::iter::zip(indices.clone(), labels)
-        .filter(|(_, l)| l.is_some())
-        .map(|(i, l)| (i, l.unwrap()))
+        .filter_map(|(i, l)| Some((i, l?)))
         .unzip();
 
     sdk.send_data(
@@ -1606,8 +1605,7 @@ fn log_segmentation_map(
 
     // Strip out any indices with unset colors
     let (color_indices, colors) = std::iter::zip(indices, colors)
-        .filter(|(_, c)| c.is_some())
-        .map(|(i, c)| (i, c.unwrap()))
+        .filter_map(|(i, c)| Some((i, c?)))
         .unzip();
 
     sdk.send_data(
