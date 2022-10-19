@@ -24,6 +24,7 @@ atexit.register(rerun_shutdown)
 # ArrayLike = Union[np.ndarray, Sequence]
 ColorDtype = Union[np.uint8, np.float32, np.float64]
 Colors = npt.NDArray[ColorDtype]
+Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
 
 ClassIdDtype = Union[np.uint8, np.uint16]
 ClassIds = npt.NDArray[ClassIdDtype]
@@ -872,10 +873,10 @@ class ClassDescription:
 
     id: int
     label: Optional[str] = None
-    color: Optional[Colors] = None
+    color: Optional[Color] = None
 
 
-ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Colors], ClassDescription]
+ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Color], ClassDescription]
 
 
 def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
