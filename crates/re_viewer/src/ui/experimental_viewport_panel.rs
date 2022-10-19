@@ -79,7 +79,7 @@ impl SpacesInfo {
             tree: &ObjectTree,
         ) {
             if let Some(transform) = query_transform(timeline_store, &tree.path) {
-                // A non-identity transform - create a new space.
+                // A set transform (likely non-identity) - create a new space.
                 parent_space_info
                     .child_spaces
                     .insert(tree.path.clone(), transform.clone());
