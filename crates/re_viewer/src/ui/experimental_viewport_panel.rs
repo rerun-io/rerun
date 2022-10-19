@@ -238,6 +238,7 @@ impl Blueprint {
                         if ui.selectable_label(is_focused, &space_view.name).clicked() {
                             if let Some((node_index, tab_index)) = self.tree.find_tab(space_view_id)
                             {
+                                self.tree.set_focused_node(node_index);
                                 self.tree.set_active_tab(node_index, tab_index);
                             }
                         }
