@@ -63,7 +63,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         {
             |user_data, rpass, frame_builder: FrameBuilder| {
                 let re_ctx = user_data.get::<RenderContext>().unwrap();
-                frame_builder.finish(re_ctx, rpass).unwrap()
+                frame_builder.finish(re_ctx, rpass).unwrap();
             }
         },
     );
@@ -89,6 +89,7 @@ impl WgpuContext {
     async fn new(event_loop: EventLoop<()>, window: Window) -> anyhow::Result<Self> {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::Backends::all());
+        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
         let surface = unsafe { instance.create_surface(&window) };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {

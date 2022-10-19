@@ -1,6 +1,6 @@
 fn main() {
     // TODO(cmc): Why is this not taking the full screen?
-    const CSS: &'static str = r#"
+    const CSS: &str = r#"
         html {
             /* Remove touch delay: */
             touch-action: manipulation;
