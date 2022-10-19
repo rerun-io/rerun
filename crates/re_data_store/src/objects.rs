@@ -530,8 +530,11 @@ impl<'s> Mesh3D<'s> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Camera<'s> {
-    // TODO(emilk): break up in parts
-    pub camera: &'s re_log_types::Camera,
+    pub extrinsics: &'s re_log_types::Extrinsics,
+    pub intrinsics: &'s Option<re_log_types::Intrinsics>,
+
+    /// The 2D space that this camera projects into.
+    pub target_space: &'s Option<ObjPath>,
 }
 
 impl<'s> Camera<'s> {
@@ -565,7 +568,11 @@ impl<'s> Camera<'s> {
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                         visible: *visible.unwrap_or(&true),
                     },
-                    data: Camera { camera },
+                    data: Camera {
+                        extrinsics: &camera.extrinsics,
+                        intrinsics: &camera.intrinsics,
+                        target_space: &camera.target_space,
+                    },
                 });
             },
         );

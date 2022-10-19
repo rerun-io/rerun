@@ -293,12 +293,12 @@ fn find_camera(objects: &re_data_store::Objects<'_>, needle: &InstanceId) -> Opt
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {
-                found_camera = Some(camera.camera);
+                found_camera = Some((camera.extrinsics, camera.intrinsics.as_ref()));
             }
         }
     }
 
-    found_camera.map(Eye::from_camera)
+    found_camera.map(|(extrinsics, intrinsics)| Eye::from_camera(extrinsics, intrinsics))
 }
 
 fn click_object(
@@ -512,21 +512,28 @@ fn show_projections_from_2d_space(
 
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
         for (_, cam) in objects.camera.iter() {
-            let cam = cam.camera;
-            if &cam.target_space == space_2d {
-                if let Some(ray) = crate::misc::cam::unproject_as_ray(cam, glam::vec2(pos.x, pos.y))
-                {
+            if cam.target_space == space_2d {
+                let extrinsics = cam.extrinsics;
+                let intrinsics = cam.intrinsics.as_ref();
+
+                if let Some(ray) = crate::misc::cam::unproject_as_ray(
+                    extrinsics,
+                    intrinsics,
+                    glam::vec2(pos.x, pos.y),
+                ) {
                     // TODO(emilk): better visualization of a ray
                     let mut hit_pos = None;
                     if pos.z.is_finite() && pos.z > 0.0 {
-                        if let Some(world_from_image) = crate::misc::cam::world_from_image(cam) {
+                        if let Some(world_from_image) =
+                            crate::misc::cam::world_from_image(extrinsics, intrinsics)
+                        {
                             let pos = world_from_image
                                 .transform_point3(glam::vec3(pos.x, pos.y, 1.0) * pos.z);
                             hit_pos = Some(pos);
                         }
                     }
                     let length = if let Some(hit_pos) = hit_pos {
-                        hit_pos.distance(Vec3::from_slice(&cam.extrinsics.position))
+                        hit_pos.distance(Vec3::from_slice(&extrinsics.position))
                     } else {
                         4.0 * state.scene_bbox.half_size().length() // should be long enough
                     };
@@ -577,13 +584,15 @@ fn project_onto_other_spaces(
 
         let mut target_spaces = vec![];
         for (_, cam) in objects.camera.iter() {
-            let cam = cam.camera;
             if let Some(target_space) = cam.target_space.clone() {
-                let ray_in_2d = crate::misc::cam::image_from_world(cam)
+                let extrinsics = cam.extrinsics;
+                let intrinsics = cam.intrinsics.as_ref();
+
+                let ray_in_2d = crate::misc::cam::image_from_world(extrinsics, intrinsics)
                     .map(|image_from_world| (image_from_world * ray_in_world).normalize());
 
                 let point_in_2d = state.hovered_point.and_then(|hovered_point| {
-                    crate::misc::cam::project_onto_2d(cam, hovered_point)
+                    crate::misc::cam::project_onto_2d(extrinsics, intrinsics, hovered_point)
                 });
 
                 target_spaces.push((target_space, ray_in_2d, point_in_2d));

@@ -292,11 +292,12 @@ impl Scene {
         {
             crate::profile_scope!("camera");
             for (props, obj) in objects.camera.iter() {
-                let re_data_store::Camera { camera } = *obj;
+                let extrinsics = obj.extrinsics;
+                let intrinsics = obj.intrinsics.as_ref();
 
                 let instance_id = InstanceIdHash::from_props(props);
 
-                let world_from_view = crate::misc::cam::world_from_view(&camera.extrinsics);
+                let world_from_view = crate::misc::cam::world_from_view(extrinsics);
 
                 let dist_to_eye = eye_camera_plane.distance(world_from_view.translation());
                 let color = object_color(ctx, props);
@@ -337,8 +338,7 @@ impl Scene {
                     let center = world_from_view.translation();
                     let radius = dist_to_eye * line_radius_from_distance * 2.0;
 
-                    for (axis_index, dir) in camera
-                        .extrinsics
+                    for (axis_index, dir) in extrinsics
                         .camera_space_convention
                         .axis_dirs_in_rerun_view_space()
                         .iter()
@@ -357,7 +357,14 @@ impl Scene {
                 }
 
                 let line_radius = dist_to_eye * line_radius_from_distance;
-                scene.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, color);
+                scene.add_camera_frustum(
+                    extrinsics,
+                    intrinsics,
+                    scene_bbox,
+                    instance_id,
+                    line_radius,
+                    color,
+                );
             }
         }
 
@@ -367,18 +374,20 @@ impl Scene {
     /// Paint frustum lines
     fn add_camera_frustum(
         &mut self,
-        cam: &re_log_types::Camera,
+        extrinsics: &re_log_types::Extrinsics,
+        intrinsics: Option<&re_log_types::Intrinsics>,
         scene_bbox: &macaw::BoundingBox,
         instance_id: InstanceIdHash,
         line_radius: f32,
         color: [u8; 4],
     ) {
-        if let (Some(world_from_image), Some(intrinsics)) =
-            (crate::misc::cam::world_from_image(cam), cam.intrinsics)
-        {
+        if let (Some(world_from_image), Some(intrinsics)) = (
+            crate::misc::cam::world_from_image(extrinsics, intrinsics),
+            intrinsics,
+        ) {
             let [w, h] = intrinsics.resolution;
 
-            let world_from_view = crate::misc::cam::world_from_view(&cam.extrinsics);
+            let world_from_view = crate::misc::cam::world_from_view(extrinsics);
 
             // At what distance do we end the frustum?
             let d = scene_bbox.size().length() * 0.3;
