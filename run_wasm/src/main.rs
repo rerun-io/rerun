@@ -2,6 +2,12 @@
 //!
 //! This is a temporary solution while we're in the process of building our own xtask tools.
 
+use std::{
+    net::{SocketAddr, ToSocketAddrs},
+    str::FromStr,
+    time::Duration,
+};
+
 fn main() {
     // TODO(cmc): Why is this not taking the full screen?
     const CSS: &str = r#"
@@ -90,26 +96,36 @@ fn main() {
         }
     "#;
 
+    use pico_args::Arguments;
+    let mut args = Arguments::from_env();
+    let host: Option<String> = args.opt_value_from_str("--host").unwrap();
+    let port: Option<String> = args.opt_value_from_str("--port").unwrap();
+    let host = host.as_deref().unwrap_or("localhost");
+    let port = port.as_deref().unwrap_or("8000");
+
     std::thread::spawn(|| {
-        // Just a convenience hack so that the tab is likely to open after the
-        // server is fully booted.
-        // Will do this the right way once we get our own xtask thing.
-        std::thread::sleep(std::time::Duration::from_millis(500));
-
-        use pico_args::Arguments;
-        let mut args = Arguments::from_env();
-        let host: Option<String> = args.opt_value_from_str("--host").unwrap();
-        let port: Option<String> = args.opt_value_from_str("--port").unwrap();
-
-        let viewer_url = format!(
-            "http://{}:{}",
-            host.as_deref().unwrap_or("localhost"),
-            port.as_deref().unwrap_or("8000")
-        );
-        webbrowser::open(&viewer_url).ok();
-
-        println!("Opening browser at {viewer_url}");
+        cargo_run_wasm::run_wasm_with_css(CSS);
     });
 
-    cargo_run_wasm::run_wasm_with_css(CSS);
+    // Wait for the server to be up before opening a browser tab.
+    let addr = format!("{host}:{port}")
+        .to_socket_addrs()
+        .unwrap()
+        .next()
+        .unwrap();
+    loop {
+        // TODO(cmc): this will make the webserver embedded within cargo-run-wasm complain
+        // a bit but eh... that's only temporary.
+        if std::net::TcpStream::connect(addr).is_ok() {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+
+    // Open browser tab.
+    let viewer_url = format!("http://{host}:{port}",);
+    webbrowser::open(&viewer_url).ok();
+    println!("Opening browser at {viewer_url}");
+
+    std::thread::sleep(Duration::from_secs(u64::MAX));
 }
