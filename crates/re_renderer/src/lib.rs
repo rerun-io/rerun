@@ -13,3 +13,5 @@ mod resource_pools;
 
 mod file_server;
 pub use self::file_server::{FileContentsHandle, FileServer};
+
+mod wgsl_types;

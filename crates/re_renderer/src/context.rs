@@ -92,6 +92,7 @@ impl RenderContext {
                 samplers,
                 shader_modules,
                 textures,
+                buffers,
             } = &mut self.resource_pools; // not all pools require maintenance
 
             // Render pipeline maintenance must come before shader module maintenance since
@@ -107,9 +108,10 @@ impl RenderContext {
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use
-            bind_groups.frame_maintenance(self.frame_index, textures, samplers);
+            bind_groups.frame_maintenance(self.frame_index, textures, buffers, samplers);
 
             textures.frame_maintenance(self.frame_index);
+            buffers.frame_maintenance(self.frame_index);
         }
 
         self.frame_index += 1;

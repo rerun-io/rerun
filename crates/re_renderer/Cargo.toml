@@ -9,6 +9,9 @@ publish = false
 [dependencies]
 ahash = "0.8"
 anyhow = "1.0.56"
+bytemuck = "1.12"
+glam = "0.20"                   # can't upgrade until macaw gets a new version using glam 0.21
+macaw = "0.17"
 ordered-float = "3.2"
 parking_lot = "0.12"
 re_log = { path = "../re_log" }
