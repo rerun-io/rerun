@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "rerun_py", "examples/renderer"]
+members = ["crates/*", "rerun_py"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

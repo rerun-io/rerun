@@ -2926,13 +2926,22 @@ name = "re_renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-executor",
+ "console_error_panic_hook",
+ "console_log",
+ "env_logger",
+ "log",
  "ordered-float",
  "parking_lot",
+ "pollster",
  "re_log",
  "slotmap",
  "thiserror",
  "type-map",
+ "wasm-bindgen-futures",
+ "web-sys",
  "wgpu",
+ "winit",
 ]
 
 [[package]]
@@ -3135,26 +3144,6 @@ name = "renderdoc-sys"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1382d1f0a252c4bf97dc20d979a2fdd05b024acd7c2ed0f7595d7817666a157"
-
-[[package]]
-name = "renderer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-executor",
- "console_error_panic_hook",
- "console_log",
- "env_logger",
- "log",
- "parking_lot",
- "pollster",
- "re_renderer",
- "type-map",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu",
- "winit",
-]
 
 [[package]]
 name = "rerun"
