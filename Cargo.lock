@@ -2910,6 +2910,7 @@ dependencies = [
  "notify",
  "ordered-float",
  "parking_lot",
+ "re_error",
  "re_log",
  "slotmap",
  "thiserror",

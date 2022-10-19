@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 use std::{hash::Hash, path::PathBuf, sync::atomic::AtomicU64};
 
 use ahash::HashSet;
-use anyhow::Context;
+use anyhow::Context as _;
 
 use crate::debug_label::DebugLabel;
 use crate::resource_pools::resource_pool::*;
@@ -129,7 +129,11 @@ impl ShaderModulePool {
             let shader_module = match desc.create_shader_module(device) {
                 Ok(sm) => sm,
                 Err(err) => {
-                    re_log::error!(%err, ?path, "couldn't recompile shader module");
+                    re_log::error!(
+                        err = re_error::format(err),
+                        ?path,
+                        "couldn't recompile shader module"
+                    );
                     continue;
                 }
             };

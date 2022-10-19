@@ -3,7 +3,7 @@ use std::{borrow::Cow, path::PathBuf};
 
 // ---
 
-// TODO(cmc): dedupe the macro once #cfg on expressions becomes stable.
+#[cfg_attr(predicate, attr)]
 
 /// A macro to read the contents of a file on disk.
 ///
@@ -11,29 +11,22 @@ use std::{borrow::Cow, path::PathBuf};
 ///   macro.
 /// - On native debug builds, this will actually load the specified path through
 ///   our [`FileServer`], and keep watching for changes in the background.
-#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
 #[macro_export]
 macro_rules! include_file {
     ($path:expr $(,)?) => {{
-        let path = ::std::path::Path::new(file!())
-            .parent()
-            .unwrap()
-            .join($path);
-        $crate::FileServer::get_mut(|fs| fs.watch(&path, false)).unwrap()
-    }};
-}
+        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
+        {
+            let path = ::std::path::Path::new(file!())
+                .parent()
+                .unwrap()
+                .join($path);
+            $crate::FileServer::get_mut(|fs| fs.watch(&path, false)).unwrap()
+        }
 
-/// A macro to read the contents of a file on disk.
-///
-/// - On WASM and/or release builds, this will behave like the standard [`include_str`]
-///   macro.
-/// - On native debug builds, this will actually load the specified path through
-///   our [`FileServer`], and keep watching for changes in the background.
-#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
-#[macro_export]
-macro_rules! include_file {
-    ($path:expr $(,)?) => {{
-        $crate::FileContentsHandle::Inlined(include_str!($path).to_owned())
+        #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
+        {
+            $crate::FileContentsHandle::Inlined(include_str!($path).to_owned())
+        }
     }};
 }
 
@@ -43,7 +36,7 @@ macro_rules! include_file {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum FileContentsHandle {
     /// Contents inlined as a UTF-8 string.
-    Inlined(String),
+    Inlined(&'static str),
     /// Contents sit on disk, path is pre-canonicalized.
     Path(PathBuf),
 }
@@ -52,7 +45,7 @@ impl FileContentsHandle {
     // TODO(cmc): #import support
     pub fn resolve(&self) -> anyhow::Result<Cow<'_, str>> {
         match self {
-            Self::Inlined(data) => Ok(data.into()),
+            Self::Inlined(data) => Ok(Cow::Borrowed(data)),
             Self::Path(path) => std::fs::read_to_string(path)
                 .with_context(|| "failed to read file at {path:?}")
                 .map(Into::into),

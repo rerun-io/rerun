@@ -55,7 +55,6 @@ impl RenderPipelineDesc {
         pipeline_layouts: &PipelineLayoutPool,
         shader_modules: &ShaderModulePool,
     ) -> anyhow::Result<wgpu::RenderPipeline> {
-        // TODO(andreas): Manage pipeline layouts similar to other pools
         let pipeline_layout = pipeline_layouts
             .get(self.pipeline_layout)
             .context("referenced pipeline layout not found")?;
@@ -105,35 +104,12 @@ impl RenderPipelinePool {
         shader_module_pool: &mut ShaderModulePool,
     ) -> RenderPipelineHandle {
         self.pool.get_handle(desc, |desc| {
-            // TODO(andreas): Manage pipeline layouts similar to other pools
-            let pipeline_layout = pipeline_layout_pool.get(desc.pipeline_layout).unwrap();
-            // TODO(cmc): certainly not unwrapping here
-            let vertex_shader_module = shader_module_pool.get(desc.vertex_handle).unwrap();
-            let fragment_shader_module = shader_module_pool.get(desc.fragment_handle).unwrap();
-
-            let wgpu_desc = wgpu::RenderPipelineDescriptor {
-                label: desc.label.get(),
-                layout: Some(&pipeline_layout.layout),
-                vertex: wgpu::VertexState {
-                    module: &vertex_shader_module.shader_module,
-                    entry_point: &desc.vertex_entrypoint,
-                    buffers: &desc.vertex_buffers,
-                },
-                fragment: wgpu::FragmentState {
-                    module: &fragment_shader_module.shader_module,
-                    entry_point: &desc.fragment_entrypoint,
-                    targets: &desc.render_targets,
-                }
-                .into(),
-                primitive: desc.primitive,
-                depth_stencil: desc.depth_stencil.clone(),
-                multisample: desc.multisample,
-                multiview: None, // Multi-layered render target support isn't widespread
-            };
-
             RenderPipeline {
                 last_frame_used: AtomicU64::new(0),
-                pipeline: device.create_render_pipeline(&wgpu_desc),
+                pipeline: desc
+                    // TODO(cmc): certainly not unwrapping here
+                    .create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
+                    .unwrap(),
             }
         })
     }
@@ -192,7 +168,10 @@ impl RenderPipelinePool {
                 match desc.create_render_pipeline(device, pipeline_layouts, shader_modules) {
                     Ok(sm) => sm,
                     Err(err) => {
-                        re_log::error!(%err, "couldn't recompile render pipeline");
+                        re_log::error!(
+                            err = re_error::format(err),
+                            "couldn't recompile render pipeline"
+                        );
                         continue;
                     }
                 };

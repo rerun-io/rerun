@@ -10,20 +10,23 @@ publish = false
 ahash = "0.8"
 anyhow = "1.0.56"
 bytemuck = "1.12"
-glam = "0.20"                   # can't upgrade until macaw gets a new version using glam 0.21
+glam = "0.20"                       # can't upgrade until macaw gets a new version using glam 0.21
 macaw = "0.17"
 ordered-float = "3.2"
 parking_lot = "0.12"
+re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 slotmap = "1.0.6"
 thiserror = "1.0"
 type-map = "0.5"
 
+# native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossbeam = "0.8"
 notify = "5.0"
 wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
 
+# wasm
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { version = "0.14", default-features = false, features = [
   "webgl",
