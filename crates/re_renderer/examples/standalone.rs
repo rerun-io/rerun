@@ -1,8 +1,8 @@
 //! Example of using `re_renderer` in standalone mode.
 //!
-//! To try natively:
+//! To try it natively:
 //! ```
-//! cargo run
+//! cargo run -p re_renderer --example standalone
 //! ```
 //!
 //! To try on the web:

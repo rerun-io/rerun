@@ -1,0 +1,3 @@
+[alias]
+# To easily run example on the web, see https://github.com/rukai/cargo-run-wasm
+run-wasm = "run --release --package run_wasm --"
