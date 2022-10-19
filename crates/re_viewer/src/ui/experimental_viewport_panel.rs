@@ -3,6 +3,7 @@
 //! Before the new panel is up-to-par with the existing viewport panel, we need to:
 //!
 //! * [ ] Render the 3D camera
+//! * [ ] Project rays and points between spaces
 //! * [ ] Not create extraneous views of "intermediate" spaces (e.g. camera space)
 //! * [ ] Convert existing python examples to the new style
 //! * [ ] Write good docs for how to use the new system
