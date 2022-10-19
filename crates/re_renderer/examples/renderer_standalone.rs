@@ -11,8 +11,9 @@
 //! ```
 
 use anyhow::Context as _;
+use macaw::IsoTransform;
 use re_renderer::context::{RenderContext, RenderContextConfig};
-use re_renderer::frame_builder::FrameBuilder;
+use re_renderer::frame_builder::{FrameBuilder, TargetConfiguration};
 use type_map::concurrent::TypeMap;
 use wgpu::{
     CommandEncoder, Device, Queue, RenderPass, Surface, SurfaceConfiguration, TextureFormat,
@@ -45,12 +46,21 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     wgpu_ctx.run(
         // Setting up the `prepare` callback, which will be called once per frame with
         // a ready-to-be-filled `CommandEncoder`.
-        |user_data, device, encoder, (w, h)| {
+        |user_data, device, queue, encoder, resolution| {
             let mut frame_builder = FrameBuilder::new();
+
+            let target_cfg = TargetConfiguration {
+                resolution_in_pixel: resolution,
+                world_from_view: IsoTransform::IDENTITY,
+                fov_y: 90.0,
+                near_plane_distance: 0.0,
+                target_identifier: 0,
+            };
 
             let re_ctx = user_data.get_mut::<RenderContext>().unwrap();
             frame_builder
-                .setup_target(re_ctx, device, w, h)
+                .setup_target(re_ctx, device, queue, &target_cfg)
+                .unwrap()
                 .test_triangle(re_ctx, device)
                 .generic_skybox(re_ctx, device)
                 .draw(re_ctx, encoder)
@@ -143,8 +153,8 @@ impl WgpuContext {
 
     fn run<DrawData, Prepare, Draw>(mut self, mut prepare: Prepare, mut draw: Draw)
     where
-        Prepare:
-            FnMut(&mut TypeMap, &Device, &mut CommandEncoder, (u32, u32)) -> DrawData + 'static,
+        Prepare: FnMut(&mut TypeMap, &Device, &Queue, &mut CommandEncoder, [u32; 2]) -> DrawData
+            + 'static,
         Draw: for<'a, 'b> FnMut(&'b mut TypeMap, &'a mut RenderPass<'b>, DrawData) + 'static,
     {
         self.event_loop.run(move |event, _, control_flow| {
@@ -176,8 +186,9 @@ impl WgpuContext {
                     let prepared = prepare(
                         &mut self.user_data,
                         &self.device,
+                        &self.queue,
                         &mut encoder,
-                        (self.surface_config.height, self.surface_config.width),
+                        [self.surface_config.height, self.surface_config.width],
                     );
 
                     {
