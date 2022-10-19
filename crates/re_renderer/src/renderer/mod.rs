@@ -50,15 +50,15 @@ pub trait Renderer {
     /// Relative location in the rendering process when this renderer should be executed.
     /// TODO(andreas): We might want to take [`DrawData`] into account for this.
     ///                But this touches on the [`Renderer::draw`] method might be split in the future, which haven't designed yet.
-    fn sorting_index() -> u32 {
-        DrawSortingIndices::Opaque as u32
+    fn draw_order() -> u32 {
+        DrawOrder::Opaque as u32
     }
 }
 
 /// Assigns rough meaning to draw sorting indices
 #[allow(dead_code)]
 #[repr(u32)]
-enum DrawSortingIndices {
+enum DrawOrder {
     /// Opaque objects, performing reads/writes to the depth buffer.
     /// Typically they are order independent, so everything uses this same index.
     Opaque = 30000,

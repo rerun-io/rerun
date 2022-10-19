@@ -94,7 +94,7 @@ impl Renderer for GenericSkybox {
         Ok(())
     }
 
-    fn sorting_index() -> u32 {
-        DrawSortingIndices::Background as u32
+    fn draw_order() -> u32 {
+        DrawOrder::Background as u32
     }
 }

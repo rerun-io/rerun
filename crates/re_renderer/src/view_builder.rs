@@ -188,7 +188,7 @@ impl ViewBuilder {
                     .context("failed to retrieve renderer")?;
                 renderer.draw(&ctx.resource_pools, pass, &draw_data)
             }),
-            sorting_index: D::Renderer::sorting_index(),
+            sorting_index: D::Renderer::draw_order(),
         });
 
         self
