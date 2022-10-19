@@ -1623,7 +1623,7 @@ impl ClassDescription {
 }
 
 impl ClassDescription {
-    /// Helper to convert from either appropriately shaped tuples or native ClassDescriptions.
+    /// Helper to convert from either appropriately shaped tuples or native `ClassDescriptions`.
     fn from_any(arg: &PyAny) -> PyResult<Self> {
         if let Ok(arg) = arg.extract::<ClassDescription>() {
             // If arg is already a ClassDescription return it
