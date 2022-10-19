@@ -8,8 +8,9 @@ publish = false
 
 [dependencies]
 anyhow = "1.0"
-bytemuck = "1.12"
-glam = "0.20"                   # can't upgrade until macaw gets a new version using glam 0.21
+bytemuck = { version = "1.12", features = ["derive"] }
+# can't upgrade until macaw gets a new version using glam 0.21
+glam = "0.20"
 macaw = "0.17"
 ordered-float = "3.2"
 parking_lot = "0.12"
