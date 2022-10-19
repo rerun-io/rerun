@@ -2,11 +2,7 @@
 //!
 //! This is a temporary solution while we're in the process of building our own xtask tools.
 
-use std::{
-    net::{SocketAddr, ToSocketAddrs},
-    str::FromStr,
-    time::Duration,
-};
+use std::{net::ToSocketAddrs, time::Duration};
 
 fn main() {
     // TODO(cmc): Why is this not taking the full screen?
