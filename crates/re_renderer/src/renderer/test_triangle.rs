@@ -20,7 +20,7 @@ impl Renderer for TestTriangle {
     type DrawData = TestTriangleDrawData;
 
     fn create_renderer(
-        _shared_data: &SharedRendererData,
+        shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> Self {
@@ -31,8 +31,8 @@ impl Renderer for TestTriangle {
                 pipeline_layout: pools.pipeline_layouts.request(
                     device,
                     &PipelineLayoutDesc {
-                        label: "empty".into(),
-                        entries: Vec::new(),
+                        label: "global only".into(),
+                        entries: vec![shared_data.global_bindings.layout],
                     },
                     &pools.bind_group_layouts,
                 ),

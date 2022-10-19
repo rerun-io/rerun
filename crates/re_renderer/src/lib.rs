@@ -10,3 +10,4 @@ mod debug_label;
 mod global_bindings;
 mod renderer;
 mod resource_pools;
+mod wgsl_types;
