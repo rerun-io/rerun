@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     context::*,
     global_bindings::FrameUniformBuffer,
-    renderer::{generic_skybox::*, test_triangle::*, tonemapper::*, Renderer},
+    renderer::{tonemapper::*, DrawData, Renderer},
     resource_pools::{
         bind_group_pool::BindGroupHandle,
         buffer_pool::{BufferDesc, BufferHandle},
@@ -18,8 +18,6 @@ use crate::{
 #[derive(Default)]
 pub struct ViewBuilder {
     tonemapping_draw_data: TonemapperDrawData,
-    test_triangle_draw_data: Option<TestTriangleDrawData>,
-    generic_skybox_draw_data: Option<GenericSkyboxDrawData>,
 
     bind_group_0: BindGroupHandle,
 
@@ -51,8 +49,6 @@ impl ViewBuilder {
     pub fn new() -> Self {
         ViewBuilder {
             tonemapping_draw_data: Default::default(),
-            test_triangle_draw_data: None,
-            generic_skybox_draw_data: None,
 
             bind_group_0: BindGroupHandle::default(),
 
@@ -94,16 +90,7 @@ impl ViewBuilder {
             ),
         );
 
-        self.tonemapping_draw_data = ctx
-            .renderers
-            .get_or_create::<Tonemapper>(&ctx.shared_renderer_data, &mut ctx.resource_pools, device)
-            .prepare(
-                &mut ctx.resource_pools,
-                device,
-                &TonemapperPrepareData {
-                    hdr_target: self.hdr_render_target,
-                },
-            );
+        self.tonemapping_draw_data = TonemapperDrawData::new(ctx, device, self.hdr_render_target);
 
         // Setup frame uniform buffer
         {
@@ -174,33 +161,12 @@ impl ViewBuilder {
         Ok(self)
     }
 
-    pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        let pools = &mut ctx.resource_pools;
-        self.test_triangle_draw_data = Some(
-            ctx.renderers
-                .get_or_create::<TestTriangle>(&ctx.shared_renderer_data, pools, device)
-                .prepare(pools, device, &TestTrianglePrepareData {}),
-        );
-
-        self
-    }
-
-    pub fn generic_skybox(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        let pools = &mut ctx.resource_pools;
-        self.generic_skybox_draw_data = Some(
-            ctx.renderers
-                .get_or_create::<GenericSkybox>(&ctx.shared_renderer_data, pools, device)
-                .prepare(pools, device, &GenericSkyboxPrepareData {}),
-        );
-
-        self
-    }
-
     /// Draws the frame as instructed to a temporary HDR target.
     pub fn draw(
         &self,
         ctx: &mut RenderContext,
         encoder: &mut wgpu::CommandEncoder,
+        draw_operations: &[&dyn DrawData],
     ) -> anyhow::Result<()> {
         let color = ctx
             .resource_pools
@@ -243,24 +209,9 @@ impl ViewBuilder {
             &[],
         );
 
-        if let Some(test_triangle_data) = self.test_triangle_draw_data.as_ref() {
-            let test_triangle_renderer = ctx
-                .renderers
-                .get::<TestTriangle>()
-                .context("get test triangle renderer")?;
-            test_triangle_renderer
-                .draw(&ctx.resource_pools, &mut pass, test_triangle_data)
-                .context("draw test triangle")?;
-        }
-
-        if let Some(generic_skybox_data) = self.generic_skybox_draw_data.as_ref() {
-            let generic_skybox_renderer = ctx
-                .renderers
-                .get::<GenericSkybox>()
-                .context("get skybox renderer")?;
-            generic_skybox_renderer
-                .draw(&ctx.resource_pools, &mut pass, generic_skybox_data)
-                .context("draw skybox")?;
+        // TODO(andreas): Sorting!
+        for draw_data in draw_operations {
+            draw_data.draw(ctx, &mut pass).context("drawing a view")?;
         }
 
         Ok(())

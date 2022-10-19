@@ -4,20 +4,32 @@ use crate::{
     view_builder::ViewBuilder,
 };
 
-use super::Renderer;
+use super::*;
 
 pub(crate) struct TestTriangle {
     render_pipeline: RenderPipelineHandle,
 }
 
-pub(crate) struct TestTrianglePrepareData;
+pub struct TestTriangleDrawData;
 
-#[derive(Default)]
-pub(crate) struct TestTriangleDrawData;
+impl DrawDataImpl for TestTriangleDrawData {
+    type Renderer = TestTriangle;
+}
+
+impl TestTriangleDrawData {
+    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
+        ctx.renderers.get_or_create::<TestTriangle>(
+            &ctx.shared_renderer_data,
+            &mut ctx.resource_pools,
+            device,
+        );
+
+        TestTriangleDrawData {}
+    }
+}
 
 impl Renderer for TestTriangle {
-    type PrepareData = TestTrianglePrepareData;
-    type DrawData = TestTriangleDrawData;
+    type D = TestTriangleDrawData;
 
     fn create_renderer(
         shared_data: &SharedRendererData,
@@ -62,20 +74,11 @@ impl Renderer for TestTriangle {
         TestTriangle { render_pipeline }
     }
 
-    fn prepare(
-        &self,
-        _pools: &mut WgpuResourcePools,
-        _device: &wgpu::Device,
-        _data: &Self::PrepareData,
-    ) -> Self::DrawData {
-        TestTriangleDrawData {}
-    }
-
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        _draw_data: &Self::DrawData,
+        _draw_data: &TestTriangleDrawData,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
         pass.set_pipeline(&pipeline.pipeline);

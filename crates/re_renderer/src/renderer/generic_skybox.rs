@@ -4,7 +4,7 @@ use crate::{
     view_builder::ViewBuilder,
 };
 
-use super::Renderer;
+use super::*;
 
 /// Renders a generated skybox from a color gradient
 ///
@@ -14,14 +14,26 @@ pub(crate) struct GenericSkybox {
     render_pipeline: RenderPipelineHandle,
 }
 
-pub(crate) struct GenericSkyboxPrepareData {}
+pub struct GenericSkyboxDrawData {}
 
-#[derive(Default)]
-pub(crate) struct GenericSkyboxDrawData {}
+impl DrawDataImpl for GenericSkyboxDrawData {
+    type Renderer = GenericSkybox;
+}
+
+impl GenericSkyboxDrawData {
+    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
+        ctx.renderers.get_or_create::<GenericSkybox>(
+            &ctx.shared_renderer_data,
+            &mut ctx.resource_pools,
+            device,
+        );
+
+        GenericSkyboxDrawData {}
+    }
+}
 
 impl Renderer for GenericSkybox {
-    type PrepareData = GenericSkyboxPrepareData;
-    type DrawData = GenericSkyboxDrawData;
+    type D = GenericSkyboxDrawData;
 
     fn create_renderer(
         shared_data: &SharedRendererData,
@@ -67,20 +79,11 @@ impl Renderer for GenericSkybox {
         GenericSkybox { render_pipeline }
     }
 
-    fn prepare(
-        &self,
-        _pools: &mut WgpuResourcePools,
-        _device: &wgpu::Device,
-        _data: &Self::PrepareData,
-    ) -> Self::DrawData {
-        GenericSkyboxDrawData {}
-    }
-
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        _draw_data: &Self::DrawData,
+        _draw_data: &GenericSkyboxDrawData,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
 

@@ -450,6 +450,7 @@ pub(crate) fn view_3d(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
+        use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
         let view_builder_prepare = ViewBuilder::new_shared();
@@ -466,6 +467,8 @@ pub(crate) fn view_3d(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
+                        let triangle = TestTriangleDrawData::new(ctx, device);
+                        let skybox = GenericSkyboxDrawData::new(ctx, device);
                         view_builder_prepare
                             .write()
                             .setup_view(
@@ -483,9 +486,7 @@ pub(crate) fn view_3d(
                                 },
                             )
                             .unwrap()
-                            .test_triangle(ctx, device)
-                            .generic_skybox(ctx, device)
-                            .draw(ctx, encoder)
+                            .draw(ctx, encoder, &[&triangle, &skybox])
                             .unwrap(); // TODO(andreas): Graceful error handling
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
