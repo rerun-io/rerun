@@ -754,7 +754,7 @@ def log_segmentation_image(
     Supported `dtype`s:
     * uint8: components should be 0-255 class ids
     * uint16: components should be 0-65535 class ids
-    * class_descriptions: path to a class_descriptions objection logged with `log_class_descriptions`
+    * class_descriptions: obj_path for a class_descriptions object logged with `log_class_descriptions`
 
     If no `space` is given, the space name "2D" will be used.
     """
@@ -872,10 +872,10 @@ class ClassDescription:
 
     id: int
     label: Optional[str] = None
-    color: Optional[Sequence[int]] = None
+    color: Optional[Colors] = None
 
 
-ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Sequence[int]], ClassDescription]
+ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Colors], ClassDescription]
 
 
 def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
@@ -898,7 +898,9 @@ def log_class_descriptions(
     indicate this set of descriptions is relevant to the image.
 
     Each ClassDescription must include an id, which will be used for matching
-    the class and may optionally include a label and color.
+    the class and may optionally include a label and color.  Colors should
+    either be in 0-255 gamma space or in 0-1 linear space.  Colors can be RGB or
+    RGBA.
 
     These can either be specified verbosely as:
     ```
@@ -916,6 +918,8 @@ def log_class_descriptions(
     typed_class_descriptions = (coerce_class_description(d) for d in class_descriptions)
 
     # Convert back to fixed tuple for easy pyo3 conversion
-    tuple_class_descriptions = [(d.id, d.label, d.color) for d in typed_class_descriptions]
+    tuple_class_descriptions = [
+        (d.id, d.label, _normalize_colors(d.color).tolist() or None) for d in typed_class_descriptions
+    ]
 
     rerun_rs.log_class_descriptions(obj_path, tuple_class_descriptions, timeless)
