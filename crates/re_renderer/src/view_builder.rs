@@ -17,6 +17,11 @@ type DrawFn = dyn for<'a, 'b> Fn(&'b RenderContext, &'a mut wgpu::RenderPass<'b>
     + Sync
     + Send;
 
+struct QueuedDraw {
+    draw_func: Box<DrawFn>,
+    sorting_index: u32,
+}
+
 /// The highest level rendering block in `re_renderer`.
 /// Used to build up/collect various resources and then send them off for rendering of  a single view.
 #[derive(Default)]
@@ -29,7 +34,7 @@ pub struct ViewBuilder {
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
 
-    queued_draws: Vec<Box<DrawFn>>, // &mut wgpu::RenderPass
+    queued_draws: Vec<QueuedDraw>, // &mut wgpu::RenderPass
 }
 
 pub type SharedViewBuilder = Arc<RwLock<ViewBuilder>>;
@@ -174,21 +179,25 @@ impl ViewBuilder {
         draw_data: &D,
     ) -> &mut Self {
         let draw_data = draw_data.clone(); // TODO(andreas): Can we get rid of this clone (plus requirement thereof)
-        self.queued_draws.push(Box::new(move |ctx, pass| {
-            let renderer = ctx
-                .renderers
-                .get::<D::Renderer>()
-                .context("failed to retrieve renderer")?;
-            renderer.draw(&ctx.resource_pools, pass, &draw_data)
-        }));
+
+        self.queued_draws.push(QueuedDraw {
+            draw_func: Box::new(move |ctx, pass| {
+                let renderer = ctx
+                    .renderers
+                    .get::<D::Renderer>()
+                    .context("failed to retrieve renderer")?;
+                renderer.draw(&ctx.resource_pools, pass, &draw_data)
+            }),
+            sorting_index: D::Renderer::sorting_index(),
+        });
 
         self
     }
 
     /// Draws the frame as instructed to a temporary HDR target.
     pub fn draw(
-        &self,
-        ctx: &mut RenderContext,
+        &mut self,
+        ctx: &RenderContext,
         encoder: &mut wgpu::CommandEncoder,
     ) -> anyhow::Result<()> {
         let color = ctx
@@ -232,9 +241,10 @@ impl ViewBuilder {
             &[],
         );
 
-        // TODO(andreas): Sorting!
-        for draw in &self.queued_draws {
-            draw(ctx, &mut pass).context("drawing a view")?;
+        self.queued_draws
+            .sort_by(|a, b| a.sorting_index.cmp(&b.sorting_index));
+        for queued_draw in &self.queued_draws {
+            (queued_draw.draw_func)(ctx, &mut pass).context("drawing a view")?;
         }
 
         Ok(())

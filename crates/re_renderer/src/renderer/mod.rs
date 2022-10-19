@@ -46,4 +46,20 @@ pub trait Renderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::D,
     ) -> anyhow::Result<()>;
+
+    /// Relative location in the rendering process when this renderer should be executed.
+    fn sorting_index() -> u32 {
+        DrawSortingIndices::Opaque as u32
+    }
+}
+
+/// Assigns rough meaning to draw sorting indices
+#[allow(dead_code)]
+#[repr(u32)]
+enum DrawSortingIndices {
+    Shadow = 10000,
+    Opaque = 20000,
+    Transparent = 30000,
+    Background = 40000,
+    Postprocess = 50000,
 }
