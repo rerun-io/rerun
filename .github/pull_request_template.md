@@ -1,6 +1,5 @@
 ### Checklist
-* [ ] I've read [`CONTRIBUTING.md`](../CONTRIBUTING.md)
-* [ ] I have read and agree to the [Code of Conduct](../CODE_OF_CONDUCT.md)
+* [ ] I have read and agree to [Contributor Guide](../CONTRIBUTING.md) and the [Code of Conduct](../CODE_OF_CONDUCT.md)
 * [ ] I've included a screenshot or gif (if applicable)
 * [ ] I've added a line to `CHANGELOG.md` (if this is a big enough change to warrant it)
 
