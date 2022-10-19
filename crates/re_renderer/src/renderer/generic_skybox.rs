@@ -1,7 +1,7 @@
 use crate::{
     context::SharedRendererData,
-    frame_builder::FrameBuilder,
     resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, WgpuResourcePools},
+    view_builder::ViewBuilder,
 };
 
 use super::Renderer;
@@ -49,10 +49,10 @@ impl Renderer for GenericSkybox {
                     entry_point: "main",
                 },
                 vertex_buffers: vec![],
-                render_targets: vec![Some(FrameBuilder::FORMAT_HDR.into())],
+                render_targets: vec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: FrameBuilder::FORMAT_DEPTH,
+                    format: ViewBuilder::FORMAT_DEPTH,
                     // Pass depth test only if the fragment hasn't been written to.
                     // This allows us to draw the skybox last which is much more efficient than using it as a clear pass!
                     depth_compare: wgpu::CompareFunction::Equal,

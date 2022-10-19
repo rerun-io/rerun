@@ -14,11 +14,9 @@ use crate::{
 };
 
 /// The highest level rendering block in `re_renderer`.
-///
-/// They are used to build up/collect various resources and then send them off for rendering.
-/// Collecting objects in this fashion allows for re-use of common resources (e.g. camera)
+/// Used to build up/collect various resources and then send them off for rendering of  a single view.
 #[derive(Default)]
-pub struct FrameBuilder {
+pub struct ViewBuilder {
     tonemapping_draw_data: TonemapperDrawData,
     test_triangle_draw_data: Option<TestTriangleDrawData>,
     generic_skybox_draw_data: Option<GenericSkyboxDrawData>,
@@ -30,7 +28,7 @@ pub struct FrameBuilder {
     depth_buffer: TextureHandle,
 }
 
-pub type SharedFrameBuilder = Arc<RwLock<FrameBuilder>>;
+pub type SharedViewBuilder = Arc<RwLock<ViewBuilder>>;
 
 /// Basic configuration for a target view.
 pub struct TargetConfiguration {
@@ -46,12 +44,12 @@ pub struct TargetConfiguration {
     pub target_identifier: u64,
 }
 
-impl FrameBuilder {
+impl ViewBuilder {
     pub const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
     pub const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
     pub fn new() -> Self {
-        FrameBuilder {
+        ViewBuilder {
             tonemapping_draw_data: Default::default(),
             test_triangle_draw_data: None,
             generic_skybox_draw_data: None,
@@ -64,11 +62,11 @@ impl FrameBuilder {
         }
     }
 
-    pub fn new_shared() -> SharedFrameBuilder {
-        Arc::new(RwLock::new(FrameBuilder::new()))
+    pub fn new_shared() -> SharedViewBuilder {
+        Arc::new(RwLock::new(ViewBuilder::new()))
     }
 
-    pub fn setup_target(
+    pub fn setup_view(
         &mut self,
         ctx: &mut RenderContext,
         device: &wgpu::Device,
@@ -117,7 +115,7 @@ impl FrameBuilder {
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
 
                     // We need to make sure that every target gets a different frame uniform buffer.
-                    // If we don't do that, frame uniform buffers from different [`FrameBuilder`] might overwrite each other.
+                    // If we don't do that, frame uniform buffers from different [`ViewBuilder`] might overwrite each other.
                     // (note thought that we do *not* want to hash the current contents of the uniform buffer
                     // because then we'd create a new buffer every frame!)
                     content_id: config.target_identifier,
@@ -268,10 +266,10 @@ impl FrameBuilder {
         Ok(())
     }
 
-    /// Applies tonemapping and draws the final result of a `FrameBuilder` to a given output `RenderPass`.
+    /// Applies tonemapping and draws the final result of a `ViewBuilder` to a given output `RenderPass`.
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
-    pub fn finish<'a>(
+    pub fn composite<'a>(
         &self,
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,

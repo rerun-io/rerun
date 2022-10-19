@@ -1,7 +1,7 @@
 use crate::{
     context::SharedRendererData,
-    frame_builder::FrameBuilder,
     resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, WgpuResourcePools},
+    view_builder::ViewBuilder,
 };
 
 use super::Renderer;
@@ -45,10 +45,10 @@ impl Renderer for TestTriangle {
                     entry_point: "fs_main",
                 },
                 vertex_buffers: vec![],
-                render_targets: vec![Some(FrameBuilder::FORMAT_HDR.into())],
+                render_targets: vec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: FrameBuilder::FORMAT_DEPTH,
+                    format: ViewBuilder::FORMAT_DEPTH,
                     depth_compare: wgpu::CompareFunction::Always,
                     depth_write_enabled: true, // writes some depth for testing
                     stencil: Default::default(),

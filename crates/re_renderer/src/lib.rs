@@ -4,7 +4,7 @@
 //! Used in `re_runner` to display the contents of any view contents other than pure UI.
 
 pub mod context;
-pub mod frame_builder;
+pub mod view_builder;
 
 mod debug_label;
 mod global_bindings;
