@@ -48,6 +48,8 @@ pub trait Renderer {
     ) -> anyhow::Result<()>;
 
     /// Relative location in the rendering process when this renderer should be executed.
+    /// TODO(andreas): We might want to take [`DrawData`] into account for this.
+    ///                But this touches on the [`Renderer::draw`] method might be split in the future, which haven't designed yet.
     fn sorting_index() -> u32 {
         DrawSortingIndices::Opaque as u32
     }
@@ -57,9 +59,16 @@ pub trait Renderer {
 #[allow(dead_code)]
 #[repr(u32)]
 enum DrawSortingIndices {
-    Shadow = 10000,
-    Opaque = 20000,
-    Transparent = 30000,
-    Background = 40000,
-    Postprocess = 50000,
+    /// Opaque objects, performing reads/writes to the depth buffer.
+    /// Typically they are order independent, so everything uses this same index.
+    Opaque = 30000,
+
+    /// Transparent objects. Each draw typically gets its own sorting index.
+    Transparent = 50000,
+
+    /// Backgrounds should always be rendered last.
+    Background = 70000,
+
+    /// Postprocessing effects that are applied before the final tonemapping step.
+    Postprocess = 90000,
 }
