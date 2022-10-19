@@ -1606,7 +1606,8 @@ impl ClassDescription {
                     color.convert_color()
                 } else {
                     Err(PyTypeError::new_err(format!(
-                        "Unsupported type for color conversion",
+                        "Unsupported type for color conversion. id={:?} label={:?}, color={:?}",
+                        id, label, color
                     )))
                 }
             })
@@ -1640,13 +1641,14 @@ impl ClassDescription {
                     tup.get_item(1)?.extract::<Option<&str>>()?,
                     tup.get_item(2)?.extract::<Option<&PyAny>>()?,
                 ),
-                _ => Err(PyTypeError::new_err(
-                    "Tuple with unexpected number of arguments",
-                )),
+                _ => Err(PyTypeError::new_err(format!(
+                    "Tuple with unexpected number of arguments. arg={:?}",
+                    tup
+                ))),
             }
         } else {
             Err(PyTypeError::new_err(format!(
-                "ClassDescription could not be created from unexpected input arg={:?}",
+                "ClassDescription could not be created from unexpected input. arg={:?}",
                 arg
             )))
         }
