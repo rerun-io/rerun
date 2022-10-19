@@ -8,19 +8,19 @@ use crate::{
 
 use super::*;
 
-pub(crate) struct Tonemapper {
+pub struct Tonemapper {
     render_pipeline: RenderPipelineHandle,
     bind_group_layout: BindGroupLayoutHandle,
 }
 
-#[derive(Default)]
-pub(crate) struct TonemapperDrawData {
+#[derive(Default, Clone)]
+pub struct TonemapperDrawData {
     /// [`BindGroup`] pointing at the current HDR source and
     /// a uniform buffer for describing a tonemapper configuration.
     hdr_target_bind_group: BindGroupHandle,
 }
 
-impl DrawDataImpl for TonemapperDrawData {
+impl DrawData for TonemapperDrawData {
     type Renderer = Tonemapper;
 }
 

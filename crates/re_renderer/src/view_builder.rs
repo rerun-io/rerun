@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{Context, Ok};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -13,6 +13,10 @@ use crate::{
     },
 };
 
+type DrawFn = dyn for<'a, 'b> Fn(&'b RenderContext, &'a mut wgpu::RenderPass<'b>) -> anyhow::Result<()>
+    + Sync
+    + Send;
+
 /// The highest level rendering block in `re_renderer`.
 /// Used to build up/collect various resources and then send them off for rendering of  a single view.
 #[derive(Default)]
@@ -24,6 +28,8 @@ pub struct ViewBuilder {
     frame_uniform_buffer: BufferHandle,
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
+
+    queued_draws: Vec<Box<DrawFn>>, // &mut wgpu::RenderPass
 }
 
 pub type SharedViewBuilder = Arc<RwLock<ViewBuilder>>;
@@ -55,6 +61,8 @@ impl ViewBuilder {
             frame_uniform_buffer: BufferHandle::default(),
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
+
+            queued_draws: Vec::new(),
         }
     }
 
@@ -161,12 +169,27 @@ impl ViewBuilder {
         Ok(self)
     }
 
+    pub fn queue_draw<D: DrawData + Sync + Send + Clone + 'static>(
+        &mut self,
+        draw_data: &D,
+    ) -> &mut Self {
+        let draw_data = draw_data.clone(); // TODO(andreas): Can we get rid of this clone (plus requirement thereof)
+        self.queued_draws.push(Box::new(move |ctx, pass| {
+            let renderer = ctx
+                .renderers
+                .get::<D::Renderer>()
+                .context("failed to retrieve renderer")?;
+            renderer.draw(&ctx.resource_pools, pass, &draw_data)
+        }));
+
+        self
+    }
+
     /// Draws the frame as instructed to a temporary HDR target.
     pub fn draw(
         &self,
         ctx: &mut RenderContext,
         encoder: &mut wgpu::CommandEncoder,
-        draw_operations: &[&dyn DrawData],
     ) -> anyhow::Result<()> {
         let color = ctx
             .resource_pools
@@ -210,8 +233,8 @@ impl ViewBuilder {
         );
 
         // TODO(andreas): Sorting!
-        for draw_data in draw_operations {
-            draw_data.draw(ctx, &mut pass).context("drawing a view")?;
+        for draw in &self.queued_draws {
+            draw(ctx, &mut pass).context("drawing a view")?;
         }
 
         Ok(())

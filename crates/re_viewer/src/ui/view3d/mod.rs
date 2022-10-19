@@ -486,7 +486,9 @@ pub(crate) fn view_3d(
                                 },
                             )
                             .unwrap()
-                            .draw(ctx, encoder, &[&triangle, &skybox])
+                            .queue_draw(&skybox)
+                            .queue_draw(&triangle)
+                            .draw(ctx, encoder)
                             .unwrap(); // TODO(andreas): Graceful error handling
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {

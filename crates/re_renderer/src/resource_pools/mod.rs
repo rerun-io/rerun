@@ -21,7 +21,7 @@ use self::{
 /// Note that all resource pools define their resources by type & type properties (the descriptor).
 /// This means they are not directly concerned with contents and tend to act more like allocators.
 #[derive(Default)]
-pub(crate) struct WgpuResourcePools {
+pub struct WgpuResourcePools {
     pub(crate) textures: TexturePool,
     pub(crate) buffers: BufferPool,
     pub(crate) render_pipelines: RenderPipelinePool,

@@ -6,13 +6,14 @@ use crate::{
 
 use super::*;
 
-pub(crate) struct TestTriangle {
+pub struct TestTriangle {
     render_pipeline: RenderPipelineHandle,
 }
 
+#[derive(Clone)]
 pub struct TestTriangleDrawData;
 
-impl DrawDataImpl for TestTriangleDrawData {
+impl DrawData for TestTriangleDrawData {
     type Renderer = TestTriangle;
 }
 

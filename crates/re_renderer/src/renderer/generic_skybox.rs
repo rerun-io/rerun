@@ -10,13 +10,14 @@ use super::*;
 ///
 /// Is not actually a skybox, but a fullscreen effect.
 /// Should be rendered *last* to reduce amount of overdraw!
-pub(crate) struct GenericSkybox {
+pub struct GenericSkybox {
     render_pipeline: RenderPipelineHandle,
 }
 
+#[derive(Clone)]
 pub struct GenericSkyboxDrawData {}
 
-impl DrawDataImpl for GenericSkyboxDrawData {
+impl DrawData for GenericSkyboxDrawData {
     type Renderer = GenericSkybox;
 }
 
