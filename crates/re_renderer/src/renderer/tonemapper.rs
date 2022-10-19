@@ -102,6 +102,7 @@ impl Renderer for Tonemapper {
                 },
                 &pools.bind_group_layouts,
                 &pools.textures,
+                &pools.buffers,
                 &pools.samplers,
             ),
         }
