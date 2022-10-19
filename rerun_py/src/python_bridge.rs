@@ -422,6 +422,10 @@ fn gamma_u8_from_linear_f32(l: f32) -> u8 {
     }
 }
 
+fn linear_u8_from_linear_f32(a: f32) -> u8 {
+    fast_round(a * 255.0)
+}
+
 impl ColorConversion for Vec<u8> {
     fn convert_color(&self) -> PyResult<ColorArr> {
         match self[..] {
@@ -437,14 +441,22 @@ impl ColorConversion for Vec<u8> {
 
 impl ColorConversion for Vec<f32> {
     fn convert_color(&self) -> PyResult<ColorArr> {
-        match self[..] {
-            [r, g, b] => Ok(ColorArr([r, g, b, 1_f32].map(gamma_u8_from_linear_f32))),
-            [r, g, b, a] => Ok(ColorArr([r, g, b, a].map(gamma_u8_from_linear_f32))),
-            _ => Err(PyTypeError::new_err(format!(
-                "Expected color to be of length 3 or 4, got {:?}",
-                self
-            ))),
-        }
+        let (r, g, b, a) = match self[..] {
+            [r, g, b] => (r, g, b, 1_f32),
+            [r, g, b, a] => (r, g, b, a),
+            _ => {
+                return Err(PyTypeError::new_err(format!(
+                    "Expected color to be of length 3 or 4, got {:?}",
+                    self
+                )))
+            }
+        };
+        let r = gamma_u8_from_linear_f32(r);
+        let g = gamma_u8_from_linear_f32(g);
+        let b = gamma_u8_from_linear_f32(b);
+        let a = linear_u8_from_linear_f32(a);
+
+        Ok(ColorArr([r, g, b, a]))
     }
 }
 
