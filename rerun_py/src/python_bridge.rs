@@ -399,8 +399,11 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) -> PyResult<()> {
     Ok(())
 }
 
+#[derive(Debug, Clone)]
+struct ColorArr([u8; 4]);
+
 trait ColorConversion {
-    fn convert_color(&self) -> PyResult<[u8; 4]>;
+    fn convert_color(&self) -> PyResult<ColorArr>;
 }
 
 fn fast_round(r: f32) -> u8 {
@@ -420,10 +423,10 @@ fn gamma_u8_from_linear_f32(l: f32) -> u8 {
 }
 
 impl ColorConversion for Vec<u8> {
-    fn convert_color(&self) -> PyResult<[u8; 4]> {
+    fn convert_color(&self) -> PyResult<ColorArr> {
         match self[..] {
-            [r, g, b] => Ok([r, g, b, 255]),
-            [r, g, b, a] => Ok([r, g, b, a]),
+            [r, g, b] => Ok(ColorArr([r, g, b, 255])),
+            [r, g, b, a] => Ok(ColorArr([r, g, b, a])),
             _ => Err(PyTypeError::new_err(format!(
                 "Expected color to be of length 3 or 4, got {:?}",
                 self
@@ -433,14 +436,29 @@ impl ColorConversion for Vec<u8> {
 }
 
 impl ColorConversion for Vec<f32> {
-    fn convert_color(&self) -> PyResult<[u8; 4]> {
+    fn convert_color(&self) -> PyResult<ColorArr> {
         match self[..] {
-            [r, g, b] => Ok([r, g, b, 1_f32].map(gamma_u8_from_linear_f32)),
-            [r, g, b, a] => Ok([r, g, b, a].map(gamma_u8_from_linear_f32)),
+            [r, g, b] => Ok(ColorArr([r, g, b, 1_f32].map(gamma_u8_from_linear_f32))),
+            [r, g, b, a] => Ok(ColorArr([r, g, b, a].map(gamma_u8_from_linear_f32))),
             _ => Err(PyTypeError::new_err(format!(
                 "Expected color to be of length 3 or 4, got {:?}",
                 self
             ))),
+        }
+    }
+}
+
+impl<'source> FromPyObject<'source> for ColorArr {
+    fn extract(any: &'source PyAny) -> PyResult<Self> {
+        if let Ok(color) = any.extract::<Vec<u8>>() {
+            color.convert_color()
+        } else if let Ok(color) = any.extract::<Vec<f32>>() {
+            color.convert_color()
+        } else {
+            Err(PyTypeError::new_err(format!(
+                "Unsupported type for color conversion: {:?}",
+                any
+            )))
         }
     }
 }
@@ -591,7 +609,7 @@ fn log_text_entry(
     obj_path: &str,
     text: &str,
     level: Option<&str>,
-    color: Option<Vec<u8>>,
+    color: Option<ColorArr>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -617,11 +635,10 @@ fn log_text_entry(
     }
 
     if let Some(color) = color {
-        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Single(Data::Color(color.0)),
         );
     }
 
@@ -687,7 +704,7 @@ fn log_rect(
     obj_path: &str,
     rect_format: &str,
     r: [f32; 4],
-    color: Option<Vec<u8>>,
+    color: Option<ColorArr>,
     label: Option<String>,
     timeless: bool,
     space: Option<String>,
@@ -709,11 +726,10 @@ fn log_rect(
     );
 
     if let Some(color) = color {
-        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Single(Data::Color(color.0)),
         );
     }
 
@@ -836,7 +852,7 @@ fn log_rects(
 fn log_point(
     obj_path: &str,
     position: numpy::PyReadonlyArray1<'_, f32>,
-    color: Option<Vec<u8>>,
+    color: Option<ColorArr>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -866,11 +882,10 @@ fn log_point(
     let time_point = time(timeless);
 
     if let Some(color) = color {
-        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Single(Data::Color(color.0)),
         );
     }
 
@@ -1041,7 +1056,7 @@ fn log_path(
     obj_path: &str,
     positions: numpy::PyReadonlyArray2<'_, f32>,
     stroke_width: Option<f32>,
-    color: Option<Vec<u8>>,
+    color: Option<ColorArr>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -1068,11 +1083,10 @@ fn log_path(
     );
 
     if let Some(color) = color {
-        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Single(Data::Color(color.0)),
         );
     }
 
@@ -1099,7 +1113,7 @@ fn log_line_segments(
     obj_path: &str,
     positions: numpy::PyReadonlyArray2<'_, f32>,
     stroke_width: Option<f32>,
-    color: Option<Vec<u8>>,
+    color: Option<ColorArr>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -1150,11 +1164,10 @@ fn log_line_segments(
     );
 
     if let Some(color) = color {
-        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Single(Data::Color(color.0)),
         );
     }
 
@@ -1182,7 +1195,7 @@ fn log_arrow(
     obj_path: &str,
     origin: [f32; 3],
     vector: [f32; 3],
-    color: Option<Vec<u8>>,
+    color: Option<ColorArr>,
     label: Option<String>,
     width_scale: Option<f32>,
     timeless: bool,
@@ -1204,11 +1217,10 @@ fn log_arrow(
     );
 
     if let Some(color) = color {
-        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Single(Data::Color(color.0)),
         );
     }
 
@@ -1249,7 +1261,7 @@ fn log_obb(
     half_size: [f32; 3],
     position: [f32; 3],
     rotation_q: re_log_types::Quaternion,
-    color: Option<Vec<u8>>,
+    color: Option<ColorArr>,
     stroke_width: Option<f32>,
     label: Option<String>,
     timeless: bool,
@@ -1275,11 +1287,10 @@ fn log_obb(
     );
 
     if let Some(color) = color {
-        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Single(Data::Color(color.0)),
         );
     }
 
@@ -1585,36 +1596,18 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
 #[pyclass]
 #[derive(Clone, Debug)]
 struct ClassDescription {
-    #[pyo3(get, set)]
     id: i32,
-    #[pyo3(get, set)]
     label: Option<String>,
-    #[pyo3(get, set)]
-    color: Option<[u8; 4]>,
+    color: Option<ColorArr>,
 }
 
 #[pymethods]
 impl ClassDescription {
     #[new]
     #[args(arg, label = "None", color = "None")]
-    fn new(id: i32, label: Option<&str>, color: Option<&PyAny>) -> PyResult<Self> {
-        let color = color
-            .map(|c| {
-                if let Ok(color) = c.extract::<Vec<u8>>() {
-                    color.convert_color()
-                } else if let Ok(color) = c.extract::<Vec<f32>>() {
-                    color.convert_color()
-                } else {
-                    Err(PyTypeError::new_err(format!(
-                        "Unsupported type for color conversion. id={:?} label={:?}, color={:?}",
-                        id, label, color
-                    )))
-                }
-            })
-            .transpose()?;
-
+    fn new(id: i32, label: Option<&str>, color: Option<ColorArr>) -> Self {
         let label = label.map(|l| l.to_owned());
-        Ok(ClassDescription { id, label, color })
+        ClassDescription { id, label, color }
     }
 
     fn __repr__(&self) -> String {
@@ -1631,16 +1624,16 @@ impl ClassDescription {
         } else if let Ok(tup) = arg.downcast::<PyTuple>() {
             // If arg is a tuple, try to coerce it into the constructor
             match tup.len() {
-                2 => ClassDescription::new(
+                2 => Ok(ClassDescription::new(
                     tup.get_item(0)?.extract::<i32>()?,
                     tup.get_item(1)?.extract::<Option<&str>>()?,
                     None,
-                ),
-                3 => ClassDescription::new(
+                )),
+                3 => Ok(ClassDescription::new(
                     tup.get_item(0)?.extract::<i32>()?,
                     tup.get_item(1)?.extract::<Option<&str>>()?,
-                    tup.get_item(2)?.extract::<Option<&PyAny>>()?,
-                ),
+                    tup.get_item(2)?.extract::<Option<ColorArr>>()?,
+                )),
                 _ => Err(PyTypeError::new_err(format!(
                     "Tuple with unexpected number of arguments. arg={:?}",
                     tup
@@ -1659,7 +1652,7 @@ impl ClassDescription {
 // ((id, index), (label, color))
 type UnzipSegMap = (
     (Vec<i32>, Vec<Index>),
-    (Vec<Option<String>>, Vec<Option<[u8; 4]>>),
+    (Vec<Option<String>>, Vec<Option<ColorArr>>),
 );
 
 #[pyfunction]
@@ -1727,7 +1720,7 @@ fn log_class_descriptions(
 
     // Strip out any indices with unset colors
     let (color_indices, colors) = std::iter::zip(indices, colors)
-        .filter_map(|(i, c)| Some((i, c?)))
+        .filter_map(|(i, c)| Some((i, c?.0)))
         .unzip();
 
     sdk.send_data(
