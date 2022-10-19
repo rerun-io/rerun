@@ -85,5 +85,27 @@ fn main() {
             }
         }
     "#;
+
+    std::thread::spawn(|| {
+        // Just a convenience hack so that the tab is likely to open after the
+        // server is fully booted.
+        // Will do this the right way once we get our own xtask thing.
+        std::thread::sleep(std::time::Duration::from_millis(500));
+
+        use pico_args::Arguments;
+        let mut args = Arguments::from_env();
+        let host: Option<String> = args.opt_value_from_str("--host").unwrap();
+        let port: Option<String> = args.opt_value_from_str("--port").unwrap();
+
+        let viewer_url = format!(
+            "http://{}:{}",
+            host.as_deref().unwrap_or("localhost"),
+            port.as_deref().unwrap_or("8000")
+        );
+        webbrowser::open(&viewer_url).ok();
+
+        println!("Opening browser at {viewer_url}");
+    });
+
     cargo_run_wasm::run_wasm_with_css(CSS);
 }
