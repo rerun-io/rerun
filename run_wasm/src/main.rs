@@ -1,3 +1,7 @@
+//! Intended to be used as an xtask in order to make it trivial to run web-based examples.
+//!
+//! This is a temporary solution while we're in the process of building our own xtask tools.
+
 fn main() {
     // TODO(cmc): Why is this not taking the full screen?
     const CSS: &str = r#"
