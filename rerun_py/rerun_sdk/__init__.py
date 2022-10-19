@@ -23,7 +23,7 @@ atexit.register(rerun_shutdown)
 # ArrayLike = Union[np.ndarray, Sequence]
 ColorDtype = Union[np.uint8, np.float32, np.float64]
 Colors = npt.NDArray[ColorDtype]
-Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
+Color = Union[npt.NDArray[ColorDtype], Sequence[int], Sequence[float]]
 
 ClassIdDtype = Union[np.uint8, np.uint16]
 ClassIds = npt.NDArray[ClassIdDtype]
@@ -281,7 +281,7 @@ def log_text_entry(
     obj_path: str,
     text: str,
     level: Optional[str] = LogLevel.INFO,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
@@ -321,7 +321,7 @@ def log_rect(
     rect: npt.ArrayLike,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     label: Optional[str] = None,
     timeless: bool = False,
     space: Optional[str] = None,
@@ -381,7 +381,7 @@ def log_rects(
 def log_point(
     obj_path: str,
     position: npt.NDArray[np.float32],
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
@@ -536,7 +536,7 @@ def log_path(
     positions: npt.NDArray[np.float32],
     *,
     stroke_width: Optional[float] = None,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
@@ -567,7 +567,7 @@ def log_line_segments(
     positions: npt.NDArray[np.float32],
     *,
     stroke_width: Optional[float] = None,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     timeless: bool = False,
     space: Optional[str] = None,
 ) -> None:
@@ -595,7 +595,7 @@ def log_arrow(
     obj_path: str,
     origin: npt.ArrayLike,
     vector: npt.ArrayLike,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     label: Optional[str] = None,
     width_scale: Optional[float] = None,
     timeless: bool = False,
@@ -647,7 +647,7 @@ def log_obb(
     half_size: npt.ArrayLike,
     position: npt.ArrayLike,
     rotation_q: npt.ArrayLike,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     stroke_width: Optional[float] = None,
     label: Optional[str] = None,
     timeless: bool = False,
