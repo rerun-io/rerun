@@ -16,15 +16,18 @@ pub struct Eye {
 }
 
 impl Eye {
-    pub fn from_camera(cam: &re_log_types::Camera) -> Eye {
-        let fov_y = if let Some(intrinsis) = cam.intrinsics {
+    pub fn from_camera(
+        extrinsics: &re_log_types::Extrinsics,
+        intrinsics: Option<&re_log_types::Intrinsics>,
+    ) -> Eye {
+        let fov_y = if let Some(intrinsis) = intrinsics {
             intrinsis.fov_y()
         } else {
             DEFAULT_FOV_Y
         };
 
         Self {
-            world_from_view: crate::misc::cam::world_from_view(&cam.extrinsics),
+            world_from_view: crate::misc::cam::world_from_view(extrinsics),
             fov_y,
         }
     }
