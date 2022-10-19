@@ -862,13 +862,24 @@ def set_visible(obj_path: str, visibile: bool) -> None:
     rerun_rs.set_visible(obj_path, visibile)
 
 
-# Type-annotations on re-exported classes gets real awkward with mypy. Instead we shadow the constructor
-# and call through to the native implementation
-def ClassDescription(id: int, label: Optional[str] = None, color: Optional[Color] = None) -> rerun_rs.ClassDescription:
-    return rerun_rs.ClassDescription(id, label, color)
+# Forward-declare a class only used for annotating that log_class_description can take the
+# output of the ClassDescription() helper.
+class rs_ClassDescription:
+    """Type signature of a rust-allocated ClassDescription object."""
+
+    ...
 
 
-ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Color], rerun_rs.ClassDescription]
+# Re-exporting the pyo3-defined classes gets awkward with mypy. Instead we shadow the constructor
+# and call through to the native implementation.
+#
+# TODO(jleibs): we can potentially handle this more gracefully with a .pyi file but it seems to necessitate
+# annotating ALL of our types -- a problem for another day
+def ClassDescription(id: int, label: Optional[str] = None, color: Optional[Color] = None) -> rs_ClassDescription:
+    return rerun_rs.ClassDescription(id, label, color)  # type: ignore[no-any-return]
+
+
+ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Color], rs_ClassDescription]
 
 
 def log_class_descriptions(
@@ -897,6 +908,4 @@ def log_class_descriptions(
 
     Unspecified colors will be filled in by the visualizer randomly.
     """
-    # Coerce tuples into ClassDescription dataclass for convenience
-
     rerun_rs.log_class_descriptions(obj_path, class_descriptions, timeless)
