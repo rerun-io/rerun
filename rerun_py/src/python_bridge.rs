@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
-    types::PyList,
+    types::{PyList, PyTuple},
 };
 
 use re_log_types::{LoggedData, *};
@@ -122,6 +122,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(set_visible, m)?)?;
+    m.add_class::<ClassDescription>()?;
 
     Ok(())
 }
@@ -398,14 +399,49 @@ fn set_space_up(space_obj_path: &str, up: [f32; 3]) -> PyResult<()> {
     Ok(())
 }
 
-fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
-    match &color[..] {
-        [r, g, b] => Ok([*r, *g, *b, 255]),
-        [r, g, b, a] => Ok([*r, *g, *b, *a]),
-        _ => Err(PyTypeError::new_err(format!(
-            "Expected color to be of length 3 or 4, got {:?}",
-            color
-        ))),
+trait ColorConversion {
+    fn convert_color(&self) -> PyResult<[u8; 4]>;
+}
+
+fn fast_round(r: f32) -> u8 {
+    (r + 0.5).floor() as _ // rust does a saturating cast since 1.45
+}
+
+fn gamma_u8_from_linear_f32(l: f32) -> u8 {
+    if l <= 0.0 {
+        0
+    } else if l <= 0.0031308 {
+        fast_round(3294.6 * l)
+    } else if l <= 1.0 {
+        fast_round(269.025 * l.powf(1.0 / 2.4) - 14.025)
+    } else {
+        255
+    }
+}
+
+impl ColorConversion for Vec<u8> {
+    fn convert_color(&self) -> PyResult<[u8; 4]> {
+        match self[..] {
+            [r, g, b] => Ok([r, g, b, 255]),
+            [r, g, b, a] => Ok([r, g, b, a]),
+            _ => Err(PyTypeError::new_err(format!(
+                "Expected color to be of length 3 or 4, got {:?}",
+                self
+            ))),
+        }
+    }
+}
+
+impl ColorConversion for Vec<f32> {
+    fn convert_color(&self) -> PyResult<[u8; 4]> {
+        match self[..] {
+            [r, g, b] => Ok([r, g, b, 1_f32].map(gamma_u8_from_linear_f32)),
+            [r, g, b, a] => Ok([r, g, b, a].map(gamma_u8_from_linear_f32)),
+            _ => Err(PyTypeError::new_err(format!(
+                "Expected color to be of length 3 or 4, got {:?}",
+                self
+            ))),
+        }
     }
 }
 
@@ -581,7 +617,7 @@ fn log_text_entry(
     }
 
     if let Some(color) = color {
-        let color = convert_color(color)?;
+        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
@@ -673,7 +709,7 @@ fn log_rect(
     );
 
     if let Some(color) = color {
-        let color = convert_color(color)?;
+        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
@@ -830,7 +866,7 @@ fn log_point(
     let time_point = time(timeless);
 
     if let Some(color) = color {
-        let color = convert_color(color)?;
+        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
@@ -1032,7 +1068,7 @@ fn log_path(
     );
 
     if let Some(color) = color {
-        let color = convert_color(color)?;
+        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
@@ -1114,7 +1150,7 @@ fn log_line_segments(
     );
 
     if let Some(color) = color {
-        let color = convert_color(color)?;
+        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
@@ -1168,7 +1204,7 @@ fn log_arrow(
     );
 
     if let Some(color) = color {
-        let color = convert_color(color)?;
+        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
@@ -1239,7 +1275,7 @@ fn log_obb(
     );
 
     if let Some(color) = color {
-        let color = convert_color(color)?;
+        let color = color.convert_color()?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
@@ -1545,6 +1581,78 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
     Ok(())
 }
 
+/// Description of a class used by `log_class_descriptions`
+#[pyclass]
+#[derive(Clone, Debug)]
+struct ClassDescription {
+    #[pyo3(get, set)]
+    id: i32,
+    #[pyo3(get, set)]
+    label: Option<String>,
+    #[pyo3(get, set)]
+    color: Option<[u8; 4]>,
+}
+
+#[pymethods]
+impl ClassDescription {
+    #[new]
+    #[args(arg, label = "None", color = "None")]
+    fn new(id: i32, label: Option<&str>, color: Option<&PyAny>) -> PyResult<Self> {
+        let color = color
+            .map(|c| {
+                if let Ok(color) = c.extract::<Vec<u8>>() {
+                    color.convert_color()
+                } else if let Ok(color) = c.extract::<Vec<f32>>() {
+                    color.convert_color()
+                } else {
+                    Err(PyTypeError::new_err(format!(
+                        "Unsupported type for color conversion",
+                    )))
+                }
+            })
+            .transpose()?;
+
+        let label = label.map(|l| l.to_owned());
+        Ok(ClassDescription { id, label, color })
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{:?}", *self)
+    }
+}
+
+impl ClassDescription {
+    /// Helper to convert from either appropriately shaped tuples or native ClassDescriptions.
+    fn from_any(arg: &PyAny) -> PyResult<Self> {
+        if let Ok(arg) = arg.extract::<ClassDescription>() {
+            // If arg is already a ClassDescription return it
+            Ok(arg)
+        } else if let Ok(tup) = arg.downcast::<PyTuple>() {
+            // If arg is a tuple, try to coerce it into the constructor
+            match tup.len() {
+                2 => ClassDescription::new(
+                    tup.get_item(0)?.extract::<i32>()?,
+                    tup.get_item(1)?.extract::<Option<&str>>()?,
+                    None,
+                ),
+                3 => ClassDescription::new(
+                    tup.get_item(0)?.extract::<i32>()?,
+                    tup.get_item(1)?.extract::<Option<&str>>()?,
+                    tup.get_item(2)?.extract::<Option<&PyAny>>()?,
+                ),
+                _ => Err(PyTypeError::new_err(
+                    "Tuple with unexpected number of arguments",
+                )),
+            }
+        } else {
+            Err(PyTypeError::new_err(format!(
+                "ClassDescription could not be created from unexpected input arg={:?}",
+                arg
+            )))
+        }
+    }
+}
+
 // Unzip supports nested, but not 3 or 4-length parallel structures
 // ((id, index), (label, color))
 type UnzipSegMap = (
@@ -1555,22 +1663,26 @@ type UnzipSegMap = (
 #[pyfunction]
 fn log_class_descriptions(
     obj_path: &str,
-    class_descriptions: Vec<(i32, Option<String>, Option<Vec<u8>>)>,
+    class_descriptions: Vec<&PyAny>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
     let obj_path = parse_obj_path(obj_path)?;
 
-    let ((ids, indices), (labels, colors)): UnzipSegMap = class_descriptions
+    // Try to convert our PyAny objects into ClassDescriptions
+    let class_descriptions: Vec<ClassDescription> = class_descriptions
         .iter()
-        .map(|(id, label, color)| {
-            let corrected_color = color
-                .as_ref()
-                .map(|color| convert_color(color.clone()).unwrap());
+        .map(|c| ClassDescription::from_any(c))
+        .collect::<PyResult<Vec<ClassDescription>>>()?;
+
+    // De-structure the ClassDescriptions into parallel vectors
+    let ((ids, indices), (labels, colors)): UnzipSegMap = class_descriptions
+        .into_iter()
+        .map(|class_desc| {
             (
-                (id, Index::Integer(*id as i128)),
-                (label.clone(), corrected_color),
+                (class_desc.id, Index::Integer(class_desc.id as i128)),
+                (class_desc.label, class_desc.color),
             )
         })
         .unzip();

@@ -1,5 +1,4 @@
 """The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk."""
-
 import atexit
 import logging
 from dataclasses import dataclass
@@ -863,27 +862,13 @@ def set_visible(obj_path: str, visibile: bool) -> None:
     rerun_rs.set_visible(obj_path, visibile)
 
 
-@dataclass
-class ClassDescription:
-    """
-    Metadata about a class type identified by an id.
-
-    Color and label will be used to annotate objects which reference the id.
-    """
-
-    id: int
-    label: Optional[str] = None
-    color: Optional[Color] = None
+# Type-annotations on re-exported classes gets real awkward with mypy. Instead we shadow the constructor
+# and call through to the native implementation
+def ClassDescription(id: int, label: Optional[str] = None, color: Optional[Color] = None) -> rerun_rs.ClassDescription:
+    return rerun_rs.ClassDescription(id, label, color)
 
 
-ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Color], ClassDescription]
-
-
-def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
-    if type(arg) is ClassDescription:
-        return arg
-    else:
-        return ClassDescription(*arg)  # type: ignore[misc]
+ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Color], rerun_rs.ClassDescription]
 
 
 def log_class_descriptions(
@@ -899,28 +884,19 @@ def log_class_descriptions(
     indicate this set of descriptions is relevant to the image.
 
     Each ClassDescription must include an id, which will be used for matching
-    the class and may optionally include a label and color.  Colors should
+    the class and may optionally include a label and/or color.  Colors should
     either be in 0-255 gamma space or in 0-1 linear space.  Colors can be RGB or
     RGBA.
 
-    These can either be specified verbosely as:
+    These can either be specified using any of the following forms:
     ```
     [ClassDescription(id=23, label='foo', color=(255, 0, 0)), ...]
-    ```
-
-    Or using short-hand tuples.
-    ```
-    [(23, 'bar'), ...]
+    [(23, 'foo'), ...]
+    [(23, 'foo', (255, 0, 0)), ...]
     ```
 
     Unspecified colors will be filled in by the visualizer randomly.
     """
     # Coerce tuples into ClassDescription dataclass for convenience
-    typed_class_descriptions = (coerce_class_description(d) for d in class_descriptions)
 
-    # Convert back to fixed tuple for easy pyo3 conversion
-    tuple_class_descriptions = [
-        (d.id, d.label, _normalize_colors(d.color).tolist() or None) for d in typed_class_descriptions
-    ]
-
-    rerun_rs.log_class_descriptions(obj_path, tuple_class_descriptions, timeless)
+    rerun_rs.log_class_descriptions(obj_path, class_descriptions, timeless)
