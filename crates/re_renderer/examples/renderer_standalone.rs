@@ -10,7 +10,10 @@
 //! cargo run-wasm --example renderer_standalone
 //! ```
 
+use std::f32::consts::TAU;
+
 use anyhow::Context as _;
+use glam::{Affine3A, Quat, Vec3};
 use macaw::IsoTransform;
 use re_renderer::context::{RenderContext, RenderContextConfig};
 use re_renderer::frame_builder::{FrameBuilder, TargetConfiguration};
@@ -49,11 +52,16 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         |user_data, device, queue, encoder, resolution| {
             let mut frame_builder = FrameBuilder::new();
 
+            let pos = Vec3::new(0.0, 0.0, 3.0);
+            let iso = IsoTransform::from_rotation_translation(
+                Quat::from_affine3(&Affine3A::look_at_rh(pos, Vec3::ZERO, Vec3::Y).inverse()),
+                pos,
+            );
             let target_cfg = TargetConfiguration {
                 resolution_in_pixel: resolution,
-                world_from_view: IsoTransform::IDENTITY,
-                fov_y: 90.0,
-                near_plane_distance: 0.0,
+                world_from_view: iso,
+                fov_y: 70.0 * TAU / 360.0,
+                near_plane_distance: 0.01,
                 target_identifier: 0,
             };
 
