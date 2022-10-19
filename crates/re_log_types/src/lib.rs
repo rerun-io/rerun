@@ -53,7 +53,7 @@ macro_rules! impl_into_enum {
 /// A unique id per [`LogMsg`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MsgId(uuid::Uuid);
+pub struct MsgId(pub uuid::Uuid);
 
 impl nohash_hasher::IsEnabled for MsgId {}
 
