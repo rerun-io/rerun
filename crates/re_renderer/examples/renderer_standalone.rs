@@ -2,12 +2,12 @@
 //!
 //! To try it natively:
 //! ```
-//! cargo run -p re_renderer --example standalone
+//! cargo run -p re_renderer --example renderer_standalone
 //! ```
 //!
 //! To try on the web:
 //! ```
-//! cargo run
+//! cargo run-wasm --example renderer_standalone
 //! ```
 
 use anyhow::Context as _;
