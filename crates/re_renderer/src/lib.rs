@@ -10,4 +10,8 @@ mod debug_label;
 mod global_bindings;
 mod renderer;
 mod resource_pools;
+
+mod file_server;
+pub use self::file_server::{FileContentsHandle, FileServer};
+
 mod wgsl_types;

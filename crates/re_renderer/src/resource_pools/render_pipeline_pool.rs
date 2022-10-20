@@ -1,8 +1,10 @@
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use anyhow::Context;
 
 use crate::debug_label::DebugLabel;
 
-use super::{pipeline_layout_pool::*, resource_pool::*};
+use super::{pipeline_layout_pool::*, resource_pool::*, shader_module_pool::*};
 
 slotmap::new_key_type! { pub(crate) struct RenderPipelineHandle; }
 
@@ -17,14 +19,6 @@ impl UsageTrackedResource for RenderPipeline {
     }
 }
 
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub(crate) struct ShaderDesc {
-    // TODO(andreas) needs to be a path for reloading.
-    // Our goal is to have shipped software embed the source (single file yay) and any development state reload automatically
-    pub shader_code: String,
-    pub entry_point: &'static str,
-}
-
 /// Renderpipeline descriptor, can be converted into [`wgpu::RenderPipeline`] (which isn't hashable or comparable)
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct RenderPipelineDesc {
@@ -33,8 +27,10 @@ pub(crate) struct RenderPipelineDesc {
 
     pub pipeline_layout: PipelineLayoutHandle,
 
-    pub vertex_shader: ShaderDesc,
-    pub fragment_shader: ShaderDesc,
+    pub vertex_entrypoint: String,
+    pub vertex_handle: ShaderModuleHandle,
+    pub fragment_entrypoint: String,
+    pub fragment_handle: ShaderModuleHandle,
 
     /// The format of any vertex buffers used with this pipeline.
     // TODO(andreas) use SmallVec or simliar, limited to <?>
@@ -52,6 +48,47 @@ pub(crate) struct RenderPipelineDesc {
     /// The multi-sampling properties of the pipeline.
     pub multisample: wgpu::MultisampleState,
 }
+impl RenderPipelineDesc {
+    fn create_render_pipeline(
+        &self,
+        device: &wgpu::Device,
+        pipeline_layouts: &PipelineLayoutPool,
+        shader_modules: &ShaderModulePool,
+    ) -> anyhow::Result<wgpu::RenderPipeline> {
+        let pipeline_layout = pipeline_layouts
+            .get(self.pipeline_layout)
+            .context("referenced pipeline layout not found")?;
+
+        let vertex_shader_module = shader_modules
+            .get(self.vertex_handle)
+            .context("referenced vertex shader not found")?;
+        let fragment_shader_module = shader_modules
+            .get(self.fragment_handle)
+            .context("referenced fragment shader not found")?;
+
+        Ok(
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: self.label.get(),
+                layout: Some(&pipeline_layout.layout),
+                vertex: wgpu::VertexState {
+                    module: &vertex_shader_module.shader_module,
+                    entry_point: &self.vertex_entrypoint,
+                    buffers: &self.vertex_buffers,
+                },
+                fragment: wgpu::FragmentState {
+                    module: &fragment_shader_module.shader_module,
+                    entry_point: &self.fragment_entrypoint,
+                    targets: &self.render_targets,
+                }
+                .into(),
+                primitive: self.primitive,
+                depth_stencil: self.depth_stencil.clone(),
+                multisample: self.multisample,
+                multiview: None, // Multi-layered render target support isn't widespread
+            }),
+        )
+    }
+}
 
 #[derive(Default)]
 pub(crate) struct RenderPipelinePool {
@@ -64,57 +101,89 @@ impl RenderPipelinePool {
         device: &wgpu::Device,
         desc: &RenderPipelineDesc,
         pipeline_layout_pool: &PipelineLayoutPool,
+        shader_module_pool: &ShaderModulePool,
     ) -> RenderPipelineHandle {
         self.pool.get_handle(desc, |desc| {
-            // TODO(andreas): Stop reading. Think. Add error handling. Some pointers https://github.com/gfx-rs/wgpu/issues/2130
-            // TODO(andreas): Shader need to be managed separately - it's not uncommon to reuse a vertex shader across many pipelines.
-            // TODO(andreas): Flawed assumption to have separate source per shader module. May or may not be the case!
-            let vertex_shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(&format!("vertex shader - {:?}", desc.label.get())),
-                source: wgpu::ShaderSource::Wgsl(desc.vertex_shader.shader_code.clone().into()),
-            });
-            let fragment_shader_module =
-                device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some(&format!("fragment shader - {:?}", desc.label.get())),
-                    source: wgpu::ShaderSource::Wgsl(
-                        desc.fragment_shader.shader_code.clone().into(),
-                    ),
-                });
-
-            // TODO(andreas): Manage pipeline layouts similar to other pools
-            let pipeline_layout = pipeline_layout_pool.get(desc.pipeline_layout).unwrap();
-
-            let wgpu_desc = wgpu::RenderPipelineDescriptor {
-                label: desc.label.get(),
-                layout: Some(&pipeline_layout.layout),
-                vertex: wgpu::VertexState {
-                    module: &vertex_shader_module,
-                    entry_point: desc.vertex_shader.entry_point,
-                    buffers: &desc.vertex_buffers,
-                },
-                primitive: desc.primitive,
-                depth_stencil: desc.depth_stencil.clone(),
-                multisample: desc.multisample,
-                fragment: Some(wgpu::FragmentState {
-                    module: &fragment_shader_module,
-                    entry_point: desc.fragment_shader.entry_point,
-                    targets: &desc.render_targets,
-                }),
-                multiview: None, // Multi-layered render target support isn't widespread
-            };
-
             RenderPipeline {
                 last_frame_used: AtomicU64::new(0),
-                pipeline: device.create_render_pipeline(&wgpu_desc),
+                pipeline: desc
+                    // TODO(cmc): certainly not unwrapping here
+                    .create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
+                    .unwrap(),
             }
         })
     }
 
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
-        // TODO(andreas) shader reloading goes here
-
-        // Kill any renderpipelines that haven't been used in this last frame
+    pub fn frame_maintenance(
+        &mut self,
+        device: &wgpu::Device,
+        frame_index: u64,
+        shader_modules: &mut ShaderModulePool,
+        pipeline_layouts: &mut PipelineLayoutPool,
+    ) {
+        // Garbage collect render pipelines that haven't seen any use since last frame.
         self.pool.discard_unused_resources(frame_index);
+
+        // Make sure the shader modules we rely on don't get GC'd!
+        for desc in self.pool.resource_descs() {
+            shader_modules.register_resource_usage(desc.vertex_handle);
+            shader_modules.register_resource_usage(desc.fragment_handle);
+        }
+
+        // All render pipeline descriptors that refer to shader modules that have been
+        // recompiled since last frame.
+        let descs = self
+            .pool
+            .resource_descs()
+            .filter_map(|desc| {
+                let last_frame_modified = {
+                    let vertex_last_modified = shader_modules
+                        .get(desc.vertex_handle)
+                        .map(|sm| sm.last_frame_modified.load(Ordering::Acquire))
+                        .unwrap_or(0);
+                    let fragment_last_modified = shader_modules
+                        .get(desc.fragment_handle)
+                        .map(|sm| sm.last_frame_modified.load(Ordering::Acquire))
+                        .unwrap_or(0);
+                    u64::max(vertex_last_modified, fragment_last_modified)
+                };
+
+                // TODO(cmc): Again, not nice, we'll see how things evolve.
+                (last_frame_modified >= frame_index).then(|| desc.clone())
+            })
+            .collect::<Vec<_>>();
+
+        // Recompile render pipelines referencing recompiled shader modules.
+        for desc in descs {
+            // TODO(cmc): obviously terrible, we'll see as things evolve.
+            let handle = self.pool.get_handle(&desc, |_| {
+                unreachable!("the pool itself handed us that descriptor")
+            });
+            let res = self
+                .pool
+                .get_resource_mut(handle)
+                .expect("the pool itself handed us that handle");
+
+            let render_pipeline =
+                match desc.create_render_pipeline(device, pipeline_layouts, shader_modules) {
+                    Ok(sm) => sm,
+                    Err(err) => {
+                        re_log::error!(
+                            err = re_error::format(err),
+                            "couldn't recompile render pipeline"
+                        );
+                        continue;
+                    }
+                };
+
+            re_log::debug!(
+                label = desc.label.get(),
+                "successfully recompiled render pipeline"
+            );
+
+            res.pipeline = render_pipeline;
+            // NOTE: could technically have a `last_frame_modified` like shader modules do.
+        }
     }
 
     pub fn get(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
