@@ -4,7 +4,7 @@ use egui::*;
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::*;
 
-use crate::{misc::HoveredSpace, Selection, ViewerContext};
+use crate::{legend::find_legend, misc::HoveredSpace, Selection, ViewerContext};
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -320,7 +320,11 @@ fn view_2d_scrollable(
         .map_or(InstanceIdHash::NONE, InstanceId::hash);
 
     for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
-        let re_data_store::Image { tensor, meter } = obj;
+        let re_data_store::Image {
+            tensor,
+            meter,
+            legend,
+        } = obj;
         let paint_props = paint_properties(
             ctx,
             &hovered_instance_id_hash,
@@ -333,11 +337,15 @@ fn view_2d_scrollable(
             continue; // not an image. don't know how to display this!
         }
 
-        let texture_id = ctx
+        let legend = find_legend(*legend, objects);
+
+        let tensor_view = ctx
             .cache
             .image
-            .get(props.msg_id, tensor)
-            .texture_id(ui.ctx());
+            .get_view_with_legend(props.msg_id, tensor, &legend);
+
+        let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
+
         let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
             vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
@@ -363,12 +371,10 @@ fn view_2d_scrollable(
             check_hovering(props, dist);
 
             if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
-                let (dynamic_image, _) = ctx.cache.image.get_pair(props.msg_id, tensor);
                 response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
                     ui,
                     response,
-                    tensor,
-                    dynamic_image,
+                    &tensor_view,
                     rect_in_ui,
                     pointer_pos,
                     *meter,

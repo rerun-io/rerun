@@ -5,7 +5,7 @@ pub use re_log_types::*;
 
 use crate::misc::ViewerContext;
 
-use super::Preview;
+use super::{class_description_ui::view_class_description_map, Preview};
 
 pub(crate) fn view_object(
     ctx: &mut ViewerContext<'_>,
@@ -30,6 +30,23 @@ pub(crate) fn view_instance(
     instance_id: &InstanceId,
     preview: Preview,
 ) -> Option<()> {
+    match ctx
+        .log_db
+        .obj_db
+        .types
+        .get(instance_id.obj_path.obj_type_path())
+    {
+        Some(ObjectType::ClassDescription) => view_class_description_map(ctx, ui, instance_id),
+        _ => view_instance_generic(ctx, ui, instance_id, preview),
+    }
+}
+
+pub(crate) fn view_instance_generic(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    instance_id: &InstanceId,
+    preview: Preview,
+) -> Option<()> {
     let store = ctx
         .log_db
         .obj_db
@@ -37,7 +54,6 @@ pub(crate) fn view_instance(
         .get(ctx.rec_cfg.time_ctrl.timeline())?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
-
     egui::Grid::new("object_instance")
         .striped(true)
         .num_columns(2)
@@ -334,7 +350,8 @@ pub(crate) fn ui_data(
         },
 
         Data::Tensor(tensor) => {
-            let egui_image = ctx.cache.image.get(msg_id, tensor);
+            let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
+
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {
                     Preview::Small => 32.0,
@@ -342,10 +359,11 @@ pub(crate) fn ui_data(
                     Preview::Specific(height) => height,
                 };
 
-                egui_image
+                tensor_view
+                    .retained_img
                     .show_max_size(ui, Vec2::new(4.0 * max_width, max_width))
                     .on_hover_ui(|ui| {
-                        egui_image.show(ui);
+                        tensor_view.retained_img.show(ui);
                     });
 
                 ui.vertical(|ui| {

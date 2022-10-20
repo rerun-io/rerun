@@ -2925,6 +2925,7 @@ dependencies = [
  "image",
  "instant",
  "itertools",
+ "lazy_static",
  "macaw",
  "mint",
  "ndarray",
