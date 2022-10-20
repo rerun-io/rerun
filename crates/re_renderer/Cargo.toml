@@ -8,9 +8,9 @@ publish = false
 
 [dependencies]
 ahash = "0.8"
-anyhow = "1.0.56"
-bytemuck = "1.12"
-glam = "0.20"                       # can't upgrade until macaw gets a new version using glam 0.21
+anyhow = "1.0"
+bytemuck = { version = "1.12", features = ["derive"] }
+glam = "0.20"                                          # can't upgrade until macaw gets a new version using glam 0.21
 macaw = "0.17"
 ordered-float = "3.2"
 parking_lot = "0.12"
@@ -31,4 +31,30 @@ wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
 wgpu = { version = "0.14", default-features = false, features = [
   "webgl",
   "wgsl",
+] }
+
+## Examples
+
+[dev-dependencies]
+env_logger = "0.9"
+log = "0.4"
+pollster = "0.2"
+winit = "0.27"
+
+# native
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+async-executor = "1.0"
+
+# wasm
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+console_error_panic_hook = "0.1.7"
+console_log = "0.2"
+wasm-bindgen-futures = "0.4.33"
+web-sys = { version = "0.3.60", features = [
+  "Location",
+  "Blob",
+  "RequestInit",
+  "RequestMode",
+  "Request",
+  "Response",
 ] }
