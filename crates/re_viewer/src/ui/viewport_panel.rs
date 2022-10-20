@@ -377,8 +377,11 @@ impl SpaceStates {
 
         if objects.has_any_3d() {
             ui.vertical(|ui| {
-                let state_3d = self.state_3d.entry(space.cloned()).or_default();
-                crate::view3d::view_3d(ctx, ui, state_3d, space, &objects);
+                let state = self.state_3d.entry(space.cloned()).or_default();
+                let space_specs = crate::view3d::SpaceSpecs::from_objects(space, &objects);
+                let scene = crate::view3d::scene::Scene::from_objects(ctx, &objects);
+                let space_cameras = crate::view3d::space_cameras(&objects);
+                crate::view3d::view_3d(ctx, ui, state, space, &space_specs, scene, &space_cameras);
             });
         }
     }

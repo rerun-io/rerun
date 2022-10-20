@@ -782,7 +782,6 @@ pub struct Objects<'s> {
     pub mesh3d: ObjectVec<'s, Mesh3D<'s>>,
     pub camera: ObjectVec<'s, Camera<'s>>,
     pub arrow3d: ObjectVec<'s, Arrow3D<'s>>,
-    // be very careful when adding to this to update everything, including `viwer::misc::calc_bbox_3d`.
 }
 
 impl<'s> Objects<'s> {

@@ -711,6 +711,45 @@ impl Scene {
             None
         }
     }
+
+    pub fn calc_bbox(&self) -> macaw::BoundingBox {
+        crate::profile_function!();
+
+        let mut bbox = macaw::BoundingBox::nothing();
+
+        let Self {
+            points,
+            line_segments,
+            meshes,
+            labels,
+        } = self;
+
+        for point in points {
+            bbox.extend(point.pos.into());
+        }
+
+        for line_segments in line_segments {
+            for line_segment in &line_segments.segments {
+                for &endpoint in line_segment {
+                    bbox.extend(endpoint.into());
+                }
+            }
+        }
+
+        for mesh in meshes {
+            let mesh_bbox = mesh
+                .cpu_mesh
+                .bbox()
+                .transform_affine3(&mesh.world_from_mesh);
+            bbox = bbox.union(mesh_bbox);
+        }
+
+        for label in labels {
+            bbox.extend(label.origin);
+        }
+
+        bbox
+    }
 }
 
 fn axis_color(axis: usize) -> [u8; 4] {

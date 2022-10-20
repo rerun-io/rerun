@@ -1,5 +1,5 @@
 mod eye;
-mod scene;
+pub(crate) mod scene;
 
 #[cfg(feature = "glow")]
 mod glow_rendering;
@@ -256,13 +256,13 @@ fn show_settings_ui(
 }
 
 #[derive(Default)]
-struct SpaceSpecs {
+pub(crate) struct SpaceSpecs {
     /// ZERO = unset
     up: glam::Vec3,
 }
 
 impl SpaceSpecs {
-    fn from_objects(space: Option<&ObjPath>, objects: &re_data_store::Objects<'_>) -> Self {
+    pub fn from_objects(space: Option<&ObjPath>, objects: &re_data_store::Objects<'_>) -> Self {
         if let Some(space) = space {
             if let Some(space) = objects.space.get(&space) {
                 return SpaceSpecs {
@@ -322,7 +322,7 @@ fn click_object(
 }
 
 /// A camera that projects spaces
-struct SpaceCamera {
+pub(crate) struct SpaceCamera {
     obj_path: ObjPath,
     instance_index_hash: IndexHash,
 
@@ -333,7 +333,7 @@ struct SpaceCamera {
     target_space: Option<ObjPath>,
 }
 
-fn space_cameras(objects: &re_data_store::Objects<'_>) -> Vec<SpaceCamera> {
+pub(crate) fn space_cameras(objects: &re_data_store::Objects<'_>) -> Vec<SpaceCamera> {
     objects
         .camera
         .iter()
@@ -352,31 +352,28 @@ pub(crate) fn view_3d(
     ui: &mut egui::Ui,
     state: &mut State3D,
     space: Option<&ObjPath>,
-    objects: &re_data_store::Objects<'_>,
+    space_specs: &SpaceSpecs,
+    mut scene: Scene,
+    space_cameras: &[SpaceCamera],
 ) -> egui::Response {
     crate::profile_function!();
 
-    let space_cameras = space_cameras(objects);
-
-    state.scene_bbox = state.scene_bbox.union(crate::misc::calc_bbox_3d(objects));
-    let mut scene = Scene::from_objects(ctx, objects);
-
-    let space_specs = SpaceSpecs::from_objects(space, objects);
+    state.scene_bbox = state.scene_bbox.union(scene.calc_bbox());
 
     // TODO(emilk): show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(ctx, ui, state, &space_specs);
+    show_settings_ui(ctx, ui, state, space_specs);
 
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-    let tracking_camera = tracking_camera(ctx, &space_cameras);
-    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, &space_specs);
+    let tracking_camera = tracking_camera(ctx, space_cameras);
+    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, space_specs);
 
     let did_interact_wth_eye = orbit_eye.interact(&response);
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
-    scene.add_cameras(ctx, &state.scene_bbox, rect.size(), &eye, &space_cameras);
+    scene.add_cameras(ctx, &state.scene_bbox, rect.size(), &eye, space_cameras);
 
     if did_interact_wth_eye {
         state.last_eye_interact_time = ui.input().time;
@@ -389,7 +386,7 @@ pub(crate) fn view_3d(
     let mut hovered_instance = state.hovered_instance.clone();
     if ui.input().pointer.any_click() {
         if let Some(hovered_instance) = &hovered_instance {
-            click_object(ctx, &space_cameras, state, hovered_instance);
+            click_object(ctx, space_cameras, state, hovered_instance);
         }
     } else if ui.input().pointer.any_down() {
         hovered_instance = None;
@@ -419,8 +416,8 @@ pub(crate) fn view_3d(
         }
     }
 
-    project_onto_other_spaces(ctx, &space_cameras, state, space, &response, orbit_eye);
-    show_projections_from_2d_space(ctx, &space_cameras, state, &mut scene);
+    project_onto_other_spaces(ctx, space_cameras, state, space, &response, orbit_eye);
+    show_projections_from_2d_space(ctx, space_cameras, state, &mut scene);
 
     {
         let orbit_center_alpha = egui::remap_clamp(
