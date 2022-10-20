@@ -23,7 +23,7 @@ impl CpuMesh {
     }
 }
 
-use super::eye::Eye;
+use super::{eye::Eye, SpaceCamera};
 
 pub struct Point {
     pub instance_id: InstanceIdHash,
@@ -77,7 +77,6 @@ pub struct Scene {
 impl Scene {
     pub(crate) fn from_objects(
         ctx: &mut ViewerContext<'_>,
-        scene_bbox: &macaw::BoundingBox,
         objects: &re_data_store::Objects<'_>,
     ) -> Self {
         crate::profile_function!();
@@ -233,82 +232,104 @@ impl Scene {
             }
         }
 
-        {
-            crate::profile_scope!("camera");
-            for (props, obj) in objects.camera.iter() {
-                let extrinsics = obj.extrinsics;
-                let intrinsics = obj.intrinsics.as_ref();
+        scene
+    }
 
-                let instance_id = InstanceIdHash::from_props(props);
+    pub(super) fn add_cameras(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        scene_bbox: &macaw::BoundingBox,
+        viewport_size: egui::Vec2,
+        eye: &Eye,
+        cameras: &[SpaceCamera],
+    ) {
+        crate::profile_function!();
 
-                let world_from_view = crate::misc::cam::world_from_view(extrinsics);
+        let line_radius_in_points = (0.0005 * viewport_size.length()).clamp(1.5, 5.0);
 
-                let color = object_color(ctx, props);
+        // Size of a pixel (in meters), when projected out one meter:
+        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
 
-                let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
-                let scale = scale_based_on_scene_size;
+        let line_radius_from_distance = line_radius_in_points * point_size_at_one_meter;
 
-                #[cfg(feature = "glow")]
-                {
-                    if ctx.options.show_camera_mesh_in_3d {
-                        // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
-                        // The lens is at the origin.
+        let eye_camera_plane =
+            macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
-                        let scale = Vec3::splat(scale);
+        for camera in cameras {
+            let extrinsics = &camera.extrinsics;
+            let intrinsics = camera.intrinsics.as_ref();
+            let instance_id = InstanceIdHash {
+                obj_path_hash: *camera.obj_path.hash(),
+                instance_index_hash: camera.instance_index_hash,
+            };
 
-                        let mesh_id = hash("camera_mesh");
-                        let world_from_mesh = world_from_view * glam::Affine3A::from_scale(scale);
+            let world_from_view = crate::misc::cam::world_from_view(extrinsics);
 
-                        if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
-                            mesh_id,
-                            "camera_mesh",
-                            &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
-                        ) {
-                            scene.meshes.push(MeshSource {
-                                instance_id,
-                                mesh_id,
-                                world_from_mesh,
-                                cpu_mesh,
-                                tint: None,
-                            });
-                        }
-                    }
-                }
+            let dist_to_eye = eye_camera_plane.distance(world_from_view.translation());
+            let color = [255, 128, 128, 255]; // TODO(emilk): camera color
 
-                if ctx.options.show_camera_axes_in_3d {
-                    let center = world_from_view.translation();
-                    let radius = -4.0; // ui points
+            let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
+            let scale_based_on_distance = dist_to_eye * point_size_at_one_meter * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
+            let scale = scale_based_on_scene_size.min(scale_based_on_distance);
 
-                    for (axis_index, dir) in extrinsics
-                        .camera_space_convention
-                        .axis_dirs_in_rerun_view_space()
-                        .iter()
-                        .enumerate()
-                    {
-                        let color = axis_color(axis_index);
-                        let axis_end = world_from_view.transform_point3(scale * Vec3::from(*dir));
-                        scene.line_segments.push(LineSegments {
+            #[cfg(feature = "glow")]
+            {
+                if ctx.options.show_camera_mesh_in_3d {
+                    // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
+                    // The lens is at the origin.
+
+                    let scale = Vec3::splat(scale);
+
+                    let mesh_id = hash("camera_mesh");
+                    let world_from_mesh = world_from_view * glam::Affine3A::from_scale(scale);
+
+                    if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
+                        mesh_id,
+                        "camera_mesh",
+                        &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                    ) {
+                        self.meshes.push(MeshSource {
                             instance_id,
-                            segments: vec![[center.into(), axis_end.into()]],
-                            radius,
-                            color,
+                            mesh_id,
+                            world_from_mesh,
+                            cpu_mesh,
+                            tint: None,
                         });
                     }
                 }
-
-                let line_radius = f32::NAN; // automatic
-                scene.add_camera_frustum(
-                    extrinsics,
-                    intrinsics,
-                    scene_bbox,
-                    instance_id,
-                    line_radius,
-                    color,
-                );
             }
-        }
 
-        scene
+            if ctx.options.show_camera_axes_in_3d {
+                let center = world_from_view.translation();
+                let radius = dist_to_eye * line_radius_from_distance * 2.0;
+
+                for (axis_index, dir) in extrinsics
+                    .camera_space_convention
+                    .axis_dirs_in_rerun_view_space()
+                    .iter()
+                    .enumerate()
+                {
+                    let color = axis_color(axis_index);
+                    let axis_end = world_from_view.transform_point3(scale * glam::Vec3::from(*dir));
+                    self.line_segments.push(LineSegments {
+                        instance_id,
+                        segments: vec![[center.into(), axis_end.into()]],
+                        radius,
+                        color,
+                    });
+                }
+            }
+
+            let line_radius = dist_to_eye * line_radius_from_distance;
+            self.add_camera_frustum(
+                extrinsics,
+                intrinsics,
+                scene_bbox,
+                instance_id,
+                line_radius,
+                color,
+            );
+        }
     }
 
     /// Translate screen-space sizes (ui points) and missing sizes, into proper

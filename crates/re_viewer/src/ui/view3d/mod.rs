@@ -288,7 +288,7 @@ fn find_camera(space_cameras: &[SpaceCamera], needle: &InstanceId) -> Option<Eye
 
     for camera in space_cameras {
         if needle.obj_path == camera.obj_path
-            && camera.instance_index == needle.instance_index_hash()
+            && camera.instance_index_hash == needle.instance_index_hash()
         {
             if found_camera.is_some() {
                 return None; // More than one camera
@@ -324,7 +324,7 @@ fn click_object(
 /// A camera that projects spaces
 struct SpaceCamera {
     obj_path: ObjPath,
-    instance_index: IndexHash,
+    instance_index_hash: IndexHash,
 
     extrinsics: re_log_types::Extrinsics,
     intrinsics: Option<re_log_types::Intrinsics>,
@@ -339,7 +339,7 @@ fn space_cameras(objects: &re_data_store::Objects<'_>) -> Vec<SpaceCamera> {
         .iter()
         .map(|(props, cam)| SpaceCamera {
             obj_path: props.obj_path.clone(),
-            instance_index: props.instance_index,
+            instance_index_hash: props.instance_index,
             extrinsics: *cam.extrinsics,
             intrinsics: *cam.intrinsics,
             target_space: cam.target_space.clone(),
@@ -359,7 +359,7 @@ pub(crate) fn view_3d(
     let space_cameras = space_cameras(objects);
 
     state.scene_bbox = state.scene_bbox.union(crate::misc::calc_bbox_3d(objects));
-    let mut scene = Scene::from_objects(ctx, &state.scene_bbox, objects);
+    let mut scene = Scene::from_objects(ctx, objects);
 
     let space_specs = SpaceSpecs::from_objects(space, objects);
 
@@ -375,6 +375,9 @@ pub(crate) fn view_3d(
     let did_interact_wth_eye = orbit_eye.interact(&response);
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
+
+    scene.add_cameras(ctx, &state.scene_bbox, rect.size(), &eye, &space_cameras);
+
     if did_interact_wth_eye {
         state.last_eye_interact_time = ui.input().time;
         state.eye_interpolation = None;
