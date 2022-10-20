@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Final, Iterable, Optional, Sequence, Union
+from typing import Final, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -24,6 +24,10 @@ atexit.register(rerun_shutdown)
 # ArrayLike = Union[np.ndarray, Sequence]
 ColorDtype = Union[np.uint8, np.float32, np.float64]
 Colors = npt.NDArray[ColorDtype]
+Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
+
+ClassIdDtype = Union[np.uint8, np.uint16]
+ClassIds = npt.NDArray[ClassIdDtype]
 
 
 class MeshFormat(Enum):
@@ -735,6 +739,43 @@ def log_depth_image(
     log_tensor(obj_path, image, meter=meter, timeless=timeless, space=space)
 
 
+def log_segmentation_image(
+    obj_path: str,
+    image: ClassIds,
+    class_descriptions: str = "",
+    *,
+    timeless: bool = False,
+    space: Optional[str] = None,
+) -> None:
+    """
+    Log an image made up of uint8 or uint16 class-ids.
+
+    The image should have 1 channels.
+
+    Supported `dtype`s:
+    * uint8: components should be 0-255 class ids
+    * uint16: components should be 0-65535 class ids
+    * class_descriptions: obj_path for a class_descriptions object logged with `log_class_descriptions`
+
+    If no `space` is given, the space name "2D" will be used.
+    """
+    # Catch some errors early:
+    if len(image.shape) < 2 or 3 < len(image.shape):
+        raise TypeError(f"Expected image, got array of shape {image.shape}")
+
+    if len(image.shape) == 3:
+        depth = image.shape[2]
+        if depth != 1:
+            raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
+
+    if image.dtype == "uint8":
+        rerun_rs.log_tensor_u8(obj_path, image, None, None, class_descriptions, timeless, space)
+    elif image.dtype == "uint16":
+        rerun_rs.log_tensor_u16(obj_path, image, None, None, class_descriptions, timeless, space)
+    else:
+        raise TypeError(f"Unsupported dtype: {image.dtype}")
+
+
 def log_tensor(
     obj_path: str,
     tensor: npt.NDArray[Union[np.uint8, np.uint16, np.float32, np.float64]],
@@ -749,13 +790,13 @@ def log_tensor(
         assert len(tensor.shape) == len(names)
 
     if tensor.dtype == "uint8":
-        rerun_rs.log_tensor_u8(obj_path, tensor, names, meter, timeless, space)
+        rerun_rs.log_tensor_u8(obj_path, tensor, names, meter, None, timeless, space)
     elif tensor.dtype == "uint16":
-        rerun_rs.log_tensor_u16(obj_path, tensor, names, meter, timeless, space)
+        rerun_rs.log_tensor_u16(obj_path, tensor, names, meter, None, timeless, space)
     elif tensor.dtype == "float32":
-        rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, timeless, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, None, timeless, space)
     elif tensor.dtype == "float64":
-        rerun_rs.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, timeless, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, None, timeless, space)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
@@ -820,3 +861,66 @@ def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:
 def set_visible(obj_path: str, visibile: bool) -> None:
     """Change the visibility of an object."""
     rerun_rs.set_visible(obj_path, visibile)
+
+
+@dataclass
+class ClassDescription:
+    """
+    Metadata about a class type identified by an id.
+
+    Color and label will be used to annotate objects which reference the id.
+    """
+
+    id: int
+    label: Optional[str] = None
+    color: Optional[Color] = None
+
+
+ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Color], ClassDescription]
+
+
+def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
+    if type(arg) is ClassDescription:
+        return arg
+    else:
+        return ClassDescription(*arg)  # type: ignore[misc]
+
+
+def log_class_descriptions(
+    obj_path: str,
+    class_descriptions: Sequence[ClassDescriptionLike],
+    *,
+    timeless: bool = False,
+) -> None:
+    """
+    Log a collection of ClassDescriptions which can be used for annotation of other objects.
+
+    This obj_path can be referenced from the `log_segmentation_image` API to
+    indicate this set of descriptions is relevant to the image.
+
+    Each ClassDescription must include an id, which will be used for matching
+    the class and may optionally include a label and color.  Colors should
+    either be in 0-255 gamma space or in 0-1 linear space.  Colors can be RGB or
+    RGBA.
+
+    These can either be specified verbosely as:
+    ```
+    [ClassDescription(id=23, label='foo', color=(255, 0, 0)), ...]
+    ```
+
+    Or using short-hand tuples.
+    ```
+    [(23, 'bar'), ...]
+    ```
+
+    Unspecified colors will be filled in by the visualizer randomly.
+    """
+    # Coerce tuples into ClassDescription dataclass for convenience
+    typed_class_descriptions = (coerce_class_description(d) for d in class_descriptions)
+
+    # Convert back to fixed tuple for easy pyo3 conversion
+    tuple_class_descriptions = [
+        (d.id, d.label, _normalize_colors(d.color).tolist() or None) for d in typed_class_descriptions
+    ]
+
+    rerun_rs.log_class_descriptions(obj_path, tuple_class_descriptions, timeless)

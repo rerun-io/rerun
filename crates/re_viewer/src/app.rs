@@ -255,7 +255,7 @@ impl eframe::App for App {
             paint_callback_resources
                 .get_mut::<re_renderer::context::RenderContext>()
                 .unwrap()
-                .frame_maintenance();
+                .frame_maintenance(&render_state.device);
         }
     }
 }

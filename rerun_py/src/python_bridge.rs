@@ -113,6 +113,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
     m.add_function(wrap_pyfunction!(log_obb, m)?)?;
+    m.add_function(wrap_pyfunction!(log_class_descriptions, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
@@ -1280,10 +1281,11 @@ fn log_tensor_u8(
     img: numpy::PyReadonlyArrayDyn<'_, u8>,
     names: Option<&PyList>,
     meter: Option<f32>,
+    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1294,10 +1296,11 @@ fn log_tensor_u16(
     img: numpy::PyReadonlyArrayDyn<'_, u16>,
     names: Option<&PyList>,
     meter: Option<f32>,
+    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1308,10 +1311,11 @@ fn log_tensor_f32(
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
     names: Option<&PyList>,
     meter: Option<f32>,
+    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless, space)
 }
 
 /// If no `space` is given, the space name "2D" will be used.
@@ -1320,6 +1324,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     img: numpy::PyReadonlyArrayDyn<'_, T>,
     names: Option<&PyList>,
     meter: Option<f32>,
+    legend: Option<String>,
     timeless: bool,
     space: Option<String>,
 ) -> PyResult<()> {
@@ -1354,6 +1359,14 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
             &time_point,
             (&obj_path, "meter"),
             LoggedData::Single(Data::F32(meter)),
+        );
+    }
+
+    if let Some(legend) = legend {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "legend"),
+            LoggedData::Single(Data::ObjPath(parse_obj_path(&legend)?)),
         );
     }
 
@@ -1527,6 +1540,89 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
         &time_point,
         (&obj_path, "_visible"),
         LoggedData::Single(Data::Bool(visibile)),
+    );
+
+    Ok(())
+}
+
+// Unzip supports nested, but not 3 or 4-length parallel structures
+// ((id, index), (label, color))
+type UnzipSegMap = (
+    (Vec<i32>, Vec<Index>),
+    (Vec<Option<String>>, Vec<Option<[u8; 4]>>),
+);
+
+#[pyfunction]
+fn log_class_descriptions(
+    obj_path: &str,
+    class_descriptions: Vec<(i32, Option<String>, Option<Vec<u8>>)>,
+    timeless: bool,
+) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let ((ids, indices), (labels, colors)): UnzipSegMap = class_descriptions
+        .iter()
+        .map(|(id, label, color)| {
+            let corrected_color = color
+                .as_ref()
+                .map(|color| convert_color(color.clone()).unwrap());
+            (
+                (id, Index::Integer(*id as i128)),
+                (label.clone(), corrected_color),
+            )
+        })
+        .unzip();
+
+    // Avoid duplicate indices
+    let dups: Vec<&i32> = ids.iter().duplicates().collect();
+    if !dups.is_empty() {
+        return Err(PyTypeError::new_err(format!(
+            "ClassDescription contains duplicate ids {:?}",
+            dups
+        )));
+    }
+
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::ClassDescription);
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "id"),
+        LoggedData::Batch {
+            indices: indices.clone(),
+            data: DataVec::I32(ids),
+        },
+    );
+
+    // Strip out any indices with unset labels
+    let (label_indices, labels) = std::iter::zip(indices.clone(), labels)
+        .filter_map(|(i, l)| Some((i, l?)))
+        .unzip();
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "label"),
+        LoggedData::Batch {
+            indices: label_indices,
+            data: DataVec::String(labels),
+        },
+    );
+
+    // Strip out any indices with unset colors
+    let (color_indices, colors) = std::iter::zip(indices, colors)
+        .filter_map(|(i, c)| Some((i, c?)))
+        .unzip();
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "color"),
+        LoggedData::Batch {
+            indices: color_indices,
+            data: DataVec::Color(colors),
+        },
     );
 
     Ok(())

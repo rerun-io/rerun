@@ -1,6 +1,6 @@
 /// Label for resources. Optimized out in release builds.
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
-pub(crate) struct DebugLabel {
+pub struct DebugLabel {
     #[cfg(debug_assertions)]
     label: String,
 }
@@ -21,6 +21,11 @@ impl DebugLabel {
 
 impl From<&str> for DebugLabel {
     fn from(str: &str) -> Self {
+        #[cfg(not(debug_assertions))]
+        {
+            _ = str;
+        }
+
         Self {
             #[cfg(debug_assertions)]
             label: str.to_owned(),

@@ -1,8 +1,10 @@
 use crate::{
     context::SharedRendererData,
+    include_file,
     resource_pools::{
         bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, texture_pool::TextureHandle, WgpuResourcePools,
+        render_pipeline_pool::*, shader_module_pool::*, texture_pool::TextureHandle,
+        WgpuResourcePools,
     },
 };
 
@@ -84,14 +86,22 @@ impl Renderer for Tonemapper {
                     },
                     &pools.bind_group_layouts,
                 ),
-                vertex_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/screen_triangle.wgsl").into(),
-                    entry_point: "main",
-                },
-                fragment_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/tonemap.wgsl").into(),
-                    entry_point: "main",
-                },
+                vertex_entrypoint: "main".into(),
+                vertex_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "screen_triangle (vertex)".into(),
+                        source: include_file!("../../shader/screen_triangle.wgsl"),
+                    },
+                ),
+                fragment_entrypoint: "main".into(),
+                fragment_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "tonemap (fragment)".into(),
+                        source: include_file!("../../shader/tonemap.wgsl"),
+                    },
+                ),
                 vertex_buffers: vec![],
                 render_targets: vec![Some(shared_data.config.output_format_color.into())],
                 primitive: wgpu::PrimitiveState::default(),
@@ -99,6 +109,7 @@ impl Renderer for Tonemapper {
                 multisample: wgpu::MultisampleState::default(),
             },
             &pools.pipeline_layouts,
+            &pools.shader_modules,
         );
 
         Tonemapper {
