@@ -72,19 +72,12 @@ pub struct Scene {
     pub line_segments: Vec<LineSegments>,
     pub meshes: Vec<MeshSource>,
     pub labels: Vec<Label>,
-
-    /// Multiply this with the distance to a point to get its suggested radius.
-    pub point_radius_from_distance: f32,
-    /// Multiply this with the distance to a line to get its suggested radius.
-    pub line_radius_from_distance: f32,
 }
 
 impl Scene {
     pub(crate) fn from_objects(
         ctx: &mut ViewerContext<'_>,
         scene_bbox: &macaw::BoundingBox,
-        viewport_size: egui::Vec2,
-        eye: &Eye,
         objects: &re_data_store::Objects<'_>,
     ) -> Self {
         crate::profile_function!();
@@ -110,42 +103,17 @@ impl Scene {
             [r, g, b, a]
         };
 
-        let viewport_area = viewport_size.x * viewport_size.y;
-
-        let line_radius_in_points = (0.0005 * viewport_size.length()).clamp(1.5, 5.0);
-
-        // More points -> smaller points
-        let point_radius_in_points =
-            (0.3 * (viewport_area / (objects.point3d.len() + 1) as f32).sqrt()).clamp(0.1, 5.0);
-
-        // Size of a pixel (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
-
-        let point_radius_from_distance = point_radius_in_points * point_size_at_one_meter;
-        let line_radius_from_distance = line_radius_in_points * point_size_at_one_meter;
-
-        let eye_camera_plane =
-            macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
-
-        let mut scene = Scene {
-            point_radius_from_distance,
-            line_radius_from_distance,
-            ..Default::default()
-        };
+        let mut scene = Scene::default();
 
         {
             crate::profile_scope!("point3d");
             scene.points.reserve(objects.point3d.len());
             for (props, obj) in objects.point3d.iter() {
                 let re_data_store::Point3D { pos, radius } = *obj;
-
-                let dist_to_eye = eye_camera_plane.distance(Vec3::from(*pos));
-                let radius = radius.unwrap_or(dist_to_eye * point_radius_from_distance);
-
                 scene.points.push(Point {
                     instance_id: InstanceIdHash::from_props(props),
                     pos: *pos,
-                    radius,
+                    radius: radius.unwrap_or(f32::NAN), // NaN = automatic radius
                     color: object_color(ctx, props),
                 });
             }
@@ -159,11 +127,8 @@ impl Scene {
                     stroke_width,
                     label,
                 } = obj;
-                let line_radius = stroke_width.map_or_else(
-                    || {
-                        let dist_to_eye = eye_camera_plane.distance(Vec3::from(obb.translation));
-                        dist_to_eye * line_radius_from_distance
-                    },
+                let line_radius = stroke_width.map_or(
+                    f32::NAN, // NaN = automatic radius
                     |w| w / 2.0,
                 );
                 let color = object_color(ctx, props);
@@ -185,13 +150,8 @@ impl Scene {
                     stroke_width,
                 } = obj;
 
-                let line_radius = stroke_width.map_or_else(
-                    || {
-                        let bbox =
-                            macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
-                        let dist_to_eye = eye_camera_plane.distance(bbox.center());
-                        dist_to_eye * line_radius_from_distance
-                    },
+                let line_radius = stroke_width.map_or(
+                    f32::NAN, // NaN = automatic radius
                     |w| w / 2.0,
                 );
                 let color = object_color(ctx, props);
@@ -219,13 +179,8 @@ impl Scene {
                     stroke_width,
                 } = *obj;
 
-                let line_radius = stroke_width.map_or_else(
-                    || {
-                        let bbox =
-                            macaw::BoundingBox::from_points(points.iter().copied().map(Vec3::from));
-                        let dist_to_eye = eye_camera_plane.distance(bbox.center());
-                        dist_to_eye * line_radius_from_distance
-                    },
+                let line_radius = stroke_width.map_or(
+                    f32::NAN, // NaN = automatic radius
                     |w| w / 2.0,
                 );
                 let color = object_color(ctx, props);
@@ -288,12 +243,10 @@ impl Scene {
 
                 let world_from_view = crate::misc::cam::world_from_view(extrinsics);
 
-                let dist_to_eye = eye_camera_plane.distance(world_from_view.translation());
                 let color = object_color(ctx, props);
 
                 let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
-                let scale_based_on_distance = dist_to_eye * point_radius_from_distance * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
-                let scale = scale_based_on_scene_size.min(scale_based_on_distance);
+                let scale = scale_based_on_scene_size;
 
                 #[cfg(feature = "glow")]
                 {
@@ -324,7 +277,7 @@ impl Scene {
 
                 if ctx.options.show_camera_axes_in_3d {
                     let center = world_from_view.translation();
-                    let radius = dist_to_eye * line_radius_from_distance * 2.0;
+                    let radius = -4.0; // ui points
 
                     for (axis_index, dir) in extrinsics
                         .camera_space_convention
@@ -343,7 +296,7 @@ impl Scene {
                     }
                 }
 
-                let line_radius = dist_to_eye * line_radius_from_distance;
+                let line_radius = f32::NAN; // automatic
                 scene.add_camera_frustum(
                     extrinsics,
                     intrinsics,
@@ -379,8 +332,6 @@ impl Scene {
             line_segments,
             meshes: _, // always has final size. TODO(emilk): tint on hover!
             labels: _, // always has final size. TODO(emilk): tint on hover!
-            point_radius_from_distance: _,
-            line_radius_from_distance: _,
         } = self;
 
         let hover_size_boost = 1.5;
@@ -649,8 +600,6 @@ impl Scene {
             line_segments,
             meshes,
             labels: _,
-            point_radius_from_distance: _,
-            line_radius_from_distance: _,
         } = self;
 
         // in points

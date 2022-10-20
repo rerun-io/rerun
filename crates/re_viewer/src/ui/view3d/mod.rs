@@ -372,12 +372,7 @@ pub(crate) fn view_3d(
         );
     }
 
-    let mut scene = Scene::from_objects(ctx, &state.scene_bbox, rect.size(), &eye, objects);
-    scene.finalize_sizes_and_colors(
-        rect.size(),
-        &eye,
-        hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
-    );
+    let mut scene = Scene::from_objects(ctx, &state.scene_bbox, objects);
 
     let hovered = response
         .hover_pos()
@@ -393,13 +388,41 @@ pub(crate) fn view_3d(
     }
 
     project_onto_other_spaces(ctx, state, space, &response, orbit_eye, objects);
-    show_projections_from_2d_space(ctx, objects, state, orbit_eye, &mut scene);
+    show_projections_from_2d_space(ctx, objects, state, &mut scene);
 
-    // Draw labels
-    let ui_from_world = eye.ui_from_world(&rect);
+    {
+        let orbit_center_alpha = egui::remap_clamp(
+            ui.input().time - state.last_eye_interact_time,
+            0.0..=0.4,
+            0.7..=0.0,
+        ) as f32;
+
+        if orbit_center_alpha > 0.0 {
+            // Show center of orbit camera when interacting with camera (it's quite helpful).
+            scene.points.push(Point {
+                instance_id: InstanceIdHash::NONE,
+                pos: orbit_eye.orbit_center.to_array(),
+                radius: orbit_eye.orbit_radius * 0.01,
+                color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
+            });
+            ui.ctx().request_repaint(); // let it fade out
+        }
+    }
+
+    scene.finalize_sizes_and_colors(
+        rect.size(),
+        &eye,
+        hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
+    );
+
+    // ---------------
+    // Time to render:
+
+    // Draw labels:
     ui.with_layer_id(
         egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
         |ui| {
+            let ui_from_world = eye.ui_from_world(&rect);
             for label in &scene.labels {
                 let pt = ui_from_world.project_point3(label.origin);
                 let font_id = egui::TextStyle::Monospace.resolve(ui.style());
@@ -426,25 +449,6 @@ pub(crate) fn view_3d(
             }
         },
     );
-
-    {
-        let orbit_center_alpha = egui::remap_clamp(
-            ui.input().time - state.last_eye_interact_time,
-            0.0..=0.4,
-            0.7..=0.0,
-        ) as f32;
-
-        if orbit_center_alpha > 0.0 {
-            // Show center of orbit camera when interacting with camera (it's quite helpful).
-            scene.points.push(Point {
-                instance_id: InstanceIdHash::NONE,
-                pos: orbit_eye.orbit_center.to_array(),
-                radius: orbit_eye.orbit_radius * 0.01,
-                color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
-            });
-            ui.ctx().request_repaint(); // let it fade out
-        }
-    }
 
     #[cfg(feature = "wgpu")]
     let _callback = {
@@ -522,11 +526,8 @@ fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
     objects: &re_data_store::Objects<'_>,
     state: &mut State3D,
-    orbit_eye: OrbitEye,
     scene: &mut Scene,
 ) {
-    let eye_pos = orbit_eye.position();
-
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
         for (_, cam) in objects.camera.iter() {
             if cam.target_space == space_2d {
@@ -556,9 +557,7 @@ fn show_projections_from_2d_space(
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
-                    let distance =
-                        crate::math::line_segment_distance_to_point_3d([origin, end], eye_pos);
-                    let radius = 2.0 * scene.line_radius_from_distance * distance;
+                    let radius = -4.0; // ui points
                     scene.line_segments.push(LineSegments {
                         instance_id: InstanceIdHash::NONE,
                         segments: vec![[origin.into(), end.into()]],
