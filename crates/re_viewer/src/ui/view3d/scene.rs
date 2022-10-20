@@ -11,7 +11,7 @@ use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 #[cfg(feature = "glow")]
 use crate::misc::mesh_loader::CpuMesh;
 
-// TODO(andreas): Dummy for disabling glow. Need a threed independent mesh obv.
+// TODO(andreas): Dummy for disabling glow. Need a three-d independent mesh obv.
 #[cfg(not(feature = "glow"))]
 pub struct CpuMesh {
     bbox: macaw::BoundingBox,
@@ -28,6 +28,9 @@ use super::eye::Eye;
 pub struct Point {
     pub instance_id: InstanceIdHash,
     pub pos: [f32; 3],
+    /// If positive, this is in scene units.
+    /// If negative, this is in ui points.
+    /// If NaN, auto-size it.
     pub radius: f32,
     pub color: [u8; 4],
 }
@@ -35,6 +38,9 @@ pub struct Point {
 pub struct LineSegments {
     pub instance_id: InstanceIdHash,
     pub segments: Vec<[[f32; 3]; 2]>,
+    /// If positive, this is in scene units.
+    /// If negative, this is in ui points.
+    /// If NaN, auto-size it.
     pub radius: f32,
     pub color: [u8; 4],
 }
@@ -168,8 +174,7 @@ impl Scene {
                 } = obj;
                 let line_radius = stroke_width.map_or_else(
                     || {
-                        let dist_to_eye =
-                            eye_camera_plane.distance(glam::Vec3::from(obb.translation));
+                        let dist_to_eye = eye_camera_plane.distance(Vec3::from(obb.translation));
                         dist_to_eye * line_radius_from_distance
                     },
                     |w| w / 2.0,
@@ -345,8 +350,7 @@ impl Scene {
                         .enumerate()
                     {
                         let color = axis_color(axis_index);
-                        let axis_end =
-                            world_from_view.transform_point3(scale * glam::Vec3::from(*dir));
+                        let axis_end = world_from_view.transform_point3(scale * Vec3::from(*dir));
                         scene.line_segments.push(LineSegments {
                             instance_id,
                             segments: vec![[center.into(), axis_end.into()]],
@@ -369,6 +373,95 @@ impl Scene {
         }
 
         scene
+    }
+
+    /// Translate screen-space sizes (ui points) and missing sizes, into proper
+    /// scene-space sizes.
+    ///
+    /// Also does hover-effects (changing colors and sizes)
+    ///
+    /// Non-finite sizes are given default sizes.
+    /// Negative sizes are interpreted as ui points, and are translated
+    /// to screen-space sizes (based on distance).
+    pub fn finalize_sizes_and_colors(
+        &mut self,
+        viewport_size: egui::Vec2,
+        eye: &Eye,
+        hovered_instance_id_hash: InstanceIdHash,
+    ) {
+        crate::profile_function!();
+
+        let Self {
+            points,
+            line_segments,
+            meshes: _, // always has final size. TODO(emilk): tint on hover!
+            labels: _, // always has final size. TODO(emilk): tint on hover!
+            point_radius_from_distance: _,
+            line_radius_from_distance: _,
+        } = self;
+
+        let hover_size_boost = 1.5;
+        const HOVER_COLOR: [u8; 4] = [255; 4];
+
+        let viewport_area = viewport_size.x * viewport_size.y;
+
+        // Size of a ui point (in meters), when projected out one meter:
+        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
+
+        let eye_camera_plane =
+            macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
+
+        // More points -> smaller points
+        let default_point_radius_in_points =
+            (0.3 * (viewport_area / (points.len() + 1) as f32).sqrt()).clamp(0.1, 5.0);
+
+        // TODO(emilk): more line segments -> thinner lines
+        let default_line_radius_in_points = (0.0005 * viewport_size.length()).clamp(1.5, 5.0);
+
+        {
+            crate::profile_scope!("points");
+            for point in points {
+                if !point.radius.is_finite() {
+                    point.radius = -default_point_radius_in_points;
+                }
+                if point.radius < 0.0 {
+                    let size_in_points = -point.radius;
+
+                    let dist_to_eye = eye_camera_plane.distance(Vec3::from(point.pos));
+                    point.radius = dist_to_eye * size_in_points * point_size_at_one_meter;
+                }
+                if point.instance_id == hovered_instance_id_hash {
+                    point.radius *= hover_size_boost;
+                    point.color = HOVER_COLOR;
+                }
+            }
+        }
+
+        {
+            crate::profile_scope!("lines");
+            for line_segment in line_segments {
+                if !line_segment.radius.is_finite() {
+                    line_segment.radius = -default_line_radius_in_points;
+                }
+                if line_segment.radius < 0.0 {
+                    let size_in_points = -line_segment.radius;
+
+                    let mut centroid = glam::DVec3::ZERO;
+                    for segment in &line_segment.segments {
+                        centroid += glam::Vec3::from(segment[0]).as_dvec3();
+                        centroid += glam::Vec3::from(segment[1]).as_dvec3();
+                    }
+                    let centroid = centroid.as_vec3() / (2.0 * line_segment.segments.len() as f32);
+                    let dist_to_eye = eye_camera_plane.distance(centroid);
+
+                    line_segment.radius = dist_to_eye * size_in_points * point_size_at_one_meter;
+                }
+                if line_segment.instance_id == hovered_instance_id_hash {
+                    line_segment.radius *= hover_size_boost;
+                    line_segment.color = HOVER_COLOR;
+                }
+            }
+        }
     }
 
     /// Paint frustum lines
@@ -444,9 +537,9 @@ impl Scene {
         let (cylinder_id, cylinder_mesh) = ctx.cache.cpu_mesh.cylinder();
         let (cone_id, cone_mesh) = ctx.cache.cpu_mesh.cone();
 
-        let vector = glam::Vec3::from_slice(vector);
-        let rotation = glam::Quat::from_rotation_arc(glam::Vec3::X, vector.normalize());
-        let origin = glam::Vec3::from_slice(origin);
+        let vector = Vec3::from_slice(vector);
+        let rotation = glam::Quat::from_rotation_arc(Vec3::X, vector.normalize());
+        let origin = Vec3::from_slice(origin);
 
         let width_scale = width_scale.unwrap_or(1.0);
         let tip_length = 2.0 * width_scale;
@@ -474,7 +567,7 @@ impl Scene {
             vec3(tip_length, 1.0 * width_scale, 1.0 * width_scale),
             rotation,
             origin + vector,
-        ) * glam::Affine3A::from_translation(-glam::Vec3::X);
+        ) * glam::Affine3A::from_translation(-Vec3::X);
 
         self.meshes.push(MeshSource {
             instance_id,
@@ -499,8 +592,8 @@ impl Scene {
             half_size,
         } = box3;
         let rotation = glam::Quat::from_array(*rotation);
-        let translation = glam::Vec3::from(*translation);
-        let half_size = glam::Vec3::from(*half_size);
+        let translation = Vec3::from(*translation);
+        let half_size = Vec3::from(*half_size);
         let transform =
             glam::Affine3A::from_scale_rotation_translation(half_size, rotation, translation);
 
@@ -555,7 +648,7 @@ impl Scene {
         pointer_in_ui: egui::Pos2,
         rect: &egui::Rect,
         eye: &Eye,
-    ) -> Option<(InstanceIdHash, glam::Vec3)> {
+    ) -> Option<(InstanceIdHash, Vec3)> {
         crate::profile_function!();
 
         let ui_from_world = eye.ui_from_world(rect);

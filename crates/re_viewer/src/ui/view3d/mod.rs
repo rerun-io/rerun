@@ -380,6 +380,11 @@ pub(crate) fn view_3d(
         hovered_instance.as_ref(),
         objects,
     );
+    scene.finalize_sizes_and_colors(
+        rect.size(),
+        &eye,
+        hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
+    );
 
     let hovered = response
         .hover_pos()
