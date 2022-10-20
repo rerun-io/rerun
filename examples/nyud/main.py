@@ -133,6 +133,7 @@ if __name__ == "__main__":
     parser.add_argument("dataset", type=Path, help="Path to the cafe.zip archive.")
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "--folder-idx", type=int, default=0, help="The index of the folders within the dataset archive to log."
     )
@@ -149,6 +150,8 @@ if __name__ == "__main__":
         dir_idx=args.folder_idx,
     )
 
-    if not args.connect:
+    if args.save is not None:
+        rerun.save(args.save)
+    elif not args.connect:
         # Show the logged data inside the Python process:
         rerun.show()
