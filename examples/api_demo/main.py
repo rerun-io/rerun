@@ -9,7 +9,9 @@ import argparse
 from time import sleep
 from typing import Any
 
+import numpy as np
 import rerun_sdk as rerun
+from rerun_sdk import ClassDescription
 
 
 def args_set_visible(subparsers: Any) -> None:
@@ -29,6 +31,39 @@ def run_set_visible(args: argparse.Namespace) -> None:
     rerun.set_visible("rect/0", True)
     rerun.set_time_seconds("sim_time", 5)
     rerun.set_visible("rect/1", True)
+
+
+def args_segmentation(subparsers: Any) -> None:
+    segmentation_parser = subparsers.add_parser("segmentation")
+    segmentation_parser.set_defaults(func=run_segmentation)
+
+
+def run_segmentation(args: argparse.Namespace) -> None:
+    rerun.set_time_seconds("sim_time", 1)
+
+    # Log an image before we have set up our labels
+    segmentation_img = np.zeros([128, 128], dtype="uint8")
+    segmentation_img[10:20, 30:50] = 13
+    segmentation_img[80:100, 60:80] = 42
+    segmentation_img[20:50, 90:110] = 99
+    rerun.log_segmentation_image("img", segmentation_img, "labels")
+
+    # Log an initial segmentation map with arbitrary colors
+    rerun.set_time_seconds("sim_time", 2)
+    rerun.log_class_descriptions("labels", [(13, "label1"), (42, "label2"), (99, "label3")])
+
+    # Log an updated segmentation map with specific colors
+    rerun.set_time_seconds("sim_time", 3)
+    rerun.log_class_descriptions(
+        "labels", [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]
+    )
+
+    # Log with a mixture of set and unset colors / labels
+    rerun.set_time_seconds("sim_time", 4)
+    rerun.log_class_descriptions(
+        "labels",
+        [ClassDescription(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), ClassDescription(99, label="label3")],
+    )
 
 
 def main() -> None:
@@ -51,6 +86,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(required=True)
 
     args_set_visible(subparsers)
+    args_segmentation(subparsers)
 
     args = parser.parse_args()
 

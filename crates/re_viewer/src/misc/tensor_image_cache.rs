@@ -4,27 +4,100 @@ use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::*;
 
+use crate::ui::legend::{ColorMapping, Legend};
+
+/// The `TensorImageView` is a wrapper on top of `re_log_types::Tensor`
+///
+/// It consolidates the common operations of going from the raw tensor storage
+/// into an object that can be more natively displayed as an Image.
+///
+/// The `dynamic_img` and `retained_img` are cached to keep the overhead low.
+///
+/// In the case of images that leverage a `ColorMapping` this includes conversion from
+/// the native Tensor type A -> Color32 which is stored for the cached dynamic /
+/// retained images.
+pub struct TensorImageView<'store, 'cache> {
+    /// Borrowed tensor from the object store
+    pub tensor: &'store Tensor,
+
+    /// Legend used to create the view
+    pub legend: &'store Legend<'store>,
+
+    /// DynamicImage helper for things like zoom
+    pub dynamic_img: &'cache DynamicImage,
+
+    /// For egui
+    pub retained_img: &'cache RetainedImage,
+}
+
+// Use a MsgIdPair for the cache index so that we don't cache across
+// changes to the legend
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct ImageCacheKey {
+    image_msg_id: MsgId,
+    legend_msg_id: Option<MsgId>,
+}
+impl nohash_hasher::IsEnabled for ImageCacheKey {}
+
+// required for [`nohash_hasher`].
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for ImageCacheKey {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let msg_hash = self.image_msg_id.0.as_u128() as u64;
+
+        let legend_hash = if let Some(legend_msg_id) = self.legend_msg_id {
+            (legend_msg_id.0.as_u128() >> 1) as u64
+        } else {
+            0
+        };
+
+        state.write_u64(msg_hash ^ legend_hash);
+    }
+}
+
 #[derive(Default)]
 pub struct ImageCache {
-    images: nohash_hasher::IntMap<MsgId, CachedImage>,
+    images: nohash_hasher::IntMap<ImageCacheKey, CachedImage>,
     memory_used: u64,
     generation: u64,
 }
 
 impl ImageCache {
-    pub fn get_pair(&mut self, msg_id: &MsgId, tensor: &Tensor) -> (&DynamicImage, &RetainedImage) {
-        let ci = self.images.entry(*msg_id).or_insert_with(|| {
-            // TODO(emilk): proper debug name for images
-            let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor);
-            self.memory_used += ci.memory_used;
-            ci
-        });
+    pub(crate) fn get_view_with_legend<'store, 'cache>(
+        &'cache mut self,
+        msg_id: &MsgId,
+        tensor: &'store Tensor,
+        legend: &'store Legend<'store>,
+    ) -> TensorImageView<'store, 'cache> {
+        let ci = self
+            .images
+            .entry(ImageCacheKey {
+                image_msg_id: *msg_id,
+                legend_msg_id: legend.and_then(|seg_map| Some(*seg_map.msg_id)),
+            })
+            .or_insert_with(|| {
+                // TODO(emilk): proper debug name for images
+                let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor, legend);
+                self.memory_used += ci.memory_used;
+                ci
+            });
         ci.last_use_generation = self.generation;
-        (&ci.dynamic_img, &ci.retained_img)
+
+        TensorImageView::<'store, '_> {
+            tensor,
+            legend,
+            dynamic_img: &ci.dynamic_img,
+            retained_img: &ci.retained_img,
+        }
     }
 
-    pub fn get(&mut self, msg_id: &MsgId, tensor: &Tensor) -> &RetainedImage {
-        self.get_pair(msg_id, tensor).1
+    pub(crate) fn get_view<'store, 'cache>(
+        &'cache mut self,
+        msg_id: &MsgId,
+        tensor: &'store Tensor,
+    ) -> TensorImageView<'store, 'cache> {
+        self.get_view_with_legend(msg_id, tensor, &Legend::None)
     }
 
     /// Call once per frame to (potentially) flush the cache.
@@ -70,9 +143,9 @@ struct CachedImage {
 }
 
 impl CachedImage {
-    fn from_tensor(debug_name: String, tensor: &Tensor) -> Self {
+    fn from_tensor<'store>(debug_name: String, tensor: &Tensor, legend: &Legend<'store>) -> Self {
         crate::profile_function!();
-        let dynamic_img = match tensor_to_dynamic_image(tensor) {
+        let dynamic_img = match tensor_to_dynamic_image(tensor, legend) {
             Ok(dynamic_image) => dynamic_image,
             Err(err) => {
                 re_log::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
@@ -96,7 +169,7 @@ impl CachedImage {
     }
 }
 
-fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
+fn tensor_to_dynamic_image(tensor: &Tensor, legend: &Legend<'_>) -> anyhow::Result<DynamicImage> {
     crate::profile_function!();
     use anyhow::Context as _;
 
@@ -132,20 +205,48 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
                 "Tensor data length doesn't match tensor shape and dtype"
             );
 
-            match (depth, tensor.dtype) {
-                (1, TensorDataType::U8) => {
+            match (*legend, depth, tensor.dtype) {
+                (Some(legend), 1, TensorDataType::U8) => {
+                    // Apply legend mapping to raw bytes interpreted as u8
+                    image::RgbaImage::from_raw(
+                        width,
+                        height,
+                        bytes
+                            .to_vec()
+                            .iter()
+                            .flat_map(|p| legend.map_color(*p as u16))
+                            .collect(),
+                    )
+                    .context("Bad RGBA8")
+                    .map(DynamicImage::ImageRgba8)
+                }
+                (Some(legend), 1, TensorDataType::U16) => {
+                    // Apply legend mapping to bytes interpreted as u16
+                    image::RgbaImage::from_raw(
+                        width,
+                        height,
+                        bytemuck::cast_slice(bytes)
+                            .to_vec()
+                            .iter()
+                            .flat_map(|p| legend.map_color(*p))
+                            .collect(),
+                    )
+                    .context("Bad RGBA8")
+                    .map(DynamicImage::ImageRgba8)
+                }
+                (None, 1, TensorDataType::U8) => {
                     // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
                     image::GrayImage::from_raw(width, height, bytes.to_vec())
                         .context("Bad Luminance8")
                         .map(DynamicImage::ImageLuma8)
                 }
-                (1, TensorDataType::U16) => {
+                (None, 1, TensorDataType::U16) => {
                     // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
                     Gray16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                         .context("Bad Luminance16")
                         .map(DynamicImage::ImageLuma16)
                 }
-                (1, TensorDataType::F32) => {
+                (None, 1, TensorDataType::F32) => {
                     let assume_depth = true; // TODO(emilk): we should read some meta-data to check if this is luminance, alpha or a depth map.
 
                     if assume_depth {
@@ -201,15 +302,17 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
                     }
                 }
 
-                (3, TensorDataType::U8) => image::RgbImage::from_raw(width, height, bytes.to_vec())
-                    .context("Bad RGB8")
-                    .map(DynamicImage::ImageRgb8),
-                (3, TensorDataType::U16) => {
+                (None, 3, TensorDataType::U8) => {
+                    image::RgbImage::from_raw(width, height, bytes.to_vec())
+                        .context("Bad RGB8")
+                        .map(DynamicImage::ImageRgb8)
+                }
+                (None, 3, TensorDataType::U16) => {
                     Rgb16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                         .context("Bad RGB16 image")
                         .map(DynamicImage::ImageRgb16)
                 }
-                (3, TensorDataType::F32) => {
+                (None, 3, TensorDataType::F32) => {
                     let rgb: &[[f32; 3]] = bytemuck::cast_slice(bytes);
                     let colors: Vec<u8> = rgb
                         .iter()
@@ -225,17 +328,17 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
                         .map(DynamicImage::ImageRgb8)
                 }
 
-                (4, TensorDataType::U8) => {
+                (None, 4, TensorDataType::U8) => {
                     image::RgbaImage::from_raw(width, height, bytes.to_vec())
                         .context("Bad RGBA8")
                         .map(DynamicImage::ImageRgba8)
                 }
-                (4, TensorDataType::U16) => {
+                (None, 4, TensorDataType::U16) => {
                     Rgba16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                         .context("Bad RGBA16 image")
                         .map(DynamicImage::ImageRgba16)
                 }
-                (4, TensorDataType::F32) => {
+                (None, 4, TensorDataType::F32) => {
                     let rgba: &[[f32; 4]] = bytemuck::cast_slice(bytes);
                     let colors: Vec<u8> = rgba
                         .iter()
@@ -251,8 +354,13 @@ fn tensor_to_dynamic_image(tensor: &Tensor) -> anyhow::Result<DynamicImage> {
                         .context("Bad RGBA f32")
                         .map(DynamicImage::ImageRgba8)
                 }
+                (Some(_), _depth, dtype) => {
+                    anyhow::bail!(
+                        "Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image using a Legend"
+                    )
+                }
 
-                (_depth, dtype) => {
+                (None, _depth, dtype) => {
                     anyhow::bail!(
                         "Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image"
                     )

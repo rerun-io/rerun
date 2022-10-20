@@ -1,11 +1,11 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clipboard;
 pub(crate) mod color_map;
-pub(crate) mod image_cache;
 #[cfg(feature = "glow")]
 pub(crate) mod mesh_loader;
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub(crate) mod profiler;
+pub(crate) mod tensor_image_cache;
 pub(crate) mod time_axis;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
@@ -13,7 +13,7 @@ mod time_range;
 mod time_real;
 mod viewer_context;
 
-use image_cache::ImageCache;
+use tensor_image_cache::ImageCache;
 pub(crate) use time_control::{TimeControl, TimeView};
 pub(crate) use time_range::{TimeRange, TimeRangeF};
 pub(crate) use time_real::TimeReal;
@@ -154,7 +154,7 @@ pub fn calc_bbox_3d(objects: &re_data_store::Objects<'_>) -> macaw::BoundingBox 
     }
 
     for (_, obj) in objects.camera.iter() {
-        bbox.extend(obj.camera.extrinsics.position.into());
+        bbox.extend(obj.extrinsics.position.into());
     }
 
     for (_, obj) in objects.arrow3d.iter() {
@@ -199,37 +199,51 @@ pub mod cam {
     }
 
     /// Projects image coordinates into world coordinates
-    pub fn world_from_image(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
-        cam.intrinsics.map(|intrinsics| {
+    pub fn world_from_image(
+        extrinsics: &re_log_types::Extrinsics,
+        intrinsics: Option<&re_log_types::Intrinsics>,
+    ) -> Option<glam::Affine3A> {
+        intrinsics.map(|intrinsics| {
             let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
-            world_from_view(&cam.extrinsics)
+            world_from_view(extrinsics)
                 * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different.
                 * Affine3A::from_mat3(intrinsics.inverse())
         })
     }
 
     /// Projects world coordinates onto 2D image coordinates
-    pub fn image_from_world(cam: &re_log_types::Camera) -> Option<glam::Affine3A> {
-        cam.intrinsics.map(|intrinsics| {
+    pub fn image_from_world(
+        extrinsics: &re_log_types::Extrinsics,
+        intrinsics: Option<&re_log_types::Intrinsics>,
+    ) -> Option<glam::Affine3A> {
+        intrinsics.map(|intrinsics| {
             let intrinsics = glam::Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
             Affine3A::from_mat3(intrinsics)
             * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different.
-            * view_from_world(&cam.extrinsics)
+            * view_from_world(extrinsics)
         })
     }
 
     /// Returns x, y, and depth in image coordinates.
-    pub fn project_onto_2d(cam: &re_log_types::Camera, pos3d: Vec3) -> Option<Vec3> {
-        image_from_world(cam).map(|pixel_from_world| {
+    pub fn project_onto_2d(
+        extrinsics: &re_log_types::Extrinsics,
+        intrinsics: Option<&re_log_types::Intrinsics>,
+        pos3d: Vec3,
+    ) -> Option<Vec3> {
+        image_from_world(extrinsics, intrinsics).map(|pixel_from_world| {
             let point = pixel_from_world.transform_point3(pos3d);
             vec3(point.x / point.z, point.y / point.z, point.z)
         })
     }
 
     /// Unproject a 2D image coordinate as a ray in 3D space
-    pub fn unproject_as_ray(cam: &re_log_types::Camera, pos2d: Vec2) -> Option<Ray3> {
-        world_from_image(cam).map(|world_from_pixel| {
-            let origin = Vec3::from_slice(&cam.extrinsics.position);
+    pub fn unproject_as_ray(
+        extrinsics: &re_log_types::Extrinsics,
+        intrinsics: Option<&re_log_types::Intrinsics>,
+        pos2d: Vec2,
+    ) -> Option<Ray3> {
+        world_from_image(extrinsics, intrinsics).map(|world_from_pixel| {
+            let origin = Vec3::from_slice(&extrinsics.position);
             let stop = world_from_pixel.transform_point3(pos2d.extend(1.0));
             let dir = (stop - origin).normalize();
             Ray3::from_origin_dir(origin, dir)

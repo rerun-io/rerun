@@ -1,7 +1,10 @@
 use crate::{
     context::SharedRendererData,
     frame_builder::FrameBuilder,
-    resource_pools::{pipeline_layout_pool::*, render_pipeline_pool::*, WgpuResourcePools},
+    include_file,
+    resource_pools::{
+        pipeline_layout_pool::*, render_pipeline_pool::*, shader_module_pool::*, WgpuResourcePools,
+    },
 };
 
 use super::Renderer;
@@ -36,14 +39,22 @@ impl Renderer for TestTriangle {
                     },
                     &pools.bind_group_layouts,
                 ),
-                vertex_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/test_triangle.wgsl").into(),
-                    entry_point: "vs_main",
-                },
-                fragment_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/test_triangle.wgsl").into(),
-                    entry_point: "fs_main",
-                },
+                vertex_entrypoint: "vs_main".into(),
+                vertex_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "test_triangle (vertex)".into(),
+                        source: include_file!("../../shader/test_triangle.wgsl"),
+                    },
+                ),
+                fragment_entrypoint: "fs_main".into(),
+                fragment_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "test_triangle (fragment)".into(),
+                        source: include_file!("../../shader/test_triangle.wgsl"),
+                    },
+                ),
                 vertex_buffers: vec![],
                 render_targets: vec![Some(FrameBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState::default(),
@@ -57,6 +68,7 @@ impl Renderer for TestTriangle {
                 multisample: wgpu::MultisampleState::default(),
             },
             &pools.pipeline_layouts,
+            &pools.shader_modules,
         );
 
         TestTriangle { render_pipeline }

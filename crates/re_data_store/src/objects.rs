@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use ahash::HashMap;
 use nohash_hasher::IntMap;
 use re_log_types::{objects::*, DataVec, FieldName, IndexHash, MsgId, ObjPath, ObjTypePath};
 
@@ -91,6 +92,10 @@ pub struct Image<'s> {
     /// `meter == 1000.0` for millimeter precision
     /// up to a ~65m range.
     pub meter: Option<f32>,
+
+    /// A thing that provides additional semantic context for your dtype
+    /// Currrently must point to a SegmentationMap
+    pub legend: Option<&'s ObjPath>,
 }
 
 impl<'s> Image<'s> {
@@ -102,11 +107,11 @@ impl<'s> Image<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_5(
             obj_store,
             &FieldName::from("tensor"),
             time_query,
-            ("_visible", "space", "color", "meter"),
+            ("_visible", "space", "color", "meter", "legend"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
@@ -114,7 +119,8 @@ impl<'s> Image<'s> {
              visible: Option<&bool>,
              space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
-             meter: Option<&f32>| {
+             meter: Option<&f32>,
+             legend: Option<&ObjPath>| {
                 out.image.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
@@ -128,6 +134,7 @@ impl<'s> Image<'s> {
                     data: Image {
                         tensor,
                         meter: meter.copied(),
+                        legend,
                     },
                 });
             },
@@ -530,8 +537,11 @@ impl<'s> Mesh3D<'s> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Camera<'s> {
-    // TODO(emilk): break up in parts
-    pub camera: &'s re_log_types::Camera,
+    pub extrinsics: &'s re_log_types::Extrinsics,
+    pub intrinsics: &'s Option<re_log_types::Intrinsics>,
+
+    /// The 2D space that this camera projects into.
+    pub target_space: &'s Option<ObjPath>,
 }
 
 impl<'s> Camera<'s> {
@@ -565,7 +575,11 @@ impl<'s> Camera<'s> {
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
                         visible: *visible.unwrap_or(&true),
                     },
-                    data: Camera { camera },
+                    data: Camera {
+                        extrinsics: &camera.extrinsics,
+                        intrinsics: &camera.intrinsics,
+                        target_space: &camera.target_space,
+                    },
                 });
             },
         );
@@ -697,9 +711,62 @@ impl<'s> TextEntry<'s> {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ClassDescriptionMap<'s> {
+    pub msg_id: &'s MsgId,
+    pub map: HashMap<i32, ClassDescription<'s>>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct ClassDescription<'s> {
+    pub label: Option<&'s str>,
+    pub color: Option<[u8; 4]>,
+}
+
+impl<'s> ClassDescription<'s> {
+    fn query<Time: 'static + Copy + Ord + Into<i64>>(
+        obj_path: &'s ObjPath,
+        obj_store: &'s ObjStore<Time>,
+        time_query: &TimeQuery<Time>,
+        out: &mut Objects<'s>,
+    ) {
+        crate::profile_function!();
+
+        visit_type_data_2(
+            obj_store,
+            &FieldName::from("id"),
+            time_query,
+            ("label", "color"),
+            |_instance_index: Option<&IndexHash>,
+             _time,
+             msg_id: &MsgId,
+             id: &i32,
+             label: Option<&String>,
+             color: Option<&[u8; 4]>| {
+                let class_description_map = out
+                    .class_description_map
+                    .entry(obj_path)
+                    .or_insert_with(|| ClassDescriptionMap {
+                        msg_id,
+                        map: HashMap::<i32, ClassDescription<'s>>::default(),
+                    });
+
+                class_description_map.map.insert(
+                    *id,
+                    ClassDescription {
+                        label: label.map(|s| s.as_str()),
+                        color: color.cloned(),
+                    },
+                );
+            },
+        );
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Objects<'s> {
     pub space: BTreeMap<&'s ObjPath, Space<'s>>, // SPECIAL!
+    pub class_description_map: BTreeMap<&'s ObjPath, ClassDescriptionMap<'s>>,
 
     pub text_entry: ObjectVec<'s, TextEntry<'s>>,
 
@@ -746,6 +813,7 @@ impl<'s> Objects<'s> {
     ) {
         let query_fn = match obj_type {
             ObjectType::Space => Space::query,
+            ObjectType::ClassDescription => ClassDescription::query,
             ObjectType::TextEntry => TextEntry::query,
             ObjectType::Image => Image::query,
             ObjectType::Point2D => Point2D::query,
@@ -768,6 +836,7 @@ impl<'s> Objects<'s> {
 
         Self {
             space: self.space.clone(), // SPECIAL - can't filter
+            class_description_map: self.class_description_map.clone(), // SPECIAL - can't filter
 
             text_entry: self.text_entry.filter(&keep),
 
@@ -789,6 +858,7 @@ impl<'s> Objects<'s> {
     pub fn is_empty(&self) -> bool {
         let Self {
             space,
+            class_description_map,
             text_entry,
             image,
             point2d,
@@ -803,6 +873,7 @@ impl<'s> Objects<'s> {
             arrow3d,
         } = self;
         space.is_empty()
+            && class_description_map.is_empty()
             && image.is_empty()
             && text_entry.is_empty()
             && point2d.is_empty()
@@ -845,6 +916,7 @@ impl<'s> Objects<'s> {
 
         let Self {
             space: _, // yes, this is intentional
+            class_description_map: _,
             text_entry,
             image,
             point2d,
@@ -910,6 +982,7 @@ impl<'s> Objects<'s> {
 
         for part in partitioned.values_mut() {
             part.space = self.space.clone(); // TODO(emilk): probably only extract the relevant space
+            part.class_description_map = self.class_description_map.clone();
         }
 
         partitioned
