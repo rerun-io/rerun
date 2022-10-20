@@ -11,13 +11,13 @@ pub struct TestTriangle {
 }
 
 #[derive(Clone)]
-pub struct TestTriangleDrawData;
+pub struct TestTriangleDrawable;
 
-impl DrawData for TestTriangleDrawData {
+impl Drawable for TestTriangleDrawable {
     type Renderer = TestTriangle;
 }
 
-impl TestTriangleDrawData {
+impl TestTriangleDrawable {
     pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
         ctx.renderers.get_or_create::<TestTriangle>(
             &ctx.shared_renderer_data,
@@ -25,12 +25,12 @@ impl TestTriangleDrawData {
             device,
         );
 
-        TestTriangleDrawData {}
+        TestTriangleDrawable {}
     }
 }
 
 impl Renderer for TestTriangle {
-    type D = TestTriangleDrawData;
+    type DrawData = TestTriangleDrawable;
 
     fn create_renderer(
         shared_data: &SharedRendererData,
@@ -79,7 +79,7 @@ impl Renderer for TestTriangle {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        _draw_data: &TestTriangleDrawData,
+        _draw_data: &TestTriangleDrawable,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
         pass.set_pipeline(&pipeline.pipeline);

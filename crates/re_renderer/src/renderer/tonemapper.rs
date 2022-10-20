@@ -14,23 +14,23 @@ pub struct Tonemapper {
 }
 
 #[derive(Default, Clone)]
-pub struct TonemapperDrawData {
+pub struct TonemapperDrawable {
     /// [`BindGroup`] pointing at the current HDR source and
     /// a uniform buffer for describing a tonemapper configuration.
     hdr_target_bind_group: BindGroupHandle,
 }
 
-impl DrawData for TonemapperDrawData {
+impl Drawable for TonemapperDrawable {
     type Renderer = Tonemapper;
 }
 
-impl TonemapperDrawData {
+impl TonemapperDrawable {
     pub fn new(ctx: &mut RenderContext, device: &wgpu::Device, hdr_target: TextureHandle) -> Self {
         let pools = &mut ctx.resource_pools;
         let tonemapper =
             ctx.renderers
                 .get_or_create::<Tonemapper>(&ctx.shared_renderer_data, pools, device);
-        TonemapperDrawData {
+        TonemapperDrawable {
             hdr_target_bind_group: pools.bind_groups.request(
                 device,
                 &BindGroupDesc {
@@ -48,7 +48,7 @@ impl TonemapperDrawData {
 }
 
 impl Renderer for Tonemapper {
-    type D = TonemapperDrawData;
+    type DrawData = TonemapperDrawable;
 
     fn create_renderer(
         shared_data: &SharedRendererData,
@@ -111,7 +111,7 @@ impl Renderer for Tonemapper {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &TonemapperDrawData,
+        draw_data: &TonemapperDrawable,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
         let bind_group = pools.bind_groups.get(draw_data.hdr_target_bind_group)?;

@@ -15,13 +15,13 @@ pub struct GenericSkybox {
 }
 
 #[derive(Clone)]
-pub struct GenericSkyboxDrawData {}
+pub struct GenericSkyboxDrawable {}
 
-impl DrawData for GenericSkyboxDrawData {
+impl Drawable for GenericSkyboxDrawable {
     type Renderer = GenericSkybox;
 }
 
-impl GenericSkyboxDrawData {
+impl GenericSkyboxDrawable {
     pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
         ctx.renderers.get_or_create::<GenericSkybox>(
             &ctx.shared_renderer_data,
@@ -29,12 +29,12 @@ impl GenericSkyboxDrawData {
             device,
         );
 
-        GenericSkyboxDrawData {}
+        GenericSkyboxDrawable {}
     }
 }
 
 impl Renderer for GenericSkybox {
-    type D = GenericSkyboxDrawData;
+    type DrawData = GenericSkyboxDrawable;
 
     fn create_renderer(
         shared_data: &SharedRendererData,
@@ -84,7 +84,7 @@ impl Renderer for GenericSkybox {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        _draw_data: &GenericSkyboxDrawData,
+        _draw_data: &GenericSkyboxDrawable,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
 

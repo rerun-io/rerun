@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     context::*,
     global_bindings::FrameUniformBuffer,
-    renderer::{tonemapper::*, DrawData, Renderer},
+    renderer::{tonemapper::*, Drawable, Renderer},
     resource_pools::{
         bind_group_pool::BindGroupHandle,
         buffer_pool::{BufferDesc, BufferHandle},
@@ -26,7 +26,7 @@ struct QueuedDraw {
 /// Used to build up/collect various resources and then send them off for rendering of  a single view.
 #[derive(Default)]
 pub struct ViewBuilder {
-    tonemapping_draw_data: TonemapperDrawData,
+    tonemapping_draw_data: TonemapperDrawable,
 
     bind_group_0: BindGroupHandle,
 
@@ -103,7 +103,7 @@ impl ViewBuilder {
             ),
         );
 
-        self.tonemapping_draw_data = TonemapperDrawData::new(ctx, device, self.hdr_render_target);
+        self.tonemapping_draw_data = TonemapperDrawable::new(ctx, device, self.hdr_render_target);
 
         // Setup frame uniform buffer
         {
@@ -174,11 +174,11 @@ impl ViewBuilder {
         Ok(self)
     }
 
-    pub fn queue_draw<D: DrawData + Sync + Send + Clone + 'static>(
+    pub fn queue_draw<D: Drawable + Sync + Send + Clone + 'static>(
         &mut self,
         draw_data: &D,
     ) -> &mut Self {
-        let draw_data = draw_data.clone(); // TODO(andreas): Can we get rid of this clone (plus requirement thereof)
+        let draw_data = draw_data.clone();
 
         self.queued_draws.push(QueuedDraw {
             draw_func: Box::new(move |ctx, pass| {

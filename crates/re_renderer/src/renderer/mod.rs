@@ -2,8 +2,8 @@ pub mod generic_skybox;
 pub mod test_triangle;
 pub mod tonemapper;
 
-pub use generic_skybox::GenericSkyboxDrawData;
-pub use test_triangle::TestTriangleDrawData;
+pub use generic_skybox::GenericSkyboxDrawable;
+pub use test_triangle::TestTriangleDrawable;
 
 use crate::{
     context::{RenderContext, SharedRendererData},
@@ -11,8 +11,8 @@ use crate::{
 };
 
 /// GPU sided data used by a [`Renderer`] to draw things to the screen.
-pub trait DrawData {
-    type Renderer: Renderer<D = Self>;
+pub trait Drawable {
+    type Renderer: Renderer<DrawData = Self>;
 }
 
 /// A Renderer encapsulate the knowledge of how to render a certain kind of primitives.
@@ -21,7 +21,7 @@ pub trait DrawData {
 /// for each of its [`Renderer::draw`] invocations.
 /// Any data that might be different per specific [`Renderer::draw`] invocation is stored in [`DrawData`].
 pub trait Renderer {
-    type D: DrawData;
+    type DrawData: Drawable;
 
     fn create_renderer(
         shared_data: &SharedRendererData,
@@ -44,7 +44,7 @@ pub trait Renderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::D,
+        draw_data: &Self::DrawData,
     ) -> anyhow::Result<()>;
 
     /// Relative location in the rendering process when this renderer should be executed.

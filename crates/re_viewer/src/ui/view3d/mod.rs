@@ -467,8 +467,8 @@ pub(crate) fn view_3d(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
-                        let triangle = TestTriangleDrawData::new(ctx, device);
-                        let skybox = GenericSkyboxDrawData::new(ctx, device);
+                        let triangle = TestTriangleDrawable::new(ctx, device);
+                        let skybox = GenericSkyboxDrawable::new(ctx, device);
                         view_builder_prepare
                             .write()
                             .setup_view(
