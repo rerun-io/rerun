@@ -15,8 +15,11 @@ use std::f32::consts::TAU;
 use anyhow::Context as _;
 use glam::{Affine3A, Quat, Vec3};
 use macaw::IsoTransform;
-use re_renderer::context::{RenderContext, RenderContextConfig};
-use re_renderer::frame_builder::{FrameBuilder, TargetConfiguration};
+use re_renderer::{
+    context::{RenderContext, RenderContextConfig},
+    renderer::{GenericSkyboxDrawable, TestTriangleDrawable},
+    view_builder::{TargetConfiguration, ViewBuilder},
+};
 use type_map::concurrent::TypeMap;
 use wgpu::{
     CommandEncoder, Device, Queue, RenderPass, Surface, SurfaceConfiguration, TextureFormat,
@@ -50,7 +53,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         // Setting up the `prepare` callback, which will be called once per frame with
         // a ready-to-be-filled `CommandEncoder`.
         |user_data, device, queue, encoder, resolution| {
-            let mut frame_builder = FrameBuilder::new();
+            let mut view_builder = ViewBuilder::new();
 
             let pos = Vec3::new(0.0, 0.0, 3.0);
             let iso = IsoTransform::from_rotation_translation(
@@ -66,22 +69,26 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             };
 
             let re_ctx = user_data.get_mut::<RenderContext>().unwrap();
-            frame_builder
-                .setup_target(re_ctx, device, queue, &target_cfg)
+
+            let triangle = TestTriangleDrawable::new(re_ctx, device);
+            let skybox = GenericSkyboxDrawable::new(re_ctx, device);
+
+            view_builder
+                .setup_view(re_ctx, device, queue, &target_cfg)
                 .unwrap()
-                .test_triangle(re_ctx, device)
-                .generic_skybox(re_ctx, device)
+                .queue_draw(&triangle)
+                .queue_draw(&skybox)
                 .draw(re_ctx, encoder)
                 .unwrap();
 
-            frame_builder
+            view_builder
         },
         // Setting up the `draw` callback, which will be called once per frame with the
         // renderpass drawing onto the swapchain.
         {
-            |user_data, rpass, frame_builder: FrameBuilder| {
+            |user_data, rpass, frame_builder: ViewBuilder| {
                 let re_ctx = user_data.get::<RenderContext>().unwrap();
-                frame_builder.finish(re_ctx, rpass).unwrap();
+                frame_builder.composite(re_ctx, rpass).unwrap();
             }
         },
     );

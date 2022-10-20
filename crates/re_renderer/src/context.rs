@@ -26,7 +26,7 @@ pub struct RenderContextConfig {
 }
 
 /// Immutable data that is shared between all [`Renderer`]
-pub(crate) struct SharedRendererData {
+pub struct SharedRendererData {
     pub(crate) config: RenderContextConfig,
 
     /// Global bindings, always bound to 0 bind group slot zero.

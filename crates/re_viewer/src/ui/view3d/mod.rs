@@ -450,10 +450,11 @@ pub(crate) fn view_3d(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
-        use re_renderer::frame_builder::{FrameBuilder, TargetConfiguration};
+        use re_renderer::renderer::*;
+        use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
-        let frame_builder_prepare = FrameBuilder::new_shared();
-        let frame_builder_draw = frame_builder_prepare.clone();
+        let view_builder_prepare = ViewBuilder::new_shared();
+        let view_builder_draw = view_builder_prepare.clone();
 
         let target_identifier = egui::util::hash(ui.id());
 
@@ -466,9 +467,11 @@ pub(crate) fn view_3d(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
-                        frame_builder_prepare
+                        let triangle = TestTriangleDrawable::new(ctx, device);
+                        let skybox = GenericSkyboxDrawable::new(ctx, device);
+                        view_builder_prepare
                             .write()
-                            .setup_target(
+                            .setup_view(
                                 ctx,
                                 device,
                                 queue,
@@ -483,14 +486,17 @@ pub(crate) fn view_3d(
                                 },
                             )
                             .unwrap()
-                            .test_triangle(ctx, device)
-                            .generic_skybox(ctx, device)
+                            .queue_draw(&skybox)
+                            .queue_draw(&triangle)
                             .draw(ctx, encoder)
                             .unwrap(); // TODO(andreas): Graceful error handling
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();
-                        frame_builder_draw.read().finish(ctx, render_pass).unwrap();
+                        view_builder_draw
+                            .read()
+                            .composite(ctx, render_pass)
+                            .unwrap();
                         // TODO(andreas): Graceful error handling
                     }),
             ),
