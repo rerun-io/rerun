@@ -586,7 +586,7 @@ fn show_projections_from_2d_space(
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
-                    let radius = -4.0; // ui points
+                    let radius = -1.5; // ui points
                     scene.line_segments.push(LineSegments {
                         instance_id: InstanceIdHash::NONE,
                         segments: vec![[origin.into(), end.into()]],

@@ -401,13 +401,25 @@ impl Scene {
                 if line_segment.radius < 0.0 {
                     let size_in_points = -line_segment.radius;
 
-                    let mut centroid = glam::DVec3::ZERO;
-                    for segment in &line_segment.segments {
-                        centroid += glam::Vec3::from(segment[0]).as_dvec3();
-                        centroid += glam::Vec3::from(segment[1]).as_dvec3();
-                    }
-                    let centroid = centroid.as_vec3() / (2.0 * line_segment.segments.len() as f32);
-                    let dist_to_eye = eye_camera_plane.distance(centroid);
+                    let dist_to_eye = if true {
+                        // This works much better when one line segment is very close to the camera
+                        let mut closest = f32::INFINITY;
+                        for segment in &line_segment.segments {
+                            for &endpoint in segment {
+                                closest = closest.min(eye_camera_plane.distance(endpoint.into()));
+                            }
+                        }
+                        closest
+                    } else {
+                        let mut centroid = glam::DVec3::ZERO;
+                        for segment in &line_segment.segments {
+                            centroid += glam::Vec3::from(segment[0]).as_dvec3();
+                            centroid += glam::Vec3::from(segment[1]).as_dvec3();
+                        }
+                        let centroid =
+                            centroid.as_vec3() / (2.0 * line_segment.segments.len() as f32);
+                        eye_camera_plane.distance(centroid)
+                    };
 
                     line_segment.radius = dist_to_eye * size_in_points * point_size_at_one_meter;
                 }
