@@ -101,7 +101,7 @@ impl RenderPipelinePool {
         device: &wgpu::Device,
         desc: &RenderPipelineDesc,
         pipeline_layout_pool: &PipelineLayoutPool,
-        shader_module_pool: &mut ShaderModulePool,
+        shader_module_pool: &ShaderModulePool,
     ) -> RenderPipelineHandle {
         self.pool.get_handle(desc, |desc| {
             RenderPipeline {

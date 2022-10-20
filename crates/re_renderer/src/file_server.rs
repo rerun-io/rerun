@@ -25,7 +25,7 @@ macro_rules! include_file {
 
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
         {
-            $crate::FileContentsHandle::Inlined(include_str!($path).to_owned())
+            $crate::FileContentsHandle::Inlined(include_str!($path))
         }
     }};
 }

@@ -68,7 +68,7 @@ impl Renderer for TestTriangle {
                 multisample: wgpu::MultisampleState::default(),
             },
             &pools.pipeline_layouts,
-            &mut pools.shader_modules,
+            &pools.shader_modules,
         );
 
         TestTriangle { render_pipeline }
