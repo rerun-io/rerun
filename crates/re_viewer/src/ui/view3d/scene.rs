@@ -27,21 +27,29 @@ use super::{eye::Eye, SpaceCamera};
 
 pub struct Point {
     pub instance_id: InstanceIdHash,
+
     pub pos: [f32; 3],
-    /// If positive, this is in scene units.
-    /// If negative, this is in ui points.
-    /// If NaN, auto-size it.
+
+    /// * If positive, this is in scene units.
+    /// * If negative, this is in ui points.
+    /// * If NaN, auto-size it.
+    /// Resolved in [`Scene::finalize_sizes_and_colors`].
     pub radius: f32,
+
     pub color: [u8; 4],
 }
 
 pub struct LineSegments {
     pub instance_id: InstanceIdHash,
+
     pub segments: Vec<[[f32; 3]; 2]>,
-    /// If positive, this is in scene units.
-    /// If negative, this is in ui points.
-    /// If NaN, auto-size it.
+
+    /// * If positive, this is in scene units.
+    /// * If negative, this is in ui points.
+    /// * If NaN, auto-size it.
+    /// Resolved in [`Scene::finalize_sizes_and_colors`].
     pub radius: f32,
+
     pub color: [u8; 4],
 }
 
