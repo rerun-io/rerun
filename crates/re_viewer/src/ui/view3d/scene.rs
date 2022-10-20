@@ -4,7 +4,7 @@ use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 use std::sync::Arc;
 
-use re_data_store::{InstanceId, InstanceIdHash};
+use re_data_store::InstanceIdHash;
 
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
@@ -85,12 +85,9 @@ impl Scene {
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         eye: &Eye,
-        hovered_instance_id: Option<&InstanceId>,
         objects: &re_data_store::Objects<'_>,
     ) -> Self {
         crate::profile_function!();
-        let hovered_instance_id_hash =
-            hovered_instance_id.map_or(InstanceIdHash::NONE, |id| id.hash());
 
         // hack because three-d handles colors wrong. TODO(emilk): fix three-d
         let gamma_lut = (0..=255)
@@ -98,18 +95,9 @@ impl Scene {
             .collect_vec();
         let gamma_lut = &gamma_lut[0..256]; // saves us bounds checks later.
 
-        let boost_size_on_hover = |props: &re_data_store::InstanceProps<'_>, radius: f32| {
-            if hovered_instance_id_hash.is_instance(props) {
-                1.5 * radius
-            } else {
-                radius
-            }
-        };
         let object_color = |ctx: &mut ViewerContext<'_>,
                             props: &re_data_store::InstanceProps<'_>| {
-            let [r, g, b, a] = if hovered_instance_id_hash.is_instance(props) {
-                [255; 4]
-            } else if let Some(color) = props.color {
+            let [r, g, b, a] = if let Some(color) = props.color {
                 color
             } else {
                 let [r, g, b] = ctx.random_color(props);
@@ -153,7 +141,6 @@ impl Scene {
 
                 let dist_to_eye = eye_camera_plane.distance(Vec3::from(*pos));
                 let radius = radius.unwrap_or(dist_to_eye * point_radius_from_distance);
-                let radius = boost_size_on_hover(props, radius);
 
                 scene.points.push(Point {
                     instance_id: InstanceIdHash::from_props(props),
@@ -179,7 +166,6 @@ impl Scene {
                     },
                     |w| w / 2.0,
                 );
-                let line_radius = boost_size_on_hover(props, line_radius);
                 let color = object_color(ctx, props);
                 scene.add_box(
                     InstanceIdHash::from_props(props),
@@ -208,7 +194,6 @@ impl Scene {
                     },
                     |w| w / 2.0,
                 );
-                let line_radius = boost_size_on_hover(props, line_radius);
                 let color = object_color(ctx, props);
 
                 let segments = points
@@ -243,7 +228,6 @@ impl Scene {
                     },
                     |w| w / 2.0,
                 );
-                let line_radius = boost_size_on_hover(props, line_radius);
                 let color = object_color(ctx, props);
 
                 scene.line_segments.push(LineSegments {
@@ -287,7 +271,7 @@ impl Scene {
                     label,
                     width_scale,
                 } = obj;
-                let width = boost_size_on_hover(props, width_scale.unwrap_or(1.0));
+                let width = width_scale.unwrap_or(1.0);
                 let color = object_color(ctx, props);
                 let instance_id = InstanceIdHash::from_props(props);
                 scene.add_arrow(ctx, instance_id, color, Some(width), *label, arrow);
@@ -310,7 +294,6 @@ impl Scene {
                 let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
                 let scale_based_on_distance = dist_to_eye * point_radius_from_distance * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
                 let scale = scale_based_on_scene_size.min(scale_based_on_distance);
-                let scale = boost_size_on_hover(props, scale);
 
                 #[cfg(feature = "glow")]
                 {

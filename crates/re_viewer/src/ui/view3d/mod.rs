@@ -372,14 +372,7 @@ pub(crate) fn view_3d(
         );
     }
 
-    let mut scene = Scene::from_objects(
-        ctx,
-        &state.scene_bbox,
-        rect.size(),
-        &eye,
-        hovered_instance.as_ref(),
-        objects,
-    );
+    let mut scene = Scene::from_objects(ctx, &state.scene_bbox, rect.size(), &eye, objects);
     scene.finalize_sizes_and_colors(
         rect.size(),
         &eye,
