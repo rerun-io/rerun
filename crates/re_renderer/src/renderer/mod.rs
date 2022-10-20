@@ -19,7 +19,7 @@ pub trait Drawable {
 ///
 /// It is an immutable, long-lived datastructure that only holds onto resources that will be needed
 /// for each of its [`Renderer::draw`] invocations.
-/// Any data that might be different per specific [`Renderer::draw`] invocation is stored in [`DrawData`].
+/// Any data that might be different per specific [`Renderer::draw`] invocation is stored in [`Drawable`].
 pub trait Renderer {
     type DrawData: Drawable;
 
@@ -48,7 +48,7 @@ pub trait Renderer {
     ) -> anyhow::Result<()>;
 
     /// Relative location in the rendering process when this renderer should be executed.
-    /// TODO(andreas): We might want to take [`DrawData`] into account for this.
+    /// TODO(andreas): We might want to take [`Drawable`] into account for this.
     ///                But this touches on the [`Renderer::draw`] method might be split in the future, which haven't designed yet.
     fn draw_order() -> u32 {
         DrawOrder::Opaque as u32
