@@ -4,7 +4,7 @@
 //!
 //! * [ ] Render the 3D camera
 //! * [ ] Project rays and points between spaces
-//! * [ ] Not create extraneous views of "intermediate" spaces (e.g. camera space)
+//! * [x] Not create extraneous views of "intermediate" spaces (e.g. camera space)
 //! * [ ] Convert existing python examples to the new style
 //! * [ ] Write good docs for how to use the new system
 //! * [ ] Remove the old code path
@@ -178,14 +178,28 @@ struct Blueprint {
 
 impl Blueprint {
     /// Create a default suggested blueprint using some heuristics.
-    pub fn new(spaces_info: &SpacesInfo, available_size: egui::Vec2) -> Self {
+    pub fn new(obj_db: &ObjDb, spaces_info: &SpacesInfo, available_size: egui::Vec2) -> Self {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
 
         let mut space_make_infos = vec![];
 
-        for path in spaces_info.spaces.keys() {
+        for (path, space_info) in &spaces_info.spaces {
+            // Is this space worthy of its own view?
+            if space_info.objects.len() == 1 {
+                // Only one object in this view…
+                let obj = space_info.objects.iter().next().unwrap();
+                match obj_db.types.get(obj.obj_type_path()) {
+                    None | Some(ObjectType::Camera) => {
+                        // Either nothing to show, or it is the legacy camera
+                        // that will be removed as soon as this new viewport replaces the old.
+                        continue;
+                    }
+                    _ => {}
+                }
+            }
+
             let space_view_id = SpaceViewId::random();
             blueprint.space_views.insert(
                 space_view_id,
@@ -590,12 +604,12 @@ impl ExperimentalViewportPanel {
         if ui.button("Reset space views / blueprint").clicked()
             || self.blueprint.space_views.is_empty()
         {
-            self.blueprint = Blueprint::new(&spaces_info, ui.available_size());
+            self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
         }
 
         egui::SidePanel::left("blueprint_panel")
             .resizable(true)
-            .default_width(350.0)
+            .default_width(200.0)
             .show_inside(ui, |ui| {
                 self.blueprint
                     .tree_ui(ui, &spaces_info, &ctx.log_db.obj_db.tree);
