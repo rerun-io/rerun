@@ -1,4 +1,5 @@
 pub mod generic_skybox;
+pub mod lines;
 pub mod test_triangle;
 pub mod tonemapper;
 

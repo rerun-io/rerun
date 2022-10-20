@@ -17,6 +17,7 @@ parking_lot = "0.12"
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 slotmap = "1.0.6"
+static_assertions = "1.1"
 thiserror = "1.0"
 type-map = "0.5"
 

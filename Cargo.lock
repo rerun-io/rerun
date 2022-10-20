@@ -3076,6 +3076,7 @@ dependencies = [
  "re_error",
  "re_log",
  "slotmap",
+ "static_assertions",
  "thiserror",
  "type-map",
  "wasm-bindgen-futures",
