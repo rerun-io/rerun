@@ -78,9 +78,12 @@
 // 2. We parse the contents in search of root `ImportClause`s.
 // 3. We recurse as needed, going through 1) and 2) again and again until hitting a leaf
 //     1. Make sure to catch import cycles!
-//     2. All paths are guaranteed to point to existing virtual files
+//     2. All paths are guaranteed to point to existing virtual files [*]
 // 4. We do the actual stitching, starting with the leaves until we hit the root.
 // 5. We're done, pass the result to `create_shader_module`.
+//
+// [*] Well that is not exactly true, but it could be: we have all the info we need to make
+// sure all import clauses that have been inlined are correct (and acyclic!), ahead of time.
 
 use std::path::{Path, PathBuf};
 
