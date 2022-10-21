@@ -84,6 +84,14 @@
 //
 // [*] Well that is not exactly true, but it could be: we have all the info we need to make
 // sure all import clauses that have been inlined are correct (and acyclic!), ahead of time.
+//
+//
+// That way we keep things relatively simple and similar on both platforms for now; and much
+// later on we can add a separate build path to support for pre-compiled naga modules and
+// such if we feel there's a need for it.
+// Also what I like about this is that this doens't completely shut the door on the idea of
+// importing stuff through URLs, which can be very valuable in some scenarios (both for us
+// and end users) I feel like.
 
 use std::path::{Path, PathBuf};
 
