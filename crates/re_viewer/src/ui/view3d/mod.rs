@@ -446,9 +446,17 @@ pub(crate) fn view_3d(
         hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
     );
 
-    // ---------------
-    // Time to render:
+    paint_view(ui, eye, rect, scene, state, response)
+}
 
+fn paint_view(
+    ui: &mut egui::Ui,
+    eye: Eye,
+    rect: egui::Rect,
+    scene: Scene,
+    state: &mut State3D,
+    response: egui::Response,
+) -> egui::Response {
     // Draw labels:
     ui.with_layer_id(
         egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
