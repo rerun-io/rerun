@@ -176,7 +176,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
         rerun.log_obb(
-            f"3d/objects/{bbox.id}/bbox3d",
+            f"3d/objects/{bbox.id}",
             bbox.scale,
             bbox.translation,
             rot.as_quat(),
@@ -200,18 +200,21 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
         rerun.set_time_seconds("time", time)
 
         for obj_ann in frame_ann.annotations:
-            path = f"3d/objects/{obj_ann.object_id}"
-
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
             keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y] for kp in obj_ann.keypoints], dtype=np.float32)
             # NOTE: These are normalized points, so we need to bring them back to image space
             keypoint_pos2s *= IMAGE_RESOLUTION
 
             if len(keypoint_pos2s) == 9:
-                log_projected_bbox(f"{path}/bbox2d", keypoint_pos2s)
+                log_projected_bbox(f"3d/camera/video/objects/{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
-                    rerun.log_point(f"{path}/bbox2d/{id}", pos2, color=[130, 160, 250, 255], space="image")
+                    rerun.log_point(
+                        f"3d/camera/video/objects/{obj_ann.object_id}/{id}",
+                        pos2,
+                        color=[130, 160, 250, 255],
+                        space="image",
+                    )
 
 
 def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:

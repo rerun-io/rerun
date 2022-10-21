@@ -39,7 +39,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
         }
     }
 
-    pub(crate) fn get_mono<T: DataTrait>(&self) -> Result<&MonoFieldStore<Time, T>> {
+    pub fn get_mono<T: DataTrait>(&self) -> Result<&MonoFieldStore<Time, T>> {
         if let Some(history) = self.data_store.downcast_ref::<MonoFieldStore<Time, T>>() {
             Ok(history)
         } else if !self.mono {
@@ -178,7 +178,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
 // ----------------------------------------------------------------------------
 
 /// Stores the history of a mono-field.
-pub(crate) struct MonoFieldStore<Time, T> {
+pub struct MonoFieldStore<Time, T> {
     pub(crate) history: BTreeMap<Time, (MsgId, T)>,
 }
 
@@ -199,6 +199,11 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MonoFieldStore<Time, T> {
         crate::query::query(&self.history, time_query, |time, (msg_id, value)| {
             visit(time, msg_id, value);
         });
+    }
+
+    /// Get the latest value (unless empty)
+    pub fn latest(&self) -> Option<(&Time, &(MsgId, T))> {
+        self.history.iter().rev().next()
     }
 }
 

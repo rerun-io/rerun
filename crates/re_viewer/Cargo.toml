@@ -84,6 +84,7 @@ rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 typenum = "1.15"
+uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 
 # Optional dependencies:
