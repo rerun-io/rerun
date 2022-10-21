@@ -359,12 +359,12 @@ impl Scene {
         let Self {
             points,
             line_segments,
-            meshes: _, // always has final size. TODO(emilk): tint on hover!
+            meshes,
             labels: _, // always has final size. TODO(emilk): tint on hover!
         } = self;
 
         let hover_size_boost = 1.5;
-        const HOVER_COLOR: [u8; 4] = [255; 4];
+        const HOVER_COLOR: [u8; 4] = [255, 200, 200, 255];
 
         let viewport_area = viewport_size.x * viewport_size.y;
 
@@ -434,6 +434,15 @@ impl Scene {
                 if line_segment.instance_id == hovered_instance_id_hash {
                     line_segment.radius *= hover_size_boost;
                     line_segment.color = HOVER_COLOR;
+                }
+            }
+        }
+
+        {
+            crate::profile_scope!("meshes");
+            for mesh in meshes {
+                if mesh.instance_id == hovered_instance_id_hash {
+                    mesh.tint = Some(HOVER_COLOR);
                 }
             }
         }
