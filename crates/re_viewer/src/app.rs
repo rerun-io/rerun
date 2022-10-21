@@ -1,6 +1,9 @@
 use std::{any::Any, sync::mpsc::Receiver};
 
-use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
+use crate::{
+    design_tokens::DesignTokens,
+    misc::{Caches, Options, RecordingConfig, ViewerContext},
+};
 use ahash::HashMap;
 use egui_extras::RetainedImage;
 use egui_notify::Toasts;
@@ -19,6 +22,8 @@ const WATERMARK: bool = false; // Nice for recording media material
 
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
+    design_tokens: DesignTokens,
+
     rx: Option<Receiver<LogMsg>>,
 
     /// Where the logs are stored.
@@ -42,34 +47,44 @@ impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
         egui_ctx: &egui::Context,
+        design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
     ) -> Self {
-        Self::new(egui_ctx, storage, Some(rx), Default::default())
+        Self::new(
+            egui_ctx,
+            design_tokens,
+            storage,
+            Some(rx),
+            Default::default(),
+        )
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn from_log_db(
         egui_ctx: &egui::Context,
+        design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         log_db: LogDb,
     ) -> Self {
-        Self::new(egui_ctx, storage, None, log_db)
+        Self::new(egui_ctx, design_tokens, storage, None, log_db)
     }
 
     /// load a `.rrd` data file.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_rrd_path(
         egui_ctx: &egui::Context,
+        design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         path: &std::path::Path,
     ) -> Self {
         let log_db = load_file_path(path).unwrap_or_default(); // TODO(emilk): exit on error.
-        Self::from_log_db(egui_ctx, storage, log_db)
+        Self::from_log_db(egui_ctx, design_tokens, storage, log_db)
     }
 
     fn new(
         _egui_ctx: &egui::Context,
+        design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         rx: Option<Receiver<LogMsg>>,
         log_db: LogDb,
@@ -103,6 +118,7 @@ impl App {
         }
 
         Self {
+            design_tokens,
             rx,
             log_dbs,
             state,
@@ -191,7 +207,7 @@ impl eframe::App for App {
             let start = instant::Instant::now();
             while let Ok(msg) = rx.try_recv() {
                 if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    re_log::info!("Begginning a new recording: {:?}", msg.info);
+                    re_log::info!("Beginning a new recording: {:?}", msg.info);
                     self.state.selected_rec_id = msg.info.recording_id;
                 }
 
@@ -411,13 +427,21 @@ impl AppState {
                 time_panel.ui(&mut ctx, ui);
             });
 
-        egui::CentralPanel::default().show(egui_ctx, |ui| match *panel_selection {
-            PanelSelection::Viewport => viewport_panel
-                .entry(*selected_recording_id)
-                .or_default()
-                .ui(&mut ctx, ui),
-            PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
-        });
+        let central_panel_frame = egui::Frame {
+            fill: egui_ctx.style().visuals.window_fill(),
+            inner_margin: egui::style::Margin::symmetric(4.0, 0.0),
+            ..Default::default()
+        };
+
+        egui::CentralPanel::default()
+            .frame(central_panel_frame)
+            .show(egui_ctx, |ui| match *panel_selection {
+                PanelSelection::Viewport => viewport_panel
+                    .entry(*selected_recording_id)
+                    .or_default()
+                    .ui(&mut ctx, ui),
+                PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
+            });
 
         // move time last, so we get to see the first data first!
         ctx.rec_cfg
@@ -449,49 +473,71 @@ impl AppState {
 fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App) {
     crate::profile_function!();
 
-    egui::TopBottomPanel::top("top_bar").show(egui_ctx, |ui| {
-        egui::menu::bar(ui, |ui| {
-            ui.menu_button("File", |ui| {
-                file_menu(ui, app, frame);
-            });
+    let panel_frame = {
+        let style = egui_ctx.style();
+        egui::Frame {
+            inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
+            fill: app.design_tokens.top_bar_color,
+            stroke: style.visuals.window_stroke(),
+            ..Default::default()
+        }
+    };
 
-            ui.menu_button("Recordings", |ui| {
-                recordings_menu(ui, app);
-            });
+    egui::TopBottomPanel::top("top_bar")
+        .frame(panel_frame)
+        .show(egui_ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                #[cfg(target_os = "macos")]
+                if crate::native::FULLSIZE_CONTENT {
+                    // We use up the same row as the native red/yellow/green close/minimize/maximize buttons.
+                    // This means we need to make room for them:
+                    ui.add_space(64.0);
 
-            ui.separator();
-
-            if !app.log_db().is_empty() {
-                ui.selectable_value(
-                    &mut app.state.panel_selection,
-                    PanelSelection::Viewport,
-                    "Viewport",
-                );
-                ui.selectable_value(
-                    &mut app.state.panel_selection,
-                    PanelSelection::EventLog,
-                    "Event Log",
-                );
-            }
-
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if !WATERMARK {
-                    let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
-                    let response = ui
-                        .add(egui::ImageButton::new(
-                            logo.texture_id(egui_ctx),
-                            logo.size_vec2() * 16.0 / logo.size_vec2().y,
-                        ))
-                        .on_hover_text("https://rerun.io");
-                    if response.clicked() {
-                        ui.output().open_url =
-                            Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
-                    }
+                    // …and match their height:
+                    ui.set_min_size(egui::vec2(ui.available_width(), 24.0));
                 }
-                egui::warn_if_debug_build(ui);
+
+                ui.menu_button("File", |ui| {
+                    file_menu(ui, app, frame);
+                });
+
+                ui.menu_button("Recordings", |ui| {
+                    recordings_menu(ui, app);
+                });
+
+                ui.separator();
+
+                if !app.log_db().is_empty() {
+                    ui.selectable_value(
+                        &mut app.state.panel_selection,
+                        PanelSelection::Viewport,
+                        "Viewport",
+                    );
+                    ui.selectable_value(
+                        &mut app.state.panel_selection,
+                        PanelSelection::EventLog,
+                        "Event Log",
+                    );
+                }
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if !WATERMARK {
+                        let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
+                        let response = ui
+                            .add(egui::ImageButton::new(
+                                logo.texture_id(egui_ctx),
+                                logo.size_vec2() * 16.0 / logo.size_vec2().y,
+                            ))
+                            .on_hover_text("https://rerun.io");
+                        if response.clicked() {
+                            ui.output().open_url =
+                                Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
+                        }
+                    }
+                    egui::warn_if_debug_build(ui);
+                });
             });
         });
-    });
 }
 
 // ---
