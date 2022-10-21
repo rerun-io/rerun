@@ -334,6 +334,7 @@ pub(crate) struct SpaceCamera {
     target_space: Option<ObjPath>,
 }
 
+/// Gathers all camera objects.
 pub(crate) fn space_cameras(objects: &re_data_store::Objects<'_>) -> Vec<SpaceCamera> {
     objects
         .camera
