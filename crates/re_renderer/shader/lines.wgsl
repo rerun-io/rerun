@@ -21,6 +21,14 @@ struct SegmentData {
     start: vec3<f32>,
     end: vec3<f32>,
     color: vec3<f32>,
+    thickness: f32,
+}
+
+// workaround for https://github.com/gfx-rs/naga/issues/2006
+fn unpack4x8unorm_workaround(v: u32) -> vec4<f32> {
+    var shifted = vec4<u32>(v, v >> u32(8), v >> u32(16), v >> u32(24));
+    var bytes = shifted & vec4<u32>(u32(0xFF));
+    return vec4<f32>(bytes) * (1.0 / 255.0);
 }
 
 fn read_segment_data(quad_idx: i32) -> SegmentData {
@@ -37,10 +45,18 @@ fn read_segment_data(quad_idx: i32) -> SegmentData {
     var data_odd = select(line_info_start.w, line_info_end.w, quad_idx % 2 == 0);
     var data_even = select(line_info_end.w, line_info_start.w, quad_idx % 2 == 0);
 
+    // A quad is discarded if the start data block has its first bit set, i.e. the sign bit for i32
+    var discarded = bitcast<i32>(line_info_start.w) < 0;
+
     var data: SegmentData;
     data.start = line_info_start.xyz;
-    data.color = unpack4x8unorm(bitcast<u32>(data_even)).rgb;
+    data.color = unpack4x8unorm_workaround(bitcast<u32>(data_even)).rgb;
     data.end = line_info_end.xyz;
+    if discarded {
+        data.thickness = 0.0;
+    } else {
+        data.thickness = abs(data_odd); // remember, sign bit might be set
+    }
     return data;
 }
 
@@ -53,10 +69,17 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     var segment = read_segment_data(quad_idx);
 
+    if segment.thickness == 0.0 {
+        var out: VertexOut;
+        out.position = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+        out.color = vec4<f32>(0.0);
+        return out;
+    }
+
     var pos = vec3<f32>(0.0);
     pos += select(segment.start, segment.end, is_start > 0.0);
     // TODO: span orthogonal to view vector and line vector
-    pos += is_top * vec3<f32>(0.0, 1.0, 0.0);
+    pos += is_top * vec3<f32>(0.0, segment.thickness, 0.0);
 
     var out: VertexOut;
     out.position = frame.projection_from_world * vec4<f32>(pos, 1.0);

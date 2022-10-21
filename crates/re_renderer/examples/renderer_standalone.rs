@@ -79,16 +79,38 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 re_ctx,
                 device,
                 queue,
-                &[LineStrip {
-                    points: vec![
-                        glam::vec3(0.0, 0.0, 0.0),
-                        glam::vec3(1.0, 1.0, 0.0),
-                        glam::vec3(2.0, 0.0, 0.0),
-                        glam::vec3(3.0, 1.0, 0.0),
-                    ],
-                    radius: 1.0,
-                    color: [255, 255, 0],
-                }],
+                &[
+                    LineStrip {
+                        points: vec![
+                            glam::vec3(0.0, 0.0, 0.0),
+                            glam::vec3(1.0, 1.0, 0.0),
+                            glam::vec3(2.0, 0.0, 0.0),
+                            glam::vec3(3.0, 1.0, 0.0),
+                        ],
+                        radius: 0.5,
+                        color: [255, 255, 50],
+                    },
+                    LineStrip {
+                        points: vec![
+                            glam::vec3(0.0, -1.0, 0.0),
+                            glam::vec3(1.0, 0.0, 0.0),
+                            glam::vec3(2.0, -1.0, 0.0),
+                            glam::vec3(3.0, 0.0, 0.0),
+                        ],
+                        radius: 0.1,
+                        color: [50, 255, 50],
+                    },
+                    LineStrip {
+                        points: vec![
+                            glam::vec3(0.0, -2.0, 0.0),
+                            glam::vec3(1.0, -1.0, 0.0),
+                            glam::vec3(2.0, -2.0, 0.0),
+                            glam::vec3(3.0, -1.0, 0.0),
+                        ],
+                        radius: 0.25,
+                        color: [50, 50, 255],
+                    },
+                ],
             )
             .unwrap();
 

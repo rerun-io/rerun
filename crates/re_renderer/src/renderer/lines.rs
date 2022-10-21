@@ -27,14 +27,14 @@
 //!                                   ___________________________________________________________________________
 //!                                  |               quad 1                |                  quad 3             | ...
 //! ```
-//! The drawback of this is that if we want to start a new line strip, we need to add a sentinel half-instance and discard a quad.
-//!
+//! Note that if we want to restart a strip, we need to discard a quad.
+//! This is accomplished by setting a restart bit on the last position.
 //!
 //! Things we might try in the future
 //! ----------------------------------
 //! * use instance vertex buffer after all and see how it performs
-//!     * note that this would let us remove the degenerated quads between lines, making the approach cleaner
-//! * use indexed primitives to lower amount of vertices processed (requires large, predictable index buffer
+//! * use indexed primitives to lower amount of vertices processed
+//!    * note that this would let us remove the degenerated quads between lines, making the approach cleaner and removing the "restart bit"
 //! * use line strips with index primitives (using [`wgpu::PrimitiveState::strip_index_format`])
 //!
 
@@ -63,13 +63,15 @@ mod GpuLineSegment {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DataEven {
         pub color: [u8; 3],
-        pub unused: u8,
+        pub is_strip_end_bit: u8, // leaves 7 bits unused right now
     }
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DataOdd {
-        pub thickness: f32, // Could be a f16 if we want to pack even more attributes!
+        // Could be a f16 if we want to pack even more attributes!
+        // negative (i.e. first bit set) indicates that this is the last position in a strip
+        pub thickness: f32,
     }
 
     static_assertions::assert_eq_size!(DataEven, DataOdd);
@@ -144,17 +146,20 @@ impl LineDrawable {
         );
 
         // Determine how many half-segments we need
-        let num_half_segments = line_strips.iter().fold(0, |accum, strip| {
-            // Add a sentinel at the end of each strip
-            strip.points.len() + 1 + accum
-        }) as u32
-            - 1; // Last one doesn't need a sentinel
+        let num_half_segments = (line_strips
+            .iter()
+            .fold(0, |accum, strip| strip.points.len() + accum))
+            as u32;
         if num_half_segments > SEGMENT_TEXTURE_RESOLUTION * SEGMENT_TEXTURE_RESOLUTION {
             // TODO(andreas) just create more draw work items each with its own texture to become "unlimited"
-            anyhow::bail!("Too many line segments! Need {num_half_segments} data entries but supported are at max {}", SEGMENT_TEXTURE_RESOLUTION * SEGMENT_TEXTURE_RESOLUTION);
+            anyhow::bail!(
+                "Too many line segments! The maximum is {} but specified were {num_half_segments}",
+                SEGMENT_TEXTURE_RESOLUTION * SEGMENT_TEXTURE_RESOLUTION
+            );
         }
 
-        // No index buffer, so after each strip we have a quad that is discarded (by means of having 0 thickness)
+        // No index buffer, so after each strip we have a quad that is discarded.
+        // This means from a geometry perspective there is only ONE strip, i.e. 2 less quads than there are half-segments!
         let num_quads = num_half_segments - 1;
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
@@ -192,30 +197,29 @@ impl LineDrawable {
         //                  This staging buffer would be provided by the belt.
         let mut half_segment_staging = Vec::with_capacity(num_half_segments as usize);
         for line_strip in line_strips {
-            for &pos in &line_strip.points {
+            for (i, &pos) in line_strip.points.iter().enumerate() {
+                let is_last = i == line_strip.points.len() - 1;
+
                 let data = if half_segment_staging.len() % 2 == 0 {
                     GpuLineSegment::Data {
                         even: GpuLineSegment::DataEven {
+                            is_strip_end_bit: if is_last { 255 } else { 0 },
                             color: line_strip.color,
-                            unused: 0,
                         },
                     }
                 } else {
                     GpuLineSegment::Data {
                         odd: GpuLineSegment::DataOdd {
-                            thickness: line_strip.radius,
+                            thickness: if is_last {
+                                -line_strip.radius
+                            } else {
+                                line_strip.radius
+                            },
                         },
                     }
                 };
 
                 half_segment_staging.push(GpuLineSegment::HalfSegment { pos, data });
-            }
-
-            // Unless this was the last strip, add a sentinel by duplicating the last element
-            if half_segment_staging.len() > 0
-                && half_segment_staging.len() < num_half_segments as usize
-            {
-                half_segment_staging.push(*half_segment_staging.last().unwrap());
             }
         }
         debug_assert_eq!(half_segment_staging.len(), num_half_segments as usize);
