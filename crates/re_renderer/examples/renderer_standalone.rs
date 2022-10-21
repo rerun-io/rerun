@@ -17,7 +17,10 @@ use glam::{Affine3A, Quat, Vec3};
 use macaw::IsoTransform;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},
-    renderer::{GenericSkyboxDrawable, TestTriangleDrawable},
+    renderer::{
+        lines::{LineDrawable, LineStrip},
+        GenericSkyboxDrawable, TestTriangleDrawable,
+    },
     view_builder::{TargetConfiguration, ViewBuilder},
 };
 use type_map::concurrent::TypeMap;
@@ -72,12 +75,24 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
             let triangle = TestTriangleDrawable::new(re_ctx, device);
             let skybox = GenericSkyboxDrawable::new(re_ctx, device);
+            let lines = LineDrawable::new(
+                re_ctx,
+                device,
+                queue,
+                &[LineStrip {
+                    points: vec![glam::vec3(0.0, 0.0, 0.0), glam::vec3(1.0, 1.0, 0.0)],
+                    radius: 1.0,
+                    color: [255, 255, 0],
+                }],
+            )
+            .unwrap();
 
             view_builder
                 .setup_view(re_ctx, device, queue, &target_cfg)
                 .unwrap()
-                .queue_draw(&triangle)
+                //.queue_draw(&triangle)
                 .queue_draw(&skybox)
+                .queue_draw(&lines)
                 .draw(re_ctx, encoder)
                 .unwrap();
 
@@ -232,6 +247,11 @@ impl WgpuContext {
                     self.queue.submit(Some(encoder.finish()));
                     frame.present();
 
+                    self.user_data
+                        .get_mut::<RenderContext>()
+                        .unwrap()
+                        .frame_maintenance(&self.device);
+
                     #[cfg(not(target_arch = "wasm32"))]
                     {
                         // Note that this measures time spent on CPU, not GPU
@@ -247,7 +267,8 @@ impl WgpuContext {
                             1.0 / time_passed.as_secs_f32()
                         ));
                     }
-
+                }
+                Event::MainEventsCleared => {
                     self.window.request_redraw();
                 }
                 Event::WindowEvent {
