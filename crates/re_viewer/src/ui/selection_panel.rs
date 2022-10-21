@@ -23,6 +23,13 @@ impl SelectionPanel {
 
         ui.separator();
 
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            self.inner_ui(ctx, ui);
+        });
+    }
+
+    #[allow(clippy::unused_self)]
+    fn inner_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         match &ctx.rec_cfg.selection.clone() {
             Selection::None => {
                 ui.weak("(nothing)");
