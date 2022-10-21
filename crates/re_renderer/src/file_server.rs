@@ -3,8 +3,6 @@ use std::{borrow::Cow, path::PathBuf};
 
 // ---
 
-#[cfg_attr(predicate, attr)]
-
 /// A macro to read the contents of a file on disk.
 ///
 /// - On WASM and/or release builds, this will behave like the standard [`include_str`]
