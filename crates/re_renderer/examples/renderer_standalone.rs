@@ -80,7 +80,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 device,
                 queue,
                 &[LineStrip {
-                    points: vec![glam::vec3(0.0, 0.0, 0.0), glam::vec3(1.0, 1.0, 0.0)],
+                    points: vec![
+                        glam::vec3(0.0, 0.0, 0.0),
+                        glam::vec3(1.0, 1.0, 0.0),
+                        glam::vec3(2.0, 0.0, 0.0),
+                        glam::vec3(3.0, 1.0, 0.0),
+                    ],
                     radius: 1.0,
                     color: [255, 255, 0],
                 }],

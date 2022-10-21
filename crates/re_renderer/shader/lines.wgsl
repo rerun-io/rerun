@@ -34,9 +34,12 @@ fn read_segment_data(quad_idx: i32) -> SegmentData {
     var line_info_end = textureLoad(segment_texture,
         vec2<i32>(i32(next_quad_idx % instance_texture_width), next_quad_idx / instance_texture_width), 0);
 
+    var data_odd = select(line_info_start.w, line_info_end.w, quad_idx % 2 == 0);
+    var data_even = select(line_info_end.w, line_info_start.w, quad_idx % 2 == 0);
+
     var data: SegmentData;
     data.start = line_info_start.xyz;
-    data.color = unpack4x8unorm(bitcast<u32>(line_info_start.w)).rgb;
+    data.color = unpack4x8unorm(bitcast<u32>(data_even)).rgb;
     data.end = line_info_end.xyz;
     return data;
 }
@@ -44,13 +47,14 @@ fn read_segment_data(quad_idx: i32) -> SegmentData {
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var quad_idx = i32(vertex_idx / u32(6));
+    var local_idx = vertex_idx % u32(6);
     var is_start = f32(vertex_idx % u32(2));                   // "left" or "right" on the quad
-    var is_top = f32(vertex_idx <= u32(1) || vertex_idx == u32(5)); // "top" or "bottom on the quad
+    var is_top = f32(local_idx <= u32(1) || local_idx == u32(5)); // "top" or "bottom on the quad
 
     var segment = read_segment_data(quad_idx);
 
     var pos = vec3<f32>(0.0);
-    pos += select(segment.end, segment.start, is_start > 0.0);
+    pos += select(segment.start, segment.end, is_start > 0.0);
     // TODO: span orthogonal to view vector and line vector
     pos += is_top * vec3<f32>(0.0, 1.0, 0.0);
 

@@ -245,7 +245,7 @@ impl LineDrawable {
 
         Ok(LineDrawable {
             bind_group,
-            num_quads: num_quads as u32,
+            num_quads,
         })
     }
 }
