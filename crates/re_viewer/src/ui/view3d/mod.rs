@@ -324,14 +324,14 @@ fn click_object(
 
 /// A camera that projects spaces
 pub(crate) struct SpaceCamera {
-    obj_path: ObjPath,
-    instance_index_hash: IndexHash,
+    pub obj_path: ObjPath,
+    pub instance_index_hash: IndexHash,
 
-    extrinsics: re_log_types::Extrinsics,
-    intrinsics: Option<re_log_types::Intrinsics>,
+    pub extrinsics: re_log_types::Extrinsics,
+    pub intrinsics: Option<re_log_types::Intrinsics>,
 
     /// The 2D space we project into.
-    target_space: Option<ObjPath>,
+    pub target_space: Option<ObjPath>,
 }
 
 /// Gathers all camera objects.

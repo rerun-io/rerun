@@ -2,9 +2,9 @@
 //!
 //! Before the new panel is up-to-par with the existing viewport panel, we need to:
 //!
-//! * [ ] Render the 3D camera
-//! * [ ] Project rays and points between spaces
-//! * [x] Not create extraneous views of "intermediate" spaces (e.g. camera space)
+//! * [x] Render the 3D camera
+//! * [x] Project rays and points between spaces
+//! * [x] Don't create extraneous views of "intermediate" spaces (e.g. camera space)
 //! * [ ] Convert existing python examples to the new style
 //! * [ ] Write good docs for how to use the new system
 //! * [ ] Remove the old code path
@@ -27,6 +27,8 @@ use re_data_store::{
 use re_log_types::{ObjectType, Transform};
 
 use crate::misc::ViewerContext;
+
+use super::view3d::SpaceCamera;
 
 // ----------------------------------------------------------------------------
 
@@ -312,6 +314,7 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        space_cameras: &[SpaceCamera],
         time_objects: &Objects<'_>,
         sticky_objects: &Objects<'_>,
     ) -> egui::Response {
@@ -344,7 +347,7 @@ impl SpaceView {
                         .ui_2d(ctx, ui, &self.space_path, time_objects)
                 } else if has_3d {
                     self.view_state
-                        .ui_3d(ctx, ui, &self.space_path, time_objects)
+                        .ui_3d(ctx, ui, &self.space_path, space_cameras, time_objects)
                 } else if let Some(multidim_tensor) = multidim_tensor {
                     self.view_state.ui_tensor(ui, multidim_tensor)
                 } else {
@@ -378,8 +381,13 @@ impl SpaceView {
                                 .ui_2d(ctx, ui, &self.space_path, time_objects);
                         }
                         ViewCategory::ThreeD => {
-                            self.view_state
-                                .ui_3d(ctx, ui, &self.space_path, time_objects);
+                            self.view_state.ui_3d(
+                                ctx,
+                                ui,
+                                &self.space_path,
+                                space_cameras,
+                                time_objects,
+                            );
                         }
                         ViewCategory::Tensor => {
                             self.view_state.ui_tensor(ui, multidim_tensor.unwrap());
@@ -430,13 +438,13 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
+        space_cameras: &[SpaceCamera],
         objects: &Objects<'_>,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
             let space_specs = crate::view3d::SpaceSpecs::from_objects(Some(space), objects);
             let scene = crate::view3d::scene::Scene::from_objects(ctx, objects);
-            let space_cameras = crate::view3d::space_cameras(objects);
             crate::view3d::view_3d(
                 ctx,
                 ui,
@@ -444,7 +452,7 @@ impl ViewState {
                 Some(space),
                 &space_specs,
                 scene,
-                &space_cameras,
+                space_cameras,
             );
         })
         .response
@@ -468,6 +476,32 @@ impl ViewState {
     ) -> egui::Response {
         self.state_text_entry.show(ui, ctx, objects)
     }
+}
+
+fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera> {
+    crate::profile_function!();
+
+    let mut space_cameras = vec![];
+
+    for (child_path, child_transform) in &space_info.child_spaces {
+        if let Transform::Extrinsics(extrinsics) = child_transform {
+            if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
+                for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
+                    if let Transform::Intrinsics(intrinsics) = grand_child_transform {
+                        space_cameras.push(SpaceCamera {
+                            obj_path: child_path.clone(), // TODO(emilk): if the user clicks the camera, do they click the child space or grandchild space?
+                            instance_index_hash: re_log_types::IndexHash::NONE,
+                            extrinsics: *extrinsics,
+                            intrinsics: Some(*intrinsics),
+                            target_space: Some(grand_child_path.clone()),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    space_cameras
 }
 
 fn multidim_tensor<'s>(objects: &Objects<'s>) -> Option<&'s re_log_types::Tensor> {
@@ -587,7 +621,9 @@ fn space_view_ui(
             }
         }
 
-        space_view.objects_ui(ctx, ui, &time_objects, &sticky_objects)
+        let space_cameras = &space_cameras(spaces_info, space_info);
+
+        space_view.objects_ui(ctx, ui, space_cameras, &time_objects, &sticky_objects)
     } else {
         unknown_space_label(ui, &space_view.space_path)
     }
