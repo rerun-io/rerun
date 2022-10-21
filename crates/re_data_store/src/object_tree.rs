@@ -88,14 +88,17 @@ impl ObjectTree {
     }
 
     pub fn subtree(&self, path: &ObjPath) -> Option<&Self> {
-        self.subtree_recursive(&path.to_components())
-    }
-
-    fn subtree_recursive(&self, path: &[ObjPathComp]) -> Option<&Self> {
-        match path {
-            [] => Some(self),
-            [first, rest @ ..] => self.children.get(first)?.subtree_recursive(rest),
+        fn subtree_recursive<'tree>(
+            this: &'tree ObjectTree,
+            path: &[ObjPathComp],
+        ) -> Option<&'tree ObjectTree> {
+            match path {
+                [] => Some(this),
+                [first, rest @ ..] => subtree_recursive(this.children.get(first)?, rest),
+            }
         }
+
+        subtree_recursive(self, &path.to_components())
     }
 }
 
