@@ -353,6 +353,8 @@ enum PanelSelection {
     #[default]
     Viewport,
 
+    ExperimentalViewport,
+
     EventLog,
 }
 
@@ -370,6 +372,8 @@ struct AppState {
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
+
+    experimental_viewport_panel: crate::ui::experimental_viewport_panel::ExperimentalViewportPanel,
     viewport_panel: IntMap<RecordingId, crate::viewport_panel::ViewportPanel>,
 
     panel_selection: PanelSelection,
@@ -397,6 +401,7 @@ impl AppState {
             recording_configs,
             panel_selection,
             event_log_view,
+            experimental_viewport_panel,
             viewport_panel,
             selection_panel,
             time_panel,
@@ -440,6 +445,9 @@ impl AppState {
                     .entry(*selected_recording_id)
                     .or_default()
                     .ui(&mut ctx, ui),
+                PanelSelection::ExperimentalViewport => {
+                    experimental_viewport_panel.ui(&mut ctx, ui);
+                }
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
             });
 
@@ -513,6 +521,14 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                         PanelSelection::Viewport,
                         "Viewport",
                     );
+
+                    #[cfg(debug_assertions)] // poor mans feature gate
+                    ui.selectable_value(
+                        &mut app.state.panel_selection,
+                        PanelSelection::ExperimentalViewport,
+                        "New Experimental Viewport",
+                    );
+
                     ui.selectable_value(
                         &mut app.state.panel_selection,
                         PanelSelection::EventLog,

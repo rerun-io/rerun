@@ -4,11 +4,9 @@ use egui::*;
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::*;
 
-use crate::{misc::HoveredSpace, Selection, ViewerContext};
+use crate::{legend::find_legend, misc::HoveredSpace, Selection, ViewerContext};
 
-use crate::legend::find_legend;
-
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct State2D {
     /// What the mouse is hovering (from previous frame)
