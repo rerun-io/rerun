@@ -457,13 +457,21 @@ fn paint_view(
     state: &mut State3D,
     response: egui::Response,
 ) -> egui::Response {
+    crate::profile_function!();
+
     // Draw labels:
     ui.with_layer_id(
         egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
         |ui| {
+            crate::profile_function!("labels");
             let ui_from_world = eye.ui_from_world(&rect);
             for label in &scene.labels {
-                let pt = ui_from_world.project_point3(label.origin);
+                let pos_in_ui = ui_from_world * label.origin.extend(1.0);
+                if pos_in_ui.w <= 0.0 {
+                    continue; // behind camera
+                }
+                let pos_in_ui = pos_in_ui / pos_in_ui.w;
+
                 let font_id = egui::TextStyle::Monospace.resolve(ui.style());
 
                 let galley = ui.fonts().layout(
@@ -474,7 +482,7 @@ fn paint_view(
                 );
 
                 let text_rect = egui::Align2::CENTER_TOP.anchor_rect(egui::Rect::from_min_size(
-                    egui::pos2(pt.x, pt.y),
+                    egui::pos2(pos_in_ui.x, pos_in_ui.y),
                     galley.size(),
                 ));
 
