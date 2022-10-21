@@ -478,6 +478,8 @@ impl ViewState {
     }
 }
 
+/// Look for camera extrinsics and intrinsics in the transform hierarchy
+/// and return them as cameras.
 fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera> {
     crate::profile_function!();
 
