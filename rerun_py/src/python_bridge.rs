@@ -752,7 +752,7 @@ fn log_rects(
                 &time_point,
                 (&obj_path, "label"),
                 LoggedData::Batch {
-                    indices: indices.clone(),
+                    indices: BatchIndex::FullIndex(indices.clone()),
                     data: DataVec::String(labels),
                 },
             );
@@ -773,7 +773,7 @@ fn log_rects(
         &time_point,
         (&obj_path, "bbox"),
         LoggedData::Batch {
-            indices,
+            indices: BatchIndex::FullIndex(indices),
             data: DataVec::BBox2D(rects),
         },
     );
@@ -921,7 +921,7 @@ fn log_points(
         &time_point,
         (&obj_path, "pos"),
         LoggedData::Batch {
-            indices,
+            indices: BatchIndex::FullIndex(indices),
             data: pos_data,
         },
     );
@@ -965,7 +965,7 @@ fn color_batch(
 
             if colors.len() == indices.len() {
                 Ok(LoggedData::Batch {
-                    indices: indices.clone(),
+                    indices: BatchIndex::FullIndex(indices.clone()),
                     data: DataVec::Color(colors),
                 })
             } else {
@@ -983,7 +983,7 @@ fn color_batch(
 
             if colors.len() == indices.len() {
                 Ok(LoggedData::Batch {
-                    indices: indices.clone(),
+                    indices: BatchIndex::FullIndex(indices.clone()),
                     data: DataVec::Color(colors),
                 })
             } else {
@@ -1592,7 +1592,7 @@ fn log_class_descriptions(
         &time_point,
         (&obj_path, "id"),
         LoggedData::Batch {
-            indices: indices.clone(),
+            indices: BatchIndex::FullIndex(indices.clone()),
             data: DataVec::I32(ids),
         },
     );
@@ -1606,7 +1606,7 @@ fn log_class_descriptions(
         &time_point,
         (&obj_path, "label"),
         LoggedData::Batch {
-            indices: label_indices,
+            indices: BatchIndex::FullIndex(label_indices),
             data: DataVec::String(labels),
         },
     );
@@ -1620,7 +1620,7 @@ fn log_class_descriptions(
         &time_point,
         (&obj_path, "color"),
         LoggedData::Batch {
-            indices: color_indices,
+            indices: BatchIndex::FullIndex(color_indices),
             data: DataVec::Color(colors),
         },
     );

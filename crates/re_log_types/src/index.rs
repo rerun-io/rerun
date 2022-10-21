@@ -22,6 +22,16 @@ pub enum Index {
     String(String),
 }
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum BatchIndex {
+    /// Many batches use implicit sequential-indexing
+    SequentialIndex,
+
+    /// Some batches want to provide explicit indices
+    FullIndex(Vec<Index>),
+}
+
 impl Index {
     #[inline]
     pub fn hash(&self) -> IndexHash {

@@ -70,9 +70,11 @@ fn mono_data_messages() -> Vec<DataMsg> {
 fn batch_data_messages() -> Vec<DataMsg> {
     let positions = vec![[1.0, 2.0, 3.0]; NUM_POINTS as usize];
     let colors = vec![[255; 4]; NUM_POINTS as usize];
-    let indices = (0..NUM_POINTS)
-        .map(|pi| Index::Sequence(pi as _))
-        .collect_vec();
+    let indices = BatchIndex::FullIndex(
+        (0..NUM_POINTS)
+            .map(|pi| Index::Sequence(pi as _))
+            .collect_vec(),
+    );
 
     let mut messages = Vec::with_capacity((NUM_FRAMES * 3) as _);
 
