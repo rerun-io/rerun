@@ -67,7 +67,6 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
-#[must_use]
 pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::DesignTokens {
     #[cfg(feature = "wgpu")]
     {
