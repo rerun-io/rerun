@@ -62,6 +62,7 @@ impl Size {
 
     /// Get the scene-size of this, if stored as a scene size.
     #[inline]
+    #[allow(unused)] // wgpu is not yet using this
     pub fn scene(&self) -> Option<f32> {
         (self.0.is_finite() && self.0 >= 0.0).then_some(self.0)
     }
