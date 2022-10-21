@@ -10,7 +10,7 @@
 //! cargo run-wasm --example renderer_standalone
 //! ```
 
-use std::{f32::consts::TAU, time::Instant};
+use std::f32::consts::TAU;
 
 use anyhow::Context as _;
 use glam::{Affine3A, Quat, Vec3};
@@ -25,7 +25,6 @@ use wgpu::{
     CommandEncoder, Device, Queue, RenderPass, Surface, SurfaceConfiguration, TextureFormat,
 };
 use winit::{
-    dpi::PhysicalSize,
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
@@ -190,7 +189,8 @@ impl WgpuContext {
                     self.window.request_redraw();
                 }
                 Event::RedrawRequested(_) => {
-                    let start_time = Instant::now();
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let start_time = std::time::Instant::now();
 
                     let frame = self
                         .surface
@@ -232,18 +232,21 @@ impl WgpuContext {
                     self.queue.submit(Some(encoder.finish()));
                     frame.present();
 
-                    // Note that this measures time spent on CPU, not GPU
-                    // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
-                    // we eventually end up waiting for GPU in `get_current_texture`
-                    // (wgpu has a swap chain with a limited amount of buffers, the exact count is dependent on `present_mode` and backend!).
-                    // It's important to keep in mind that depending on the `present_mode`, the GPU might be waiting on the screen in turn.
-                    let time_passed = Instant::now() - start_time;
-                    // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
-                    self.window.set_title(&format!(
-                        "{:.2} ms ({:.2} fps)",
-                        time_passed.as_secs_f32() * 1000.0,
-                        1.0 / time_passed.as_secs_f32()
-                    ));
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        // Note that this measures time spent on CPU, not GPU
+                        // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
+                        // we eventually end up waiting for GPU in `get_current_texture`
+                        // (wgpu has a swap chain with a limited amount of buffers, the exact count is dependent on `present_mode` and backend!).
+                        // It's important to keep in mind that depending on the `present_mode`, the GPU might be waiting on the screen in turn.
+                        let time_passed = std::time::Instant::now() - start_time;
+                        // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
+                        self.window.set_title(&format!(
+                            "{:.2} ms ({:.2} fps)",
+                            time_passed.as_secs_f32() * 1000.0,
+                            1.0 / time_passed.as_secs_f32()
+                        ));
+                    }
 
                     self.window.request_redraw();
                 }
@@ -266,7 +269,7 @@ fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     {
         // Set size to a common physical resolution as a comparable start-up default.
-        window.set_inner_size(PhysicalSize {
+        window.set_inner_size(winit::dpi::PhysicalSize {
             width: 1920,
             height: 1080,
         });
