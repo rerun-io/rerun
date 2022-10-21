@@ -485,18 +485,31 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
 
     for (child_path, child_transform) in &space_info.child_spaces {
         if let Transform::Extrinsics(extrinsics) = child_transform {
+            let mut found_any_intrinsics = false;
+
             if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
                 for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
                     if let Transform::Intrinsics(intrinsics) = grand_child_transform {
                         space_cameras.push(SpaceCamera {
-                            obj_path: child_path.clone(), // TODO(emilk): if the user clicks the camera, do they click the child space or grandchild space?
+                            obj_path: child_path.clone(),
                             instance_index_hash: re_log_types::IndexHash::NONE,
                             extrinsics: *extrinsics,
                             intrinsics: Some(*intrinsics),
                             target_space: Some(grand_child_path.clone()),
                         });
+                        found_any_intrinsics = true;
                     }
                 }
+            }
+
+            if !found_any_intrinsics {
+                space_cameras.push(SpaceCamera {
+                    obj_path: child_path.clone(),
+                    instance_index_hash: re_log_types::IndexHash::NONE,
+                    extrinsics: *extrinsics,
+                    intrinsics: None,
+                    target_space: None,
+                });
             }
         }
     }
