@@ -71,7 +71,7 @@ pub(crate) fn view_instance_generic(
                     Ok((time_msgid_index, data_vec)) => {
                         if data_vec.len() == 1 {
                             let data = data_vec.last().unwrap();
-                            let (_, msg_id, _) = &time_msgid_index[0];
+                            let (_, msg_id) = &time_msgid_index[0];
                             crate::data_ui::ui_data(ctx, ui, msg_id, &data, preview);
                         } else {
                             ui_data_vec(ui, &data_vec);
@@ -110,7 +110,7 @@ pub(crate) fn view_data(
         Ok((time_msgid_index, data_vec)) => {
             if data_vec.len() == 1 {
                 let data = data_vec.last().unwrap();
-                let (_, msg_id, _) = &time_msgid_index[0];
+                let (_, msg_id) = &time_msgid_index[0];
                 show_detailed_data(ctx, ui, msg_id, &data);
             } else {
                 ui_data_vec(ui, &data_vec);

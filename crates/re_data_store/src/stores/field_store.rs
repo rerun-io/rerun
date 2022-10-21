@@ -10,7 +10,7 @@ use crate::{BatchOrSplat, Error, Result, TimeQuery};
 ///
 /// First has time, message id, and the multi-index (if any).
 /// Second has the matching data.
-pub type FieldQueryOutput<Time> = (Vec<(Time, MsgId, Option<Index>)>, DataVec);
+pub type FieldQueryOutput<Time> = (Vec<(Time, MsgId)>, DataVec);
 
 /// Stores data for a specific [`re_log_types::FieldName`] of a specific [`ObjPath`] on a specific [`re_log_types::Timeline`].
 pub struct FieldStore<Time> {
@@ -121,7 +121,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
 
                     let mono = self.get_mono::<$typ>()?;
                     mono.query(time_query, |time, msg_id, value| {
-                        time_msgid_index.push((*time, *msg_id, None));
+                        time_msgid_index.push((*time, *msg_id));
                         values.push(value.clone());
                     });
                 } else {
@@ -129,19 +129,17 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
                     multi.query(time_query, |time, msg_id, batch| {
                         match batch {
                             BatchOrSplat::Splat(value) => {
-                                time_msgid_index.push((*time, *msg_id, None));
+                                time_msgid_index.push((*time, *msg_id));
                                 values.push(value.clone());
                             }
                             BatchOrSplat::Batch(batch) => {
                                 if let Some(index) = instance_index {
                                     let value = batch.get_index(index).expect("Batches should be self-consistent");
-                                    time_msgid_index.push((*time, *msg_id, Some(index.clone())));
+                                    time_msgid_index.push((*time, *msg_id));
                                     values.push(value.clone());
                                 } else {
                                     for (_index_hash, value) in batch.iter() {
-                                        //time_msgid_index.push((*time, *msg_id, Some(index.clone())));
-                                        // TODO: what is the index used for here?
-                                        time_msgid_index.push((*time, *msg_id, None));
+                                        time_msgid_index.push((*time, *msg_id));
                                         values.push(value.clone());
                                     }
                                 }
