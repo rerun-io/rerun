@@ -433,7 +433,7 @@ pub(crate) fn view_3d(
             scene.points.push(Point {
                 instance_id: InstanceIdHash::NONE,
                 pos: orbit_eye.orbit_center.to_array(),
-                radius: orbit_eye.orbit_radius * 0.01,
+                radius: Size::new_scene(orbit_eye.orbit_radius * 0.01),
                 color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
             });
             ui.ctx().request_repaint(); // let it fade out
@@ -602,7 +602,7 @@ fn show_projections_from_2d_space(
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
-                    let radius = -1.5; // ui points
+                    let radius = Size::new_ui(1.5);
                     scene.line_segments.push(LineSegments {
                         instance_id: InstanceIdHash::NONE,
                         segments: vec![[origin.into(), end.into()]],

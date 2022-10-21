@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 #[cfg(feature = "glow")]
 use egui::util::hash;
+use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
-use std::sync::Arc;
 
 use re_data_store::InstanceIdHash;
 
@@ -25,31 +27,90 @@ impl CpuMesh {
 
 use super::{eye::Eye, SpaceCamera};
 
+// ----------------------------------------------------------------------------
+
+/// A size of something in either scene-units, screen-units, or unsized.
+///
+/// Implementation:
+/// * If positive, this is in scene units.
+/// * If negative, this is in ui points.
+/// * If NaN, auto-size it.
+/// Resolved in [`Scene::finalize_sizes_and_colors`].
+#[derive(Clone, Copy, Debug)]
+pub struct Size(f32);
+
+impl Size {
+    /// Automatically sized based on how many there are in the scene etc.
+    const AUTO: Self = Self(f32::NAN);
+
+    #[inline]
+    pub fn new_scene(size: f32) -> Self {
+        debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
+        Self(size)
+    }
+
+    #[inline]
+    pub fn new_ui(size: f32) -> Self {
+        debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
+        Self(-size)
+    }
+
+    #[inline]
+    pub fn is_auto(&self) -> bool {
+        self.0.is_nan()
+    }
+
+    /// Get the scene-size of this, if stored as a scene size.
+    #[inline]
+    pub fn scene(&self) -> Option<f32> {
+        (self.0.is_finite() && self.0 >= 0.0).then_some(self.0)
+    }
+
+    /// Get the ui-size of this, if stored as a ui size.
+    #[inline]
+    pub fn ui(&self) -> Option<f32> {
+        (self.0.is_finite() && self.0 <= 0.0).then_some(-self.0)
+    }
+}
+
+impl PartialEq for Size {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0.is_nan() && other.0.is_nan() || self.0 == other.0
+    }
+}
+
+impl std::ops::Mul<f32> for Size {
+    type Output = Size;
+
+    #[inline]
+    fn mul(self, rhs: f32) -> Self::Output {
+        debug_assert!(rhs.is_finite() && rhs >= 0.0);
+        Self(self.0 * rhs)
+    }
+}
+
+impl std::ops::MulAssign<f32> for Size {
+    #[inline]
+    fn mul_assign(&mut self, rhs: f32) {
+        debug_assert!(rhs.is_finite() && rhs >= 0.0);
+        self.0 *= rhs;
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 pub struct Point {
     pub instance_id: InstanceIdHash,
-
     pub pos: [f32; 3],
-
-    /// * If positive, this is in scene units.
-    /// * If negative, this is in ui points.
-    /// * If NaN, auto-size it.
-    /// Resolved in [`Scene::finalize_sizes_and_colors`].
-    pub radius: f32,
-
+    pub radius: Size,
     pub color: [u8; 4],
 }
 
 pub struct LineSegments {
     pub instance_id: InstanceIdHash,
-
     pub segments: Vec<[[f32; 3]; 2]>,
-
-    /// * If positive, this is in scene units.
-    /// * If negative, this is in ui points.
-    /// * If NaN, auto-size it.
-    /// Resolved in [`Scene::finalize_sizes_and_colors`].
-    pub radius: f32,
-
+    pub radius: Size,
     pub color: [u8; 4],
 }
 
@@ -120,7 +181,7 @@ impl Scene {
                 scene.points.push(Point {
                     instance_id: InstanceIdHash::from_props(props),
                     pos: *pos,
-                    radius: radius.unwrap_or(f32::NAN), // NaN = automatic radius
+                    radius: radius.map_or(Size::AUTO, Size::new_scene),
                     color: object_color(ctx, props),
                 });
             }
@@ -134,10 +195,7 @@ impl Scene {
                     stroke_width,
                     label,
                 } = obj;
-                let line_radius = stroke_width.map_or(
-                    f32::NAN, // NaN = automatic radius
-                    |w| w / 2.0,
-                );
+                let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
                 let color = object_color(ctx, props);
                 scene.add_box(
                     InstanceIdHash::from_props(props),
@@ -157,10 +215,7 @@ impl Scene {
                     stroke_width,
                 } = obj;
 
-                let line_radius = stroke_width.map_or(
-                    f32::NAN, // NaN = automatic radius
-                    |w| w / 2.0,
-                );
+                let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
                 let color = object_color(ctx, props);
 
                 let segments = points
@@ -172,7 +227,7 @@ impl Scene {
                 scene.line_segments.push(LineSegments {
                     instance_id: InstanceIdHash::from_props(props),
                     segments,
-                    radius: line_radius,
+                    radius,
                     color,
                 });
             }
@@ -186,16 +241,13 @@ impl Scene {
                     stroke_width,
                 } = *obj;
 
-                let line_radius = stroke_width.map_or(
-                    f32::NAN, // NaN = automatic radius
-                    |w| w / 2.0,
-                );
+                let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
                 let color = object_color(ctx, props);
 
                 scene.line_segments.push(LineSegments {
                     instance_id: InstanceIdHash::from_props(props),
                     segments: bytemuck::allocation::pod_collect_to_vec(points),
-                    radius: line_radius,
+                    radius,
                     color,
                 });
             }
@@ -273,7 +325,9 @@ impl Scene {
 
             let world_from_view = crate::misc::cam::world_from_view(extrinsics);
 
-            let dist_to_eye = eye_camera_plane.distance(world_from_view.translation());
+            let dist_to_eye = eye_camera_plane
+                .distance(world_from_view.translation())
+                .at_least(0.0);
             let color = [255, 128, 128, 255]; // TODO(emilk): camera color
 
             let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
@@ -309,7 +363,7 @@ impl Scene {
 
             if ctx.options.show_camera_axes_in_3d {
                 let center = world_from_view.translation();
-                let radius = dist_to_eye * line_radius_from_distance * 2.0;
+                let radius = Size::new_scene(dist_to_eye * line_radius_from_distance * 2.0);
 
                 for (axis_index, dir) in extrinsics
                     .camera_space_convention
@@ -328,7 +382,7 @@ impl Scene {
                 }
             }
 
-            let line_radius = dist_to_eye * line_radius_from_distance;
+            let line_radius = Size::new_scene(dist_to_eye * line_radius_from_distance);
             self.add_camera_frustum(
                 extrinsics,
                 intrinsics,
@@ -375,23 +429,25 @@ impl Scene {
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
         // More points -> smaller points
-        let default_point_radius_in_points =
-            (0.3 * (viewport_area / (points.len() + 1) as f32).sqrt()).clamp(0.1, 5.0);
+        let default_point_radius = Size::new_ui(
+            (0.3 * (viewport_area / (points.len() + 1) as f32).sqrt()).clamp(0.1, 5.0),
+        );
 
         // TODO(emilk): more line segments -> thinner lines
-        let default_line_radius_in_points = (0.0005 * viewport_size.length()).clamp(1.5, 5.0);
+        let default_line_radius = Size::new_ui((0.0005 * viewport_size.length()).clamp(1.5, 5.0));
 
         {
             crate::profile_scope!("points");
             for point in points {
-                if !point.radius.is_finite() {
-                    point.radius = -default_point_radius_in_points;
+                if point.radius.is_auto() {
+                    point.radius = default_point_radius;
                 }
-                if point.radius < 0.0 {
-                    let size_in_points = -point.radius;
-
-                    let dist_to_eye = eye_camera_plane.distance(Vec3::from(point.pos));
-                    point.radius = dist_to_eye * size_in_points * point_size_at_one_meter;
+                if let Some(size_in_points) = point.radius.ui() {
+                    let dist_to_eye = eye_camera_plane
+                        .distance(Vec3::from(point.pos))
+                        .at_least(0.0);
+                    point.radius =
+                        Size::new_scene(dist_to_eye * size_in_points * point_size_at_one_meter);
                 }
                 if point.instance_id == hovered_instance_id_hash {
                     point.radius *= hover_size_boost;
@@ -403,12 +459,10 @@ impl Scene {
         {
             crate::profile_scope!("lines");
             for line_segment in line_segments {
-                if !line_segment.radius.is_finite() {
-                    line_segment.radius = -default_line_radius_in_points;
+                if line_segment.radius.is_auto() {
+                    line_segment.radius = default_line_radius;
                 }
-                if line_segment.radius < 0.0 {
-                    let size_in_points = -line_segment.radius;
-
+                if let Some(size_in_points) = line_segment.radius.ui() {
                     let dist_to_eye = if true {
                         // This works much better when one line segment is very close to the camera
                         let mut closest = f32::INFINITY;
@@ -427,9 +481,11 @@ impl Scene {
                         let centroid =
                             centroid.as_vec3() / (2.0 * line_segment.segments.len() as f32);
                         eye_camera_plane.distance(centroid)
-                    };
+                    }
+                    .at_least(0.0);
 
-                    line_segment.radius = dist_to_eye * size_in_points * point_size_at_one_meter;
+                    line_segment.radius =
+                        Size::new_scene(dist_to_eye * size_in_points * point_size_at_one_meter);
                 }
                 if line_segment.instance_id == hovered_instance_id_hash {
                     line_segment.radius *= hover_size_boost;
@@ -455,7 +511,7 @@ impl Scene {
         intrinsics: Option<&re_log_types::Intrinsics>,
         scene_bbox: &macaw::BoundingBox,
         instance_id: InstanceIdHash,
-        line_radius: f32,
+        line_radius: Size,
         color: [u8; 4],
     ) {
         if let (Some(world_from_image), Some(intrinsics)) = (
@@ -566,7 +622,7 @@ impl Scene {
         &mut self,
         instance_id: InstanceIdHash,
         color: [u8; 4],
-        line_radius: f32,
+        line_radius: Size,
         label: Option<&str>,
         box3: &re_log_types::Box3,
     ) {
