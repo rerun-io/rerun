@@ -21,12 +21,11 @@ use itertools::Itertools as _;
 
 use nohash_hasher::IntSet;
 use re_data_store::{
-    log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, Timeline,
-    TimelineStore,
+    log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, TimelineStore,
 };
 use re_log_types::{ObjectType, Transform};
 
-use crate::misc::ViewerContext;
+use crate::misc::{TimeControl, ViewerContext};
 
 use super::view3d::SpaceCamera;
 
@@ -71,24 +70,25 @@ struct SpacesInfo {
 impl SpacesInfo {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
-    fn new(obj_db: &ObjDb, timeline: &Timeline) -> Self {
+    fn new(obj_db: &ObjDb, time_ctrl: &TimeControl) -> Self {
         crate::profile_function!();
 
         fn add_children(
             timeline_store: Option<&TimelineStore<i64>>,
+            query_time: Option<i64>,
             spaces_info: &mut SpacesInfo,
             parent_space_path: &ObjPath,
             parent_space_info: &mut SpaceInfo,
             tree: &ObjectTree,
         ) {
-            if let Some(transform) = query_transform(timeline_store, &tree.path) {
+            if let Some(transform) = query_transform(timeline_store, &tree.path, query_time) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space_info
                     .child_spaces
                     .insert(tree.path.clone(), transform.clone());
 
                 let mut child_space_info = SpaceInfo {
-                    parent: Some((parent_space_path.clone(), transform.clone())),
+                    parent: Some((parent_space_path.clone(), transform)),
                     ..Default::default()
                 };
                 child_space_info.objects.insert(tree.path.clone()); // spaces includes self
@@ -96,6 +96,7 @@ impl SpacesInfo {
                 for child_tree in tree.children.values() {
                     add_children(
                         timeline_store,
+                        query_time,
                         spaces_info,
                         &tree.path,
                         &mut child_space_info,
@@ -112,6 +113,7 @@ impl SpacesInfo {
                 for child_tree in tree.children.values() {
                     add_children(
                         timeline_store,
+                        query_time,
                         spaces_info,
                         parent_space_path,
                         parent_space_info,
@@ -121,6 +123,8 @@ impl SpacesInfo {
             }
         }
 
+        let timeline = time_ctrl.timeline();
+        let query_time = time_ctrl.time().map(|time| time.floor().as_i64());
         let timeline_store = obj_db.store.get(timeline);
 
         let mut spaces_info = Self::default();
@@ -128,7 +132,7 @@ impl SpacesInfo {
         for tree in obj_db.tree.children.values() {
             // Each root object is its own space (or should be)
 
-            if query_transform(timeline_store, &tree.path).is_some() {
+            if query_transform(timeline_store, &tree.path, query_time).is_some() {
                 re_log::warn_once!(
                     "Root object '{}' has a _transform - this is not allowed!",
                     tree.path
@@ -138,6 +142,7 @@ impl SpacesInfo {
             let mut space_info = SpaceInfo::default();
             add_children(
                 timeline_store,
+                query_time,
                 &mut spaces_info,
                 &tree.path,
                 &mut space_info,
@@ -153,14 +158,24 @@ impl SpacesInfo {
 // ----------------------------------------------------------------------------
 
 /// Get the latest value of the "_transform" meta-field of the given object.
-fn query_transform<'s>(
-    store: Option<&'s TimelineStore<i64>>,
+fn query_transform(
+    store: Option<&TimelineStore<i64>>,
     obj_path: &ObjPath,
-) -> Option<&'s re_log_types::Transform> {
+    query_time: Option<i64>,
+) -> Option<re_log_types::Transform> {
     let field_store = store?.get(obj_path)?.get(&FieldName::from("_transform"))?;
     // `_transform` is only allowed to be stored in a mono-field.
     let mono_field_store = field_store.get_mono::<re_log_types::Transform>().ok()?;
-    Some(&mono_field_store.latest()?.1 .1)
+
+    // There is a transform, at least at _some_ time.
+    // Is there a transform _now_?
+    let latest = query_time
+        .and_then(|query_time| mono_field_store.latest_at(&query_time))
+        .map(|(_, (_, transform))| transform.clone());
+
+    // If not, return an unknown transform to indicate that there is
+    // still a space-split.
+    Some(latest.unwrap_or(Transform::Unknown))
 }
 
 // ----------------------------------------------------------------------------
@@ -662,7 +677,7 @@ impl ExperimentalViewportPanel {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, ctx.rec_cfg.time_ctrl.timeline());
+        let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
         if ui.button("Reset space views / blueprint").clicked()
             || self.blueprint.space_views.is_empty()
