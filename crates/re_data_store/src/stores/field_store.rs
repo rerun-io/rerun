@@ -133,16 +133,17 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
                                 values.push(value.clone());
                             }
                             BatchOrSplat::Batch(batch) => {
-                                for (index_hash, index) in batch.indices() {
-                                    if let Some(instance_index) = instance_index {
-                                        if index != instance_index {
-                                            continue;
-                                        }
-                                    }
-
-                                    let value = batch.get(index_hash).expect("Batches should be self-consistent");
+                                if let Some(index) = instance_index {
+                                    let value = batch.get_index(index).expect("Batches should be self-consistent");
                                     time_msgid_index.push((*time, *msg_id, Some(index.clone())));
                                     values.push(value.clone());
+                                } else {
+                                    for (_index_hash, value) in batch.iter() {
+                                        //time_msgid_index.push((*time, *msg_id, Some(index.clone())));
+                                        // TODO: what is the index used for here?
+                                        time_msgid_index.push((*time, *msg_id, None));
+                                        values.push(value.clone());
+                                    }
                                 }
                             }
                         }
