@@ -1,11 +1,11 @@
-use anyhow::Context;
+use anyhow::{Context, Ok};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
     context::*,
     global_bindings::FrameUniformBuffer,
-    renderer::{generic_skybox::*, test_triangle::*, tonemapper::*, Renderer},
+    renderer::{tonemapper::*, Drawable, Renderer},
     resource_pools::{
         bind_group_pool::BindGroupHandle,
         buffer_pool::{BufferDesc, BufferHandle},
@@ -13,24 +13,31 @@ use crate::{
     },
 };
 
+type DrawFn = dyn for<'a, 'b> Fn(&'b RenderContext, &'a mut wgpu::RenderPass<'b>) -> anyhow::Result<()>
+    + Sync
+    + Send;
+
+struct QueuedDraw {
+    draw_func: Box<DrawFn>,
+    sorting_index: u32,
+}
+
 /// The highest level rendering block in `re_renderer`.
-///
-/// They are used to build up/collect various resources and then send them off for rendering.
-/// Collecting objects in this fashion allows for re-use of common resources (e.g. camera)
+/// Used to build up/collect various resources and then send them off for rendering of  a single view.
 #[derive(Default)]
-pub struct FrameBuilder {
-    tonemapping_draw_data: TonemapperDrawData,
-    test_triangle_draw_data: Option<TestTriangleDrawData>,
-    generic_skybox_draw_data: Option<GenericSkyboxDrawData>,
+pub struct ViewBuilder {
+    tonemapping_draw_data: TonemapperDrawable,
 
     bind_group_0: BindGroupHandle,
 
     frame_uniform_buffer: BufferHandle,
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
+
+    queued_draws: Vec<QueuedDraw>, // &mut wgpu::RenderPass
 }
 
-pub type SharedFrameBuilder = Arc<RwLock<FrameBuilder>>;
+pub type SharedViewBuilder = Arc<RwLock<ViewBuilder>>;
 
 /// Basic configuration for a target view.
 pub struct TargetConfiguration {
@@ -46,29 +53,29 @@ pub struct TargetConfiguration {
     pub target_identifier: u64,
 }
 
-impl FrameBuilder {
+impl ViewBuilder {
     pub const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
     pub const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
     pub fn new() -> Self {
-        FrameBuilder {
+        ViewBuilder {
             tonemapping_draw_data: Default::default(),
-            test_triangle_draw_data: None,
-            generic_skybox_draw_data: None,
 
             bind_group_0: BindGroupHandle::default(),
 
             frame_uniform_buffer: BufferHandle::default(),
             hdr_render_target: TextureHandle::default(),
             depth_buffer: TextureHandle::default(),
+
+            queued_draws: Vec::new(),
         }
     }
 
-    pub fn new_shared() -> SharedFrameBuilder {
-        Arc::new(RwLock::new(FrameBuilder::new()))
+    pub fn new_shared() -> SharedViewBuilder {
+        Arc::new(RwLock::new(ViewBuilder::new()))
     }
 
-    pub fn setup_target(
+    pub fn setup_view(
         &mut self,
         ctx: &mut RenderContext,
         device: &wgpu::Device,
@@ -96,16 +103,7 @@ impl FrameBuilder {
             ),
         );
 
-        self.tonemapping_draw_data = ctx
-            .renderers
-            .get_or_create::<Tonemapper>(&ctx.shared_renderer_data, &mut ctx.resource_pools, device)
-            .prepare(
-                &mut ctx.resource_pools,
-                device,
-                &TonemapperPrepareData {
-                    hdr_target: self.hdr_render_target,
-                },
-            );
+        self.tonemapping_draw_data = TonemapperDrawable::new(ctx, device, self.hdr_render_target);
 
         // Setup frame uniform buffer
         {
@@ -117,7 +115,7 @@ impl FrameBuilder {
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
 
                     // We need to make sure that every target gets a different frame uniform buffer.
-                    // If we don't do that, frame uniform buffers from different [`FrameBuilder`] might overwrite each other.
+                    // If we don't do that, frame uniform buffers from different [`ViewBuilder`] might overwrite each other.
                     // (note thought that we do *not* want to hash the current contents of the uniform buffer
                     // because then we'd create a new buffer every frame!)
                     content_id: config.target_identifier,
@@ -176,32 +174,30 @@ impl FrameBuilder {
         Ok(self)
     }
 
-    pub fn test_triangle(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        let pools = &mut ctx.resource_pools;
-        self.test_triangle_draw_data = Some(
-            ctx.renderers
-                .get_or_create::<TestTriangle>(&ctx.shared_renderer_data, pools, device)
-                .prepare(pools, device, &TestTrianglePrepareData {}),
-        );
+    pub fn queue_draw<D: Drawable + Sync + Send + Clone + 'static>(
+        &mut self,
+        draw_data: &D,
+    ) -> &mut Self {
+        let draw_data = draw_data.clone();
 
-        self
-    }
-
-    pub fn generic_skybox(&mut self, ctx: &mut RenderContext, device: &wgpu::Device) -> &mut Self {
-        let pools = &mut ctx.resource_pools;
-        self.generic_skybox_draw_data = Some(
-            ctx.renderers
-                .get_or_create::<GenericSkybox>(&ctx.shared_renderer_data, pools, device)
-                .prepare(pools, device, &GenericSkyboxPrepareData {}),
-        );
+        self.queued_draws.push(QueuedDraw {
+            draw_func: Box::new(move |ctx, pass| {
+                let renderer = ctx
+                    .renderers
+                    .get::<D::Renderer>()
+                    .context("failed to retrieve renderer")?;
+                renderer.draw(&ctx.resource_pools, pass, &draw_data)
+            }),
+            sorting_index: D::Renderer::draw_order(),
+        });
 
         self
     }
 
     /// Draws the frame as instructed to a temporary HDR target.
     pub fn draw(
-        &self,
-        ctx: &mut RenderContext,
+        &mut self,
+        ctx: &RenderContext,
         encoder: &mut wgpu::CommandEncoder,
     ) -> anyhow::Result<()> {
         let color = ctx
@@ -245,33 +241,19 @@ impl FrameBuilder {
             &[],
         );
 
-        if let Some(test_triangle_data) = self.test_triangle_draw_data.as_ref() {
-            let test_triangle_renderer = ctx
-                .renderers
-                .get::<TestTriangle>()
-                .context("get test triangle renderer")?;
-            test_triangle_renderer
-                .draw(&ctx.resource_pools, &mut pass, test_triangle_data)
-                .context("draw test triangle")?;
-        }
-
-        if let Some(generic_skybox_data) = self.generic_skybox_draw_data.as_ref() {
-            let generic_skybox_renderer = ctx
-                .renderers
-                .get::<GenericSkybox>()
-                .context("get skybox renderer")?;
-            generic_skybox_renderer
-                .draw(&ctx.resource_pools, &mut pass, generic_skybox_data)
-                .context("draw skybox")?;
+        self.queued_draws
+            .sort_by(|a, b| a.sorting_index.cmp(&b.sorting_index));
+        for queued_draw in &self.queued_draws {
+            (queued_draw.draw_func)(ctx, &mut pass).context("drawing a view")?;
         }
 
         Ok(())
     }
 
-    /// Applies tonemapping and draws the final result of a `FrameBuilder` to a given output `RenderPass`.
+    /// Applies tonemapping and draws the final result of a `ViewBuilder` to a given output `RenderPass`.
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
-    pub fn finish<'a>(
+    pub fn composite<'a>(
         &self,
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,

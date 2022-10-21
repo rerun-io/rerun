@@ -10,13 +10,14 @@ use crate::{
     },
     wgsl_types,
 };
+use bytemuck::{Pod, Zeroable};
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
 ///
 /// Contains information that is constant for a single frame like camera.
 /// (does not contain information that is special to a particular renderer)
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]
+#[derive(Clone, Copy, Zeroable, Pod)]
 pub(crate) struct FrameUniformBuffer {
     pub view_from_world: wgsl_types::Mat4x3,
     pub projection_from_view: wgsl_types::Mat4,

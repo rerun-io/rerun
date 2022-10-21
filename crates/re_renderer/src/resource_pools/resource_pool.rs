@@ -84,6 +84,24 @@ where
             })
     }
 
+    // TODO(cmc): Necessary for now, although not great. We'll see if we can/need-to find
+    // a better way to handle this once all 3 shader-related PRs have landed.
+    pub fn get_resource_mut(&mut self, handle: Handle) -> Result<&mut Res, PoolError> {
+        self.resources
+            .get_mut(handle)
+            .map(|resource| {
+                resource.on_handle_resolve(self.current_frame_index);
+                resource
+            })
+            .ok_or_else(|| {
+                if handle.is_null() {
+                    PoolError::NullHandle
+                } else {
+                    PoolError::ResourceNotAvailable
+                }
+            })
+    }
+
     pub fn resource_descs(&self) -> impl Iterator<Item = &Desc> {
         self.lookup.keys()
     }

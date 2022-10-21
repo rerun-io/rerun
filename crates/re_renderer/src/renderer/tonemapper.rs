@@ -1,33 +1,56 @@
 use crate::{
     context::SharedRendererData,
+    include_file,
     resource_pools::{
         bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, texture_pool::TextureHandle, WgpuResourcePools,
+        render_pipeline_pool::*, shader_module_pool::*, texture_pool::TextureHandle,
+        WgpuResourcePools,
     },
 };
 
-use super::Renderer;
+use super::*;
 
-pub(crate) struct Tonemapper {
+pub struct Tonemapper {
     render_pipeline: RenderPipelineHandle,
     bind_group_layout: BindGroupLayoutHandle,
 }
 
-pub(crate) struct TonemapperPrepareData {
-    pub hdr_target: TextureHandle,
-    // TODO(andreas): Tonemapper
-}
-
-#[derive(Default)]
-pub(crate) struct TonemapperDrawData {
+#[derive(Default, Clone)]
+pub struct TonemapperDrawable {
     /// [`BindGroup`] pointing at the current HDR source and
     /// a uniform buffer for describing a tonemapper configuration.
     hdr_target_bind_group: BindGroupHandle,
 }
 
+impl Drawable for TonemapperDrawable {
+    type Renderer = Tonemapper;
+}
+
+impl TonemapperDrawable {
+    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device, hdr_target: TextureHandle) -> Self {
+        let pools = &mut ctx.resource_pools;
+        let tonemapper =
+            ctx.renderers
+                .get_or_create::<Tonemapper>(&ctx.shared_renderer_data, pools, device);
+        TonemapperDrawable {
+            hdr_target_bind_group: pools.bind_groups.request(
+                device,
+                &BindGroupDesc {
+                    label: "tonemapping".into(),
+                    entries: vec![BindGroupEntry::TextureView(hdr_target)],
+                    layout: tonemapper.bind_group_layout,
+                },
+                &pools.bind_group_layouts,
+                &pools.textures,
+                &pools.buffers,
+                &pools.samplers,
+            ),
+        }
+    }
+}
+
 impl Renderer for Tonemapper {
-    type PrepareData = TonemapperPrepareData;
-    type DrawData = TonemapperDrawData;
+    type DrawData = TonemapperDrawable;
 
     fn create_renderer(
         shared_data: &SharedRendererData,
@@ -63,14 +86,22 @@ impl Renderer for Tonemapper {
                     },
                     &pools.bind_group_layouts,
                 ),
-                vertex_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/screen_triangle.wgsl").into(),
-                    entry_point: "main",
-                },
-                fragment_shader: ShaderDesc {
-                    shader_code: include_str!("../../shader/tonemap.wgsl").into(),
-                    entry_point: "main",
-                },
+                vertex_entrypoint: "main".into(),
+                vertex_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "screen_triangle (vertex)".into(),
+                        source: include_file!("../../shader/screen_triangle.wgsl"),
+                    },
+                ),
+                fragment_entrypoint: "main".into(),
+                fragment_handle: pools.shader_modules.request(
+                    device,
+                    &ShaderModuleDesc {
+                        label: "tonemap (fragment)".into(),
+                        source: include_file!("../../shader/tonemap.wgsl"),
+                    },
+                ),
                 vertex_buffers: vec![],
                 render_targets: vec![Some(shared_data.config.output_format_color.into())],
                 primitive: wgpu::PrimitiveState::default(),
@@ -78,6 +109,7 @@ impl Renderer for Tonemapper {
                 multisample: wgpu::MultisampleState::default(),
             },
             &pools.pipeline_layouts,
+            &pools.shader_modules,
         );
 
         Tonemapper {
@@ -86,33 +118,11 @@ impl Renderer for Tonemapper {
         }
     }
 
-    fn prepare(
-        &self,
-        pools: &mut WgpuResourcePools,
-        device: &wgpu::Device,
-        data: &Self::PrepareData,
-    ) -> Self::DrawData {
-        TonemapperDrawData {
-            hdr_target_bind_group: pools.bind_groups.request(
-                device,
-                &BindGroupDesc {
-                    label: "tonemapping".into(),
-                    entries: vec![BindGroupEntry::TextureView(data.hdr_target)],
-                    layout: self.bind_group_layout,
-                },
-                &pools.bind_group_layouts,
-                &pools.textures,
-                &pools.buffers,
-                &pools.samplers,
-            ),
-        }
-    }
-
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::DrawData,
+        draw_data: &TonemapperDrawable,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
         let bind_group = pools.bind_groups.get(draw_data.hdr_target_bind_group)?;

@@ -5,7 +5,7 @@ use re_log_types::*;
 
 // -----------------------------------------------------------------------------
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TextEntryState {
     /// Keeps track of the latest time selection made by the user.

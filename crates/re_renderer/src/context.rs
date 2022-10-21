@@ -1,5 +1,6 @@
 use type_map::concurrent::{self, TypeMap};
 
+use crate::FileServer;
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
@@ -25,7 +26,7 @@ pub struct RenderContextConfig {
 }
 
 /// Immutable data that is shared between all [`Renderer`]
-pub(crate) struct SharedRendererData {
+pub struct SharedRendererData {
     pub(crate) config: RenderContextConfig,
 
     /// Global bindings, always bound to 0 bind group slot zero.
@@ -76,19 +77,34 @@ impl RenderContext {
         }
     }
 
-    pub fn frame_maintenance(&mut self) {
+    pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
+        // The set of files on disk that were modified in any way since last frame,
+        // ignoring deletions.
+        // Always an empty set in release builds.
+        let modified_paths = FileServer::get_mut(|fs| fs.collect());
+
         {
             let WgpuResourcePools {
-                textures,
-                render_pipelines,
-                pipeline_layouts: _,
                 bind_group_layouts: _,
                 bind_groups,
+                pipeline_layouts,
+                render_pipelines,
                 samplers,
+                shader_modules,
+                textures,
                 buffers,
             } = &mut self.resource_pools; // not all pools require maintenance
 
-            render_pipelines.frame_maintenance(self.frame_index);
+            // Render pipeline maintenance must come before shader module maintenance since
+            // it registers them.
+            render_pipelines.frame_maintenance(
+                device,
+                self.frame_index,
+                shader_modules,
+                pipeline_layouts,
+            );
+
+            shader_modules.frame_maintenance(device, self.frame_index, &modified_paths);
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use

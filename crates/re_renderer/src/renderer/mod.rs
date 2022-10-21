@@ -1,31 +1,33 @@
-pub(crate) mod generic_skybox;
-pub(crate) mod test_triangle;
-pub(crate) mod tonemapper;
+pub mod generic_skybox;
+pub mod test_triangle;
+pub mod tonemapper;
 
-use crate::{context::SharedRendererData, resource_pools::WgpuResourcePools};
+pub use generic_skybox::GenericSkyboxDrawable;
+pub use test_triangle::TestTriangleDrawable;
+
+use crate::{
+    context::{RenderContext, SharedRendererData},
+    resource_pools::WgpuResourcePools,
+};
+
+/// GPU sided data used by a [`Renderer`] to draw things to the screen.
+pub trait Drawable {
+    type Renderer: Renderer<DrawData = Self>;
+}
 
 /// A Renderer encapsulate the knowledge of how to render a certain kind of primitives.
 ///
 /// It is an immutable, long-lived datastructure that only holds onto resources that will be needed
 /// for each of its [`Renderer::draw`] invocations.
-/// Any data that might be different per specific [`Renderer::draw`] invocation is stored in
-/// [`Renderer::DrawData`] and created using [`Renderer::PrepareData`] by [`Renderer::prepare`].
-pub(crate) trait Renderer {
-    type PrepareData;
-    type DrawData;
+/// Any data that might be different per specific [`Renderer::draw`] invocation is stored in [`Drawable`].
+pub trait Renderer {
+    type DrawData: Drawable;
 
     fn create_renderer(
         shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
     ) -> Self;
-
-    fn prepare(
-        &self,
-        pools: &mut WgpuResourcePools,
-        device: &wgpu::Device,
-        draw_input: &Self::PrepareData,
-    ) -> Self::DrawData;
 
     // TODO(andreas): Some Renderers need to create their own passes, need something like this for that.
     // TODO(andreas): The harder part is that some of those might need to share them with others!
@@ -44,4 +46,29 @@ pub(crate) trait Renderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()>;
+
+    /// Relative location in the rendering process when this renderer should be executed.
+    /// TODO(andreas): We might want to take [`Drawable`] into account for this.
+    ///                But this touches on the [`Renderer::draw`] method might be split in the future, which haven't designed yet.
+    fn draw_order() -> u32 {
+        DrawOrder::Opaque as u32
+    }
+}
+
+/// Assigns rough meaning to draw sorting indices
+#[allow(dead_code)]
+#[repr(u32)]
+enum DrawOrder {
+    /// Opaque objects, performing reads/writes to the depth buffer.
+    /// Typically they are order independent, so everything uses this same index.
+    Opaque = 30000,
+
+    /// Transparent objects. Each draw typically gets its own sorting index.
+    Transparent = 50000,
+
+    /// Backgrounds should always be rendered last.
+    Background = 70000,
+
+    /// Postprocessing effects that are applied before the final tonemapping step.
+    Postprocess = 90000,
 }
