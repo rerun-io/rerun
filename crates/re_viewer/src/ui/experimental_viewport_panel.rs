@@ -54,7 +54,7 @@ struct SpaceInfo {
     #[allow(unused)] // TODO(emilk): support projecting parent space(s) into this space
     parent: Option<(ObjPath, Transform)>,
 
-    /// Nearest decedents to whom we are not connected with an identity transform.
+    /// Nearest descendants to whom we are not connected with an identity transform.
     child_spaces: BTreeMap<ObjPath, Transform>,
 }
 
@@ -787,11 +787,7 @@ fn desired_aspect_ratio(spaces: &[SpaceMakeInfo]) -> Option<f32> {
         }
     }
 
-    if num == 0.0 {
-        None
-    } else {
-        Some(sum / num)
-    }
+    (num != 0.0).then_some(sum / num)
 }
 
 fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>> {
