@@ -454,7 +454,7 @@ fn paint_view(
     eye: Eye,
     rect: egui::Rect,
     scene: Scene,
-    state: &mut State3D,
+    _state: &mut State3D,
     response: egui::Response,
 ) -> egui::Response {
     crate::profile_function!();
@@ -557,7 +557,7 @@ fn paint_view(
     #[cfg(feature = "glow")]
     let callback = {
         let dark_mode = ui.visuals().dark_mode;
-        let show_axes = state.show_axes;
+        let show_axes = _state.show_axes;
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
