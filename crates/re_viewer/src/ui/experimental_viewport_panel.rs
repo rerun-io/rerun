@@ -433,7 +433,19 @@ impl ViewState {
         objects: &Objects<'_>,
     ) -> egui::Response {
         ui.vertical(|ui| {
-            crate::view3d::view_3d(ctx, ui, &mut self.state_3d, Some(space), objects);
+            let state = &mut self.state_3d;
+            let space_specs = crate::view3d::SpaceSpecs::from_objects(Some(space), objects);
+            let scene = crate::view3d::scene::Scene::from_objects(ctx, objects);
+            let space_cameras = crate::view3d::space_cameras(objects);
+            crate::view3d::view_3d(
+                ctx,
+                ui,
+                state,
+                Some(space),
+                &space_specs,
+                scene,
+                &space_cameras,
+            );
         })
         .response
     }
