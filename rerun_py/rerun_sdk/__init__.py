@@ -272,6 +272,8 @@ class LoggingHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         """Emits a record to the Rerun SDK."""
         objpath = record.name.replace(".", "/")
+        if self.space is not None:
+            objpath = f"{self.space}/{objpath}"
         level = self.LVL2NAME.get(record.levelno)
         if level is None:  # user-defined level
             level = record.levelname
