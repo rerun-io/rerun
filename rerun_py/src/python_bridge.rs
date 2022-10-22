@@ -729,7 +729,7 @@ fn log_rects(
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
-    let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
+    let indices = BatchIndex::SequentialIndex(n);
 
     let time_point = time(timeless);
 
@@ -752,7 +752,7 @@ fn log_rects(
                 &time_point,
                 (&obj_path, "label"),
                 LoggedData::Batch {
-                    indices: BatchIndex::FullIndex(indices.clone()),
+                    indices: indices.clone(),
                     data: DataVec::String(labels),
                 },
             );
@@ -773,7 +773,7 @@ fn log_rects(
         &time_point,
         (&obj_path, "bbox"),
         LoggedData::Batch {
-            indices: BatchIndex::FullIndex(indices),
+            indices,
             data: DataVec::BBox2D(rects),
         },
     );
@@ -902,7 +902,7 @@ fn log_points(
         },
     );
 
-    let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
+    let indices = BatchIndex::SequentialIndex(n);
 
     let time_point = time(timeless);
 
@@ -921,7 +921,7 @@ fn log_points(
         &time_point,
         (&obj_path, "pos"),
         LoggedData::Batch {
-            indices: BatchIndex::FullIndex(indices),
+            indices,
             data: pos_data,
         },
     );
@@ -937,7 +937,7 @@ fn log_points(
 }
 
 fn color_batch(
-    indices: &Vec<Index>,
+    indices: &BatchIndex,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
 ) -> PyResult<LoggedData> {
     match colors.shape() {
@@ -965,7 +965,7 @@ fn color_batch(
 
             if colors.len() == indices.len() {
                 Ok(LoggedData::Batch {
-                    indices: BatchIndex::FullIndex(indices.clone()),
+                    indices: indices.clone(),
                     data: DataVec::Color(colors),
                 })
             } else {
@@ -983,7 +983,7 @@ fn color_batch(
 
             if colors.len() == indices.len() {
                 Ok(LoggedData::Batch {
-                    indices: BatchIndex::FullIndex(indices.clone()),
+                    indices: indices.clone(),
                     data: DataVec::Color(colors),
                 })
             } else {

@@ -3009,6 +3009,7 @@ dependencies = [
  "criterion",
  "document-features",
  "itertools",
+ "lazy_static",
  "mimalloc",
  "nohash-hasher",
  "puffin",

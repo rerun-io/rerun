@@ -28,6 +28,7 @@ itertools = "0.10"
 nohash-hasher = "0.2"
 serde = { version = "1", features = ["derive", "rc"], optional = true }
 thiserror = "1.0"
+lazy_static = "1.4.0"
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
