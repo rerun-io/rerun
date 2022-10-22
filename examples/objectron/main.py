@@ -141,15 +141,14 @@ def log_camera(cam: ARCamera) -> None:
         target_space="image",
     )
 
-    # Experimental new API:
-    rerun._log_extrinsics(
+    # Experimental new API which will replace log_camera:
+    rerun.log_extrinsics(
         "3d/camera",
         rotation_q=rot.as_quat(),
         position=translation,
         camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
     )
-
-    rerun._log_intrinsics(
+    rerun.log_intrinsics(
         "3d/camera/video",
         width=w,
         height=h,

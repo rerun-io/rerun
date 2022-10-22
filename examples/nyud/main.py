@@ -125,15 +125,14 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                         space="3d",
                     )
 
-                    # Experimental new API, replacing log_camera:
-                    rerun._log_extrinsics(
+                    # Experimental new API which will replace log_camera:
+                    rerun.log_extrinsics(
                         "3d/camera",
                         rotation_q=np.array((0, 0, 0, 1)),
                         position=np.array((0, 0, 0)),
                         camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
                     )
-
-                    rerun._log_intrinsics(
+                    rerun.log_intrinsics(
                         "3d/camera/image",
                         width=img_depth.shape[1],
                         height=img_depth.shape[0],

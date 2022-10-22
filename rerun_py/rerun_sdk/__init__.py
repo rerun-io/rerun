@@ -494,7 +494,7 @@ def log_camera(
     )
 
 
-def _log_extrinsics(
+def log_extrinsics(
     obj_path: str,
     rotation_q: npt.ArrayLike,
     position: npt.ArrayLike,
@@ -517,7 +517,7 @@ def _log_extrinsics(
     )
 
 
-def _log_intrinsics(
+def log_intrinsics(
     obj_path: str, *, width: int, height: int, intrinsics_matrix: npt.ArrayLike, timeless: bool = False
 ) -> None:
     """

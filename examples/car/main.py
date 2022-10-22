@@ -44,15 +44,14 @@ def log_car_data() -> None:
             target_space="3d/camera/image",
         )
 
-        # Experimental new API, replacing log_camera:
-        rerun._log_extrinsics(
+        # Experimental new API which will replace log_camera:
+        rerun.log_extrinsics(
             "3d/camera",
             rotation_q=sample.camera.rotation_q,
             position=sample.camera.position,
             camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
         )
-
-        rerun._log_intrinsics(
+        rerun.log_intrinsics(
             "3d/camera/image",
             width=sample.camera.resolution[0],
             height=sample.camera.resolution[1],
