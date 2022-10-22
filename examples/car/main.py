@@ -2,18 +2,14 @@
 """Shows how to use the Rerun SDK."""
 
 import argparse
-import os
 from dataclasses import dataclass
-from pathlib import Path
 from time import sleep
-from typing import Final, Iterator, Tuple
+from typing import Iterator, Tuple
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 import rerun_sdk as rerun
-
-CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
 
 
 def log_car_data() -> None:
@@ -50,20 +46,6 @@ def log_car_data() -> None:
 
         # The depth image is in millimeters, so we set meter=1000
         rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
-
-    mesh_data = CAMERA_GLB.read_bytes()
-
-    # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
-    transform = np.array(
-        [
-            [2, 0, 0, 0],
-            [0, 2, 0, 0],
-            [0, 0, 2, 0],
-        ]
-    )
-    rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
-
-    rerun.log_path("a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]))
 
 
 class DummyCar:
