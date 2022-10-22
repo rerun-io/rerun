@@ -624,6 +624,7 @@ fn space_view_ui(
                 }
             }
         }
+        let time_objects = filter_objects(ctx, &time_objects);
 
         // Get the "sticky" objects (e.g. text logs)
         // that don't care about the current time:
@@ -650,6 +651,7 @@ fn space_view_ui(
                 }
             }
         }
+        let sticky_objects = filter_objects(ctx, &sticky_objects);
 
         let space_cameras = &space_cameras(spaces_info, space_info);
 
@@ -657,6 +659,18 @@ fn space_view_ui(
     } else {
         unknown_space_label(ui, &space_view.space_path)
     }
+}
+
+fn filter_objects<'s>(ctx: &mut ViewerContext<'_>, objects: &'_ Objects<'s>) -> Objects<'s> {
+    crate::profile_function!();
+    objects.filter(|props| {
+        props.visible
+            && ctx
+                .rec_cfg
+                .projected_object_properties
+                .get(props.obj_path)
+                .visible
+    })
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
