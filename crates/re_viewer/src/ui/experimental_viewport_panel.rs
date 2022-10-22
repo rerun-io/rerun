@@ -335,9 +335,10 @@ impl SpaceView {
     ) -> egui::Response {
         crate::profile_function!();
 
-        let has_2d = time_objects.has_any_2d();
-        let has_3d = time_objects.has_any_3d();
         let multidim_tensor = multidim_tensor(time_objects);
+        let has_2d =
+            time_objects.has_any_2d() && (multidim_tensor.is_none() || time_objects.len() > 1);
+        let has_3d = time_objects.has_any_3d();
         let has_text = sticky_objects.has_any_text_entries();
 
         let mut categories = vec![];
