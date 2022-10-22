@@ -28,6 +28,7 @@ use wgpu::{
     CommandEncoder, Device, Queue, RenderPass, Surface, SurfaceConfiguration, TextureFormat,
 };
 use winit::{
+    dpi::PhysicalSize,
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
@@ -233,6 +234,19 @@ impl WgpuContext {
                     self.surface.configure(&self.device, &self.surface_config);
                     self.window.request_redraw();
                 }
+                Event::WindowEvent {
+                    event:
+                        WindowEvent::ScaleFactorChanged {
+                            scale_factor: _,
+                            new_inner_size,
+                        },
+                    ..
+                } => {
+                    self.surface_config.width = new_inner_size.width;
+                    self.surface_config.height = new_inner_size.height;
+                    self.surface.configure(&self.device, &self.surface_config);
+                    self.window.request_redraw();
+                }
                 Event::RedrawRequested(_) => {
                     #[cfg(not(target_arch = "wasm32"))]
                     let start_time = std::time::Instant::now();
@@ -309,6 +323,13 @@ impl WgpuContext {
             }
         });
     }
+
+    fn reconfigre_surface(&mut self, size: PhysicalSize<u32>) {
+        self.surface_config.width = size.width;
+        self.surface_config.height = size.height;
+        self.surface.configure(&self.device, &self.surface_config);
+        self.window.request_redraw();
+    }
 }
 
 // ---
@@ -323,7 +344,7 @@ fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     {
         // Set size to a common physical resolution as a comparable start-up default.
-        window.set_inner_size(winit::dpi::PhysicalSize {
+        window.set_inner_size(PhysicalSize {
             width: 1920,
             height: 1080,
         });
