@@ -29,6 +29,8 @@ def log_clock() -> None:
             0.0,
         )
 
+    rerun.set_space_up("3d", [0, 1, 0])
+
     rerun.log_obb(
         "3d/frame",
         half_size=[2 * LENGTH_S, 2 * LENGTH_S, 1.0],
