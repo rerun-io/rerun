@@ -11,17 +11,28 @@ var<uniform> frame: FrameUniformBuffer;
 
 @group(1) @binding(0)
 var segment_texture: texture_2d<f32>;
+@group(1) @binding(1)
+var line_strip_texture: texture_2d<u32>;
+
+// textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
+// https://github.com/gfx-rs/naga/issues/1997
+var<private> SEGMENT_TEXTURE_SIZE: i32 = 512;
+var<private> LINE_STRIP_TEXTURE_SIZE: i32 = 256;
 
 struct VertexOut {
     @location(0) color: vec4<f32>,
     @builtin(position) position: vec4<f32>,
 };
 
-struct SegmentData {
-    start: vec3<f32>,
-    end: vec3<f32>,
-    color: vec3<f32>,
+struct LineStripData {
+    color: vec4<f32>,
     thickness: f32,
+    stippling: f32,
+}
+
+struct SegmentData {
+    pos: vec3<f32>,
+    strip_index: i32,
 }
 
 // workaround for https://github.com/gfx-rs/naga/issues/2006
@@ -31,32 +42,25 @@ fn unpack4x8unorm_workaround(v: u32) -> vec4<f32> {
     return vec4<f32>(bytes) * (1.0 / 255.0);
 }
 
-fn read_segment_data(quad_idx: i32) -> SegmentData {
-    // textureDimensions currently returns i32 https://github.com/gfx-rs/naga/issues/1985
-    var instance_texture_width = textureDimensions(segment_texture, 0).x;
-    // Need to pass i32 https://github.com/gfx-rs/naga/issues/1997
-    var line_info_start = textureLoad(segment_texture,
-        vec2<i32>(i32(quad_idx % instance_texture_width), quad_idx / instance_texture_width), 0);
+fn read_strip_data(strip_index: i32) -> LineStripData {
+    var raw_data = textureLoad(line_strip_texture,
+        vec2<i32>(strip_index % LINE_STRIP_TEXTURE_SIZE, strip_index / LINE_STRIP_TEXTURE_SIZE), 0).xy;
 
-    var next_quad_idx = quad_idx + 1;
-    var line_info_end = textureLoad(segment_texture,
-        vec2<i32>(i32(next_quad_idx % instance_texture_width), next_quad_idx / instance_texture_width), 0);
+    var data: LineStripData;
+    data.color = unpack4x8unorm_workaround(raw_data.x);
+    data.thickness = unpack2x16float(raw_data.y).y;
+    data.stippling = f32((raw_data.y >> u32(24)) & u32(0xFF)) * (1.0 / 255.0);
+    return data;
+}
 
-    var data_odd = select(line_info_start.w, line_info_end.w, quad_idx % 2 == 0);
-    var data_even = select(line_info_end.w, line_info_start.w, quad_idx % 2 == 0);
 
-    // A quad is discarded if the start data block has its first bit set, i.e. the sign bit for i32
-    var discarded = bitcast<i32>(line_info_start.w) < 0;
+fn read_segment_data(strip_index: i32) -> SegmentData {
+    var raw_data = textureLoad(segment_texture,
+        vec2<i32>(i32(strip_index % SEGMENT_TEXTURE_SIZE), strip_index / SEGMENT_TEXTURE_SIZE), 0);
 
     var data: SegmentData;
-    data.start = line_info_start.xyz;
-    data.color = unpack4x8unorm_workaround(bitcast<u32>(data_even)).rgb;
-    data.end = line_info_end.xyz;
-    if discarded {
-        data.thickness = 0.0;
-    } else {
-        data.thickness = abs(data_odd); // remember, sign bit might be set
-    }
+    data.pos = raw_data.xyz;
+    data.strip_index = bitcast<i32>(raw_data.w);
     return data;
 }
 
@@ -67,23 +71,28 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var is_start = f32(vertex_idx % u32(2));                   // "left" or "right" on the quad
     var is_top = f32(local_idx <= u32(1) || local_idx == u32(5)); // "top" or "bottom on the quad
 
-    var segment = read_segment_data(quad_idx);
+    var start = read_segment_data(quad_idx);
+    var end = read_segment_data(quad_idx + 1);
 
-    if segment.thickness == 0.0 {
+    // Is this a degenerated quad?
+    if start.strip_index != end.strip_index {
         var out: VertexOut;
         out.position = vec4<f32>(0.0, 0.0, 0.0, 1.0);
         out.color = vec4<f32>(0.0);
         return out;
     }
 
+    var next = read_segment_data(quad_idx + 2);
+    var strip_data = read_strip_data(start.strip_index);
+
     var pos = vec3<f32>(0.0);
-    pos += select(segment.start, segment.end, is_start > 0.0);
+    pos += select(start.pos, end.pos, is_start > 0.0);
     // TODO: span orthogonal to view vector and line vector
-    pos += is_top * vec3<f32>(0.0, segment.thickness, 0.0);
+    pos += is_top * vec3<f32>(0.0, strip_data.thickness, 0.0);
 
     var out: VertexOut;
     out.position = frame.projection_from_world * vec4<f32>(pos, 1.0);
-    out.color = vec4<f32>(segment.color, 1.0);
+    out.color = strip_data.color;
 
     return out;
 }

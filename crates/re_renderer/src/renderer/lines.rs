@@ -5,7 +5,7 @@
 //! =================
 //!
 //! Each line strip consists of a series of quads.
-//! All quads are rendered in a single draw call.
+//! All quads are rendered in a single draw call!
 //! It is tempting to use instancing and store per-instance (==quad) data in a instance-stepped vertex buffer.
 //! However, GPUs are notoriously bad at processing instances with a small batch size as
 //! [various](https://gamedev.net/forums/topic/676540-fastest-way-to-draw-quads/5279146/)
@@ -13,29 +13,37 @@
 //! [point](https://www.reddit.com/r/vulkan/comments/le74sr/why_gpu_instancing_is_slow_for_small_meshes/)
 //! [out](https://www.reddit.com/r/vulkan/comments/47kfve/instanced_rendering_performance/)
 //! [...](https://www.reddit.com/r/opengl/comments/q7yikr/how_to_draw_several_quads_through_instancing/).
-//! (important to note though that we didn't have the time to explore this for our usecase here)
+//! (important to note though that we didn't have the time yet to get performance numbers for our usecase here)
 //!
 //! Instead, we do a single triangle list draw call without any vertex buffer at all and fetch data
-//! from a texture instead (if it wasn't for WebGL support we'd read from a raw buffer!)
+//! from textures instead (if it wasn't for WebGL support we'd read from a raw buffer).
 //!
-//! To save memory for connected line strips, we interleave the data for quads as follows:
+//! Our triangle list topology pretends that there is only a single single strip.
+//! So every time a new line strip starts (except on the first strip) we need to discard a quad.
+//!
+//! Data in the segment texture is layed out a follows:
 //! ```
-//!                  ____________________________________________________________________________________________
-//! Segment Texture | pos, thickness | pos, color+stipple | pos, thickness | pos, color+stipple | pos, thickness | ...
-//!                  ____________________________________________________________________________________________
-//! (vertex shader) |            quad 0                   |                quad 2               | ...
-//!                                   ___________________________________________________________________________
-//!                                  |               quad 1                |                  quad 3             | ...
+//!                  ___________________________________________________________________
+//! Segment Texture | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
+//!                  ___________________________________________________________________
+//! (vertex shader) |             quad 0               |              quad 2            |
+//!                                   ______________________________________________________________
+//!                                  |               quad 1            |              quad 3        | ...
 //! ```
-//! Note that if we want to restart a strip, we need to discard a quad.
-//! This is accomplished by setting a restart bit on the last position.
+//! This means we don't need to duplicate any position data at all!
+//! Each strip index points to another smaller texture, describing properties that are global to an entire strip.
+//!
+//! Why not a triangle *strip* instead if list?:
+//! As long as we're not able to restart the strip (requires indices!), we can't discard a quad!
 //!
 //! Things we might try in the future
 //! ----------------------------------
-//! * use instance vertex buffer after all and see how it performs
+//! * more line properties
+//! * more per-position attributes (can pack further)
 //! * use indexed primitives to lower amount of vertices processed
 //!    * note that this would let us remove the degenerated quads between lines, making the approach cleaner and removing the "restart bit"
-//! * use line strips with index primitives (using [`wgpu::PrimitiveState::strip_index_format`])
+//!    * this also plays excellent with line strips if we're using [`wgpu::PrimitiveState::strip_index_format`] to restart the strips
+//! * more out of curiosity, use instancing with instance vertex buffer after all and see how it performs
 //!
 
 use std::num::NonZeroU32;
@@ -45,55 +53,37 @@ use anyhow::Context;
 use crate::{
     include_file,
     resource_pools::{
-        bind_group_layout_pool::{BindGroupLayout, BindGroupLayoutDesc, BindGroupLayoutHandle},
+        bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
         bind_group_pool::{BindGroupDesc, BindGroupEntry, BindGroupHandle},
-        buffer_pool::{BufferDesc, BufferHandle},
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::*,
         shader_module_pool::ShaderModuleDesc,
-        texture_pool::TextureHandle,
     },
     view_builder::ViewBuilder,
 };
 
 use super::*;
 
-mod GpuLineSegment {
-    #[repr(C, packed)]
-    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct DataEven {
-        pub color: [u8; 3],
-        pub is_strip_end_bit: u8, // leaves 7 bits unused right now
-    }
-
-    #[repr(C, packed)]
-    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct DataOdd {
-        // Could be a f16 if we want to pack even more attributes!
-        // negative (i.e. first bit set) indicates that this is the last position in a strip
-        pub thickness: f32,
-    }
-
-    static_assertions::assert_eq_size!(DataEven, DataOdd);
-
-    #[repr(C)]
-    #[derive(Clone, Copy, bytemuck::Zeroable)]
-    pub union Data {
-        pub even: DataEven,
-        pub odd: DataOdd,
-    }
-
-    #[allow(unsafe_code)]
-    unsafe impl bytemuck::Pod for Data {}
-
+mod GpuData {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct HalfSegment {
         pub pos: glam::Vec3,
-        pub data: Data,
+        // If we limit ourselves to 65536 line strip (we do as of writing!),
+        // we get 16bit extra storage here. What do do with it?
+        pub strip_index: u32,
     }
-
     static_assertions::assert_eq_size!(HalfSegment, glam::Vec4);
+
+    #[repr(C, packed)]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct LineStripInfo {
+        pub color: [u8; 4], // alpha unused right now
+        pub stippling: u8,
+        pub unused: u8,
+        pub thickness: half::f16,
+    }
+    static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
 }
 
 #[derive(Clone)]
@@ -115,11 +105,12 @@ pub struct LineStrip {
     /// TODO(andreas) Should be able to specify if this is in pixels, or has a minimum width in pixels.
     pub radius: f32,
 
-    /// srgb color
-    pub color: [u8; 3],
-    // TODO(andreas):
-    // Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
-    //pub stippling: f32,
+    /// srgb color. Alpha unused right now
+    pub color: [u8; 4],
+
+    /// Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
+    /// TODO(andreas): unsupported right now.
+    pub stippling: f32,
 }
 
 impl LineDrawable {
@@ -135,26 +126,40 @@ impl LineDrawable {
             device,
         );
 
-        // Instance texture is 2D since 1D textures are very limited in size.
-        const SEGMENT_TEXTURE_RESOLUTION: u32 = 512; // 512 x 512 x vec4 == 4mb, 262144 segments
+        // Texture are 2D since 1D textures are very limited in size (8k typically).
+        // Need to keep these values in sync with lines.wgsl!
+        const SEGMENT_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4mb, 262144 segments
+        const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 128 x 128 x vec2<u32> == 0.5mb, 65536 line strips
 
-        // Make sure rows this texture can be copied easily.
+        // Make sure rows the texture can be copied easily.
         static_assertions::const_assert_eq!(
-            SEGMENT_TEXTURE_RESOLUTION * std::mem::size_of::<glam::Vec4>() as u32
+            SEGMENT_TEXTURE_SIZE * std::mem::size_of::<GpuData::HalfSegment>() as u32
+                % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
+            0
+        );
+        static_assertions::const_assert_eq!(
+            LINE_STRIP_TEXTURE_SIZE * std::mem::size_of::<GpuData::LineStripInfo>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
             0
         );
 
-        // Determine how many half-segments we need
+        let num_line_strips = line_strips.len() as u32;
+        if num_line_strips > LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE {
+            // TODO(andreas) just create more draw work items each with its own texture to become "unlimited"
+            anyhow::bail!(
+                "Too many line strips! The maximum is {} but passed were {num_line_strips}",
+                LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE
+            );
+        }
+
         let num_half_segments = (line_strips
             .iter()
-            .fold(0, |accum, strip| strip.points.len() + accum))
-            as u32;
-        if num_half_segments > SEGMENT_TEXTURE_RESOLUTION * SEGMENT_TEXTURE_RESOLUTION {
+            .fold(0, |c, strip| strip.points.len() + c)) as u32;
+        if num_half_segments > SEGMENT_TEXTURE_SIZE * SEGMENT_TEXTURE_SIZE {
             // TODO(andreas) just create more draw work items each with its own texture to become "unlimited"
             anyhow::bail!(
                 "Too many line segments! The maximum is {} but specified were {num_half_segments}",
-                SEGMENT_TEXTURE_RESOLUTION * SEGMENT_TEXTURE_RESOLUTION
+                SEGMENT_TEXTURE_SIZE * SEGMENT_TEXTURE_SIZE
             );
         }
 
@@ -167,10 +172,10 @@ impl LineDrawable {
         let segment_texture = ctx.resource_pools.textures.request(
             device,
             &wgpu::TextureDescriptor {
-                label: Some("line instance texture"),
+                label: Some("line segments"),
                 size: wgpu::Extent3d {
-                    width: SEGMENT_TEXTURE_RESOLUTION,
-                    height: SEGMENT_TEXTURE_RESOLUTION,
+                    width: SEGMENT_TEXTURE_SIZE,
+                    height: SEGMENT_TEXTURE_SIZE,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
@@ -180,11 +185,31 @@ impl LineDrawable {
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
         );
+        let line_strip_texture = ctx.resource_pools.textures.request(
+            device,
+            &wgpu::TextureDescriptor {
+                label: Some("line strips"),
+                size: wgpu::Extent3d {
+                    width: LINE_STRIP_TEXTURE_SIZE,
+                    height: LINE_STRIP_TEXTURE_SIZE,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rg32Uint,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            },
+        );
+
         let bind_group = ctx.resource_pools.bind_groups.request(
             device,
             &BindGroupDesc {
                 label: "line drawable".into(),
-                entries: vec![BindGroupEntry::TextureView(segment_texture)],
+                entries: vec![
+                    BindGroupEntry::TextureView(segment_texture),
+                    BindGroupEntry::TextureView(line_strip_texture),
+                ],
                 layout: line_renderer.bind_group_layout,
             },
             &ctx.resource_pools.bind_group_layouts,
@@ -194,35 +219,22 @@ impl LineDrawable {
         );
 
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
-        //                  This staging buffer would be provided by the belt.
-        let mut half_segment_staging = Vec::with_capacity(num_half_segments as usize);
-        for line_strip in line_strips {
-            for (i, &pos) in line_strip.points.iter().enumerate() {
-                let is_last = i == line_strip.points.len() - 1;
+        //                  These staging buffers would be provided by the belt.
+        let mut segment_staging = Vec::with_capacity(num_half_segments as usize);
+        let mut line_strip_info_staging = Vec::with_capacity(num_line_strips as usize);
 
-                let data = if half_segment_staging.len() % 2 == 0 {
-                    GpuLineSegment::Data {
-                        even: GpuLineSegment::DataEven {
-                            is_strip_end_bit: if is_last { 255 } else { 0 },
-                            color: line_strip.color,
-                        },
-                    }
-                } else {
-                    GpuLineSegment::Data {
-                        odd: GpuLineSegment::DataOdd {
-                            thickness: if is_last {
-                                -line_strip.radius
-                            } else {
-                                line_strip.radius
-                            },
-                        },
-                    }
-                };
-
-                half_segment_staging.push(GpuLineSegment::HalfSegment { pos, data });
-            }
+        for (strip_index, line_strip) in line_strips.iter().enumerate() {
+            segment_staging.extend(line_strip.points.iter().map(|&pos| GpuData::HalfSegment {
+                pos,
+                strip_index: strip_index as _,
+            }));
+            line_strip_info_staging.push(GpuData::LineStripInfo {
+                color: line_strip.color,
+                thickness: half::f16::from_f32(line_strip.radius),
+                stippling: (line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
+                unused: 0,
+            })
         }
-        debug_assert_eq!(half_segment_staging.len(), num_half_segments as usize);
 
         queue.write_texture(
             wgpu::ImageCopyTexture {
@@ -231,18 +243,38 @@ impl LineDrawable {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            bytemuck::cast_slice(&half_segment_staging),
+            bytemuck::cast_slice(&segment_staging),
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: NonZeroU32::new(
-                    SEGMENT_TEXTURE_RESOLUTION * std::mem::size_of::<glam::Vec4>() as u32,
+                    SEGMENT_TEXTURE_SIZE * std::mem::size_of::<GpuData::HalfSegment>() as u32,
                 ),
                 rows_per_image: None,
             },
             wgpu::Extent3d {
-                width: num_half_segments % SEGMENT_TEXTURE_RESOLUTION as u32,
-                height: (num_half_segments + SEGMENT_TEXTURE_RESOLUTION - 1)
-                    / SEGMENT_TEXTURE_RESOLUTION,
+                width: num_half_segments % SEGMENT_TEXTURE_SIZE,
+                height: (num_half_segments + SEGMENT_TEXTURE_SIZE - 1) / SEGMENT_TEXTURE_SIZE,
+                depth_or_array_layers: 1,
+            },
+        );
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &ctx.resource_pools.textures.get(line_strip_texture)?.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            bytemuck::cast_slice(&line_strip_info_staging),
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: NonZeroU32::new(
+                    LINE_STRIP_TEXTURE_SIZE * std::mem::size_of::<GpuData::LineStripInfo>() as u32,
+                ),
+                rows_per_image: None,
+            },
+            wgpu::Extent3d {
+                width: num_line_strips % LINE_STRIP_TEXTURE_SIZE,
+                height: (num_line_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
@@ -271,16 +303,28 @@ impl Renderer for LineRenderer {
             device,
             &BindGroupLayoutDesc {
                 label: "line renderer".into(),
-                entries: vec![wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+                entries: vec![
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                ],
             },
         );
 

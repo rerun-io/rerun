@@ -13,6 +13,7 @@ bytemuck = { version = "1.12", features = ["derive"] }
 glam = { version = "0.20", features = [
   "bytemuck",
 ] } # can't upgrade until macaw gets a new version using glam 0.21
+half = { version = "2.1", features = ["bytemuck"] }
 macaw = "0.17"
 ordered-float = "3.2"
 parking_lot = "0.12"

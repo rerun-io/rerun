@@ -83,12 +83,13 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     LineStrip {
                         points: vec![
                             glam::vec3(0.0, 0.0, 0.0),
-                            glam::vec3(1.0, 1.0, 0.0),
+                            glam::vec3(1.0, 0.75, 0.0),
                             glam::vec3(2.0, 0.0, 0.0),
                             glam::vec3(3.0, 1.0, 0.0),
                         ],
                         radius: 0.5,
-                        color: [255, 255, 50],
+                        color: [255, 255, 50, 255],
+                        stippling: 1.0,
                     },
                     LineStrip {
                         points: vec![
@@ -98,7 +99,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                             glam::vec3(3.0, 0.0, 0.0),
                         ],
                         radius: 0.1,
-                        color: [50, 255, 50],
+                        color: [50, 255, 50, 255],
+                        stippling: 1.0,
                     },
                     LineStrip {
                         points: vec![
@@ -108,7 +110,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                             glam::vec3(3.0, -1.0, 0.0),
                         ],
                         radius: 0.25,
-                        color: [50, 50, 255],
+                        color: [50, 50, 255, 255],
+                        stippling: 1.0,
                     },
                 ],
             )
