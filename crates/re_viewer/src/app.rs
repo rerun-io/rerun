@@ -526,7 +526,7 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
 
             match res {
                 Ok(path) => {
-                    let msg = format!("Successfully wrote to {path:?}");
+                    let msg = format!("File saved to {path:?}.");
                     re_log::info!(msg);
                     app.toasts.info(msg).set_duration(FILE_SAVER_NOTIF_DURATION);
                 }
