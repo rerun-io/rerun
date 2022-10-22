@@ -54,9 +54,10 @@ fn read_strip_data(strip_index: i32) -> LineStripData {
 }
 
 
-fn read_segment_data(strip_index: i32) -> SegmentData {
+fn read_segment_data(segment_idx: i32) -> SegmentData {
+    // Negative indices are defined to return all zero. Which is exactly what we want anyways!
     var raw_data = textureLoad(segment_texture,
-        vec2<i32>(i32(strip_index % SEGMENT_TEXTURE_SIZE), strip_index / SEGMENT_TEXTURE_SIZE), 0);
+        vec2<i32>(i32(segment_idx % SEGMENT_TEXTURE_SIZE), segment_idx / SEGMENT_TEXTURE_SIZE), 0);
 
     var data: SegmentData;
     data.pos = raw_data.xyz;
@@ -66,29 +67,25 @@ fn read_segment_data(strip_index: i32) -> SegmentData {
 
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
-    var quad_idx = i32(vertex_idx / u32(6));
+    var is_at_quad_end = i32(vertex_idx) % 2;
+    var segment_idx = i32(vertex_idx) / 6 + is_at_quad_end;
     var local_idx = vertex_idx % u32(6);
-    var is_start = f32(vertex_idx % u32(2));                   // "left" or "right" on the quad
-    var is_top = f32(local_idx <= u32(1) || local_idx == u32(5)); // "top" or "bottom on the quad
+    var is_at_quad_top = f32(local_idx <= u32(1) || local_idx == u32(5)); // "top" or "bottom on the quad
 
-    var start = read_segment_data(quad_idx);
-    var end = read_segment_data(quad_idx + 1);
+    var seg_before = read_segment_data(segment_idx - 1);
+    var seg_current = read_segment_data(segment_idx);
 
-    // Is this a degenerated quad?
-    if start.strip_index != end.strip_index {
-        var out: VertexOut;
-        out.position = vec4<f32>(0.0, 0.0, 0.0, 1.0);
-        out.color = vec4<f32>(0.0);
-        return out;
+    // Is this a degenerated quad? Collapse it.
+    if is_at_quad_end == 1 && seg_before.strip_index != seg_current.strip_index {
+        seg_current = seg_before;
     }
 
-    var next = read_segment_data(quad_idx + 2);
-    var strip_data = read_strip_data(start.strip_index);
+    var seg_next = read_segment_data(segment_idx + 1);
+    var strip_data = read_strip_data(seg_current.strip_index);
 
-    var pos = vec3<f32>(0.0);
-    pos += select(start.pos, end.pos, is_start > 0.0);
+    var pos = seg_current.pos;
     // TODO: span orthogonal to view vector and line vector
-    pos += is_top * vec3<f32>(0.0, strip_data.thickness, 0.0);
+    pos += is_at_quad_top * vec3<f32>(0.0, strip_data.thickness, 0.0);
 
     var out: VertexOut;
     out.position = frame.projection_from_world * vec4<f32>(pos, 1.0);
