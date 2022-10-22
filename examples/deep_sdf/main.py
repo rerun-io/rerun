@@ -131,7 +131,9 @@ def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32
     rerun.set_space_up("3d", [0, 1, 0])  # TODO(cmc): depends on the mesh really
 
     inside = points[sdf <= 0]
-    rerun.log_text_entry("3d/sdf/inside/logs", f"{len(inside)} points inside ({len(points)} total)", level=LogLevel.TRACE)
+    rerun.log_text_entry(
+        "3d/sdf/inside/logs", f"{len(inside)} points inside ({len(points)} total)", level=LogLevel.TRACE
+    )
     rerun.log_points("3d/sdf/inside", points[sdf <= 0], colors=np.array([255, 0, 0, 255]), space="3d")
 
     outside = points[sdf > 0]
