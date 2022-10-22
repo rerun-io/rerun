@@ -34,6 +34,10 @@ impl<T: Clone> BatchOrSplat<T> {
             data,
         )?)))
     }
+
+    pub fn new_sequential_batch(data: &[T]) -> Result<Self, BadBatchError> {
+        Ok(Self::Batch(Arc::new(Batch::new_sequential(data)?)))
+    }
 }
 
 // ----------------------------------------------------------------------------
