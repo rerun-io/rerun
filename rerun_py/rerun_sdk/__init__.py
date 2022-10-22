@@ -518,7 +518,7 @@ def _log_extrinsics(
 
 
 def _log_intrinsics(
-    obj_path: str, intrinsics_matrix: npt.ArrayLike, resolution: npt.ArrayLike, timeless: bool = False
+    obj_path: str, *, width: int, height: int, intrinsics_matrix: npt.ArrayLike, timeless: bool = False
 ) -> None:
     """
     EXPERIMENTAL: Log a perspective camera model.
@@ -528,7 +528,7 @@ def _log_intrinsics(
     """
     rerun_rs.log_intrinsics(
         obj_path,
-        resolution=_to_sequence(resolution),
+        resolution=[width, height],
         intrinsics_matrix=np.asarray(intrinsics_matrix).T.tolist(),
         timeless=timeless,
     )

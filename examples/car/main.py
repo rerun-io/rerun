@@ -54,7 +54,8 @@ def log_car_data() -> None:
 
         rerun._log_intrinsics(
             "3d/camera/image",
-            resolution=sample.camera.resolution,
+            width=sample.camera.resolution[0],
+            height=sample.camera.resolution[1],
             intrinsics_matrix=sample.camera.intrinsics,
         )
 

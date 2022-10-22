@@ -151,7 +151,8 @@ def log_camera(cam: ARCamera) -> None:
 
     rerun._log_intrinsics(
         "3d/camera/video",
-        resolution=[w, h],
+        width=w,
+        height=h,
         intrinsics_matrix=intrinsics,
     )
 

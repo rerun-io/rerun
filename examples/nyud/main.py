@@ -135,7 +135,8 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
 
                     rerun._log_intrinsics(
                         "3d/camera/image",
-                        resolution=[img_depth.shape[1], img_depth.shape[0]],
+                        width=img_depth.shape[1],
+                        height=img_depth.shape[0],
                         intrinsics_matrix=camera_intrinsics(img_depth),
                     )
 
