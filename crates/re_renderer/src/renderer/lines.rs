@@ -22,7 +22,7 @@
 //! So every time a new line strip starts (except on the first strip) we need to discard a quad.
 //!
 //! Data in the segment texture is layed out a follows:
-//! ```
+//! ```raw
 //!                  ___________________________________________________________________
 //! Segment Texture | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
 //!                  ___________________________________________________________________
@@ -33,17 +33,57 @@
 //! This means we don't need to duplicate any position data at all!
 //! Each strip index points to another smaller texture, describing properties that are global to an entire strip.
 //!
-//! Why not a triangle *strip* instead if list?:
-//! As long as we're not able to restart the strip (requires indices!), we can't discard a quad!
+//!
+//! Why not a triangle *strip* instead if *list*?
+//! -----------------------------------------------
+//!
+//! As long as we're not able to restart the strip (requires indices!), we can't discard a quad in a triangle strip setup.
+//! (However, we could/should try using an index buffer for this purpose and see how well it performs.
+//! Pro: shared vertices, Con: need to process index buffer)
+//!
+//! Another much more tricky issue is handling of line caps:
+//! Let's have a look at a corner between two line segments
+//! ```raw
+//! o--------------------------o
+//!                            /
+//! X=================X       /
+//!                  //      /
+//! o---------o     //      /
+//!          /     //      /
+//!         o      X      o
+//! ```
+//! If we want to keep the line along its "skeleton" with constant thickness, the top right corner
+//! would move further and further outward as we decrease the angle of the joint. Eventually it reaches infinity!
+//! To prevent this we need to generate this shape:
+//! ```raw
+//! a-------------------b
+//!                       \
+//! X=================X    \
+//!                  //     \
+//! c---------d     //      e
+//!          /     //      /
+//!         f      X      g
+//! ```
+//!
+//! To achieve this we need to do one of:
+//! 1) generating a new triangle at `[d,b,e]`
+//!     * can't do that without significant preprocessing, makes the entire pipeline much more complicated
+//! 2) twist one of the quads, making both quads overlap in the area of `[d,b,e]` (doesn't add any new vertices)
+//!    * unless (!) we duplicate vertices at one of the quads, the twist would need to continue for the rest of the strip!
+//! 3) make one quad stop before the joint by forming `[a,b,c,d]`, the other one taking over the joint by forming `[b,e,g,f]`
+//!    * introduces a new vertex
+//!
+//! (2) and (3) can be implemented relatively easy if we're using a triangle strip!
+//! (2) can be implemented in theory with a triangle list, but means that any joint has ripple effects on the rest of the list.
+//!
+//! TODO(andreas): Implement (3)!
 //!
 //! Things we might try in the future
 //! ----------------------------------
 //! * more line properties
-//! * more per-position attributes (can pack further)
+//! * more per-position attributes (can pack strip_idx into 16bit!)
 //! * use indexed primitives to lower amount of vertices processed
 //!    * note that this would let us remove the degenerated quads between lines, making the approach cleaner and removing the "restart bit"
-//!    * this also plays excellent with line strips if we're using [`wgpu::PrimitiveState::strip_index_format`] to restart the strips
-//! * more out of curiosity, use instancing with instance vertex buffer after all and see how it performs
 //!
 
 use std::num::NonZeroU32;
