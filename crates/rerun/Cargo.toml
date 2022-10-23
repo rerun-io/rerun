@@ -27,6 +27,7 @@ glow = ["re_viewer/glow"]
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
+re_mem_tracker = { path = "../re_mem_tracker" }
 re_viewer = { path = "../re_viewer", features = [
   "puffin",
 ], default-features = false }

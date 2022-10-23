@@ -24,12 +24,14 @@ serde = ["dep:serde", "re_string_interner/serde"]
 
 
 [dependencies]
+re_mem_tracker = { path = "../re_mem_tracker" }
+re_string_interner = { path = "../re_string_interner" }
+
 ahash = "0.8"
 bytemuck = "1.11"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 document-features = "0.2"
 nohash-hasher = "0.2"
-re_string_interner = { path = "../re_string_interner" }
 thiserror = "1.0"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 

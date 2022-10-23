@@ -61,5 +61,22 @@
             ],
             "cwd": "${workspaceFolder}"
         },
+        {
+            "name": "Debug 'track_memory'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=track_memory"
+                ],
+                "filter": {
+                    "name": "track_memory",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
     ]
 }

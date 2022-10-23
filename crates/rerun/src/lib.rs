@@ -142,6 +142,7 @@ async fn connect_to_ws_url(
 
 fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMsg>> {
     use anyhow::Context as _;
+
     let file = std::fs::File::open(path).context("Failed to open file")?;
     let decoder = re_log_types::encoding::Decoder::new(file)?;
 
@@ -150,6 +151,7 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
     std::thread::Builder::new()
         .name("rrd_file_reader".into())
         .spawn(move || {
+            re_mem_tracker::track_allocs!("load_file_to_channel");
             for msg in decoder {
                 tx.send(msg.unwrap()).ok();
             }

@@ -70,6 +70,8 @@ impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
     type Item = anyhow::Result<LogMsg>;
     fn next(&mut self) -> Option<Self::Item> {
         crate::profile_function!();
+        re_mem_tracker::track_allocs!("LogMsg");
+
         use std::io::Read as _;
 
         let mut len = [0_u8; 8];
@@ -131,6 +133,8 @@ impl<'r> Iterator for Decoder<'r> {
     type Item = anyhow::Result<LogMsg>;
     fn next(&mut self) -> Option<Self::Item> {
         crate::profile_function!();
+        re_mem_tracker::track_allocs!("LogMsg");
+
         use std::io::Read as _;
 
         let mut len = [0_u8; 8];

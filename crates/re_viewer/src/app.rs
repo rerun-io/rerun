@@ -1,14 +1,16 @@
 use std::{any::Any, sync::mpsc::Receiver};
 
-use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 use ahash::HashMap;
 use egui_extras::RetainedImage;
 use egui_notify::Toasts;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
+
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
+
+use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::misc::TimeRangeF;
@@ -191,13 +193,14 @@ impl eframe::App for App {
             let start = instant::Instant::now();
             while let Ok(msg) = rx.try_recv() {
                 if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    re_log::info!("Begginning a new recording: {:?}", msg.info);
+                    re_log::info!("Beginning a new recording: {:?}", msg.info);
                     self.state.selected_rec_id = msg.info.recording_id;
                 }
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
                 log_db.add(msg);
+
                 if start.elapsed() > instant::Duration::from_millis(10) {
                     egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                     break; // don't block the main thread for too long
@@ -372,6 +375,9 @@ struct AppState {
     // TODO(emilk): use an image cache
     #[serde(skip)]
     static_image_cache: StaticImageCache,
+
+    show_memory_panel: bool,
+    memory_panel: crate::memory_panel::MemoryPanel,
 }
 
 impl AppState {
@@ -392,6 +398,9 @@ impl AppState {
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
             static_image_cache: _,
+
+            show_memory_panel,
+            memory_panel,
         } = self;
 
         let rec_cfg = recording_configs.entry(*selected_recording_id).or_default();
@@ -407,6 +416,21 @@ impl AppState {
             egui::SidePanel::right("selection_view").show(egui_ctx, |ui| {
                 selection_panel.ui(&mut ctx, ui);
             });
+        }
+
+        {
+            *show_memory_panel ^= egui_ctx.input_mut().consume_key(
+                egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+                egui::Key::M,
+            );
+
+            if *show_memory_panel {
+                egui::SidePanel::left("memory_profiler")
+                    .default_width(400.0)
+                    .show(egui_ctx, |ui| {
+                        memory_panel.ui(ui);
+                    });
+            }
         }
 
         egui::TopBottomPanel::bottom("time_panel")
@@ -675,6 +699,14 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
         if ui
             .button("Profile viewer")
             .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
+            .clicked()
+        {
+            app.state.profiler.start();
+        }
+
+        if ui
+            .checkbox(&mut app.state.show_memory_panel, "Memory profiler")
+            .on_hover_text("Show the memory profiler (Cmd+Shift+M)")
             .clicked()
         {
             app.state.profiler.start();

@@ -562,6 +562,7 @@ fn paint_view(
             rect,
             callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
                 glow_rendering::with_three_d_context(painter.gl(), |rendering| {
+                    re_mem_tracker::track_allocs!("three-d");
                     glow_rendering::paint_with_three_d(
                         rendering, &eye, &info, &scene, dark_mode, show_axes, painter,
                     );

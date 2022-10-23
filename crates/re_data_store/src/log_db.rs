@@ -44,6 +44,8 @@ impl ObjDb {
         data_path: &DataPath,
         data: &LoggedData,
     ) {
+        // re_mem_tracker::track_allocs!("ObjDb");
+
         // Validate:
         {
             let obj_type_path = &data_path.obj_path.obj_type_path();
@@ -125,6 +127,8 @@ impl LogDb {
 
     pub fn add(&mut self, msg: LogMsg) {
         crate::profile_function!();
+        re_mem_tracker::track_allocs!("LogDb"); // TODO: also track in `Drop`!
+
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
             LogMsg::TypeMsg(msg) => self.add_type_msg(msg),

@@ -1,5 +1,6 @@
 #[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+static GLOBAL: re_mem_tracker::TrackingAllocator<mimalloc::MiMalloc> =
+    re_mem_tracker::TrackingAllocator::new(mimalloc::MiMalloc);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

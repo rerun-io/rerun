@@ -70,6 +70,8 @@ impl ImageCache {
         tensor: &'store Tensor,
         legend: &'store Legend<'store>,
     ) -> TensorImageView<'store, 'cache> {
+        re_mem_tracker::track_allocs!("ImageCache");
+
         let ci = self
             .images
             .entry(ImageCacheKey {
@@ -102,6 +104,8 @@ impl ImageCache {
 
     /// Call once per frame to (potentially) flush the cache.
     pub fn new_frame(&mut self, max_memory_use: u64) {
+        re_mem_tracker::track_allocs!("ImageCache");
+
         if self.memory_used > max_memory_use {
             let before = self.memory_used;
             self.flush();
@@ -117,7 +121,7 @@ impl ImageCache {
 
     fn flush(&mut self) {
         crate::profile_function!();
-        // Very agressively flush everything not used in this frame
+        // Very aggressively flush everything not used in this frame
         self.images.retain(|_, ci| {
             let retain = ci.last_use_generation == self.generation;
             if !retain {
@@ -153,7 +157,10 @@ impl CachedImage {
                 DynamicImage::ImageRgb8(error_img)
             }
         };
-        let egui_color_image = dynamic_image_to_egui_color_image(&dynamic_img);
+        let egui_color_image = {
+            re_mem_tracker::ignore!(); // the image is deallocated by egui!
+            dynamic_image_to_egui_color_image(&dynamic_img)
+        };
 
         let memory_used = egui_color_image.pixels.len() * std::mem::size_of::<egui::Color32>()
             + dynamic_img.as_bytes().len();
