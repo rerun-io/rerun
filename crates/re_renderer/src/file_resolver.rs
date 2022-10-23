@@ -97,7 +97,7 @@
 
 use std::path::{Path, PathBuf};
 
-use ahash::{HashMap, HashMapExt, HashSet, HashSetExt};
+use ahash::{HashMap, HashSet, HashSetExt};
 use anyhow::{anyhow, bail, ensure, Context as _};
 use clean_path::Clean as _;
 
@@ -110,21 +110,22 @@ use clean_path::Clean as _;
 
 // NOTE: Paths used in search trees aren't canonicalized (they can't be: the destinations
 // don't even have to exist yet), which means that one should be careful when comparing them.
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct SearchTree {
-    /// All the search paths, in decreasing order of priority.
-    // TODO: always canonicalized.
+pub struct SearchPath {
+    /// All paths currently in the search path, in decreasing order of priority.
+    /// They are guaranteed to be normalized, but not canonicalized.
     dirs: Vec<PathBuf>,
 }
 
-impl SearchTree {
+impl SearchPath {
     // TODO: gotta think about the web tho
     pub fn from_env() -> anyhow::Result<Self> {
         const RERUN_SHADER_PATH: &str = "RERUN_SHADER_PATH";
         const CARGO_MANIFEST_DIR: &str = "CARGO_MANIFEST_DIR";
 
         let this = std::env::var(RERUN_SHADER_PATH)
-            .map_or_else(|_| Ok(SearchTree::default()), |s| s.parse())?;
+            .map_or_else(|_| Ok(SearchPath::default()), |s| s.parse())?;
 
         // TODO: default dirs when running from cargo
         if let Ok(s) = std::env::var(CARGO_MANIFEST_DIR) {}
@@ -132,20 +133,37 @@ impl SearchTree {
         Ok(this)
     }
 
-    pub fn push(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
+    /// Push a path to search path.
+    ///
+    /// The path is normalized, but not canonicalized.
+    pub fn push(&mut self, path: impl AsRef<Path>) {
         self.dirs.push(path.as_ref().clean());
-        Ok(())
+    }
+
+    /// Insert a path into search path.
+    ///
+    /// The path is normalized, but not canonicalized.
+    pub fn insert(&mut self, index: usize, path: impl AsRef<Path>) {
+        self.dirs.insert(index, path.as_ref().clean());
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Path> {
+        self.dirs.iter().map(|p| p.as_path())
     }
 }
 
-impl std::str::FromStr for SearchTree {
+impl std::str::FromStr for SearchPath {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let dirs: Result<_, _> = s
+        // Using implicit Vec<Result<_>> -> Result<Vec<_>> collection.
+        let dirs: Result<Vec<PathBuf>, _> = s
             .split(':')
             .filter(|s| !s.is_empty())
-            .map(|s| s.parse().with_context(|| "couldn't parse {s:?} as PathBuf"))
+            .map(|s| {
+                s.parse()
+                    .with_context(|| format!("couldn't parse {s:?} as PathBuf"))
+            })
             .collect();
 
         // We cannot check whether these actually are directories, since they are not
@@ -154,11 +172,13 @@ impl std::str::FromStr for SearchTree {
         // TODO: actually if we build the search-tree just in time then we're allowed
         // to canonicalize here?
 
-        dirs.map(|dirs| Self { dirs })
+        dirs.map(|dirs| Self {
+            dirs: dirs.into_iter().map(|dir| dir.clean()).collect(),
+        })
     }
 }
 
-impl std::fmt::Display for SearchTree {
+impl std::fmt::Display for SearchPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = self
             .dirs
@@ -380,9 +400,18 @@ mod tests_import_clause {
 pub trait FileSystem {
     fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<String>;
     fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf>;
+    fn exists(&self, path: impl AsRef<Path>) -> bool;
 
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()>;
-    fn create_file(&mut self, path: impl AsRef<Path>, buf: impl AsRef<[u8]>) -> anyhow::Result<()>;
+    fn create_dir_all(&mut self, _path: impl AsRef<Path>) -> anyhow::Result<()> {
+        unimplemented!("not supported")
+    }
+    fn create_file(
+        &mut self,
+        _path: impl AsRef<Path>,
+        _buf: impl AsRef<[u8]>,
+    ) -> anyhow::Result<()> {
+        unimplemented!("not supported")
+    }
 }
 
 struct OsFileSystem;
@@ -398,15 +427,12 @@ impl FileSystem for OsFileSystem {
             .with_context(|| format!("failed to canonicalize path at {path:?}"))
     }
 
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
-        unimplemented!("don't do that.")
-    }
-
-    fn create_file(&mut self, path: impl AsRef<Path>, buf: impl AsRef<[u8]>) -> anyhow::Result<()> {
-        unimplemented!("don't do that.")
+    fn exists(&self, path: impl AsRef<Path>) -> bool {
+        path.as_ref().exists()
     }
 }
 
+// TODO: need a Cow in there
 #[derive(Default)]
 struct MemFileSystem {
     files: HashMap<PathBuf, Vec<u8>>,
@@ -431,7 +457,11 @@ impl FileSystem for MemFileSystem {
         // .with_context(|| format!("failed to canonicalize path at {path:?}"))
     }
 
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
+    fn exists(&self, path: impl AsRef<Path>) -> bool {
+        self.files.contains_key(&path.as_ref().clean())
+    }
+
+    fn create_dir_all(&mut self, _: impl AsRef<Path>) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -444,28 +474,32 @@ impl FileSystem for MemFileSystem {
 
 // ---
 
-// NOTE: we're basically creating a virtual filesystem here, which is interesting, considering
-// this will be the starting point for web.
-// TODO: this is FileResolver really...
 #[derive(Default)]
 struct FileResolver<Fs> {
-    // search_tree: SearchTree, // TODO
+    /// A handle to the filesystem being used.
+    /// Generally a `OsFileSystem` on native and a `MemFileSystem` on web and during tests.
     fs: Fs,
+
+    search_path: SearchPath, // TODO
 
     // At this point these are always canonicalized paths.
     // files: HashMap<PathBuf, RawFile>,
     files: HashMap<PathBuf, String>,
 }
 
-struct RawFile {
-    contents: String,
-    import_clauses: Vec<ImportClause>,
-}
-
 impl<Fs: FileSystem> FileResolver<Fs> {
     pub fn new(fs: Fs) -> Self {
         Self {
             fs,
+            search_path: Default::default(),
+            files: Default::default(),
+        }
+    }
+
+    pub fn with_search_path(fs: Fs, search_path: SearchPath) -> Self {
+        Self {
+            fs,
+            search_path,
             files: Default::default(),
         }
     }
@@ -476,7 +510,6 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         self.interpolate(path)
     }
 
-    // TODO: handle search PATH
     // TODO: lotta useless cloning going on
     fn interpolate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<String> {
         fn interpolate_rec<Fs: FileSystem>(
@@ -509,7 +542,13 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                             let clause = line.parse::<ImportClause>()?;
                             // We do not use `Path::parent` on purpose!
                             let cwd = path.join("..").clean();
-                            let clause_path = this.resolve_clause_path(cwd, clause.path);
+                            let clause_path =
+                                this.resolve_clause_path(cwd, &clause.path).ok_or_else(|| {
+                                    anyhow!(
+                                        "couldn't resolve import clause path at {:?}",
+                                        clause.path
+                                    )
+                                })?;
                             interpolate_rec(this, clause_path, path_stack, visited)
                         } else {
                             Ok(line.to_owned())
@@ -522,10 +561,14 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                 this.files.insert(path.to_owned(), contents.clone()); // TODO: dat clone tho
 
                 path_stack.pop().unwrap();
+                visited.remove(&path);
+
                 return Ok(contents);
             }
 
             path_stack.pop().unwrap();
+            visited.remove(&path);
+
             Ok(this.files.get(&path).unwrap().clone())
         }
 
@@ -534,14 +577,37 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         interpolate_rec(self, path, &mut path_stack, &mut visited)
     }
 
-    fn resolve_clause_path(&self, cwd: impl AsRef<Path>, path: impl AsRef<Path>) -> PathBuf {
+    fn resolve_clause_path(
+        &self,
+        cwd: impl AsRef<Path>,
+        path: impl AsRef<Path>,
+    ) -> Option<PathBuf> {
         let path = path.as_ref().clean();
 
-        if path.is_absolute() {
-            return path;
+        // The imported path is absolute and points to an existing file, let's import that.
+        if path.is_absolute() && self.fs.exists(&path) {
+            return path.into();
         }
 
-        cwd.as_ref().join(path).clean()
+        // The imported path looks relative. Try to join it with the importer's and see if
+        // that leads somewhere... if it does: import that.
+        {
+            let path = cwd.as_ref().join(&path).clean();
+            if self.fs.exists(&path) {
+                return path.into();
+            }
+        }
+
+        // If the imported path isn't relative to the importer's, then maybe it is relative
+        // with regards to one of the search paths: let's try there.
+        for dir in self.search_path.iter() {
+            let path = dir.join(&path).clean();
+            if self.fs.exists(&path) {
+                return path.into();
+            }
+        }
+
+        None
     }
 }
 
@@ -552,66 +618,11 @@ mod tests_file_resolver {
     use super::*;
 
     #[test]
-    fn single_acyclic_absolute() {
-        let mut fs = MemFileSystem::default();
-        {
-            fs.create_dir_all("/shaders").unwrap();
-
-            fs.create_file(
-                "/shaders/shader1.wgsl",
-                unindent_bytes(br#"my first shader!"#),
-            )
-            .unwrap();
-
-            fs.create_file(
-                "/shaders/shader2.wgsl",
-                unindent_bytes(
-                    br#"
-                    #import </shaders/shader1.wgsl>
-                    #import </shaders/shader1.wgsl>
-                    my second shader! #import </shaders/shader1.wgsl>
-                    #import </shaders/shader1.wgsl>
-                    #import </shaders/shader1.wgsl>
-                    "#,
-                ),
-            )
-            .unwrap();
-        }
-
-        let mut resolver = FileResolver::new(fs);
-
-        for _ in 0..3 {
-            //   ^^^^  just making sure the stateful stuff behaves correctly
-
-            let contents = resolver
-                .resolve_to_string("/shaders/shader1.wgsl")
-                .map_err(|err| re_error::format(err))
-                .unwrap();
-            let expected = unindent(r#"my first shader!"#);
-            assert_eq!(expected, contents);
-
-            let contents = resolver
-                .resolve_to_string("/shaders/shader2.wgsl")
-                .map_err(|err| re_error::format(err))
-                .unwrap();
-            let expected = unindent(
-                r#"
-                my first shader!
-                my first shader!
-                my second shader! #import </shaders/shader1.wgsl>
-                my first shader!
-                my first shader!"#,
-            );
-            assert_eq!(expected, contents);
-        }
-    }
-
-    #[test]
-    fn single_acyclic_relative() {
+    fn acyclic() {
         let mut fs = MemFileSystem::default();
         {
             fs.create_dir_all("/shaders/common").unwrap();
-            fs.create_dir_all("/shaders/a/b/c").unwrap();
+            fs.create_dir_all("/shaders/a/b/c/d").unwrap();
 
             fs.create_file(
                 "/shaders/common/shader1.wgsl",
@@ -620,28 +631,49 @@ mod tests_file_resolver {
             .unwrap();
 
             fs.create_file(
-                "/shaders/a/b/c/shader2.wgsl",
+                "/shaders/a/b/shader2.wgsl",
                 unindent_bytes(
                     br#"
-                    #import <../../../common/shader1.wgsl>
-                    #import <../../../common/shader1.wgsl>
+                    #import </shaders/common/shader1.wgsl>
+                    #import <../../common/shader1.wgsl>
+
+                    #import </shaders/a/b/c/d/shader3.wgsl>
+                    #import <c/d/shader3.wgsl>
+
                     my second shader!
-                    #import <../../../common/shader1.wgsl>
-                    #import <../../../common/shader1.wgsl>
+
+                    #import <common/shader1.wgsl>
+                    #import <shader1.wgsl>
+
+                    #import <shader3.wgsl>
+                    #import <a/b/c/d/shader3.wgsl>
+                    "#,
+                ),
+            )
+            .unwrap();
+
+            fs.create_file(
+                "/shaders/a/b/c/d/shader3.wgsl",
+                unindent_bytes(
+                    br#"
+                    #import </shaders/common/shader1.wgsl>
+                    #import <../../../../common/shader1.wgsl>
+                    my third shader!
+                    #import <common/shader1.wgsl>
+                    #import <shader1.wgsl>
                     "#,
                 ),
             )
             .unwrap();
         }
 
-        fs.read_to_string("/shaders/common/shader1.wgsl").unwrap();
-        fs.read_to_string("/shaders/a/b/c/shader2.wgsl").unwrap();
-        fs.read_to_string("/shaders/a/b/c/../c/shader2.wgsl")
-            .unwrap();
-        fs.read_to_string("/shaders/a/b/c/shader2.wgsl/../../../../common/shader1.wgsl")
-            .unwrap();
-
-        let mut resolver = FileResolver::new(fs);
+        let mut resolver = FileResolver::with_search_path(fs, {
+            let mut search_path = SearchPath::default();
+            search_path.push("/shaders");
+            search_path.push("/shaders/common");
+            search_path.push("/shaders/a/b/c/d");
+            search_path
+        });
 
         for _ in 0..3 {
             //   ^^^^  just making sure the stateful stuff behaves correctly
@@ -654,14 +686,52 @@ mod tests_file_resolver {
             assert_eq!(expected, contents);
 
             let contents = resolver
-                .resolve_to_string("/shaders/a/b/c/shader2.wgsl")
+                .resolve_to_string("/shaders/a/b/shader2.wgsl")
                 .map_err(|err| re_error::format(err))
                 .unwrap();
             let expected = unindent(
                 r#"
                 my first shader!
                 my first shader!
+
+                my first shader!
+                my first shader!
+                my third shader!
+                my first shader!
+                my first shader!
+                my first shader!
+                my first shader!
+                my third shader!
+                my first shader!
+                my first shader!
+
                 my second shader!
+
+                my first shader!
+                my first shader!
+
+                my first shader!
+                my first shader!
+                my third shader!
+                my first shader!
+                my first shader!
+                my first shader!
+                my first shader!
+                my third shader!
+                my first shader!
+                my first shader!"#,
+            );
+            assert_eq!(expected, contents);
+
+            let contents = resolver
+                .resolve_to_string("/shaders/a/b/c/d/shader3.wgsl")
+                .map_err(|err| re_error::format(err))
+                .unwrap();
+            let expected = unindent(
+                r#"
+                my first shader!
+                my first shader!
+                my third shader!
                 my first shader!
                 my first shader!"#,
             );
@@ -670,8 +740,8 @@ mod tests_file_resolver {
     }
 
     #[test]
-    #[should_panic]
-    fn single_cyclic() {
+    #[should_panic] // TODO: check error contents
+    fn cyclic_direct() {
         let mut fs = MemFileSystem::default();
         {
             fs.create_dir_all("/shaders").unwrap();
@@ -707,5 +777,54 @@ mod tests_file_resolver {
             .unwrap();
         let expected = unindent(r#"my first shader!"#);
         assert_eq!(expected, contents);
+    }
+
+    #[test]
+    #[should_panic] // TODO: check error contents
+    fn cyclic_indirect() {
+        let mut fs = MemFileSystem::default();
+        {
+            fs.create_dir_all("/shaders").unwrap();
+
+            fs.create_file(
+                "/shaders/shader1.wgsl",
+                unindent_bytes(
+                    br#"
+                    #import </shaders/shader2.wgsl>
+                    my first shader!
+                    "#,
+                ),
+            )
+            .unwrap();
+
+            fs.create_file(
+                "/shaders/shader2.wgsl",
+                unindent_bytes(
+                    br#"
+                    #import </shaders/shader3.wgsl>
+                    my second shader!
+                    "#,
+                ),
+            )
+            .unwrap();
+
+            fs.create_file(
+                "/shaders/shader3.wgsl",
+                unindent_bytes(
+                    br#"
+                    #import </shaders/shader1.wgsl>
+                    my third shader!
+                    "#,
+                ),
+            )
+            .unwrap();
+        }
+
+        let mut resolver = FileResolver::new(fs);
+
+        let contents = resolver
+            .resolve_to_string("/shaders/shader1.wgsl")
+            .map_err(|err| re_error::format(err))
+            .unwrap();
     }
 }

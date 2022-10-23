@@ -30,8 +30,6 @@ macro_rules! include_file {
 
 // ---
 
-// TODO: should probably move away from canonicalization and into normalization altogether.
-
 /// A handle to the contents of a file.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum FileContentsHandle {
@@ -154,7 +152,7 @@ mod file_server_impl {
                         RecursiveMode::NonRecursive
                     },
                 )
-                .with_context(|| "couldn't watch file at {path:?}")?;
+                .with_context(|| format!("couldn't watch file at {path:?}"))?;
 
             Ok(FileContentsHandle::Path(path))
         }
@@ -164,15 +162,16 @@ mod file_server_impl {
             let path = std::fs::canonicalize(path.as_ref())?;
             self.watcher
                 .unwatch(path.as_ref())
-                .with_context(|| "couldn't unwatch file at {path:?}")
+                .with_context(|| format!("couldn't unwatch file at {path:?}"))
         }
 
         /// Coalesces all filesystem events since the last call to `collect`,
         /// and returns a set of all modified paths.
         pub fn collect(&mut self) -> HashSet<PathBuf> {
             fn canonicalize_opt(path: impl AsRef<Path>) -> Option<PathBuf> {
+                let path = path.as_ref();
                 std::fs::canonicalize(path)
-                    .map_err(|err| re_log::error!(%err, "couldn't canonicalize path"))
+                    .map_err(|err| re_log::error!(%err, ?path, "couldn't canonicalize path"))
                     .ok()
             }
 
