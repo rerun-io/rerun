@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 
 pub struct TrackingAllocator {
-    allocator: mimalloc::MiMalloc,
+    allocator: std::alloc::System,
 
     cumul_alloc_count: AtomicUsize,
     cumul_alloc_size: AtomicUsize,
@@ -13,7 +13,7 @@ pub struct TrackingAllocator {
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
-    allocator: mimalloc::MiMalloc,
+    allocator: std::alloc::System,
 
     cumul_alloc_count: AtomicUsize::new(0),
     cumul_alloc_size: AtomicUsize::new(0),
@@ -33,8 +33,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
         self.cumul_alloc_size.fetch_add(layout.size(), SeqCst);
 
         let used = self.used_bytes();
-        self.high_water_mark_bytes
-            .store(self.high_water_mark_bytes.load(SeqCst).max(used), SeqCst);
+        self.high_water_mark_bytes.fetch_max(used, SeqCst);
 
         self.allocator.alloc(layout)
     }
