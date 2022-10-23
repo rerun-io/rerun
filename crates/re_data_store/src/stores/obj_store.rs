@@ -106,7 +106,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
 impl<Time> re_memory::SumUp for ObjStore<Time> {
     fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
         for (key, value) in &self.fields {
-            // key.sum_up(global, summary); // TODO
+            summary.add_fixed(std::mem::size_of_val(key));
             value.sum_up(global, summary);
         }
     }

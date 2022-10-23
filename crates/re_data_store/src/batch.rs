@@ -81,3 +81,32 @@ impl<T> Batch<T> {
         self.map.iter()
     }
 }
+
+#[cfg(feature = "re_memory")]
+impl<T: re_memory::SumUp> re_memory::SumUp for BatchOrSplat<T> {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        match self {
+            BatchOrSplat::Splat(splat) => {
+                splat.sum_up(global, summary);
+            }
+            BatchOrSplat::Batch(batch) => {
+                batch.sum_up(global, summary);
+            }
+        }
+    }
+}
+
+#[cfg(feature = "re_memory")]
+impl<T: re_memory::SumUp> re_memory::SumUp for Batch<T> {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        let Self {
+            map,
+            hashed_indices,
+        } = self;
+        *summary += global.sum_up_hash_map(map);
+        for (hash, index) in hashed_indices {
+            summary.add_fixed(std::mem::size_of_val(hash));
+            index.sum_up(global, summary);
+        }
+    }
+}

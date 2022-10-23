@@ -48,7 +48,7 @@ pub enum DataType {
 /// Marker traits for types we allow in the the data store.
 ///
 /// Everything in [`data_types`] implement this, and nothing else.
-pub trait DataTrait: 'static + Clone {
+pub trait DataTrait: 'static + Clone + re_memory::SumUp {
     fn data_typ() -> DataType;
 }
 
@@ -410,6 +410,13 @@ impl std::fmt::Debug for DataVec {
     }
 }
 
+#[cfg(feature = "re_memory")]
+impl re_memory::SumUp for DataVec {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        data_vec_map!(self, |vec| vec.sum_up(global, summary));
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq)]
@@ -421,6 +428,9 @@ pub struct BBox2D {
     pub max: [f32; 2],
 }
 
+#[cfg(feature = "re_memory")]
+re_memory::impl_pod!(BBox2D);
+
 /// Oriented 3D box
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -430,12 +440,18 @@ pub struct Box3 {
     pub half_size: [f32; 3],
 }
 
+#[cfg(feature = "re_memory")]
+re_memory::impl_pod!(Box3);
+
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Arrow3D {
     pub origin: [f32; 3],
     pub vector: [f32; 3],
 }
+
+#[cfg(feature = "re_memory")]
+re_memory::impl_pod!(Arrow3D);
 
 /// Order: XYZW
 pub type Quaternion = [f32; 4];
@@ -451,6 +467,9 @@ pub struct Camera {
     /// The 2D space that this camera projects into.
     pub target_space: Option<ObjPath>,
 }
+
+#[cfg(feature = "re_memory")]
+re_memory::impl_pod!(Camera);
 
 /// Camera pose
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -561,6 +580,9 @@ pub enum Transform {
     Intrinsics(Intrinsics),
 }
 
+#[cfg(feature = "re_memory")]
+re_memory::impl_pod!(Transform);
+
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq)]
@@ -593,6 +615,38 @@ pub enum MeshFormat {
     Gltf,
     Glb,
     Obj,
+}
+
+#[cfg(feature = "re_memory")]
+impl re_memory::SumUp for Mesh3D {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        match self {
+            Mesh3D::Encoded(encoded) => encoded.sum_up(global, summary),
+            Mesh3D::Raw(shared) => summary.shared += global.sum_up_arc(shared),
+        }
+    }
+}
+
+#[cfg(feature = "re_memory")]
+impl re_memory::SumUp for RawMesh3D {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        let Self { positions, indices } = self;
+        positions.sum_up(global, summary);
+        indices.sum_up(global, summary);
+    }
+}
+
+#[cfg(feature = "re_memory")]
+impl re_memory::SumUp for EncodedMesh3D {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        global.add_shared_summary(
+            "EncodedMesh3D",
+            Arc::as_ptr(&self.bytes).cast(),
+            Arc::strong_count(&self.bytes),
+            re_memory::Summary::from_fixed(self.bytes.len()),
+        );
+        summary.shared += self.bytes.len();
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -763,7 +817,7 @@ impl std::fmt::Debug for TensorDimension {
 pub struct Tensor {
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
     /// The order matches that of numpy etc, and is ordered so that
-    /// the "tighest wound" dimension is last.
+    /// the "tightest wound" dimension is last.
     ///
     /// An empty shape means this tensor is a scale, i.e. of length 1.
     /// An empty vector has shape `[0]`, an empty matrix shape `[0, 0]`, etc.
@@ -843,6 +897,39 @@ impl Tensor {
                 })
             }
             TensorDataStore::Jpeg(_) => None, // Too expensive to unpack here.
+        }
+    }
+}
+
+#[cfg(feature = "re_memory")]
+impl re_memory::SumUp for Tensor {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        self.data.sum_up(global, summary);
+    }
+}
+
+#[cfg(feature = "re_memory")]
+impl re_memory::SumUp for TensorDataStore {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        match self {
+            Self::Dense(shared_bytes) => {
+                global.add_shared_summary(
+                    "TensorDataStore::Dense",
+                    Arc::as_ptr(shared_bytes).cast(),
+                    Arc::strong_count(shared_bytes),
+                    re_memory::Summary::from_fixed(shared_bytes.len()),
+                );
+                summary.shared += shared_bytes.len();
+            }
+            Self::Jpeg(shared_bytes) => {
+                global.add_shared_summary(
+                    "TensorDataStore::Jpeg",
+                    Arc::as_ptr(shared_bytes).cast(),
+                    Arc::strong_count(shared_bytes),
+                    re_memory::Summary::from_fixed(shared_bytes.len()),
+                );
+                summary.shared += shared_bytes.len();
+            }
         }
     }
 }

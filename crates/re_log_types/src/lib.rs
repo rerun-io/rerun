@@ -178,7 +178,7 @@ pub struct RecordingInfo {
 
     /// When the recording started.
     ///
-    /// Should be an abolute time, i.e. relative to Unix Epoch.
+    /// Should be an absolute time, i.e. relative to Unix Epoch.
     pub started: Time,
 
     pub recording_source: RecordingSource,

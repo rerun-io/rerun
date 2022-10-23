@@ -99,3 +99,18 @@ impl GpuMeshCache {
         self.0.get(&mesh_id)?.as_ref()
     }
 }
+
+// ----------------------------------------------------------------------------
+
+impl re_memory::GenNode for CpuMeshCache {
+    fn node(&self, global: &mut re_memory::Global) -> re_memory::Node {
+        let mut summary = re_memory::Summary::default();
+        for (key, value) in &self.0 {
+            summary.add_fixed(std::mem::size_of_val(key));
+            if let Some(value) = value {
+                summary.shared += global.sum_up_arc(value);
+            }
+        }
+        summary.into()
+    }
+}

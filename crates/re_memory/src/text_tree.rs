@@ -59,7 +59,7 @@ impl TextTree for Summary {
             out.push_str(" shared");
         }
         if num_allocs > 0 {
-            write!(out, ", {num_allocs} allocations").unwrap();
+            write!(out, ", {num_allocs} allocs").unwrap();
         }
     }
 }
@@ -131,14 +131,15 @@ impl TextTree for Global {
         for (name, ref_counted) in ref_counted {
             indent(out, depth);
             out.push_str(name);
-            out.push_str(":\n");
-            depth += 1;
+            out.push_str(": ");
+            let mut summary = Summary::default();
             for instance_info in ref_counted.values() {
-                indent(out, depth);
-                instance_info.make_text_tree(out, depth);
-                out.push('\n');
+                summary += instance_info.summary;
             }
+            depth += 1;
+            summary.make_text_tree(out, depth);
             depth -= 1;
+            out.push('\n');
         }
         depth -= 1;
         indent(out, depth);
@@ -165,7 +166,7 @@ impl<T> TextTree for TrackingAllocator<T> {
 
         indent(out, depth);
         format_size(out, self.num_bytes_now());
-        writeln!(out, " in {} allocations", self.current_allocations()).unwrap();
+        writeln!(out, " in {} allocs", self.current_allocations()).unwrap();
 
         depth -= 1;
         indent(out, depth);

@@ -934,7 +934,7 @@ impl re_memory::GenNode for App {
         };
 
         re_memory::Node::Struct(re_memory::Struct {
-            type_name: "App",
+            type_name: std::any::type_name::<Self>(),
             fields: vec![
                 ("log_dbs", log_dbs_node),
                 ("state", self.state.node(global)),
@@ -948,7 +948,7 @@ impl re_memory::GenNode for AppState {
         crate::profile_function!();
 
         re_memory::Node::Struct(re_memory::Struct {
-            type_name: "AppState",
+            type_name: std::any::type_name::<Self>(),
             fields: vec![("cache", self.cache.node(global))],
         })
     }

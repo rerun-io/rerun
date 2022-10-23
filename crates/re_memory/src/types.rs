@@ -16,9 +16,29 @@ pub struct Summary {
 }
 
 impl Summary {
+    #[inline]
+    pub fn from_fixed(bytes: usize) -> Self {
+        Self {
+            allocated_capacity: bytes,
+            used: bytes,
+            shared: 0,
+            num_allocs: 0,
+        }
+    }
+
+    #[inline]
     pub fn add_fixed(&mut self, bytes: usize) {
         self.allocated_capacity += bytes;
         self.used += bytes;
+    }
+}
+
+impl std::ops::AddAssign for Summary {
+    fn add_assign(&mut self, rhs: Self) {
+        self.allocated_capacity += rhs.allocated_capacity;
+        self.used += rhs.used;
+        self.shared += rhs.shared;
+        self.num_allocs += rhs.num_allocs;
     }
 }
 
@@ -41,6 +61,22 @@ pub enum Node {
     Struct(Struct),
 }
 
+#[macro_export]
+macro_rules! impl_into_enum {
+    ($from_ty: ty, $enum_name: ident, $to_enum_variant: ident) => {
+        impl From<$from_ty> for $enum_name {
+            #[inline]
+            fn from(value: $from_ty) -> Self {
+                Self::$to_enum_variant(value)
+            }
+        }
+    };
+}
+
+impl_into_enum!(Summary, Node, Summary);
+impl_into_enum!(Map, Node, Map);
+impl_into_enum!(Struct, Node, Struct);
+
 impl Default for Node {
     #[inline]
     fn default() -> Self {
@@ -48,7 +84,7 @@ impl Default for Node {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct RefCountedInfo {
     pub strong_count: usize,
     pub summary: Summary,
@@ -104,7 +140,24 @@ impl Global {
                 summary,
             },
         );
-        return summary.allocated_capacity + summary.shared;
+        summary.allocated_capacity + summary.shared
+    }
+
+    pub fn add_shared_summary(
+        &mut self,
+        type_name: &'static str,
+        ptr: *const (),
+        strong_count: usize,
+        summary: Summary,
+    ) {
+        let info = self
+            .ref_counted
+            .entry(type_name)
+            .or_default()
+            .entry(ptr)
+            .or_default();
+        info.strong_count = info.strong_count.max(strong_count);
+        info.summary = summary;
     }
 
     /// Returns byte used by the pointed-to value.
@@ -123,10 +176,11 @@ impl Global {
     }
 
     #[inline]
+    #[must_use]
     pub fn sum_up_hash_map<K, V: SumUp, R>(
         &mut self,
         map: &std::collections::HashMap<K, V, R>,
-    ) -> Node {
+    ) -> Summary {
         let bytes_per_key = std::mem::size_of::<K>();
 
         let mut summary = Summary {
@@ -140,6 +194,6 @@ impl Global {
             value.sum_up(self, &mut summary);
         }
 
-        Node::Summary(summary)
+        summary
     }
 }

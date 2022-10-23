@@ -20,7 +20,7 @@ impl GenNode for MyData {
             shared,
         } = self;
         Node::Struct(Struct {
-            type_name: "MyData",
+            std::any::type_name::<Self>()MyData",
             fields: vec![
                 ("name", name.node(global)),
                 ("bytes", bytes.node(global)),

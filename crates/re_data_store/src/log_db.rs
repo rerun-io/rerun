@@ -289,7 +289,7 @@ impl re_memory::GenNode for LogDb {
             self.obj_db.node(global)
         } else {
             re_memory::Node::Struct(re_memory::Struct {
-                type_name: "LogDb",
+                type_name: std::any::type_name::<Self>(),
                 fields: vec![("obj_db", self.obj_db.node(global))],
             })
         }
@@ -303,7 +303,7 @@ impl re_memory::GenNode for ObjDb {
             self.store.node(global)
         } else {
             re_memory::Node::Struct(re_memory::Struct {
-                type_name: "ObjDb",
+                type_name: std::any::type_name::<Self>(),
                 fields: vec![("store", self.store.node(global))],
             })
         }

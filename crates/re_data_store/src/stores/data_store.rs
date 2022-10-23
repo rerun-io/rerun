@@ -205,17 +205,17 @@ impl re_memory::GenNode for DataStore {
         }
 
         re_memory::Node::Struct(re_memory::Struct {
-            type_name: "DataStore",
+            type_name: std::any::type_name::<Self>(),
             fields: vec![
-                (
-                    "store_from_timeline",
-                    re_memory::Node::Map(store_from_timeline_node),
-                ),
+                ("store_from_timeline", store_from_timeline_node.into()),
                 (
                     "obj_path_from_hash",
-                    global.sum_up_hash_map(obj_path_from_hash),
+                    global.sum_up_hash_map(obj_path_from_hash).into(),
                 ),
-                ("index_from_hash", global.sum_up_hash_map(index_from_hash)),
+                (
+                    "index_from_hash",
+                    global.sum_up_hash_map(index_from_hash).into(),
+                ),
             ],
         })
     }

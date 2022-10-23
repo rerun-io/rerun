@@ -267,28 +267,28 @@ impl<Time> re_memory::SumUp for FieldStore<Time> {
 }
 
 #[cfg(feature = "re_memory")]
-impl<Time, T> re_memory::SumUp for MonoFieldStore<Time, T> {
+impl<Time, T: re_memory::SumUp> re_memory::SumUp for MonoFieldStore<Time, T> {
     fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
         for (time, (msg_id, value)) in &self.history {
             summary.add_fixed(std::mem::size_of_val(time));
             summary.add_fixed(std::mem::size_of_val(msg_id));
-            // value.sum_up(global, summary); // TODO
+            value.sum_up(global, summary);
         }
     }
 }
 
 #[cfg(feature = "re_memory")]
-impl<Time, T> re_memory::SumUp for MultiFieldStore<Time, T> {
+impl<Time, T: re_memory::SumUp> re_memory::SumUp for MultiFieldStore<Time, T> {
     fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
         for (time, (msg_id, batch)) in &self.history {
             summary.add_fixed(std::mem::size_of_val(time));
             summary.add_fixed(std::mem::size_of_val(msg_id));
-            // batch.sum_up(global, summary); // TODO
+            batch.sum_up(global, summary);
         }
     }
 }
 
-impl<Time: 'static, T: 'static> DataStoreTrait for MonoFieldStore<Time, T> {
+impl<Time: 'static, T: 'static + re_memory::SumUp> DataStoreTrait for MonoFieldStore<Time, T> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -302,7 +302,7 @@ impl<Time: 'static, T: 'static> DataStoreTrait for MonoFieldStore<Time, T> {
         self
     }
 }
-impl<Time: 'static, T: 'static> DataStoreTrait for MultiFieldStore<Time, T> {
+impl<Time: 'static, T: 'static + re_memory::SumUp> DataStoreTrait for MultiFieldStore<Time, T> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }

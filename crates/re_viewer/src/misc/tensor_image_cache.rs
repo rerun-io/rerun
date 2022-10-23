@@ -423,3 +423,16 @@ fn dynamic_image_to_egui_color_image(dynamic_image: &DynamicImage) -> ColorImage
         _ => dynamic_image_to_egui_color_image(&DynamicImage::ImageRgba8(dynamic_image.to_rgba8())),
     }
 }
+
+impl re_memory::GenNode for ImageCache {
+    fn node(&self, global: &mut re_memory::Global) -> re_memory::Node {
+        crate::profile_function!();
+        global.sum_up_hash_map(&self.images).into()
+    }
+}
+
+impl re_memory::SumUp for CachedImage {
+    fn sum_up(&self, _global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        summary.add_fixed(self.memory_used as _);
+    }
+}

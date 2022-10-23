@@ -267,8 +267,28 @@ impl Caches {
 }
 
 impl re_memory::GenNode for Caches {
-    fn node(&self, _global: &mut re_memory::Global) -> re_memory::Node {
-        Default::default() // TODO
+    fn node(&self, global: &mut re_memory::Global) -> re_memory::Node {
+        crate::profile_function!();
+
+        let Self {
+            image,
+            #[cfg(feature = "glow")]
+            cpu_mesh,
+            object_colors,
+        } = self;
+
+        re_memory::Node::Struct(re_memory::Struct {
+            type_name: std::any::type_name::<Self>(),
+            fields: vec![
+                ("image", image.node(global)),
+                #[cfg(feature = "glow")]
+                ("cpu_mesh", cpu_mesh.node(global)),
+                (
+                    "object_colors",
+                    global.sum_up_hash_map(object_colors).into(),
+                ),
+            ],
+        })
     }
 }
 

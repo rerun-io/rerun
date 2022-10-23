@@ -9,6 +9,23 @@ pub struct CpuMesh {
     bbox: macaw::BoundingBox,
 }
 
+impl re_memory::SumUp for CpuMesh {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        self.name.sum_up(global, summary);
+        for mesh in &self.meshes {
+            mesh.name.sum_up(global, summary);
+            match &mesh.positions {
+                three_d::Positions::F32(vec) => {
+                    summary.add_fixed(vec.len() * std::mem::size_of::<[f32; 3]>());
+                }
+                three_d::Positions::F64(vec) => {
+                    summary.add_fixed(vec.len() * std::mem::size_of::<[f64; 3]>());
+                }
+            }
+        }
+    }
+}
+
 pub struct GpuMesh {
     pub name: String,
     pub meshes: Vec<Gm<InstancedMesh, PhysicalMaterial>>,

@@ -13,11 +13,13 @@ impl MemoryIntrospectionPanel {
     pub fn ui(&mut self, ui: &mut egui::Ui) -> bool {
         crate::profile_function!();
 
+        ui.heading("Memory profile");
+
         let mut recalculate = self.summary.is_empty();
         recalculate |= ui.button("New snapshot").clicked();
 
         egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.monospace(self.summary.clone());
+            ui.add(egui::Label::new(self.summary.clone()).wrap(false));
         });
 
         recalculate
