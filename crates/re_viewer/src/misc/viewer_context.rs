@@ -1,3 +1,4 @@
+use egui_all::*;
 use macaw::Ray3;
 
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath, ObjectTree};

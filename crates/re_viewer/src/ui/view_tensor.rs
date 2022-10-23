@@ -1,3 +1,4 @@
+use egui_all::*;
 use std::{collections::BTreeMap, fmt::Display};
 
 use eframe::emath::Align2;

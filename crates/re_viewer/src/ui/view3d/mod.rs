@@ -1,3 +1,4 @@
+use egui_all::*;
 mod eye;
 pub(crate) mod scene;
 

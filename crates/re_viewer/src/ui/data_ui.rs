@@ -1,4 +1,5 @@
 use egui::Vec2;
+use egui_all::*;
 
 use re_data_store::InstanceId;
 pub use re_log_types::*;

@@ -1,3 +1,4 @@
+use egui_all::*;
 use std::{any::Any, sync::mpsc::Receiver};
 
 use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};

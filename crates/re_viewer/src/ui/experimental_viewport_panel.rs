@@ -14,6 +14,7 @@
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
 
+use egui_all::*;
 use std::collections::BTreeMap;
 
 use ahash::HashMap;

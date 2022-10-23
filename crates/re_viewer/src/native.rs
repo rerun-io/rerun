@@ -1,3 +1,4 @@
+use egui_all::*;
 use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;

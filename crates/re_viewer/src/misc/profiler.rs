@@ -1,3 +1,4 @@
+use egui_all::*;
 const PORT: u16 = puffin_http::DEFAULT_PORT;
 
 /// Wraps a connection to a [`puffin`] viewer.

@@ -1,5 +1,6 @@
 use crate::ViewerContext;
 use egui::{Color32, RichText};
+use egui_all::*;
 use re_data_store::{InstanceProps, Objects, TextEntry};
 use re_log_types::*;
 

@@ -1,5 +1,6 @@
 use eframe::{emath::RectTransform, epaint::text::TextWrapping};
 use egui::*;
+use egui_all::*;
 
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::*;

@@ -1,4 +1,5 @@
 use egui::{Color32, ColorImage};
+use egui_all::*;
 use egui_extras::RetainedImage;
 
 use image::DynamicImage;

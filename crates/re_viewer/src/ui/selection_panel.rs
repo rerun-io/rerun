@@ -1,3 +1,4 @@
+use egui_all::*;
 use re_data_store::log_db::LogDb;
 use re_log_types::LogMsg;
 

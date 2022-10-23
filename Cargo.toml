@@ -1,6 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "rerun_py", "run_wasm"]
+members = [
+  "crates/*",
+  "crates/extern/egui_ext/all",
+  "crates/extern/egui_ext/dyn",
+  "crates/extern/egui_ext/internal",
+  "rerun_py",
+  "run_wasm",
+]
+exclude = ["crates/extern"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

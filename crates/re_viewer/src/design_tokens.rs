@@ -1,3 +1,4 @@
+use egui_all::*;
 pub(crate) fn apply_design_tokens(ctx: &egui::Context) {
     let apply_font = true;
     let apply_font_size = true;

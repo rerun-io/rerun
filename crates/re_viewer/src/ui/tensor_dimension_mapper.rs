@@ -1,3 +1,4 @@
+use egui_all::*;
 use re_log_types::TensorDimension;
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 

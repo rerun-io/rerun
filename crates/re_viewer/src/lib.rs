@@ -7,6 +7,8 @@
 #![doc = document_features::document_features!()]
 //!
 
+use egui_all::*;
+
 mod app;
 mod design_tokens;
 pub mod math;

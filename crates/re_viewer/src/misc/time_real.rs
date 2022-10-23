@@ -1,3 +1,4 @@
+use egui_all::*;
 use fixed::{traits::LossyInto as _, FixedI128};
 
 use re_log_types::TimeInt;

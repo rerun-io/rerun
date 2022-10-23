@@ -1,4 +1,5 @@
 use ahash::HashMap;
+use egui_all::*;
 use lazy_static::lazy_static;
 use re_log_types::MsgId;
 

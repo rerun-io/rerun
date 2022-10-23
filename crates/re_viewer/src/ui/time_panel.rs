@@ -1,3 +1,4 @@
+use egui_all::*;
 use std::{
     collections::{BTreeMap, BTreeSet},
     ops::RangeInclusive,

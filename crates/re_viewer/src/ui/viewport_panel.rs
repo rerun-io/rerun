@@ -1,4 +1,5 @@
 use egui::{vec2, Vec2};
+use egui_all::*;
 use itertools::Itertools as _;
 
 use re_data_store::ObjectsBySpace;

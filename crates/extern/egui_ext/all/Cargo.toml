@@ -1,0 +1,26 @@
+[package]
+name = "egui_all"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["dylib", "rlib"]
+
+[features]
+default = []
+dynamic = ["dep:egui_dyn"]
+default_fonts = ["egui_internal/default_fonts"]
+extra_debug_asserts = ["egui_internal/extra_debug_asserts"]
+glow = ["egui_internal/glow"]
+persistence = ["egui_internal/persistence"]
+puffin = ["egui_internal/puffin"]
+tracing = ["egui_internal/tracing"]
+wgpu = ["egui_internal/wgpu"]
+
+[dependencies]
+egui_internal = { path = "../internal" }
+
+egui_dyn = { path = "../dyn", optional = true }

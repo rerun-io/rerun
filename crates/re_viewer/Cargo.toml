@@ -8,17 +8,18 @@ publish = false
 
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["dylib", "rlib"]
 
 
 [features]
-default = ["puffin", "glow"]
+default = ["puffin", "glow", "dynamic"]
+dynamic = ["egui_all/dynamic"]
 
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = [
+  "egui_all/puffin",
   "dep:puffin",
   "dep:puffin_http",
-  "eframe/puffin",
   "re_log_types/puffin",
 ]
 
@@ -26,15 +27,20 @@ puffin = [
 #! You must enable either `glow` or `wgpu`.
 ## Enable the [`glow`](https://crates.io/crates/glow) renderer.
 glow = [
-  "eframe/glow",
-  "dep:egui_glow",
+  "egui_all/glow",
+  # "dep:egui_glow",
   "dep:glow",
   "dep:three-d",
   "dep:three-d-asset",
 ]
 
 ## Enable the [`wgpu`](https://crates.io/crates/wgpu) renderer.
-wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:re_renderer", "dep:wgpu"]
+wgpu = [
+  "egui_all/wgpu",
+  # "dep:egui-wgpu",
+  "dep:re_renderer",
+  "dep:wgpu",
+]
 
 
 [dependencies]
@@ -47,12 +53,18 @@ re_tensor_ops = { path = "../re_tensor_ops" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 re_renderer = { path = "../re_renderer", optional = true }
 
-eframe = { version = "0.19", default-features = false, features = [
+egui_all = { path = "../extern/egui_ext/all", default-features = false, features = [
   "default_fonts",
+  "extra_debug_asserts",
   "persistence",
+  "tracing",
 ] }
-egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
-egui_extras = { version = "0.19", features = ["tracing"] }
+# eframe = { version = "0.19", default-features = false, features = [
+#   "default_fonts",
+#   "persistence",
+# ] }
+# egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
+# egui_extras = { version = "0.19", features = ["tracing"] }
 
 ahash = "0.8"
 anyhow = "1.0"
@@ -88,7 +100,7 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 
 # Optional dependencies:
-egui_glow = { version = "0.19", optional = true }
+# egui_glow = { version = "0.19", optional = true }
 glow = { version = "0.11", optional = true }
 three-d = { version = "0.13.0", optional = true, default-features = false }
 three-d-asset = { version = "0.3.0", optional = true, default-features = false, features = [
@@ -99,7 +111,7 @@ three-d-asset = { version = "0.3.0", optional = true, default-features = false, 
   "png",
 ] }
 
-egui-wgpu = { version = "0.19", optional = true }
+# egui-wgpu = { version = "0.19", optional = true }
 wgpu = { version = "0.14", optional = true }
 
 

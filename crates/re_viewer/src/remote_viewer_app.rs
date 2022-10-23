@@ -1,4 +1,5 @@
 use crate::App;
+use egui_all::*;
 
 /// Connects to a server over `WebSockets`.
 #[derive(Default)]

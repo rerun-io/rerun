@@ -1,3 +1,4 @@
+use egui_all::*;
 use std::collections::BTreeSet;
 
 use egui::NumExt as _;

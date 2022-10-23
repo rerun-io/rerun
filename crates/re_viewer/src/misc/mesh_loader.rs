@@ -1,4 +1,5 @@
 use anyhow::Context as _;
+use egui_all::*;
 use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
 use three_d::*;
 

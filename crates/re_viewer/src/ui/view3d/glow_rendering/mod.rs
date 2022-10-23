@@ -1,3 +1,4 @@
+use egui_all::*;
 mod sphere_renderer;
 
 use super::{eye::Eye, mesh_cache::GpuMeshCache, scene::*};

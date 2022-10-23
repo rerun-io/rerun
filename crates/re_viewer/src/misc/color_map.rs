@@ -1,3 +1,4 @@
+use egui_all::*;
 const TURBO_SRGB_BYTES: [[u8; 3]; 256] = [
     [48, 18, 59],
     [50, 21, 67],

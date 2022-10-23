@@ -1,3 +1,4 @@
+use egui_all::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clipboard;
 pub(crate) mod color_map;

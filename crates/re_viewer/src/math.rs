@@ -1,4 +1,5 @@
 use egui::emath::*;
+use egui_all::*;
 
 pub use egui::emath::{remap, remap_clamp, Rect};
 

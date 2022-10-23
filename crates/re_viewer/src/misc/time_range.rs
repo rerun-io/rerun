@@ -1,3 +1,4 @@
+use egui_all::*;
 use std::ops::RangeInclusive;
 
 use super::TimeReal;

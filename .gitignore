@@ -14,3 +14,8 @@ __pycache__
 
 .gdb_history
 perf.data*
+
+chrome_profiler.json
+profiles/
+
+*.rrd

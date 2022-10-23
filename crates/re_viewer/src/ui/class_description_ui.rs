@@ -1,3 +1,4 @@
+use egui_all::*;
 use std::collections::BTreeMap;
 
 use egui::{color_picker, Vec2};

@@ -12,7 +12,7 @@ publish = false
 ##
 ## When set: will skip building the Web Viewer WASM.
 ## This makes the CI much faster, but the resulting web server
-## will crash if you rey to run it!
+## will crash if you try to run it!
 __ci = []
 
 

@@ -1,3 +1,4 @@
+use egui_all::*;
 use std::sync::Arc;
 
 #[cfg(feature = "glow")]

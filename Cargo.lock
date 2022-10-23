@@ -1092,12 +1092,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_all"
+version = "0.1.0"
+dependencies = [
+ "egui_dyn",
+ "egui_internal",
+]
+
+[[package]]
 name = "egui_dock"
 version = "0.2.1"
 source = "git+https://github.com/rerun-io/egui_dock?rev=5f5a877a34d17ad31640b5a1a2eb771aff26a3a1#5f5a877a34d17ad31640b5a1a2eb771aff26a3a1"
 dependencies = [
  "egui",
  "serde",
+]
+
+[[package]]
+name = "egui_dyn"
+version = "0.1.0"
+dependencies = [
+ "egui_internal",
 ]
 
 [[package]]
@@ -1123,6 +1138,17 @@ dependencies = [
  "tracing",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "egui_internal"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "egui-wgpu",
+ "egui_extras",
+ "egui_glow",
 ]
 
 [[package]]
@@ -3161,13 +3187,9 @@ dependencies = [
  "console_error_panic_hook",
  "ctrlc",
  "document-features",
- "eframe",
- "egui",
  "egui-notify",
- "egui-wgpu",
+ "egui_all",
  "egui_dock",
- "egui_extras",
- "egui_glow",
  "fixed",
  "glam",
  "glow",
