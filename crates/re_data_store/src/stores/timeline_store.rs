@@ -60,3 +60,13 @@ impl<Time: 'static + Copy + Ord> TimelineStore<Time> {
             .insert_batch(field_name, time, msg_id, batch)
     }
 }
+
+#[cfg(feature = "re_memory")]
+impl<Time> re_memory::SumUp for TimelineStore<Time> {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        for (key, value) in &self.objects {
+            key.sum_up(global, summary);
+            value.sum_up(global, summary);
+        }
+    }
+}

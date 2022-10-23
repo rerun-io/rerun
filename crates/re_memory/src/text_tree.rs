@@ -16,19 +16,19 @@ pub trait TextTree {
 
 pub fn format_size(out: &mut String, bytes: usize) {
     if bytes < 1_000 {
-        write!(out, "{}B", bytes).unwrap();
+        write!(out, "{} B", bytes).unwrap();
     } else if bytes < 1_000_000 {
-        write!(out, "{:.2}kB", bytes as f32 / 1_000.0).unwrap();
+        write!(out, "{:.2} kB", bytes as f32 / 1_000.0).unwrap();
     } else if bytes < 1_000_000_000 {
-        write!(out, "{:.2}MB", bytes as f32 / 1_000_000.0).unwrap();
+        write!(out, "{:.2} MB", bytes as f32 / 1_000_000.0).unwrap();
     } else {
-        write!(out, "{:.2}GB", bytes as f32 / 1_000_000_000.0).unwrap();
+        write!(out, "{:.2} GB", bytes as f32 / 1_000_000_000.0).unwrap();
     }
 }
 
 pub fn indent(out: &mut String, depth: usize) {
     const INDENTATION: &str = "                                                                                                ";
-    let len = depth * 4;
+    let len = depth * 2;
     let len = len.min(INDENTATION.len());
     out.push_str(&INDENTATION[..len]);
 }
@@ -36,7 +36,7 @@ pub fn indent(out: &mut String, depth: usize) {
 // ----------------------------------------------------------------------------
 
 impl TextTree for Summary {
-    fn make_text_tree(&self, out: &mut String, _indent: usize) {
+    fn make_text_tree(&self, out: &mut String, _depth: usize) {
         let Self {
             allocated_capacity,
             used,
@@ -49,7 +49,7 @@ impl TextTree for Summary {
             write!(
                 out,
                 " (used: {:.1}%)",
-                used as f32 / allocated_capacity as f32
+                100.0 * used as f32 / allocated_capacity as f32
             )
             .unwrap();
         }
@@ -64,13 +64,31 @@ impl TextTree for Summary {
     }
 }
 
+impl TextTree for Map {
+    fn make_text_tree(&self, out: &mut String, mut depth: usize) {
+        let Self { fields } = self;
+
+        out.push_str("map {\n");
+        depth += 1;
+        for (name, field) in fields {
+            indent(out, depth);
+            write!(out, "{name:?}").unwrap();
+            out.push_str(": ");
+            field.make_text_tree(out, depth);
+            out.push('\n');
+        }
+        depth -= 1;
+        indent(out, depth);
+        out.push('}');
+    }
+}
+
 impl TextTree for Struct {
     fn make_text_tree(&self, out: &mut String, mut depth: usize) {
         let Self { type_name, fields } = self;
 
         out.push_str(type_name);
         out.push_str(" {\n");
-        indent(out, depth);
         depth += 1;
         for (name, field) in fields {
             indent(out, depth);
@@ -88,7 +106,11 @@ impl TextTree for Struct {
 impl TextTree for Node {
     fn make_text_tree(&self, out: &mut String, depth: usize) {
         match self {
+            Self::Unknown => {
+                out.push('?');
+            }
             Self::Summary(summary) => summary.make_text_tree(out, depth),
+            Self::Map(strct) => strct.make_text_tree(out, depth),
             Self::Struct(strct) => strct.make_text_tree(out, depth),
         }
     }

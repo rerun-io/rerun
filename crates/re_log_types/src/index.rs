@@ -50,6 +50,21 @@ impl From<&str> for Index {
     }
 }
 
+#[cfg(feature = "re_memory")]
+impl re_memory::SumUp for Index {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        match self {
+            Self::Sequence(_) | Self::Pixel(_) | Self::Integer(_) | Self::Uuid(_) => {
+                summary.allocated_capacity += std::mem::size_of_val(self);
+                summary.used += std::mem::size_of_val(self);
+            }
+            Self::String(string) => {
+                string.sum_up(global, summary);
+            }
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// A 128 bit hash of [`Index`] with negligible risk of collision.

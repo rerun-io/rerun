@@ -1,14 +1,17 @@
 use std::{any::Any, sync::mpsc::Receiver};
 
-use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 use ahash::HashMap;
 use egui_extras::RetainedImage;
 use egui_notify::Toasts;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
+
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
+use re_memory::GenNode as _;
+
+use crate::misc::{Caches, Options, RecordingConfig, ViewerContext};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::misc::TimeRangeF;
@@ -257,6 +260,13 @@ impl eframe::App for App {
                 .unwrap()
                 .frame_maintenance(&render_state.device);
         }
+
+        if self.state.recalculate_memory_snapshot {
+            let mut global = re_memory::Global::default();
+            let node = self.node(&mut global);
+            self.state.memory_panel.set_snapshot(global, node);
+            self.state.recalculate_memory_snapshot = false;
+        }
     }
 }
 
@@ -372,6 +382,11 @@ struct AppState {
     // TODO(emilk): use an image cache
     #[serde(skip)]
     static_image_cache: StaticImageCache,
+
+    show_memory_panel: bool,
+    recalculate_memory_snapshot: bool,
+    #[serde(skip)]
+    memory_panel: crate::memory_introspection_panel::MemoryIntrospectionPanel,
 }
 
 impl AppState {
@@ -392,6 +407,10 @@ impl AppState {
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
             static_image_cache: _,
+
+            show_memory_panel,
+            recalculate_memory_snapshot,
+            memory_panel,
         } = self;
 
         let rec_cfg = recording_configs.entry(*selected_recording_id).or_default();
@@ -407,6 +426,21 @@ impl AppState {
             egui::SidePanel::right("selection_view").show(egui_ctx, |ui| {
                 selection_panel.ui(&mut ctx, ui);
             });
+        }
+
+        {
+            *show_memory_panel ^= egui_ctx.input_mut().consume_key(
+                egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+                egui::Key::M,
+            );
+
+            if *show_memory_panel {
+                egui::SidePanel::left("memory_profiler")
+                    .default_width(400.0)
+                    .show(egui_ctx, |ui| {
+                        *recalculate_memory_snapshot |= memory_panel.ui(ui);
+                    });
+            }
         }
 
         egui::TopBottomPanel::bottom("time_panel")
@@ -679,6 +713,14 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
         {
             app.state.profiler.start();
         }
+
+        if ui
+            .checkbox(&mut app.state.show_memory_panel, "Memory profiler")
+            .on_hover_text("Show the memory profiler (Cmd+Shift+M)")
+            .clicked()
+        {
+            app.state.profiler.start();
+        }
     });
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -871,4 +913,43 @@ pub fn load_image_bytes(image_bytes: &[u8]) -> Result<egui::ColorImage, String> 
         size,
         pixels.as_slice(),
     ))
+}
+
+// ----------------------------------------------------------------------------
+
+impl re_memory::GenNode for App {
+    fn node(&self, global: &mut re_memory::Global) -> re_memory::Node {
+        crate::profile_function!();
+
+        let log_dbs_node = if self.log_dbs.len() == 1 {
+            self.log_dbs.values().next().unwrap().node(global)
+        } else {
+            re_memory::Node::Map(re_memory::Map {
+                fields: self
+                    .log_dbs
+                    .iter()
+                    .map(|(rec_id, log_db)| (rec_id.to_string(), log_db.node(global)))
+                    .collect(),
+            })
+        };
+
+        re_memory::Node::Struct(re_memory::Struct {
+            type_name: "App",
+            fields: vec![
+                ("log_dbs", log_dbs_node),
+                ("state", self.state.node(global)),
+            ],
+        })
+    }
+}
+
+impl re_memory::GenNode for AppState {
+    fn node(&self, global: &mut re_memory::Global) -> re_memory::Node {
+        crate::profile_function!();
+
+        re_memory::Node::Struct(re_memory::Struct {
+            type_name: "AppState",
+            fields: vec![("cache", self.cache.node(global))],
+        })
+    }
 }

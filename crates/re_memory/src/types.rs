@@ -15,6 +15,18 @@ pub struct Summary {
     pub num_allocs: usize,
 }
 
+impl Summary {
+    pub fn add_fixed(&mut self, bytes: usize) {
+        self.allocated_capacity += bytes;
+        self.used += bytes;
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Map {
+    pub fields: Vec<(String, Node)>,
+}
+
 #[derive(Clone, Debug)]
 pub struct Struct {
     pub type_name: &'static str,
@@ -23,8 +35,17 @@ pub struct Struct {
 
 #[derive(Clone, Debug)]
 pub enum Node {
+    Unknown,
     Summary(Summary),
+    Map(Map),
     Struct(Struct),
+}
+
+impl Default for Node {
+    #[inline]
+    fn default() -> Self {
+        Self::Unknown
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -41,6 +62,7 @@ pub trait GenNode {
 pub trait SumUp {
     fn sum_up(&self, global: &mut Global, summary: &mut Summary);
 
+    #[inline]
     fn summary(&self, global: &mut Global) -> Summary {
         let mut summary = Summary::default();
         self.sum_up(global, &mut summary);
@@ -58,18 +80,19 @@ impl Global {
     /// Something shared by e.g. an [`Arc`] or [`std::cell::Rc`].
     ///
     /// Only summed up first time this is encountered.
+    ///
+    /// Returns byte used by the pointed-to value.
     pub fn sum_up_shared(
         &mut self,
         type_name: &'static str,
         ptr: *const (),
         strong_count: usize,
         sum_up: &dyn SumUp,
-    ) {
+    ) -> usize {
         {
-            if let Some(ref_counted) = self.ref_counted.entry(type_name).or_default().get_mut(&ptr)
-            {
-                ref_counted.strong_count = ref_counted.strong_count.max(strong_count);
-                return;
+            if let Some(info) = self.ref_counted.entry(type_name).or_default().get_mut(&ptr) {
+                info.strong_count = info.strong_count.max(strong_count);
+                return info.summary.allocated_capacity + info.summary.shared;
             }
         }
 
@@ -81,9 +104,13 @@ impl Global {
                 summary,
             },
         );
+        return summary.allocated_capacity + summary.shared;
     }
 
-    pub fn sum_up_arc<T>(&mut self, arc: &Arc<T>)
+    /// Returns byte used by the pointed-to value.
+    #[must_use]
+    #[inline]
+    pub fn sum_up_arc<T>(&mut self, arc: &Arc<T>) -> usize
     where
         T: SumUp,
     {
@@ -92,6 +119,27 @@ impl Global {
             Arc::as_ptr(arc).cast(),
             Arc::strong_count(arc),
             &**arc,
-        );
+        )
+    }
+
+    #[inline]
+    pub fn sum_up_hash_map<K, V: SumUp, R>(
+        &mut self,
+        map: &std::collections::HashMap<K, V, R>,
+    ) -> Node {
+        let bytes_per_key = std::mem::size_of::<K>();
+
+        let mut summary = Summary {
+            allocated_capacity: map.capacity() * bytes_per_key, // TODO: better estimate
+            used: map.len() * bytes_per_key,
+            shared: 0,
+            num_allocs: (map.capacity() != 0) as _,
+        };
+
+        for value in map.values() {
+            value.sum_up(self, &mut summary);
+        }
+
+        Node::Summary(summary)
     }
 }

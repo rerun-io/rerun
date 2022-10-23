@@ -4,6 +4,7 @@ pub(crate) mod event_log_view;
 pub(crate) mod experimental_viewport_panel;
 pub(crate) mod image_ui;
 pub(crate) mod legend;
+pub(crate) mod memory_introspection_panel;
 pub(crate) mod selection_panel;
 pub(crate) mod text_entry_view;
 pub(crate) mod time_panel;

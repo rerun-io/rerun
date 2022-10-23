@@ -31,8 +31,7 @@ impl<T: SumUp> SumUp for std::sync::Arc<T> {
     fn sum_up(&self, global: &mut Global, summary: &mut Summary) {
         summary.allocated_capacity += std::mem::size_of_val(self);
         summary.used += std::mem::size_of_val(self);
-        summary.shared += 1;
-        global.sum_up_arc(self);
+        summary.shared += global.sum_up_arc(self);
     }
 }
 

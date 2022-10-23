@@ -182,3 +182,41 @@ impl TypeErasedBatch {
         self.0.downcast_ref::<ArcBatch<T>>().unwrap().clone()
     }
 }
+
+// ----------------------------------------------------------------------------
+
+#[cfg(feature = "re_memory")]
+impl re_memory::GenNode for DataStore {
+    fn node(&self, global: &mut re_memory::Global) -> re_memory::Node {
+        use re_memory::SumUp as _;
+
+        let Self {
+            store_from_timeline,
+            obj_path_from_hash,
+            index_from_hash,
+        } = self;
+
+        let mut store_from_timeline_node = re_memory::Map::default();
+        for (timeline, (_, timeline_store)) in store_from_timeline {
+            store_from_timeline_node.fields.push((
+                timeline.name().to_string(),
+                re_memory::Node::Summary(timeline_store.summary(global)),
+            ));
+        }
+
+        re_memory::Node::Struct(re_memory::Struct {
+            type_name: "DataStore",
+            fields: vec![
+                (
+                    "store_from_timeline",
+                    re_memory::Node::Map(store_from_timeline_node),
+                ),
+                (
+                    "obj_path_from_hash",
+                    global.sum_up_hash_map(obj_path_from_hash),
+                ),
+                ("index_from_hash", global.sum_up_hash_map(index_from_hash)),
+            ],
+        })
+    }
+}

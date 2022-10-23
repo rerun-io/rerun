@@ -102,6 +102,18 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
 
 // ----------------------------------------------------------------------------
 
+#[cfg(feature = "re_memory")]
+impl<Time> re_memory::SumUp for ObjStore<Time> {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        for (key, value) in &self.fields {
+            // key.sum_up(global, summary); // TODO
+            value.sum_up(global, summary);
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 #[test]
 fn test_obj_store() {
     use re_log_types::DataType;

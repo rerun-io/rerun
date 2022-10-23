@@ -70,6 +70,15 @@ pub struct ObjPath {
     path: Arc<ObjPathImpl>,
 }
 
+#[cfg(feature = "re_memory")]
+impl re_memory::SumUp for ObjPath {
+    fn sum_up(&self, _global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        summary.allocated_capacity += std::mem::size_of_val(self);
+        summary.used += std::mem::size_of_val(self);
+        // summary.shared += global.sum_up_arc(&self.path); // TODO
+    }
+}
+
 impl ObjPath {
     #[inline]
     pub fn root() -> Self {

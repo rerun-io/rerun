@@ -38,14 +38,19 @@ wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:re_renderer", "dep:wgpu"]
 
 
 [dependencies]
-re_data_store = { path = "../re_data_store", features = ["puffin", "serde"] }
+re_data_store = { path = "../re_data_store", features = [
+  "puffin",
+  "re_memory",
+  "serde",
+] }
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["save", "load"] }
+re_memory = { path = "../re_memory" }
+re_renderer = { path = "../re_renderer", optional = true }
 re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
-re_renderer = { path = "../re_renderer", optional = true }
 
 eframe = { version = "0.19", default-features = false, features = [
   "default_fonts",

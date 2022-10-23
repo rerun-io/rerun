@@ -279,3 +279,33 @@ impl LogDb {
         self.log_messages.get(msg_id)
     }
 }
+
+// ----------------------------------------------------------------------------
+
+#[cfg(feature = "re_memory")]
+impl re_memory::GenNode for LogDb {
+    fn node(&self, global: &mut re_memory::Global) -> re_memory::Node {
+        if true {
+            self.obj_db.node(global)
+        } else {
+            re_memory::Node::Struct(re_memory::Struct {
+                type_name: "LogDb",
+                fields: vec![("obj_db", self.obj_db.node(global))],
+            })
+        }
+    }
+}
+
+#[cfg(feature = "re_memory")]
+impl re_memory::GenNode for ObjDb {
+    fn node(&self, global: &mut re_memory::Global) -> re_memory::Node {
+        if true {
+            self.store.node(global)
+        } else {
+            re_memory::Node::Struct(re_memory::Struct {
+                type_name: "ObjDb",
+                fields: vec![("store", self.store.node(global))],
+            })
+        }
+    }
+}

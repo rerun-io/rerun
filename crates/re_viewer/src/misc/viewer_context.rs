@@ -266,6 +266,12 @@ impl Caches {
     }
 }
 
+impl re_memory::GenNode for Caches {
+    fn node(&self, _global: &mut re_memory::Global) -> re_memory::Node {
+        Default::default() // TODO
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]

@@ -6,6 +6,13 @@ use crate::{BatchOrSplat, Error, Result, TimeQuery};
 
 // ----------------------------------------------------------------------------
 
+trait DataStoreTrait {
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+    #[cfg(feature = "re_memory")]
+    fn as_sum_up(&self) -> &dyn re_memory::SumUp;
+}
+
 /// Two equally long vectors.
 ///
 /// First has time, message id, and the multi-index (if any).
@@ -14,7 +21,7 @@ pub type FieldQueryOutput<Time> = (Vec<(Time, MsgId, Option<Index>)>, DataVec);
 
 /// Stores data for a specific [`re_log_types::FieldName`] of a specific [`ObjPath`] on a specific [`re_log_types::Timeline`].
 pub struct FieldStore<Time> {
-    data_store: Box<dyn std::any::Any>,
+    data_store: Box<dyn DataStoreTrait>,
     mono: bool,
     data_type: DataType,
     _phantom: std::marker::PhantomData<Time>,
@@ -40,7 +47,11 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
     }
 
     pub fn get_mono<T: DataTrait>(&self) -> Result<&MonoFieldStore<Time, T>> {
-        if let Some(history) = self.data_store.downcast_ref::<MonoFieldStore<Time, T>>() {
+        if let Some(history) = self
+            .data_store
+            .as_any()
+            .downcast_ref::<MonoFieldStore<Time, T>>()
+        {
             Ok(history)
         } else if !self.mono {
             Err(Error::MixingMonoAndMulti)
@@ -55,7 +66,11 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
     }
 
     pub(crate) fn get_multi<T: DataTrait>(&self) -> Result<&MultiFieldStore<Time, T>> {
-        if let Some(history) = self.data_store.downcast_ref::<MultiFieldStore<Time, T>>() {
+        if let Some(history) = self
+            .data_store
+            .as_any()
+            .downcast_ref::<MultiFieldStore<Time, T>>()
+        {
             Ok(history)
         } else if self.mono {
             Err(Error::MixingMonoAndMulti)
@@ -70,7 +85,11 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
     }
 
     pub(crate) fn get_mono_mut<T: DataTrait>(&mut self) -> Result<&mut MonoFieldStore<Time, T>> {
-        if let Some(history) = self.data_store.downcast_mut::<MonoFieldStore<Time, T>>() {
+        if let Some(history) = self
+            .data_store
+            .as_any_mut()
+            .downcast_mut::<MonoFieldStore<Time, T>>()
+        {
             Ok(history)
         } else if !self.mono {
             Err(Error::MixingMonoAndMulti)
@@ -85,7 +104,11 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
     }
 
     pub(crate) fn get_multi_mut<T: DataTrait>(&mut self) -> Result<&mut MultiFieldStore<Time, T>> {
-        if let Some(history) = self.data_store.downcast_mut::<MultiFieldStore<Time, T>>() {
+        if let Some(history) = self
+            .data_store
+            .as_any_mut()
+            .downcast_mut::<MultiFieldStore<Time, T>>()
+        {
             Ok(history)
         } else if self.mono {
             Err(Error::MixingMonoAndMulti)
@@ -231,5 +254,65 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MultiFieldStore<Time, T> {
         crate::query::query(&self.history, time_query, |time, (msg_id, batch)| {
             visit(time, msg_id, batch);
         });
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+#[cfg(feature = "re_memory")]
+impl<Time> re_memory::SumUp for FieldStore<Time> {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        self.data_store.as_sum_up().sum_up(global, summary);
+    }
+}
+
+#[cfg(feature = "re_memory")]
+impl<Time, T> re_memory::SumUp for MonoFieldStore<Time, T> {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        for (time, (msg_id, value)) in &self.history {
+            summary.add_fixed(std::mem::size_of_val(time));
+            summary.add_fixed(std::mem::size_of_val(msg_id));
+            // value.sum_up(global, summary); // TODO
+        }
+    }
+}
+
+#[cfg(feature = "re_memory")]
+impl<Time, T> re_memory::SumUp for MultiFieldStore<Time, T> {
+    fn sum_up(&self, global: &mut re_memory::Global, summary: &mut re_memory::Summary) {
+        for (time, (msg_id, batch)) in &self.history {
+            summary.add_fixed(std::mem::size_of_val(time));
+            summary.add_fixed(std::mem::size_of_val(msg_id));
+            // batch.sum_up(global, summary); // TODO
+        }
+    }
+}
+
+impl<Time: 'static, T: 'static> DataStoreTrait for MonoFieldStore<Time, T> {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        &mut *self
+    }
+
+    #[cfg(feature = "re_memory")]
+    fn as_sum_up(&self) -> &dyn re_memory::SumUp {
+        self
+    }
+}
+impl<Time: 'static, T: 'static> DataStoreTrait for MultiFieldStore<Time, T> {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        &mut *self
+    }
+
+    #[cfg(feature = "re_memory")]
+    fn as_sum_up(&self) -> &dyn re_memory::SumUp {
+        self
     }
 }

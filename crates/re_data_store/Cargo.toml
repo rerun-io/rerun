@@ -13,6 +13,9 @@ default = []
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = ["dep:puffin", "re_log_types/puffin"]
 
+## Enable the instrumental memory profile `re_memory`.
+re_memory = ["dep:re_memory", "re_log_types/re_memory"]
+
 ## Enable (de)serialization using serde.
 serde = ["dep:serde", "re_log_types/serde"]
 
@@ -28,6 +31,10 @@ itertools = "0.10"
 nohash-hasher = "0.2"
 serde = { version = "1", features = ["derive", "rc"], optional = true }
 thiserror = "1.0"
+
+# Optional dependencies:
+re_memory = { path = "../re_memory", optional = true }
+
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
