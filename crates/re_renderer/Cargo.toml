@@ -20,6 +20,10 @@ slotmap = "1.0.6"
 thiserror = "1.0"
 type-map = "0.5"
 
+## TODO
+unindent = "0.1"
+filesystem = "0.4"
+
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossbeam = "0.8"

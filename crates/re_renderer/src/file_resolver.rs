@@ -87,7 +87,7 @@
 //
 //
 // That way we keep things relatively simple and similar on both platforms for now; and much
-// later on we can add a separate build path to support for pre-compiled naga modules and
+// later on we can add a separate build path to add support for pre-compiled naga modules and
 // such if we feel there's a need for it.
 // Also what I like about this is that this doens't completely shut the door on the idea of
 // importing stuff through URLs, which can be very valuable in some scenarios (both for us
@@ -95,15 +95,23 @@
 
 use std::path::{Path, PathBuf};
 
+use ahash::{HashMap, HashMapExt};
 use anyhow::{anyhow, bail, ensure, Context as _};
+use filesystem::FileSystem;
 
 // ---
+
+// TODO: what do we do about async-ness? most likely we ignore it for now
+// TODO: what do we do about network requests? most likely we ignore it for now
+// TODO: what do we do about compression? most likely we ignore it for now
+// TODO: one probably wants to trim() everything before inlining on web?
 
 // NOTE: Paths used in search trees aren't canonicalized (they can't be: the destinations
 // don't even have to exist yet), which means that one should be careful when comparing them.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SearchTree {
     /// All the search paths, in decreasing order of priority.
+    // TODO: always canonicalized.
     dirs: Vec<PathBuf>,
 }
 
@@ -121,6 +129,12 @@ impl SearchTree {
 
         Ok(this)
     }
+
+    pub fn push(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
+        let path = std::fs::canonicalize(path.as_ref())?;
+        self.dirs.push(path);
+        Ok(())
+    }
 }
 
 impl std::str::FromStr for SearchTree {
@@ -136,13 +150,22 @@ impl std::str::FromStr for SearchTree {
         // We cannot check whether these actually are directories, since they are not
         // guaranteed to even exist yet!
 
+        // TODO: actually if we build the search-tree just in time then we're allowed
+        // to canonicalize here?
+
         dirs.map(|dirs| Self { dirs })
     }
 }
 
 impl std::fmt::Display for SearchTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        let s = self
+            .dirs
+            .iter()
+            .map(|p| p.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(":");
+        f.write_str(&s)
     }
 }
 
@@ -330,6 +353,184 @@ mod tests_import_clause {
             eprintln!("test case: {s:?}");
             assert!(s.parse::<ImportClause>().is_err());
             // TODO(cmc): assert codespans?
+        }
+    }
+}
+
+// ---
+
+// pub struct FileResolver {
+// }
+
+// impl FileResolver {
+// }
+
+// pub trait FileResolver {
+//     fn resolve(path: impl AsRef<Path>) -> anyhow::Result<()>;
+//     fn resolve_to_string(path: impl AsRef<Path>) -> anyhow::Result<String>;
+// }
+
+// TODO: search as vanilla path
+// TODO: search PATH
+
+// TODO: we do _NOT_ keep anything around, just do everything lazily
+
+pub trait FileSystemExt: FileSystem {
+    fn canonicalize(&self, path: impl AsRef<Path>) -> std::io::Result<PathBuf>;
+}
+
+impl FileSystemExt for filesystem::FakeFileSystem {
+    fn canonicalize(&self, path: impl AsRef<Path>) -> std::io::Result<PathBuf> {
+        Ok(path.as_ref().to_owned())
+    }
+}
+
+impl FileSystemExt for filesystem::OsFileSystem {
+    fn canonicalize(&self, path: impl AsRef<Path>) -> std::io::Result<PathBuf> {
+        std::fs::canonicalize(path)
+    }
+}
+
+// NOTE: we're basically creating a virtual filesystem here, which is interesting, considering
+// this will be the starting point for web.
+// TODO: this is FileResolver really...
+#[derive(Default)]
+struct FileResolver<Fs> {
+    // search_tree: SearchTree, // TODO
+    fs: Fs,
+
+    // At this point these are always canonicalized paths.
+    // files: HashMap<PathBuf, RawFile>,
+    files: HashMap<PathBuf, String>,
+}
+
+struct RawFile {
+    contents: String,
+    import_clauses: Vec<ImportClause>,
+}
+
+impl<Fs: FileSystemExt> FileResolver<Fs> {
+    pub fn new(fs: Fs) -> Self {
+        Self {
+            fs,
+            files: Default::default(),
+        }
+    }
+
+    pub fn resolve_to_string(&mut self, path: impl AsRef<Path>) -> anyhow::Result<String> {
+        // This is the root path, it _has_ to be canonicalizable.
+        let path = self
+            .fs
+            .canonicalize(path.as_ref())
+            .with_context(|| format!("failed to canonicalize path at {:?}", path.as_ref()))?;
+        self.interpolate(path)
+    }
+
+    // TODO: handle search PATH
+    fn interpolate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<String> {
+        fn interpolate_rec<Fs: FileSystemExt>(
+            this: &mut FileResolver<Fs>,
+            path: impl AsRef<Path>,
+        ) -> anyhow::Result<String> {
+            const IMPORT_CLAUSE: &str = "#import "; // TODO: pls dont dupe this
+
+            let path = this
+                .fs
+                .canonicalize(path.as_ref())
+                .with_context(|| format!("failed to canonicalize path at {:?}", path.as_ref()))?;
+
+            if !this.files.contains_key(&path) {
+                let contents = this
+                    .fs
+                    .read_file_to_string(&path)
+                    .with_context(|| format!("failed to read file at {path:?}"))?;
+
+                // Using implicit Vec<Result> -> Result<Vec> collection.
+                let lines: Result<Vec<_>, _> = contents
+                    .lines()
+                    .map(|line| {
+                        if line.trim().starts_with(IMPORT_CLAUSE) {
+                            let clause = line.parse::<ImportClause>()?;
+                            interpolate_rec(this, clause.path)
+                        } else {
+                            Ok(line.to_owned())
+                        }
+                    })
+                    .collect();
+                let lines = lines?;
+
+                let contents = lines.join("\n");
+                this.files.insert(path, contents.clone()); // TODO: dat clone tho
+
+                return Ok(contents);
+            }
+
+            Ok(this.files.get(&path).unwrap().clone())
+        }
+
+        interpolate_rec(self, path)
+    }
+}
+
+// TODO: gotta test for errors :s
+
+#[cfg(test)]
+mod tests_file_resolver {
+    use filesystem::FileSystem;
+    use unindent::{unindent, unindent_bytes};
+
+    use super::*;
+
+    #[test]
+    fn single_acyclic_absolute() {
+        let fs = filesystem::FakeFileSystem::new();
+        {
+            fs.create_dir_all("/shaders").unwrap();
+
+            fs.create_file(
+                "/shaders/shader1.wgsl",
+                unindent_bytes(br#"my first shader!"#),
+            )
+            .unwrap();
+
+            fs.create_file(
+                "/shaders/shader2.wgsl",
+                unindent_bytes(
+                    br#"
+                    #import </shaders/shader1.wgsl>
+                    #import </shaders/shader1.wgsl>
+                    my second shader! #import </shaders/shader1.wgsl>
+                    #import </shaders/shader1.wgsl>
+                    #import </shaders/shader1.wgsl>
+                    "#,
+                ),
+            )
+            .unwrap();
+        }
+
+        let mut resolver = FileResolver::new(fs);
+
+        for _ in 0..3 {
+            let contents = resolver
+                .resolve_to_string("/shaders/shader1.wgsl")
+                .map_err(|err| re_error::format(err))
+                .unwrap();
+            let expected = unindent(r#"my first shader!"#);
+            assert_eq!(expected, contents);
+
+            let contents = resolver
+                .resolve_to_string("/shaders/shader2.wgsl")
+                .map_err(|err| re_error::format(err))
+                .unwrap();
+            let expected = unindent(
+                r#"
+                my first shader!
+                my first shader!
+                my second shader! #import </shaders/shader1.wgsl>
+                my first shader!
+                my first shader!"#,
+            );
+            assert_eq!(expected, contents);
         }
     }
 }
