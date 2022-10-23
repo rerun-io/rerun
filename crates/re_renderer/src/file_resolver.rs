@@ -93,11 +93,13 @@
 // importing stuff through URLs, which can be very valuable in some scenarios (both for us
 // and end users) I feel like.
 
+// TODO: explain canonicalization vs. normalization
+
 use std::path::{Path, PathBuf};
 
 use ahash::{HashMap, HashMapExt};
 use anyhow::{anyhow, bail, ensure, Context as _};
-use filesystem::FileSystem;
+use clean_path::Clean as _;
 
 // ---
 
@@ -131,8 +133,7 @@ impl SearchTree {
     }
 
     pub fn push(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
-        let path = std::fs::canonicalize(path.as_ref())?;
-        self.dirs.push(path);
+        self.dirs.push(path.as_ref().clean());
         Ok(())
     }
 }
@@ -375,19 +376,69 @@ mod tests_import_clause {
 
 // TODO: we do _NOT_ keep anything around, just do everything lazily
 
-pub trait FileSystemExt: FileSystem {
-    fn canonicalize(&self, path: impl AsRef<Path>) -> std::io::Result<PathBuf>;
+// TODO: put anyhow's contexts directly in there maybe?
+pub trait FileSystem {
+    fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<String>;
+    fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf>;
+
+    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()>;
+    fn create_file(&mut self, path: impl AsRef<Path>, buf: impl AsRef<[u8]>) -> anyhow::Result<()>;
 }
 
-impl FileSystemExt for filesystem::FakeFileSystem {
-    fn canonicalize(&self, path: impl AsRef<Path>) -> std::io::Result<PathBuf> {
-        Ok(path.as_ref().to_owned())
+struct OsFileSystem;
+impl FileSystem for OsFileSystem {
+    fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<String> {
+        let path = path.as_ref();
+        std::fs::read_to_string(path).with_context(|| format!("failed to read file at {path:?}"))
+    }
+
+    fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
+        let path = path.as_ref();
+        std::fs::canonicalize(path)
+            .with_context(|| format!("failed to canonicalize path at {path:?}"))
+    }
+
+    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
+        unimplemented!("don't do that.")
+    }
+
+    fn create_file(&mut self, path: impl AsRef<Path>, buf: impl AsRef<[u8]>) -> anyhow::Result<()> {
+        unimplemented!("don't do that.")
     }
 }
 
-impl FileSystemExt for filesystem::OsFileSystem {
-    fn canonicalize(&self, path: impl AsRef<Path>) -> std::io::Result<PathBuf> {
-        std::fs::canonicalize(path)
+#[derive(Default)]
+struct MemFileSystem {
+    files: HashMap<PathBuf, Vec<u8>>,
+}
+impl FileSystem for MemFileSystem {
+    fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<String> {
+        let path = path.as_ref().clean();
+        let file = self
+            .files
+            .get(&path)
+            .ok_or_else(|| anyhow!("file does not exist"))
+            .with_context(|| format!("failed to read file at {path:?}"))?;
+        String::from_utf8(file.clone()).with_context(|| format!("failed to read file at {path:?}"))
+    }
+
+    fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
+        let path = path.as_ref().clean();
+        self.files
+            .get(&path)
+            .ok_or_else(|| anyhow!("file does not exist at {path:?}"))
+            .map(|_| path)
+        // .with_context(|| format!("failed to canonicalize path at {path:?}"))
+    }
+
+    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn create_file(&mut self, path: impl AsRef<Path>, buf: impl AsRef<[u8]>) -> anyhow::Result<()> {
+        self.files
+            .insert(path.as_ref().to_owned(), buf.as_ref().to_owned());
+        Ok(())
     }
 }
 
@@ -409,7 +460,7 @@ struct RawFile {
     import_clauses: Vec<ImportClause>,
 }
 
-impl<Fs: FileSystemExt> FileResolver<Fs> {
+impl<Fs: FileSystem> FileResolver<Fs> {
     pub fn new(fs: Fs) -> Self {
         Self {
             fs,
@@ -418,31 +469,24 @@ impl<Fs: FileSystemExt> FileResolver<Fs> {
     }
 
     pub fn resolve_to_string(&mut self, path: impl AsRef<Path>) -> anyhow::Result<String> {
-        // This is the root path, it _has_ to be canonicalizable.
-        let path = self
-            .fs
-            .canonicalize(path.as_ref())
-            .with_context(|| format!("failed to canonicalize path at {:?}", path.as_ref()))?;
         self.interpolate(path)
     }
 
     // TODO: handle search PATH
     fn interpolate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<String> {
-        fn interpolate_rec<Fs: FileSystemExt>(
+        fn interpolate_rec<Fs: FileSystem>(
             this: &mut FileResolver<Fs>,
             path: impl AsRef<Path>,
         ) -> anyhow::Result<String> {
             const IMPORT_CLAUSE: &str = "#import "; // TODO: pls dont dupe this
 
-            let path = this
-                .fs
-                .canonicalize(path.as_ref())
-                .with_context(|| format!("failed to canonicalize path at {:?}", path.as_ref()))?;
+            let path = path.as_ref().clean();
+            dbg!(&path); // TODO: might be worth a permanent re_debug!
 
             if !this.files.contains_key(&path) {
                 let contents = this
                     .fs
-                    .read_file_to_string(&path)
+                    .read_to_string(&path)
                     .with_context(|| format!("failed to read file at {path:?}"))?;
 
                 // Using implicit Vec<Result> -> Result<Vec> collection.
@@ -451,7 +495,10 @@ impl<Fs: FileSystemExt> FileResolver<Fs> {
                     .map(|line| {
                         if line.trim().starts_with(IMPORT_CLAUSE) {
                             let clause = line.parse::<ImportClause>()?;
-                            interpolate_rec(this, clause.path)
+                            // We do not use `Path::parent` on purpose!
+                            let cwd = path.join("..").clean();
+                            let clause_path = this.resolve_clause_path(cwd, clause.path);
+                            interpolate_rec(this, clause_path)
                         } else {
                             Ok(line.to_owned())
                         }
@@ -460,7 +507,7 @@ impl<Fs: FileSystemExt> FileResolver<Fs> {
                 let lines = lines?;
 
                 let contents = lines.join("\n");
-                this.files.insert(path, contents.clone()); // TODO: dat clone tho
+                this.files.insert(path.to_owned(), contents.clone()); // TODO: dat clone tho
 
                 return Ok(contents);
             }
@@ -470,20 +517,29 @@ impl<Fs: FileSystemExt> FileResolver<Fs> {
 
         interpolate_rec(self, path)
     }
+
+    fn resolve_clause_path(&self, cwd: impl AsRef<Path>, path: impl AsRef<Path>) -> PathBuf {
+        let path = path.as_ref().clean();
+
+        if path.is_absolute() {
+            return path;
+        }
+
+        cwd.as_ref().join(path).clean()
+    }
 }
 
 // TODO: gotta test for errors :s
 
 #[cfg(test)]
 mod tests_file_resolver {
-    use filesystem::FileSystem;
     use unindent::{unindent, unindent_bytes};
 
     use super::*;
 
     #[test]
     fn single_acyclic_absolute() {
-        let fs = filesystem::FakeFileSystem::new();
+        let mut fs = MemFileSystem::default();
         {
             fs.create_dir_all("/shaders").unwrap();
 
@@ -511,6 +567,8 @@ mod tests_file_resolver {
         let mut resolver = FileResolver::new(fs);
 
         for _ in 0..3 {
+            //   ^^^^  just making sure the stateful stuff behaves correctly
+
             let contents = resolver
                 .resolve_to_string("/shaders/shader1.wgsl")
                 .map_err(|err| re_error::format(err))
@@ -527,6 +585,69 @@ mod tests_file_resolver {
                 my first shader!
                 my first shader!
                 my second shader! #import </shaders/shader1.wgsl>
+                my first shader!
+                my first shader!"#,
+            );
+            assert_eq!(expected, contents);
+        }
+    }
+
+    #[test]
+    fn single_acyclic_relative() {
+        let mut fs = MemFileSystem::default();
+        {
+            fs.create_dir_all("/shaders/common").unwrap();
+            fs.create_dir_all("/shaders/a/b/c").unwrap();
+
+            fs.create_file(
+                "/shaders/common/shader1.wgsl",
+                unindent_bytes(br#"my first shader!"#),
+            )
+            .unwrap();
+
+            fs.create_file(
+                "/shaders/a/b/c/shader2.wgsl",
+                unindent_bytes(
+                    br#"
+                    #import <../../../common/shader1.wgsl>
+                    #import <../../../common/shader1.wgsl>
+                    my second shader!
+                    #import <../../../common/shader1.wgsl>
+                    #import <../../../common/shader1.wgsl>
+                    "#,
+                ),
+            )
+            .unwrap();
+        }
+
+        fs.read_to_string("/shaders/common/shader1.wgsl").unwrap();
+        fs.read_to_string("/shaders/a/b/c/shader2.wgsl").unwrap();
+        fs.read_to_string("/shaders/a/b/c/../c/shader2.wgsl")
+            .unwrap();
+        fs.read_to_string("/shaders/a/b/c/shader2.wgsl/../../../../common/shader1.wgsl")
+            .unwrap();
+
+        let mut resolver = FileResolver::new(fs);
+
+        for _ in 0..3 {
+            //   ^^^^  just making sure the stateful stuff behaves correctly
+
+            let contents = resolver
+                .resolve_to_string("/shaders/common/shader1.wgsl")
+                .map_err(|err| re_error::format(err))
+                .unwrap();
+            let expected = unindent(r#"my first shader!"#);
+            assert_eq!(expected, contents);
+
+            let contents = resolver
+                .resolve_to_string("/shaders/a/b/c/shader2.wgsl")
+                .map_err(|err| re_error::format(err))
+                .unwrap();
+            let expected = unindent(
+                r#"
+                my first shader!
+                my first shader!
+                my second shader!
                 my first shader!
                 my first shader!"#,
             );

@@ -22,7 +22,7 @@ type-map = "0.5"
 
 ## TODO
 unindent = "0.1"
-filesystem = "0.4"
+clean-path = "0.2"
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

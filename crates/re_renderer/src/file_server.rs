@@ -30,6 +30,8 @@ macro_rules! include_file {
 
 // ---
 
+// TODO: should probably move away from canonicalization and into normalization altogether.
+
 /// A handle to the contents of a file.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum FileContentsHandle {
