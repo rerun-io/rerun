@@ -97,7 +97,7 @@
 
 use std::path::{Path, PathBuf};
 
-use ahash::{HashMap, HashMapExt};
+use ahash::{HashMap, HashMapExt, HashSet, HashSetExt};
 use anyhow::{anyhow, bail, ensure, Context as _};
 use clean_path::Clean as _;
 
@@ -442,6 +442,8 @@ impl FileSystem for MemFileSystem {
     }
 }
 
+// ---
+
 // NOTE: we're basically creating a virtual filesystem here, which is interesting, considering
 // this will be the starting point for web.
 // TODO: this is FileResolver really...
@@ -469,18 +471,28 @@ impl<Fs: FileSystem> FileResolver<Fs> {
     }
 
     pub fn resolve_to_string(&mut self, path: impl AsRef<Path>) -> anyhow::Result<String> {
+        // puffin::profile_function!(); // TODO: puffin feature
+
         self.interpolate(path)
     }
 
     // TODO: handle search PATH
+    // TODO: lotta useless cloning going on
     fn interpolate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<String> {
         fn interpolate_rec<Fs: FileSystem>(
             this: &mut FileResolver<Fs>,
             path: impl AsRef<Path>,
+            path_stack: &mut Vec<PathBuf>,
+            visited: &mut HashSet<PathBuf>,
         ) -> anyhow::Result<String> {
             const IMPORT_CLAUSE: &str = "#import "; // TODO: pls dont dupe this
 
             let path = path.as_ref().clean();
+            path_stack.push(path.clone());
+            ensure!(
+                visited.insert(path.clone()),
+                "import cycle detected: {path_stack:?}"
+            );
             dbg!(&path); // TODO: might be worth a permanent re_debug!
 
             if !this.files.contains_key(&path) {
@@ -498,7 +510,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                             // We do not use `Path::parent` on purpose!
                             let cwd = path.join("..").clean();
                             let clause_path = this.resolve_clause_path(cwd, clause.path);
-                            interpolate_rec(this, clause_path)
+                            interpolate_rec(this, clause_path, path_stack, visited)
                         } else {
                             Ok(line.to_owned())
                         }
@@ -509,13 +521,17 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                 let contents = lines.join("\n");
                 this.files.insert(path.to_owned(), contents.clone()); // TODO: dat clone tho
 
+                path_stack.pop().unwrap();
                 return Ok(contents);
             }
 
+            path_stack.pop().unwrap();
             Ok(this.files.get(&path).unwrap().clone())
         }
 
-        interpolate_rec(self, path)
+        let mut path_stack = Vec::new();
+        let mut visited = HashSet::new();
+        interpolate_rec(self, path, &mut path_stack, &mut visited)
     }
 
     fn resolve_clause_path(&self, cwd: impl AsRef<Path>, path: impl AsRef<Path>) -> PathBuf {
@@ -528,8 +544,6 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         cwd.as_ref().join(path).clean()
     }
 }
-
-// TODO: gotta test for errors :s
 
 #[cfg(test)]
 mod tests_file_resolver {
@@ -653,5 +667,45 @@ mod tests_file_resolver {
             );
             assert_eq!(expected, contents);
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn single_cyclic() {
+        let mut fs = MemFileSystem::default();
+        {
+            fs.create_dir_all("/shaders").unwrap();
+
+            fs.create_file(
+                "/shaders/shader1.wgsl",
+                unindent_bytes(
+                    br#"
+                    #import </shaders/shader2.wgsl>
+                    my first shader!
+                    "#,
+                ),
+            )
+            .unwrap();
+
+            fs.create_file(
+                "/shaders/shader2.wgsl",
+                unindent_bytes(
+                    br#"
+                    #import </shaders/shader1.wgsl>
+                    my second shader!
+                    "#,
+                ),
+            )
+            .unwrap();
+        }
+
+        let mut resolver = FileResolver::new(fs);
+
+        let contents = resolver
+            .resolve_to_string("/shaders/shader1.wgsl")
+            .map_err(|err| re_error::format(err))
+            .unwrap();
+        let expected = unindent(r#"my first shader!"#);
+        assert_eq!(expected, contents);
     }
 }
