@@ -1,5 +1,8 @@
 # This is a configuration file for the bacon tool
 # More info at https://github.com/Canop/bacon
+#
+# Examples:
+# bacon test -- -p re_viewer
 
 default_job = "cranky"
 
