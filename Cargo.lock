@@ -3055,6 +3055,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_memory"
+version = "0.1.0"
+
+[[package]]
 name = "re_renderer"
 version = "0.1.0"
 dependencies = [
