@@ -110,7 +110,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         frame_times.append(sample.timestamp)
 
         img_path = Path(os.path.join(sample.dirpath, f"video/{sample.index}.jpg"))
-        rerun.log_image_file("3d/camera/video", img_path, img_format=ImageFormat.JPEG, space="image")
+        rerun.log_image_file("3d/camera/video", img_path, img_format=ImageFormat.JPEG)
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
@@ -133,18 +133,6 @@ def log_camera(cam: ARCamera) -> None:
     rot = rot * R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
     (w, h) = (h, w)
 
-    rerun.log_camera(
-        "camera",
-        resolution=[w, h],
-        intrinsics=intrinsics,
-        rotation_q=rot.as_quat(),
-        position=translation,
-        camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
-        space="3d",
-        target_space="image",
-    )
-
-    # Experimental new API which will replace log_camera:
     rerun.log_extrinsics(
         "3d/camera",
         rotation_q=rot.as_quat(),
@@ -166,7 +154,7 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
         point_raw = point_cloud.point[i]
         point = np.array([point_raw.x, point_raw.y, point_raw.z], dtype=np.float32)
         ident = point_cloud.identifier[i]
-        rerun.log_point(f"3d/points/{ident}", point, color=[255, 255, 255, 255], space="3d")
+        rerun.log_point(f"3d/points/{ident}", point, color=[255, 255, 255, 255])
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
@@ -186,7 +174,6 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
             color=[130, 160, 250, 255],
             label=bbox.category,
             timeless=True,
-            space="3d",
         )
 
 
@@ -216,7 +203,6 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
                         f"3d/camera/video/objects/{obj_ann.object_id}/{id}",
                         pos2,
                         color=[130, 160, 250, 255],
-                        space="image",
                     )
 
 
@@ -251,7 +237,7 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
                          dtype=np.float32)
     # fmt: on
 
-    rerun.log_line_segments(path, segments, space="image", color=[130, 160, 250, 255])
+    rerun.log_line_segments(path, segments, color=[130, 160, 250, 255])
 
 
 if __name__ == "__main__":
