@@ -23,7 +23,7 @@ See more in [`example_car.py`](rerun_sdk/examples/example_car.py).
 ## Paths
 The first argument to each log function is an _object path_. Each time you log to a specific object path you will update the object, i.e. log a new instance of it along the timeline. Each logging to a path bust be of the same type (you cannot log an image to the same path as a point cloud).
 
-A path can look like this: `detections/object/42/bbox`. Each component (between the slashes) can either be:
+A path can look like this: `3d/camera/image/detection/#42/bbox`. Each component (between the slashes) can either be:
 
 * A name (`detections`). Intended for hard-coded names.
 * A `"quoted string"`. Intended for things like serial numbers.
@@ -40,6 +40,34 @@ for cam in cameras:
     for i, detection in enumerate(cam.detect()):
         rerun.log_rect(f'camera/"{cam.id}"/detection/#{i}', detection.top_left, detection.bottom_right)
 ```
+
+## Transform hierarchy
+The path defines a hierarchy. Each object is assumed to be in the same space as its parent object. The root objects are assumes to define their own spaces.
+
+* `world/car` and `world/bike` will be in the same space (same parent)
+* `world/car` and `image/bbox` will be in different spaces (different root objects)
+
+You can also log special transforms between an object and its parent using `rerun.log_extrinsics` and `rerun.log_intrinsics`.
+
+Say you have a 3D world with two cameras, each with their own _image_ space. You can construct this as:
+
+```py
+# Log some data to the 3D world:
+rerun.log_point("3d/points", …)
+
+# Log the two cameras:
+rerun.log_extrinsics("3d/camera/#0", …)
+rerun.log_intrinsics("3d/camera/#0/image", …)
+rerun.log_extrinsics("3d/camera/#1", …)
+rerun.log_intrinsics("3d/camera/#1/image", …)
+
+# Log some data to the image spaces of the first camera:
+rerun.log_image("3d/camera/#0/image", …)
+rerun.log_rect("3d/camera/#0/image/bbox", …)
+```
+
+Rerun will from this understand out how the `3d` space and the two image spaces (`3d/camera/#0/image` and `3d/camera/#1/image`) relate to each other, allowing you to explore their relationship in the Rerun Viewer.
+
 
 ## Timeless data
 The logging functions all have `timeless = False` parameters. Timeless objects belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer. This is useful for object that aren't part of normal data capture, but set the scene for how they are shown. For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be timeless.

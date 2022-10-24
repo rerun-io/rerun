@@ -5,8 +5,8 @@
 //! * [x] Render the 3D camera
 //! * [x] Project rays and points between spaces
 //! * [x] Don't create extraneous views of "intermediate" spaces (e.g. camera space)
-//! * [ ] Convert existing python examples to the new style
-//! * [ ] Write good docs for how to use the new system
+//! * [x] Convert existing python examples to the new style
+//! * [x] Write good docs for how to use the new system
 //! * [ ] Remove the old code path
 //!
 //! After that we can implement:
