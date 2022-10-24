@@ -15,6 +15,7 @@ use std::f32::consts::TAU;
 use anyhow::Context as _;
 use glam::Vec3;
 use instant::Instant;
+use log::info;
 use macaw::IsoTransform;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},
@@ -129,6 +130,8 @@ impl Application {
             width: size.width,
             height: size.height,
             // Not the best setting in general, but nice for quick & easy performance checking.
+            // TODO(andreas): It seems at least on Metal M1 this still does not discard command buffers that come in too fast (even when using `Immediate` explicitly).
+            //                  Quick look into wgpu looks like it does it correctly there. OS limitation? iOS has this limitation, so wouldn't be surprising!
             present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
@@ -227,11 +230,18 @@ impl Application {
                     self.time.last_draw_time = current_time;
 
                     // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
-                    self.window.set_title(&format!(
-                        "{:.2} ms ({:.2} fps)",
-                        time_passed.as_secs_f32() * 1000.0,
-                        1.0 / time_passed.as_secs_f32()
-                    ));
+                    // Repeatedly setting the title causes issues on some platforms
+                    // Do it only every second.
+                    let time_until_next_report = 1.0 - self.time.seconds_since_startup().fract();
+                    if time_until_next_report - time_passed.as_secs_f32() < 0.0 {
+                        let time_info_str = format!(
+                            "{:.2} ms ({:.2} fps)",
+                            time_passed.as_secs_f32() * 1000.0,
+                            1.0 / time_passed.as_secs_f32()
+                        );
+                        self.window.set_title(&time_info_str);
+                        info!("{time_info_str}");
+                    }
                 }
                 Event::MainEventsCleared => {
                     self.window.request_redraw();
@@ -275,9 +285,10 @@ fn main() {
         });
 
         // Enable wgpu info messages by default
-        env_logger::init_from_env(
-            env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "wgpu=info"),
-        );
+        env_logger::init_from_env(env_logger::Env::default().filter_or(
+            env_logger::DEFAULT_FILTER_ENV,
+            "wgpu=info,renderer_standalone",
+        ));
         pollster::block_on(run(event_loop, window));
     }
 
