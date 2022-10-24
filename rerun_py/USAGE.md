@@ -42,14 +42,14 @@ for cam in cameras:
 ```
 
 ## Transform hierarchy
-The path defines a hierarchy. Each object is assumed to be in the same space as its parent object. The root objects are assumes to define their own spaces.
+The path defines a hierarchy. The root objects all define separate spaces. All other objects are by default assumed to be in the same space as its parent object.
 
 * `world/car` and `world/bike` will be in the same space (same parent)
-* `world/car` and `image/bbox` will be in different spaces (different root objects)
+* `world/car` and `image/detection` will be in different spaces (different root objects)
 
-You can also log special transforms between an object and its parent using `rerun.log_extrinsics` and `rerun.log_intrinsics`.
+Objects can be separated into their own spaces by logging special transforms relative to their parents using `rerun.log_extrinsics` and `rerun.log_intrinsics`. `log_extrinsics` is for the camera pose (translation and rotation), while `log_intrinsics` is for the camera pinhole projection matrix and image resolution.
 
-Say you have a 3D world with two cameras, each with their own _image_ space. You can construct this as:
+Say you have a 3D world with two cameras with known extrinsics (pose) and intrinsics (pinhole model and resolution). You want to log things both in the shared 3D space, but also log each camera image and some detection in these images.
 
 ```py
 # Log some data to the 3D world:
@@ -63,10 +63,12 @@ rerun.log_intrinsics("3d/camera/#1/image", …)
 
 # Log some data to the image spaces of the first camera:
 rerun.log_image("3d/camera/#0/image", …)
-rerun.log_rect("3d/camera/#0/image/bbox", …)
+rerun.log_rect("3d/camera/#0/image/detection", …)
 ```
 
-Rerun will from this understand out how the `3d` space and the two image spaces (`3d/camera/#0/image` and `3d/camera/#1/image`) relate to each other, allowing you to explore their relationship in the Rerun Viewer.
+Rerun will from this understand out how the `3d` space and the two image spaces (`3d/camera/#0/image` and `3d/camera/#1/image`) relate to each other, allowing you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space.
+
+Note that none of the names in the path are special.
 
 
 ## Timeless data
