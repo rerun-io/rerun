@@ -3070,6 +3070,7 @@ dependencies = [
  "env_logger",
  "glam",
  "half 2.1.0",
+ "instant",
  "log",
  "macaw",
  "notify",

@@ -479,7 +479,7 @@ pub(crate) fn view_3d(
                                 &TargetConfiguration {
                                     resolution_in_pixel,
 
-                                    world_from_view: eye.world_from_view,
+                                    view_from_world: eye.world_from_view.inverse(),
                                     fov_y: eye.fov_y,
                                     near_plane_distance: eye.near(),
 
