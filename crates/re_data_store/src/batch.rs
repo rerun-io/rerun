@@ -22,7 +22,12 @@ pub enum BatchOrSplat<T> {
 
 impl<T: Clone> BatchOrSplat<T> {
     pub fn new_batch(indices: &[re_log_types::Index], data: &[T]) -> Result<Self, BadBatchError> {
-        Ok(Self::Batch(Arc::new(Batch::new(indices, data)?)))
+        let hashed_indices = indices
+            .iter()
+            .map(|index| (IndexHash::hash(index), index))
+            .collect::<Vec<_>>();
+
+        Ok(Self::Batch(Arc::new(Batch::new(&hashed_indices, data)?)))
     }
 }
 
@@ -33,30 +38,25 @@ impl<T: Clone> BatchOrSplat<T> {
 /// Can be shared between different timelines with [`ArcBatch`].
 pub struct Batch<T> {
     map: IntMap<IndexHash, T>,
-    hashed_indices: Vec<(IndexHash, Index)>,
 }
 
 impl<T: Clone> Batch<T> {
     #[inline(never)]
-    pub fn new(indices: &[re_log_types::Index], data: &[T]) -> Result<Self, BadBatchError> {
+    pub fn new(
+        hashed_indices: &[(re_log_types::IndexHash, &re_log_types::Index)],
+        data: &[T],
+    ) -> Result<Self, BadBatchError> {
         crate::profile_function!(std::any::type_name::<T>());
 
-        if indices.len() != data.len() {
+        if hashed_indices.len() != data.len() {
             return Err(BadBatchError);
         }
 
-        let mut hashed_indices = Vec::with_capacity(indices.len());
-        let map = itertools::izip!(indices, data)
-            .map(|(index, value)| {
-                let index_hash = IndexHash::hash(index);
-                hashed_indices.push((index_hash, index.clone()));
-                (index_hash, value.clone())
-            })
+        let map = itertools::izip!(hashed_indices, data)
+            .map(|(index_hash, value)| (index_hash.0, value.clone()))
             .collect();
-        Ok(Self {
-            map,
-            hashed_indices,
-        })
+
+        Ok(Self { map })
     }
 }
 
@@ -67,8 +67,9 @@ impl<T> Batch<T> {
     }
 
     #[inline]
-    pub fn indices(&self) -> std::slice::Iter<'_, (IndexHash, Index)> {
-        self.hashed_indices.iter()
+    pub fn get_index(&self, index: &Index) -> Option<&T> {
+        let index_hash = IndexHash::hash(index);
+        self.map.get(&index_hash)
     }
 
     #[inline]

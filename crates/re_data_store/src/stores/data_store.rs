@@ -89,10 +89,16 @@ impl DataStore {
         // We de-duplicate batches so we don't create one per timeline:
         let batch = if let LoggedData::Batch { indices, data } = data {
             Some(re_log_types::data_vec_map!(data, |vec| {
+                let hashed_indices = indices
+                    .iter()
+                    .map(|index| (IndexHash::hash(index), index))
+                    .collect::<Vec<_>>();
+
                 let batch = std::sync::Arc::new(
-                    Batch::new(indices, vec).map_err(|BadBatchError| crate::Error::BadBatch)?,
+                    Batch::new(&hashed_indices, vec)
+                        .map_err(|BadBatchError| crate::Error::BadBatch)?,
                 );
-                self.register_batch_indices(batch.as_ref());
+                self.register_hashed_indices(&hashed_indices);
                 TypeErasedBatch::new(batch)
             }))
         } else {
@@ -122,12 +128,15 @@ impl DataStore {
     }
 
     #[inline(never)]
-    fn register_batch_indices<T>(&mut self, batch: &Batch<T>) {
+    fn register_hashed_indices(
+        &mut self,
+        hashed_indices: &[(re_log_types::IndexHash, &re_log_types::Index)],
+    ) {
         crate::profile_function!();
-        for (hash, index) in batch.indices() {
+        for (hash, index) in hashed_indices {
             self.index_from_hash
                 .entry(*hash)
-                .or_insert_with(|| index.clone());
+                .or_insert_with(|| (*index).clone());
         }
     }
 }
