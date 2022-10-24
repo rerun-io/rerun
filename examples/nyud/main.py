@@ -8,7 +8,9 @@ wget -P examples/nyud http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/cafe.
 
 Run:
 ``` sh
-python examples/nyud/main.py --folder-idx=0 examples/nyud/cafe.zip
+examples/nyud/main.py
+
+examples/nyud/main.py --folder-idx=0 --dataset examples/nyud/cafe.zip
 ```
 
 Within the dataset are 3 subsets, corresponding to `--folder-idx` argument values `0-2`.
@@ -130,7 +132,7 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
-    parser.add_argument("dataset", type=Path, help="Path to the cafe.zip archive.")
+    parser.add_argument("--dataset", type=Path, default="examples/nyud/cafe.zip", help="Path to the cafe.zip archive.")
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
