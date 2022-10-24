@@ -8,7 +8,7 @@ use crate::{BatchOrSplat, Error, Result, TimeQuery};
 
 /// Two equally long vectors.
 ///
-/// First has time, message id, and the multi-index (if any).
+/// First has time and message id.
 /// Second has the matching data.
 pub type FieldQueryOutput<Time> = (Vec<(Time, MsgId)>, DataVec);
 
