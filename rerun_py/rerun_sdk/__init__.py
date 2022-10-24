@@ -272,6 +272,8 @@ class LoggingHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         """Emits a record to the Rerun SDK."""
         objpath = record.name.replace(".", "/")
+        if self.space is not None:
+            objpath = f"{self.space}/{objpath}"
         level = self.LVL2NAME.get(record.levelno)
         if level is None:  # user-defined level
             level = record.levelname
@@ -492,7 +494,7 @@ def log_camera(
     )
 
 
-def _log_extrinsics(
+def log_extrinsics(
     obj_path: str,
     rotation_q: npt.ArrayLike,
     position: npt.ArrayLike,
@@ -515,8 +517,8 @@ def _log_extrinsics(
     )
 
 
-def _log_intrinsics(
-    obj_path: str, intrinsics_matrix: npt.ArrayLike, resolution: npt.ArrayLike, timeless: bool = False
+def log_intrinsics(
+    obj_path: str, *, width: int, height: int, intrinsics_matrix: npt.ArrayLike, timeless: bool = False
 ) -> None:
     """
     EXPERIMENTAL: Log a perspective camera model.
@@ -526,7 +528,7 @@ def _log_intrinsics(
     """
     rerun_rs.log_intrinsics(
         obj_path,
-        resolution=_to_sequence(resolution),
+        resolution=[width, height],
         intrinsics_matrix=np.asarray(intrinsics_matrix).T.tolist(),
         timeless=timeless,
     )

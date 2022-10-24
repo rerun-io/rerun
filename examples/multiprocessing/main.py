@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
 
+"""
+For this example, first start `rerun`, then run this example:
+
+```sh
+cargo r &
+examples/multiprocessing/main.py --connect
+```
+"""
+
+import argparse
 import multiprocessing
 import os
 import threading
@@ -18,10 +28,18 @@ def task(title: str) -> None:
 
 
 def main() -> None:
-    task("main_task")
-    p = multiprocessing.Process(target=task, args=("child_task",))
-    p.start()
-    p.join()
+    parser = argparse.ArgumentParser(description="Test multi-process logging to the same Rerun server")
+    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
+    args = parser.parse_args()
+
+    if args.connect:
+        task("main_task")
+        p = multiprocessing.Process(target=task, args=("child_task",))
+        p.start()
+        p.join()
+    else:
+        # This is so we can run this without arguments in `just py-run-all`
+        print("You must use the --connect argument!")
 
 
 if __name__ == "__main__":

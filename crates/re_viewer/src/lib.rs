@@ -14,6 +14,7 @@ mod misc;
 mod remote_viewer_app;
 mod ui;
 
+pub(crate) use design_tokens::DesignTokens;
 pub(crate) use misc::*;
 pub(crate) use ui::*;
 
@@ -66,7 +67,7 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
-pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) {
+pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::DesignTokens {
     #[cfg(feature = "wgpu")]
     {
         let render_state = cc.wgpu_render_state.as_ref().unwrap();
@@ -88,5 +89,5 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) {
         ));
     }
 
-    design_tokens::apply_design_tokens(&cc.egui_ctx);
+    design_tokens::apply_design_tokens(&cc.egui_ctx)
 }

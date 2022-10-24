@@ -363,7 +363,9 @@ pub(crate) fn ui_data(
                     .retained_img
                     .show_max_size(ui, Vec2::new(4.0 * max_width, max_width))
                     .on_hover_ui(|ui| {
-                        tensor_view.retained_img.show(ui);
+                        tensor_view
+                            .retained_img
+                            .show_max_size(ui, Vec2::splat(400.0));
                     });
 
                 ui.vertical(|ui| {
@@ -470,6 +472,7 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
 
 fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
     match transform {
+        Transform::Unknown => ui.label("Unknown"),
         Transform::Extrinsics(extrinsics) => ui_extrinsics(ui, extrinsics),
         Transform::Intrinsics(intrinsics) => ui_intrinsics(ui, intrinsics),
     }

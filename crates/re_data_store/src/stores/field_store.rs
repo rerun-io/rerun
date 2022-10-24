@@ -200,6 +200,11 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MonoFieldStore<Time, T> {
         });
     }
 
+    /// Get the latest value at the given time
+    pub fn latest_at<'s>(&'s self, query_time: &'_ Time) -> Option<(&'s Time, &'s (MsgId, T))> {
+        self.history.range(..=query_time).rev().next()
+    }
+
     /// Get the latest value (unless empty)
     pub fn latest(&self) -> Option<(&Time, &(MsgId, T))> {
         self.history.iter().rev().next()
