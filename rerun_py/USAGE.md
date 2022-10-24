@@ -49,15 +49,17 @@ The path defines a hierarchy. The root objects all define separate spaces. All o
 
 Objects can be separated into their own spaces by logging special transforms relative to their parents using `rerun.log_extrinsics` and `rerun.log_intrinsics`. `log_extrinsics` is for the camera pose (translation and rotation), while `log_intrinsics` is for the camera pinhole projection matrix and image resolution.
 
-Say you have a 3D world with two cameras with known extrinsics (pose) and intrinsics (pinhole model and resolution). You want to log things both in the shared 3D space, but also log each camera image and some detection in these images.
+Say you have a 3D world with two cameras with known extrinsics (pose) and intrinsics (pinhole model and resolution). You want to log some things in the shared 3D space, and also log each camera image and some detection in these images.
 
 ```py
 # Log some data to the 3D world:
-rerun.log_point("3d/points", …)
+rerun.log_points("3d/points", …)
 
-# Log the two cameras:
+# Log first camera:
 rerun.log_extrinsics("3d/camera/#0", …)
 rerun.log_intrinsics("3d/camera/#0/image", …)
+
+# Log second camera:
 rerun.log_extrinsics("3d/camera/#1", …)
 rerun.log_intrinsics("3d/camera/#1/image", …)
 
