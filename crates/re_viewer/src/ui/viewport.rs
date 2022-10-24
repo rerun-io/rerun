@@ -287,10 +287,7 @@ impl Blueprint {
             },
         );
 
-        // Insert it into the tree:
-        let fraction = 1.0 / self.space_views.len() as f32;
-        self.tree
-            .split_right(0.into(), fraction, vec![space_view_id]);
+        self.tree.push_to_first_leaf(space_view_id);
     }
 }
 
