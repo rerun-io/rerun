@@ -56,12 +56,6 @@ fn mono_data_messages() -> Vec<DataMsg> {
                 data_path: DataPath::new(obj_path.clone(), "color".into()),
                 data: LoggedData::Single(Data::Color([255, 255, 255, 255])),
             });
-            messages.push(DataMsg {
-                msg_id: MsgId::random(),
-                time_point: time_point.clone(),
-                data_path: DataPath::new(obj_path, "space".into()),
-                data: LoggedData::Single(Data::ObjPath("world".into())),
-            });
         }
     }
     messages
@@ -99,12 +93,6 @@ fn batch_data_messages() -> Vec<DataMsg> {
                 indices: indices.clone(),
                 data: DataVec::Color(colors.clone()),
             },
-        });
-        messages.push(DataMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            data_path: DataPath::new(obj_path, "space".into()),
-            data: LoggedData::BatchSplat(Data::ObjPath("world".into())),
         });
     }
 
