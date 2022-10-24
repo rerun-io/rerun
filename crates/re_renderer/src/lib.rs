@@ -22,3 +22,5 @@ pub use self::file_resolver::{FileResolver, ImportClause, SearchPath};
 
 mod file_server;
 pub use self::file_server::{FileContentsHandle, FileServer};
+
+mod workspace_shaders;

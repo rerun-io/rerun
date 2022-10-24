@@ -34,6 +34,8 @@ macro_rules! include_file {
         {
             use anyhow::Context as _;
 
+            _ = $crate::workspace_shaders::workspace_shaders();
+
             let path = ::std::path::Path::new(file!())
                 .parent()
                 .unwrap()
@@ -41,26 +43,28 @@ macro_rules! include_file {
 
             let path = if cfg!(not(target_arch = "wasm32")) {
                 // It _has_ to be canonicalizable at that point, this is run-time!
-                std::fs::canonicalize(&path)
+                ::std::fs::canonicalize(&path)
                     .with_context(|| format!("failed to canonicalize path at {path:?}"))
                     .unwrap()
             } else {
                 clean_path::clean(&path)
             };
-            println!("adding {path:?} to whatever");
 
-            // TODO: now we somehow gotta feed the beast
-
-            // TODO: need some explanations
-            let fs = $crate::MemFileSystem::get();
-            fs.create_file(&path, include_str!($path).into()).unwrap();
-
-            $crate::FileContentsHandle::Path(path)
+            // TODO: explain why we do this in two times
+            if cfg!(not(target_arch = "wasm32")) {
+                let path = path.strip_prefix("/home/cmc/dev/rerun-io/").unwrap();
+                $crate::FileContentsHandle::Path(path.to_owned())
+            } else {
+                let path = ::std::path::Path::new("rerun").join(path);
+                $crate::FileContentsHandle::Path(path)
+            }
         }
     }};
 }
 
 // ---
+
+// TODO: this whole thing can die now, Inlined isn't ever used anymore.
 
 /// A handle to the contents of a file.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
