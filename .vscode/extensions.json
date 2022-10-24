@@ -6,6 +6,7 @@
         "ms-vsliveshare.vsliveshare", // Live Share
         "polymeilex.wgsl",
         "rust-lang.rust-analyzer", // Rust-analyzer
+        "serayuzgur.crates",
         "streetsidesoftware.code-spell-checker",
         "tamasfe.even-better-toml", // TOML LSP
         "vadimcn.vscode-lldb", // CodeLLDB
