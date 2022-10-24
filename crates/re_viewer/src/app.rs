@@ -221,6 +221,9 @@ impl eframe::App for App {
             self.state
                 .viewport_panel
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
+            self.state
+                .experimental_viewport_panel
+                .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
@@ -357,7 +360,8 @@ struct AppState {
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
 
-    experimental_viewport_panel: crate::ui::experimental_viewport_panel::ExperimentalViewportPanel,
+    experimental_viewport_panel:
+        IntMap<RecordingId, crate::ui::experimental_viewport_panel::ExperimentalViewportPanel>,
     viewport_panel: IntMap<RecordingId, crate::viewport_panel::ViewportPanel>,
 
     panel_selection: PanelSelection,
@@ -421,7 +425,10 @@ impl AppState {
                 .entry(*selected_recording_id)
                 .or_default()
                 .ui(&mut ctx, ui),
-            PanelSelection::ExperimentalViewport => experimental_viewport_panel.ui(&mut ctx, ui),
+            PanelSelection::ExperimentalViewport => experimental_viewport_panel
+                .entry(*selected_recording_id)
+                .or_default()
+                .ui(&mut ctx, ui),
             PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
         });
 
@@ -526,7 +533,7 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
 
             match res {
                 Ok(path) => {
-                    let msg = format!("Successfully wrote to {path:?}");
+                    let msg = format!("File saved to {path:?}.");
                     re_log::info!(msg);
                     app.toasts.info(msg).set_duration(FILE_SAVER_NOTIF_DURATION);
                 }

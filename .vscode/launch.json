@@ -24,40 +24,21 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Debug 'objectron'",
+            "name": "Debug 'rerun' objectron.rrd",
             "type": "lldb",
             "request": "launch",
             "cargo": {
                 "args": [
                     "build",
-                    "--package=objectron"
+                    "--package=rerun"
                 ],
                 "filter": {
-                    "name": "objectron",
+                    "name": "rerun",
                     "kind": "bin"
                 }
             },
             "args": [
-                "examples/objectron/dataset/bike/batch-11/48"
-            ],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "name": "Debug 'nyud'",
-            "type": "lldb",
-            "request": "launch",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--package=nyud"
-                ],
-                "filter": {
-                    "name": "nyud",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "nyud/dataset/cafe.zip"
+                "../objectron.rrd"
             ],
             "cwd": "${workspaceFolder}"
         },

@@ -2,18 +2,14 @@
 """Shows how to use the Rerun SDK."""
 
 import argparse
-import os
 from dataclasses import dataclass
-from pathlib import Path
 from time import sleep
-from typing import Final, Iterator, Tuple
+from typing import Iterator, Tuple
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 import rerun_sdk as rerun
-
-CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
 
 
 def log_car_data() -> None:
@@ -21,21 +17,21 @@ def log_car_data() -> None:
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
-    rerun.set_space_up("projected_space", [0, -1, 0])
+    rerun.set_space_up("3d", [0, -1, 0])
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a timeline called `frame_nr`.
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
         rerun.set_time_sequence("frame_nr", sample.frame_idx)
 
-        rerun.log_image("rgb", sample.rgb_image)
+        rerun.log_image("3d/camera/image/rgb", sample.rgb_image)
 
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rerun.log_rect("bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
+        rerun.log_rect("3d/camera/image/bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
 
-        # Lets log the projected points into a separate "space", called 'projected_space'.
+        # Lets log the projected points into a separate "space", called '3d'.
         # The default spaces are "2D" and "3D" (based on what you log).
-        rerun.log_points("points", sample.point_cloud, space="projected_space")
+        rerun.log_points("3d/points", sample.point_cloud, space="3d")
 
         rerun.log_camera(
             "rgbd_camera",
@@ -44,26 +40,26 @@ def log_car_data() -> None:
             rotation_q=sample.camera.rotation_q,
             position=sample.camera.position,
             camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
-            space="projected_space",
-            target_space="2D",
+            space="3d",
+            target_space="3d/camera/image",
+        )
+
+        # Experimental new API which will replace log_camera:
+        rerun.log_extrinsics(
+            "3d/camera",
+            rotation_q=sample.camera.rotation_q,
+            position=sample.camera.position,
+            camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+        )
+        rerun.log_intrinsics(
+            "3d/camera/image",
+            width=sample.camera.resolution[0],
+            height=sample.camera.resolution[1],
+            intrinsics_matrix=sample.camera.intrinsics,
         )
 
         # The depth image is in millimeters, so we set meter=1000
-        rerun.log_depth_image("depth", sample.depth_image_mm, meter=1000)
-
-    mesh_data = CAMERA_GLB.read_bytes()
-
-    # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
-    transform = np.array(
-        [
-            [2, 0, 0, 0],
-            [0, 2, 0, 0],
-            [0, 0, 2, 0],
-        ]
-    )
-    rerun.log_mesh_file("example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
-
-    rerun.log_path("a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]))
+        rerun.log_depth_image("3d/camera/image/depth", sample.depth_image_mm, meter=1000)
 
 
 class DummyCar:

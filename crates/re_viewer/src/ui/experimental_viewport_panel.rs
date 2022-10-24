@@ -2,9 +2,9 @@
 //!
 //! Before the new panel is up-to-par with the existing viewport panel, we need to:
 //!
-//! * [ ] Render the 3D camera
-//! * [ ] Project rays and points between spaces
-//! * [x] Not create extraneous views of "intermediate" spaces (e.g. camera space)
+//! * [x] Render the 3D camera
+//! * [x] Project rays and points between spaces
+//! * [x] Don't create extraneous views of "intermediate" spaces (e.g. camera space)
 //! * [ ] Convert existing python examples to the new style
 //! * [ ] Write good docs for how to use the new system
 //! * [ ] Remove the old code path
@@ -21,12 +21,13 @@ use itertools::Itertools as _;
 
 use nohash_hasher::IntSet;
 use re_data_store::{
-    log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, Timeline,
-    TimelineStore,
+    log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, TimelineStore,
 };
 use re_log_types::{ObjectType, Transform};
 
-use crate::misc::ViewerContext;
+use crate::misc::{TimeControl, ViewerContext};
+
+use super::view3d::SpaceCamera;
 
 // ----------------------------------------------------------------------------
 
@@ -69,24 +70,25 @@ struct SpacesInfo {
 impl SpacesInfo {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
-    fn new(obj_db: &ObjDb, timeline: &Timeline) -> Self {
+    fn new(obj_db: &ObjDb, time_ctrl: &TimeControl) -> Self {
         crate::profile_function!();
 
         fn add_children(
             timeline_store: Option<&TimelineStore<i64>>,
+            query_time: Option<i64>,
             spaces_info: &mut SpacesInfo,
             parent_space_path: &ObjPath,
             parent_space_info: &mut SpaceInfo,
             tree: &ObjectTree,
         ) {
-            if let Some(transform) = query_transform(timeline_store, &tree.path) {
+            if let Some(transform) = query_transform(timeline_store, &tree.path, query_time) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space_info
                     .child_spaces
                     .insert(tree.path.clone(), transform.clone());
 
                 let mut child_space_info = SpaceInfo {
-                    parent: Some((parent_space_path.clone(), transform.clone())),
+                    parent: Some((parent_space_path.clone(), transform)),
                     ..Default::default()
                 };
                 child_space_info.objects.insert(tree.path.clone()); // spaces includes self
@@ -94,6 +96,7 @@ impl SpacesInfo {
                 for child_tree in tree.children.values() {
                     add_children(
                         timeline_store,
+                        query_time,
                         spaces_info,
                         &tree.path,
                         &mut child_space_info,
@@ -110,6 +113,7 @@ impl SpacesInfo {
                 for child_tree in tree.children.values() {
                     add_children(
                         timeline_store,
+                        query_time,
                         spaces_info,
                         parent_space_path,
                         parent_space_info,
@@ -119,6 +123,8 @@ impl SpacesInfo {
             }
         }
 
+        let timeline = time_ctrl.timeline();
+        let query_time = time_ctrl.time().map(|time| time.floor().as_i64());
         let timeline_store = obj_db.store.get(timeline);
 
         let mut spaces_info = Self::default();
@@ -126,7 +132,7 @@ impl SpacesInfo {
         for tree in obj_db.tree.children.values() {
             // Each root object is its own space (or should be)
 
-            if query_transform(timeline_store, &tree.path).is_some() {
+            if query_transform(timeline_store, &tree.path, query_time).is_some() {
                 re_log::warn_once!(
                     "Root object '{}' has a _transform - this is not allowed!",
                     tree.path
@@ -136,6 +142,7 @@ impl SpacesInfo {
             let mut space_info = SpaceInfo::default();
             add_children(
                 timeline_store,
+                query_time,
                 &mut spaces_info,
                 &tree.path,
                 &mut space_info,
@@ -151,14 +158,24 @@ impl SpacesInfo {
 // ----------------------------------------------------------------------------
 
 /// Get the latest value of the "_transform" meta-field of the given object.
-fn query_transform<'s>(
-    store: Option<&'s TimelineStore<i64>>,
+fn query_transform(
+    store: Option<&TimelineStore<i64>>,
     obj_path: &ObjPath,
-) -> Option<&'s re_log_types::Transform> {
+    query_time: Option<i64>,
+) -> Option<re_log_types::Transform> {
     let field_store = store?.get(obj_path)?.get(&FieldName::from("_transform"))?;
     // `_transform` is only allowed to be stored in a mono-field.
     let mono_field_store = field_store.get_mono::<re_log_types::Transform>().ok()?;
-    Some(&mono_field_store.latest()?.1 .1)
+
+    // There is a transform, at least at _some_ time.
+    // Is there a transform _now_?
+    let latest = query_time
+        .and_then(|query_time| mono_field_store.latest_at(&query_time))
+        .map(|(_, (_, transform))| transform.clone());
+
+    // If not, return an unknown transform to indicate that there is
+    // still a space-split.
+    Some(latest.unwrap_or(Transform::Unknown))
 }
 
 // ----------------------------------------------------------------------------
@@ -312,14 +329,16 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        space_cameras: &[SpaceCamera],
         time_objects: &Objects<'_>,
         sticky_objects: &Objects<'_>,
     ) -> egui::Response {
         crate::profile_function!();
 
-        let has_2d = time_objects.has_any_2d();
-        let has_3d = time_objects.has_any_3d();
         let multidim_tensor = multidim_tensor(time_objects);
+        let has_2d =
+            time_objects.has_any_2d() && (multidim_tensor.is_none() || time_objects.len() > 1);
+        let has_3d = time_objects.has_any_3d();
         let has_text = sticky_objects.has_any_text_entries();
 
         let mut categories = vec![];
@@ -344,7 +363,7 @@ impl SpaceView {
                         .ui_2d(ctx, ui, &self.space_path, time_objects)
                 } else if has_3d {
                     self.view_state
-                        .ui_3d(ctx, ui, &self.space_path, time_objects)
+                        .ui_3d(ctx, ui, &self.space_path, space_cameras, time_objects)
                 } else if let Some(multidim_tensor) = multidim_tensor {
                     self.view_state.ui_tensor(ui, multidim_tensor)
                 } else {
@@ -378,8 +397,13 @@ impl SpaceView {
                                 .ui_2d(ctx, ui, &self.space_path, time_objects);
                         }
                         ViewCategory::ThreeD => {
-                            self.view_state
-                                .ui_3d(ctx, ui, &self.space_path, time_objects);
+                            self.view_state.ui_3d(
+                                ctx,
+                                ui,
+                                &self.space_path,
+                                space_cameras,
+                                time_objects,
+                            );
                         }
                         ViewCategory::Tensor => {
                             self.view_state.ui_tensor(ui, multidim_tensor.unwrap());
@@ -430,13 +454,13 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
+        space_cameras: &[SpaceCamera],
         objects: &Objects<'_>,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
             let space_specs = crate::view3d::SpaceSpecs::from_objects(Some(space), objects);
             let scene = crate::view3d::scene::Scene::from_objects(ctx, objects);
-            let space_cameras = crate::view3d::space_cameras(objects);
             crate::view3d::view_3d(
                 ctx,
                 ui,
@@ -444,7 +468,7 @@ impl ViewState {
                 Some(space),
                 &space_specs,
                 scene,
-                &space_cameras,
+                space_cameras,
             );
         })
         .response
@@ -468,6 +492,47 @@ impl ViewState {
     ) -> egui::Response {
         self.state_text_entry.show(ui, ctx, objects)
     }
+}
+
+/// Look for camera extrinsics and intrinsics in the transform hierarchy
+/// and return them as cameras.
+fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera> {
+    crate::profile_function!();
+
+    let mut space_cameras = vec![];
+
+    for (child_path, child_transform) in &space_info.child_spaces {
+        if let Transform::Extrinsics(extrinsics) = child_transform {
+            let mut found_any_intrinsics = false;
+
+            if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
+                for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
+                    if let Transform::Intrinsics(intrinsics) = grand_child_transform {
+                        space_cameras.push(SpaceCamera {
+                            obj_path: child_path.clone(),
+                            instance_index_hash: re_log_types::IndexHash::NONE,
+                            extrinsics: *extrinsics,
+                            intrinsics: Some(*intrinsics),
+                            target_space: Some(grand_child_path.clone()),
+                        });
+                        found_any_intrinsics = true;
+                    }
+                }
+            }
+
+            if !found_any_intrinsics {
+                space_cameras.push(SpaceCamera {
+                    obj_path: child_path.clone(),
+                    instance_index_hash: re_log_types::IndexHash::NONE,
+                    extrinsics: *extrinsics,
+                    intrinsics: None,
+                    target_space: None,
+                });
+            }
+        }
+    }
+
+    space_cameras
 }
 
 fn multidim_tensor<'s>(objects: &Objects<'s>) -> Option<&'s re_log_types::Tensor> {
@@ -560,6 +625,7 @@ fn space_view_ui(
                 }
             }
         }
+        let time_objects = filter_objects(ctx, &time_objects);
 
         // Get the "sticky" objects (e.g. text logs)
         // that don't care about the current time:
@@ -586,11 +652,26 @@ fn space_view_ui(
                 }
             }
         }
+        let sticky_objects = filter_objects(ctx, &sticky_objects);
 
-        space_view.objects_ui(ctx, ui, &time_objects, &sticky_objects)
+        let space_cameras = &space_cameras(spaces_info, space_info);
+
+        space_view.objects_ui(ctx, ui, space_cameras, &time_objects, &sticky_objects)
     } else {
         unknown_space_label(ui, &space_view.space_path)
     }
+}
+
+fn filter_objects<'s>(ctx: &mut ViewerContext<'_>, objects: &'_ Objects<'s>) -> Objects<'s> {
+    crate::profile_function!();
+    objects.filter(|props| {
+        props.visible
+            && ctx
+                .rec_cfg
+                .projected_object_properties
+                .get(props.obj_path)
+                .visible
+    })
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
@@ -611,7 +692,7 @@ impl ExperimentalViewportPanel {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, ctx.rec_cfg.time_ctrl.timeline());
+        let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
         if ui.button("Reset space views / blueprint").clicked()
             || self.blueprint.space_views.is_empty()
