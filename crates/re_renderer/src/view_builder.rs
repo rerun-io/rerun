@@ -123,8 +123,8 @@ impl ViewBuilder {
             );
 
             let view_from_world = config.view_from_world.to_mat4();
-            let camera_position =
-                config.view_from_world.rotation().inverse() * config.view_from_world.translation();
+            let camera_position = config.view_from_world.rotation().inverse()
+                * (-config.view_from_world.translation());
 
             // We use infinite reverse-z projection matrix.
             // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
