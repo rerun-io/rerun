@@ -135,6 +135,7 @@ impl Application {
             present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
+        surface.configure(&device, &surface_config);
 
         let re_ctx = RenderContext::new(
             &device,
