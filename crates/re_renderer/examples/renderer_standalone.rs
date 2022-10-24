@@ -24,7 +24,6 @@ use re_renderer::{
     },
     view_builder::{TargetConfiguration, ViewBuilder},
 };
-use type_map::concurrent::TypeMap;
 use winit::{
     dpi::PhysicalSize,
     event::{Event, WindowEvent},
@@ -37,26 +36,14 @@ use winit::{
 // Rendering things using Rerun's renderer.
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
-    let mut app = Application::new(event_loop, window).await.unwrap();
-
-    let re_ctx = RenderContext::new(
-        &app.device,
-        &app.queue,
-        RenderContextConfig {
-            output_format_color: app.swapchain_format,
-        },
-    );
-
-    // Store our `RenderContext` into the `WgpuContext` so that lifetime issues will
-    // be handled for us.
-    app.user_data.insert(re_ctx);
+    let app = Application::new(event_loop, window).await.unwrap();
     app.run();
 }
 
-// Uses a re_renderer::Viewbuilder to draw an example scene.
+/// Uses a [`re_renderer::ViewBuilder`] to draw an example scene.
 fn draw_view(
     time: &Time,
-    user_data: &mut TypeMap,
+    re_ctx: &mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
@@ -75,8 +62,6 @@ fn draw_view(
         near_plane_distance: 0.01,
         target_identifier: 0,
     };
-
-    let re_ctx = user_data.get_mut::<RenderContext>().unwrap();
 
     let triangle = TestTriangleDrawable::new(re_ctx, device);
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
@@ -134,16 +119,6 @@ fn draw_view(
     view_builder
 }
 
-// Composites a finished ViewBuilder into a given renderpass.
-fn composite_view<'a>(
-    user_data: &'a mut TypeMap,
-    rpass: &mut wgpu::RenderPass<'a>,
-    view_builder: &ViewBuilder,
-) {
-    let re_ctx = user_data.get::<RenderContext>().unwrap();
-    view_builder.composite(re_ctx, rpass).unwrap();
-}
-
 // ---
 
 // Usual winit + wgpu initialization stuff
@@ -153,12 +128,11 @@ struct Application {
     window: Window,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    swapchain_format: wgpu::TextureFormat,
     surface: wgpu::Surface,
     surface_config: wgpu::SurfaceConfiguration,
     time: Time,
 
-    pub user_data: TypeMap,
+    pub re_ctx: RenderContext,
 }
 
 impl Application {
@@ -204,22 +178,26 @@ impl Application {
             present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
-        surface.configure(&device, &surface_config);
 
+        let re_ctx = RenderContext::new(
+            &device,
+            &queue,
+            RenderContextConfig {
+                output_format_color: swapchain_format,
+            },
+        );
         Ok(Self {
             event_loop,
             window,
             device,
             queue,
-            swapchain_format,
             surface,
             surface_config,
+            re_ctx,
             time: Time {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
             },
-
-            user_data: TypeMap::new(),
         })
     }
 
@@ -267,7 +245,7 @@ impl Application {
 
                     let view_builder = draw_view(
                         &self.time,
-                        &mut self.user_data,
+                        &mut self.re_ctx,
                         &self.device,
                         &self.queue,
                         &mut encoder,
@@ -275,7 +253,7 @@ impl Application {
                     );
 
                     {
-                        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                             label: None,
                             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                                 view: &view,
@@ -288,16 +266,15 @@ impl Application {
                             depth_stencil_attachment: None,
                         });
 
-                        composite_view(&mut self.user_data, &mut rpass, &view_builder);
+                        view_builder
+                            .composite(&self.re_ctx, &mut pass)
+                            .expect("Failed to composite view main surface");
                     }
 
                     self.queue.submit(Some(encoder.finish()));
                     frame.present();
 
-                    self.user_data
-                        .get_mut::<RenderContext>()
-                        .unwrap()
-                        .frame_maintenance(&self.device);
+                    self.re_ctx.frame_maintenance(&self.device);
 
                     // Note that this measures time spent on CPU, not GPU
                     // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
