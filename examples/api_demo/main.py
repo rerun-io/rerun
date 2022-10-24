@@ -1,44 +1,40 @@
 #!/usr/bin/env python3
 """Minimal examples of Rerun SDK usage.
 
-set_visible:
-Uses `rerun.set_visible` to toggle the visibility of some rects
+Example usage:
+* Run all demos: `examples/api_demo/main.py`
+* Run specific demo: `examples/api_demo/main.py --demo set_visible`
 """
 
 import argparse
+import os
+from pathlib import Path
 from time import sleep
-from typing import Any
+from typing import Any, Final
 
 import numpy as np
 import rerun_sdk as rerun
 from rerun_sdk import ClassDescription
 
 
-def args_set_visible(subparsers: Any) -> None:
-    set_visible_parser = subparsers.add_parser("set_visible")
-    set_visible_parser.set_defaults(func=run_set_visible)
+def run_misc() -> None:
+    CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
+    mesh_data = CAMERA_GLB.read_bytes()
+
+    # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
+    transform = np.array(
+        [
+            [2, 0, 0, 0],
+            [0, 2, 0, 0],
+            [0, 0, 2, 0],
+        ]
+    )
+    rerun.log_mesh_file("3d/example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
+
+    rerun.log_path("3d/a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]))
 
 
-def run_set_visible(args: argparse.Namespace) -> None:
-    rerun.set_time_seconds("sim_time", 1)
-    rerun.log_rect("rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
-    rerun.log_rect("rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
-    rerun.set_time_seconds("sim_time", 2)
-    rerun.set_visible("rect/0", False)
-    rerun.set_time_seconds("sim_time", 3)
-    rerun.set_visible("rect/1", False)
-    rerun.set_time_seconds("sim_time", 4)
-    rerun.set_visible("rect/0", True)
-    rerun.set_time_seconds("sim_time", 5)
-    rerun.set_visible("rect/1", True)
-
-
-def args_segmentation(subparsers: Any) -> None:
-    segmentation_parser = subparsers.add_parser("segmentation")
-    segmentation_parser.set_defaults(func=run_segmentation)
-
-
-def run_segmentation(args: argparse.Namespace) -> None:
+def run_segmentation() -> None:
     rerun.set_time_seconds("sim_time", 1)
 
     # Log an image before we have set up our labels
@@ -66,8 +62,32 @@ def run_segmentation(args: argparse.Namespace) -> None:
     )
 
 
+def run_set_visible() -> None:
+    rerun.set_time_seconds("sim_time", 1)
+    rerun.log_rect("rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
+    rerun.log_rect("rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
+    rerun.set_time_seconds("sim_time", 2)
+    rerun.set_visible("rect/0", False)
+    rerun.set_time_seconds("sim_time", 3)
+    rerun.set_visible("rect/1", False)
+    rerun.set_time_seconds("sim_time", 4)
+    rerun.set_visible("rect/0", True)
+    rerun.set_time_seconds("sim_time", 5)
+    rerun.set_visible("rect/1", True)
+
+
 def main() -> None:
+    demos = {
+        "misc": run_misc,
+        "segmentation": run_segmentation,
+        "set_visible": run_set_visible,
+    }
+
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser.add_argument(
+        "--demo", type=str, default="all", help="What demo to run", choices=["all"] + list(demos.keys())
+    )
+
     parser.add_argument(
         "--connect",
         dest="connect",
@@ -83,11 +103,6 @@ def main() -> None:
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
 
-    subparsers = parser.add_subparsers(required=True)
-
-    args_set_visible(subparsers)
-    args_segmentation(subparsers)
-
     args = parser.parse_args()
 
     if args.serve:
@@ -98,7 +113,13 @@ def main() -> None:
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    args.func(args)
+    if args.demo == "all":
+        print("Running all demos…")
+        for name, demo in demos.items():
+            demo()
+    else:
+        demo = demos[args.demo]
+        demo()
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")

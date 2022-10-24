@@ -2,10 +2,19 @@ use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
 
+use crate::DesignTokens;
+
 #[cfg(not(any(feature = "glow", feature = "wgpu")))]
 compile_error!("You must enable either the 'glow' or 'wgpu' feature of re_viewer.");
 
-pub fn run_native_app(app_creator: eframe::AppCreator) {
+/// If true, we fill the entire window, except for the close/maximize/minimize buttons in the top-left.
+/// See <https://github.com/emilk/egui/pull/2049>
+pub const FULLSIZE_CONTENT: bool = cfg!(target_os = "macos");
+
+type AppCreator =
+    Box<dyn FnOnce(&eframe::CreationContext<'_>, DesignTokens) -> Box<dyn eframe::App>>;
+
+pub fn run_native_app(app_creator: AppCreator) {
     let native_options = eframe::NativeOptions {
         #[cfg(not(feature = "wgpu"))]
         depth_buffer: 24,
@@ -23,6 +32,10 @@ pub fn run_native_app(app_creator: eframe::AppCreator) {
         initial_window_size: Some([1600.0, 1200.0].into()),
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
+
+        #[cfg(target_os = "macos")]
+        fullsize_content: FULLSIZE_CONTENT,
+
         ..Default::default()
     };
 
@@ -30,16 +43,21 @@ pub fn run_native_app(app_creator: eframe::AppCreator) {
         "Rerun Viewer",
         native_options,
         Box::new(move |cc| {
-            crate::customize_eframe(cc);
-            app_creator(cc)
+            let design_tokens = crate::customize_eframe(cc);
+            app_creator(cc, design_tokens)
         }),
     );
 }
 
 pub fn run_native_viewer_with_rx(rx: Receiver<LogMsg>) {
-    run_native_app(Box::new(move |cc| {
+    run_native_app(Box::new(move |cc, design_tokens| {
         let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-        Box::new(crate::App::from_receiver(&cc.egui_ctx, cc.storage, rx))
+        Box::new(crate::App::from_receiver(
+            &cc.egui_ctx,
+            design_tokens,
+            cc.storage,
+            rx,
+        ))
     }));
 }
 

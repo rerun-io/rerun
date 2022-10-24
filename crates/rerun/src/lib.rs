@@ -107,9 +107,10 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         #[cfg(not(feature = "web"))]
         anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
     } else {
-        re_viewer::run_native_app(Box::new(move |cc| {
+        re_viewer::run_native_app(Box::new(move |cc, design_tokens| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let mut app = re_viewer::App::from_receiver(&cc.egui_ctx, cc.storage, rx);
+            let mut app =
+                re_viewer::App::from_receiver(&cc.egui_ctx, design_tokens, cc.storage, rx);
             app.set_profiler(profiler);
             Box::new(app)
         }));
@@ -130,9 +131,13 @@ async fn connect_to_ws_url(
         host_web_viewer(rerun_server_ws_url).await?;
     } else {
         // By using RemoteViewerApp we let the user change the server they are connected to.
-        re_viewer::run_native_app(Box::new(move |cc| {
-            let mut app =
-                re_viewer::RemoteViewerApp::new(&cc.egui_ctx, cc.storage, rerun_server_ws_url);
+        re_viewer::run_native_app(Box::new(move |cc, design_tokens| {
+            let mut app = re_viewer::RemoteViewerApp::new(
+                &cc.egui_ctx,
+                design_tokens,
+                cc.storage,
+                rerun_server_ws_url,
+            );
             app.set_profiler(profiler);
             Box::new(app)
         }));

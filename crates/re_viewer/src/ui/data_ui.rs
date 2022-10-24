@@ -71,7 +71,7 @@ pub(crate) fn view_instance_generic(
                     Ok((time_msgid_index, data_vec)) => {
                         if data_vec.len() == 1 {
                             let data = data_vec.last().unwrap();
-                            let (_, msg_id, _) = &time_msgid_index[0];
+                            let (_, msg_id) = &time_msgid_index[0];
                             crate::data_ui::ui_data(ctx, ui, msg_id, &data, preview);
                         } else {
                             ui_data_vec(ui, &data_vec);
@@ -110,7 +110,7 @@ pub(crate) fn view_data(
         Ok((time_msgid_index, data_vec)) => {
             if data_vec.len() == 1 {
                 let data = data_vec.last().unwrap();
-                let (_, msg_id, _) = &time_msgid_index[0];
+                let (_, msg_id) = &time_msgid_index[0];
                 show_detailed_data(ctx, ui, msg_id, &data);
             } else {
                 ui_data_vec(ui, &data_vec);
@@ -363,7 +363,9 @@ pub(crate) fn ui_data(
                     .retained_img
                     .show_max_size(ui, Vec2::new(4.0 * max_width, max_width))
                     .on_hover_ui(|ui| {
-                        tensor_view.retained_img.show(ui);
+                        tensor_view
+                            .retained_img
+                            .show_max_size(ui, Vec2::splat(400.0));
                     });
 
                 ui.vertical(|ui| {
@@ -470,6 +472,7 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
 
 fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
     match transform {
+        Transform::Unknown => ui.label("Unknown"),
         Transform::Extrinsics(extrinsics) => ui_extrinsics(ui, extrinsics),
         Transform::Intrinsics(intrinsics) => ui_intrinsics(ui, intrinsics),
     }

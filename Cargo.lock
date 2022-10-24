@@ -3074,6 +3074,7 @@ dependencies = [
  "crossbeam",
  "env_logger",
  "glam",
+ "instant",
  "log",
  "macaw",
  "notify",
