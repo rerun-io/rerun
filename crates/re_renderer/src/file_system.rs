@@ -18,14 +18,14 @@ pub trait FileSystem {
     fn exists(&self, path: impl AsRef<Path>) -> bool;
 
     fn create_dir_all(&self, _path: impl AsRef<Path>) -> anyhow::Result<()> {
-        unimplemented!("create_dir_all() is not supported on this backend")
+        panic!("create_dir_all() is not supported on this backend")
     }
     fn create_file(
         &self,
         _path: impl AsRef<Path>,
         _contents: Cow<'static, str>,
     ) -> anyhow::Result<()> {
-        unimplemented!("create_file() is not supported on this backend")
+        panic!("create_file() is not supported on this backend")
     }
 }
 

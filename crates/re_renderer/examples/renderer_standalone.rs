@@ -49,11 +49,7 @@ fn draw_view(
     resolution: [u32; 2],
 ) -> ViewBuilder {
     // TODO: note how caching/lifecycle of everything works
-    let mut resolver = FileResolver::with_search_path(get_filesystem(), {
-        let mut search_path = SearchPath::default();
-        // TODO: fill up search path
-        search_path
-    });
+    let mut resolver = FileResolver::with_search_path(get_filesystem(), SearchPath::from_env());
 
     let mut view_builder = ViewBuilder::new();
 

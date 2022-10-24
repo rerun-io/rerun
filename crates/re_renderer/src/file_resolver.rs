@@ -121,18 +121,14 @@ pub struct SearchPath {
 }
 
 impl SearchPath {
+    // TODO: flesh out the end-to-env env use case
     // TODO: gotta think about the web tho
-    pub fn from_env() -> anyhow::Result<Self> {
+    pub fn from_env() -> Self {
         const RERUN_SHADER_PATH: &str = "RERUN_SHADER_PATH";
-        const CARGO_MANIFEST_DIR: &str = "CARGO_MANIFEST_DIR";
 
-        let this = std::env::var(RERUN_SHADER_PATH)
-            .map_or_else(|_| Ok(SearchPath::default()), |s| s.parse())?;
-
-        // TODO: default dirs when running from cargo
-        if let Ok(s) = std::env::var(CARGO_MANIFEST_DIR) {}
-
-        Ok(this)
+        std::env::var(RERUN_SHADER_PATH)
+            .map_or_else(|_| Ok(SearchPath::default()), |s| s.parse())
+            .unwrap_or_else(|_| SearchPath::default())
     }
 
     /// Push a path to search path.
@@ -432,7 +428,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         Ok(&self
             .files
             .get(path.as_ref())
-            .expect("we've just populated!")
+            .expect("we've just populated it!")
             .contents)
     }
 
@@ -448,7 +444,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         Ok(self
             .files
             .get(path.as_ref())
-            .expect("we've just populated!")
+            .expect("we've just populated it!")
             .imports
             .iter()
             .map(|p| p.as_path()))
@@ -478,7 +474,6 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                 visited.insert(path.clone()),
                 "import cycle detected: {path_stack:?}"
             );
-            dbg!(&path); // TODO: might be worth a permanent re_debug!
 
             if !this.files.contains_key(&path) {
                 let contents = this
@@ -513,7 +508,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 
                 let contents = lines.join("\n");
                 this.files.insert(
-                    path.to_owned(),
+                    path.clone(),
                     InterpolatedFile {
                         contents: contents.clone(), // TODO
                         imports,
@@ -554,7 +549,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         // that leads somewhere... if it does: import that.
         {
             let path = cwd.as_ref().join(&path).clean();
-            if dbg!(self.fs.exists(dbg!(&path))) {
+            if self.fs.exists(&path) {
                 return path.into();
             }
         }
@@ -654,7 +649,7 @@ mod tests_file_resolver {
             // Shader 1: interpolate
             let contents = resolver
                 .resolve_contents("/shaders1/common/shader1.wgsl")
-                .map_err(|err| re_error::format(err))
+                .map_err(re_error::format)
                 .unwrap();
             let expected = unindent(r#"my first shader!"#);
             assert_eq!(expected, contents);
@@ -674,7 +669,7 @@ mod tests_file_resolver {
             // Shader 2: interpolate
             let contents = resolver
                 .resolve_contents("/shaders1/a/b/shader2.wgsl")
-                .map_err(|err| re_error::format(err))
+                .map_err(re_error::format)
                 .unwrap();
             let expected = unindent(
                 r#"
@@ -722,7 +717,7 @@ mod tests_file_resolver {
             // Shader 3: interpolate
             let contents = resolver
                 .resolve_contents("/shaders1/a/b/c/d/shader3.wgsl")
-                .map_err(|err| re_error::format(err))
+                .map_err(re_error::format)
                 .unwrap();
             let expected = unindent(
                 r#"
@@ -772,7 +767,7 @@ mod tests_file_resolver {
 
         let contents = resolver
             .resolve_contents("/shaders2/shader1.wgsl")
-            .map_err(|err| re_error::format(err))
+            .map_err(re_error::format)
             .unwrap();
         let expected = unindent(r#"my first shader!"#);
         assert_eq!(expected, contents);
@@ -826,7 +821,7 @@ mod tests_file_resolver {
 
         resolver
             .resolve_contents("/shaders3/shader1.wgsl")
-            .map_err(|err| re_error::format(err))
+            .map_err(re_error::format)
             .unwrap();
     }
 }

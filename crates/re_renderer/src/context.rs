@@ -80,18 +80,14 @@ impl RenderContext {
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
         // TODO: note how caching/lifecycle of everything works
-        let mut resolver = FileResolver::with_search_path(get_filesystem(), {
-            let mut search_path = SearchPath::default();
-            // TODO: fill up search path
-            search_path
-        });
+        let mut resolver = FileResolver::with_search_path(get_filesystem(), SearchPath::from_env());
 
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
         // Always an empty set in release builds.
         let modified_paths = FileServer::get_mut(|fs| fs.collect(&mut resolver));
-        if modified_paths.len() > 0 {
-            dbg!(&modified_paths); // TODO: worth a perma one?
+        if !modified_paths.is_empty() {
+            re_log::debug!(?modified_paths, "got some filesystem events");
         }
 
         {

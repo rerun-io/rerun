@@ -517,12 +517,10 @@ fn paint_view(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
                         // TODO: note how caching/lifecycle of everything works
-                        let mut resolver =
-                            re_renderer::FileResolver::with_search_path(get_filesystem(), {
-                                let mut search_path = re_renderer::SearchPath::default();
-                                // TODO: fill up search path
-                                search_path
-                            });
+                        let mut resolver = re_renderer::FileResolver::with_search_path(
+                            get_filesystem(),
+                            re_renderer::SearchPath::from_env(),
+                        );
 
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         let triangle = TestTriangleDrawable::new(ctx, device, &mut resolver);

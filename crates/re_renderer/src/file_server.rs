@@ -1,4 +1,3 @@
-use anyhow::Context;
 use std::{borrow::Cow, path::PathBuf};
 
 // ---
@@ -16,11 +15,8 @@ macro_rules! include_file {
         {
             // TODO: need some explanations
             let fs = $crate::OsFileSystem::default();
-            let mut resolver = $crate::FileResolver::with_search_path(fs, {
-                let mut search_path = $crate::SearchPath::default();
-                // TODO: fill up search path
-                search_path
-            });
+            let mut resolver =
+                $crate::FileResolver::with_search_path(fs, $crate::SearchPath::from_env());
 
             let path = ::std::path::Path::new(file!())
                 .parent()
@@ -34,7 +30,7 @@ macro_rules! include_file {
         {
             use anyhow::Context as _;
 
-            _ = $crate::workspace_shaders::workspace_shaders();
+            $crate::workspace_shaders::init();
 
             let path = ::std::path::Path::new(file!())
                 .parent()
@@ -52,7 +48,7 @@ macro_rules! include_file {
 
             // TODO: explain why we do this in two times
             if cfg!(not(target_arch = "wasm32")) {
-                let path = path.strip_prefix("/home/cmc/dev/rerun-io/").unwrap();
+                let path = path.strip_prefix("/home/cmc/dev/rerun-io/").unwrap(); // TODO
                 $crate::FileContentsHandle::Path(path.to_owned())
             } else {
                 let path = ::std::path::Path::new("rerun").join(path);
