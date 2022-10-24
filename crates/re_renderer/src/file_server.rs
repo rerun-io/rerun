@@ -40,16 +40,19 @@ pub enum FileContentsHandle {
 }
 impl FileContentsHandle {
     /// Resolve the contents of the handle.
-    // TODO(cmc): #import support
-    pub fn resolve(&self) -> anyhow::Result<Cow<'_, str>> {
+    pub fn resolve_contents<Fs: FileSystem>(
+        &self,
+        resolver: &mut FileResolver<Fs>,
+    ) -> anyhow::Result<Cow<'_, str>> {
         match self {
             Self::Inlined(data) => Ok(Cow::Borrowed(data)),
-            Self::Path(path) => std::fs::read_to_string(path)
-                .with_context(|| "failed to read file at {path:?}")
-                .map(Into::into),
+            // TODO: again with the cloning here
+            Self::Path(path) => resolver.resolve_contents(path).map(|s| s.to_owned().into()),
         }
     }
 }
+
+use crate::{FileResolver, FileSystem};
 
 pub use self::file_server_impl::FileServer;
 
@@ -64,6 +67,8 @@ mod file_server_impl {
     use crossbeam::channel::Receiver;
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::RwLock;
+
+    use crate::{FileResolver, FileSystem, OsFileSystem, SearchPath};
 
     use super::FileContentsHandle;
 
@@ -97,7 +102,7 @@ mod file_server_impl {
         }
     }
 
-    // Sigleton API
+    // Singleton API
     impl FileServer {
         /// Returns a reference to the global `FileServer`.
         pub fn get<T>(mut f: impl FnMut(&FileServer) -> T) -> T {
@@ -167,7 +172,10 @@ mod file_server_impl {
 
         /// Coalesces all filesystem events since the last call to `collect`,
         /// and returns a set of all modified paths.
-        pub fn collect(&mut self) -> HashSet<PathBuf> {
+        pub fn collect<Fs: FileSystem>(
+            &mut self,
+            resolver: &mut FileResolver<Fs>,
+        ) -> HashSet<PathBuf> {
             fn canonicalize_opt(path: impl AsRef<Path>) -> Option<PathBuf> {
                 let path = path.as_ref();
                 std::fs::canonicalize(path)
@@ -184,6 +192,13 @@ mod file_server_impl {
                         Access(_) | Create(_) | Modify(_) | Any => ev
                             .paths
                             .into_iter()
+                            .flat_map(|path| {
+                                let mut paths = vec![path.clone()];
+                                if let Ok(imports) = resolver.resolve_imports(path) {
+                                    paths.extend(imports.map(|p| p.to_owned()));
+                                }
+                                paths
+                            })
                             .filter_map(canonicalize_opt)
                             .collect::<Vec<_>>(),
                         Remove(_) | Other => Vec::new(),

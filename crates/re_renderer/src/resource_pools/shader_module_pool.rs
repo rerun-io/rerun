@@ -6,7 +6,7 @@ use anyhow::Context as _;
 
 use crate::debug_label::DebugLabel;
 use crate::resource_pools::resource_pool::*;
-use crate::FileContentsHandle;
+use crate::{FileContentsHandle, FileResolver, FileSystem};
 
 // ---
 
@@ -40,10 +40,14 @@ impl Hash for ShaderModuleDesc {
     }
 }
 impl ShaderModuleDesc {
-    fn create_shader_module(&self, device: &wgpu::Device) -> anyhow::Result<wgpu::ShaderModule> {
+    fn create_shader_module<Fs: FileSystem>(
+        &self,
+        device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
+    ) -> anyhow::Result<wgpu::ShaderModule> {
         let code = self
             .source
-            .resolve()
+            .resolve_contents(resolver)
             .context("couldn't resolve file contents")?;
 
         // All wgpu errors come asynchronously: this call will succeed whether the given
@@ -72,16 +76,17 @@ pub struct ShaderModulePool {
 }
 
 impl ShaderModulePool {
-    pub fn request(
+    pub fn request<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
         desc: &ShaderModuleDesc,
     ) -> ShaderModuleHandle {
         self.pool.get_handle(desc, |desc| {
             // TODO(cmc): must provide a way to properly handle errors in requests.
             // Probably better to wait for a first PoC of #import to land though,
             // as that will surface a bunch of shortcomings in our error handling too.
-            let shader_module = desc.create_shader_module(device).unwrap();
+            let shader_module = desc.create_shader_module(device, resolver).unwrap();
             ShaderModule {
                 last_frame_used: AtomicU64::new(0),
                 last_frame_modified: AtomicU64::new(0),
@@ -90,9 +95,10 @@ impl ShaderModulePool {
         })
     }
 
-    pub fn frame_maintenance(
+    pub fn frame_maintenance<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
         frame_index: u64,
         updated_paths: &HashSet<PathBuf>,
     ) {
@@ -126,7 +132,7 @@ impl ShaderModulePool {
                 .get_resource_mut(handle)
                 .expect("the pool itself handed us that handle");
 
-            let shader_module = match desc.create_shader_module(device) {
+            let shader_module = match desc.create_shader_module(device, resolver) {
                 Ok(sm) => sm,
                 Err(err) => {
                     re_log::error!(

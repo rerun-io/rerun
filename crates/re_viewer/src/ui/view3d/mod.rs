@@ -515,15 +515,28 @@ fn paint_view(
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
+                        // TODO: maybe we want the resolver to pick the Fs on its own then?
+
+                        // TODO: what about web and release?
+                        let mut fs = re_renderer::OsFileSystem::default();
+
+                        // TODO: note how caching/lifecycle of everything works
+                        let mut resolver = re_renderer::FileResolver::with_search_path(fs, {
+                            let mut search_path = re_renderer::SearchPath::default();
+                            // TODO: fill up search path
+                            search_path
+                        });
+
                         let ctx = paint_callback_resources.get_mut().unwrap();
-                        let triangle = TestTriangleDrawable::new(ctx, device);
-                        let skybox = GenericSkyboxDrawable::new(ctx, device);
+                        let triangle = TestTriangleDrawable::new(ctx, device, &mut resolver);
+                        let skybox = GenericSkyboxDrawable::new(ctx, device, &mut resolver);
                         view_builder_prepare
                             .write()
                             .setup_view(
                                 ctx,
                                 device,
                                 queue,
+                                &mut resolver,
                                 &TargetConfiguration {
                                     resolution_in_pixel,
 

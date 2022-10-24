@@ -18,7 +18,7 @@ use macaw::IsoTransform;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},
     renderer::{GenericSkyboxDrawable, TestTriangleDrawable},
-    view_builder::{TargetConfiguration, ViewBuilder},
+    view_builder::{TargetConfiguration, ViewBuilder}, OsFileSystem, FileResolver, SearchPath,
 };
 use type_map::concurrent::TypeMap;
 use wgpu::{
@@ -70,11 +70,21 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
             let re_ctx = user_data.get_mut::<RenderContext>().unwrap();
 
-            let triangle = TestTriangleDrawable::new(re_ctx, device);
-            let skybox = GenericSkyboxDrawable::new(re_ctx, device);
+            // TODO: what about web and release?
+            let mut fs = OsFileSystem::default();
+
+            // TODO: note how caching/lifecycle of everything works
+            let mut resolver = FileResolver::with_search_path(fs, {
+                let mut search_path = SearchPath::default();
+                // TODO: fill up search path
+                search_path
+            });
+
+            let triangle = TestTriangleDrawable::new(re_ctx, device, &mut resolver);
+            let skybox = GenericSkyboxDrawable::new(re_ctx, device, &mut resolver);
 
             view_builder
-                .setup_view(re_ctx, device, queue, &target_cfg)
+                .setup_view(re_ctx, device, queue, &mut resolver, &target_cfg)
                 .unwrap()
                 .queue_draw(&triangle)
                 .queue_draw(&skybox)

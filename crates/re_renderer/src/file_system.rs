@@ -24,7 +24,11 @@ pub trait FileSystem {
     }
 }
 
+// ---
+
+#[derive(Default)]
 pub struct OsFileSystem;
+
 impl FileSystem for OsFileSystem {
     fn read(&self, path: impl AsRef<Path>) -> anyhow::Result<Vec<u8>> {
         let path = path.as_ref();
@@ -47,11 +51,14 @@ impl FileSystem for OsFileSystem {
     }
 }
 
+// ---
+
 // TODO: need a Cow in there
 #[derive(Default)]
 pub struct MemFileSystem {
     files: HashMap<PathBuf, Vec<u8>>,
 }
+
 impl FileSystem for MemFileSystem {
     fn read(&self, path: impl AsRef<Path>) -> anyhow::Result<Vec<u8>> {
         let path = path.as_ref().clean();

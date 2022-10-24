@@ -1,9 +1,9 @@
 use type_map::concurrent::{self, TypeMap};
 
-use crate::FileServer;
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
+use crate::{FileResolver, FileServer, FileSystem, OsFileSystem, SearchPath};
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
@@ -41,15 +41,16 @@ pub(crate) struct Renderers {
 }
 
 impl Renderers {
-    pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
+    pub fn get_or_create<Fs: FileSystem, R: 'static + Renderer + Send + Sync>(
         &mut self,
         shared_data: &SharedRendererData,
         resource_pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
     ) -> &R {
         self.renderers
             .entry()
-            .or_insert_with(|| R::create_renderer(shared_data, resource_pools, device))
+            .or_insert_with(|| R::create_renderer(shared_data, resource_pools, device, resolver))
     }
 
     pub fn get<R: 'static + Renderer>(&self) -> Option<&R> {
@@ -78,10 +79,23 @@ impl RenderContext {
     }
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
+        // TODO: what about web and release?
+        let mut fs = OsFileSystem::default();
+
+        // TODO: note how caching/lifecycle of everything works
+        let mut resolver = FileResolver::with_search_path(fs, {
+            let mut search_path = SearchPath::default();
+            // TODO: fill up search path
+            search_path
+        });
+
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
         // Always an empty set in release builds.
-        let modified_paths = FileServer::get_mut(|fs| fs.collect());
+        let modified_paths = FileServer::get_mut(|fs| fs.collect(&mut resolver));
+        if modified_paths.len() > 0 {
+            dbg!(&modified_paths); // TODO: worth a perma one?
+        }
 
         {
             let WgpuResourcePools {
@@ -104,7 +118,12 @@ impl RenderContext {
                 pipeline_layouts,
             );
 
-            shader_modules.frame_maintenance(device, self.frame_index, &modified_paths);
+            shader_modules.frame_maintenance(
+                device,
+                &mut resolver,
+                self.frame_index,
+                &modified_paths,
+            );
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use

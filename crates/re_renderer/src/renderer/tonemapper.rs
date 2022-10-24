@@ -27,11 +27,19 @@ impl Drawable for TonemapperDrawable {
 }
 
 impl TonemapperDrawable {
-    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device, hdr_target: TextureHandle) -> Self {
+    pub fn new<Fs: FileSystem>(
+        ctx: &mut RenderContext,
+        device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
+        hdr_target: TextureHandle,
+    ) -> Self {
         let pools = &mut ctx.resource_pools;
-        let tonemapper =
-            ctx.renderers
-                .get_or_create::<Tonemapper>(&ctx.shared_renderer_data, pools, device);
+        let tonemapper = ctx.renderers.get_or_create::<_, Tonemapper>(
+            &ctx.shared_renderer_data,
+            pools,
+            device,
+            resolver,
+        );
         TonemapperDrawable {
             hdr_target_bind_group: pools.bind_groups.request(
                 device,
@@ -52,10 +60,11 @@ impl TonemapperDrawable {
 impl Renderer for Tonemapper {
     type DrawData = TonemapperDrawable;
 
-    fn create_renderer(
+    fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
     ) -> Self {
         let bind_group_layout = pools.bind_group_layouts.request(
             device,
@@ -89,6 +98,7 @@ impl Renderer for Tonemapper {
                 vertex_entrypoint: "main".into(),
                 vertex_handle: pools.shader_modules.request(
                     device,
+                    resolver,
                     &ShaderModuleDesc {
                         label: "screen_triangle (vertex)".into(),
                         source: include_file!("../../shader/screen_triangle.wgsl"),
@@ -97,6 +107,7 @@ impl Renderer for Tonemapper {
                 fragment_entrypoint: "main".into(),
                 fragment_handle: pools.shader_modules.request(
                     device,
+                    resolver,
                     &ShaderModuleDesc {
                         label: "tonemap (fragment)".into(),
                         source: include_file!("../../shader/tonemap.wgsl"),
