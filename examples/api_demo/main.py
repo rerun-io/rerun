@@ -76,11 +76,6 @@ def run_set_visible() -> None:
     rerun.set_visible("rect/1", True)
 
 
-def args_misc(subparsers: Any) -> None:
-    segmentation_parser = subparsers.add_parser("misc")
-    segmentation_parser.set_defaults(func=run_misc)
-
-
 def main() -> None:
     demos = {
         "misc": run_misc,

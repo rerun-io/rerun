@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Run:
+For this example, first start `rerun`, then run this example:
 
 ```sh
 cargo r &
