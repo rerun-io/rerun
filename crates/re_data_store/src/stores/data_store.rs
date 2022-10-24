@@ -99,7 +99,10 @@ impl DataStore {
 
                         // Use the shared pre-hashed values to update the registration
                         let hashed_indices = crate::SharedSequentialIndex::hashes_up_to(*sz);
-                        self.register_hashed_indices(&hashed_indices.0, &hashed_indices.1);
+                        self.register_hashed_indices(
+                            &hashed_indices.0[..*sz],
+                            &hashed_indices.1[..*sz],
+                        );
 
                         std::sync::Arc::new(
                             Batch::new_sequential(vec)
