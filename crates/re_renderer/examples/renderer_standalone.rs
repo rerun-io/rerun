@@ -26,7 +26,6 @@ use re_renderer::{
     view_builder::{TargetConfiguration, ViewBuilder},
 };
 use winit::{
-    dpi::PhysicalSize,
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
@@ -39,21 +38,6 @@ use winit::{
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let app = Application::new(event_loop, window).await.unwrap();
     app.run();
-}
-
-// Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
-fn lorenz_integrate(cur: glam::Vec3, dt: f32) -> glam::Vec3 {
-    let o: f32 = 10.0;
-    let p: f32 = 28.0;
-    let b: f32 = 8.0 / 3.0;
-
-    let next = glam::vec3(
-        o * (cur.y - cur.x),
-        cur.x * (p - cur.z) - cur.y,
-        cur.x * cur.y - b * cur.z,
-    );
-
-    return cur + next * dt;
 }
 
 /// Uses a [`re_renderer::ViewBuilder`] to draw an example scene.
@@ -83,16 +67,36 @@ fn draw_view(
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
 
     // Calculate some points that look nice for an animated line.
-    let mut lorenz_points = Vec::new();
-    lorenz_points.push(glam::vec3(-0.1, 0.001, 0.0));
-    for _ in 0..(((t * 0.05).fract() * 10000.0) as u32) {
-        lorenz_points.push(lorenz_integrate(*lorenz_points.last().unwrap(), 0.005));
-    }
-    for p in lorenz_points.iter_mut() {
-        // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
-        *p += glam::vec3(-5.0, 0.0, -23.0);
-        *p *= 0.6;
-    }
+    let lorenz_points = {
+        // Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
+        fn lorenz_integrate(cur: glam::Vec3, dt: f32) -> glam::Vec3 {
+            let sigma: f32 = 10.0;
+            let rho: f32 = 28.0;
+            let beta: f32 = 8.0 / 3.0;
+
+            cur + glam::vec3(
+                sigma * (cur.y - cur.x),
+                cur.x * (rho - cur.z) - cur.y,
+                cur.x * cur.y - beta * cur.z,
+            ) * dt
+        }
+
+        // slow buildup and reset
+        let num_points = ((t * 0.05).fract() * 10000.0) as u32;
+
+        let mut lorenz_points = Vec::new();
+        lorenz_points.push(glam::vec3(-0.1, 0.001, 0.0));
+        for _ in 0..num_points {
+            lorenz_points.push(lorenz_integrate(*lorenz_points.last().unwrap(), 0.005));
+        }
+        for p in &mut lorenz_points {
+            // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
+            *p += glam::vec3(-5.0, 0.0, -23.0);
+            *p *= 0.6;
+        }
+
+        lorenz_points
+    };
 
     let lines = LineDrawable::new(
         re_ctx,
@@ -120,9 +124,9 @@ fn draw_view(
                 points: (0..1000)
                     .map(|i| {
                         glam::vec3(
-                            (i as f32 * 0.01).sin() as f32 * 2.0,
+                            (i as f32 * 0.01).sin() * 2.0,
                             i as f32 * 0.01 - 6.0,
-                            (i as f32 * 0.01).cos() as f32 * 2.0,
+                            (i as f32 * 0.01).cos() * 2.0,
                         )
                     })
                     .collect(),
@@ -207,6 +211,7 @@ impl Application {
             present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
+        surface.configure(&device, &surface_config);
 
         let re_ctx = RenderContext::new(
             &device,
@@ -364,7 +369,7 @@ fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     {
         // Set size to a common physical resolution as a comparable start-up default.
-        window.set_inner_size(PhysicalSize {
+        window.set_inner_size(winit::dpi::PhysicalSize {
             width: 1920,
             height: 1080,
         });

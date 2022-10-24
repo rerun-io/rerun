@@ -4,8 +4,8 @@
 //! How it works:
 //! =================
 //!
-//! Each line strip consists of a series of quads.
-//! All quads are rendered in a single draw call!
+//! Each line strip consists of a series of quads. All quads are rendered in a single draw call!
+//!
 //! It is tempting to use instancing and store per-instance (==quad) data in a instance-stepped vertex buffer.
 //! However, GPUs are notoriously bad at processing instances with a small batch size as
 //! [various](https://gamedev.net/forums/topic/676540-fastest-way-to-draw-quads/5279146/)
@@ -13,12 +13,11 @@
 //! [point](https://www.reddit.com/r/vulkan/comments/le74sr/why_gpu_instancing_is_slow_for_small_meshes/)
 //! [out](https://www.reddit.com/r/vulkan/comments/47kfve/instanced_rendering_performance/)
 //! [...](https://www.reddit.com/r/opengl/comments/q7yikr/how_to_draw_several_quads_through_instancing/).
-//! (important to note though that we didn't have the time yet to get performance numbers for our usecase here)
 //!
 //! Instead, we do a single triangle list draw call without any vertex buffer at all and fetch data
 //! from textures instead (if it wasn't for WebGL support we'd read from a raw buffer).
 //!
-//! Our triangle list topology pretends that there is only a single single strip.
+//! Our triangle list topology pretends that there is only a single strip, but in reality we want to render several in one draw call.
 //! So every time a new line strip starts (except on the first strip) we need to discard a quad.
 //!
 //! Data in the position data texture is layed out a follows:
@@ -42,7 +41,7 @@
 //! Pro: shared vertices, Con: need to process index buffer)
 //!
 //! Another much more tricky issue is handling of line caps:
-//! Let's have a look at a corner between two line PositionDatas
+//! Let's have a look at a corner between two line positions (marked with `X`)
 //! ```raw
 //! o--------------------------o
 //!                            /
@@ -81,8 +80,8 @@
 //! Things we might try in the future
 //! ----------------------------------
 //! * more line properties
-//! * more per-position attributes (can pack strip_idx into 16bit!)
-//! * use indexed primitives to lower amount of vertices processed
+//! * more per-position attributes
+//! * experiment with indexed primitives to lower amount of vertices processed
 //!    * note that this would let us remove the degenerated quads between lines, making the approach cleaner and removing the "restart bit"
 //!
 
@@ -104,13 +103,13 @@ use crate::{
 
 use super::*;
 
-mod GpuData {
+mod gpu_data {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct PositionData {
         pub pos: glam::Vec3,
-        // If we limit ourselves to 65536 line strip (we do as of writing!),
-        // we get 16bit extra storage here. What do do with it?
+        // TODO(andreas): If we limit ourselves to 65536 line strip (we do as of writing!), we get 16bit extra storage here.
+        // We probably want to store accumulated line length in there so that we can do stippling in the fragment shader
         pub strip_index: u32,
     }
     static_assertions::assert_eq_size!(PositionData, glam::Vec4);
@@ -181,12 +180,12 @@ impl LineDrawable {
 
         // Make sure rows the texture can be copied easily.
         static_assertions::const_assert_eq!(
-            POSITION_TEXTURE_SIZE * std::mem::size_of::<GpuData::PositionData>() as u32
+            POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
             0
         );
         static_assertions::const_assert_eq!(
-            LINE_STRIP_TEXTURE_SIZE * std::mem::size_of::<GpuData::LineStripInfo>() as u32
+            LINE_STRIP_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineStripInfo>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
             0
         );
@@ -280,23 +279,23 @@ impl LineDrawable {
 
         for (strip_index, line_strip) in line_strips.iter().enumerate() {
             position_data_staging.extend(line_strip.points.iter().map(|&pos| {
-                GpuData::PositionData {
+                gpu_data::PositionData {
                     pos,
                     strip_index: strip_index as _,
                 }
             }));
-            line_strip_info_staging.push(GpuData::LineStripInfo {
+            line_strip_info_staging.push(gpu_data::LineStripInfo {
                 color: line_strip.color,
                 thickness: half::f16::from_f32(line_strip.radius),
                 stippling: (line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
                 unused: 0,
-            })
+            });
         }
         // Fill up the rest of a started row with zeros.
-        position_data_staging.extend(std::iter::repeat(GpuData::PositionData::zeroed()).take(
+        position_data_staging.extend(std::iter::repeat(gpu_data::PositionData::zeroed()).take(
             (next_multiple_of(num_positions, POSITION_TEXTURE_SIZE) - num_positions) as usize,
         ));
-        line_strip_info_staging.extend(std::iter::repeat(GpuData::LineStripInfo::zeroed()).take(
+        line_strip_info_staging.extend(std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(
             (next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) - num_line_strips) as usize,
         ));
 
@@ -315,7 +314,7 @@ impl LineDrawable {
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: NonZeroU32::new(
-                    POSITION_TEXTURE_SIZE * std::mem::size_of::<GpuData::PositionData>() as u32,
+                    POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
                 ),
                 rows_per_image: None,
             },
@@ -336,7 +335,7 @@ impl LineDrawable {
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: NonZeroU32::new(
-                    LINE_STRIP_TEXTURE_SIZE * std::mem::size_of::<GpuData::LineStripInfo>() as u32,
+                    LINE_STRIP_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineStripInfo>() as u32,
                 ),
                 rows_per_image: None,
             },
