@@ -422,6 +422,8 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 
 // Public APIs: resolution & interpolation
 impl<Fs: FileSystem> FileResolver<Fs> {
+    /// Resolves the contents of the file at `path`, recursively interpolating imported
+    /// dependencies.
     pub fn resolve_contents(&mut self, path: impl AsRef<Path>) -> anyhow::Result<&str> {
         // puffin::profile_function!(); // TODO: puffin feature
 
@@ -434,6 +436,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
             .contents)
     }
 
+    /// Recursively resolves all dependencies imported by the file at `path`.
     pub fn resolve_imports(
         &mut self,
         path: impl AsRef<Path>,

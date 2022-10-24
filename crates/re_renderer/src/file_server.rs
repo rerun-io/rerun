@@ -14,11 +14,22 @@ macro_rules! include_file {
     ($path:expr $(,)?) => {{
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
         {
+            // TODO: need some explanations
+            let fs = $crate::OsFileSystem::default();
+            let mut resolver = $crate::FileResolver::with_search_path(fs, {
+                let mut search_path = $crate::SearchPath::default();
+                // TODO: fill up search path
+                search_path
+            });
+
             let path = ::std::path::Path::new(file!())
                 .parent()
                 .unwrap()
                 .join($path);
-            $crate::FileServer::get_mut(|fs| fs.watch(&path, false)).unwrap()
+            // TODO: we want to be resolving there
+            // TODO: we also want to add files to the watchlist if imports get added at
+            // runtime
+            $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false)).unwrap()
         }
 
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
@@ -141,8 +152,9 @@ mod file_server_impl {
     // Public API
     impl FileServer {
         /// Starts watching for file events at the given `path`.
-        pub fn watch(
+        pub fn watch<Fs: FileSystem>(
             &mut self,
+            resolver: &mut FileResolver<Fs>,
             path: impl AsRef<Path>,
             recursive: bool,
         ) -> anyhow::Result<FileContentsHandle> {
@@ -159,6 +171,26 @@ mod file_server_impl {
                 )
                 .with_context(|| format!("couldn't watch file at {path:?}"))?;
 
+            // Watch all of its imported dependencies too!
+            {
+                let imports = resolver
+                    .resolve_imports(&path)
+                    .with_context(|| format!("couldn't resolve imports for file at {path:?}"))?;
+
+                for path in imports {
+                    self.watcher
+                        .watch(
+                            path.as_ref(),
+                            if recursive {
+                                RecursiveMode::Recursive
+                            } else {
+                                RecursiveMode::NonRecursive
+                            },
+                        )
+                        .with_context(|| format!("couldn't watch file at {path:?}"))?;
+                }
+            }
+
             Ok(FileContentsHandle::Path(path))
         }
 
@@ -172,10 +204,7 @@ mod file_server_impl {
 
         /// Coalesces all filesystem events since the last call to `collect`,
         /// and returns a set of all modified paths.
-        pub fn collect<Fs: FileSystem>(
-            &mut self,
-            resolver: &mut FileResolver<Fs>,
-        ) -> HashSet<PathBuf> {
+        pub fn collect(&mut self) -> HashSet<PathBuf> {
             fn canonicalize_opt(path: impl AsRef<Path>) -> Option<PathBuf> {
                 let path = path.as_ref();
                 std::fs::canonicalize(path)
@@ -192,13 +221,6 @@ mod file_server_impl {
                         Access(_) | Create(_) | Modify(_) | Any => ev
                             .paths
                             .into_iter()
-                            .flat_map(|path| {
-                                let mut paths = vec![path.clone()];
-                                if let Ok(imports) = resolver.resolve_imports(path) {
-                                    paths.extend(imports.map(|p| p.to_owned()));
-                                }
-                                paths
-                            })
                             .filter_map(canonicalize_opt)
                             .collect::<Vec<_>>(),
                         Remove(_) | Other => Vec::new(),

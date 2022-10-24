@@ -109,12 +109,23 @@ impl ShaderModulePool {
         let descs = self
             .pool
             .resource_descs()
-            .filter_map(|desc| match &desc.source {
-                FileContentsHandle::Inlined(_) => None,
-                FileContentsHandle::Path(path) => {
-                    updated_paths.contains(path).then_some((path, desc))
-                }
+            .filter_map(|desc| {
+                (!updated_paths.is_empty()).then(|| match &desc.source {
+                    FileContentsHandle::Inlined(_) => None,
+                    FileContentsHandle::Path(path) => {
+                        let mut paths = vec![path.as_path()];
+                        if let Ok(imports) = resolver.resolve_imports(path) {
+                            paths.extend(imports);
+                        }
+
+                        paths
+                            .iter()
+                            .any(|p| updated_paths.contains(*p))
+                            .then_some((path, desc))
+                    }
+                })
             })
+            .flatten()
             // TODO(cmc): clearly none of this is nice, but I don't want try and figure
             // out better APIs until #import has landed, as that will probably point out
             // a whole bunch of shortcomings in our APIs too.
