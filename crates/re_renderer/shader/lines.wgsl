@@ -42,12 +42,26 @@ fn unpack4x8unorm_workaround(v: u32) -> vec4<f32> {
     return vec4<f32>(bytes) * (1.0 / 255.0);
 }
 
+// Converts a color from 0-1 sRGB to 0-1 linear
+// adapted from https://gamedev.stackexchange.com/a/148088
+fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
+    let cutoff = ceil(srgb - 0.04045);
+    let higher = pow((srgb + 0.055) / 1.055,  vec3<f32>(2.4));
+    let lower = srgb / 12.92;
+
+    return mix(lower, higher, cutoff);
+}
+
+fn linear_from_srgba(srgb_a: vec4<f32>) -> vec4<f32> {
+    return vec4<f32>(linear_from_srgb(srgb_a.rgb), srgb_a.a);
+}
+
 fn read_strip_data(strip_index: i32) -> LineStripData {
     var raw_data = textureLoad(position_data_texture,
         vec2<i32>(strip_index % POSITION_DATA_TEXTURE_SIZE, strip_index / POSITION_DATA_TEXTURE_SIZE), 0).xy;
 
     var data: LineStripData;
-    data.color = unpack4x8unorm_workaround(raw_data.x);
+    data.color = linear_from_srgba(unpack4x8unorm_workaround(raw_data.x));
     data.thickness = unpack2x16float(raw_data.y).y;
     data.stippling = f32((raw_data.y >> u32(24)) & u32(0xFF)) * (1.0 / 255.0);
     return data;
@@ -67,40 +81,39 @@ fn read_position_data(segment_idx: i32) -> PositionData {
 
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
+    // Basic properties of the vertex we're at.
     var is_at_quad_end = i32(vertex_idx) % 2;
     var quad_idx = i32(vertex_idx) / 6;
-    var pos_data_idx = quad_idx + is_at_quad_end;
+    var local_idx = vertex_idx % u32(6);
+    var top_bottom = f32(local_idx <= u32(1) || local_idx == u32(5)) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
 
+    // data at and before the vertex
+    var pos_data_idx = quad_idx + is_at_quad_end;
     var pos_data_before = read_position_data(pos_data_idx - 1);
     var pos_data_current = read_position_data(pos_data_idx);
+    var pos_data_next = read_position_data(pos_data_idx + 1);
 
-    // Is this a degenerated quad? Collapse it.
+    // Is this a degenerated quad? Collapse it!
     if is_at_quad_end == 1 && pos_data_before.strip_index != pos_data_current.strip_index {
         pos_data_current = pos_data_before;
     }
 
-    var is_strip_start = pos_data_idx == 0 || pos_data_before.strip_index != pos_data_current.strip_index;
-    var pos_data_next = read_position_data(pos_data_idx + 1);
+    // Data valid for the entire strip
     var strip_data = read_strip_data(pos_data_current.strip_index);
 
-    // Spawn line parallel to camera plane
-
-    // Direction the current quad if facing in.
+    // Calculate the direction the current quad is facing in.
     var quad_dir = pos_data_current.pos - pos_data_before.pos;
     if is_at_quad_end == 0 {
         quad_dir = pos_data_next.pos - pos_data_current.pos;
     }
     quad_dir = normalize(quad_dir);
 
-    // 1 for a top vertex, -1 for a bottom vertex.
-    var local_idx = vertex_idx % u32(6);
-    var top_bottom = f32(local_idx <= u32(1) || local_idx == u32(5)) * 2.0 - 1.0;
-
+    // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
     var to_camera = normalize(frame.camera_position - pos_data_current.pos);
     var dir_up = normalize(cross(to_camera, quad_dir));
-
     var pos = pos_data_current.pos + (strip_data.thickness * top_bottom) * dir_up;
 
+    // Output, transform to projection space and done.
     var out: VertexOut;
     out.position = frame.projection_from_world * vec4<f32>(pos, 1.0);
     out.color = strip_data.color;
