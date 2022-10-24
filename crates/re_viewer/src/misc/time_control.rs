@@ -1,5 +1,3 @@
-use ahash::HashSet;
-use nohash_hasher::IntMap;
 use std::collections::{BTreeMap, BTreeSet};
 
 use egui::NumExt as _;
@@ -441,58 +439,6 @@ impl TimeControl {
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(selection.min))
             .selection = Some(selection);
-    }
-
-    /// Return the data that should be visible at this time.
-    ///
-    /// This is either based on a time selection, or it is the latest message at the current time.
-    pub fn selected_objects<'db>(
-        &self,
-        log_db: &'db re_data_store::log_db::LogDb,
-    ) -> re_data_store::Objects<'db> {
-        crate::profile_function!();
-
-        let mut objects = re_data_store::Objects::default();
-        if let Some(time_query) = self.time_query() {
-            if let Some(store) = log_db.obj_db.store.get(&self.timeline) {
-                objects.query(store, &time_query, &log_db.obj_db.types);
-            }
-        }
-        objects
-    }
-
-    /// Return all the objects for a given set of `ObjectType`s for the current timeline.
-    pub fn all_objects<'db>(
-        &self,
-        log_db: &'db re_data_store::log_db::LogDb,
-        obj_types: impl Iterator<Item = ObjectType>,
-    ) -> re_data_store::Objects<'db> {
-        crate::profile_function!();
-
-        let obj_types = obj_types.collect::<HashSet<_>>();
-        let obj_types = log_db
-            .obj_db
-            .types
-            .iter()
-            .filter_map(|(obj_type_path, obj_type)| {
-                obj_types
-                    .contains(obj_type)
-                    .then(|| (obj_type_path.clone(), *obj_type))
-            })
-            .collect::<IntMap<_, _>>();
-
-        // TODO(cmc): At some point we might want keep a cache of what we've read so far,
-        // and incrementally query for new messages.
-        let mut objects = re_data_store::Objects::default();
-        if let Some(store) = log_db.obj_db.store.get(&self.timeline) {
-            for (obj_path, obj_store) in store.iter() {
-                if let Some(obj_type) = obj_types.get(obj_path.obj_type_path()) {
-                    objects.query_object(obj_store, &TimeQuery::EVERYTHING, obj_path, obj_type);
-                }
-            }
-        }
-
-        objects
     }
 
     pub fn time_query(&self) -> Option<TimeQuery<i64>> {

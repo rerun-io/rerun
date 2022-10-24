@@ -334,21 +334,6 @@ pub(crate) struct SpaceCamera {
     pub target_space: Option<ObjPath>,
 }
 
-/// Gathers all camera objects.
-pub(crate) fn space_cameras(objects: &re_data_store::Objects<'_>) -> Vec<SpaceCamera> {
-    objects
-        .camera
-        .iter()
-        .map(|(props, cam)| SpaceCamera {
-            obj_path: props.obj_path.clone(),
-            instance_index_hash: props.instance_index,
-            extrinsics: *cam.extrinsics,
-            intrinsics: *cam.intrinsics,
-            target_space: cam.target_space.clone(),
-        })
-        .collect()
-}
-
 pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,

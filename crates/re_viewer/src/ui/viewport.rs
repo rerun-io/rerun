@@ -684,11 +684,11 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
 // ----------------------------------------------------------------------------
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub(crate) struct ExperimentalViewportPanel {
+pub(crate) struct ViewportPanel {
     blueprint: Blueprint,
 }
 
-impl ExperimentalViewportPanel {
+impl ViewportPanel {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
