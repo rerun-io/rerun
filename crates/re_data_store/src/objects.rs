@@ -16,7 +16,6 @@ pub struct InstanceProps<'s> {
     // of time we currently use in practice anyway.
     pub time: i64,
     pub msg_id: &'s MsgId,
-    pub space: Option<&'s ObjPath>,
     pub color: Option<[u8; 4]>,
 
     /// Use this to test if the object should be visible, etc.
@@ -107,17 +106,16 @@ impl<'s> Image<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_5(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("tensor"),
             time_query,
-            ("_visible", "space", "color", "meter", "legend"),
+            ("_visible", "color", "meter", "legend"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              tensor: &re_log_types::Tensor,
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              meter: Option<&f32>,
              legend: Option<&ObjPath>| {
@@ -125,7 +123,6 @@ impl<'s> Image<'s> {
                     props: InstanceProps {
                         time: time.into(),
                         msg_id,
-                        space,
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -157,24 +154,22 @@ impl<'s> Point2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("pos"),
             time_query,
-            ("_visible", "space", "color", "radius"),
+            ("_visible", "color", "radius"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              pos: &[f32; 2],
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
                 out.point2d.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
                         msg_id,
-                        space,
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -205,24 +200,22 @@ impl<'s> Point3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("pos"),
             time_query,
-            ("_visible", "space", "color", "radius"),
+            ("_visible", "color", "radius"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              pos: &[f32; 3],
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              radius: Option<&f32>| {
                 out.point3d.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
                         msg_id,
-                        space,
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -254,17 +247,16 @@ impl<'s> BBox2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_5(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("bbox"),
             time_query,
-            ("_visible", "space", "color", "stroke_width", "label"),
+            ("_visible", "color", "stroke_width", "label"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              bbox: &re_log_types::BBox2D,
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>,
              label: Option<&String>| {
@@ -272,7 +264,6 @@ impl<'s> BBox2D<'s> {
                     props: InstanceProps {
                         time: time.into(),
                         msg_id,
-                        space,
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -305,17 +296,16 @@ impl<'s> Box3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_5(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("obb"),
             time_query,
-            ("_visible", "space", "color", "stroke_width", "label"),
+            ("_visible", "color", "stroke_width", "label"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              obb: &re_log_types::Box3,
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>,
              label: Option<&String>| {
@@ -323,7 +313,6 @@ impl<'s> Box3D<'s> {
                     props: InstanceProps {
                         time: time.into(),
                         msg_id,
-                        space,
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -355,17 +344,16 @@ impl<'s> Path3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("points"),
             time_query,
-            ("_visible", "space", "color", "stroke_width"),
+            ("_visible", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              points: &DataVec,
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
                 if let Some(points) = as_vec_of_vec3("Path3D::points", points) {
@@ -373,7 +361,6 @@ impl<'s> Path3D<'s> {
                         props: InstanceProps {
                             time: time.into(),
                             msg_id,
-                            space,
                             color: color.copied(),
                             obj_path,
                             instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -406,17 +393,16 @@ impl<'s> LineSegments2D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("points"),
             time_query,
-            ("_visible", "space", "color", "stroke_width"),
+            ("_visible", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              points: &DataVec,
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
                 if let Some(points) = as_vec_of_vec2("LineSegments2D::points", points) {
@@ -424,7 +410,6 @@ impl<'s> LineSegments2D<'s> {
                         props: InstanceProps {
                             time: time.into(),
                             msg_id,
-                            space,
                             color: color.copied(),
                             obj_path,
                             instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -457,17 +442,16 @@ impl<'s> LineSegments3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("points"),
             time_query,
-            ("_visible", "space", "color", "stroke_width"),
+            ("_visible", "color", "stroke_width"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              points: &DataVec,
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
                 if let Some(points) = as_vec_of_vec3("LineSegments3D::points", points) {
@@ -475,7 +459,6 @@ impl<'s> LineSegments3D<'s> {
                         props: InstanceProps {
                             time: time.into(),
                             msg_id,
-                            space,
                             color: color.copied(),
                             obj_path,
                             instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -506,23 +489,21 @@ impl<'s> Mesh3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_3(
+        visit_type_data_2(
             obj_store,
             &FieldName::from("mesh"),
             time_query,
-            ("_visible", "space", "color"),
+            ("_visible", "color"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              mesh: &re_log_types::Mesh3D,
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>| {
                 out.mesh3d.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
                         msg_id,
-                        space,
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -551,17 +532,16 @@ impl<'s> Arrow3D<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_5(
+        visit_type_data_4(
             obj_store,
             &FieldName::from("arrow3d"),
             time_query,
-            ("_visible", "space", "color", "width_scale", "label"),
+            ("_visible", "color", "width_scale", "label"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              arrow: &re_log_types::Arrow3D,
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              color: Option<&[u8; 4]>,
              width_scale: Option<&f32>,
              label: Option<&String>| {
@@ -569,7 +549,6 @@ impl<'s> Arrow3D<'s> {
                     props: InstanceProps {
                         time: time.into(),
                         msg_id,
-                        space,
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
@@ -627,24 +606,22 @@ impl<'s> TextEntry<'s> {
     ) {
         crate::profile_function!();
 
-        visit_type_data_4(
+        visit_type_data_3(
             obj_store,
             &FieldName::from("body"),
             time_query,
-            ("_visible", "space", "level", "color"),
+            ("_visible", "level", "color"),
             |instance_index: Option<&IndexHash>,
              time: Time,
              msg_id: &MsgId,
              body: &String,
              visible: Option<&bool>,
-             space: Option<&ObjPath>,
              level: Option<&String>,
              color: Option<&[u8; 4]>| {
                 out.text_entry.0.push(Object {
                     props: InstanceProps {
                         time: time.into(),
                         msg_id,
-                        space,
                         color: color.copied(),
                         obj_path,
                         instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
