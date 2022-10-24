@@ -54,6 +54,9 @@ py-lint:
 py-test:
     python -m pytest rerun_py/tests/unit/
 
+# Run all examples
+py-run-all:
+    fd main.py | xargs -I _ sh -c "echo _ && python3 _"
 
 ### Rust
 
