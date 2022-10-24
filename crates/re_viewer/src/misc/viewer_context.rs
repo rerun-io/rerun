@@ -330,14 +330,6 @@ impl Selection {
             false
         }
     }
-
-    pub fn is_space(&self, needle: &ObjPath) -> bool {
-        if let Self::Space(hay) = self {
-            hay == needle
-        } else {
-            false
-        }
-    }
 }
 
 // ----------------------------------------------------------------------------
