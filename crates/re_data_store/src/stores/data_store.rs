@@ -90,15 +90,16 @@ impl DataStore {
         let batch = if let LoggedData::Batch { indices, data } = data {
             Some(re_log_types::data_vec_map!(data, |vec| {
                 let batch = match indices {
-                    BatchIndex::SequentialIndex(_sz) => {
-                        // TODO(jleibs) Better error reporting if sz doesn't match data length
-                        let indices: Vec<Index> =
-                            (0..data.len()).map(|i| Index::Sequence(i as u64)).collect();
+                    BatchIndex::SequentialIndex(sz) => {
+                        // If the index is the wrong size, return a BadBatch erro
+                        if *sz != data.len() {
+                            return Err(crate::Error::BadBatch);
+                        }
 
-                        let hashed_indices = indices
-                            .iter()
-                            .map(|index| (IndexHash::hash(index), index))
-                            .collect::<Vec<_>>();
+                        // Use the shared pre-hashed values to update the registration
+                        let hashed_indices = crate::SharedSequentialIndex::hashes_up_to(*sz);
+                        let hashed_indices: Vec<(IndexHash, &Index)> =
+                            hashed_indices[..*sz].iter().map(|h| (h.0, &h.1)).collect();
 
                         self.register_hashed_indices(&hashed_indices);
 

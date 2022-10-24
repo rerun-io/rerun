@@ -46,7 +46,7 @@ impl<T: Clone> BatchOrSplat<T> {
 ///
 /// Can be shared between different timelines with [`ArcBatch`].
 pub enum Batch<T> {
-    SequentialBatch(Vec<T>, Arc<Vec<IndexHash>>),
+    SequentialBatch(Vec<T>, HashedIndicies),
     IndexedBatch(IntMap<IndexHash, T>),
 }
 
@@ -79,6 +79,8 @@ impl<T: Clone> Batch<T> {
     }
 }
 
+type HashedIndicies = Arc<Vec<(IndexHash, Index)>>;
+
 /// A singleton collection of hashed indices and the reverse map
 ///
 /// Since all Sequential batches have the same hash-values for their
@@ -94,8 +96,8 @@ impl<T: Clone> Batch<T> {
 /// We still track these pre-hashed indices per-batch with an Arc to
 /// avoid needing to perform unsafe lifetime shenanigans. Resize-operations
 /// are guarded by a RW-lock.
-struct SharedSequentialIndex {
-    hashed_indices: Arc<Vec<IndexHash>>,
+pub(crate) struct SharedSequentialIndex {
+    hashed_indices: HashedIndicies,
     reverse_index_hash_map: IntMap<IndexHash, usize>,
 }
 
@@ -106,14 +108,18 @@ impl SharedSequentialIndex {
     fn global() -> &'static RwLock<SharedSequentialIndex> {
         static INSTANCE: OnceCell<RwLock<SharedSequentialIndex>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
-            let hashed_indices: Vec<IndexHash> = (0..INITIAL_SEQUENTIAL_BATCH_SIZE)
-                .map(|i| IndexHash::hash(&Index::Sequence(i as u64)))
+            let hashed_indices: Vec<(IndexHash, Index)> = (0..INITIAL_SEQUENTIAL_BATCH_SIZE)
+                .map(|i| {
+                    let seq = Index::Sequence(i as u64);
+                    let hash = IndexHash::hash(&seq);
+                    (hash, seq)
+                })
                 .collect();
 
             let reverse_index_hash_map = hashed_indices
                 .iter()
                 .enumerate()
-                .map(|(index, hash)| (*hash, index))
+                .map(|(index, hash)| (hash.0, index))
                 .collect();
 
             RwLock::new(SharedSequentialIndex {
@@ -126,7 +132,7 @@ impl SharedSequentialIndex {
     /// Increase the hashes up to the required length.
     ///
     /// Holds the write-Lock
-    fn grow_hashes_to(len: usize) -> Arc<Vec<IndexHash>> {
+    fn grow_hashes_to(len: usize) -> HashedIndicies {
         // We could theoretically grab the write-lock only after we have already
         // computed the hashes, but doing so adds other race conditions such as
         // the possibility of multiple threads computing new hashes concurrently.
@@ -146,9 +152,10 @@ impl SharedSequentialIndex {
             // Extend from the current length to the new length
             // Update the index_hash_map as a side-effect
             new_hashes.extend((cur_len..new_len).map(|i| {
-                let hash = IndexHash::hash(&Index::Sequence(i as u64));
+                let seq = Index::Sequence(i as u64);
+                let hash = IndexHash::hash(&seq);
                 global.reverse_index_hash_map.insert(hash, i);
-                hash
+                (hash, seq)
             }));
 
             global.hashed_indices = Arc::new(new_hashes);
@@ -160,7 +167,7 @@ impl SharedSequentialIndex {
     /// Get all the hashes up the the requested length
     ///
     /// Holds the read-lock
-    fn hashes_up_to(len: usize) -> Arc<Vec<IndexHash>> {
+    pub(crate) fn hashes_up_to(len: usize) -> HashedIndicies {
         let global = Self::global().read().unwrap();
 
         if len > global.hashed_indices.len() {
@@ -218,7 +225,9 @@ impl<T> Batch<T> {
     #[inline]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexHash, &T)> {
         match &self {
-            Self::SequentialBatch(vec, hashes) => Either::Left(std::iter::zip(hashes.iter(), vec)),
+            Self::SequentialBatch(vec, hashes) => {
+                Either::Left(std::iter::zip(hashes.iter().map(|h| &h.0), vec))
+            }
             Self::IndexedBatch(map) => Either::Right(map.iter()),
         }
     }
