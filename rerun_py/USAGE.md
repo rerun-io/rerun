@@ -70,6 +70,8 @@ Rerun will from this understand out how the `3d` space and the two image spaces 
 
 Note that none of the names in the path are special.
 
+`rerun.log_extrinsics("foo/bar", …)` is logging the relationship between the parent `foo` and the child `bar`,
+and `rerun.log_extrinsics("foo/bar/baz", …)` is logging the relationship between the parent `bar` and the child `baz`.
 
 ## Timeless data
 The logging functions all have `timeless = False` parameters. Timeless objects belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer. This is useful for object that aren't part of normal data capture, but set the scene for how they are shown. For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be timeless.
