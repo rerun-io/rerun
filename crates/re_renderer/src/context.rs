@@ -92,7 +92,7 @@ impl RenderContext {
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
         // Always an empty set in release builds.
-        let modified_paths = FileServer::get_mut(|fs| fs.collect());
+        let modified_paths = FileServer::get_mut(|fs| fs.collect(&mut resolver));
         if modified_paths.len() > 0 {
             dbg!(&modified_paths); // TODO: worth a perma one?
         }

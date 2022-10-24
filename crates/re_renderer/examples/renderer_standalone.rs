@@ -18,7 +18,8 @@ use macaw::IsoTransform;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},
     renderer::{GenericSkyboxDrawable, TestTriangleDrawable},
-    view_builder::{TargetConfiguration, ViewBuilder}, OsFileSystem, FileResolver, SearchPath,
+    view_builder::{TargetConfiguration, ViewBuilder},
+    FileResolver, OsFileSystem, SearchPath,
 };
 use type_map::concurrent::TypeMap;
 use wgpu::{

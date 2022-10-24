@@ -204,7 +204,10 @@ mod file_server_impl {
 
         /// Coalesces all filesystem events since the last call to `collect`,
         /// and returns a set of all modified paths.
-        pub fn collect(&mut self) -> HashSet<PathBuf> {
+        pub fn collect<Fs: FileSystem>(
+            &mut self,
+            resolver: &mut FileResolver<Fs>,
+        ) -> HashSet<PathBuf> {
             fn canonicalize_opt(path: impl AsRef<Path>) -> Option<PathBuf> {
                 let path = path.as_ref();
                 std::fs::canonicalize(path)
@@ -212,7 +215,8 @@ mod file_server_impl {
                     .ok()
             }
 
-            self.events_rx
+            let paths = self
+                .events_rx
                 .try_iter()
                 .flat_map(|ev| {
                     #[allow(clippy::enum_glob_use)]
@@ -226,7 +230,20 @@ mod file_server_impl {
                         Remove(_) | Other => Vec::new(),
                     }
                 })
-                .collect()
+                .collect();
+
+            // A file has been modified, which means it might have new import clauses now!
+            //
+            // On the other hand, we don't care whether a file has dropped one of its imported
+            // dependencies: worst case we'll watch a file that's not used anymore, that's
+            // not an issue.
+            for path in &paths {
+                if let Err(err) = self.watch(resolver, path, false) {
+                    re_log::error!(err=%re_error::format(err), "couldn't watch imported dependency");
+                }
+            }
+
+            paths
         }
     }
 }
