@@ -268,6 +268,30 @@ impl Blueprint {
                 }
             });
     }
+
+    pub fn has_space(&self, space_path: &ObjPath) -> bool {
+        self.space_views
+            .values()
+            .any(|view| &view.space_path == space_path)
+    }
+
+    pub fn add_space(&mut self, path: &ObjPath) {
+        let space_view_id = SpaceViewId::random();
+        self.space_views.insert(
+            space_view_id,
+            SpaceView {
+                name: path.to_string(),
+                space_path: path.clone(),
+                view_state: Default::default(),
+                selected_category: ViewCategory::TwoD,
+            },
+        );
+
+        // Insert it into the tree:
+        let fraction = 1.0 / self.space_views.len() as f32;
+        self.tree
+            .split_right(0.into(), fraction, vec![space_view_id]);
+    }
 }
 
 /// Is this space worthy of its on space view by default?
@@ -693,6 +717,16 @@ impl ViewportPanel {
             || self.blueprint.space_views.is_empty()
         {
             self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
+        } else {
+            // Check if the blueprint is missing a space,
+            // maybe one that has been added by new data:
+            for (path, space_info) in &spaces_info.spaces {
+                if should_have_default_view(&ctx.log_db.obj_db, space_info)
+                    && !self.blueprint.has_space(path)
+                {
+                    self.blueprint.add_space(path);
+                }
+            }
         }
 
         egui::SidePanel::left("blueprint_panel")
