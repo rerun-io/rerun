@@ -103,7 +103,6 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
 
-    m.add_function(wrap_pyfunction!(log_camera, m)?)?;
     m.add_function(wrap_pyfunction!(log_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(log_extrinsics, m)?)?;
     m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
@@ -420,68 +419,6 @@ fn parse_camera_space_convention(s: &str) -> PyResult<CameraSpaceConvention> {
     }
 }
 
-/// Log a 3D camera
-#[allow(clippy::too_many_arguments)]
-#[pyfunction]
-fn log_camera(
-    obj_path: &str,
-    resolution: [f32; 2],
-    intrinsics_matrix: [[f32; 3]; 3],
-    rotation_q: re_log_types::Quaternion,
-    position: [f32; 3],
-    camera_space_convention: &str,
-    timeless: bool,
-    space: Option<String>,
-    target_space: Option<String>,
-) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
-    let convention = parse_camera_space_convention(camera_space_convention)?;
-
-    let target_space = if let Some(target_space) = target_space {
-        Some(parse_obj_path(&target_space)?)
-    } else {
-        None
-    };
-
-    let extrinsics = re_log_types::Extrinsics {
-        rotation: rotation_q,
-        position,
-        camera_space_convention: convention,
-    };
-
-    let intrinsics = re_log_types::Intrinsics {
-        intrinsics_matrix,
-        resolution,
-    };
-
-    let camera = re_log_types::Camera {
-        extrinsics,
-        intrinsics: Some(intrinsics),
-        target_space,
-    };
-
-    let mut sdk = Sdk::global();
-
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::Camera);
-
-    let time_point = time(timeless);
-
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "camera"),
-        LoggedData::Single(Data::Camera(camera)),
-    );
-
-    let space = space.unwrap_or_else(|| "3D".to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
-    );
-
-    Ok(())
-}
-
 /// NOTE(emilk): EXPERIMENTAL!
 #[pyfunction]
 fn log_extrinsics(
@@ -548,8 +485,6 @@ fn log_intrinsics(
 // ----------------------------------------------------------------------------
 
 /// Log a text entry.
-///
-/// If no `space` is given, the space name "logs" will be used.
 #[pyfunction]
 fn log_text_entry(
     obj_path: &str,
@@ -557,7 +492,6 @@ fn log_text_entry(
     level: Option<&str>,
     color: Option<Vec<u8>>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
@@ -588,13 +522,6 @@ fn log_text_entry(
             LoggedData::Single(Data::Color(color)),
         );
     }
-
-    let space = space.unwrap_or_else(|| "logs".to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
-    );
 
     Ok(())
 }
@@ -645,7 +572,6 @@ impl RectFormat {
 /// Log a 2D bounding box.
 ///
 /// Optionally give it a label.
-/// If no `space` is given, the space name "2D" will be used.
 #[pyfunction]
 fn log_rect(
     obj_path: &str,
@@ -654,7 +580,6 @@ fn log_rect(
     color: Option<Vec<u8>>,
     label: Option<String>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
     let bbox = rect_format.to_bbox(r);
@@ -689,13 +614,6 @@ fn log_rect(
         );
     }
 
-    let space = space.unwrap_or_else(|| "2D".to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
-    );
-
     Ok(())
 }
 
@@ -707,7 +625,6 @@ fn log_rects(
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `rects.empty()`, beacause logging
     // an empty batch is same as deleting previous batch.
@@ -778,13 +695,6 @@ fn log_rects(
         },
     );
 
-    let space = space.unwrap_or_else(|| "2D".to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::BatchSplat(Data::ObjPath(parse_obj_path(&space)?)),
-    );
-
     Ok(())
 }
 
@@ -793,16 +703,12 @@ fn log_rects(
 /// Log a 2D or 3D point.
 ///
 /// `position` is either 2x1 or 3x1.
-///
-/// If no `space` is given, the space name "2D" or "3D" will be used,
-/// depending on the dimensionality of the data.
 #[pyfunction]
 fn log_point(
     obj_path: &str,
     position: numpy::PyReadonlyArray1<'_, f32>,
     color: Option<Vec<u8>>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     let dim = match position.shape() {
         [2] => 2,
@@ -851,13 +757,6 @@ fn log_point(
         LoggedData::Single(pos_data),
     );
 
-    let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
-    );
-
     Ok(())
 }
 
@@ -865,16 +764,12 @@ fn log_point(
 /// * `colors.len() == 0`: no colors
 /// * `colors.len() == 1`: same color for all points
 /// * `colors.len() == positions.len()`: a color per point
-///
-/// If no `space` is given, the space name "2D" or "3D" will be used,
-/// depending on the dimensionality of the data.
 #[pyfunction]
 fn log_points(
     obj_path: &str,
     positions: numpy::PyReadonlyArray2<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `positions.empty()`, beacause logging
     // an empty batch is same as deleting previous batch.
@@ -924,13 +819,6 @@ fn log_points(
             indices,
             data: pos_data,
         },
-    );
-
-    let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::BatchSplat(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
@@ -1007,7 +895,6 @@ fn log_path(
     stroke_width: Option<f32>,
     color: Option<Vec<u8>>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     if !matches!(positions.shape(), [_, 3]) {
         return Err(PyTypeError::new_err(format!(
@@ -1048,13 +935,6 @@ fn log_path(
         );
     }
 
-    let space = space.unwrap_or_else(|| "3D".to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
-    );
-
     Ok(())
 }
 
@@ -1065,7 +945,6 @@ fn log_line_segments(
     stroke_width: Option<f32>,
     color: Option<Vec<u8>>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     let num_points = positions.shape()[0];
     if num_points % 2 != 0 {
@@ -1130,13 +1009,6 @@ fn log_line_segments(
         );
     }
 
-    let space = space.unwrap_or_else(|| if dim == 2 { "2D" } else { "3D" }.to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
-    );
-
     Ok(())
 }
 
@@ -1150,7 +1022,6 @@ fn log_arrow(
     label: Option<String>,
     width_scale: Option<f32>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
@@ -1192,20 +1063,12 @@ fn log_arrow(
         );
     }
 
-    let space = space.unwrap_or_else(|| "3D".to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
-    );
-
     Ok(())
 }
 
 /// Log a 3D oriented bounding box, defined by its half size.
 ///
 /// Optionally give it a label.
-/// If no `space` is given, the space name "3D" will be used.
 #[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn log_obb(
@@ -1217,7 +1080,6 @@ fn log_obb(
     stroke_width: Option<f32>,
     label: Option<String>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
@@ -1263,17 +1125,9 @@ fn log_obb(
         );
     }
 
-    let space = space.unwrap_or_else(|| "3D".to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
-    );
-
     Ok(())
 }
 
-/// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
 fn log_tensor_u8(
@@ -1283,12 +1137,10 @@ fn log_tensor_u8(
     meter: Option<f32>,
     legend: Option<String>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, legend, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless)
 }
 
-/// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
 fn log_tensor_u16(
@@ -1298,12 +1150,10 @@ fn log_tensor_u16(
     meter: Option<f32>,
     legend: Option<String>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, legend, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless)
 }
 
-/// If no `space` is given, the space name "2D" will be used.
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
 fn log_tensor_f32(
@@ -1313,12 +1163,10 @@ fn log_tensor_f32(
     meter: Option<f32>,
     legend: Option<String>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, legend, timeless, space)
+    log_tensor(obj_path, img, names, meter, legend, timeless)
 }
 
-/// If no `space` is given, the space name "2D" will be used.
 fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     obj_path: &str,
     img: numpy::PyReadonlyArrayDyn<'_, T>,
@@ -1326,7 +1174,6 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     meter: Option<f32>,
     legend: Option<String>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
@@ -1345,13 +1192,6 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
             re_tensor_ops::to_rerun_tensor(&img.as_array(), names)
                 .map_err(|err| PyTypeError::new_err(err.to_string()))?,
         )),
-    );
-
-    let space = space.unwrap_or_else(|| "2D".to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     if let Some(meter) = meter {
@@ -1382,7 +1222,6 @@ fn log_mesh_file(
     bytes: &[u8],
     transform: numpy::PyReadonlyArray2<'_, f32>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
     let format = match mesh_format {
@@ -1421,7 +1260,6 @@ fn log_mesh_file(
             [get(0, 3), get(1, 3), get(2, 3)], // col 3 = translation
         ]
     };
-    let space = space.unwrap_or_else(|| "3D".to_owned());
 
     let mut sdk = Sdk::global();
 
@@ -1439,26 +1277,18 @@ fn log_mesh_file(
         }))),
     );
 
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
-    );
-
     Ok(())
 }
 
 /// Log an image file given its path on disk.
 ///
 /// If no `img_format` is specified, we will try and guess it.
-/// If no `space` is given, the space name "2D" will be used.
 #[pyfunction]
 fn log_image_file(
     obj_path: &str,
     img_path: PathBuf,
     img_format: Option<&str>,
     timeless: bool,
-    space: Option<String>,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
 
@@ -1515,13 +1345,6 @@ fn log_image_file(
             dtype: TensorDataType::U8,
             data,
         })),
-    );
-
-    let space = space.unwrap_or_else(|| "2D".to_owned());
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "space"),
-        LoggedData::Single(Data::ObjPath(parse_obj_path(&space)?)),
     );
 
     Ok(())
