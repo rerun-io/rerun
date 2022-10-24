@@ -287,7 +287,17 @@ impl Blueprint {
             },
         );
 
-        self.tree.push_to_first_leaf(space_view_id);
+        if let Some(first_leaf) = self
+            .tree
+            .iter()
+            .enumerate()
+            .find_map(|(i, node)| node.is_leaf().then_some(i))
+        {
+            self.tree
+                .split_right(first_leaf.into(), 0.5, vec![space_view_id]);
+        } else {
+            self.tree.push_to_first_leaf(space_view_id);
+        }
     }
 }
 
