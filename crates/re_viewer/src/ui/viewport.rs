@@ -207,13 +207,8 @@ impl Blueprint {
             if space_info.objects.len() == 1 {
                 // Only one object in this view…
                 let obj = space_info.objects.iter().next().unwrap();
-                match obj_db.types.get(obj.obj_type_path()) {
-                    None | Some(ObjectType::Camera) => {
-                        // Either nothing to show, or it is the legacy camera
-                        // that will be removed as soon as this new viewport replaces the old.
-                        continue;
-                    }
-                    _ => {}
+                if obj_db.types.get(obj.obj_type_path()).is_none() {
+                    continue; // It doesn't have a type, so it is probably just the `_transform`, so nothing to show.
                 }
             }
 

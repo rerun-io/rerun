@@ -536,57 +536,6 @@ impl<'s> Mesh3D<'s> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Camera<'s> {
-    pub extrinsics: &'s re_log_types::Extrinsics,
-    pub intrinsics: &'s Option<re_log_types::Intrinsics>,
-
-    /// The 2D space that this camera projects into.
-    pub target_space: &'s Option<ObjPath>,
-}
-
-impl<'s> Camera<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data_3(
-            obj_store,
-            &FieldName::from("camera"),
-            time_query,
-            ("_visible", "space", "color"),
-            |instance_index: Option<&IndexHash>,
-             time: Time,
-             msg_id: &MsgId,
-             camera: &re_log_types::Camera,
-             visible: Option<&bool>,
-             space: Option<&ObjPath>,
-             color: Option<&[u8; 4]>| {
-                out.camera.0.push(Object {
-                    props: InstanceProps {
-                        time: time.into(),
-                        msg_id,
-                        space,
-                        color: color.copied(),
-                        obj_path,
-                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
-                        visible: *visible.unwrap_or(&true),
-                    },
-                    data: Camera {
-                        extrinsics: &camera.extrinsics,
-                        intrinsics: &camera.intrinsics,
-                        target_space: &camera.target_space,
-                    },
-                });
-            },
-        );
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
 pub struct Arrow3D<'s> {
     pub arrow: &'s re_log_types::Arrow3D,
     pub label: Option<&'s str>,
@@ -780,7 +729,6 @@ pub struct Objects<'s> {
     pub path3d: ObjectVec<'s, Path3D<'s>>,
     pub line_segments3d: ObjectVec<'s, LineSegments3D<'s>>,
     pub mesh3d: ObjectVec<'s, Mesh3D<'s>>,
-    pub camera: ObjectVec<'s, Camera<'s>>,
     pub arrow3d: ObjectVec<'s, Arrow3D<'s>>,
 }
 
@@ -823,7 +771,6 @@ impl<'s> Objects<'s> {
             ObjectType::Path3D => Path3D::query,
             ObjectType::LineSegments3D => LineSegments3D::query,
             ObjectType::Mesh3D => Mesh3D::query,
-            ObjectType::Camera => Camera::query,
             ObjectType::Arrow3D => Arrow3D::query,
         };
 
@@ -849,7 +796,6 @@ impl<'s> Objects<'s> {
             path3d: self.path3d.filter(&keep),
             line_segments3d: self.line_segments3d.filter(&keep),
             mesh3d: self.mesh3d.filter(&keep),
-            camera: self.camera.filter(&keep),
             arrow3d: self.arrow3d.filter(&keep),
         }
     }
@@ -868,7 +814,6 @@ impl<'s> Objects<'s> {
             path3d,
             line_segments3d,
             mesh3d,
-            camera,
             arrow3d,
         } = self;
         space.is_empty()
@@ -883,7 +828,6 @@ impl<'s> Objects<'s> {
             && path3d.is_empty()
             && line_segments3d.is_empty()
             && mesh3d.is_empty()
-            && camera.is_empty()
             && arrow3d.is_empty()
     }
 
@@ -901,7 +845,6 @@ impl<'s> Objects<'s> {
             path3d,
             line_segments3d,
             mesh3d,
-            camera,
             arrow3d,
         } = self;
         space.len()
@@ -916,7 +859,6 @@ impl<'s> Objects<'s> {
             + path3d.len()
             + line_segments3d.len()
             + mesh3d.len()
-            + camera.len()
             + arrow3d.len()
     }
 
@@ -933,7 +875,6 @@ impl<'s> Objects<'s> {
             || !self.path3d.is_empty()
             || !self.line_segments3d.is_empty()
             || !self.mesh3d.is_empty()
-            || !self.camera.is_empty()
             || !self.arrow3d.is_empty()
     }
 

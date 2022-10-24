@@ -144,7 +144,6 @@ impl DataColumns {
                 DataType::Vec3 => ("3D vector", "s"),
                 DataType::Box3 => ("3D box", "es"),
                 DataType::Mesh3D => ("mesh", "es"),
-                DataType::Camera => ("camera", "s"),
                 DataType::Arrow3D => ("3D arrow", "s"),
 
                 DataType::Tensor => ("tensor", "s"),

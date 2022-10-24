@@ -39,9 +39,6 @@ pub enum ObjectType {
     /// A 3D mesh.
     Mesh3D,
 
-    /// Camera extrinsics and intrinsics.
-    Camera,
-
     /// A 3D arrow
     Arrow3D,
 }
@@ -65,7 +62,6 @@ impl ObjectType {
             Self::Path3D => &["space", "color", "points", "stroke_width"],
             Self::LineSegments3D => &["space", "color", "points", "stroke_width"],
             Self::Mesh3D => &["space", "color", "mesh"],
-            Self::Camera => &["space", "color", "camera"],
             Self::Arrow3D => &[
                 "space",
                 "color",

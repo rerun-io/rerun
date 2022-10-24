@@ -26,7 +26,6 @@ pub enum DataType {
     Vec3,
     Box3,
     Mesh3D,
-    Camera,
     Arrow3D,
 
     // ----------------------------
@@ -137,12 +136,6 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::Camera {
-        fn data_typ() -> DataType {
-            DataType::Camera
-        }
-    }
-
     impl DataTrait for crate::Arrow3D {
         fn data_typ() -> DataType {
             DataType::Arrow3D
@@ -186,7 +179,6 @@ pub enum Data {
     Vec3(data_types::Vec3),
     Box3(Box3),
     Mesh3D(Mesh3D),
-    Camera(Camera),
     Arrow3D(Arrow3D),
 
     // ----------------------------
@@ -220,7 +212,6 @@ impl Data {
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
             Self::Mesh3D(_) => DataType::Mesh3D,
-            Self::Camera(_) => DataType::Camera,
             Self::Arrow3D(_) => DataType::Arrow3D,
 
             Self::Tensor(_) => DataType::Tensor,
@@ -240,7 +231,6 @@ impl_into_enum!(BBox2D, Data, BBox2D);
 impl_into_enum!(Tensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
-impl_into_enum!(Camera, Data, Camera);
 impl_into_enum!(ObjPath, Data, ObjPath);
 impl_into_enum!(Transform, Data, Transform);
 
@@ -263,7 +253,6 @@ pub enum DataVec {
     Vec3(Vec<data_types::Vec3>),
     Box3(Vec<Box3>),
     Mesh3D(Vec<Mesh3D>),
-    Camera(Vec<Camera>),
     Arrow3D(Vec<Arrow3D>),
 
     Tensor(Vec<Tensor>),
@@ -297,7 +286,6 @@ macro_rules! data_map(
             $crate::Data::Vec3($value) => $action,
             $crate::Data::Box3($value) => $action,
             $crate::Data::Mesh3D($value) => $action,
-            $crate::Data::Camera($value) => $action,
             $crate::Data::Arrow3D($value) => $action,
             $crate::Data::Tensor($value) => $action,
             $crate::Data::DataVec($value) => $action,
@@ -328,7 +316,6 @@ macro_rules! data_vec_map(
             $crate::DataVec::Vec3($vec) => $action,
             $crate::DataVec::Box3($vec) => $action,
             $crate::DataVec::Mesh3D($vec) => $action,
-            $crate::DataVec::Camera($vec) => $action,
             $crate::DataVec::Arrow3D($vec) => $action,
             $crate::DataVec::Tensor($vec) => $action,
             $crate::DataVec::DataVec($vec) => $action,
@@ -354,7 +341,6 @@ impl DataVec {
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
             Self::Mesh3D(_) => DataType::Mesh3D,
-            Self::Camera(_) => DataType::Camera,
             Self::Arrow3D(_) => DataType::Arrow3D,
 
             Self::Tensor(_) => DataType::Tensor,
@@ -388,7 +374,6 @@ impl DataVec {
             Self::Vec3(vec) => vec.last().cloned().map(Data::Vec3),
             Self::Box3(vec) => vec.last().cloned().map(Data::Box3),
             Self::Mesh3D(vec) => vec.last().cloned().map(Data::Mesh3D),
-            Self::Camera(vec) => vec.last().cloned().map(Data::Camera),
             Self::Arrow3D(vec) => vec.last().cloned().map(Data::Arrow3D),
 
             Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
@@ -441,16 +426,6 @@ pub struct Arrow3D {
 pub type Quaternion = [f32; 4];
 
 // ----------------------------------------------------------------------------
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Camera {
-    pub extrinsics: Extrinsics,
-    pub intrinsics: Option<Intrinsics>,
-
-    /// The 2D space that this camera projects into.
-    pub target_space: Option<ObjPath>,
-}
 
 /// Camera pose
 #[derive(Copy, Clone, Debug, PartialEq)]

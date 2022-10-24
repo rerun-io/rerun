@@ -333,10 +333,6 @@ pub(crate) fn ui_data(
         Data::Vec3([x, y, z]) => ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]")),
         Data::Box3(_) => ui.label("3D box"),
         Data::Mesh3D(_) => ui.label("3D mesh"),
-        Data::Camera(cam) => match preview {
-            Preview::Small | Preview::Specific(_) => ui.label("Camera"),
-            Preview::Medium => ui_camera(ui, cam),
-        },
         Data::Arrow3D(Arrow3D { origin, vector }) => {
             let &[x, y, z] = origin;
             let &[v0, v1, v2] = vector;
@@ -411,63 +407,6 @@ pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Respon
         data_vec.len(),
         data_vec.element_data_type(),
     ))
-}
-
-fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
-    let Camera {
-        extrinsics,
-        intrinsics,
-        target_space,
-    } = cam;
-
-    let Extrinsics {
-        rotation,
-        position,
-        camera_space_convention,
-    } = extrinsics;
-
-    ui.vertical(|ui| {
-        ui.label("Camera");
-        ui.indent("camera", |ui| {
-            egui::Grid::new("camera")
-                .striped(true)
-                .num_columns(2)
-                .show(ui, |ui| {
-                    ui.label("rotation");
-                    ui.monospace(format!("{rotation:?}"));
-                    ui.end_row();
-
-                    ui.label("position");
-                    ui.monospace(format!("{position:?}"));
-                    ui.end_row();
-
-                    ui.label("camera_space_convention");
-                    ui.monospace(format!("{camera_space_convention:?}"));
-                    ui.end_row();
-
-                    if let Some(Intrinsics {
-                        intrinsics_matrix,
-                        resolution,
-                    }) = intrinsics
-                    {
-                        ui.label("intrinsics matrix");
-                        ui_intrinsics_matrix(ui, intrinsics_matrix);
-                        ui.end_row();
-
-                        ui.label("resolution");
-                        ui.monospace(format!("{resolution:?}"));
-                        ui.end_row();
-                    }
-
-                    ui.label("target_space");
-                    if let Some(target_space) = target_space {
-                        ui.monospace(target_space.to_string());
-                    }
-                    ui.end_row();
-                });
-        });
-    })
-    .response
 }
 
 fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
