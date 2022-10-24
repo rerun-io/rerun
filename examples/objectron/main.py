@@ -263,7 +263,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--frames", type=int, default=sys.maxsize, help="If specifies, limits the number of frames logged"
     )
-    parser.add_argument("--dir", type=Path, default="examples/objectron/dataset/camera/batch-5/31", help="Directories to log (e.g. `dataset/bike/batch-8/16/`)")
+    parser.add_argument(
+        "--dir",
+        type=Path,
+        default="examples/objectron/dataset/camera/batch-5/31",
+        help="Directories to log (e.g. `dataset/bike/batch-8/16/`)",
+    )
     args = parser.parse_args()
 
     if args.connect:

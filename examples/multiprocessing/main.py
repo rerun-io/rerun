@@ -38,7 +38,8 @@ def main() -> None:
         p.start()
         p.join()
     else:
-        print("You must use the --connect argument!") # This is so we can run this without arguments in `just py-run-all`
+        # This is so we can run this without arguments in `just py-run-all`
+        print("You must use the --connect argument!")
 
 
 if __name__ == "__main__":

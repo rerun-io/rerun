@@ -158,7 +158,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--points", type=int, default=250_000, help="Specifies the number of points for the point cloud"
     )
-    parser.add_argument("--path", type=Path, help="Mesh to log (e.g. `dataset/avocado.glb`)", default="examples/deep_sdf/dataset/avocado.glb")
+    parser.add_argument(
+        "--path",
+        type=Path,
+        help="Mesh to log (e.g. `dataset/avocado.glb`)",
+        default="examples/deep_sdf/dataset/avocado.glb",
+    )
     parser.add_argument(
         "--serve",
         dest="serve",
