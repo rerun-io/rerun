@@ -506,7 +506,8 @@ def log_extrinsics(
 
     This logs a transform between this object and the parent object.
 
-    Example:
+    Example
+    -------
     ```
     rerun.log_extrinsics("3d/camera", …)
     rerun.log_intrinsics("3d/camera/image", …)
@@ -515,6 +516,7 @@ def log_extrinsics(
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
     `position`: Array with [x, y, z] position of the camera in world space.
     `camera_space_convention`: The convention used for the orientation of the camera's 3D coordinate system.
+
     """
     rerun_rs.log_extrinsics(
         obj_path,
@@ -533,7 +535,8 @@ def log_intrinsics(
 
     This logs a transform between this object and the parent object.
 
-    Example:
+    Example
+    -------
     ```
     rerun.log_extrinsics("3d/camera", …)
     rerun.log_intrinsics("3d/camera/image", …)
@@ -541,6 +544,7 @@ def log_intrinsics(
 
     `intrinsics_matrix`: Row-major intrinsics matrix for projecting from camera space to image space
     `resolution`: Array with [width, height] image resolution in pixels.
+
     """
     rerun_rs.log_intrinsics(
         obj_path,
