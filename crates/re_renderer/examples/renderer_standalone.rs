@@ -40,6 +40,21 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     app.run();
 }
 
+// Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
+fn lorenz_integrate(cur: glam::Vec3, dt: f32) -> glam::Vec3 {
+    let o: f32 = 10.0;
+    let p: f32 = 28.0;
+    let b: f32 = 8.0 / 3.0;
+
+    let next = glam::vec3(
+        o * (cur.y - cur.x),
+        cur.x * (p - cur.z) - cur.y,
+        cur.x * cur.y - b * cur.z,
+    );
+
+    return cur + next * dt;
+}
+
 /// Uses a [`re_renderer::ViewBuilder`] to draw an example scene.
 fn draw_view(
     time: &Time,
@@ -53,7 +68,7 @@ fn draw_view(
 
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
     let t = time.seconds_since_startup();
-    let pos = Vec3::new(t.sin(), 0.5, t.cos()) * 5.0;
+    let pos = Vec3::new(t.sin(), 0.5, t.cos()) * 10.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
     let target_cfg = TargetConfiguration {
         resolution_in_pixel: resolution,
@@ -65,20 +80,22 @@ fn draw_view(
 
     let triangle = TestTriangleDrawable::new(re_ctx, device);
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
+
+    let mut lorenz_points = Vec::new();
+    lorenz_points.push(glam::vec3(0.1, 0.001, 0.0));
+    for _ in 0..10000 {
+        lorenz_points.push(lorenz_integrate(*lorenz_points.last().unwrap(), 0.01));
+    }
+
     let lines = LineDrawable::new(
         re_ctx,
         device,
         queue,
         &[
             LineStrip {
-                points: vec![
-                    glam::vec3(0.0, 0.0, 0.0),
-                    glam::vec3(1.0, 0.75, 0.0),
-                    glam::vec3(2.0, 0.0, 0.0),
-                    glam::vec3(3.0, 1.0, 0.0),
-                ],
-                radius: 0.2,
-                color: [255, 255, 50, 255],
+                points: lorenz_points,
+                radius: 0.05,
+                color: [255, 100, 50, 255],
                 stippling: 1.0,
             },
             LineStrip {
@@ -97,7 +114,7 @@ fn draw_view(
                     .map(|i| {
                         glam::vec3(
                             (i as f32 * 0.01).sin() as f32 * 2.0,
-                            i as f32 * 0.02 - 5.0,
+                            i as f32 * 0.01 - 6.0,
                             (i as f32 * 0.01).cos() as f32 * 2.0,
                         )
                     })
