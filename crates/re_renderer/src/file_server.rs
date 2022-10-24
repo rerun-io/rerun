@@ -26,23 +26,36 @@ macro_rules! include_file {
                 .parent()
                 .unwrap()
                 .join($path);
-            // TODO: we want to be resolving there
-            // TODO: we also want to add files to the watchlist if imports get added at
-            // runtime
+
             $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false)).unwrap()
         }
 
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
         {
-            // TODO: need some explanations
-            let fs = $crate::OsFileSystem::default();
-            let mut resolver = $crate::FileResolver::with_search_path(fs, {
-                let mut search_path = $crate::SearchPath::default();
-                // TODO: fill up search path
-                search_path
-            });
+            use anyhow::Context as _;
 
-            $crate::FileContentsHandle::Inlined(include_str!($path))
+            let path = ::std::path::Path::new(file!())
+                .parent()
+                .unwrap()
+                .join($path);
+
+            let path = if cfg!(not(target_arch = "wasm32")) {
+                // It _has_ to be canonicalizable at that point, this is run-time!
+                std::fs::canonicalize(&path)
+                    .with_context(|| format!("failed to canonicalize path at {path:?}"))
+                    .unwrap()
+            } else {
+                clean_path::clean(&path)
+            };
+            println!("adding {path:?} to whatever");
+
+            // TODO: now we somehow gotta feed the beast
+
+            // TODO: need some explanations
+            let fs = $crate::MemFileSystem::get();
+            fs.create_file(&path, include_str!($path).into()).unwrap();
+
+            $crate::FileContentsHandle::Path(path)
         }
     }};
 }

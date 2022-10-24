@@ -19,9 +19,10 @@ use log::info;
 use macaw::IsoTransform;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},
+    get_filesystem,
     renderer::{GenericSkyboxDrawable, TestTriangleDrawable},
     view_builder::{TargetConfiguration, ViewBuilder},
-    FileResolver, OsFileSystem, SearchPath,
+    FileResolver, SearchPath,
 };
 use winit::{
     event::{Event, WindowEvent},
@@ -47,16 +48,12 @@ fn draw_view(
     encoder: &mut wgpu::CommandEncoder,
     resolution: [u32; 2],
 ) -> ViewBuilder {
-    // TODO: should this really be here tho?
-            // TODO: what about web and release?
-            let mut fs = OsFileSystem::default();
-            // TODO: note how caching/lifecycle of everything works
-            let mut resolver = FileResolver::with_search_path(fs, {
-                let mut search_path = SearchPath::default();
-                // TODO: fill up search path
-                search_path
-            });
-
+    // TODO: note how caching/lifecycle of everything works
+    let mut resolver = FileResolver::with_search_path(get_filesystem(), {
+        let mut search_path = SearchPath::default();
+        // TODO: fill up search path
+        search_path
+    });
 
     let mut view_builder = ViewBuilder::new();
 
@@ -72,8 +69,8 @@ fn draw_view(
         target_identifier: 0,
     };
 
-            let triangle = TestTriangleDrawable::new(re_ctx, device, &mut resolver);
-            let skybox = GenericSkyboxDrawable::new(re_ctx, device, &mut resolver);
+    let triangle = TestTriangleDrawable::new(re_ctx, device, &mut resolver);
+    let skybox = GenericSkyboxDrawable::new(re_ctx, device, &mut resolver);
 
     view_builder
         .setup_view(re_ctx, device, queue, &mut resolver, &target_cfg)

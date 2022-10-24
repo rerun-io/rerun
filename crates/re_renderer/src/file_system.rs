@@ -17,16 +17,28 @@ pub trait FileSystem {
     fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf>;
     fn exists(&self, path: impl AsRef<Path>) -> bool;
 
-    fn create_dir_all(&mut self, _path: impl AsRef<Path>) -> anyhow::Result<()> {
+    fn create_dir_all(&self, _path: impl AsRef<Path>) -> anyhow::Result<()> {
         unimplemented!("create_dir_all() is not supported on this backend")
     }
     fn create_file(
-        &mut self,
+        &self,
         _path: impl AsRef<Path>,
         _contents: Cow<'static, str>,
     ) -> anyhow::Result<()> {
         unimplemented!("create_file() is not supported on this backend")
     }
+}
+
+/// Returns the recommended filesystem handle for the current platform.
+#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
+pub fn get_filesystem() -> OsFileSystem {
+    OsFileSystem
+}
+
+/// Returns the recommended filesystem handle for the current platform.
+#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
+pub fn get_filesystem() -> &'static MemFileSystem {
+    MemFileSystem::get()
 }
 
 // ---
@@ -125,12 +137,12 @@ impl FileSystem for &'static MemFileSystem {
         files.contains_key(&path.as_ref().clean())
     }
 
-    fn create_dir_all(&mut self, _: impl AsRef<Path>) -> anyhow::Result<()> {
+    fn create_dir_all(&self, _: impl AsRef<Path>) -> anyhow::Result<()> {
         Ok(())
     }
 
     fn create_file(
-        &mut self,
+        &self,
         path: impl AsRef<Path>,
         contents: Cow<'static, str>,
     ) -> anyhow::Result<()> {

@@ -1,9 +1,9 @@
 use type_map::concurrent::{self, TypeMap};
 
+use crate::{get_filesystem, FileResolver, FileServer, FileSystem, SearchPath};
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
-use crate::{FileResolver, FileServer, FileSystem, OsFileSystem, SearchPath};
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
@@ -79,11 +79,8 @@ impl RenderContext {
     }
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
-        // TODO: what about web and release?
-        let fs = OsFileSystem::default();
-
         // TODO: note how caching/lifecycle of everything works
-        let mut resolver = FileResolver::with_search_path(fs, {
+        let mut resolver = FileResolver::with_search_path(get_filesystem(), {
             let mut search_path = SearchPath::default();
             // TODO: fill up search path
             search_path

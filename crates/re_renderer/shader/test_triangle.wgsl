@@ -20,11 +20,7 @@ var<private> v_positions: array<vec2<f32>, 3> = array<vec2<f32>, 3>(
     vec2<f32>(-1.0, -1.0),
 );
 
-var<private> v_colors: array<vec4<f32>, 3> = array<vec4<f32>, 3>(
-    vec4<f32>(1.0, 0.0, 0.0, 1.0),
-    vec4<f32>(0.0, 1.0, 0.0, 1.0),
-    vec4<f32>(0.0, 0.0, 1.0, 1.0),
-);
+#import <a/b/c/colors.wgsl>
 
 @vertex
 fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {

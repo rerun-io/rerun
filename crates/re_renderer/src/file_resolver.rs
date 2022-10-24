@@ -554,7 +554,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         // that leads somewhere... if it does: import that.
         {
             let path = cwd.as_ref().join(&path).clean();
-            if self.fs.exists(&path) {
+            if dbg!(self.fs.exists(dbg!(&path))) {
                 return path.into();
             }
         }
@@ -581,7 +581,7 @@ mod tests_file_resolver {
 
     #[test]
     fn acyclic_interpolation() {
-        let mut fs = MemFileSystem::get();
+        let fs = MemFileSystem::get();
         {
             fs.create_dir_all("/shaders1/common").unwrap();
             fs.create_dir_all("/shaders1/a/b/c/d").unwrap();
@@ -739,7 +739,7 @@ mod tests_file_resolver {
     #[test]
     #[should_panic] // TODO: check error contents
     fn cyclic_direct() {
-        let mut fs = MemFileSystem::get();
+        let fs = MemFileSystem::get();
         {
             fs.create_dir_all("/shaders2").unwrap();
 
@@ -781,7 +781,7 @@ mod tests_file_resolver {
     #[test]
     #[should_panic] // TODO: check error contents
     fn cyclic_indirect() {
-        let mut fs = MemFileSystem::get();
+        let fs = MemFileSystem::get();
         {
             fs.create_dir_all("/shaders3").unwrap();
 

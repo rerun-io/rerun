@@ -13,8 +13,9 @@ mod resource_pools;
 mod wgsl_types;
 
 mod file_system;
-// TODO: all of these should be pub(crate), otherwise we messed up
-pub use self::file_system::{FileSystem, MemFileSystem, OsFileSystem};
+pub use self::file_system::{get_filesystem, FileSystem};
+#[allow(unused_imports)] // they can be handy from time to time
+pub(crate) use self::file_system::{MemFileSystem, OsFileSystem};
 
 mod file_resolver;
 pub use self::file_resolver::{FileResolver, ImportClause, SearchPath};

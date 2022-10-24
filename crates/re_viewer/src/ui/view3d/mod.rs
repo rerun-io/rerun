@@ -499,6 +499,7 @@ fn paint_view(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
+        use re_renderer::get_filesystem;
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
@@ -515,17 +516,13 @@ fn paint_view(
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
-                        // TODO: maybe we want the resolver to pick the Fs on its own then?
-
-                        // TODO: what about web and release?
-                        let mut fs = re_renderer::OsFileSystem::default();
-
                         // TODO: note how caching/lifecycle of everything works
-                        let mut resolver = re_renderer::FileResolver::with_search_path(fs, {
-                            let mut search_path = re_renderer::SearchPath::default();
-                            // TODO: fill up search path
-                            search_path
-                        });
+                        let mut resolver =
+                            re_renderer::FileResolver::with_search_path(get_filesystem(), {
+                                let mut search_path = re_renderer::SearchPath::default();
+                                // TODO: fill up search path
+                                search_path
+                            });
 
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         let triangle = TestTriangleDrawable::new(ctx, device, &mut resolver);
