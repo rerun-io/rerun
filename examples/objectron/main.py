@@ -12,7 +12,10 @@ Setup:
 Run:
 ```sh
 # assuming your virtual env is up
-python3 examples/objectron/main.py examples/objectron/dataset/bike/batch-8/16/
+
+examples/objectron/main.py
+
+examples/objectron/main.py --dir examples/objectron/dataset/camera/batch-5/31
 ```
 """
 
@@ -260,7 +263,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--frames", type=int, default=sys.maxsize, help="If specifies, limits the number of frames logged"
     )
-    parser.add_argument("dir", type=Path, nargs="+", help="Directories to log (e.g. `dataset/bike/batch-8/16/`)")
+    parser.add_argument(
+        "--dir",
+        type=Path,
+        default="examples/objectron/dataset/camera/batch-5/31",
+        help="Directories to log (e.g. `dataset/bike/batch-8/16/`)",
+    )
     args = parser.parse_args()
 
     if args.connect:
@@ -269,10 +277,9 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    for dirpath in args.dir:
-        samples = read_ar_frames(dirpath, args.frames)
-        seq = read_annotations(dirpath)
-        log_ar_frames(samples, seq)
+    samples = read_ar_frames(args.dir, args.frames)
+    seq = read_annotations(args.dir)
+    log_ar_frames(samples, seq)
 
     if args.save is not None:
         rerun.save(args.save)
