@@ -11,9 +11,11 @@ mod debug_label;
 mod global_bindings;
 mod resource_pools;
 
+mod file_system;
+pub use self::file_system::{FileSystem, MemFileSystem, OsFileSystem};
+mod file_resolver;
+pub use self::file_resolver::{FileResolver, ImportClause, SearchPath};
 mod file_server;
 pub use self::file_server::{FileContentsHandle, FileServer};
-
-mod file_resolver;
 
 mod wgsl_types;

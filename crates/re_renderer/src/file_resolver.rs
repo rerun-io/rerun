@@ -101,6 +101,8 @@ use ahash::{HashMap, HashSet, HashSetExt};
 use anyhow::{anyhow, bail, ensure, Context as _};
 use clean_path::Clean as _;
 
+use crate::FileSystem;
+
 // ---
 
 // TODO: what do we do about async-ness? most likely we ignore it for now
@@ -380,115 +382,6 @@ mod tests_import_clause {
 
 // ---
 
-// pub struct FileResolver {
-// }
-
-// impl FileResolver {
-// }
-
-// pub trait FileResolver {
-//     fn resolve(path: impl AsRef<Path>) -> anyhow::Result<()>;
-//     fn resolve_to_string(path: impl AsRef<Path>) -> anyhow::Result<String>;
-// }
-
-// TODO: search as vanilla path
-// TODO: search PATH
-
-// TODO: we do _NOT_ keep anything around, just do everything lazily
-
-// TODO: put anyhow's contexts directly in there maybe?
-pub trait FileSystem {
-    fn read(&self, path: impl AsRef<Path>) -> anyhow::Result<Vec<u8>>;
-    fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<String>;
-    fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf>;
-    fn exists(&self, path: impl AsRef<Path>) -> bool;
-
-    fn create_dir_all(&mut self, _path: impl AsRef<Path>) -> anyhow::Result<()> {
-        unimplemented!("not supported")
-    }
-    fn create_file(
-        &mut self,
-        _path: impl AsRef<Path>,
-        _buf: impl AsRef<[u8]>,
-    ) -> anyhow::Result<()> {
-        unimplemented!("not supported")
-    }
-}
-
-struct OsFileSystem;
-impl FileSystem for OsFileSystem {
-    fn read(&self, path: impl AsRef<Path>) -> anyhow::Result<Vec<u8>> {
-        let path = path.as_ref();
-        std::fs::read(path).with_context(|| format!("failed to read file at {path:?}"))
-    }
-
-    fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<String> {
-        let path = path.as_ref();
-        std::fs::read_to_string(path).with_context(|| format!("failed to read file at {path:?}"))
-    }
-
-    fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
-        let path = path.as_ref();
-        std::fs::canonicalize(path)
-            .with_context(|| format!("failed to canonicalize path at {path:?}"))
-    }
-
-    fn exists(&self, path: impl AsRef<Path>) -> bool {
-        path.as_ref().exists()
-    }
-}
-
-// TODO: need a Cow in there
-#[derive(Default)]
-struct MemFileSystem {
-    files: HashMap<PathBuf, Vec<u8>>,
-}
-impl FileSystem for MemFileSystem {
-    fn read(&self, path: impl AsRef<Path>) -> anyhow::Result<Vec<u8>> {
-        let path = path.as_ref().clean();
-        self.files
-            .get(&path)
-            .cloned()
-            .ok_or_else(|| anyhow!("file does not exist"))
-            .with_context(|| format!("failed to read file at {path:?}"))
-    }
-
-    fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<String> {
-        let path = path.as_ref().clean();
-        let file = self
-            .files
-            .get(&path)
-            .ok_or_else(|| anyhow!("file does not exist"))
-            .with_context(|| format!("failed to read file at {path:?}"))?;
-        String::from_utf8(file.clone()).with_context(|| format!("failed to read file at {path:?}"))
-    }
-
-    fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
-        let path = path.as_ref().clean();
-        self.files
-            .get(&path)
-            .ok_or_else(|| anyhow!("file does not exist at {path:?}"))
-            .map(|_| path)
-        // .with_context(|| format!("failed to canonicalize path at {path:?}"))
-    }
-
-    fn exists(&self, path: impl AsRef<Path>) -> bool {
-        self.files.contains_key(&path.as_ref().clean())
-    }
-
-    fn create_dir_all(&mut self, _: impl AsRef<Path>) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    fn create_file(&mut self, path: impl AsRef<Path>, buf: impl AsRef<[u8]>) -> anyhow::Result<()> {
-        self.files
-            .insert(path.as_ref().to_owned(), buf.as_ref().to_owned());
-        Ok(())
-    }
-}
-
-// ---
-
 #[derive(Clone)]
 struct InterpolatedFile {
     contents: String,
@@ -497,7 +390,7 @@ struct InterpolatedFile {
 
 // TODO: note how this cache files for its whole lifetime
 #[derive(Default)]
-struct FileResolver<Fs> {
+pub struct FileResolver<Fs> {
     /// A handle to the filesystem being used.
     /// Generally a `OsFileSystem` on native and a `MemFileSystem` on web and during tests.
     fs: Fs,
@@ -678,6 +571,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 
 #[cfg(test)]
 mod tests_file_resolver {
+    use crate::{FileSystem as _, MemFileSystem};
     use unindent::{unindent, unindent_bytes};
 
     use super::*;
