@@ -82,7 +82,7 @@ fn draw_view(
         }
 
         // slow buildup and reset
-        let num_points = ((t * 0.05).fract() * 10000.0) as u32;
+        let num_points = (((t * 0.05).fract() * 10000.0) as u32).max(1);
 
         let mut lorenz_points = Vec::new();
         lorenz_points.push(glam::vec3(-0.1, 0.001, 0.0));
