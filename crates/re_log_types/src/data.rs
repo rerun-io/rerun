@@ -554,6 +554,10 @@ impl CameraSpaceConvention {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Transform {
+    /// We don't know the transform, but it is likely/potentially non-identity.
+    /// Maybe the user intend to set the transform later.
+    Unknown,
+
     /// The parent is a 3D space, the child a camera space.
     Extrinsics(Extrinsics),
 

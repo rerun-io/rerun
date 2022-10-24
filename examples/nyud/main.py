@@ -8,7 +8,9 @@ wget -P examples/nyud http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/cafe.
 
 Run:
 ``` sh
-python examples/nyud/main.py --folder-idx=0 examples/nyud/cafe.zip
+examples/nyud/main.py
+
+examples/nyud/main.py --folder-idx=0 --dataset examples/nyud/cafe.zip
 ```
 
 Within the dataset are 3 subsets, corresponding to `--folder-idx` argument values `0-2`.
@@ -85,7 +87,7 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
 def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
     depth_images_counter = 0
 
-    rerun.set_space_up("world", [0, -1, 0])
+    rerun.set_space_up("3d", [0, -1, 0])
 
     with zipfile.ZipFile(dataset, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
@@ -103,26 +105,40 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)
                 img_rgb = read_image_rgb(buf)
-                rerun.log_image("rgb", img_rgb, space="image")
+                rerun.log_image("3d/camera/image/rgb", img_rgb, space="image")
 
             elif f.filename.endswith(".pgm"):
                 if depth_images_counter % DEPTH_IMAGE_INTERVAL == 0:
                     buf = archive.read(f)
                     img_depth = read_image(buf)
-                    rerun.log_depth_image("depth", img_depth, meter=DEPTH_IMAGE_SCALING, space="image")
+                    rerun.log_depth_image("3d/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING, space="image")
 
                     point_cloud = back_project(depth_image=img_depth / DEPTH_IMAGE_SCALING)
-                    rerun.log_points("points", point_cloud, colors=np.array([255, 255, 255, 255]), space="world")
+                    rerun.log_points("3d/points", point_cloud, colors=np.array([255, 255, 255, 255]), space="3d")
 
                     rerun.log_camera(
                         "camera",
-                        resolution=img_depth.shape,
+                        resolution=[img_depth.shape[1], img_depth.shape[0]],
                         intrinsics=camera_intrinsics(img_depth),
                         rotation_q=np.array((0, 0, 0, 1)),
                         position=np.array((0, 0, 0)),
                         camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
                         target_space="image",
-                        space="world",
+                        space="3d",
+                    )
+
+                    # Experimental new API which will replace log_camera:
+                    rerun.log_extrinsics(
+                        "3d/camera",
+                        rotation_q=np.array((0, 0, 0, 1)),
+                        position=np.array((0, 0, 0)),
+                        camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+                    )
+                    rerun.log_intrinsics(
+                        "3d/camera/image",
+                        width=img_depth.shape[1],
+                        height=img_depth.shape[0],
+                        intrinsics_matrix=camera_intrinsics(img_depth),
                     )
 
                 depth_images_counter += 1
@@ -130,9 +146,10 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
-    parser.add_argument("dataset", type=Path, help="Path to the cafe.zip archive.")
+    parser.add_argument("--dataset", type=Path, default="examples/nyud/cafe.zip", help="Path to the cafe.zip archive.")
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "--folder-idx", type=int, default=0, help="The index of the folders within the dataset archive to log."
     )
@@ -149,6 +166,8 @@ if __name__ == "__main__":
         dir_idx=args.folder_idx,
     )
 
-    if not args.connect:
+    if args.save is not None:
+        rerun.save(args.save)
+    elif not args.connect:
         # Show the logged data inside the Python process:
         rerun.show()

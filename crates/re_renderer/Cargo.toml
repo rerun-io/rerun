@@ -41,10 +41,10 @@ wgpu = { version = "0.14", default-features = false, features = [
 
 [dev-dependencies]
 env_logger = "0.9"
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 pollster = "0.2"
 winit = "0.27"
-instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

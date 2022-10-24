@@ -1,4 +1,13 @@
-pub(crate) fn apply_design_tokens(ctx: &egui::Context) {
+/// The look and feel of the UI.
+///
+/// Not everything is covered by this.
+/// A lot of other design tokens are put straight into the [`egui::Style`]
+#[derive(Clone, Copy, Debug)]
+pub struct DesignTokens {
+    pub top_bar_color: egui::Color32,
+}
+
+pub(crate) fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     let apply_font = true;
     let apply_font_size = true;
 
@@ -59,6 +68,10 @@ pub(crate) fn apply_design_tokens(ctx: &egui::Context) {
     egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
 
     ctx.set_style(egui_style);
+
+    DesignTokens {
+        top_bar_color: get_aliased_color(&json, "{Alias.Color.Surface.Topbar.value}"),
+    }
 }
 
 // ----------------------------------------------------------------------------

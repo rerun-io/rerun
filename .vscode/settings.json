@@ -20,6 +20,8 @@
     "python.linting.mypyEnabled": true,
     "python.linting.enabled": true,
     "cSpell.words": [
+        "andreas",
+        "nyud",
         "Skybox",
         "Tonemapper",
         "tonemapping",
