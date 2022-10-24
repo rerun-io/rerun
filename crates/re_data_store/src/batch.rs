@@ -45,11 +45,7 @@ impl<T: Clone> BatchOrSplat<T> {
 /// Each [`Index`] in a batch corresponds to an instance of a multi-object.
 ///
 /// Can be shared between different timelines with [`ArcBatch`].
-pub struct Batch<T> {
-    store: BatchStorage<T>,
-}
-
-enum BatchStorage<T> {
+pub enum Batch<T> {
     SequentialBatch(Vec<T>),
     IndexedBatch(IntMap<IndexHash, T>),
 }
@@ -70,9 +66,7 @@ impl<T: Clone> Batch<T> {
             .map(|(index_hash, value)| (index_hash.0, value.clone()))
             .collect();
 
-        Ok(Self {
-            store: BatchStorage::IndexedBatch(map),
-        })
+        Ok(Self::IndexedBatch(map))
     }
 
     #[inline(never)]
@@ -85,9 +79,7 @@ impl<T: Clone> Batch<T> {
 
         let vec = data[..std::cmp::min(data.len(), MAX_SEQUENTIAL_BATCH)].to_vec();
 
-        Ok(Self {
-            store: BatchStorage::SequentialBatch(vec),
-        })
+        Ok(Self::SequentialBatch(vec))
     }
 }
 
@@ -132,25 +124,23 @@ impl SequentialIndexHash {
 impl<T> Batch<T> {
     #[inline]
     pub fn get(&self, index: &IndexHash) -> Option<&T> {
-        match &self.store {
-            BatchStorage::SequentialBatch(vec) => {
-                vec.get(*SequentialIndexHash::reverse_hash(index)?)
-            }
-            BatchStorage::IndexedBatch(map) => map.get(index),
+        match &self {
+            Self::SequentialBatch(vec) => vec.get(*SequentialIndexHash::reverse_hash(index)?),
+            Self::IndexedBatch(map) => map.get(index),
         }
     }
 
     #[inline]
     pub fn get_index(&self, index: &Index) -> Option<&T> {
-        match &self.store {
-            BatchStorage::SequentialBatch(vec) => {
+        match &self {
+            Self::SequentialBatch(vec) => {
                 if let Index::Sequence(index) = index {
                     vec.get(*index as usize)
                 } else {
                     None
                 }
             }
-            BatchStorage::IndexedBatch(map) => {
+            Self::IndexedBatch(map) => {
                 let index_hash = IndexHash::hash(index);
                 map.get(&index_hash)
             }
@@ -159,20 +149,20 @@ impl<T> Batch<T> {
 
     #[inline]
     pub fn values(&self) -> impl ExactSizeIterator<Item = &T> {
-        match &self.store {
-            BatchStorage::SequentialBatch(vec) => Either::Left(vec.iter()),
-            BatchStorage::IndexedBatch(map) => Either::Right(map.values()),
+        match &self {
+            Self::SequentialBatch(vec) => Either::Left(vec.iter()),
+            Self::IndexedBatch(map) => Either::Right(map.values()),
         }
     }
 
     #[inline]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexHash, &T)> {
-        match &self.store {
-            BatchStorage::SequentialBatch(vec) => Either::Left(std::iter::zip(
+        match &self {
+            Self::SequentialBatch(vec) => Either::Left(std::iter::zip(
                 SequentialIndexHash::hashes_up_to(vec.len()),
                 vec,
             )),
-            BatchStorage::IndexedBatch(map) => Either::Right(map.iter()),
+            Self::IndexedBatch(map) => Either::Right(map.iter()),
         }
     }
 }
