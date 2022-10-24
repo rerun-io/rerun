@@ -13,7 +13,8 @@
 use std::f32::consts::TAU;
 
 use anyhow::Context as _;
-use glam::{Affine3A, Quat, Vec3};
+use glam::Vec3;
+use instant::Instant;
 use macaw::IsoTransform;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},
@@ -21,9 +22,6 @@ use re_renderer::{
     view_builder::{TargetConfiguration, ViewBuilder},
 };
 use type_map::concurrent::TypeMap;
-use wgpu::{
-    CommandEncoder, Device, Queue, RenderPass, Surface, SurfaceConfiguration, TextureFormat,
-};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -35,82 +33,89 @@ use winit::{
 // Rendering things using Rerun's renderer.
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
-    let mut wgpu_ctx = WgpuContext::new(event_loop, window).await.unwrap();
+    let mut app = Application::new(event_loop, window).await.unwrap();
 
     let re_ctx = RenderContext::new(
-        &wgpu_ctx.device,
-        &wgpu_ctx.queue,
+        &app.device,
+        &app.queue,
         RenderContextConfig {
-            output_format_color: wgpu_ctx.swapchain_format,
+            output_format_color: app.swapchain_format,
         },
     );
 
     // Store our `RenderContext` into the `WgpuContext` so that lifetime issues will
     // be handled for us.
-    wgpu_ctx.user_data.insert(re_ctx);
+    app.user_data.insert(re_ctx);
+    app.run();
+}
 
-    wgpu_ctx.run(
-        // Setting up the `prepare` callback, which will be called once per frame with
-        // a ready-to-be-filled `CommandEncoder`.
-        |user_data, device, queue, encoder, resolution| {
-            let mut view_builder = ViewBuilder::new();
+// Uses a re_renderer::Viewbuilder to draw an example scene.
+fn draw_view(
+    time: &Time,
+    user_data: &mut TypeMap,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    encoder: &mut wgpu::CommandEncoder,
+    resolution: [u32; 2],
+) -> ViewBuilder {
+    let mut view_builder = ViewBuilder::new();
 
-            let pos = Vec3::new(0.0, 0.0, 3.0);
-            let iso = IsoTransform::from_rotation_translation(
-                Quat::from_affine3(&Affine3A::look_at_rh(pos, Vec3::ZERO, Vec3::Y).inverse()),
-                pos,
-            );
-            let target_cfg = TargetConfiguration {
-                resolution_in_pixel: resolution,
-                world_from_view: iso,
-                fov_y: 70.0 * TAU / 360.0,
-                near_plane_distance: 0.01,
-                target_identifier: 0,
-            };
+    // Rotate camera around the center at a distance of 5, looking down at 45 deg
+    let t = time.seconds_since_startup();
+    let pos = Vec3::new(t.sin(), 0.5, t.cos()) * 5.0;
+    let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
+    let target_cfg = TargetConfiguration {
+        resolution_in_pixel: resolution,
+        view_from_world,
+        fov_y: 70.0 * TAU / 360.0,
+        near_plane_distance: 0.01,
+        target_identifier: 0,
+    };
 
-            let re_ctx = user_data.get_mut::<RenderContext>().unwrap();
+    let re_ctx = user_data.get_mut::<RenderContext>().unwrap();
 
-            let triangle = TestTriangleDrawable::new(re_ctx, device);
-            let skybox = GenericSkyboxDrawable::new(re_ctx, device);
+    let triangle = TestTriangleDrawable::new(re_ctx, device);
+    let skybox = GenericSkyboxDrawable::new(re_ctx, device);
 
-            view_builder
-                .setup_view(re_ctx, device, queue, &target_cfg)
-                .unwrap()
-                .queue_draw(&triangle)
-                .queue_draw(&skybox)
-                .draw(re_ctx, encoder)
-                .unwrap();
+    view_builder
+        .setup_view(re_ctx, device, queue, &target_cfg)
+        .unwrap()
+        .queue_draw(&triangle)
+        .queue_draw(&skybox)
+        .draw(re_ctx, encoder)
+        .unwrap();
 
-            view_builder
-        },
-        // Setting up the `draw` callback, which will be called once per frame with the
-        // renderpass drawing onto the swapchain.
-        {
-            |user_data, rpass, frame_builder: ViewBuilder| {
-                let re_ctx = user_data.get::<RenderContext>().unwrap();
-                frame_builder.composite(re_ctx, rpass).unwrap();
-            }
-        },
-    );
+    view_builder
+}
+
+// Composites a finished ViewBuilder into a given renderpass.
+fn composite_view<'a>(
+    user_data: &'a mut TypeMap,
+    rpass: &mut wgpu::RenderPass<'a>,
+    view_builder: &ViewBuilder,
+) {
+    let re_ctx = user_data.get::<RenderContext>().unwrap();
+    view_builder.composite(re_ctx, rpass).unwrap();
 }
 
 // ---
 
 // Usual winit + wgpu initialization stuff
 
-struct WgpuContext {
+struct Application {
     event_loop: EventLoop<()>,
     window: Window,
-    device: Device,
-    queue: Queue,
-    swapchain_format: TextureFormat,
-    surface: Surface,
-    surface_config: SurfaceConfiguration,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    swapchain_format: wgpu::TextureFormat,
+    surface: wgpu::Surface,
+    surface_config: wgpu::SurfaceConfiguration,
+    time: Time,
 
     pub user_data: TypeMap,
 }
 
-impl WgpuContext {
+impl Application {
     async fn new(event_loop: EventLoop<()>, window: Window) -> anyhow::Result<Self> {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::Backends::all());
@@ -163,16 +168,16 @@ impl WgpuContext {
             swapchain_format,
             surface,
             surface_config,
+            time: Time {
+                start_time: Instant::now(),
+                last_draw_time: Instant::now(),
+            },
+
             user_data: TypeMap::new(),
         })
     }
 
-    fn run<DrawData, Prepare, Draw>(mut self, mut prepare: Prepare, mut draw: Draw)
-    where
-        Prepare: FnMut(&mut TypeMap, &Device, &Queue, &mut CommandEncoder, [u32; 2]) -> DrawData
-            + 'static,
-        Draw: for<'a, 'b> FnMut(&'b mut TypeMap, &'a mut RenderPass<'b>, DrawData) + 'static,
-    {
+    fn run(mut self) {
         self.event_loop.run(move |event, _, control_flow| {
             // Keep our example busy.
             // Not how one should generally do it, but great for animated content and checking on perf.
@@ -189,9 +194,6 @@ impl WgpuContext {
                     self.window.request_redraw();
                 }
                 Event::RedrawRequested(_) => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    let start_time = std::time::Instant::now();
-
                     let frame = self
                         .surface
                         .get_current_texture()
@@ -204,7 +206,8 @@ impl WgpuContext {
                         .device
                         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-                    let prepared = prepare(
+                    let view_builder = draw_view(
+                        &self.time,
                         &mut self.user_data,
                         &self.device,
                         &self.queue,
@@ -226,28 +229,34 @@ impl WgpuContext {
                             depth_stencil_attachment: None,
                         });
 
-                        draw(&mut self.user_data, &mut rpass, prepared);
+                        composite_view(&mut self.user_data, &mut rpass, &view_builder);
                     }
 
                     self.queue.submit(Some(encoder.finish()));
                     frame.present();
 
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        // Note that this measures time spent on CPU, not GPU
-                        // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
-                        // we eventually end up waiting for GPU in `get_current_texture`
-                        // (wgpu has a swap chain with a limited amount of buffers, the exact count is dependent on `present_mode` and backend!).
-                        // It's important to keep in mind that depending on the `present_mode`, the GPU might be waiting on the screen in turn.
-                        let time_passed = std::time::Instant::now() - start_time;
-                        // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
-                        self.window.set_title(&format!(
-                            "{:.2} ms ({:.2} fps)",
-                            time_passed.as_secs_f32() * 1000.0,
-                            1.0 / time_passed.as_secs_f32()
-                        ));
-                    }
+                    self.user_data
+                        .get_mut::<RenderContext>()
+                        .unwrap()
+                        .frame_maintenance(&self.device);
 
+                    // Note that this measures time spent on CPU, not GPU
+                    // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
+                    // we eventually end up waiting for GPU in `get_current_texture`
+                    // (wgpu has a swap chain with a limited amount of buffers, the exact count is dependent on `present_mode` and backend!).
+                    // It's important to keep in mind that depending on the `present_mode`, the GPU might be waiting on the screen in turn.
+                    let current_time = Instant::now();
+                    let time_passed = Instant::now() - self.time.last_draw_time;
+                    self.time.last_draw_time = current_time;
+
+                    // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
+                    self.window.set_title(&format!(
+                        "{:.2} ms ({:.2} fps)",
+                        time_passed.as_secs_f32() * 1000.0,
+                        1.0 / time_passed.as_secs_f32()
+                    ));
+                }
+                Event::MainEventsCleared => {
                     self.window.request_redraw();
                 }
                 Event::WindowEvent {
@@ -257,6 +266,17 @@ impl WgpuContext {
                 _ => {}
             }
         });
+    }
+}
+
+struct Time {
+    start_time: Instant,
+    last_draw_time: Instant,
+}
+
+impl Time {
+    fn seconds_since_startup(&self) -> f32 {
+        (Instant::now() - self.start_time).as_secs_f32()
     }
 }
 
