@@ -1,5 +1,5 @@
 mod eye;
-mod scene;
+pub(crate) mod scene;
 
 #[cfg(feature = "glow")]
 mod glow_rendering;
@@ -17,7 +17,7 @@ use scene::*;
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
-use re_log_types::ObjPath;
+use re_log_types::{IndexHash, ObjPath};
 
 use crate::{
     misc::{HoveredSpace, Selection},
@@ -257,13 +257,13 @@ fn show_settings_ui(
 }
 
 #[derive(Default)]
-struct SpaceSpecs {
+pub(crate) struct SpaceSpecs {
     /// ZERO = unset
     up: glam::Vec3,
 }
 
 impl SpaceSpecs {
-    fn from_objects(space: Option<&ObjPath>, objects: &re_data_store::Objects<'_>) -> Self {
+    pub fn from_objects(space: Option<&ObjPath>, objects: &re_data_store::Objects<'_>) -> Self {
         if let Some(space) = space {
             if let Some(space) = objects.space.get(&space) {
                 return SpaceSpecs {
@@ -276,23 +276,25 @@ impl SpaceSpecs {
 }
 
 /// If the path to a camera is selected, we follow that camera.
-fn tracking_camera(ctx: &ViewerContext<'_>, objects: &re_data_store::Objects<'_>) -> Option<Eye> {
+fn tracking_camera(ctx: &ViewerContext<'_>, space_cameras: &[SpaceCamera]) -> Option<Eye> {
     if let Selection::Instance(selected) = &ctx.rec_cfg.selection {
-        find_camera(objects, selected)
+        find_camera(space_cameras, selected)
     } else {
         None
     }
 }
 
-fn find_camera(objects: &re_data_store::Objects<'_>, needle: &InstanceId) -> Option<Eye> {
+fn find_camera(space_cameras: &[SpaceCamera], needle: &InstanceId) -> Option<Eye> {
     let mut found_camera = None;
 
-    for (props, camera) in objects.camera.iter() {
-        if needle.is_instance(props) {
+    for camera in space_cameras {
+        if needle.obj_path == camera.obj_path
+            && camera.instance_index_hash == needle.instance_index_hash()
+        {
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {
-                found_camera = Some((camera.extrinsics, camera.intrinsics.as_ref()));
+                found_camera = Some((&camera.extrinsics, camera.intrinsics.as_ref()));
             }
         }
     }
@@ -302,13 +304,13 @@ fn find_camera(objects: &re_data_store::Objects<'_>, needle: &InstanceId) -> Opt
 
 fn click_object(
     ctx: &mut ViewerContext<'_>,
-    objects: &re_data_store::Objects<'_>,
+    space_cameras: &[SpaceCamera],
     state: &mut State3D,
     instance_id: &InstanceId,
 ) {
     ctx.rec_cfg.selection = crate::Selection::Instance(instance_id.clone());
 
-    if let Some(camera) = find_camera(objects, instance_id) {
+    if let Some(camera) = find_camera(space_cameras, instance_id) {
         state.interpolate_to_eye(camera);
     } else if let Some(clicked_point) = state.hovered_point {
         // center camera on what we click on
@@ -320,31 +322,61 @@ fn click_object(
     }
 }
 
+/// A camera that projects spaces
+pub(crate) struct SpaceCamera {
+    pub obj_path: ObjPath,
+    pub instance_index_hash: IndexHash,
+
+    pub extrinsics: re_log_types::Extrinsics,
+    pub intrinsics: Option<re_log_types::Intrinsics>,
+
+    /// The 2D space we project into.
+    pub target_space: Option<ObjPath>,
+}
+
+/// Gathers all camera objects.
+pub(crate) fn space_cameras(objects: &re_data_store::Objects<'_>) -> Vec<SpaceCamera> {
+    objects
+        .camera
+        .iter()
+        .map(|(props, cam)| SpaceCamera {
+            obj_path: props.obj_path.clone(),
+            instance_index_hash: props.instance_index,
+            extrinsics: *cam.extrinsics,
+            intrinsics: *cam.intrinsics,
+            target_space: cam.target_space.clone(),
+        })
+        .collect()
+}
+
 pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut State3D,
     space: Option<&ObjPath>,
-    objects: &re_data_store::Objects<'_>,
+    space_specs: &SpaceSpecs,
+    mut scene: Scene,
+    space_cameras: &[SpaceCamera],
 ) -> egui::Response {
     crate::profile_function!();
 
-    state.scene_bbox = state.scene_bbox.union(crate::misc::calc_bbox_3d(objects));
-
-    let space_specs = SpaceSpecs::from_objects(space, objects);
+    state.scene_bbox = state.scene_bbox.union(scene.calc_bbox());
 
     // TODO(emilk): show settings on top of 3D view.
     // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(ctx, ui, state, &space_specs);
+    show_settings_ui(ctx, ui, state, space_specs);
 
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-    let tracking_camera = tracking_camera(ctx, objects);
-    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, &space_specs);
+    let tracking_camera = tracking_camera(ctx, space_cameras);
+    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, space_specs);
 
     let did_interact_wth_eye = orbit_eye.interact(&response);
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
+
+    scene.add_cameras(ctx, &state.scene_bbox, rect.size(), &eye, space_cameras);
+
     if did_interact_wth_eye {
         state.last_eye_interact_time = ui.input().time;
         state.eye_interpolation = None;
@@ -356,7 +388,7 @@ pub(crate) fn view_3d(
     let mut hovered_instance = state.hovered_instance.clone();
     if ui.input().pointer.any_click() {
         if let Some(hovered_instance) = &hovered_instance {
-            click_object(ctx, objects, state, hovered_instance);
+            click_object(ctx, space_cameras, state, hovered_instance);
         }
     } else if ui.input().pointer.any_down() {
         hovered_instance = None;
@@ -373,15 +405,6 @@ pub(crate) fn view_3d(
         );
     }
 
-    let mut scene = Scene::from_objects(
-        ctx,
-        &state.scene_bbox,
-        rect.size(),
-        &eye,
-        hovered_instance.as_ref(),
-        objects,
-    );
-
     let hovered = response
         .hover_pos()
         .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &eye));
@@ -395,40 +418,8 @@ pub(crate) fn view_3d(
         }
     }
 
-    project_onto_other_spaces(ctx, state, space, &response, orbit_eye, objects);
-    show_projections_from_2d_space(ctx, objects, state, orbit_eye, &mut scene);
-
-    // Draw labels
-    let ui_from_world = eye.ui_from_world(&rect);
-    ui.with_layer_id(
-        egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
-        |ui| {
-            for label in &scene.labels {
-                let pt = ui_from_world.project_point3(label.origin);
-                let font_id = egui::TextStyle::Monospace.resolve(ui.style());
-
-                let galley = ui.fonts().layout(
-                    (*label.text).to_owned(),
-                    font_id,
-                    ui.style().visuals.text_color(),
-                    100.0,
-                );
-
-                let text_rect = egui::Align2::CENTER_TOP.anchor_rect(egui::Rect::from_min_size(
-                    egui::pos2(pt.x, pt.y),
-                    galley.size(),
-                ));
-
-                let bg_rect = text_rect.expand2(egui::vec2(6.0, 2.0));
-                ui.painter().add(egui::Shape::rect_filled(
-                    bg_rect,
-                    3.0,
-                    ui.style().visuals.code_bg_color,
-                ));
-                ui.painter().add(egui::Shape::galley(text_rect.min, galley));
-            }
-        },
-    );
+    project_onto_other_spaces(ctx, space_cameras, state, space, &response, orbit_eye);
+    show_projections_from_2d_space(ctx, space_cameras, state, &mut scene);
 
     {
         let orbit_center_alpha = egui::remap_clamp(
@@ -442,12 +433,69 @@ pub(crate) fn view_3d(
             scene.points.push(Point {
                 instance_id: InstanceIdHash::NONE,
                 pos: orbit_eye.orbit_center.to_array(),
-                radius: orbit_eye.orbit_radius * 0.01,
+                radius: Size::new_scene(orbit_eye.orbit_radius * 0.01),
                 color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
             });
             ui.ctx().request_repaint(); // let it fade out
         }
     }
+
+    scene.finalize_sizes_and_colors(
+        rect.size(),
+        &eye,
+        hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
+    );
+
+    paint_view(ui, eye, rect, scene, state, response)
+}
+
+fn paint_view(
+    ui: &mut egui::Ui,
+    eye: Eye,
+    rect: egui::Rect,
+    scene: Scene,
+    _state: &mut State3D,
+    response: egui::Response,
+) -> egui::Response {
+    crate::profile_function!();
+
+    // Draw labels:
+    ui.with_layer_id(
+        egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
+        |ui| {
+            crate::profile_function!("labels");
+            let ui_from_world = eye.ui_from_world(&rect);
+            for label in &scene.labels {
+                let pos_in_ui = ui_from_world * label.origin.extend(1.0);
+                if pos_in_ui.w <= 0.0 {
+                    continue; // behind camera
+                }
+                let pos_in_ui = pos_in_ui / pos_in_ui.w;
+
+                let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+
+                let galley = ui.fonts().layout(
+                    (*label.text).to_owned(),
+                    font_id,
+                    ui.style().visuals.text_color(),
+                    100.0,
+                );
+
+                let text_rect = egui::Align2::CENTER_TOP.anchor_rect(egui::Rect::from_min_size(
+                    egui::pos2(pos_in_ui.x, pos_in_ui.y),
+                    galley.size(),
+                ));
+
+                let bg_rect = text_rect.expand2(egui::vec2(6.0, 2.0));
+                ui.painter().add(egui::Shape::rect_filled(
+                    bg_rect,
+                    3.0,
+                    ui.style().visuals.code_bg_color,
+                ));
+                ui.painter().add(egui::Shape::galley(text_rect.min, galley));
+            }
+        },
+    );
 
     #[cfg(feature = "wgpu")]
     let _callback = {
@@ -509,7 +557,7 @@ pub(crate) fn view_3d(
     #[cfg(feature = "glow")]
     let callback = {
         let dark_mode = ui.visuals().dark_mode;
-        let show_axes = state.show_axes;
+        let show_axes = _state.show_axes;
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
@@ -529,17 +577,14 @@ pub(crate) fn view_3d(
 
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
-    objects: &re_data_store::Objects<'_>,
+    space_cameras: &[SpaceCamera],
     state: &mut State3D,
-    orbit_eye: OrbitEye,
     scene: &mut Scene,
 ) {
-    let eye_pos = orbit_eye.position();
-
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
-        for (_, cam) in objects.camera.iter() {
-            if cam.target_space == space_2d {
-                let extrinsics = cam.extrinsics;
+        for cam in space_cameras {
+            if &cam.target_space == space_2d {
+                let extrinsics = &cam.extrinsics;
                 let intrinsics = cam.intrinsics.as_ref();
 
                 if let Some(ray) = crate::misc::cam::unproject_as_ray(
@@ -565,9 +610,7 @@ fn show_projections_from_2d_space(
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
-                    let distance =
-                        crate::math::line_segment_distance_to_point_3d([origin, end], eye_pos);
-                    let radius = 2.0 * scene.line_radius_from_distance * distance;
+                    let radius = Size::new_ui(1.5);
                     scene.line_segments.push(LineSegments {
                         instance_id: InstanceIdHash::NONE,
                         segments: vec![[origin.into(), end.into()]],
@@ -592,11 +635,11 @@ fn show_projections_from_2d_space(
 
 fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
+    space_cameras: &[SpaceCamera],
     state: &mut State3D,
     space: Option<&ObjPath>,
     response: &egui::Response,
     orbit_eye: OrbitEye,
-    objects: &re_data_store::Objects<'_>,
 ) {
     if let Some(pos_in_ui) = response.hover_pos() {
         let ray_in_world = {
@@ -609,9 +652,9 @@ fn project_onto_other_spaces(
         };
 
         let mut target_spaces = vec![];
-        for (_, cam) in objects.camera.iter() {
+        for cam in space_cameras {
             if let Some(target_space) = cam.target_space.clone() {
-                let extrinsics = cam.extrinsics;
+                let extrinsics = &cam.extrinsics;
                 let intrinsics = cam.intrinsics.as_ref();
 
                 let ray_in_2d = crate::misc::cam::image_from_world(extrinsics, intrinsics)

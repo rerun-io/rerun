@@ -124,7 +124,7 @@ struct TextureSettings {
 impl Default for TextureSettings {
     fn default() -> Self {
         Self {
-            keep_aspect_ratio: false,
+            keep_aspect_ratio: true,
             scaling: TextureScaling::default(),
             filter: egui::TextureFilter::Nearest,
         }

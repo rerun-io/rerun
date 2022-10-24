@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+"""
+For this example, first start `rerun`, then in a separe terminal run this example.
+"""
+
 import multiprocessing
 import os
 import threading

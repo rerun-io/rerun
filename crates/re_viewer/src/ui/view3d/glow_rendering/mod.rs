@@ -93,8 +93,6 @@ impl GpuScene {
             line_segments,
             meshes,
             labels: _,
-            point_radius_from_distance: _,
-            line_radius_from_distance: _,
         } = scene;
 
         self.points.set_instances(allocate_points(points));
@@ -258,7 +256,11 @@ fn allocate_points(points: &[Point]) -> sphere_renderer::SphereInstances {
 
     for point in points {
         let p = point.pos;
-        translations_and_scale.push(vec4(p[0], p[1], p[2], point.radius));
+        let radius = point
+            .radius
+            .scene()
+            .expect("size should have been translated to scene-coordinates");
+        translations_and_scale.push(vec4(p[0], p[1], p[2], radius));
         colors.push(color_to_three_d(point.color));
     }
 
@@ -284,6 +286,9 @@ fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances 
             radius,
             color,
         } = line_segments;
+        let radius = radius
+            .scene()
+            .expect("size should have been translated to scene-coordinates");
 
         for &[p0, p1] in segments {
             rotations.push(three_d::Quat::from(mint::Quaternion::from(
@@ -296,7 +301,7 @@ fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances 
             let p0 = vec3(p0[0], p0[1], p0[2]);
             let p1 = vec3(p1[0], p1[1], p1[2]);
             translations.push(p0);
-            scales.push(vec3((p0 - p1).magnitude(), *radius, *radius));
+            scales.push(vec3((p0 - p1).magnitude(), radius, radius));
             colors.push(color_to_three_d(*color));
         }
     }

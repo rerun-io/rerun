@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """Minimal examples of Rerun SDK usage.
 
+Example usage: `examples/api_demo/main.py set_visible`
+
 set_visible:
 Uses `rerun.set_visible` to toggle the visibility of some rects
 """
 
 import argparse
+import os
+from pathlib import Path
 from time import sleep
-from typing import Any
+from typing import Any, Final
 
 import numpy as np
 import rerun_sdk as rerun
@@ -66,6 +70,28 @@ def run_segmentation(args: argparse.Namespace) -> None:
     )
 
 
+def args_misc(subparsers: Any) -> None:
+    segmentation_parser = subparsers.add_parser("misc")
+    segmentation_parser.set_defaults(func=run_misc)
+
+
+def run_misc(args: argparse.Namespace) -> None:
+    CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
+    mesh_data = CAMERA_GLB.read_bytes()
+
+    # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
+    transform = np.array(
+        [
+            [2, 0, 0, 0],
+            [0, 2, 0, 0],
+            [0, 0, 2, 0],
+        ]
+    )
+    rerun.log_mesh_file("3d/example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
+
+    rerun.log_path("3d/a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
@@ -87,6 +113,7 @@ def main() -> None:
 
     args_set_visible(subparsers)
     args_segmentation(subparsers)
+    args_misc(subparsers)
 
     args = parser.parse_args()
 

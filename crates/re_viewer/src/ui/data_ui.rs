@@ -472,6 +472,7 @@ fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
 
 fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
     match transform {
+        Transform::Unknown => ui.label("Unknown"),
         Transform::Extrinsics(extrinsics) => ui_extrinsics(ui, extrinsics),
         Transform::Intrinsics(intrinsics) => ui_intrinsics(ui, intrinsics),
     }

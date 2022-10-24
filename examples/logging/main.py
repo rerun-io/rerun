@@ -48,9 +48,9 @@ def log_stuff() -> None:
     # Use spaces to create distinct logging streams
     other_logger = logging.getLogger("totally.unrelated")
     other_logger.propagate = False  # don't want root logger to catch those
-    other_logger.addHandler(rerun.LoggingHandler("3rd-party logs"))
+    other_logger.addHandler(rerun.LoggingHandler("3rd_party_logs"))
     for _ in range(10):
-        other_logger.debug("look ma, got my very own window!")
+        other_logger.debug("look ma, got my very own view!")
 
 
 if __name__ == "__main__":
