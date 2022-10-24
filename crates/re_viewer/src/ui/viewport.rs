@@ -1,15 +1,8 @@
-//! New experimental viewport panel.
+//! The viewport panel.
 //!
-//! Before the new panel is up-to-par with the existing viewport panel, we need to:
+//! Contains all space views.
 //!
-//! * [x] Render the 3D camera
-//! * [x] Project rays and points between spaces
-//! * [x] Don't create extraneous views of "intermediate" spaces (e.g. camera space)
-//! * [x] Convert existing python examples to the new style
-//! * [x] Write good docs for how to use the new system
-//! * [ ] Remove the old code path
-//!
-//! After that we can implement:
+//! To do:
 //! * [ ] Opening up new Space Views
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces

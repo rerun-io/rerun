@@ -380,22 +380,7 @@ pub(crate) fn ui_data(
             .response
         }
 
-        Data::ObjPath(obj_path) => {
-            // NOTE(emilk): Hack that will be fixed by https://linear.app/rerun/issue/PRO-98/refactor-spaces
-            let is_space = ctx.log_db.get_log_msg(msg_id).map_or(false, |log_msg| {
-                if let LogMsg::DataMsg(data_msg) = log_msg {
-                    data_msg.data_path.field_name == "space"
-                } else {
-                    false
-                }
-            });
-
-            if is_space {
-                ctx.space_button(ui, obj_path)
-            } else {
-                ctx.obj_path_button(ui, obj_path)
-            }
-        }
+        Data::ObjPath(obj_path) => ctx.obj_path_button(ui, obj_path),
 
         Data::DataVec(data_vec) => ui_data_vec(ui, data_vec),
     }

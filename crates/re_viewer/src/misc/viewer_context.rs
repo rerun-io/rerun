@@ -112,17 +112,6 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    /// Button to select the current space.
-    pub fn space_button(&mut self, ui: &mut egui::Ui, space: &ObjPath) -> egui::Response {
-        // TODO(emilk): common hover-effect of all buttons for the same space!
-        let response =
-            ui.selectable_label(self.rec_cfg.selection.is_space(space), space.to_string());
-        if response.clicked() {
-            self.rec_cfg.selection = Selection::Space(space.clone());
-        }
-        response
-    }
-
     pub fn time_button(
         &mut self,
         ui: &mut egui::Ui,

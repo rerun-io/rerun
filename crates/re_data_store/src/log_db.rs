@@ -96,9 +96,6 @@ pub struct LogDb {
 
     /// Where we store the objects.
     pub obj_db: ObjDb,
-
-    /// All known spaces
-    spaces: IntMap<ObjPathHash, ObjPath>,
 }
 
 impl LogDb {
@@ -116,11 +113,6 @@ impl LogDb {
 
     pub fn is_empty(&self) -> bool {
         self.log_messages.is_empty()
-    }
-
-    /// All known spaces, in undefined order.
-    pub fn spaces(&self) -> impl ExactSizeIterator<Item = &ObjPath> {
-        self.spaces.values()
     }
 
     pub fn add(&mut self, msg: LogMsg) {
@@ -203,10 +195,6 @@ impl LogDb {
         self.obj_db
             .add_data_msg(msg_id, time_point, data_path, data);
 
-        if data_path.field_name == "space" {
-            self.register_spaces(data);
-        }
-
         {
             let mut new_timelines = TimePoint::default();
 
@@ -234,33 +222,6 @@ impl LogDb {
                     }
                 }
             }
-        }
-    }
-
-    fn register_spaces(&mut self, data: &LoggedData) {
-        let mut register_space = |space: &ObjPath| {
-            self.spaces
-                .entry(*space.hash())
-                .or_insert_with(|| space.clone());
-        };
-
-        // This is a bit hacky, and I don't like it,
-        // but we need a single place to find all the spaces (ignoring time).
-        // This will be properly fixed when https://linear.app/rerun/issue/PRO-98/refactor-spaces is done
-        match data {
-            LoggedData::Single(Data::ObjPath(space))
-            | LoggedData::BatchSplat(Data::ObjPath(space)) => {
-                register_space(space);
-            }
-            LoggedData::Batch {
-                data: DataVec::ObjPath(spaces),
-                ..
-            } => {
-                for space in spaces {
-                    register_space(space);
-                }
-            }
-            _ => {}
         }
     }
 

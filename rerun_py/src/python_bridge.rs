@@ -419,7 +419,6 @@ fn parse_camera_space_convention(s: &str) -> PyResult<CameraSpaceConvention> {
     }
 }
 
-/// NOTE(emilk): EXPERIMENTAL!
 #[pyfunction]
 fn log_extrinsics(
     obj_path: &str,
@@ -452,7 +451,6 @@ fn log_extrinsics(
     Ok(())
 }
 
-/// NOTE(emilk): EXPERIMENTAL!
 #[pyfunction]
 fn log_intrinsics(
     obj_path: &str,

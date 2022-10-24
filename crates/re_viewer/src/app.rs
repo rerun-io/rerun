@@ -398,7 +398,7 @@ impl AppState {
             recording_configs,
             panel_selection,
             event_log_view,
-            viewport_panels: experimental_viewport_panel,
+            viewport_panels,
             selection_panel,
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -437,7 +437,7 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show(egui_ctx, |ui| match *panel_selection {
-                PanelSelection::Viewport => experimental_viewport_panel
+                PanelSelection::Viewport => viewport_panels
                     .entry(*selected_recording_id)
                     .or_default()
                     .ui(&mut ctx, ui),
