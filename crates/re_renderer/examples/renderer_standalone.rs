@@ -77,7 +77,7 @@ fn draw_view(
                     glam::vec3(2.0, 0.0, 0.0),
                     glam::vec3(3.0, 1.0, 0.0),
                 ],
-                radius: 0.5,
+                radius: 0.2,
                 color: [255, 255, 50, 255],
                 stippling: 1.0,
             },

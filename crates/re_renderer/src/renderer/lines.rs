@@ -21,14 +21,14 @@
 //! Our triangle list topology pretends that there is only a single single strip.
 //! So every time a new line strip starts (except on the first strip) we need to discard a quad.
 //!
-//! Data in the segment texture is layed out a follows:
+//! Data in the position data texture is layed out a follows:
 //! ```raw
-//!                  ___________________________________________________________________
-//! Segment Texture | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
-//!                  ___________________________________________________________________
-//! (vertex shader) |             quad 0               |              quad 2            |
-//!                                   ______________________________________________________________
-//!                                  |               quad 1            |              quad 3        | ...
+//!                   ___________________________________________________________________
+//! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
+//!                   ___________________________________________________________________
+//! (vertex shader)  |             quad 0              |              quad 2             |
+//!                                    ______________________________________________________________
+//!                                   |               quad 1            |              quad 3        | ...
 //! ```
 //! This means we don't need to duplicate any position data at all!
 //! Each strip index points to another smaller texture, describing properties that are global to an entire strip.
@@ -42,7 +42,7 @@
 //! Pro: shared vertices, Con: need to process index buffer)
 //!
 //! Another much more tricky issue is handling of line caps:
-//! Let's have a look at a corner between two line segments
+//! Let's have a look at a corner between two line PositionDatas
 //! ```raw
 //! o--------------------------o
 //!                            /
@@ -107,13 +107,13 @@ use super::*;
 mod GpuData {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct HalfSegment {
+    pub struct PositionData {
         pub pos: glam::Vec3,
         // If we limit ourselves to 65536 line strip (we do as of writing!),
         // we get 16bit extra storage here. What do do with it?
         pub strip_index: u32,
     }
-    static_assertions::assert_eq_size!(HalfSegment, glam::Vec4);
+    static_assertions::assert_eq_size!(PositionData, glam::Vec4);
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -168,12 +168,12 @@ impl LineDrawable {
 
         // Texture are 2D since 1D textures are very limited in size (8k typically).
         // Need to keep these values in sync with lines.wgsl!
-        const SEGMENT_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4mb, 262144 segments
+        const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4mb, 262144 PositionDatas
         const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 128 x 128 x vec2<u32> == 0.5mb, 65536 line strips
 
         // Make sure rows the texture can be copied easily.
         static_assertions::const_assert_eq!(
-            SEGMENT_TEXTURE_SIZE * std::mem::size_of::<GpuData::HalfSegment>() as u32
+            POSITION_TEXTURE_SIZE * std::mem::size_of::<GpuData::PositionData>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
             0
         );
@@ -192,30 +192,30 @@ impl LineDrawable {
             );
         }
 
-        let num_half_segments = (line_strips
+        let num_positions = (line_strips
             .iter()
             .fold(0, |c, strip| strip.points.len() + c)) as u32;
-        if num_half_segments > SEGMENT_TEXTURE_SIZE * SEGMENT_TEXTURE_SIZE {
+        if num_positions > POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE {
             // TODO(andreas) just create more draw work items each with its own texture to become "unlimited"
             anyhow::bail!(
-                "Too many line segments! The maximum is {} but specified were {num_half_segments}",
-                SEGMENT_TEXTURE_SIZE * SEGMENT_TEXTURE_SIZE
+                "Too many line segments! The maximum number of positions is {} but specified were {num_positions}",
+                POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE
             );
         }
 
         // No index buffer, so after each strip we have a quad that is discarded.
-        // This means from a geometry perspective there is only ONE strip, i.e. 2 less quads than there are half-segments!
-        let num_quads = num_half_segments - 1;
+        // This means from a geometry perspective there is only ONE strip, i.e. 2 less quads than there are half-PositionDatas!
+        let num_quads = num_positions - 1;
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawable!
-        let segment_texture = ctx.resource_pools.textures.request(
+        let position_data_texture = ctx.resource_pools.textures.request(
             device,
             &wgpu::TextureDescriptor {
-                label: Some("line segments"),
+                label: Some("line position data"),
                 size: wgpu::Extent3d {
-                    width: SEGMENT_TEXTURE_SIZE,
-                    height: SEGMENT_TEXTURE_SIZE,
+                    width: POSITION_TEXTURE_SIZE,
+                    height: POSITION_TEXTURE_SIZE,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
@@ -247,7 +247,7 @@ impl LineDrawable {
             &BindGroupDesc {
                 label: "line drawable".into(),
                 entries: vec![
-                    BindGroupEntry::TextureView(segment_texture),
+                    BindGroupEntry::TextureView(position_data_texture),
                     BindGroupEntry::TextureView(line_strip_texture),
                 ],
                 layout: line_renderer.bind_group_layout,
@@ -260,13 +260,15 @@ impl LineDrawable {
 
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
-        let mut segment_staging = Vec::with_capacity(num_half_segments as usize);
+        let mut PositionData_staging = Vec::with_capacity(num_positions as usize);
         let mut line_strip_info_staging = Vec::with_capacity(num_line_strips as usize);
 
         for (strip_index, line_strip) in line_strips.iter().enumerate() {
-            segment_staging.extend(line_strip.points.iter().map(|&pos| GpuData::HalfSegment {
-                pos,
-                strip_index: strip_index as _,
+            PositionData_staging.extend(line_strip.points.iter().map(|&pos| {
+                GpuData::PositionData {
+                    pos,
+                    strip_index: strip_index as _,
+                }
             }));
             line_strip_info_staging.push(GpuData::LineStripInfo {
                 color: line_strip.color,
@@ -278,22 +280,26 @@ impl LineDrawable {
 
         queue.write_texture(
             wgpu::ImageCopyTexture {
-                texture: &ctx.resource_pools.textures.get(segment_texture)?.texture,
+                texture: &ctx
+                    .resource_pools
+                    .textures
+                    .get(position_data_texture)?
+                    .texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            bytemuck::cast_slice(&segment_staging),
+            bytemuck::cast_slice(&PositionData_staging),
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: NonZeroU32::new(
-                    SEGMENT_TEXTURE_SIZE * std::mem::size_of::<GpuData::HalfSegment>() as u32,
+                    POSITION_TEXTURE_SIZE * std::mem::size_of::<GpuData::PositionData>() as u32,
                 ),
                 rows_per_image: None,
             },
             wgpu::Extent3d {
-                width: num_half_segments % SEGMENT_TEXTURE_SIZE,
-                height: (num_half_segments + SEGMENT_TEXTURE_SIZE - 1) / SEGMENT_TEXTURE_SIZE,
+                width: num_positions % POSITION_TEXTURE_SIZE,
+                height: (num_positions + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
@@ -404,7 +410,7 @@ impl Renderer for LineRenderer {
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: ViewBuilder::FORMAT_DEPTH,
-                    depth_compare: wgpu::CompareFunction::Always, // TODO: put in correct depth test
+                    depth_compare: wgpu::CompareFunction::Greater,
                     depth_write_enabled: true,
                     stencil: Default::default(),
                     bias: Default::default(),

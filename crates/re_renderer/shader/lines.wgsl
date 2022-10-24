@@ -12,12 +12,12 @@ var<uniform> frame: FrameUniformBuffer;
 @group(1) @binding(0)
 var segment_texture: texture_2d<f32>;
 @group(1) @binding(1)
-var line_strip_texture: texture_2d<u32>;
+var position_data_texture: texture_2d<u32>;
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
 var<private> SEGMENT_TEXTURE_SIZE: i32 = 512;
-var<private> LINE_STRIP_TEXTURE_SIZE: i32 = 256;
+var<private> POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 
 struct VertexOut {
     @location(0) color: vec4<f32>,
@@ -30,7 +30,7 @@ struct LineStripData {
     stippling: f32,
 }
 
-struct SegmentData {
+struct PositionData {
     pos: vec3<f32>,
     strip_index: i32,
 }
@@ -43,8 +43,8 @@ fn unpack4x8unorm_workaround(v: u32) -> vec4<f32> {
 }
 
 fn read_strip_data(strip_index: i32) -> LineStripData {
-    var raw_data = textureLoad(line_strip_texture,
-        vec2<i32>(strip_index % LINE_STRIP_TEXTURE_SIZE, strip_index / LINE_STRIP_TEXTURE_SIZE), 0).xy;
+    var raw_data = textureLoad(position_data_texture,
+        vec2<i32>(strip_index % POSITION_DATA_TEXTURE_SIZE, strip_index / POSITION_DATA_TEXTURE_SIZE), 0).xy;
 
     var data: LineStripData;
     data.color = unpack4x8unorm_workaround(raw_data.x);
@@ -54,12 +54,12 @@ fn read_strip_data(strip_index: i32) -> LineStripData {
 }
 
 
-fn read_segment_data(segment_idx: i32) -> SegmentData {
-    // Negative indices are defined to return all zero. Which is exactly what we want anyways!
+fn read_position_data(segment_idx: i32) -> PositionData {
+    // Negative indices are defined to return all zero!
     var raw_data = textureLoad(segment_texture,
         vec2<i32>(i32(segment_idx % SEGMENT_TEXTURE_SIZE), segment_idx / SEGMENT_TEXTURE_SIZE), 0);
 
-    var data: SegmentData;
+    var data: PositionData;
     data.pos = raw_data.xyz;
     data.strip_index = bitcast<i32>(raw_data.w);
     return data;
@@ -68,24 +68,38 @@ fn read_segment_data(segment_idx: i32) -> SegmentData {
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var is_at_quad_end = i32(vertex_idx) % 2;
-    var segment_idx = i32(vertex_idx) / 6 + is_at_quad_end;
-    var local_idx = vertex_idx % u32(6);
-    var is_at_quad_top = f32(local_idx <= u32(1) || local_idx == u32(5)); // "top" or "bottom on the quad
+    var quad_idx = i32(vertex_idx) / 6;
+    var pos_data_idx = quad_idx + is_at_quad_end;
 
-    var seg_before = read_segment_data(segment_idx - 1);
-    var seg_current = read_segment_data(segment_idx);
+    var pos_data_before = read_position_data(pos_data_idx - 1);
+    var pos_data_current = read_position_data(pos_data_idx);
 
     // Is this a degenerated quad? Collapse it.
-    if is_at_quad_end == 1 && seg_before.strip_index != seg_current.strip_index {
-        seg_current = seg_before;
+    if is_at_quad_end == 1 && pos_data_before.strip_index != pos_data_current.strip_index {
+        pos_data_current = pos_data_before;
     }
 
-    var seg_next = read_segment_data(segment_idx + 1);
-    var strip_data = read_strip_data(seg_current.strip_index);
+    var is_strip_start = pos_data_idx == 0 || pos_data_before.strip_index != pos_data_current.strip_index;
+    var pos_data_next = read_position_data(pos_data_idx + 1);
+    var strip_data = read_strip_data(pos_data_current.strip_index);
 
-    var pos = seg_current.pos;
-    // TODO: span orthogonal to view vector and line vector
-    pos += is_at_quad_top * vec3<f32>(0.0, strip_data.thickness, 0.0);
+    // Spawn line parallel to camera plane
+
+    // Direction the current quad if facing in.
+    var quad_dir = pos_data_current.pos - pos_data_before.pos;
+    if is_at_quad_end == 0 {
+        quad_dir = pos_data_next.pos - pos_data_current.pos;
+    }
+    quad_dir = normalize(quad_dir);
+
+    // 1 for a top vertex, -1 for a bottom vertex.
+    var local_idx = vertex_idx % u32(6);
+    var top_bottom = f32(local_idx <= u32(1) || local_idx == u32(5)) * 2.0 - 1.0;
+
+    var to_camera = normalize(frame.camera_position - pos_data_current.pos);
+    var dir_up = normalize(cross(to_camera, quad_dir));
+
+    var pos = pos_data_current.pos + (strip_data.thickness * top_bottom) * dir_up;
 
     var out: VertexOut;
     out.position = frame.projection_from_world * vec4<f32>(pos, 1.0);
