@@ -21,7 +21,8 @@ use re_renderer::{
     context::{RenderContext, RenderContextConfig},
     renderer::{
         lines::{LineDrawable, LineStrip},
-        GenericSkyboxDrawable, TestTriangleDrawable,
+        point_cloud::Point,
+        GenericSkyboxDrawable, PointCloudDrawable, TestTriangleDrawable,
     },
     view_builder::{TargetConfiguration, ViewBuilder},
 };
