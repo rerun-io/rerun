@@ -70,7 +70,7 @@ fn obj_path_batch(camera: u64) -> ObjPath {
     obj_path!("camera", Index::Sequence(camera), "points",)
 }
 
-const BYTES_PER_POINT: usize = 16 + 24; // IndexPathKey + [f32; 3]
+const OPTIMAL_BYTES_PER_POINT: usize = 3 * std::mem::size_of::<f32>(); // [f32; 3]
 
 pub static GLOBAL_MUTEXT: Option<std::sync::Mutex<()>> = None;
 
@@ -101,9 +101,12 @@ fn tracking_points() {
     let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
 
     let bytes_per_point = used_bytes as f32 / num_points as f32;
-    let overhead_factor = bytes_per_point / BYTES_PER_POINT as f32;
+    let overhead_factor = bytes_per_point / OPTIMAL_BYTES_PER_POINT as f32;
 
-    println!("individual points overhead_factor: {overhead_factor}");
+    // NOTE: we are storing history for each point, so we will never get to OPTIMAL_BYTES_PER_POINT.
+    println!(
+        "individual points overhead_factor: {overhead_factor} (should ideally be just above 1)"
+    );
 }
 
 fn big_clouds() {
@@ -137,9 +140,10 @@ fn big_clouds() {
     let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
 
     let bytes_per_point = used_bytes as f32 / num_points as f32;
-    let overhead_factor = bytes_per_point / BYTES_PER_POINT as f32;
+    let overhead_factor = bytes_per_point / OPTIMAL_BYTES_PER_POINT as f32;
 
-    println!("big clouds overhead_factor: {overhead_factor}");
+    // NOTE: we are storing history for each point, so we will never get to OPTIMAL_BYTES_PER_POINT.
+    println!("big clouds overhead_factor: {overhead_factor} (should ideally be just above 1)");
 }
 
 fn big_clouds_batched() {
@@ -180,9 +184,12 @@ fn big_clouds_batched() {
     let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
 
     let bytes_per_point = used_bytes as f32 / num_points as f32;
-    let overhead_factor = bytes_per_point / BYTES_PER_POINT as f32;
+    let overhead_factor = bytes_per_point / OPTIMAL_BYTES_PER_POINT as f32;
 
-    println!("big clouds batched overhead_factor: {overhead_factor}");
+    // Since we are only storing history for the entire batch, we should be able to approach OPTIMAL_BYTES_PER_POINT.
+    println!(
+        "big clouds batched overhead_factor: {overhead_factor} (should ideally be just above 1)"
+    );
 }
 
 fn main() {
