@@ -6,6 +6,8 @@ pub mod tonemapper;
 pub use generic_skybox::GenericSkyboxDrawable;
 pub use test_triangle::TestTriangleDrawable;
 
+mod utils;
+
 use crate::{
     context::{RenderContext, SharedRendererData},
     resource_pools::WgpuResourcePools,

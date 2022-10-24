@@ -95,6 +95,7 @@ use bytemuck::Zeroable;
 
 use crate::{
     include_file,
+    renderer::utils::next_multiple_of,
     resource_pools::{
         bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
         bind_group_pool::{BindGroupDesc, BindGroupEntry, BindGroupHandle},
@@ -130,7 +131,7 @@ mod gpu_data {
 }
 
 /// A line drawing operation. Encompasses several lines, each consisting of a list of positions.
-/// It expected to be recrated every frame.
+/// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct LineDrawable {
     bind_group: BindGroupHandle,
@@ -147,7 +148,7 @@ pub struct LineStrip {
     pub points: Vec<glam::Vec3>,
 
     /// Radius of the line strip in world space
-    /// TODO(andreas) Should be able to specify if this is in pixels, or has a minimum width in pixels.
+    /// TODO(andreas) Should be able to specify if this is in pixels, or both by providing a minimum in pixels.
     pub radius: f32,
 
     /// srgb color. Alpha unused right now
@@ -155,14 +156,6 @@ pub struct LineStrip {
     // Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
     // TODO(andreas): unsupported right now.
     //pub stippling: f32,
-}
-
-// part of std, but unstable https://github.com/rust-lang/rust/issues/88581
-pub const fn next_multiple_of(cur: u32, rhs: u32) -> u32 {
-    match cur % rhs {
-        0 => cur,
-        r => cur + (rhs - r),
-    }
 }
 
 impl LineDrawable {
@@ -272,6 +265,10 @@ impl LineDrawable {
                 }
             }));
         }
+        position_data_staging.extend(std::iter::repeat(gpu_data::PositionData::zeroed()).take(
+            (next_multiple_of(num_positions, POSITION_TEXTURE_SIZE) - num_positions) as usize,
+        ));
+
         let mut line_strip_info_staging =
             Vec::with_capacity(next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
         line_strip_info_staging.extend(line_strips.iter().map(|line_strip| {
@@ -282,11 +279,6 @@ impl LineDrawable {
                 unused: 0,
             }
         }));
-
-        // Fill up the rest of a started row with zeros.
-        position_data_staging.extend(std::iter::repeat(gpu_data::PositionData::zeroed()).take(
-            (next_multiple_of(num_positions, POSITION_TEXTURE_SIZE) - num_positions) as usize,
-        ));
         line_strip_info_staging.extend(std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(
             (next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) - num_line_strips) as usize,
         ));

@@ -20,8 +20,8 @@ var position_data_texture: texture_2d<u32>;
 
 // workaround for https://github.com/gfx-rs/naga/issues/2006
 fn unpack4x8unorm_workaround(v: u32) -> vec4<f32> {
-    var shifted = vec4<u32>(v, v >> u32(8), v >> u32(16), v >> u32(24));
-    var bytes = shifted & vec4<u32>(u32(0xFF));
+    var shifted = vec4<u32>(v, v >> 8u, v >> 16u, v >> 24u);
+    var bytes = shifted & vec4<u32>(0xFFu);
     return vec4<f32>(bytes) * (1.0 / 255.0);
 }
 
@@ -64,7 +64,7 @@ fn read_strip_data(idx: i32) -> LineStripData {
     var data: LineStripData;
     data.color = linear_from_srgba(unpack4x8unorm_workaround(raw_data.x));
     data.thickness = unpack2x16float(raw_data.y).y;
-    data.stippling = f32((raw_data.y >> u32(24)) & u32(0xFF)) * (1.0 / 255.0);
+    data.stippling = f32((raw_data.y >> 24u) & 0xFFu) * (1.0 / 255.0);
     return data;
 }
 
@@ -75,7 +75,7 @@ struct PositionData {
 
 // Read and unpack position data at a given location
 fn read_position_data(idx: i32) -> PositionData {
-    var raw_data = textureLoad(segment_texture, vec2<i32>(i32(idx % SEGMENT_TEXTURE_SIZE), idx / SEGMENT_TEXTURE_SIZE), 0);
+    var raw_data = textureLoad(segment_texture, vec2<i32>(idx % SEGMENT_TEXTURE_SIZE, idx / SEGMENT_TEXTURE_SIZE), 0);
 
     var data: PositionData;
     data.pos = raw_data.xyz;
@@ -88,8 +88,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Basic properties of the vertex we're at.
     var is_at_quad_end = i32(vertex_idx) % 2;
     var quad_idx = i32(vertex_idx) / 6;
-    var local_idx = vertex_idx % u32(6);
-    var top_bottom = f32(local_idx <= u32(1) || local_idx == u32(5)) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
+    var local_idx = vertex_idx % 6u;
+    var top_bottom = f32(local_idx <= 1u || local_idx == 5u) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
 
     // data at and before the vertex
     var pos_data_idx = quad_idx + is_at_quad_end;
