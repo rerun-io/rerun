@@ -4,7 +4,9 @@
 //! How it works:
 //! =================
 //!
-//! Each line strip consists of a series of quads. All quads are rendered in a single draw call!
+//! Each drawn line strip consists of a series of quads and all quads are rendered in a single draw call.
+//! The only data we upload are the user provided positions (the "skeleton" of the line so to speak) and line strip wide configurations.
+//! The quads are oriented and spanned in a vertex shader.
 //!
 //! It is tempting to use instancing and store per-instance (==quad) data in a instance-stepped vertex buffer.
 //! However, GPUs are notoriously bad at processing instances with a small batch size as
@@ -14,13 +16,17 @@
 //! [out](https://www.reddit.com/r/vulkan/comments/47kfve/instanced_rendering_performance/)
 //! [...](https://www.reddit.com/r/opengl/comments/q7yikr/how_to_draw_several_quads_through_instancing/).
 //!
-//! Instead, we do a single triangle list draw call without any vertex buffer at all and fetch data
-//! from textures instead (if it wasn't for WebGL support we'd read from a raw buffer).
-//!
+//! Instead, we use a single (un-instanced) triangle list draw call and use the vertex id to orient ourselves in the vertex shader
+//! (e.g. the index of the current quad is `vertex_idx / 6` etc.).
 //! Our triangle list topology pretends that there is only a single strip, but in reality we want to render several in one draw call.
-//! So every time a new line strip starts (except on the first strip) we need to discard a quad.
+//! So every time a new line strip starts (except on the first strip) we need to discard a quad by collapsing vertices into their predecessors.
 //!
-//! Data in the position data texture is layed out a follows:
+//! All data we fetch in the vertex shader is uploaded as textures in order to maintain WebGL compatibility.
+//! (at the full webgpu feature level we could use raw buffers instead which are easier to handle and a better match for our access pattern)
+//!
+//! Data is provided in two separate textures, the "position data texture" and the "line strip texture".
+//! The "line strip texture" contains packed information over properties that are global to a single strip (see [`gpu_data::LineStripInfo`])
+//! Data in the "position data texture" is layed out a follows (see [`gpu_data::PositionData`]):
 //! ```raw
 //!                   ___________________________________________________________________
 //! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
@@ -29,10 +35,6 @@
 //!                                    ______________________________________________________________
 //!                                   |               quad 1            |              quad 3        | ...
 //! ```
-//! This means we don't need to duplicate any positions in memory!
-//! Each strip index points to another smaller texture, describing properties that are global to an entire strip.
-//! For details see [`gpu_data`].
-//!
 //!
 //! Why not a triangle *strip* instead if *list*?
 //! -----------------------------------------------
