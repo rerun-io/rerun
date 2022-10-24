@@ -80,7 +80,7 @@ impl RenderContext {
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
         // TODO: what about web and release?
-        let mut fs = OsFileSystem::default();
+        let fs = OsFileSystem::default();
 
         // TODO: note how caching/lifecycle of everything works
         let mut resolver = FileResolver::with_search_path(fs, {

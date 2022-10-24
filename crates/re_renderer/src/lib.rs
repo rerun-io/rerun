@@ -10,12 +10,14 @@ pub mod view_builder;
 mod debug_label;
 mod global_bindings;
 mod resource_pools;
+mod wgsl_types;
 
 mod file_system;
+// TODO: all of these should be pub(crate), otherwise we messed up
 pub use self::file_system::{FileSystem, MemFileSystem, OsFileSystem};
+
 mod file_resolver;
 pub use self::file_resolver::{FileResolver, ImportClause, SearchPath};
+
 mod file_server;
 pub use self::file_server::{FileContentsHandle, FileServer};
-
-mod wgsl_types;

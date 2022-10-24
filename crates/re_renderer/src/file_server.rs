@@ -79,7 +79,7 @@ mod file_server_impl {
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::RwLock;
 
-    use crate::{FileResolver, FileSystem, OsFileSystem, SearchPath};
+    use crate::{FileResolver, FileSystem};
 
     use super::FileContentsHandle;
 

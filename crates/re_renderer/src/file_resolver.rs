@@ -575,7 +575,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 #[cfg(test)]
 mod tests_file_resolver {
     use crate::{FileSystem as _, MemFileSystem};
-    use unindent::{unindent, unindent_bytes};
+    use unindent::unindent;
 
     use super::*;
 
@@ -588,14 +588,14 @@ mod tests_file_resolver {
 
             fs.create_file(
                 "/shaders/common/shader1.wgsl",
-                unindent_bytes(br#"my first shader!"#),
+                unindent(r#"my first shader!"#).into(),
             )
             .unwrap();
 
             fs.create_file(
                 "/shaders/a/b/shader2.wgsl",
-                unindent_bytes(
-                    br#"
+                unindent(
+                    r#"
                     #import </shaders/common/shader1.wgsl>
                     #import <../../common/shader1.wgsl>
 
@@ -610,21 +610,23 @@ mod tests_file_resolver {
                     #import <shader3.wgsl>
                     #import <a/b/c/d/shader3.wgsl>
                     "#,
-                ),
+                )
+                .into(),
             )
             .unwrap();
 
             fs.create_file(
                 "/shaders/a/b/c/d/shader3.wgsl",
-                unindent_bytes(
-                    br#"
+                unindent(
+                    r#"
                     #import </shaders/common/shader1.wgsl>
                     #import <../../../../common/shader1.wgsl>
                     my third shader!
                     #import <common/shader1.wgsl>
                     #import <shader1.wgsl>
                     "#,
-                ),
+                )
+                .into(),
             )
             .unwrap();
         }
@@ -743,23 +745,25 @@ mod tests_file_resolver {
 
             fs.create_file(
                 "/shaders/shader1.wgsl",
-                unindent_bytes(
-                    br#"
+                unindent(
+                    r#"
                     #import </shaders/shader2.wgsl>
                     my first shader!
                     "#,
-                ),
+                )
+                .into(),
             )
             .unwrap();
 
             fs.create_file(
                 "/shaders/shader2.wgsl",
-                unindent_bytes(
-                    br#"
+                unindent(
+                    r#"
                     #import </shaders/shader1.wgsl>
                     my second shader!
                     "#,
-                ),
+                )
+                .into(),
             )
             .unwrap();
         }
@@ -783,34 +787,37 @@ mod tests_file_resolver {
 
             fs.create_file(
                 "/shaders/shader1.wgsl",
-                unindent_bytes(
-                    br#"
+                unindent(
+                    r#"
                     #import </shaders/shader2.wgsl>
                     my first shader!
                     "#,
-                ),
+                )
+                .into(),
             )
             .unwrap();
 
             fs.create_file(
                 "/shaders/shader2.wgsl",
-                unindent_bytes(
-                    br#"
+                unindent(
+                    r#"
                     #import </shaders/shader3.wgsl>
                     my second shader!
                     "#,
-                ),
+                )
+                .into(),
             )
             .unwrap();
 
             fs.create_file(
                 "/shaders/shader3.wgsl",
-                unindent_bytes(
-                    br#"
+                unindent(
+                    r#"
                     #import </shaders/shader1.wgsl>
                     my third shader!
                     "#,
-                ),
+                )
+                .into(),
             )
             .unwrap();
         }
