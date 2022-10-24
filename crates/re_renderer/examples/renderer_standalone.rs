@@ -93,13 +93,16 @@ fn draw_view(
                 stippling: 1.0,
             },
             LineStrip {
-                points: vec![
-                    glam::vec3(0.0, -2.0, 0.0),
-                    glam::vec3(1.0, -1.0, 0.0),
-                    glam::vec3(2.0, -2.0, 0.0),
-                    glam::vec3(3.0, -1.0, 0.0),
-                ],
-                radius: 0.25,
+                points: (0..1000)
+                    .map(|i| {
+                        glam::vec3(
+                            (i as f32 * 0.01).sin() as f32 * 2.0,
+                            i as f32 * 0.02 - 5.0,
+                            (i as f32 * 0.01).cos() as f32 * 2.0,
+                        )
+                    })
+                    .collect(),
+                radius: 0.1,
                 color: [50, 50, 255, 255],
                 stippling: 1.0,
             },
