@@ -43,7 +43,7 @@ pub type SharedViewBuilder = Arc<RwLock<ViewBuilder>>;
 pub struct TargetConfiguration {
     pub resolution_in_pixel: [u32; 2],
 
-    pub world_from_view: macaw::IsoTransform,
+    pub view_from_world: macaw::IsoTransform,
 
     pub fov_y: f32,
     pub near_plane_distance: f32,
@@ -122,10 +122,7 @@ impl ViewBuilder {
                 },
             );
 
-            let camera_position = config.world_from_view.translation();
-            let camera_target = config.world_from_view.transform_point3(-glam::Vec3::Z);
-            let camera_up = config.world_from_view.transform_vector3(glam::Vec3::Y);
-            let view_from_world = glam::Mat4::look_at_rh(camera_position, camera_target, camera_up);
+            let view_from_world = config.view_from_world.to_mat4();
 
             // We use infinite reverse-z projection matrix.
             // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
@@ -159,7 +156,7 @@ impl ViewBuilder {
                     view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
                     projection_from_view: projection_from_view.into(),
                     projection_from_world: projection_from_world.into(),
-                    camera_position: config.world_from_view.translation().into(),
+                    camera_position: config.view_from_world.translation().into(),
                     top_right_screen_corner_in_view: top_right_screen_corner_in_view.into(),
                 }),
             );
