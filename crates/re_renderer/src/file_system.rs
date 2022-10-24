@@ -6,6 +6,7 @@ use std::{
 use ahash::{HashMap, HashMapExt};
 use anyhow::{anyhow, ensure, Context as _};
 use clean_path::Clean as _;
+use parking_lot::RwLock;
 
 // ---
 
@@ -37,13 +38,6 @@ pub trait FileSystem {
 pub struct OsFileSystem;
 
 impl FileSystem for OsFileSystem {
-    // fn read(&self, path: impl AsRef<Path>) -> anyhow::Result<Cow<'static, [u8]>> {
-    //     let path = path.as_ref();
-    //     std::fs::read(path)
-    //         .with_context(|| format!("failed to read file at {path:?}"))
-    //         .map(Into::into)
-    // }
-
     fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<Cow<'static, str>> {
         let path = path.as_ref();
         std::fs::read_to_string(path)
@@ -70,26 +64,46 @@ impl FileSystem for OsFileSystem {
 /// hot-reloading is disabled.
 ///
 /// Also used when running unit tests.
-#[derive(Default)]
 pub struct MemFileSystem {
-    files: HashMap<PathBuf, Cow<'static, str>>,
+    files: RwLock<Option<HashMap<PathBuf, Cow<'static, str>>>>,
 }
 
-impl FileSystem for MemFileSystem {
-    // fn read(&self, path: impl AsRef<Path>) -> anyhow::Result<Cow<'static, [u8]>> {
-    //     let path = path.as_ref().clean();
-    //     self.files
-    //         .get(&path)
-    //         // NOTE: This is calling `Cow::clone`, which doesn't actually clone anything
-    //         // if `self` is `Cow::Borrowed`!
-    //         .cloned()
-    //         // .map(|s| s.as_bytes().into())
-    //         .ok_or_else(|| anyhow!("file does not exist at {path:?}"))
-    // }
+/// The global [`MemFileSystem`].
+static MEM_FILE_SYSTEM: MemFileSystem = MemFileSystem::new_uninit();
 
+impl MemFileSystem {
+    const fn new_uninit() -> Self {
+        Self {
+            files: RwLock::new(None),
+        }
+    }
+}
+
+// Singleton API
+impl MemFileSystem {
+    /// Returns a reference to the global `FileServer`.
+    pub fn get() -> &'static MemFileSystem {
+        if MEM_FILE_SYSTEM.files.read().is_some() {
+            return &MEM_FILE_SYSTEM;
+        }
+
+        {
+            let mut files = MEM_FILE_SYSTEM.files.write();
+            if files.is_none() {
+                *files = Some(HashMap::new());
+            }
+        }
+
+        &MEM_FILE_SYSTEM
+    }
+}
+
+impl FileSystem for &'static MemFileSystem {
     fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<Cow<'static, str>> {
         let path = path.as_ref().clean();
-        self.files
+        let files = self.files.read();
+        let files = files.as_ref().unwrap();
+        files
             .get(&path)
             // NOTE: This is calling `Cow::clone`, which doesn't actually clone anything
             // if `self` is `Cow::Borrowed`!
@@ -99,15 +113,16 @@ impl FileSystem for MemFileSystem {
 
     fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
         let path = path.as_ref().clean();
-        ensure!(
-            self.files.contains_key(&path),
-            "file does not exist at {path:?}",
-        );
+        let files = self.files.read();
+        let files = files.as_ref().unwrap();
+        ensure!(files.contains_key(&path), "file does not exist at {path:?}",);
         Ok(path)
     }
 
     fn exists(&self, path: impl AsRef<Path>) -> bool {
-        self.files.contains_key(&path.as_ref().clean())
+        let files = self.files.read();
+        let files = files.as_ref().unwrap();
+        files.contains_key(&path.as_ref().clean())
     }
 
     fn create_dir_all(&mut self, _: impl AsRef<Path>) -> anyhow::Result<()> {
@@ -119,7 +134,9 @@ impl FileSystem for MemFileSystem {
         path: impl AsRef<Path>,
         contents: Cow<'static, str>,
     ) -> anyhow::Result<()> {
-        self.files.insert(path.as_ref().to_owned(), contents);
+        let mut files = self.files.write();
+        let files = files.as_mut().unwrap();
+        files.insert(path.as_ref().to_owned(), contents);
         Ok(())
     }
 }

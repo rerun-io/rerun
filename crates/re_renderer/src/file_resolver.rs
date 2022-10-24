@@ -581,25 +581,25 @@ mod tests_file_resolver {
 
     #[test]
     fn acyclic_interpolation() {
-        let mut fs = MemFileSystem::default();
+        let mut fs = MemFileSystem::get();
         {
-            fs.create_dir_all("/shaders/common").unwrap();
-            fs.create_dir_all("/shaders/a/b/c/d").unwrap();
+            fs.create_dir_all("/shaders1/common").unwrap();
+            fs.create_dir_all("/shaders1/a/b/c/d").unwrap();
 
             fs.create_file(
-                "/shaders/common/shader1.wgsl",
+                "/shaders1/common/shader1.wgsl",
                 unindent(r#"my first shader!"#).into(),
             )
             .unwrap();
 
             fs.create_file(
-                "/shaders/a/b/shader2.wgsl",
+                "/shaders1/a/b/shader2.wgsl",
                 unindent(
                     r#"
-                    #import </shaders/common/shader1.wgsl>
+                    #import </shaders1/common/shader1.wgsl>
                     #import <../../common/shader1.wgsl>
 
-                    #import </shaders/a/b/c/d/shader3.wgsl>
+                    #import </shaders1/a/b/c/d/shader3.wgsl>
                     #import <c/d/shader3.wgsl>
 
                     my second shader!
@@ -616,10 +616,10 @@ mod tests_file_resolver {
             .unwrap();
 
             fs.create_file(
-                "/shaders/a/b/c/d/shader3.wgsl",
+                "/shaders1/a/b/c/d/shader3.wgsl",
                 unindent(
                     r#"
-                    #import </shaders/common/shader1.wgsl>
+                    #import </shaders1/common/shader1.wgsl>
                     #import <../../../../common/shader1.wgsl>
                     my third shader!
                     #import <common/shader1.wgsl>
@@ -633,9 +633,9 @@ mod tests_file_resolver {
 
         let mut resolver = FileResolver::with_search_path(fs, {
             let mut search_path = SearchPath::default();
-            search_path.push("/shaders");
-            search_path.push("/shaders/common");
-            search_path.push("/shaders/a/b/c/d");
+            search_path.push("/shaders1");
+            search_path.push("/shaders1/common");
+            search_path.push("/shaders1/a/b/c/d");
             search_path
         });
 
@@ -644,7 +644,7 @@ mod tests_file_resolver {
 
             // Shader 1: resolve
             let mut imports = resolver
-                .resolve_imports("/shaders/common/shader1.wgsl")
+                .resolve_imports("/shaders1/common/shader1.wgsl")
                 .unwrap()
                 .collect::<Vec<_>>();
             imports.sort();
@@ -653,7 +653,7 @@ mod tests_file_resolver {
 
             // Shader 1: interpolate
             let contents = resolver
-                .resolve_contents("/shaders/common/shader1.wgsl")
+                .resolve_contents("/shaders1/common/shader1.wgsl")
                 .map_err(|err| re_error::format(err))
                 .unwrap();
             let expected = unindent(r#"my first shader!"#);
@@ -661,19 +661,19 @@ mod tests_file_resolver {
 
             // Shader 2: resolve
             let mut imports = resolver
-                .resolve_imports("/shaders/a/b/shader2.wgsl")
+                .resolve_imports("/shaders1/a/b/shader2.wgsl")
                 .unwrap()
                 .collect::<Vec<_>>();
             imports.sort();
             let expected: Vec<PathBuf> = vec![
-                "/shaders/a/b/c/d/shader3.wgsl".into(),
-                "/shaders/common/shader1.wgsl".into(),
+                "/shaders1/a/b/c/d/shader3.wgsl".into(),
+                "/shaders1/common/shader1.wgsl".into(),
             ];
             assert_eq!(expected, imports);
 
             // Shader 2: interpolate
             let contents = resolver
-                .resolve_contents("/shaders/a/b/shader2.wgsl")
+                .resolve_contents("/shaders1/a/b/shader2.wgsl")
                 .map_err(|err| re_error::format(err))
                 .unwrap();
             let expected = unindent(
@@ -712,16 +712,16 @@ mod tests_file_resolver {
 
             // Shader 3: resolve
             let mut imports = resolver
-                .resolve_imports("/shaders/a/b/c/d/shader3.wgsl")
+                .resolve_imports("/shaders1/a/b/c/d/shader3.wgsl")
                 .unwrap()
                 .collect::<Vec<_>>();
             imports.sort();
-            let expected: Vec<PathBuf> = vec!["/shaders/common/shader1.wgsl".into()];
+            let expected: Vec<PathBuf> = vec!["/shaders1/common/shader1.wgsl".into()];
             assert_eq!(expected, imports);
 
             // Shader 3: interpolate
             let contents = resolver
-                .resolve_contents("/shaders/a/b/c/d/shader3.wgsl")
+                .resolve_contents("/shaders1/a/b/c/d/shader3.wgsl")
                 .map_err(|err| re_error::format(err))
                 .unwrap();
             let expected = unindent(
@@ -739,15 +739,15 @@ mod tests_file_resolver {
     #[test]
     #[should_panic] // TODO: check error contents
     fn cyclic_direct() {
-        let mut fs = MemFileSystem::default();
+        let mut fs = MemFileSystem::get();
         {
-            fs.create_dir_all("/shaders").unwrap();
+            fs.create_dir_all("/shaders2").unwrap();
 
             fs.create_file(
-                "/shaders/shader1.wgsl",
+                "/shaders2/shader1.wgsl",
                 unindent(
                     r#"
-                    #import </shaders/shader2.wgsl>
+                    #import </shaders2/shader2.wgsl>
                     my first shader!
                     "#,
                 )
@@ -756,10 +756,10 @@ mod tests_file_resolver {
             .unwrap();
 
             fs.create_file(
-                "/shaders/shader2.wgsl",
+                "/shaders2/shader2.wgsl",
                 unindent(
                     r#"
-                    #import </shaders/shader1.wgsl>
+                    #import </shaders2/shader1.wgsl>
                     my second shader!
                     "#,
                 )
@@ -771,7 +771,7 @@ mod tests_file_resolver {
         let mut resolver = FileResolver::new(fs);
 
         let contents = resolver
-            .resolve_contents("/shaders/shader1.wgsl")
+            .resolve_contents("/shaders2/shader1.wgsl")
             .map_err(|err| re_error::format(err))
             .unwrap();
         let expected = unindent(r#"my first shader!"#);
@@ -781,15 +781,15 @@ mod tests_file_resolver {
     #[test]
     #[should_panic] // TODO: check error contents
     fn cyclic_indirect() {
-        let mut fs = MemFileSystem::default();
+        let mut fs = MemFileSystem::get();
         {
-            fs.create_dir_all("/shaders").unwrap();
+            fs.create_dir_all("/shaders3").unwrap();
 
             fs.create_file(
-                "/shaders/shader1.wgsl",
+                "/shaders3/shader1.wgsl",
                 unindent(
                     r#"
-                    #import </shaders/shader2.wgsl>
+                    #import </shaders3/shader2.wgsl>
                     my first shader!
                     "#,
                 )
@@ -798,10 +798,10 @@ mod tests_file_resolver {
             .unwrap();
 
             fs.create_file(
-                "/shaders/shader2.wgsl",
+                "/shaders3/shader2.wgsl",
                 unindent(
                     r#"
-                    #import </shaders/shader3.wgsl>
+                    #import </shaders3/shader3.wgsl>
                     my second shader!
                     "#,
                 )
@@ -810,10 +810,10 @@ mod tests_file_resolver {
             .unwrap();
 
             fs.create_file(
-                "/shaders/shader3.wgsl",
+                "/shaders3/shader3.wgsl",
                 unindent(
                     r#"
-                    #import </shaders/shader1.wgsl>
+                    #import </shaders3/shader1.wgsl>
                     my third shader!
                     "#,
                 )
@@ -825,7 +825,7 @@ mod tests_file_resolver {
         let mut resolver = FileResolver::new(fs);
 
         resolver
-            .resolve_contents("/shaders/shader1.wgsl")
+            .resolve_contents("/shaders3/shader1.wgsl")
             .map_err(|err| re_error::format(err))
             .unwrap();
     }

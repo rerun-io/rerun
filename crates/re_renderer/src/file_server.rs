@@ -34,6 +34,14 @@ macro_rules! include_file {
 
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
         {
+            // TODO: need some explanations
+            let fs = $crate::OsFileSystem::default();
+            let mut resolver = $crate::FileResolver::with_search_path(fs, {
+                let mut search_path = $crate::SearchPath::default();
+                // TODO: fill up search path
+                search_path
+            });
+
             $crate::FileContentsHandle::Inlined(include_str!($path))
         }
     }};
@@ -71,13 +79,12 @@ pub use self::file_server_impl::FileServer;
 
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
 mod file_server_impl {
-    use std::path::{Path, PathBuf};
-
     use ahash::HashSet;
     use anyhow::Context;
     use crossbeam::channel::Receiver;
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::RwLock;
+    use std::path::{Path, PathBuf};
 
     use crate::{FileResolver, FileSystem};
 
@@ -253,6 +260,8 @@ mod file_server_impl {
     use ahash::HashSet;
     use std::path::PathBuf;
 
+    use crate::{FileResolver, FileSystem};
+
     /// A noop implementation of a `FileServer`.
     pub struct FileServer;
 
@@ -265,7 +274,10 @@ mod file_server_impl {
             f(&mut Self)
         }
 
-        pub fn collect(&mut self) -> HashSet<PathBuf> {
+        pub fn collect<Fs: FileSystem>(
+            &mut self,
+            resolver: &mut FileResolver<Fs>,
+        ) -> HashSet<PathBuf> {
             Default::default()
         }
     }
