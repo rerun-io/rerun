@@ -88,7 +88,7 @@
 
 use std::num::NonZeroU32;
 
-use anyhow::Context;
+use bytemuck::Zeroable;
 
 use crate::{
     include_file,
@@ -151,6 +151,14 @@ pub struct LineStrip {
     /// Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
     /// TODO(andreas): unsupported right now.
     pub stippling: f32,
+}
+
+// part of std, but unstable https://github.com/rust-lang/rust/issues/88581
+pub const fn next_multiple_of(cur: u32, rhs: u32) -> u32 {
+    match cur % rhs {
+        0 => cur,
+        r => cur + (rhs - r),
+    }
 }
 
 impl LineDrawable {
@@ -260,11 +268,18 @@ impl LineDrawable {
 
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
-        let mut PositionData_staging = Vec::with_capacity(num_positions as usize);
-        let mut line_strip_info_staging = Vec::with_capacity(num_line_strips as usize);
+        // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
+        let num_position_data_rows =
+            (num_positions + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE;
+        let mut position_data_staging =
+            Vec::with_capacity((num_position_data_rows * POSITION_TEXTURE_SIZE) as usize);
+        let num_line_strip_info_rows =
+            (num_line_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE;
+        let mut line_strip_info_staging =
+            Vec::with_capacity((num_line_strip_info_rows * LINE_STRIP_TEXTURE_SIZE) as usize);
 
         for (strip_index, line_strip) in line_strips.iter().enumerate() {
-            PositionData_staging.extend(line_strip.points.iter().map(|&pos| {
+            position_data_staging.extend(line_strip.points.iter().map(|&pos| {
                 GpuData::PositionData {
                     pos,
                     strip_index: strip_index as _,
@@ -277,6 +292,13 @@ impl LineDrawable {
                 unused: 0,
             })
         }
+        // Fill up the rest of a started row with zeros.
+        position_data_staging.extend(std::iter::repeat(GpuData::PositionData::zeroed()).take(
+            (next_multiple_of(num_positions, POSITION_TEXTURE_SIZE) - num_positions) as usize,
+        ));
+        line_strip_info_staging.extend(std::iter::repeat(GpuData::LineStripInfo::zeroed()).take(
+            (next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) - num_line_strips) as usize,
+        ));
 
         queue.write_texture(
             wgpu::ImageCopyTexture {
@@ -289,7 +311,7 @@ impl LineDrawable {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            bytemuck::cast_slice(&PositionData_staging),
+            bytemuck::cast_slice(&position_data_staging),
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: NonZeroU32::new(
@@ -298,8 +320,8 @@ impl LineDrawable {
                 rows_per_image: None,
             },
             wgpu::Extent3d {
-                width: num_positions % POSITION_TEXTURE_SIZE,
-                height: (num_positions + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
+                width: POSITION_TEXTURE_SIZE,
+                height: num_position_data_rows,
                 depth_or_array_layers: 1,
             },
         );
@@ -319,8 +341,8 @@ impl LineDrawable {
                 rows_per_image: None,
             },
             wgpu::Extent3d {
-                width: num_line_strips % LINE_STRIP_TEXTURE_SIZE,
-                height: (num_line_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE,
+                width: LINE_STRIP_TEXTURE_SIZE,
+                height: num_line_strip_info_rows,
                 depth_or_array_layers: 1,
             },
         );
