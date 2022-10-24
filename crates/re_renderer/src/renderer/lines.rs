@@ -29,19 +29,19 @@
 //!                                    ______________________________________________________________
 //!                                   |               quad 1            |              quad 3        | ...
 //! ```
-//! This means we don't need to duplicate any position data at all!
+//! This means we don't need to duplicate any positions in memory!
 //! Each strip index points to another smaller texture, describing properties that are global to an entire strip.
+//! For details see [`gpu_data`].
 //!
 //!
 //! Why not a triangle *strip* instead if *list*?
 //! -----------------------------------------------
 //!
 //! As long as we're not able to restart the strip (requires indices!), we can't discard a quad in a triangle strip setup.
-//! (However, we could/should try using an index buffer for this purpose and see how well it performs.
-//! Pro: shared vertices, Con: need to process index buffer)
+//! However, this could be solved with an index buffer which has the ability to restart triangle strips (something we haven't tried yet).
 //!
 //! Another much more tricky issue is handling of line caps:
-//! Let's have a look at a corner between two line positions (marked with `X`)
+//! Let's have a look at a corner between two line positions (line positions marked with `X`)
 //! ```raw
 //! o--------------------------o
 //!                            /
@@ -51,8 +51,10 @@
 //!          /     //      /
 //!         o      X      o
 //! ```
-//! If we want to keep the line along its "skeleton" with constant thickness, the top right corner
+//! If we want to keep the line along its skeleton with constant thickness, the top right corner
 //! would move further and further outward as we decrease the angle of the joint. Eventually it reaches infinity!
+//! (i.e. not great to fix it up with discard in the fragment shader either)
+//!
 //! To prevent this we need to generate this shape:
 //! ```raw
 //! a-------------------b
@@ -69,13 +71,13 @@
 //!     * can't do that without significant preprocessing, makes the entire pipeline much more complicated
 //! 2) twist one of the quads, making both quads overlap in the area of `[d,b,e]` (doesn't add any new vertices)
 //!    * unless (!) we duplicate vertices at one of the quads, the twist would need to continue for the rest of the strip!
-//! 3) make one quad stop before the joint by forming `[a,b,c,d]`, the other one taking over the joint by forming `[b,e,g,f]`
-//!    * introduces a new vertex
+//! 3) make one quad stop before the joint by forming `[a,b,d,c]`, the other one taking over the joint by forming `[b,e,g,f]`
+//!    * implies breaking up the quads (point d would be part of one quad but not the other)
 //!
 //! (2) and (3) can be implemented relatively easy if we're using a triangle strip!
 //! (2) can be implemented in theory with a triangle list, but means that any joint has ripple effects on the rest of the list.
 //!
-//! TODO(andreas): Implement (3)!
+//! TODO(andreas): Implement (3). Right now we don't implement line caps at all.
 //!
 //! Things we might try in the future
 //! ----------------------------------
@@ -125,6 +127,8 @@ mod gpu_data {
     static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
 }
 
+/// A line drawing operation. Encompasses several lines, each consisting of a list of positions.
+/// It expected to be recrated every frame.
 #[derive(Clone)]
 pub struct LineDrawable {
     bind_group: BindGroupHandle,
@@ -135,7 +139,7 @@ impl Drawable for LineDrawable {
     type Renderer = LineRenderer;
 }
 
-/// A series of connected lines that share a radius and a color.
+/// Description of series of connected line segments that share a radius and a color.
 pub struct LineStrip {
     /// Connected points. Must be at least 2.
     pub points: Vec<glam::Vec3>,
@@ -146,10 +150,9 @@ pub struct LineStrip {
 
     /// srgb color. Alpha unused right now
     pub color: [u8; 4],
-
-    /// Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
-    /// TODO(andreas): unsupported right now.
-    pub stippling: f32,
+    // Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
+    // TODO(andreas): unsupported right now.
+    //pub stippling: f32,
 }
 
 // part of std, but unstable https://github.com/rust-lang/rust/issues/88581
@@ -173,7 +176,7 @@ impl LineDrawable {
             device,
         );
 
-        // Texture are 2D since 1D textures are very limited in size (8k typically).
+        // Textures are 2D since 1D textures are very limited in size (8k typically).
         // Need to keep these values in sync with lines.wgsl!
         const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4mb, 262144 PositionDatas
         const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 128 x 128 x vec2<u32> == 0.5mb, 65536 line strips
@@ -192,18 +195,23 @@ impl LineDrawable {
 
         let num_line_strips = line_strips.len() as u32;
         if num_line_strips > LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE {
-            // TODO(andreas) just create more draw work items each with its own texture to become "unlimited"
+            // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
             anyhow::bail!(
                 "Too many line strips! The maximum is {} but passed were {num_line_strips}",
                 LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE
             );
         }
 
+        if line_strips.iter().any(|strip| strip.points.len() < 2) {
+            anyhow::bail!("Line strips need to have at least two points each.");
+        }
+
         let num_positions = (line_strips
             .iter()
             .fold(0, |c, strip| strip.points.len() + c)) as u32;
         if num_positions > POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE {
-            // TODO(andreas) just create more draw work items each with its own texture to become "unlimited"
+            // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
+            //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
             anyhow::bail!(
                 "Too many line segments! The maximum number of positions is {} but specified were {num_positions}",
                 POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE
@@ -249,34 +257,11 @@ impl LineDrawable {
             },
         );
 
-        let bind_group = ctx.resource_pools.bind_groups.request(
-            device,
-            &BindGroupDesc {
-                label: "line drawable".into(),
-                entries: vec![
-                    BindGroupEntry::TextureView(position_data_texture),
-                    BindGroupEntry::TextureView(line_strip_texture),
-                ],
-                layout: line_renderer.bind_group_layout,
-            },
-            &ctx.resource_pools.bind_group_layouts,
-            &ctx.resource_pools.textures,
-            &ctx.resource_pools.buffers,
-            &ctx.resource_pools.samplers,
-        );
-
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
-        let num_position_data_rows =
-            (num_positions + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE;
         let mut position_data_staging =
-            Vec::with_capacity((num_position_data_rows * POSITION_TEXTURE_SIZE) as usize);
-        let num_line_strip_info_rows =
-            (num_line_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE;
-        let mut line_strip_info_staging =
-            Vec::with_capacity((num_line_strip_info_rows * LINE_STRIP_TEXTURE_SIZE) as usize);
-
+            Vec::with_capacity(next_multiple_of(num_positions, POSITION_TEXTURE_SIZE) as usize);
         for (strip_index, line_strip) in line_strips.iter().enumerate() {
             position_data_staging.extend(line_strip.points.iter().map(|&pos| {
                 gpu_data::PositionData {
@@ -284,13 +269,18 @@ impl LineDrawable {
                     strip_index: strip_index as _,
                 }
             }));
-            line_strip_info_staging.push(gpu_data::LineStripInfo {
+        }
+        let mut line_strip_info_staging =
+            Vec::with_capacity(next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
+        line_strip_info_staging.extend(line_strips.iter().map(|line_strip| {
+            gpu_data::LineStripInfo {
                 color: line_strip.color,
                 thickness: half::f16::from_f32(line_strip.radius),
-                stippling: (line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
+                stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
                 unused: 0,
-            });
-        }
+            }
+        }));
+
         // Fill up the rest of a started row with zeros.
         position_data_staging.extend(std::iter::repeat(gpu_data::PositionData::zeroed()).take(
             (next_multiple_of(num_positions, POSITION_TEXTURE_SIZE) - num_positions) as usize,
@@ -299,6 +289,7 @@ impl LineDrawable {
             (next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) - num_line_strips) as usize,
         ));
 
+        // Upload data from staging buffers to gpu.
         queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &ctx
@@ -320,7 +311,7 @@ impl LineDrawable {
             },
             wgpu::Extent3d {
                 width: POSITION_TEXTURE_SIZE,
-                height: num_position_data_rows,
+                height: (num_positions + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
@@ -341,13 +332,27 @@ impl LineDrawable {
             },
             wgpu::Extent3d {
                 width: LINE_STRIP_TEXTURE_SIZE,
-                height: num_line_strip_info_rows,
+                height: (num_line_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
 
         Ok(LineDrawable {
-            bind_group,
+            bind_group: ctx.resource_pools.bind_groups.request(
+                device,
+                &BindGroupDesc {
+                    label: "line drawable".into(),
+                    entries: vec![
+                        BindGroupEntry::TextureView(position_data_texture),
+                        BindGroupEntry::TextureView(line_strip_texture),
+                    ],
+                    layout: line_renderer.bind_group_layout,
+                },
+                &ctx.resource_pools.bind_group_layouts,
+                &ctx.resource_pools.textures,
+                &ctx.resource_pools.buffers,
+                &ctx.resource_pools.samplers,
+            ),
             num_quads,
         })
     }

@@ -14,6 +14,33 @@ var segment_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var position_data_texture: texture_2d<u32>;
 
+
+// ---------------------------------------------------------------------------
+// TODO(andreas): Utilities that belong to a shared header
+
+// workaround for https://github.com/gfx-rs/naga/issues/2006
+fn unpack4x8unorm_workaround(v: u32) -> vec4<f32> {
+    var shifted = vec4<u32>(v, v >> u32(8), v >> u32(16), v >> u32(24));
+    var bytes = shifted & vec4<u32>(u32(0xFF));
+    return vec4<f32>(bytes) * (1.0 / 255.0);
+}
+
+// Converts a color from 0-1 sRGB to 0-1 linear
+fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
+    let cutoff = ceil(srgb - 0.04045);
+    let under = srgb / 12.92;
+    let over = pow((srgb + 0.055) / 1.055,  vec3<f32>(2.4));
+    return mix(under, over, cutoff);
+}
+
+// Converts a color from 0-1 sRGB to 0-1 linear, leaves alpha untouched
+fn linear_from_srgba(srgb_a: vec4<f32>) -> vec4<f32> {
+    return vec4<f32>(linear_from_srgb(srgb_a.rgb), srgb_a.a);
+}
+
+// ---------------------------------------------------------------------------
+
+
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
 var<private> SEGMENT_TEXTURE_SIZE: i32 = 512;
@@ -30,35 +57,9 @@ struct LineStripData {
     stippling: f32,
 }
 
-struct PositionData {
-    pos: vec3<f32>,
-    strip_index: i32,
-}
-
-// workaround for https://github.com/gfx-rs/naga/issues/2006
-fn unpack4x8unorm_workaround(v: u32) -> vec4<f32> {
-    var shifted = vec4<u32>(v, v >> u32(8), v >> u32(16), v >> u32(24));
-    var bytes = shifted & vec4<u32>(u32(0xFF));
-    return vec4<f32>(bytes) * (1.0 / 255.0);
-}
-
-// Converts a color from 0-1 sRGB to 0-1 linear
-// adapted from https://gamedev.stackexchange.com/a/148088
-fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
-    let cutoff = ceil(srgb - 0.04045);
-    let higher = pow((srgb + 0.055) / 1.055,  vec3<f32>(2.4));
-    let lower = srgb / 12.92;
-
-    return mix(lower, higher, cutoff);
-}
-
-fn linear_from_srgba(srgb_a: vec4<f32>) -> vec4<f32> {
-    return vec4<f32>(linear_from_srgb(srgb_a.rgb), srgb_a.a);
-}
-
-fn read_strip_data(strip_index: i32) -> LineStripData {
-    var raw_data = textureLoad(position_data_texture,
-        vec2<i32>(strip_index % POSITION_DATA_TEXTURE_SIZE, strip_index / POSITION_DATA_TEXTURE_SIZE), 0).xy;
+// Read and unpack line strip data at a given location
+fn read_strip_data(idx: i32) -> LineStripData {
+    var raw_data = textureLoad(position_data_texture, vec2<i32>(idx % POSITION_DATA_TEXTURE_SIZE, idx / POSITION_DATA_TEXTURE_SIZE), 0).xy;
 
     var data: LineStripData;
     data.color = linear_from_srgba(unpack4x8unorm_workaround(raw_data.x));
@@ -67,11 +68,14 @@ fn read_strip_data(strip_index: i32) -> LineStripData {
     return data;
 }
 
+struct PositionData {
+    pos: vec3<f32>,
+    strip_index: i32,
+}
 
-fn read_position_data(segment_idx: i32) -> PositionData {
-    // Negative indices are defined to return all zero!
-    var raw_data = textureLoad(segment_texture,
-        vec2<i32>(i32(segment_idx % SEGMENT_TEXTURE_SIZE), segment_idx / SEGMENT_TEXTURE_SIZE), 0);
+// Read and unpack position data at a given location
+fn read_position_data(idx: i32) -> PositionData {
+    var raw_data = textureLoad(segment_texture, vec2<i32>(i32(idx % SEGMENT_TEXTURE_SIZE), idx / SEGMENT_TEXTURE_SIZE), 0);
 
     var data: PositionData;
     data.pos = raw_data.xyz;
@@ -123,6 +127,6 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    // TODO(andreas): Rounded caps
+    // TODO(andreas): Shading, rounded caps, etc.
     return in.color;
 }

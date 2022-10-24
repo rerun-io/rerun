@@ -103,12 +103,13 @@ fn draw_view(
         device,
         queue,
         &[
+            // Complex orange line.
             LineStrip {
                 points: lorenz_points,
                 radius: 0.05,
                 color: [255, 191, 0, 255],
-                stippling: 1.0,
             },
+            // Yellow Zig-Zag
             LineStrip {
                 points: vec![
                     glam::vec3(0.0, -1.0, 0.0),
@@ -118,8 +119,8 @@ fn draw_view(
                 ],
                 radius: 0.1,
                 color: [50, 255, 50, 255],
-                stippling: 1.0,
             },
+            // A blue spiral
             LineStrip {
                 points: (0..1000)
                     .map(|i| {
@@ -132,7 +133,6 @@ fn draw_view(
                     .collect(),
                 radius: 0.1,
                 color: [50, 50, 255, 255],
-                stippling: 1.0,
             },
         ],
     )
