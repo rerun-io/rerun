@@ -68,7 +68,7 @@ fn draw_view(
 
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
     let t = time.seconds_since_startup();
-    let pos = Vec3::new(t.sin(), 0.5, t.cos()) * 10.0;
+    let pos = Vec3::new(t.sin(), 0.5, t.cos()) * 20.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
     let target_cfg = TargetConfiguration {
         resolution_in_pixel: resolution,
@@ -81,10 +81,16 @@ fn draw_view(
     let triangle = TestTriangleDrawable::new(re_ctx, device);
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
 
+    // Calculate some points that look nice for an animated line.
     let mut lorenz_points = Vec::new();
-    lorenz_points.push(glam::vec3(0.1, 0.001, 0.0));
-    for _ in 0..10000 {
-        lorenz_points.push(lorenz_integrate(*lorenz_points.last().unwrap(), 0.01));
+    lorenz_points.push(glam::vec3(-0.1, 0.001, 0.0));
+    for _ in 0..(((t * 0.05).fract() * 10000.0) as u32) {
+        lorenz_points.push(lorenz_integrate(*lorenz_points.last().unwrap(), 0.005));
+    }
+    for p in lorenz_points.iter_mut() {
+        // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
+        *p += glam::vec3(-5.0, 0.0, -23.0);
+        *p *= 0.6;
     }
 
     let lines = LineDrawable::new(
@@ -95,7 +101,7 @@ fn draw_view(
             LineStrip {
                 points: lorenz_points,
                 radius: 0.05,
-                color: [255, 100, 50, 255],
+                color: [255, 191, 0, 255],
                 stippling: 1.0,
             },
             LineStrip {
