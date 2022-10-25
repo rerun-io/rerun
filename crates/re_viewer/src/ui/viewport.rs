@@ -249,9 +249,12 @@ impl Blueprint {
             });
         }
 
-        let layout = layout_spaces(available_size, &mut space_make_infos);
         blueprint.tree = egui_dock::Tree::new(vec![]);
+
+        if !space_make_infos.is_empty() {
+            let layout = layout_spaces(available_size, &mut space_make_infos);
         tree_from_split(&mut blueprint.tree, egui_dock::NodeIndex(0), &layout);
+        }
 
         blueprint
     }
