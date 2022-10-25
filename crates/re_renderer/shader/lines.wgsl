@@ -101,7 +101,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var pos_data_current = read_position_data(pos_data_idx);
     var pos_data_next = read_position_data(pos_data_idx + 1);
 
-    // Is this a degenerated quad? Collapse it!
+    // Are we at the end of a previous and start of a new line strip? If so, collapse the quad between them.
     if is_at_quad_end == 1 && pos_data_before.strip_index != pos_data_current.strip_index {
         pos_data_current = pos_data_before;
     }
