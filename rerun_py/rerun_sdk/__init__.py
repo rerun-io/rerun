@@ -449,6 +449,11 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
         return np.require(colors_array, np.uint8)
 
 
+def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
+    """Log that this object is NOT in the same space as the parent, but you do not (yet) know how they relate."""
+    rerun_rs.log_unknown_transform(obj_path, timeless=timeless)
+
+
 def log_extrinsics(
     obj_path: str,
     rotation_q: npt.ArrayLike,

@@ -104,6 +104,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_extrinsics, m)?)?;
     m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
 
@@ -417,6 +418,26 @@ fn parse_camera_space_convention(s: &str) -> PyResult<CameraSpaceConvention> {
                 Expected one of: XRightYUpZBack, XRightYDownZFwd"
         ))),
     }
+}
+
+#[pyfunction]
+fn log_unknown_transform(obj_path: &str, timeless: bool) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+    let transform = re_log_types::Transform::Unknown;
+
+    let mut sdk = Sdk::global();
+
+    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "_transform"),
+        LoggedData::Single(Data::Transform(transform)),
+    );
+
+    Ok(())
 }
 
 #[pyfunction]
