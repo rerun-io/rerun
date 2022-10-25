@@ -160,7 +160,7 @@ impl SharedSequentialIndex {
         global.hashed_indices.clone()
     }
 
-    /// Get all the hashes up the the requested length
+    /// Get all the hashes up to the requested length
     ///
     /// Holds the read-lock
     pub(crate) fn hashes_up_to(len: usize) -> ArcIndexHashes {
