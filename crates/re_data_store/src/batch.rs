@@ -214,7 +214,7 @@ impl<T> Batch<T> {
                 if let Index::Sequence(index) = index {
                     vec.get(*index as usize)
                 } else {
-                    re_log::error!("Attempted to access Sequential Batch with non-Sequence Index");
+                    re_log::error_once!("Attempted to access Sequential Batch with non-Sequence Index");
                     None
                 }
             }
