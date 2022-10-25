@@ -141,11 +141,11 @@ impl<'store, T: DataTrait> MultiDataReader<'store, T> {
         }
     }
 
-    pub fn get(&self, best_lookup: &BestLookup<'_>) -> Option<&'store T> {
+    pub fn get(&self, best_lookup: &BatchIndexLookup<'_>) -> Option<&'store T> {
         match self {
             Self::None => None,
             Self::Splat(splat) => Some(splat),
-            Self::Batch(batch) => batch.get_best(*best_lookup),
+            Self::Batch(batch) => batch.get_batch(*best_lookup),
         }
     }
 }

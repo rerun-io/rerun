@@ -185,7 +185,7 @@ impl SharedSequentialIndex {
 }
 
 #[derive(Copy, Clone)]
-pub enum BestLookup<'a> {
+pub enum BatchIndexLookup<'a> {
     ByIndex(&'a Index),
     ByHash(&'a IndexHash),
 }
@@ -200,21 +200,15 @@ impl<T> Batch<T> {
     }
 
     #[inline]
-    pub fn get_best(&self, best: BestLookup<'_>) -> Option<&T> {
-        match best {
-            BestLookup::ByIndex(index) => self.get_index(index),
-            BestLookup::ByHash(hash) => self.get(hash),
-        }
-    }
-
-    #[inline]
     pub fn get_index(&self, index: &Index) -> Option<&T> {
         match &self {
             Self::SequentialBatch(vec, _) => {
                 if let Index::Sequence(index) = index {
                     vec.get(*index as usize)
                 } else {
-                    re_log::error_once!("Attempted to access Sequential Batch with non-Sequence Index");
+                    re_log::error_once!(
+                        "Attempted to access Sequential Batch with non-Sequence Index"
+                    );
                     None
                 }
             }
@@ -222,6 +216,14 @@ impl<T> Batch<T> {
                 let index_hash = IndexHash::hash(index);
                 map.get(&index_hash)
             }
+        }
+    }
+
+    #[inline]
+    pub fn get_batch(&self, best: BatchIndexLookup<'_>) -> Option<&T> {
+        match best {
+            BatchIndexLookup::ByIndex(index) => self.get_index(index),
+            BatchIndexLookup::ByHash(hash) => self.get(hash),
         }
     }
 
@@ -234,14 +236,14 @@ impl<T> Batch<T> {
     }
 
     #[inline]
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexHash, BestLookup<'_>, &T)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexHash, BatchIndexLookup<'_>, &T)> {
         match &self {
             Self::SequentialBatch(vec, hashes) => Either::Left(
                 itertools::izip!(hashes.0.iter(), hashes.1.iter(), vec)
-                    .map(|(h, i, v)| (h, BestLookup::ByIndex(i), v)),
+                    .map(|(h, i, v)| (h, BatchIndexLookup::ByIndex(i), v)),
             ),
             Self::IndexedBatch(map) => {
-                Either::Right(map.iter().map(|(h, v)| (h, BestLookup::ByHash(h), v)))
+                Either::Right(map.iter().map(|(h, v)| (h, BatchIndexLookup::ByHash(h), v)))
             }
         }
     }
