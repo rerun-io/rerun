@@ -329,7 +329,7 @@ pub(crate) struct SpaceCamera {
     pub extrinsics: re_log_types::Extrinsics,
     pub intrinsics: Option<re_log_types::Intrinsics>,
 
-    /// The 2D space we project into.
+    /// The child 2D space we project into.
     pub target_space: Option<ObjPath>,
 }
 

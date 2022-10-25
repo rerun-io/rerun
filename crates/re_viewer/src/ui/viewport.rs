@@ -16,7 +16,7 @@ use nohash_hasher::IntSet;
 use re_data_store::{
     log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, TimelineStore,
 };
-use re_log_types::{ObjectType, Transform};
+use re_log_types::{CoordinateSystem, ObjectType, Transform};
 
 use crate::misc::{TimeControl, ViewerContext};
 
@@ -41,6 +41,9 @@ impl SpaceViewId {
 /// This is gathered by analyzing the transform hierarchy of the objects.
 #[derive(Default)]
 struct SpaceInfo {
+    /// The latest known coordinate system for this space.
+    coordinate_system: Option<CoordinateSystem>,
+
     /// All paths in this space (including self and children connected by the identity transform).
     objects: IntSet<ObjPath>,
 
@@ -144,6 +147,10 @@ impl SpacesInfo {
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
+        for (obj_path, space_info) in &mut spaces_info.spaces {
+            space_info.coordinate_system = query_coordinate_system(obj_db, time_ctrl, obj_path);
+        }
+
         spaces_info
     }
 }
@@ -173,13 +180,14 @@ fn query_transform(
 
 /// Get the latest value of the `_coordinate_system` meta-field of the given object.
 fn query_coordinate_system(
-    ctx: &mut ViewerContext<'_>,
+    obj_db: &ObjDb,
+    time_ctrl: &TimeControl,
     obj_path: &ObjPath,
 ) -> Option<re_log_types::CoordinateSystem> {
-    let query_time = ctx.rec_cfg.time_ctrl.time()?;
-    let timeline = ctx.rec_cfg.time_ctrl.timeline();
+    let query_time = time_ctrl.time()?;
+    let timeline = time_ctrl.timeline();
 
-    let store = ctx.log_db.obj_db.store.get(timeline)?;
+    let store = obj_db.store.get(timeline)?;
 
     let field_store = store
         .get(obj_path)?
@@ -379,7 +387,8 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_cameras: &[SpaceCamera],
+        spaces_info: &SpacesInfo,
+        space_info: &SpaceInfo,
         time_objects: &Objects<'_>,
         sticky_objects: &Objects<'_>,
     ) -> egui::Response {
@@ -412,8 +421,14 @@ impl SpaceView {
                     self.view_state
                         .ui_2d(ctx, ui, &self.space_path, time_objects)
                 } else if has_3d {
-                    self.view_state
-                        .ui_3d(ctx, ui, &self.space_path, space_cameras, time_objects)
+                    self.view_state.ui_3d(
+                        ctx,
+                        ui,
+                        &self.space_path,
+                        spaces_info,
+                        space_info,
+                        time_objects,
+                    )
                 } else if let Some(multidim_tensor) = multidim_tensor {
                     self.view_state.ui_tensor(ui, multidim_tensor)
                 } else {
@@ -451,7 +466,8 @@ impl SpaceView {
                                 ctx,
                                 ui,
                                 &self.space_path,
-                                space_cameras,
+                                spaces_info,
+                                space_info,
                                 time_objects,
                             );
                         }
@@ -504,12 +520,14 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
-        space_cameras: &[SpaceCamera],
+        spaces_info: &SpacesInfo,
+        space_info: &SpaceInfo,
         objects: &Objects<'_>,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
-            let coordinate_system = query_coordinate_system(ctx, space);
+            let space_cameras = &space_cameras(spaces_info, space_info);
+            let coordinate_system = space_info.coordinate_system;
             let space_specs = crate::view3d::SpaceSpecs::from_coordinate_system(coordinate_system);
             let scene = crate::view3d::scene::Scene::from_objects(ctx, objects);
             crate::view3d::view_3d(
@@ -705,9 +723,14 @@ fn space_view_ui(
         }
         let sticky_objects = filter_objects(ctx, &sticky_objects);
 
-        let space_cameras = &space_cameras(spaces_info, space_info);
-
-        space_view.objects_ui(ctx, ui, space_cameras, &time_objects, &sticky_objects)
+        space_view.objects_ui(
+            ctx,
+            ui,
+            spaces_info,
+            space_info,
+            &time_objects,
+            &sticky_objects,
+        )
     } else {
         unknown_space_label(ui, &space_view.space_path)
     }
