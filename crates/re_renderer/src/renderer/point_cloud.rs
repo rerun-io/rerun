@@ -3,8 +3,15 @@
 //!
 //! How it works:
 //! =================
+//! Points are rendered as quads and stenciled out by a fragment shader.
+//! Quad spanning happens in the vertex shader, uploaded are only the data for the actual points.
 //!
-//! TODO
+//! Like with the [`super::LineRenderer`], we're rendering as all quads in a single triangle list draw call.
+//! (Rationale for this can be found in the LineRenderer's documentation)
+//!
+//! For WebGL compatibility, data is uploaded as textures. Color is stored in a separate srgb texture, meaning
+//! that srgb->linear conversion should be happening on sampling.
+//!
 
 use std::num::NonZeroU32;
 
@@ -91,7 +98,6 @@ impl PointCloudDrawable {
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several PointDrawable!
-
         let pos_and_size_texture_desc = wgpu::TextureDescriptor {
             label: Some("point cloud position data"),
             size: wgpu::Extent3d {
@@ -123,7 +129,6 @@ impl PointCloudDrawable {
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
-
         let num_points_written = next_multiple_of(points.len() as u32, TEXTURE_SIZE) as usize;
         let num_points_zeroed = num_points_written - points.len();
         let mut position_and_size_staging = Vec::with_capacity(num_points_written);

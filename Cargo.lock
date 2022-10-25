@@ -3078,6 +3078,7 @@ dependencies = [
  "ordered-float",
  "parking_lot",
  "pollster",
+ "rand",
  "re_error",
  "re_log",
  "slotmap",
