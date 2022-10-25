@@ -110,6 +110,9 @@ impl ShaderModulePool {
             .pool
             .resource_descs()
             .filter_map(|desc| {
+                // Not only do we care about filesystem events that touch upon the source
+                // path of the current shader, we also care about events that affect any of
+                // our direct and indirect dependencies (#import)!
                 (!updated_paths.is_empty()).then(|| {
                     let mut paths = vec![desc.source.as_path()];
                     if let Ok(imports) = resolver.resolve_imports(&desc.source) {

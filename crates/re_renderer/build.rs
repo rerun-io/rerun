@@ -1,8 +1,11 @@
-//! For any target except native debug builds, this build script will find all .wgsl shader
-//! files defined anywhere within our workspace and directly embed those into our
-//! `re_renderer` library.
+//! This build script implements the second half of cross-platform shader #import system.
+//! The first half can be found in `src/file_resolver.rs`.
 //!
-//! At run-time, they will be available through an hermetic virtual filesystem.
+//! It finds all WGSL shaders defined anywhere within our Cargo workspace, and embeds them
+//! directly into the released artifact for our `re_renderer` library.
+//!
+//! At run-time, those shaders will be available through an hermetic virtual filesystem.
+//! To the user, it will look like business as usual.
 //!
 //! See `re_renderer/src/workspace_shaders.rs` for the end result.
 
@@ -22,7 +25,7 @@ fn rerun_if_changed(path: &str) {
 
 fn main() {
     if std::env::var("CI").is_ok() {
-        return; // don't run on CI
+        return; // don't run on CI, we're generating
     }
 
     let root_path = Path::new(&std::env::var("CARGO_WORKSPACE_DIR").unwrap()).to_owned();

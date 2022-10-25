@@ -1,7 +1,10 @@
-//! This module implements our cross-platform #import system.
+//! This module implements one half of our cross-platform #import system.
+//!
+//! The other half is provided as an extension to the build system, see the `build.rs` file
+//! at the root of this crate.
 //!
 //! While it is agnostic to the type of files being imported, in practice this is only used
-//! for shaders, so this is what this documentation will linger on.
+//! for shaders, thus this is what this documentation will linger on.
 //! In particular, integration with our hot-reloading capabilities can get tricky depending
 //! on the platform/target.
 //!
@@ -42,7 +45,7 @@
 //! ### Interpolation
 //!
 //! Interpolation is done in the simplest way possible: the entire line containing the import
-//! claused is overwritten with the contents of the imported file.
+//! clause is overwritten with the contents of the imported file.
 //! This is of course a recursive process.
 //!
 //! ## Hot-reloading: platform specifics
@@ -56,7 +59,8 @@
 //! When targeting native debug builds, we want everything to be as lazy as possible, everything
 //! to happen just-in-time, e.g.:
 //! - We always talk directly with the filesystem and check for missing files at the last moment.
-//! - We do interpolation just-in-time, e.g. just before calling `create_shader_module`.
+//! - We do resolution & interpolation just-in-time, e.g. just before calling
+//!   `create_shader_module`.
 //! - Etc.
 //!
 //! On the web, we don't even have an actual filesystem to access at runtime, so not only we'd
@@ -66,6 +70,10 @@
 //! in the final artifact one way or another, we still want to delay interpolation as much as
 //! we can, otherwise we'd be bloating the binary artifact with N copies of the exact same
 //! shader code.
+//!
+//! Still, we'd like to limit the number of differences between targets/platforms.
+//! And indeed, in the current implementation, there are effectively no differences in how
+//! the different platforms behave at run-time.
 //!
 //! ### Debug builds (excl. web)
 //!
