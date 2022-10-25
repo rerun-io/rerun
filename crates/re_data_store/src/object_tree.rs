@@ -151,6 +151,7 @@ impl DataColumns {
                 DataType::ObjPath => ("path", "s"),
 
                 DataType::Transform => ("transform", "s"),
+                DataType::CoordinateSystem => ("coordinate system", "s"),
 
                 DataType::DataVec => ("vector", "s"),
             };

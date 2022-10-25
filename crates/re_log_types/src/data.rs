@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{impl_into_enum, ObjPath};
+use crate::{impl_into_enum, CoordinateSystem, ObjPath};
 
 use self::data_types::Vec3;
 
@@ -40,6 +40,7 @@ pub enum DataType {
     ObjPath,
 
     Transform,
+    CoordinateSystem,
 }
 
 // ----------------------------------------------------------------------------
@@ -155,6 +156,12 @@ pub mod data_types {
             DataType::Transform
         }
     }
+
+    impl DataTrait for crate::CoordinateSystem {
+        fn data_typ() -> DataType {
+            DataType::CoordinateSystem
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -194,6 +201,7 @@ pub enum Data {
     ObjPath(ObjPath),
 
     Transform(Transform),
+    CoordinateSystem(CoordinateSystem),
 }
 
 impl Data {
@@ -220,6 +228,7 @@ impl Data {
             Self::ObjPath(_) => DataType::ObjPath,
 
             Self::Transform(_) => DataType::Transform,
+            Self::CoordinateSystem(_) => DataType::CoordinateSystem,
         }
     }
 }
@@ -233,6 +242,7 @@ impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(ObjPath, Data, ObjPath);
 impl_into_enum!(Transform, Data, Transform);
+impl_into_enum!(CoordinateSystem, Data, CoordinateSystem);
 
 // ----------------------------------------------------------------------------
 
@@ -263,6 +273,7 @@ pub enum DataVec {
     ObjPath(Vec<ObjPath>),
 
     Transform(Vec<Transform>),
+    CoordinateSystem(Vec<CoordinateSystem>),
 }
 
 /// Do the same thing with all members of a [`Data`].
@@ -291,6 +302,7 @@ macro_rules! data_map(
             $crate::Data::DataVec($value) => $action,
             $crate::Data::ObjPath($value) => $action,
             $crate::Data::Transform($value) => $action,
+            $crate::Data::CoordinateSystem($value) => $action,
         }
     });
 );
@@ -321,6 +333,7 @@ macro_rules! data_vec_map(
             $crate::DataVec::DataVec($vec) => $action,
             $crate::DataVec::ObjPath($vec) => $action,
             $crate::DataVec::Transform($vec) => $action,
+            $crate::DataVec::CoordinateSystem($vec) => $action,
         }
     });
 );
@@ -349,6 +362,7 @@ impl DataVec {
             Self::ObjPath(_) => DataType::ObjPath,
 
             Self::Transform(_) => DataType::Transform,
+            Self::CoordinateSystem(_) => DataType::CoordinateSystem,
         }
     }
 
@@ -382,6 +396,7 @@ impl DataVec {
             Self::ObjPath(vec) => vec.last().cloned().map(Data::ObjPath),
 
             Self::Transform(vec) => vec.last().cloned().map(Data::Transform),
+            Self::CoordinateSystem(vec) => vec.last().cloned().map(Data::CoordinateSystem),
         }
     }
 }
@@ -497,7 +512,7 @@ pub enum CameraSpaceConvention {
 }
 
 impl CameraSpaceConvention {
-    /// Rerun uses the view-space convention of +X=right, +Y=up, -Z=fwd.
+    /// Rerun uses the view-space convention of RUB (+X=Right, +Y=Up, Z=Back).
     ///
     /// This returns the direction of the X,Y,Z axis in the Rerun convention.
     ///

@@ -344,6 +344,7 @@ pub(crate) fn ui_data(
             Preview::Small | Preview::Specific(_) => ui.label("Transform"),
             Preview::Medium => ui_transform(ui, transform),
         },
+        Data::CoordinateSystem(coordinate_system) => ui_coordinate_system(ui, coordinate_system),
 
         Data::Tensor(tensor) => {
             let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
@@ -400,6 +401,10 @@ fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
         Transform::Extrinsics(extrinsics) => ui_extrinsics(ui, extrinsics),
         Transform::Intrinsics(intrinsics) => ui_intrinsics(ui, intrinsics),
     }
+}
+
+fn ui_coordinate_system(ui: &mut egui::Ui, system: &CoordinateSystem) -> egui::Response {
+    ui.label(system.describe())
 }
 
 fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {

@@ -168,6 +168,9 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::Tensor => handle_type!(Tensor, re_log_types::Tensor),
             DataType::ObjPath => handle_type!(ObjPath, ObjPath),
             DataType::Transform => handle_type!(Transform, re_log_types::Transform),
+            DataType::CoordinateSystem => {
+                handle_type!(CoordinateSystem, re_log_types::CoordinateSystem)
+            }
             DataType::DataVec => handle_type!(DataVec, DataVec),
         }
     }
