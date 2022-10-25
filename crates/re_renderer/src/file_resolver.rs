@@ -103,7 +103,7 @@
 //! Normalization (not available in `std`) on the other hand is purely lexicographical: it
 //! normalizes path as best as it can without ever touching the filesystem.
 //!
-//! See also "Getting Dot-Dot Right": https://9p.io/sys/doc/lexnames.html
+//! See also ["Getting Dot-Dot Right"](https://9p.io/sys/doc/lexnames.html).
 //!
 //! ### Hermeticism
 //!

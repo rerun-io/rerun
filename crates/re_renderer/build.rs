@@ -42,7 +42,7 @@ fn main() {
     // The local path prefix that was used to build this workspace.
     // Strip this from local paths to preserve hermeticism.
     let strip_prefix = {
-        let mut strip_prefix = root_path.to_path_buf();
+        let mut strip_prefix = root_path.clone();
         strip_prefix.pop();
         strip_prefix
     };
