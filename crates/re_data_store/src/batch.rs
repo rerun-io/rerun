@@ -184,12 +184,26 @@ impl SharedSequentialIndex {
     }
 }
 
+#[derive(Copy, Clone)]
+pub enum BestLookup<'a> {
+    ByIndex(&'a Index),
+    ByHash(&'a IndexHash),
+}
+
 impl<T> Batch<T> {
     #[inline]
     pub fn get(&self, index: &IndexHash) -> Option<&T> {
         match &self {
             Self::SequentialBatch(vec, _) => vec.get(SharedSequentialIndex::reverse_hash(index)?),
             Self::IndexedBatch(map) => map.get(index),
+        }
+    }
+
+    #[inline]
+    pub fn get_best(&self, best: BestLookup<'_>) -> Option<&T> {
+        match best {
+            BestLookup::ByIndex(index) => self.get_index(index),
+            BestLookup::ByHash(hash) => self.get(hash),
         }
     }
 
@@ -220,12 +234,15 @@ impl<T> Batch<T> {
     }
 
     #[inline]
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexHash, &T)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&IndexHash, BestLookup<'_>, &T)> {
         match &self {
-            Self::SequentialBatch(vec, hashes) => {
-                Either::Left(std::iter::zip(hashes.0.iter(), vec))
+            Self::SequentialBatch(vec, hashes) => Either::Left(
+                itertools::izip!(hashes.0.iter(), hashes.1.iter(), vec)
+                    .map(|(h, i, v)| (h, BestLookup::ByIndex(i), v)),
+            ),
+            Self::IndexedBatch(map) => {
+                Either::Right(map.iter().map(|(h, v)| (h, BestLookup::ByHash(h), v)))
             }
-            Self::IndexedBatch(map) => Either::Right(map.iter()),
         }
     }
 }

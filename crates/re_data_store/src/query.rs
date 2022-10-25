@@ -141,11 +141,11 @@ impl<'store, T: DataTrait> MultiDataReader<'store, T> {
         }
     }
 
-    pub fn get(&self, index: &IndexHash) -> Option<&'store T> {
+    pub fn get(&self, best_lookup: &BestLookup<'_>) -> Option<&'store T> {
         match self {
             Self::None => None,
             Self::Splat(splat) => Some(splat),
-            Self::Batch(batch) => batch.get(index),
+            Self::Batch(batch) => batch.get_best(*best_lookup),
         }
     }
 }
@@ -192,7 +192,7 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
             time_query,
             |time, (msg_id, primary_batch)| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
-                    for (instance_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, _best_lookup, primary_value) in primary_batch.iter() {
                         visit(Some(instance_index), *time, msg_id, primary_value);
                     }
                 }
@@ -232,13 +232,13 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
             |time, (msg_id, primary_batch)| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
-                    for (instance_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, best_lookup, primary_value) in primary_batch.iter() {
                         visit(
                             Some(instance_index),
                             *time,
                             msg_id,
                             primary_value,
-                            child1.get(instance_index),
+                            child1.get(&best_lookup),
                         );
                     }
                 }
@@ -295,14 +295,14 @@ pub fn visit_type_data_2<
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
                     let child2 = MultiDataReader::latest_at(child2, time);
-                    for (instance_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, best_lookup, primary_value) in primary_batch.iter() {
                         visit(
                             Some(instance_index),
                             *time,
                             msg_id,
                             primary_value,
-                            child1.get(instance_index),
-                            child2.get(instance_index),
+                            child1.get(&best_lookup),
+                            child2.get(&best_lookup),
                         );
                     }
                 }
@@ -373,15 +373,15 @@ pub fn visit_type_data_3<
                     let child1 = MultiDataReader::latest_at(child1, time);
                     let child2 = MultiDataReader::latest_at(child2, time);
                     let child3 = MultiDataReader::latest_at(child3, time);
-                    for (instance_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, best_lookup, primary_value) in primary_batch.iter() {
                         visit(
                             Some(instance_index),
                             *time,
                             msg_id,
                             primary_value,
-                            child1.get(instance_index),
-                            child2.get(instance_index),
-                            child3.get(instance_index),
+                            child1.get(&best_lookup),
+                            child2.get(&best_lookup),
+                            child3.get(&best_lookup),
                         );
                     }
                 }
@@ -459,16 +459,16 @@ pub fn visit_type_data_4<
                     let child2 = MultiDataReader::latest_at(child2, time);
                     let child3 = MultiDataReader::latest_at(child3, time);
                     let child4 = MultiDataReader::latest_at(child4, time);
-                    for (instance_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, best_lookup, primary_value) in primary_batch.iter() {
                         visit(
                             Some(instance_index),
                             *time,
                             msg_id,
                             primary_value,
-                            child1.get(instance_index),
-                            child2.get(instance_index),
-                            child3.get(instance_index),
-                            child4.get(instance_index),
+                            child1.get(&best_lookup),
+                            child2.get(&best_lookup),
+                            child3.get(&best_lookup),
+                            child4.get(&best_lookup),
                         );
                     }
                 }
@@ -553,17 +553,17 @@ pub fn visit_type_data_5<
                     let child3 = MultiDataReader::latest_at(child3, time);
                     let child4 = MultiDataReader::latest_at(child4, time);
                     let child5 = MultiDataReader::latest_at(child5, time);
-                    for (instance_index, primary_value) in primary_batch.iter() {
+                    for (instance_index, best_lookup, primary_value) in primary_batch.iter() {
                         visit(
                             Some(instance_index),
                             *time,
                             msg_id,
                             primary_value,
-                            child1.get(instance_index),
-                            child2.get(instance_index),
-                            child3.get(instance_index),
-                            child4.get(instance_index),
-                            child5.get(instance_index),
+                            child1.get(&best_lookup),
+                            child2.get(&best_lookup),
+                            child3.get(&best_lookup),
+                            child4.get(&best_lookup),
+                            child5.get(&best_lookup),
                         );
                     }
                 }
