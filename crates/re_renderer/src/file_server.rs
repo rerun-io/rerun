@@ -1,7 +1,3 @@
-use std::path::PathBuf;
-
-// ---
-
 /// A macro to read the contents of a file on disk, and resolve #import clauses as required.
 ///
 /// - On WASM and/or release builds, this will behave like the standard [`include_str`]
@@ -27,8 +23,9 @@ macro_rules! include_file {
 
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
         {
-            // Make sure `workspace_shaders::init()` is compiled in, which will register
-            // all shaders defined in the workspace into the memory filesystem.
+            // Make sure `workspace_shaders::init()` is called at least once, which will
+            // register all shaders defined in the workspace into the run-time memory
+            // filesystem.
             $crate::workspace_shaders::init();
 
             let path = ::std::path::Path::new(file!())
@@ -36,6 +33,11 @@ macro_rules! include_file {
                 .unwrap()
                 .join($path);
 
+            // Coerce the path into a standardized form, which mean canonicalizing it if we can,
+            // or simply lexicographically normalizing otherwise.
+            //
+            // This is mandatory to get right, otherwise we couldn't compare paths at
+            // runtime and everything would crumble!
             let path = if cfg!(not(target_arch = "wasm32")) {
                 // Canonicalize the path in non-wasm release builds, as we do have an actual
                 // filesystem to rely on.
@@ -57,10 +59,10 @@ macro_rules! include_file {
                     .unwrap();
                 path.strip_prefix(strip_prefix).unwrap().to_owned()
             } else {
-                // On wasm, the build system already takes care of hermetism: all paths have
-                // the local workspace prefix pre-stripped.
-                // They go a bit too far for us though as they even remove the root folder from
-                // the path.
+                // On wasm, the build system already takes care of hermeticism for us: all
+                // paths have the local workspace prefix pre-stripped.
+                // They even go a bit too far in fact: they even remove the root folder from
+                // the path. We need to bring that back.
                 ::std::path::Path::new("rerun").join(path)
             }
         }
@@ -69,43 +71,7 @@ macro_rules! include_file {
 
 // ---
 
-// // TODO: this whole thing can die now, Inlined isn't ever used anymore.
-
-// /// A handle to the contents of a file.
-// #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-// pub enum FileContentsHandle {
-//     /// Contents inlined as a UTF-8 string.
-//     Inlined(&'static str),
-//     /// Contents sit on disk, path is pre-canonicalized.
-//     Path(PathBuf),
-// }
-// impl FileContentsHandle {
-//     /// Resolve the contents of the handle.
-//     pub fn resolve_contents<Fs: FileSystem>(
-//         &self,
-//         resolver: &mut FileResolver<Fs>,
-//     ) -> anyhow::Result<Cow<'_, str>> {
-//         match self {
-//             Self::Inlined(data) => Ok(Cow::Borrowed(data)),
-//             // TODO: again with the cloning here
-//             Self::Path(path) => resolver.resolve_contents(path).map(|s| s.to_owned().into()),
-//         }
-//     }
-// }
-
-// TODO
-/// A lexicographically normalized path.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NormalizedPath(PathBuf);
-
-// TODO
-/// A canonicalized path.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CanonicalizedPath(PathBuf);
-
 pub use self::file_server_impl::FileServer;
-
-// ---
 
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
 mod file_server_impl {

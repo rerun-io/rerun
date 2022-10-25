@@ -1,9 +1,9 @@
 use type_map::concurrent::{self, TypeMap};
 
-use crate::{get_filesystem, FileResolver, FileServer, FileSystem, SearchPath};
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
+use crate::{FileResolver, FileServer, FileSystem};
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
@@ -79,8 +79,7 @@ impl RenderContext {
     }
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
-        // TODO: note how caching/lifecycle of everything works
-        let mut resolver = FileResolver::with_search_path(get_filesystem(), SearchPath::from_env());
+        let mut resolver = crate::get_resolver(); // do _NOT_ cache me!
 
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.

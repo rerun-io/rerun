@@ -12,7 +12,6 @@ use parking_lot::RwLock;
 
 /// A very limited filesystem, just enough for our internal needs.
 pub trait FileSystem {
-    // fn read(&self, path: impl AsRef<Path>) -> anyhow::Result<Cow<'static, [u8]>>;
     fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<Cow<'static, str>>;
     fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf>;
     fn exists(&self, path: impl AsRef<Path>) -> bool;
@@ -93,7 +92,7 @@ impl MemFileSystem {
 
 // Singleton API
 impl MemFileSystem {
-    /// Returns a reference to the global `FileServer`.
+    /// Returns a reference to the global `MemFileSystem`.
     pub fn get() -> &'static MemFileSystem {
         if MEM_FILE_SYSTEM.files.read().is_some() {
             return &MEM_FILE_SYSTEM;

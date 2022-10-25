@@ -1,3 +1,47 @@
+//! This module implements our cross-platform #import system.
+//!
+//! While it is agnostic to the type of files being imported, in practice this is only used
+//! for shaders, so this is what this documentation will linger on.
+//!
+//! ## Usage
+//!
+//! - line based import clauses
+//! - import resolution: absolute, relative to importer, RERUN_SHADER_PATH
+//!
+//! ## Platform specifics
+//!
+//! ### Debug builds
+//!
+//!
+//! ### Release builds
+//!
+//!
+//! ### The Web
+//!
+//!
+//! ## For developers
+//!
+//! ### Canonicalization vs. normalization
+//! ### Hermeticism
+//!
+//!
+//!
+//!
+//!
+//!
+//!
+//!
+//! ## Things we don't support
+//!
+//! ### Async
+//! ### Compression, minification...
+//! ### Importing via network requests
+//! ### Implicit file suffixes
+//!
+//!
+
+// TODO: normalization, canonicalization, hermeticism
+
 // Let's talk about imports:
 // - simple absolute & relative path imports
 // - PATH-like imports
@@ -6,7 +50,7 @@
 // - imports sit on one line, no more, no less
 // - `#import <my_constants>`
 // - `#import <my_constants.wgsl>`
-// - `#import <x/y/z/my_constants>"`
+// - `#import <x/y/z/my_constants>`
 // - `#import <x/y/z/my_constants.wgsl>`
 //
 // First, we try the path as-is, assuming CWD is the path of the file where the import clause
@@ -93,7 +137,8 @@
 // importing stuff through URLs, which can be very valuable in some scenarios (both for us
 // and end users) I feel like.
 
-// TODO: explain canonicalization vs. normalization
+// TODO(cmc): might want to support implicitly dropping file suffixes at some point, e.g.
+// `#import <my_shader>` which works with "my_shader.wgsl"
 
 use std::path::{Path, PathBuf};
 
@@ -105,25 +150,17 @@ use crate::FileSystem;
 
 // ---
 
-// TODO: what do we do about async-ness? most likely we ignore it for now
-// TODO: what do we do about network requests? most likely we ignore it for now
-// TODO: what do we do about compression? most likely we ignore it for now
-// TODO: one probably wants to trim() everything before inlining on web?
-
-// NOTE: Paths used in search trees aren't canonicalized (they can't be: the destinations
-// don't even have to exist yet), which means that one should be careful when comparing them.
-
+/// Specifies where to look for imports when both absolute and relative resolution fail.
+///
+/// This is akin to the standard `$PATH` environment variable.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SearchPath {
     /// All paths currently in the search path, in decreasing order of priority.
     /// They are guaranteed to be normalized, but not canonicalized.
-    // TODO: maybe we actually add dedicated types for NormalizedPath & Canonicalized path
     dirs: Vec<PathBuf>,
 }
 
 impl SearchPath {
-    // TODO: flesh out the end-to-env env use case
-    // TODO: gotta think about the web tho
     pub fn from_env() -> Self {
         const RERUN_SHADER_PATH: &str = "RERUN_SHADER_PATH";
 
@@ -134,18 +171,20 @@ impl SearchPath {
 
     /// Push a path to search path.
     ///
-    /// The path is normalized, but not canonicalized.
+    /// The path is normalized first, but not canonicalized.
     pub fn push(&mut self, path: impl AsRef<Path>) {
         self.dirs.push(path.as_ref().clean());
     }
 
     /// Insert a path into search path.
     ///
-    /// The path is normalized, but not canonicalized.
+    /// The path is normalized first, but not canonicalized.
     pub fn insert(&mut self, index: usize, path: impl AsRef<Path>) {
         self.dirs.insert(index, path.as_ref().clean());
     }
 
+    /// Returns an iterator over the paths in the search path, in decreasing order of
+    /// priority.
     pub fn iter(&self) -> impl Iterator<Item = &Path> {
         self.dirs.iter().map(|p| p.as_path())
     }
@@ -167,9 +206,7 @@ impl std::str::FromStr for SearchPath {
 
         // We cannot check whether these actually are directories, since they are not
         // guaranteed to even exist yet!
-
-        // TODO: actually if we build the search-tree just in time then we're allowed
-        // to canonicalize here?
+        // Similarly, we cannot canonicalize here, but we can at least normalize.
 
         dirs.map(|dirs| Self {
             dirs: dirs.into_iter().map(|dir| dir.clean()).collect(),
@@ -191,15 +228,17 @@ impl std::fmt::Display for SearchPath {
 
 // ---
 
-// TODO: codespan error handling
+// TODO(cmc): codespan errors?
 
-// NOTE: Paths used in import clauses aren't canonicalized (they can't be: the destination
-// doesn't even have to exist yet), which means that one should be careful when comparing them.
-
-// TODO: this need a canonicalize method
+/// A pre-parsed import clause, as in `#import <something>`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImportClause {
+    /// The path being imported, as-is: neither canonicalized nor normalized.
     path: PathBuf,
+}
+
+impl ImportClause {
+    pub const PREFIX: &str = "#import ";
 }
 
 impl<P: Into<PathBuf>> From<P> for ImportClause {
@@ -211,15 +250,15 @@ impl<P: Into<PathBuf>> From<P> for ImportClause {
 impl std::str::FromStr for ImportClause {
     type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.trim();
+    fn from_str(clause_str: &str) -> Result<Self, Self::Err> {
+        let s = clause_str.trim();
 
-        const IMPORT_CLAUSE: &str = "#import ";
         ensure!(
-            s.starts_with(IMPORT_CLAUSE),
-            "import clause must start with '#import '"
+            s.starts_with(ImportClause::PREFIX),
+            "import clause must start with {prefix:?}, got {s:?}",
+            prefix = ImportClause::PREFIX,
         );
-        let s = s.trim_start_matches(IMPORT_CLAUSE).trim();
+        let s = s.trim_start_matches(ImportClause::PREFIX).trim();
 
         let rs = s.chars().rev().collect::<String>();
 
@@ -237,7 +276,7 @@ impl std::str::FromStr for ImportClause {
                 .map(|path| Self { path });
         }
 
-        bail!("misformatted import clause")
+        bail!("misformatted import clause: {clause_str:?}")
     }
 }
 
@@ -372,18 +411,19 @@ mod tests_import_clause {
         for s in testcases {
             eprintln!("test case: {s:?}");
             assert!(s.parse::<ImportClause>().is_err());
-            // TODO(cmc): assert codespans?
         }
     }
 }
 
 // ---
 
+/// Returns the recommended `FileResolver` for the current platform/target.
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
 pub fn new_recommended() -> FileResolver<crate::OsFileSystem> {
     FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
 }
 
+/// Returns the recommended `FileResolver` for the current platform/target.
 #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
 pub fn new_recommended() -> FileResolver<&'static crate::MemFileSystem> {
     FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
@@ -395,16 +435,24 @@ struct InterpolatedFile {
     imports: HashSet<PathBuf>,
 }
 
-// TODO: note how this cache files for its whole lifetime
+/// Then `FileResolver` handles both resolving import clauses and doing the actual string
+/// interpolation.
+///
+/// A `FileResolver` lazily caches all resolved and interpolated files, and keeps track of
+/// those for the entire duration of its lifetime.
+/// This means you should never keep a `FileResolver` alive across frames in a hot-reloading
+/// setup!
 #[derive(Default)]
 pub struct FileResolver<Fs> {
     /// A handle to the filesystem being used.
     /// Generally a `OsFileSystem` on native and a `MemFileSystem` on web and during tests.
     fs: Fs,
 
-    search_path: SearchPath, // TODO
+    /// The search path that we will go through when an import cannot be resolved neither
+    /// as an absolute path or a relative one.
+    search_path: SearchPath,
 
-    /// Already interpolated file cache, for the lifetime of this resolver.
+    /// Cache for all files that have been interpolated so far.
     files: HashMap<PathBuf, InterpolatedFile>,
 }
 
@@ -432,7 +480,8 @@ impl<Fs: FileSystem> FileResolver<Fs> {
     /// Resolves the contents of the file at `path`, recursively interpolating imported
     /// dependencies.
     pub fn resolve_contents(&mut self, path: impl AsRef<Path>) -> anyhow::Result<&str> {
-        // puffin::profile_function!(); // TODO: puffin feature
+        #[cfg(feature = "puffin")]
+        puffin::profile_function!();
 
         self.populate(&path)?;
 
@@ -448,7 +497,8 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         &mut self,
         path: impl AsRef<Path>,
     ) -> anyhow::Result<impl Iterator<Item = &Path>> {
-        // puffin::profile_function!(); // TODO: puffin feature
+        #[cfg(feature = "puffin")]
+        puffin::profile_function!();
 
         self.populate(&path)?;
 
@@ -465,9 +515,11 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 // Cache management
 impl<Fs: FileSystem> FileResolver<Fs> {
     /// Populates the local, pre-interpolated cache.
-    // TODO: lotta useless cloning going on (dev only though, not that important)
+    // TODO(cmc): performance-wise, this is astonishingly disgusting: we're cloning full files
+    // at every corner.
     fn populate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
-        // puffin::profile_function!(); // TODO: puffin feature
+        #[cfg(feature = "puffin")]
+        puffin::profile_function!();
 
         fn populate_rec<Fs: FileSystem>(
             this: &mut FileResolver<Fs>,
@@ -475,8 +527,6 @@ impl<Fs: FileSystem> FileResolver<Fs> {
             path_stack: &mut Vec<PathBuf>,
             visited: &mut HashSet<PathBuf>,
         ) -> anyhow::Result<String> {
-            const IMPORT_CLAUSE: &str = "#import "; // TODO: pls dont dupe this
-
             let path = path.as_ref().clean();
 
             // Cycle detection
@@ -487,17 +537,14 @@ impl<Fs: FileSystem> FileResolver<Fs> {
             );
 
             if !this.files.contains_key(&path) {
-                let contents = this
-                    .fs
-                    .read_to_string(&path)
-                    .with_context(|| format!("failed to read file at {path:?}"))?;
+                let contents = this.fs.read_to_string(&path)?;
 
                 // Using implicit Vec<Result> -> Result<Vec> collection.
                 let mut imports = HashSet::new();
                 let lines: Result<Vec<_>, _> = contents
                     .lines()
                     .map(|line| {
-                        if line.trim().starts_with(IMPORT_CLAUSE) {
+                        if line.trim().starts_with(ImportClause::PREFIX) {
                             let clause = line.parse::<ImportClause>()?;
                             // We do not use `Path::parent` on purpose!
                             let cwd = path.join("..").clean();
@@ -521,7 +568,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                 this.files.insert(
                     path.clone(),
                     InterpolatedFile {
-                        contents: contents.clone(), // TODO
+                        contents: contents.clone(),
                         imports,
                     },
                 );
@@ -536,7 +583,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
             path_stack.pop().unwrap();
             visited.remove(&path);
 
-            Ok(this.files.get(&path).unwrap().contents.clone()) // TODO: clone...
+            Ok(this.files.get(&path).unwrap().contents.clone())
         }
 
         let mut path_stack = Vec::new();
@@ -578,6 +625,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
     }
 }
 
+// TODO(cmc): might want an actual test using `RERUN_SHADER_PATH`
 #[cfg(test)]
 mod tests_file_resolver {
     use crate::{FileSystem as _, MemFileSystem};
@@ -743,7 +791,7 @@ mod tests_file_resolver {
     }
 
     #[test]
-    #[should_panic] // TODO: check error contents
+    #[should_panic] // TODO(cmc): check error contents
     fn cyclic_direct() {
         let fs = MemFileSystem::get();
         {
@@ -785,7 +833,7 @@ mod tests_file_resolver {
     }
 
     #[test]
-    #[should_panic] // TODO: check error contents
+    #[should_panic] // TODO(cmc): check error contents
     fn cyclic_indirect() {
         let fs = MemFileSystem::get();
         {

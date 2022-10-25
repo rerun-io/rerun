@@ -6,7 +6,6 @@
 //!
 //! See `re_renderer/src/workspace_shaders.rs` for the end result.
 
-use cargo_metadata::{CargoOpt, MetadataCommand};
 use std::{path::Path, process::Command};
 use walkdir::{DirEntry, WalkDir};
 
@@ -26,12 +25,7 @@ fn main() {
         return; // don't run on CI
     }
 
-    let metadata = MetadataCommand::new()
-        .features(CargoOpt::AllFeatures)
-        .exec()
-        .unwrap();
-
-    let root_path: &Path = metadata.workspace_root.as_ref();
+    let root_path = Path::new(&std::env::var("CARGO_WORKSPACE_DIR").unwrap()).to_owned();
     let manifest_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
     let src_path = manifest_path.join("src");
     let file_path = src_path.join("workspace_shaders.rs");
@@ -79,7 +73,10 @@ fn main() {
 
         rerun_if_changed(entry.path().to_string_lossy().as_ref());
 
+        // The relative path to get from the current shader file to `workspace_shaders.rs`.
+        // We must make sure to pass relative paths to `include_str`!
         let relpath = pathdiff::diff_paths(entry.path(), &src_path).unwrap();
+        // The hermetic path used in the virtual filesystem at run-time.
         let virtpath = entry.path().strip_prefix(&strip_prefix).unwrap();
 
         contents += &format!(

@@ -19,10 +19,8 @@ use log::info;
 use macaw::IsoTransform;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},
-    get_filesystem,
     renderer::{GenericSkyboxDrawable, TestTriangleDrawable},
     view_builder::{TargetConfiguration, ViewBuilder},
-    FileResolver, SearchPath,
 };
 use winit::{
     event::{Event, WindowEvent},
@@ -48,9 +46,6 @@ fn draw_view(
     encoder: &mut wgpu::CommandEncoder,
     resolution: [u32; 2],
 ) -> ViewBuilder {
-    // TODO: note how caching/lifecycle of everything works
-    let mut resolver = FileResolver::with_search_path(get_filesystem(), SearchPath::from_env());
-
     let mut view_builder = ViewBuilder::new();
 
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
@@ -64,6 +59,8 @@ fn draw_view(
         near_plane_distance: 0.01,
         target_identifier: 0,
     };
+
+    let mut resolver = re_renderer::get_resolver();
 
     let triangle = TestTriangleDrawable::new(re_ctx, device, &mut resolver);
     let skybox = GenericSkyboxDrawable::new(re_ctx, device, &mut resolver);
