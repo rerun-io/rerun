@@ -42,7 +42,9 @@ for cam in cameras:
 ```
 
 ## Transform hierarchy
-The path defines a hierarchy. The root objects all define separate spaces. All other objects are by default assumed to be in the same space as its parent object.
+The path defines a hierarchy. The root objects all define separate _spaces_. All other objects are by default assumed to be in the same space as its parent object.
+
+Rerun uses the term _space_ to mean _coordinate system_ or _coordinate frame_.
 
 * `world/car` and `world/bike` will be in the same space (same parent)
 * `world/car` and `image/detection` will be in different spaces (different root objects)
