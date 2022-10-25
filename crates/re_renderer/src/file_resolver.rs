@@ -21,7 +21,9 @@
 //! The actual parsing rules themselves are very barebones:
 //! - An import clause can only span one line.
 //! - An import clause line must start with `#import ` (exl. whitespaces).
-//! - Everything between the first `<` and the last `>` is interpreted as the import path.
+//! - Everything between the first `<` and the last `>` is interpreted as the import
+//!   path, as-is. We do so because, between the 4 major platforms (Linux, macOS, Window, Web),
+//!   basically any string is a valid path.
 //!
 //! Everything is `trim()`ed at every step, you do not need to worry about whitespaces.
 //!
@@ -54,7 +56,7 @@
 //! What that actually means in practice depends on the platform/target.
 //!
 //! A general over-simplification of what we're aiming for can be expressed as:
-//! > Be lazy on native, be eager on the web.
+//! > Be lazy in debug, be eager in release.
 //!
 //! When targeting native debug builds, we want everything to be as lazy as possible, everything
 //! to happen just-in-time, e.g.:
@@ -72,8 +74,8 @@
 //! shader code.
 //!
 //! Still, we'd like to limit the number of differences between targets/platforms.
-//! And indeed, in the current implementation, there are effectively no differences in how
-//! the different platforms behave at run-time.
+//! And indeed, the current implementation uses a virtual filesystem approach to effectively
+//! remove any difference between how the different platforms behave at run-time.
 //!
 //! ### Debug builds (excl. web)
 //!
@@ -87,17 +89,17 @@
 //!
 //! Things are very different for release artifacts, as 1) we disable hot-reloading there and
 //! 2) we never interact with the OS filesystem at run-time.
-//! Still, in practice, we handle those just the same.
+//! Still, in practice, we handle release builds just the same as debug ones.
 //!
 //! What happens there is we have a virtual, hermetic, in-memory filesystem that gets pre-loaded
-//! with all the shaders that we previously embedded into the release artifact using a custom
-//! build script.
+//! with all the shaders defined within the Cargo workspace.
+//! This happens in part through a build script that you can find at the root of this crate.
 //!
 //! From there, everything behaves exactly the same as usual. In fact, there is only one code
-//! path for all platforms.
+//! path for all platforms at run-time.
 //!
-//! There are many issues to deal with along the way: paths comparisons across environments and
-//! build-time/run-time, hermeticism, etc...
+//! There are many issues to deal with along the way though: paths comparisons across
+//! environments and build-time/run-time, hermeticism, etc...
 //! We won't cover those here: please refer to the code if you're curious.
 //!
 //! ## For developers
@@ -128,13 +130,13 @@
 //! We need to the build to be _hermetic_.
 //!
 //! Rust's wasm build toolchain takes care of that to some extent, and we need to match that
-//! behaviour on our side (e.g. by not leaking paths), otherwise we won't be able to
+//! behaviour on our side (e.g. by not leaking local paths), otherwise we won't be able to
 //! compare paths at runtime.
 //!
 //! Think of it as `chrooting` into our Cargo workspace :)
 //!
-//! In our case, there's an extra invariant on top: do not embed shaders from outside the
-//! workspace in our release artifacts!
+//! In our case, there's an extra invariant on top on that: we must never embed shaders from
+//! outside the workspace into our release artifacts!
 //!
 //! ## Things we don't support
 //!

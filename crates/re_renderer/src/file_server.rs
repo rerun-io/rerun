@@ -24,8 +24,7 @@ macro_rules! include_file {
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
         {
             // Make sure `workspace_shaders::init()` is called at least once, which will
-            // register all shaders defined in the workspace into the run-time memory
-            // filesystem.
+            // register all shaders defined in the workspace into the run-time memory filesystem.
             $crate::workspace_shaders::init();
 
             let path = ::std::path::Path::new(file!())
@@ -61,8 +60,8 @@ macro_rules! include_file {
             } else {
                 // On wasm, the build system already takes care of hermeticism for us: all
                 // paths have the local workspace prefix pre-stripped.
-                // They even go a bit too far in fact: they even remove the root folder from
-                // the path. We need to bring that back.
+                // They even go a bit too far in fact: they remove the root folder from
+                // the path too. We need to bring that back.
                 ::std::path::Path::new("rerun").join(path)
             }
         }

@@ -1,10 +1,11 @@
-//! This build script implements the second half of cross-platform shader #import system.
+//! This build script implements the second half of our cross-platform shader #import system.
 //! The first half can be found in `src/file_resolver.rs`.
 //!
 //! It finds all WGSL shaders defined anywhere within our Cargo workspace, and embeds them
 //! directly into the released artifact for our `re_renderer` library.
 //!
-//! At run-time, those shaders will be available through an hermetic virtual filesystem.
+//! At run-time, for release builds only, those shaders will be available through an hermetic
+//! virtual filesystem.
 //! To the user, it will look like business as usual.
 //!
 //! See `re_renderer/src/workspace_shaders.rs` for the end result.
