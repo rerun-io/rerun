@@ -9,6 +9,9 @@
 //!
 //! See `re_renderer/src/workspace_shaders.rs` for the end result.
 
+// TODO(cmc): crash the build if someone is trying to create a non-hermetic artifact (e.g. one
+// of the embedded shaders refer to stuff outside the repository).
+
 use std::{path::Path, process::Command};
 use walkdir::{DirEntry, WalkDir};
 
@@ -24,8 +27,12 @@ fn rerun_if_changed(path: &str) {
 // ---
 
 fn main() {
+    // Don't run on CI!
+    //
+    // The code we're generating here is actual source code that gets committed into the
+    // repository.
     if std::env::var("CI").is_ok() {
-        return; // don't run on CI, we're generating
+        return;
     }
 
     let root_path = Path::new(&std::env::var("CARGO_WORKSPACE_DIR").unwrap()).to_owned();

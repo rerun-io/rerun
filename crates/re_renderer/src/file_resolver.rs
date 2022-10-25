@@ -86,11 +86,19 @@
 //! ### Release builds (incl. web)
 //!
 //! Things are very different for release artifacts, as 1) we disable hot-reloading there and
-//! 2) we never interact with the filesystem at run-time.
+//! 2) we never interact with the OS filesystem at run-time.
+//! Still, in practice, we handle those just the same.
 //!
-//! TODO(cmc):
-//! - Explain virtual FS
-//! - Explain build packing
+//! What happens there is we have a virtual, hermetic, in-memory filesystem that gets pre-loaded
+//! with all the shaders that we previously embedded into the release artifact using a custom
+//! build script.
+//!
+//! From there, everything behaves exactly the same as usual. In fact, there is only one code
+//! path for all platforms.
+//!
+//! There are many issues to deal with along the way: paths comparisons across environments and
+//! build-time/run-time, hermeticism, etc...
+//! We won't cover those here: please refer to the code if you're curious.
 //!
 //! ## For developers
 //!
@@ -109,13 +117,24 @@
 //! being referenced already exists.
 //!
 //! Normalization (not available in `std`) on the other hand is purely lexicographical: it
-//! normalizes path as best as it can without ever touching the filesystem.
+//! normalizes paths as best as it can without ever touching the filesystem.
 //!
 //! See also ["Getting Dot-Dot Right"](https://9p.io/sys/doc/lexnames.html).
 //!
 //! ### Hermeticism
 //!
-//! When shipping release artifacts (whether web or otherwise)... TODO(cmc)
+//! When shipping release artifacts (whether web or otherwise), we want to avoid leaking state
+//! from the original build environments into the final binary (think: paths, timestamps, etc).
+//! We need to the build to be _hermetic_.
+//!
+//! Rust's wasm build toolchain takes care of that to some extent, and we need to match that
+//! behaviour on our side (e.g. by not leaking paths), otherwise we won't be able to
+//! compare paths at runtime.
+//!
+//! Think of it as `chrooting` into our Cargo workspace :)
+//!
+//! In our case, there's an extra invariant on top: do not embed shaders from outside the
+//! workspace in our release artifacts!
 //!
 //! ## Things we don't support
 //!
@@ -123,33 +142,7 @@
 //! - Compression, minification, etc: everything we embed is embedded as-is.
 //! - Importing via network requests: only the (virtual) filesystem is supported for now.
 //! - Implicit file suffixes: e.g. `#import <myshader>` for `myshader.wglsl`.
-
-// `include_file!` behaves very differently in this case: rather than just inlining the shader
-// code into the binary, we generate code that will copy the shader's contents into a runtime
-// hashmap that will act as a kind of virtual filesystem (remember: we don't have any filesystem
-// on the web for now and not for the foreseeable future!).
-// Think of it as `HashMap<OriginalPath, InlinedContents>`.
-//
-// Resolving the contents of a `FileContentsHandle` then becomes almost identical to the
-// execution path taken on native:
-// 1. We "read" the inlined contents from the virtual filesystem hashmap
-// 2. We parse the contents in search of root `ImportClause`s.
-// 3. We recurse as needed, going through 1) and 2) again and again until hitting a leaf
-//     1. Make sure to catch import cycles!
-//     2. All paths are guaranteed to point to existing virtual files [*]
-// 4. We do the actual stitching, starting with the leaves until we hit the root.
-// 5. We're done, pass the result to `create_shader_module`.
-//
-// [*] Well that is not exactly true, but it could be: we have all the info we need to make
-// sure all import clauses that have been inlined are correct (and acyclic!), ahead of time.
-//
-//
-// That way we keep things relatively simple and similar on both platforms for now; and much
-// later on we can add a separate build path to add support for pre-compiled naga modules and
-// such if we feel there's a need for it.
-// Also what I like about this is that this doens't completely shut the door on the idea of
-// importing stuff through URLs, which can be very valuable in some scenarios (both for us
-// and end users) I feel like.
+//! - Embedding raw Naga modules: not yet, though we have everything in place for it.
 
 // TODO(cmc): might want to support implicitly dropping file suffixes at some point, e.g.
 // `#import <my_shader>` which works with "my_shader.wgsl"
