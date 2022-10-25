@@ -201,16 +201,6 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     rerun_rs.set_time_nanos(timeline, nanos)
 
 
-def set_space_up(space: str, up: Sequence[float]) -> None:
-    """
-    Set the preferred up-axis in the viewer for a given 3D space.
-
-    - space: The name of the space
-    - up: The (x, y, z) values of the up-axis
-    """
-    rerun_rs.set_space_up(space, up)
-
-
 @dataclass
 class LogLevel:
     """
@@ -449,6 +439,9 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
         return np.require(colors_array, np.uint8)
 
 
+# -----------------------------------------------------------------------------
+
+
 def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
     """Log that this object is NOT in the same space as the parent, but you do not (yet) know how they relate."""
     rerun_rs.log_unknown_transform(obj_path, timeless=timeless)
@@ -512,6 +505,23 @@ def log_intrinsics(
         intrinsics_matrix=np.asarray(intrinsics_matrix).T.tolist(),
         timeless=timeless,
     )
+
+
+# -----------------------------------------------------------------------------
+
+
+def log_world_coordinate_system(obj_path: str, up: str, right_handed: bool = True, timeless: bool = False) -> None:
+    """
+    Set the preferred up-axis for this world 3D space.
+
+    - obj_path: The path of the space
+    - up: One of "+X", "-X", "+Y", "-Y", "+Z", "-Z"
+    - right_handed: is this a right-handed system or not?
+    """
+    rerun_rs.log_world_coordinate_system(obj_path, up=up, right_handed=right_handed, timeless=right_handed)
+
+
+# -----------------------------------------------------------------------------
 
 
 def log_path(

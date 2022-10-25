@@ -87,7 +87,7 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
 def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
     depth_images_counter = 0
 
-    rerun.set_space_up("3d", [0, -1, 0])
+    rerun.log_world_coordinate_system("3d", up="-Y")
 
     with zipfile.ZipFile(dataset, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]

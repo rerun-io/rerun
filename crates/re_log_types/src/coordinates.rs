@@ -11,6 +11,7 @@ pub enum RelativeDirection {
 }
 
 impl RelativeDirection {
+    #[inline]
     pub fn short(&self) -> &'static str {
         match self {
             Self::Up => "U",
@@ -21,6 +22,8 @@ impl RelativeDirection {
             Self::Back => "B",
         }
     }
+
+    #[inline]
     pub fn long(&self) -> &'static str {
         match self {
             Self::Up => "Up",
@@ -33,12 +36,26 @@ impl RelativeDirection {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 /// For 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RelativeSystem(pub [RelativeDirection; 3]);
 
 impl RelativeSystem {
+    #[inline]
+    pub fn up(&self) -> Option<SignedAxis3> {
+        for (dim, &dir) in self.0.iter().enumerate() {
+            if dir == RelativeDirection::Up {
+                return Some(SignedAxis3::new(Sign::Positive, Axis3::from_dim(dim)));
+            } else if dir == RelativeDirection::Down {
+                return Some(SignedAxis3::new(Sign::Negative, Axis3::from_dim(dim)));
+            }
+        }
+        None
+    }
+
     pub fn describe(&self) -> String {
         let [x, y, z] = self.0;
         format!(
@@ -52,6 +69,8 @@ impl RelativeSystem {
         )
     }
 }
+
+// ----------------------------------------------------------------------------
 
 /// The size cardinal directions for 3D worlds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,6 +85,7 @@ pub enum AbsoluteDirection {
 }
 
 impl AbsoluteDirection {
+    #[inline]
     pub fn short(&self) -> &'static str {
         match self {
             Self::Up => "U",
@@ -76,6 +96,8 @@ impl AbsoluteDirection {
             Self::South => "S",
         }
     }
+
+    #[inline]
     pub fn long(&self) -> &'static str {
         match self {
             Self::Up => "Up",
@@ -88,12 +110,25 @@ impl AbsoluteDirection {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 /// For 3D worlds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct AbsoluteSystem(pub [AbsoluteDirection; 3]);
 
 impl AbsoluteSystem {
+    pub fn up(&self) -> Option<SignedAxis3> {
+        for (dim, &dir) in self.0.iter().enumerate() {
+            if dir == AbsoluteDirection::Up {
+                return Some(SignedAxis3::new(Sign::Positive, Axis3::from_dim(dim)));
+            } else if dir == AbsoluteDirection::Down {
+                return Some(SignedAxis3::new(Sign::Negative, Axis3::from_dim(dim)));
+            }
+        }
+        None
+    }
+
     pub fn describe(&self) -> String {
         let [x, y, z] = self.0;
         format!(
@@ -108,6 +143,8 @@ impl AbsoluteSystem {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Axis3 {
@@ -116,7 +153,20 @@ pub enum Axis3 {
     Z,
 }
 
+impl Axis3 {
+    #[inline]
+    pub fn from_dim(dim: usize) -> Self {
+        match dim {
+            0 => Self::X,
+            1 => Self::Y,
+            2 => Self::Z,
+            _ => panic!("Only 3D"),
+        }
+    }
+}
+
 impl std::fmt::Display for Axis3 {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::X => "X".fmt(f),
@@ -126,6 +176,81 @@ impl std::fmt::Display for Axis3 {
     }
 }
 
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum Sign {
+    Positive,
+    Negative,
+}
+
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct SignedAxis3 {
+    pub sign: Sign,
+    pub axis: Axis3,
+}
+
+impl SignedAxis3 {
+    #[inline]
+    pub fn new(sign: Sign, axis: Axis3) -> Self {
+        Self { sign, axis }
+    }
+
+    #[inline]
+    pub fn as_vec3(&self) -> [f32; 3] {
+        match (self.sign, self.axis) {
+            (Sign::Positive, Axis3::X) => [1.0, 0.0, 0.0],
+            (Sign::Negative, Axis3::X) => [-1.0, 0.0, 0.0],
+            (Sign::Positive, Axis3::Y) => [0.0, 1.0, 0.0],
+            (Sign::Negative, Axis3::Y) => [0.0, -1.0, 0.0],
+            (Sign::Positive, Axis3::Z) => [0.0, 0.0, 1.0],
+            (Sign::Negative, Axis3::Z) => [0.0, 0.0, -1.0],
+        }
+    }
+}
+
+impl std::fmt::Display for SignedAxis3 {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sign = match self.sign {
+            Sign::Positive => "+",
+            Sign::Negative => "-",
+        };
+        write!(f, "{}{}", sign, self.axis)
+    }
+}
+
+pub struct SignedAxis3Error;
+
+impl std::fmt::Display for SignedAxis3Error {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "Expected one of: +X -X +Y -Y +Z -Z".fmt(f)
+    }
+}
+
+impl std::str::FromStr for SignedAxis3 {
+    type Err = SignedAxis3Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "+X" => Ok(Self::new(Sign::Positive, Axis3::X)),
+            "-X" => Ok(Self::new(Sign::Negative, Axis3::X)),
+            "+Y" => Ok(Self::new(Sign::Positive, Axis3::Y)),
+            "-Y" => Ok(Self::new(Sign::Negative, Axis3::Y)),
+            "+Z" => Ok(Self::new(Sign::Positive, Axis3::Z)),
+            "-Z" => Ok(Self::new(Sign::Negative, Axis3::Z)),
+            _ => Err(SignedAxis3Error),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Handedness {
@@ -134,6 +259,7 @@ pub enum Handedness {
 }
 
 impl Handedness {
+    #[inline]
     pub fn describe(&self) -> &'static str {
         match self {
             Self::Left => "left handed",
@@ -142,13 +268,15 @@ impl Handedness {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 // For 3D worlds
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum WorldSystem {
     /// For when you don't know/care about where north is.
     Partial {
-        up: Option<Axis3>,
+        up: Option<SignedAxis3>,
         handedness: Handedness,
     },
 
@@ -157,6 +285,14 @@ pub enum WorldSystem {
 }
 
 impl WorldSystem {
+    #[inline]
+    pub fn up(&self) -> Option<SignedAxis3> {
+        match self {
+            Self::Partial { up, .. } => *up,
+            Self::Full(system) => system.up(),
+        }
+    }
+
     pub fn describe(&self) -> String {
         match self {
             Self::Partial { up, handedness } => {
@@ -170,6 +306,8 @@ impl WorldSystem {
         }
     }
 }
+
+// ----------------------------------------------------------------------------
 
 /// How we interpret the coordinate system of an object/space.
 ///
@@ -185,6 +323,15 @@ pub enum CoordinateSystem {
 }
 
 impl CoordinateSystem {
+    /// What axis is the up-axis?
+    #[inline]
+    pub fn up(&self) -> Option<SignedAxis3> {
+        match self {
+            Self::World(system) => system.up(),
+            Self::Relative(system) => system.up(),
+        }
+    }
+
     pub fn describe(&self) -> String {
         match self {
             Self::World(system) => system.describe(),

@@ -96,8 +96,6 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
 
-    m.add_function(wrap_pyfunction!(set_space_up, m)?)?;
-
     m.add_function(wrap_pyfunction!(log_text_entry, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
@@ -107,6 +105,8 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_extrinsics, m)?)?;
     m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
+
+    m.add_function(wrap_pyfunction!(log_world_coordinate_system, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_point, m)?)?;
     m.add_function(wrap_pyfunction!(log_points, m)?)?;
@@ -381,23 +381,6 @@ fn set_time_nanos(timeline: &str, ns: Option<i64>) {
     );
 }
 
-/// Set the preferred up-axis for a given 3D space.
-#[pyfunction]
-fn set_space_up(space_obj_path: &str, up: [f32; 3]) -> PyResult<()> {
-    let mut sdk = Sdk::global();
-
-    let space_obj_path = parse_obj_path(space_obj_path)?;
-    sdk.register_type(space_obj_path.obj_type_path(), ObjectType::Space);
-
-    sdk.send_data(
-        &TimePoint::timeless(),
-        (&space_obj_path, "up"),
-        LoggedData::Single(Data::Vec3(up)),
-    );
-
-    Ok(())
-}
-
 fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
     match &color[..] {
         [r, g, b] => Ok([*r, *g, *b, 255]),
@@ -496,6 +479,50 @@ fn log_intrinsics(
         &time_point,
         (&obj_path, "_transform"),
         LoggedData::Single(Data::Transform(transform)),
+    );
+
+    Ok(())
+}
+
+// ----------------------------------------------------------------------------
+
+/// Set the preferred up-axis for a given 3D space.
+#[pyfunction]
+fn log_world_coordinate_system(
+    obj_path: &str,
+    up: &str,
+    right_handed: bool,
+    timeless: bool,
+) -> PyResult<()> {
+    use re_log_types::coordinates::*;
+
+    let handedness = if right_handed {
+        Handedness::Right
+    } else {
+        Handedness::Left
+    };
+    let up = up
+        .parse::<SignedAxis3>()
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+    let coordinate_system = CoordinateSystem::World(WorldSystem::Partial {
+        up: Some(up),
+        handedness,
+    });
+    log_coordiate_system(obj_path, coordinate_system, timeless)
+}
+
+fn log_coordiate_system(
+    obj_path: &str,
+    coordinate_system: CoordinateSystem,
+    timeless: bool,
+) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+    let obj_path = parse_obj_path(obj_path)?;
+    let time_point = time(timeless);
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "_coordinate_system"),
+        LoggedData::Single(Data::CoordinateSystem(coordinate_system)),
     );
 
     Ok(())

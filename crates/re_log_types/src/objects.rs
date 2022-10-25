@@ -4,8 +4,6 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjectType {
-    /// Information about a space (up axis etc).
-    Space,
     // A label and color associated with a particular class id
     ClassDescription,
 
@@ -47,7 +45,6 @@ impl ObjectType {
     pub fn members(self) -> &'static [&'static str] {
         #[allow(clippy::match_same_arms)]
         match self {
-            Self::Space => &["up"],
             Self::ClassDescription => &["id", "label", "color"],
 
             Self::TextEntry => &["color", "body", "level"],
@@ -68,4 +65,4 @@ impl ObjectType {
 }
 
 /// These are fields not part of the actual object, but express meta-info about paths.
-pub const META_FIELDS: &[&str] = &["_transform", "_visible"];
+pub const META_FIELDS: &[&str] = &["_coordinate_system", "_transform", "_visible"];

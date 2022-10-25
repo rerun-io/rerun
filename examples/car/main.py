@@ -17,7 +17,7 @@ def log_car_data() -> None:
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
-    rerun.set_space_up("3d", [0, -1, 0])
+    rerun.log_world_coordinate_system("3d", up="-Y")
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a timeline called `frame_nr`.

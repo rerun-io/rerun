@@ -566,32 +566,6 @@ impl<'s> Arrow3D<'s> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Space<'s> {
-    /// The up axis
-    pub up: &'s [f32; 3],
-}
-
-impl<'s> Space<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data(
-            obj_store,
-            &FieldName::from("up"),
-            time_query,
-            |_instance_index: Option<&IndexHash>, _time, _msg_id: &MsgId, up: &[f32; 3]| {
-                out.space.insert(obj_path, Space { up });
-            },
-        );
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
 pub struct TextEntry<'s> {
     pub body: &'s str,
     pub level: Option<&'s str>,
@@ -691,7 +665,6 @@ impl<'s> ClassDescription<'s> {
 
 #[derive(Clone, Debug, Default)]
 pub struct Objects<'s> {
-    pub space: BTreeMap<&'s ObjPath, Space<'s>>, // SPECIAL!
     pub class_description_map: BTreeMap<&'s ObjPath, ClassDescriptionMap<'s>>,
 
     pub text_entry: ObjectVec<'s, TextEntry<'s>>,
@@ -736,7 +709,6 @@ impl<'s> Objects<'s> {
         obj_type: &ObjectType,
     ) {
         let query_fn = match obj_type {
-            ObjectType::Space => Space::query,
             ObjectType::ClassDescription => ClassDescription::query,
             ObjectType::TextEntry => TextEntry::query,
             ObjectType::Image => Image::query,
@@ -758,7 +730,6 @@ impl<'s> Objects<'s> {
         crate::profile_function!();
 
         Self {
-            space: self.space.clone(), // SPECIAL - can't filter
             class_description_map: self.class_description_map.clone(), // SPECIAL - can't filter
 
             text_entry: self.text_entry.filter(&keep),
@@ -779,7 +750,6 @@ impl<'s> Objects<'s> {
 
     pub fn is_empty(&self) -> bool {
         let Self {
-            space,
             class_description_map,
             text_entry,
             image,
@@ -793,8 +763,7 @@ impl<'s> Objects<'s> {
             mesh3d,
             arrow3d,
         } = self;
-        space.is_empty()
-            && class_description_map.is_empty()
+        class_description_map.is_empty()
             && image.is_empty()
             && text_entry.is_empty()
             && point2d.is_empty()
@@ -810,7 +779,6 @@ impl<'s> Objects<'s> {
 
     pub fn len(&self) -> usize {
         let Self {
-            space,
             class_description_map,
             text_entry,
             image,
@@ -824,8 +792,7 @@ impl<'s> Objects<'s> {
             mesh3d,
             arrow3d,
         } = self;
-        space.len()
-            + class_description_map.len()
+        class_description_map.len()
             + image.len()
             + text_entry.len()
             + point2d.len()

@@ -17,7 +17,7 @@ use scene::*;
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
-use re_log_types::{IndexHash, ObjPath};
+use re_log_types::{CoordinateSystem, IndexHash, ObjPath};
 
 use crate::{
     misc::{HoveredSpace, Selection},
@@ -215,7 +215,7 @@ fn show_settings_ui(
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
                     ui.label("Set with ");
-                    ui.code("rerun.set_space_up");
+                    ui.code("rerun.log_world_coordinate_system");
                     ui.label(".");
                 });
             });
@@ -263,15 +263,14 @@ pub(crate) struct SpaceSpecs {
 }
 
 impl SpaceSpecs {
-    pub fn from_objects(space: Option<&ObjPath>, objects: &re_data_store::Objects<'_>) -> Self {
-        if let Some(space) = space {
-            if let Some(space) = objects.space.get(&space) {
-                return SpaceSpecs {
-                    up: Vec3::from(*space.up).normalize_or_zero(),
-                };
-            }
+    pub fn from_coordinate_system(system: Option<CoordinateSystem>) -> Self {
+        let up = (|| Some(system?.up()?.as_vec3().into()))();
+
+        if let Some(up) = up {
+            Self { up }
+        } else {
+            Default::default()
         }
-        Default::default()
     }
 }
 

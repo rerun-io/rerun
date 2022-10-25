@@ -101,7 +101,7 @@ def read_annotations(dirpath: Path) -> Sequence:
 def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
-    rerun.set_space_up("3d", [0, 1, 0])
+    rerun.log_world_coordinate_system("3d", up="+Y")
 
     frame_times = []
     for sample in samples:

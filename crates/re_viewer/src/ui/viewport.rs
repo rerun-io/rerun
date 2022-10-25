@@ -150,7 +150,7 @@ impl SpacesInfo {
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value of the "_transform" meta-field of the given object.
+/// Get the latest value of the `_transform` meta-field of the given object.
 fn query_transform(
     store: Option<&TimelineStore<i64>>,
     obj_path: &ObjPath,
@@ -169,6 +169,30 @@ fn query_transform(
     // If not, return an unknown transform to indicate that there is
     // still a space-split.
     Some(latest.unwrap_or(Transform::Unknown))
+}
+
+/// Get the latest value of the `_coordinate_system` meta-field of the given object.
+fn query_coordinate_system(
+    ctx: &mut ViewerContext<'_>,
+    obj_path: &ObjPath,
+) -> Option<re_log_types::CoordinateSystem> {
+    let query_time = ctx.rec_cfg.time_ctrl.time()?;
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
+
+    let store = ctx.log_db.obj_db.store.get(timeline)?;
+
+    let field_store = store
+        .get(obj_path)?
+        .get(&re_data_store::FieldName::from("_coordinate_system"))?;
+
+    // `_coordinate_system` is only allowed to be stored in a mono-field.
+    let mono_field_store = field_store
+        .get_mono::<re_log_types::CoordinateSystem>()
+        .ok()?;
+
+    mono_field_store
+        .latest_at(&query_time.floor().as_i64())
+        .map(|(_time, (_msg_id, system))| *system)
 }
 
 // ----------------------------------------------------------------------------
@@ -485,7 +509,8 @@ impl ViewState {
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
-            let space_specs = crate::view3d::SpaceSpecs::from_objects(Some(space), objects);
+            let coordinate_system = query_coordinate_system(ctx, space);
+            let space_specs = crate::view3d::SpaceSpecs::from_coordinate_system(coordinate_system);
             let scene = crate::view3d::scene::Scene::from_objects(ctx, objects);
             crate::view3d::view_3d(
                 ctx,
