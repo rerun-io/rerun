@@ -729,7 +729,7 @@ fn log_rects(
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
-    let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
+    let indices = BatchIndex::SequentialIndex(n);
 
     let time_point = time(timeless);
 
@@ -902,7 +902,7 @@ fn log_points(
         },
     );
 
-    let indices: Vec<_> = (0..n).map(|i| Index::Sequence(i as _)).collect();
+    let indices = BatchIndex::SequentialIndex(n);
 
     let time_point = time(timeless);
 
@@ -937,7 +937,7 @@ fn log_points(
 }
 
 fn color_batch(
-    indices: &Vec<Index>,
+    indices: &BatchIndex,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
 ) -> PyResult<LoggedData> {
     match colors.shape() {
@@ -1592,7 +1592,7 @@ fn log_class_descriptions(
         &time_point,
         (&obj_path, "id"),
         LoggedData::Batch {
-            indices: indices.clone(),
+            indices: BatchIndex::FullIndex(indices.clone()),
             data: DataVec::I32(ids),
         },
     );
@@ -1606,7 +1606,7 @@ fn log_class_descriptions(
         &time_point,
         (&obj_path, "label"),
         LoggedData::Batch {
-            indices: label_indices,
+            indices: BatchIndex::FullIndex(label_indices),
             data: DataVec::String(labels),
         },
     );
@@ -1620,7 +1620,7 @@ fn log_class_descriptions(
         &time_point,
         (&obj_path, "color"),
         LoggedData::Batch {
-            indices: color_indices,
+            indices: BatchIndex::FullIndex(color_indices),
             data: DataVec::Color(colors),
         },
     );

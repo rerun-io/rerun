@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_log_types::*;
@@ -89,16 +90,36 @@ impl DataStore {
         // We de-duplicate batches so we don't create one per timeline:
         let batch = if let LoggedData::Batch { indices, data } = data {
             Some(re_log_types::data_vec_map!(data, |vec| {
-                let hashed_indices = indices
-                    .iter()
-                    .map(|index| (IndexHash::hash(index), index))
-                    .collect::<Vec<_>>();
+                let batch = match indices {
+                    BatchIndex::SequentialIndex(sz) => {
+                        // If the index is the wrong size, return a BadBatch erro
+                        if *sz != data.len() {
+                            return Err(crate::Error::BadBatch);
+                        }
 
-                let batch = std::sync::Arc::new(
-                    Batch::new(&hashed_indices, vec)
-                        .map_err(|BadBatchError| crate::Error::BadBatch)?,
-                );
-                self.register_hashed_indices(&hashed_indices);
+                        // Use the shared pre-hashed values to update the registration
+                        let hashed_indices = crate::SharedSequentialIndex::hashes_up_to(*sz);
+                        self.register_hashed_indices(
+                            &hashed_indices.0[..*sz],
+                            &hashed_indices.1[..*sz],
+                        );
+
+                        std::sync::Arc::new(
+                            Batch::new_sequential(vec)
+                                .map_err(|BadBatchError| crate::Error::BadBatch)?,
+                        )
+                    }
+                    BatchIndex::FullIndex(indices) => {
+                        let hashed_indices = indices.iter().map(IndexHash::hash).collect_vec();
+
+                        self.register_hashed_indices(&hashed_indices, indices);
+
+                        std::sync::Arc::new(
+                            Batch::new_indexed(&hashed_indices, vec)
+                                .map_err(|BadBatchError| crate::Error::BadBatch)?,
+                        )
+                    }
+                };
                 TypeErasedBatch::new(batch)
             }))
         } else {
@@ -128,15 +149,12 @@ impl DataStore {
     }
 
     #[inline(never)]
-    fn register_hashed_indices(
-        &mut self,
-        hashed_indices: &[(re_log_types::IndexHash, &re_log_types::Index)],
-    ) {
+    fn register_hashed_indices(&mut self, hashed_indices: &[IndexHash], indices: &[Index]) {
         crate::profile_function!();
-        for (hash, index) in hashed_indices {
+        for (hash, index) in std::iter::zip(hashed_indices, indices) {
             self.index_from_hash
                 .entry(*hash)
-                .or_insert_with(|| (*index).clone());
+                .or_insert_with(|| index.clone());
         }
     }
 }
