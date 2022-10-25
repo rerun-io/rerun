@@ -486,7 +486,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
     /// Resolves the contents of the file at `path`, recursively interpolating imported
     /// dependencies.
     pub fn resolve_contents(&mut self, path: impl AsRef<Path>) -> anyhow::Result<&str> {
-        #[cfg(feature = "puffin")]
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         puffin::profile_function!();
 
         self.populate(&path)?;
@@ -503,7 +503,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         &mut self,
         path: impl AsRef<Path>,
     ) -> anyhow::Result<impl Iterator<Item = &Path>> {
-        #[cfg(feature = "puffin")]
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         puffin::profile_function!();
 
         self.populate(&path)?;
@@ -524,7 +524,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
     // TODO(cmc): performance-wise, this is astonishingly disgusting: we're cloning full files
     // at every corner.
     fn populate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
-        #[cfg(feature = "puffin")]
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         puffin::profile_function!();
 
         fn populate_rec<Fs: FileSystem>(
