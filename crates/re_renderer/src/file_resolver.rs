@@ -2,114 +2,120 @@
 //!
 //! While it is agnostic to the type of files being imported, in practice this is only used
 //! for shaders, so this is what this documentation will linger on.
+//! In particular, integration with our hot-reloading capabilities can get tricky depending
+//! on the platform/target.
 //!
 //! ## Usage
 //!
-//! - line based import clauses
-//! - import resolution: absolute, relative to importer, RERUN_SHADER_PATH
+//! `#import <x/y/z/my_file.wgsl>`
 //!
-//! ## Platform specifics
+//! ### Syntax
 //!
-//! ### Debug builds
+//! Import clauses follow the general form of `#import <x/y/z/my_file.wgsl>`.
+//! The path to be imported can be either absolute or relative to the path of the importer,
+//! or relative to any of the paths set in the search path (`RERUN_SHADER_PATH`).
 //!
+//! The actual parsing rules themselves are very barebones:
+//! - An import clause can only span one line.
+//! - An import clause line must start with `#import ` (exl. whitespaces).
+//! - Everything between the first `<` and the last `>` is interpreted as the import path.
 //!
-//! ### Release builds
+//! Everything is `trim()`ed at every step, you do not need to worry about whitespaces.
 //!
+//! ### Resolution
 //!
-//! ### The Web
+//! Resolution is done in three steps:
+//! 1. First, we try to interpret the imported path as absolute.
+//!    1.1. If this is possible and leads to an existing file, we're done.
+//!    1.2. Otherwise, we go to 2.
 //!
+//! 2. Second, we try to interpret the imported path as relative to the importer's.
+//!    2.1. If this leads to an existing file, we're done.
+//!    2.2. Otherwise, we go to 3.
+//!
+//! 3. Finally, we try to interpret the imported path as relative to all paths in search path,
+//!    in their prefined priority order, similar to e.g. how the standard `$PATH` environment
+//!    variable behaves.
+//!    3.1. If this leads to an existing file, we're done.
+//!    3.2. Otherwise, resolution failed: throw an error.
+//!
+//! ### Interpolation
+//!
+//! Interpolation is done in the simplest way possible: the entire line containing the import
+//! claused is overwritten with the contents of the imported file.
+//! This is of course a recursive process.
+//!
+//! ## Hot-reloading: platform specifics
+//!
+//! This import system transparently integrates with the renderer's hot-reloading capabilities.
+//! What that actually means in practice depends on the platform/target.
+//!
+//! A general over-simplification of what we're aiming for can be expressed as:
+//! > Be lazy on native, be eager on the web.
+//!
+//! When targeting native debug builds, we want everything to be as lazy as possible, everything
+//! to happen just-in-time, e.g.:
+//! - We always talk directly with the filesystem and check for missing files at the last moment.
+//! - We do interpolation just-in-time, e.g. just before calling `create_shader_module`.
+//! - Etc.
+//!
+//! On the web, we don't even have an actual filesystem to access at runtime, so not only we'd
+//! like to be as eager can be, we don't have much of a choice to begin with.
+//! That said, we don't want to be _too_ eager either: while we do have to make sure that every
+//! single shader that we're gonna use (whether directly or indirectly via an import) ends up
+//! in the final artifact one way or another, we still want to delay interpolation as much as
+//! we can, otherwise we'd be bloating the binary artifact with N copies of the exact same
+//! shader code.
+//!
+//! ### Debug builds (excl. web)
+//!
+//! Native debug builds are straightforward:
+//! - We handle resolution & interpolation just-in-time (i.e. when fetching file contents).
+//! - We always talk directly to the filesystem.
+//!
+//! No surprises there.
+//!
+//! ### Release builds (incl. web)
+//!
+//! Things are very different for release artifacts, as 1) we disable hot-reloading there and
+//! 2) we never interact with the filesystem at run-time.
+//!
+//! TODO(cmc):
+//! - Explain virtual FS
+//! - Explain build packing
 //!
 //! ## For developers
 //!
-//! ### Canonicalization vs. normalization
+//! ### Canonicalization vs. Normalization
+//!
+//! Comparing paths can get tricky, especially when juggling target environments and
+//! run-time vs. compile-time constraints.
+//! For this reason you'll see plenty mentions of canonicalization and normalization all over
+//! the code: better make sure there's no confusion here.
+//!
+//! Canonicalization (i.e. `std::fs::canonicalize`) relies on syscalls to both normalize a path
+//! (including following symlinks!) and make sure the file it references actually exist.
+//!
+//! It's the strictest form of path normalization you can get (and therefore ideal), but
+//! requires 1) to have access to an actual filesystem at run-time and 2) that the file
+//! being referenced already exists.
+//!
+//! Normalization (not available in `std`) on the other hand is purely lexicographical: it
+//! normalizes path as best as it can without ever touching the filesystem.
+//!
+//! See also "Getting Dot-Dot Right": https://9p.io/sys/doc/lexnames.html
+//!
 //! ### Hermeticism
 //!
-//!
-//!
-//!
-//!
-//!
-//!
+//! When shipping release artifacts (whether web or otherwise)... TODO(cmc)
 //!
 //! ## Things we don't support
 //!
-//! ### Async
-//! ### Compression, minification...
-//! ### Importing via network requests
-//! ### Implicit file suffixes
-//!
-//!
+//! - Async: everything in this module is done using standard synchronous APIs.
+//! - Compression, minification, etc: everything we embed is embedded as-is.
+//! - Importing via network requests: only the (virtual) filesystem is supported for now.
+//! - Implicit file suffixes: e.g. `#import <myshader>` for `myshader.wglsl`.
 
-// TODO: normalization, canonicalization, hermeticism
-
-// Let's talk about imports:
-// - simple absolute & relative path imports
-// - PATH-like imports
-//
-// Syntax:
-// - imports sit on one line, no more, no less
-// - `#import <my_constants>`
-// - `#import <my_constants.wgsl>`
-// - `#import <x/y/z/my_constants>`
-// - `#import <x/y/z/my_constants.wgsl>`
-//
-// First, we try the path as-is, assuming CWD is the path of the file where the import clause
-// was found.
-//
-// Second, we try the path as part of a search path.
-
-// LAZY ON NATIVE, (VERY) EAGER ON WEB
-// ===================================
-//
-// On native, we want everything to be as lazy as possible, everything is just-in-time:
-// - we always talk directly with the filesystem
-//    - we check for missing file at the last minute
-//    - this mean one can create new files even while the system is running and start
-//      referencing them through other existing (or not) files
-// - we do the import-stitching just-in-time, i.e. just before calling create_shader_module
-//
-//
-// On the web, we don't even have a filesystem at runtime, so not only we'd like to be eager,
-// we don't have much of a choice.
-// That said, we don't want to be _too_ eager: while we do have to make sure that every single
-// shader that we're gonna use (whether directly or indirectly via an import) ends up in the
-// final artifact one way or another, we still want to delay the stitching as much as we can,
-// otherwise we'd be wasting a lot of space for duplicated shader data.
-//
-// Keep in mind that for now we completely punt the issue of grabbing shaders via HTTP requests.
-//
-// Questions:
-// - Shall one just gzip the embedded shader data at some point?
-
-// CURRENT PLAN
-// ============
-//
-// Native
-// ------
-//
-// Everything is as lazy as it can be.
-//
-// Loading a file through the `FileServer` is the exact same as today: it does nothing other
-// than instantiate a `FileContentsHandle::Path(path)`.
-//
-// Resolving the contents of a `FileContentsHandle` is where things become interesting:
-// 1. We read the file as-is.
-// 2. We parse the contents in search of root `ImportClause`s.
-// 3. We recurse as needed, going through 1) and 2) again and again until hitting a leaf
-//     1. Make sure to catch import cycles!
-//     2. At this point we can finally canonicalize all these paths.
-//     3. Some of these clauses might point to non-existing files etc.
-// 4. We do the actual stitching, starting with the leaves until we hit the root.
-// 5. We're done, pass the result to `create_shader_module`.
-//
-// Web
-// ---
-//
-// Everything is as eager as it can be, except for the stitching.
-// The stitching still happens just-in-time because we don't want to bloat the binary artifact
-// with N copies of the exact same shader code.
-//
-//
 // `include_file!` behaves very differently in this case: rather than just inlining the shader
 // code into the binary, we generate code that will copy the shader's contents into a runtime
 // hashmap that will act as a kind of virtual filesystem (remember: we don't have any filesystem
