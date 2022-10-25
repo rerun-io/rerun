@@ -18,9 +18,12 @@ pub use self::file_system::{get_filesystem, FileSystem};
 pub(crate) use self::file_system::{MemFileSystem, OsFileSystem};
 
 mod file_resolver;
-pub use self::file_resolver::{FileResolver, ImportClause, SearchPath};
+pub use self::file_resolver::{
+    new_recommended as get_resolver, FileResolver, ImportClause, SearchPath,
+};
 
 mod file_server;
-pub use self::file_server::{FileContentsHandle, FileServer};
+pub use self::file_server::FileServer;
 
+#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
 mod workspace_shaders;

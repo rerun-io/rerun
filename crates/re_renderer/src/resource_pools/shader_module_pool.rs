@@ -6,7 +6,7 @@ use anyhow::Context as _;
 
 use crate::debug_label::DebugLabel;
 use crate::resource_pools::resource_pool::*;
-use crate::{FileContentsHandle, FileResolver, FileSystem};
+use crate::{FileResolver, FileSystem};
 
 // ---
 
@@ -24,8 +24,8 @@ pub struct ShaderModuleDesc {
     /// This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
 
-    /// Actual source code of the shader module.
-    pub source: FileContentsHandle,
+    /// Path to the source code of this shader module.
+    pub source: PathBuf,
 }
 impl PartialEq for ShaderModuleDesc {
     fn eq(&self, rhs: &Self) -> bool {
@@ -45,10 +45,10 @@ impl ShaderModuleDesc {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> anyhow::Result<wgpu::ShaderModule> {
-        let code = self
-            .source
-            .resolve_contents(resolver)
-            .context("couldn't resolve file contents")?;
+        let code = resolver
+            .resolve_contents(&self.source)
+            .map(|s| s.to_owned().into())
+            .context("couldn't resolve shader module's source code path")?;
 
         // All wgpu errors come asynchronously: this call will succeed whether the given
         // source is valid or not.
@@ -110,19 +110,16 @@ impl ShaderModulePool {
             .pool
             .resource_descs()
             .filter_map(|desc| {
-                (!updated_paths.is_empty()).then(|| match &desc.source {
-                    FileContentsHandle::Inlined(_) => None,
-                    FileContentsHandle::Path(path) => {
-                        let mut paths = vec![path.as_path()];
-                        if let Ok(imports) = resolver.resolve_imports(path) {
-                            paths.extend(imports);
-                        }
-
-                        paths
-                            .iter()
-                            .any(|p| updated_paths.contains(*p))
-                            .then_some((path, desc))
+                (!updated_paths.is_empty()).then(|| {
+                    let mut paths = vec![desc.source.as_path()];
+                    if let Ok(imports) = resolver.resolve_imports(&desc.source) {
+                        paths.extend(imports);
                     }
+
+                    paths
+                        .iter()
+                        .any(|p| updated_paths.contains(*p))
+                        .then_some((&desc.source, desc))
                 })
             })
             .flatten()

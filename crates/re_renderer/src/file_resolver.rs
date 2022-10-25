@@ -117,6 +117,7 @@ use crate::FileSystem;
 pub struct SearchPath {
     /// All paths currently in the search path, in decreasing order of priority.
     /// They are guaranteed to be normalized, but not canonicalized.
+    // TODO: maybe we actually add dedicated types for NormalizedPath & Canonicalized path
     dirs: Vec<PathBuf>,
 }
 
@@ -378,6 +379,16 @@ mod tests_import_clause {
 
 // ---
 
+#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
+pub fn new_recommended() -> FileResolver<crate::OsFileSystem> {
+    FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
+}
+
+#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
+pub fn new_recommended() -> FileResolver<&'static crate::MemFileSystem> {
+    FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
+}
+
 #[derive(Clone)]
 struct InterpolatedFile {
     contents: String,
@@ -454,7 +465,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 // Cache management
 impl<Fs: FileSystem> FileResolver<Fs> {
     /// Populates the local, pre-interpolated cache.
-    // TODO: lotta useless cloning going on
+    // TODO: lotta useless cloning going on (dev only though, not that important)
     fn populate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
         // puffin::profile_function!(); // TODO: puffin feature
 

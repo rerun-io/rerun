@@ -499,7 +499,6 @@ fn paint_view(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
-        use re_renderer::get_filesystem;
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
@@ -516,12 +515,7 @@ fn paint_view(
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
-                        // TODO: note how caching/lifecycle of everything works
-                        let mut resolver = re_renderer::FileResolver::with_search_path(
-                            get_filesystem(),
-                            re_renderer::SearchPath::from_env(),
-                        );
-
+                        let mut resolver = re_renderer::get_resolver();
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         let triangle = TestTriangleDrawable::new(ctx, device, &mut resolver);
                         let skybox = GenericSkyboxDrawable::new(ctx, device, &mut resolver);

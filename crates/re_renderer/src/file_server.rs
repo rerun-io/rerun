@@ -1,23 +1,22 @@
-use std::{borrow::Cow, path::PathBuf};
+use std::path::PathBuf;
 
 // ---
 
-/// A macro to read the contents of a file on disk.
+/// A macro to read the contents of a file on disk, and resolve #import clauses as required.
 ///
 /// - On WASM and/or release builds, this will behave like the standard [`include_str`]
 ///   macro.
 /// - On native debug builds, this will actually load the specified path through
-///   our [`FileServer`], and keep watching for changes in the background.
+///   our [`FileServer`], and keep watching for changes in the background (both the root file
+///   and whatever direct and indirect dependencies it may have through #import clauses).
 #[macro_export]
 macro_rules! include_file {
     ($path:expr $(,)?) => {{
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
         {
-            // TODO: need some explanations
-            let fs = $crate::OsFileSystem::default();
-            let mut resolver =
-                $crate::FileResolver::with_search_path(fs, $crate::SearchPath::from_env());
+            let mut resolver = $crate::get_resolver();
 
+            // Will be canonicalized automatically by `FileServer::watch()`.
             let path = ::std::path::Path::new(file!())
                 .parent()
                 .unwrap()
@@ -28,8 +27,8 @@ macro_rules! include_file {
 
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
         {
-            use anyhow::Context as _;
-
+            // Make sure `workspace_shaders::init()` is compiled in, which will register
+            // all shaders defined in the workspace into the memory filesystem.
             $crate::workspace_shaders::init();
 
             let path = ::std::path::Path::new(file!())
@@ -38,21 +37,31 @@ macro_rules! include_file {
                 .join($path);
 
             let path = if cfg!(not(target_arch = "wasm32")) {
-                // It _has_ to be canonicalizable at that point, this is run-time!
+                // Canonicalize the path in non-wasm release builds, as we do have an actual
+                // filesystem to rely on.
+                use anyhow::Context as _;
                 ::std::fs::canonicalize(&path)
                     .with_context(|| format!("failed to canonicalize path at {path:?}"))
                     .unwrap()
             } else {
+                // Best we can do on wasm is lexicographically normalize the path.
                 clean_path::clean(&path)
             };
 
-            // TODO: explain why we do this in two times
             if cfg!(not(target_arch = "wasm32")) {
-                let path = path.strip_prefix("/home/cmc/dev/rerun-io/").unwrap(); // TODO
-                $crate::FileContentsHandle::Path(path.to_owned())
+                // On native, we want to make sure to strip the local workspace prefix from
+                // our paths, otherwise they won't make any sense at run-time, since the
+                // shader paths embedded into the binary are hermetic.
+                let strip_prefix = ::std::path::Path::new(env!("CARGO_WORKSPACE_DIR"))
+                    .parent()
+                    .unwrap();
+                path.strip_prefix(strip_prefix).unwrap().to_owned()
             } else {
-                let path = ::std::path::Path::new("rerun").join(path);
-                $crate::FileContentsHandle::Path(path)
+                // On wasm, the build system already takes care of hermetism: all paths have
+                // the local workspace prefix pre-stripped.
+                // They go a bit too far for us though as they even remove the root folder from
+                // the path.
+                ::std::path::Path::new("rerun").join(path)
             }
         }
     }};
@@ -60,31 +69,39 @@ macro_rules! include_file {
 
 // ---
 
-// TODO: this whole thing can die now, Inlined isn't ever used anymore.
+// // TODO: this whole thing can die now, Inlined isn't ever used anymore.
 
-/// A handle to the contents of a file.
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub enum FileContentsHandle {
-    /// Contents inlined as a UTF-8 string.
-    Inlined(&'static str),
-    /// Contents sit on disk, path is pre-canonicalized.
-    Path(PathBuf),
-}
-impl FileContentsHandle {
-    /// Resolve the contents of the handle.
-    pub fn resolve_contents<Fs: FileSystem>(
-        &self,
-        resolver: &mut FileResolver<Fs>,
-    ) -> anyhow::Result<Cow<'_, str>> {
-        match self {
-            Self::Inlined(data) => Ok(Cow::Borrowed(data)),
-            // TODO: again with the cloning here
-            Self::Path(path) => resolver.resolve_contents(path).map(|s| s.to_owned().into()),
-        }
-    }
-}
+// /// A handle to the contents of a file.
+// #[derive(Clone, Hash, PartialEq, Eq, Debug)]
+// pub enum FileContentsHandle {
+//     /// Contents inlined as a UTF-8 string.
+//     Inlined(&'static str),
+//     /// Contents sit on disk, path is pre-canonicalized.
+//     Path(PathBuf),
+// }
+// impl FileContentsHandle {
+//     /// Resolve the contents of the handle.
+//     pub fn resolve_contents<Fs: FileSystem>(
+//         &self,
+//         resolver: &mut FileResolver<Fs>,
+//     ) -> anyhow::Result<Cow<'_, str>> {
+//         match self {
+//             Self::Inlined(data) => Ok(Cow::Borrowed(data)),
+//             // TODO: again with the cloning here
+//             Self::Path(path) => resolver.resolve_contents(path).map(|s| s.to_owned().into()),
+//         }
+//     }
+// }
 
-use crate::{FileResolver, FileSystem};
+// TODO
+/// A lexicographically normalized path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NormalizedPath(PathBuf);
+
+// TODO
+/// A canonicalized path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CanonicalizedPath(PathBuf);
 
 pub use self::file_server_impl::FileServer;
 
@@ -100,8 +117,6 @@ mod file_server_impl {
     use std::path::{Path, PathBuf};
 
     use crate::{FileResolver, FileSystem};
-
-    use super::FileContentsHandle;
 
     /// The global [`FileServer`].
     static FILE_SERVER: RwLock<Option<FileServer>> = RwLock::new(None);
@@ -172,12 +187,14 @@ mod file_server_impl {
     // Public API
     impl FileServer {
         /// Starts watching for file events at the given `path`.
+        ///
+        /// The given `path` is canonicalized.
         pub fn watch<Fs: FileSystem>(
             &mut self,
             resolver: &mut FileResolver<Fs>,
             path: impl AsRef<Path>,
             recursive: bool,
-        ) -> anyhow::Result<FileContentsHandle> {
+        ) -> anyhow::Result<PathBuf> {
             let path = std::fs::canonicalize(path.as_ref())?;
 
             self.watcher
@@ -211,7 +228,7 @@ mod file_server_impl {
                 }
             }
 
-            Ok(FileContentsHandle::Path(path))
+            Ok(path)
         }
 
         /// Stops watching for file events at the given `path`.
@@ -289,7 +306,7 @@ mod file_server_impl {
 
         pub fn collect<Fs: FileSystem>(
             &mut self,
-            resolver: &mut FileResolver<Fs>,
+            _resolver: &mut FileResolver<Fs>,
         ) -> HashSet<PathBuf> {
             Default::default()
         }
