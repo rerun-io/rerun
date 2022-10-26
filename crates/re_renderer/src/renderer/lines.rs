@@ -92,6 +92,7 @@
 use std::num::NonZeroU32;
 
 use bytemuck::Zeroable;
+use smallvec::smallvec;
 
 use crate::{
     include_file,
@@ -343,7 +344,7 @@ impl LineDrawable {
                 device,
                 &BindGroupDesc {
                     label: "line drawable".into(),
-                    entries: vec![
+                    entries: smallvec![
                         BindGroupEntry::TextureView(*position_data_texture),
                         BindGroupEntry::TextureView(*line_strip_texture),
                     ],

@@ -45,6 +45,9 @@ impl UsageTrackedResource for BindGroup {
     }
 }
 
+// TODO(andreas) Can we force the user to provide strong handles here without too much effort?
+//               Ideally it would be only a reference to a strong handle in order to avoid bumping ref counts all the time.
+
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) enum BindGroupEntry {
     TextureView(TextureHandle), // TODO(andreas) what about non-default views?
@@ -68,7 +71,7 @@ pub(crate) enum BindGroupEntry {
 pub(crate) struct BindGroupDesc {
     /// Debug label of the bind group. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
-    pub entries: Vec<BindGroupEntry>,
+    pub entries: SmallVec<[BindGroupEntry; 4]>,
     pub layout: BindGroupLayoutHandle,
 }
 

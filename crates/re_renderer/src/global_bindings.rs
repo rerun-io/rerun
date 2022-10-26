@@ -10,7 +10,9 @@ use crate::{
     },
     wgpu_buffer_types,
 };
+
 use bytemuck::{Pod, Zeroable};
+use smallvec::smallvec;
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
 ///
@@ -89,7 +91,7 @@ impl GlobalBindings {
             device,
             &BindGroupDesc {
                 label: "global bind group".into(),
-                entries: vec![
+                entries: smallvec![
                     BindGroupEntry::Buffer {
                         handle: **frame_uniform_buffer,
                         offset: 0,
