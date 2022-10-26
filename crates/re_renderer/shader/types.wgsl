@@ -1,3 +1,6 @@
+// As of writing typedefs can't be used for constructing vecN from a single item
+// https://github.com/gfx-rs/naga/issues/2105
+
 type Vec2 = vec2<f32>;
 type Vec3 = vec3<f32>;
 type Vec4 = vec4<f32>;
