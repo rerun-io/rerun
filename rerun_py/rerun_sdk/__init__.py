@@ -368,9 +368,6 @@ def log_point(
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
     * float32/float64: all color components should be in 0-1 linear space.
-
-    If no `space` is given, the space name "2D" or "3D" will be used,
-    depending on the dimensionality of the data.
     """
     position = np.require(position, dtype="float32")
     rerun_rs.log_point(obj_path, position, color, timeless)
@@ -398,9 +395,6 @@ def log_points(
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
     * float32/float64: all color components should be in 0-1 linear space.
-
-    If no `space` is given, the space name "2D" or "3D" will be used,
-    depending on the dimensionality of the data.
     """
     positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
