@@ -8,3 +8,6 @@ struct FrameUniformBuffer {
 };
 @group(0) @binding(0)
 var<uniform> frame: FrameUniformBuffer;
+
+@group(0) @binding(1)
+var nearest_sampler: sampler;
