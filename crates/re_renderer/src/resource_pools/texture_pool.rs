@@ -5,6 +5,9 @@ use crate::debug_label::DebugLabel;
 use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
 
 slotmap::new_key_type! { pub struct TextureHandle; }
+
+/// A reference counter baked texture handle.
+/// Once all strong handles are dropped, the texture will be marked for reclamation in the following frame.
 pub type TextureHandleStrong = std::sync::Arc<TextureHandle>;
 
 pub(crate) struct Texture {
@@ -47,7 +50,7 @@ pub struct TextureDesc {
 }
 
 impl TextureDesc {
-    fn to_wgpu_desc<'a>(&'a self) -> wgpu::TextureDescriptor<'a> {
+    fn to_wgpu_desc(&self) -> wgpu::TextureDescriptor<'_> {
         wgpu::TextureDescriptor {
             label: self.label.get(),
             size: self.size,

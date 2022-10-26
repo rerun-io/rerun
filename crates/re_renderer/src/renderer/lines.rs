@@ -98,7 +98,7 @@ use crate::{
     renderer::utils::next_multiple_of,
     resource_pools::{
         bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, StrongBindGroupHandle},
+        bind_group_pool::{BindGroupDesc, BindGroupEntry, BindGroupHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::*,
         shader_module_pool::ShaderModuleDesc,
@@ -138,7 +138,7 @@ mod gpu_data {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct LineDrawable {
-    bind_group: StrongBindGroupHandle,
+    bind_group: BindGroupHandleStrong,
     num_quads: u32,
 }
 

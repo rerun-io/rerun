@@ -54,7 +54,7 @@ where
         let handle =
             if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
                 re_log::trace!(
-                    "Re-used previously discarded resource with description {:?}",
+                    "Reclaimed previously discarded resource with description {:?}",
                     desc
                 );
 

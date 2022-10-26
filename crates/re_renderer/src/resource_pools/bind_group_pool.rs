@@ -6,7 +6,7 @@ use crate::debug_label::DebugLabel;
 
 use super::{
     bind_group_layout_pool::{BindGroupLayoutHandle, BindGroupLayoutPool},
-    buffer_pool::{BufferHandle, BufferPool, StrongBufferHandle},
+    buffer_pool::{BufferHandle, BufferHandleStrong, BufferPool},
     dynamic_resource_pool::DynamicResourcePool,
     resource::*,
     sampler_pool::{SamplerHandle, SamplerPool},
@@ -15,14 +15,17 @@ use super::{
 
 slotmap::new_key_type! { pub struct BindGroupHandle; }
 
+/// A reference counter baked bind group handle.
+/// Once all strong handles are dropped, the bind group will be marked for reclamation in the following frame.
+/// Tracks use of dependent resources as well.
 #[derive(Clone)]
-pub struct StrongBindGroupHandle {
+pub struct BindGroupHandleStrong {
     handle: Arc<BindGroupHandle>,
-    _owned_buffers: SmallVec<[StrongBufferHandle; 4]>,
+    _owned_buffers: SmallVec<[BufferHandleStrong; 4]>,
     _owned_textures: SmallVec<[TextureHandleStrong; 4]>,
 }
 
-impl std::ops::Deref for StrongBindGroupHandle {
+impl std::ops::Deref for BindGroupHandleStrong {
     type Target = BindGroupHandle;
 
     fn deref(&self) -> &Self::Target {
@@ -69,20 +72,22 @@ pub(crate) struct BindGroupDesc {
     pub layout: BindGroupLayoutHandle,
 }
 
-/// Different expectations regarding ownership:
-/// * alloc buffer/texture, pass it to bind group, throw handle to buffer/texture away, hold on to bind group indefinitely
-///      => owned [`BindGroup`] should keep buffer/texture alive!
-/// * alloc buffer/texture, pass it to bind group, throw both away, do the same next frame
-///      => BindGroupPool should *try* to re-use previously created bind groups!
-///      => musn't prevent buffer/texture re-use on next frame, i.e. BindGroupPools without owner shouldn't keep anyone alive
+/// Requirements regarding ownership & resource lifetime:
+/// * owned [`BindGroup`] should keep buffer/texture alive
+///   (user should not need to hold strong buffer/texture handles manually)
+/// * [`BindGroupPool`] should *try* to re-use previously created bind groups if they happen to match
+/// * musn't prevent buffer/texture re-use on next frame
+///   i.e. a internally cached [`BindGroupPool`]s without owner shouldn't keep textures/buffers alive
 ///
-/// We solve all this by retrieving the strong buffer/texture handles and make them part of the strong BindGroupHandle.
-/// Internally, the BindGroupPool does *not* hold any strong reference to any resource,
+/// We satisfy these by retrieving the strong buffer/texture handles and make them part of the [`BindGroupHandleStrong`].
+/// Internally, the [`BindGroupPool`] does *not* hold any strong reference of any resource,
 /// i.e. it does not interfere with the buffer/texture pools at all.
 /// The question whether a bind groups happen to be re-usable becomes again a simple question of matching
 /// bind group descs which itself does not contain any strong references either.
 #[derive(Default)]
 pub(crate) struct BindGroupPool {
+    // Use a DynamicResourcePool because it gives out reference counted handles
+    // which makes interacting with buffer/textures easier.
     pool: DynamicResourcePool<BindGroupHandle, BindGroupDesc, BindGroup>,
 }
 
@@ -95,8 +100,8 @@ impl BindGroupPool {
         textures: &TexturePool,
         buffers: &BufferPool,
         samplers: &SamplerPool,
-    ) -> anyhow::Result<StrongBindGroupHandle> {
-        let handle = self.pool.alloc(&desc, |desc| {
+    ) -> anyhow::Result<BindGroupHandleStrong> {
+        let handle = self.pool.alloc(desc, |desc| {
             // TODO(andreas): error handling
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: desc.label.get(),
@@ -166,7 +171,7 @@ impl BindGroupPool {
             })
             .collect();
 
-        Ok(StrongBindGroupHandle {
+        Ok(BindGroupHandleStrong {
             handle,
             _owned_buffers: owned_buffers,
             _owned_textures: owned_textures,
@@ -185,7 +190,7 @@ impl BindGroupPool {
     }
 
     /// Takes a strong handle to ensure the user is still holding on to the bind group (and thus dependent resources).
-    pub fn get_resource(&self, handle: &StrongBindGroupHandle) -> Result<&BindGroup, PoolError> {
+    pub fn get_resource(&self, handle: &BindGroupHandleStrong) -> Result<&BindGroup, PoolError> {
         self.pool.get_resource(*handle.handle)
     }
 }

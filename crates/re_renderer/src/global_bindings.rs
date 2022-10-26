@@ -4,7 +4,7 @@ use crate::{
     resource_pools::{
         bind_group_layout_pool::*,
         bind_group_pool::*,
-        buffer_pool::StrongBufferHandle,
+        buffer_pool::BufferHandleStrong,
         sampler_pool::{SamplerDesc, SamplerHandle},
         WgpuResourcePools,
     },
@@ -83,8 +83,8 @@ impl GlobalBindings {
         &self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        frame_uniform_buffer: &StrongBufferHandle,
-    ) -> anyhow::Result<StrongBindGroupHandle> {
+        frame_uniform_buffer: &BufferHandleStrong,
+    ) -> anyhow::Result<BindGroupHandleStrong> {
         pools.bind_groups.alloc(
             device,
             &BindGroupDesc {

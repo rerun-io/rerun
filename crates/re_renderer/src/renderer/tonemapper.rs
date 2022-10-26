@@ -2,12 +2,8 @@ use crate::{
     context::SharedRendererData,
     include_file,
     resource_pools::{
-        bind_group_layout_pool::*,
-        bind_group_pool::*,
-        pipeline_layout_pool::*,
-        render_pipeline_pool::*,
-        shader_module_pool::*,
-        texture_pool::{TextureHandle, TextureHandleStrong},
+        bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
+        render_pipeline_pool::*, shader_module_pool::*, texture_pool::TextureHandleStrong,
         WgpuResourcePools,
     },
 };
@@ -23,7 +19,7 @@ pub struct Tonemapper {
 pub struct TonemapperDrawable {
     /// [`BindGroup`] pointing at the current HDR source and
     /// a uniform buffer for describing a tonemapper configuration.
-    hdr_target_bind_group: StrongBindGroupHandle,
+    hdr_target_bind_group: BindGroupHandleStrong,
 }
 
 impl Drawable for TonemapperDrawable {

@@ -5,7 +5,10 @@ use crate::debug_label::DebugLabel;
 use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
 
 slotmap::new_key_type! { pub struct BufferHandle; }
-pub type StrongBufferHandle = std::sync::Arc<BufferHandle>;
+
+/// A reference counter baked bind group handle.
+/// Once all strong handles are dropped, the bind group will be marked for reclamation in the following frame.
+pub type BufferHandleStrong = std::sync::Arc<BufferHandle>;
 
 pub struct Buffer {
     last_frame_used: AtomicU64,
@@ -25,6 +28,7 @@ pub struct BufferDesc {
 
     /// Size of a buffer.
     pub size: wgpu::BufferAddress,
+
     /// Usages of a buffer. If the buffer is used in any way that isn't specified here, the operation
     /// will panic.
     pub usage: wgpu::BufferUsages,
@@ -40,7 +44,7 @@ impl BufferPool {
         &mut self,
         device: &wgpu::Device,
         desc: &BufferDesc,
-    ) -> anyhow::Result<StrongBufferHandle> {
+    ) -> anyhow::Result<BufferHandleStrong> {
         self.pool.alloc(desc, |desc| {
             let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
@@ -60,7 +64,7 @@ impl BufferPool {
     }
 
     /// Takes strong buffer handle to ensure the user is still holding on to the buffer.
-    pub fn get_resource(&self, handle: &StrongBufferHandle) -> Result<&Buffer, PoolError> {
+    pub fn get_resource(&self, handle: &BufferHandleStrong) -> Result<&Buffer, PoolError> {
         self.pool.get_resource(**handle)
     }
 
@@ -70,7 +74,7 @@ impl BufferPool {
     }
 
     /// Internal method to retrieve a strong handle from a weak handle (used by [`BindGroupPool`])
-    pub(super) fn get_strong_handle(&self, handle: BufferHandle) -> &StrongBufferHandle {
+    pub(super) fn get_strong_handle(&self, handle: BufferHandle) -> &BufferHandleStrong {
         self.pool.get_strong_handle(handle)
     }
 }
