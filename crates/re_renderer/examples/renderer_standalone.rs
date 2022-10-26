@@ -19,7 +19,10 @@ use log::info;
 use macaw::IsoTransform;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},
-    renderer::{GenericSkyboxDrawable, TestTriangleDrawable},
+    renderer::{
+        lines::{LineDrawable, LineStrip},
+        GenericSkyboxDrawable, TestTriangleDrawable,
+    },
     view_builder::{TargetConfiguration, ViewBuilder},
 };
 use winit::{
@@ -49,8 +52,12 @@ fn draw_view(
     let mut view_builder = ViewBuilder::new();
 
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
-    let t = time.seconds_since_startup();
-    let pos = Vec3::new(t.sin(), 0.5, t.cos()) * 5.0;
+    let seconds_since_startup = time.seconds_since_startup();
+    let pos = Vec3::new(
+        seconds_since_startup.sin(),
+        0.5,
+        seconds_since_startup.cos(),
+    ) * 20.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
     let target_cfg = TargetConfiguration {
         resolution_in_pixel: resolution,
@@ -62,16 +69,94 @@ fn draw_view(
 
     let triangle = TestTriangleDrawable::new(re_ctx, device);
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
+    let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
 
     view_builder
         .setup_view(re_ctx, device, queue, &target_cfg)
         .unwrap()
         .queue_draw(&triangle)
         .queue_draw(&skybox)
+        .queue_draw(&lines)
         .draw(re_ctx, encoder)
         .unwrap();
 
     view_builder
+}
+
+fn build_lines(
+    re_ctx: &mut RenderContext,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    seconds_since_startup: f32,
+) -> LineDrawable {
+    // Calculate some points that look nice for an animated line.
+    let lorenz_points = {
+        // Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
+        fn lorenz_integrate(cur: glam::Vec3, dt: f32) -> glam::Vec3 {
+            let sigma: f32 = 10.0;
+            let rho: f32 = 28.0;
+            let beta: f32 = 8.0 / 3.0;
+
+            cur + glam::vec3(
+                sigma * (cur.y - cur.x),
+                cur.x * (rho - cur.z) - cur.y,
+                cur.x * cur.y - beta * cur.z,
+            ) * dt
+        }
+
+        // slow buildup and reset
+        let num_points = (((seconds_since_startup * 0.05).fract() * 10000.0) as u32).max(1);
+
+        let mut latest_point = glam::vec3(-0.1, 0.001, 0.0);
+        std::iter::repeat_with(move || {
+            latest_point = lorenz_integrate(latest_point, 0.005);
+            latest_point
+        })
+        // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
+        .map(|p| (p + glam::vec3(-5.0, 0.0, -23.0)) * 0.6)
+        .take(num_points as _)
+        .collect::<Vec<_>>()
+    };
+
+    LineDrawable::new(
+        re_ctx,
+        device,
+        queue,
+        &[
+            // Complex orange line.
+            LineStrip {
+                points: lorenz_points,
+                radius: 0.05,
+                color: [255, 191, 0, 255],
+            },
+            // Yellow Zig-Zag
+            LineStrip {
+                points: vec![
+                    glam::vec3(0.0, -1.0, 0.0),
+                    glam::vec3(1.0, 0.0, 0.0),
+                    glam::vec3(2.0, -1.0, 0.0),
+                    glam::vec3(3.0, 0.0, 0.0),
+                ],
+                radius: 0.1,
+                color: [50, 255, 50, 255],
+            },
+            // A blue spiral
+            LineStrip {
+                points: (0..1000)
+                    .map(|i| {
+                        glam::vec3(
+                            (i as f32 * 0.01).sin() * 2.0,
+                            i as f32 * 0.01 - 6.0,
+                            (i as f32 * 0.01).cos() * 2.0,
+                        )
+                    })
+                    .collect(),
+                radius: 0.1,
+                color: [50, 50, 255, 255],
+            },
+        ],
+    )
+    .unwrap()
 }
 
 // ---
@@ -172,6 +257,19 @@ impl Application {
                 } => {
                     self.surface_config.width = size.width;
                     self.surface_config.height = size.height;
+                    self.surface.configure(&self.device, &self.surface_config);
+                    self.window.request_redraw();
+                }
+                Event::WindowEvent {
+                    event:
+                        WindowEvent::ScaleFactorChanged {
+                            scale_factor: _,
+                            new_inner_size,
+                        },
+                    ..
+                } => {
+                    self.surface_config.width = new_inner_size.width;
+                    self.surface_config.height = new_inner_size.height;
                     self.surface.configure(&self.device, &self.surface_config);
                     self.window.request_redraw();
                 }

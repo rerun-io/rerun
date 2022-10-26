@@ -1546,6 +1546,7 @@ version = "0.20.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f43e957e744be03f5801a55472f593d43fabdebf25a4585db250f04d86b1675f"
 dependencies = [
+ "bytemuck",
  "mint",
  "serde",
 ]
@@ -1781,6 +1782,7 @@ version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad6a9459c9c30b177b925162351f97e7d967c7ea8bab3b8352805327daf45554"
 dependencies = [
+ "bytemuck",
  "crunchy",
 ]
 
@@ -3068,6 +3070,7 @@ dependencies = [
  "crossbeam",
  "env_logger",
  "glam",
+ "half 2.1.0",
  "instant",
  "log",
  "macaw",
@@ -3078,6 +3081,7 @@ dependencies = [
  "re_error",
  "re_log",
  "slotmap",
+ "static_assertions",
  "thiserror",
  "type-map",
  "wasm-bindgen-futures",

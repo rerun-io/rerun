@@ -42,5 +42,22 @@
             ],
             "cwd": "${workspaceFolder}"
         },
+        {
+            "name": "Debug re_renderer sample",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=renderer_standalone"
+                ],
+                "filter": {
+                    "name": "renderer_standalone",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
     ]
 }

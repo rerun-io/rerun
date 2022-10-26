@@ -8,7 +8,7 @@ use crate::{
         sampler_pool::{SamplerDesc, SamplerHandle},
         WgpuResourcePools,
     },
-    wgsl_types,
+    wgpu_buffer_types,
 };
 use bytemuck::{Pod, Zeroable};
 
@@ -19,14 +19,14 @@ use bytemuck::{Pod, Zeroable};
 #[repr(C)]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub(crate) struct FrameUniformBuffer {
-    pub view_from_world: wgsl_types::Mat4x3,
-    pub projection_from_view: wgsl_types::Mat4,
-    pub projection_from_world: wgsl_types::Mat4,
+    pub view_from_world: wgpu_buffer_types::Mat4x3,
+    pub projection_from_view: wgpu_buffer_types::Mat4,
+    pub projection_from_world: wgpu_buffer_types::Mat4,
 
-    pub camera_position: wgsl_types::Vec3,
+    pub camera_position: wgpu_buffer_types::Vec3,
 
     /// View space coordinates of the top right screen corner.
-    pub top_right_screen_corner_in_view: wgsl_types::Vec2Padded,
+    pub top_right_screen_corner_in_view: wgpu_buffer_types::Vec2Padded,
 }
 
 pub(crate) struct GlobalBindings {
