@@ -77,6 +77,16 @@ Note that none of the names in the path are special.
 `rerun.log_rigid3_transform("foo/bar", …)` is logging the relationship between the parent `foo` and the child `bar`,
 and `rerun.log_rigid3_transform("foo/bar/baz", …)` is logging the relationship between the parent `bar` and the child `baz`.
 
+
+## View coordinates
+You can use `log_view_coordinates` to set your preferred view coordinate systems.
+
+For camera spaces this can be for instance `rerun.log_view_coordinates("3d/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3_transform` also takes this as an argument.
+This is required for Rerun to know how to orient your cameras in the 3D view.
+
+For 3D world spaces it can be useful to log what the up-axis is in your coordinate system. This will help Rerun setup a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rerun.log_view_coordinates("3d", up="+Z", timeless=True)`.
+
+
 ## Timeless data
 The logging functions all have `timeless = False` parameters. Timeless objects belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer. This is useful for object that aren't part of normal data capture, but set the scene for how they are shown. For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be timeless.
 
