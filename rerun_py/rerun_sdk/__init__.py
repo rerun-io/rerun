@@ -44,22 +44,6 @@ class MeshFormat(Enum):
     OBJ = "OBJ"
 
 
-class CameraSpaceConvention(Enum):
-    """The convention used for the camera space's (3D) coordinate system."""
-
-    # Right-handed system used by ARKit and PyTorch3D.
-    # * +X = right
-    # * +Y = up
-    # * +Z = back (camera looks along -Z)
-    X_RIGHT_Y_UP_Z_BACK = "XRightYUpZBack"
-
-    # Right-handed system used by OpenCV.
-    # * +X = right
-    # * +Y = down
-    # * +Z = forward
-    X_RIGHT_Y_DOWN_Z_FWD = "XRightYDownZFwd"
-
-
 @dataclass
 class ImageFormat(Enum):
     # """ jpeg """"
@@ -451,7 +435,6 @@ def log_extrinsics(
     obj_path: str,
     rotation_q: npt.ArrayLike,
     position: npt.ArrayLike,
-    camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
     timeless: bool = False,
 ) -> None:
     """
@@ -468,14 +451,12 @@ def log_extrinsics(
 
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
     `position`: Array with [x, y, z] position of the camera in world space.
-    `camera_space_convention`: The convention used for the orientation of the camera's 3D coordinate system.
 
     """
     rerun_rs.log_extrinsics(
         obj_path,
         rotation_q=_to_sequence(rotation_q),
         position=_to_sequence(position),
-        camera_space_convention=camera_space_convention.value,
         timeless=timeless,
     )
 

@@ -137,7 +137,6 @@ def log_camera(cam: ARCamera) -> None:
         "3d/camera",
         rotation_q=rot.as_quat(),
         position=translation,
-        camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_UP_Z_BACK,
     )
     rerun.log_coordinate_system("3d/camera", "RUB") # X=Right, Y=Up, Z=Back
     rerun.log_intrinsics(

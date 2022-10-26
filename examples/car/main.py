@@ -32,7 +32,6 @@ def log_car_data() -> None:
             "3d/camera",
             rotation_q=sample.camera.rotation_q,
             position=sample.camera.position,
-            camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
         )
         rerun.log_coordinate_system("3d/camera", "RDF") # X=Right, Y=Down, Z=Forward
 

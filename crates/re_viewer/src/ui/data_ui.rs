@@ -408,11 +408,7 @@ fn ui_coordinate_system(ui: &mut egui::Ui, system: &CoordinateSystem) -> egui::R
 }
 
 fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
-    let Extrinsics {
-        rotation,
-        position,
-        camera_space_convention,
-    } = extrinsics;
+    let Extrinsics { rotation, position } = extrinsics;
 
     ui.vertical(|ui| {
         ui.label("Extrinsics");
@@ -427,10 +423,6 @@ fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
 
                     ui.label("position");
                     ui.monospace(format!("{position:?}"));
-                    ui.end_row();
-
-                    ui.label("camera_space_convention");
-                    ui.monospace(format!("{camera_space_convention:?}"));
                     ui.end_row();
                 });
         });

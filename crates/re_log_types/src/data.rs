@@ -2,8 +2,6 @@ use std::sync::Arc;
 
 use crate::{impl_into_enum, CoordinateSystem, ObjPath};
 
-use self::data_types::Vec3;
-
 // ----------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -449,18 +447,10 @@ pub struct Extrinsics {
     /// How is the camera rotated?
     ///
     /// This transforms world-space from camera-space.
-    ///
-    /// The exact meaning of this depends on [`Self::camera_space_convention`].
-    /// For instance, using [`CameraSpaceConvention::XRightYDownZFwd`],
-    /// [`Self::rotation`] rotates the +Z axis so that it points in the direction
-    /// the camera is facing in world space.
     pub rotation: Quaternion,
 
     /// Where is the camera in world space?
     pub position: [f32; 3],
-
-    /// What is the users camera-space coordinate system?
-    pub camera_space_convention: CameraSpaceConvention,
 }
 
 /// Camera projection
@@ -491,50 +481,6 @@ impl Intrinsics {
     /// Field of View on the Y axis, i.e. the angle between top and bottom.
     pub fn fov_y(&self) -> f32 {
         2.0 * (0.5 * self.resolution[1] / self.intrinsics_matrix[1][1]).atan()
-    }
-}
-
-/// Convention for the coordinate system of the camera.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum CameraSpaceConvention {
-    /// Right-handed system used by ARKit and PyTorch3D.
-    /// * +X=right
-    /// * +Y=up
-    /// * +Z=back (camera looks long -Z)
-    XRightYUpZBack,
-
-    /// Right-handed system used by OpenCV.
-    /// * +X=right
-    /// * +Y=down
-    /// * +Z=forward
-    XRightYDownZFwd,
-}
-
-impl CameraSpaceConvention {
-    /// Rerun uses the view-space convention of RUB (+X=Right, +Y=Up, Z=Back).
-    ///
-    /// This returns the direction of the X,Y,Z axis in the Rerun convention.
-    ///
-    /// Another way of looking at this is that it returns the columns in
-    /// the matrix that transforms one convention to the other.
-    pub fn axis_dirs_in_rerun_view_space(&self) -> [Vec3; 3] {
-        match self {
-            Self::XRightYUpZBack => {
-                [
-                    [1.0, 0.0, 0.0], //
-                    [0.0, 1.0, 0.0], //
-                    [0.0, 0.0, 1.0], //
-                ]
-            }
-            Self::XRightYDownZFwd => {
-                [
-                    [1.0, 0.0, 0.0],  //
-                    [0.0, -1.0, 0.0], //
-                    [0.0, 0.0, -1.0], //
-                ]
-            }
-        }
     }
 }
 

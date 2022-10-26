@@ -393,17 +393,6 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
     }
 }
 
-fn parse_camera_space_convention(s: &str) -> PyResult<CameraSpaceConvention> {
-    match s {
-        "XRightYUpZBack" => Ok(re_log_types::CameraSpaceConvention::XRightYUpZBack),
-        "XRightYDownZFwd" => Ok(re_log_types::CameraSpaceConvention::XRightYDownZFwd),
-        _ => Err(PyTypeError::new_err(format!(
-            "Unknown camera space convetions format {s:?}.
-                Expected one of: XRightYUpZBack, XRightYDownZFwd"
-        ))),
-    }
-}
-
 #[pyfunction]
 fn log_unknown_transform(obj_path: &str, timeless: bool) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
@@ -429,16 +418,13 @@ fn log_extrinsics(
     obj_path: &str,
     rotation_q: re_log_types::Quaternion,
     position: [f32; 3],
-    camera_space_convention: &str,
     timeless: bool,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
-    let convention = parse_camera_space_convention(camera_space_convention)?;
 
     let transform = re_log_types::Transform::Extrinsics(re_log_types::Extrinsics {
         rotation: rotation_q,
         position,
-        camera_space_convention: convention,
     });
 
     let mut sdk = Sdk::global();
