@@ -27,10 +27,11 @@ impl Drawable for GenericSkyboxDrawable {
 
 impl GenericSkyboxDrawable {
     pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
-        ctx.renderers.get_or_create::<GenericSkybox>(
+        ctx.renderers.get_or_create::<_, GenericSkybox>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
             device,
+            &mut ctx.resolver,
         );
 
         GenericSkyboxDrawable {}
@@ -40,10 +41,11 @@ impl GenericSkyboxDrawable {
 impl Renderer for GenericSkybox {
     type DrawData = GenericSkyboxDrawable;
 
-    fn create_renderer(
+    fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
     ) -> Self {
         let render_pipeline = pools.render_pipelines.request(
             device,
@@ -61,6 +63,7 @@ impl Renderer for GenericSkybox {
                 vertex_entrypoint: "main".into(),
                 vertex_handle: pools.shader_modules.request(
                     device,
+                    resolver,
                     &ShaderModuleDesc {
                         label: "screen_triangle (vertex)".into(),
                         source: include_file!("../../shader/screen_triangle.wgsl"),
@@ -69,6 +72,7 @@ impl Renderer for GenericSkybox {
                 fragment_entrypoint: "main".into(),
                 fragment_handle: pools.shader_modules.request(
                     device,
+                    resolver,
                     &ShaderModuleDesc {
                         label: "generic_skybox (fragment)".into(),
                         source: include_file!("../../shader/generic_skybox.wgsl"),

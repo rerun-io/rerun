@@ -11,6 +11,7 @@ mod utils;
 use crate::{
     context::{RenderContext, SharedRendererData},
     resource_pools::WgpuResourcePools,
+    FileResolver, FileSystem,
 };
 
 /// GPU sided data used by a [`Renderer`] to draw things to the screen.
@@ -26,10 +27,11 @@ pub trait Drawable {
 pub trait Renderer {
     type DrawData: Drawable;
 
-    fn create_renderer(
+    fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
     ) -> Self;
 
     // TODO(andreas): Some Renderers need to create their own passes, need something like this for that.

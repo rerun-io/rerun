@@ -133,6 +133,7 @@ fn main() {
             .expect("failed to build viewer for web");
 
         eprintln!("status: {}", output.status);
+        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 
         assert!(output.status.success());
     }
