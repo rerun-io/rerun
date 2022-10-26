@@ -592,9 +592,9 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                 for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
                     if let Transform::Intrinsics(intrinsics) = grand_child_transform {
                         space_cameras.push(SpaceCamera {
-                            obj_path: child_path.clone(),
+                            camera_obj_path: child_path.clone(),
                             instance_index_hash: re_log_types::IndexHash::NONE,
-                            view_space,
+                            camera_coordinate_system: view_space,
                             world_from_camera,
                             intrinsics: Some(*intrinsics),
                             target_space: Some(grand_child_path.clone()),
@@ -606,9 +606,9 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
 
             if !found_any_intrinsics {
                 space_cameras.push(SpaceCamera {
-                    obj_path: child_path.clone(),
+                    camera_obj_path: child_path.clone(),
                     instance_index_hash: re_log_types::IndexHash::NONE,
-                    view_space,
+                    camera_coordinate_system: view_space,
                     world_from_camera,
                     intrinsics: None,
                     target_space: None,

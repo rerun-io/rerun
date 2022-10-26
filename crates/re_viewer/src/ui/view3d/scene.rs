@@ -319,7 +319,7 @@ impl Scene {
 
         for camera in cameras {
             let instance_id = InstanceIdHash {
-                obj_path_hash: *camera.obj_path.hash(),
+                obj_path_hash: *camera.camera_obj_path.hash(),
                 instance_index_hash: camera.instance_index_hash,
             };
 
@@ -361,7 +361,9 @@ impl Scene {
                 }
 
                 if ctx.options.show_camera_axes_in_3d {
-                    if let Some(CoordinateSystem::Relative(coordinates)) = camera.view_space {
+                    if let Some(CoordinateSystem::Relative(coordinates)) =
+                        camera.camera_coordinate_system
+                    {
                         // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
                         let center = world_from_view.translation();
                         let radius = Size::new_scene(dist_to_eye * line_radius_from_distance * 2.0);

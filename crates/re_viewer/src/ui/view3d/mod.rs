@@ -289,7 +289,7 @@ fn find_camera(space_cameras: &[SpaceCamera], needle: &InstanceId) -> Option<Eye
     let mut found_camera = None;
 
     for camera in space_cameras {
-        if needle.obj_path == camera.obj_path
+        if needle.obj_path == camera.camera_obj_path
             && camera.instance_index_hash == needle.instance_index_hash()
         {
             if found_camera.is_some() {

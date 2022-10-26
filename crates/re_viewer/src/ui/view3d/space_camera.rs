@@ -6,13 +6,20 @@ use re_log_types::{CoordinateSystem, IndexHash};
 
 /// A logged camera that connects spaces.
 pub struct SpaceCamera {
-    pub obj_path: ObjPath,
+    /// Path to the object which has the rigid [Self::world_from_camera`] transforms.
+    pub camera_obj_path: ObjPath,
+
+    /// The hash of the instance index (if any) of the object at [`Self::camera_obj_path`].
     pub instance_index_hash: IndexHash,
 
-    /// The coordinate system of the camera.
-    pub view_space: Option<CoordinateSystem>,
+    /// The coordinate system of the camera ("view-space").
+    pub camera_coordinate_system: Option<CoordinateSystem>,
 
     pub world_from_camera: IsoTransform,
+
+    // -------------------------
+    // Optional projection-related things:
+    /// The projection transform of a child-object.
     pub intrinsics: Option<re_log_types::Intrinsics>,
 
     /// The child 2D space we project into.
@@ -27,12 +34,10 @@ impl SpaceCamera {
 
     /// Scene-space from Rerun view-space (RUB).
     pub fn world_from_view(&self) -> Option<IsoTransform> {
-        match user_view_from_rerun_view(self.view_space) {
-            Ok(user_view_from_rerun_view) => {
-                Some(self.world_from_camera * IsoTransform::from_quat(user_view_from_rerun_view))
-            }
+        match from_rub_quat(self.camera_coordinate_system) {
+            Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
-                re_log::warn_once!("Camera {:?}: {}", self.obj_path, err);
+                re_log::warn_once!("Camera {:?}: {}", self.camera_obj_path, err);
                 None
             }
         }
@@ -88,29 +93,30 @@ impl SpaceCamera {
     }
 }
 
-/// Rerun uses RUB view coordinates.
-fn user_view_from_rerun_view(system: Option<CoordinateSystem>) -> Result<Quat, String> {
+/// Rerun uses RUB (X=Right Y=Up Z=Back) view coordinates.
+fn from_rub_mat3(system: Option<CoordinateSystem>) -> Result<Mat3, String> {
     match system {
         None => Err("lacks a coordinate system".to_owned()),
         Some(CoordinateSystem::World(_)) => {
             Err("has a world coordinate system but needs a _relative_ coordinate system".to_owned())
         }
-        Some(CoordinateSystem::Relative(system)) => {
-            let mat3 = system.from_rub();
-            let det = mat3.determinant();
-            if det < -0.5 {
-                Err(
-                    "has a left-handed coordinate system - Rerun does not yet support this!"
-                        .to_owned(),
-                )
-            } else if det < 0.5 {
-                Err(format!(
-                    "has a degenerate coordinate system: {}",
-                    system.describe()
-                ))
-            } else {
-                Ok(Quat::from_mat3(&mat3))
-            }
-        }
+        Some(CoordinateSystem::Relative(system)) => Ok(system.from_rub()),
+    }
+}
+
+fn from_rub_quat(system: Option<CoordinateSystem>) -> Result<Quat, String> {
+    let mat3 = from_rub_mat3(system)?;
+    let system = system.unwrap(); // Safe, or `from_rub_mat3` would have returned an `Err`.
+
+    let det = mat3.determinant();
+    if det < -0.5 {
+        Err("has a left-handed coordinate system - Rerun does not yet support this!".to_owned())
+    } else if det < 0.5 {
+        Err(format!(
+            "has a degenerate coordinate system: {}",
+            system.describe()
+        ))
+    } else {
+        Ok(Quat::from_mat3(&mat3))
     }
 }
