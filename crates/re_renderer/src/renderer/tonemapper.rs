@@ -2,8 +2,12 @@ use crate::{
     context::SharedRendererData,
     include_file,
     resource_pools::{
-        bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, shader_module_pool::*, texture_pool::TextureHandle,
+        bind_group_layout_pool::*,
+        bind_group_pool::*,
+        pipeline_layout_pool::*,
+        render_pipeline_pool::*,
+        shader_module_pool::*,
+        texture_pool::{TextureHandle, TextureHandleStrong},
         WgpuResourcePools,
     },
 };
@@ -30,7 +34,7 @@ impl TonemapperDrawable {
     pub fn new(
         ctx: &mut RenderContext,
         device: &wgpu::Device,
-        hdr_target: TextureHandle,
+        hdr_target: &TextureHandleStrong,
     ) -> anyhow::Result<Self> {
         let pools = &mut ctx.resource_pools;
         let tonemapper = ctx.renderers.get_or_create::<_, Tonemapper>(
@@ -44,7 +48,7 @@ impl TonemapperDrawable {
                 device,
                 &BindGroupDesc {
                     label: "tonemapping".into(),
-                    entries: vec![BindGroupEntry::TextureView(hdr_target)],
+                    entries: vec![BindGroupEntry::TextureView(**hdr_target)],
                     layout: tonemapper.bind_group_layout,
                 },
                 &pools.bind_group_layouts,

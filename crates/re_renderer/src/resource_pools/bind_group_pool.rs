@@ -10,7 +10,7 @@ use super::{
     dynamic_resource_pool::DynamicResourcePool,
     resource::*,
     sampler_pool::{SamplerHandle, SamplerPool},
-    texture_pool::{TextureHandle, TexturePool},
+    texture_pool::{TextureHandle, TextureHandleStrong, TexturePool},
 };
 
 slotmap::new_key_type! { pub struct BindGroupHandle; }
@@ -19,6 +19,7 @@ slotmap::new_key_type! { pub struct BindGroupHandle; }
 pub struct StrongBindGroupHandle {
     handle: Arc<BindGroupHandle>,
     _owned_buffers: SmallVec<[StrongBufferHandle; 4]>,
+    _owned_textures: SmallVec<[TextureHandleStrong; 4]>,
 }
 
 impl std::ops::Deref for StrongBindGroupHandle {
@@ -108,7 +109,7 @@ impl BindGroupPool {
                         resource: match entry {
                             BindGroupEntry::TextureView(handle) => {
                                 wgpu::BindingResource::TextureView(
-                                    &textures.get(*handle).unwrap().default_view,
+                                    &textures.get_resource_weak(*handle).unwrap().default_view,
                                 )
                             }
                             BindGroupEntry::Buffer {
@@ -153,9 +154,22 @@ impl BindGroupPool {
             })
             .collect();
 
+        let owned_textures = desc
+            .entries
+            .iter()
+            .filter_map(|e| {
+                if let BindGroupEntry::TextureView(handle) = e {
+                    Some(textures.get_strong_handle(*handle).clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         Ok(StrongBindGroupHandle {
             handle,
             _owned_buffers: owned_buffers,
+            _owned_textures: owned_textures,
         })
     }
 

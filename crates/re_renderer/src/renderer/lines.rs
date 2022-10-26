@@ -222,7 +222,7 @@ impl LineDrawable {
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawable!
-        let position_data_texture = ctx.resource_pools.textures.request(
+        let position_data_texture = ctx.resource_pools.textures.alloc(
             device,
             &TextureDesc {
                 label: "line position data".into(),
@@ -237,8 +237,8 @@ impl LineDrawable {
                 format: wgpu::TextureFormat::Rgba32Float,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
-        );
-        let line_strip_texture = ctx.resource_pools.textures.request(
+        )?;
+        let line_strip_texture = ctx.resource_pools.textures.alloc(
             device,
             &TextureDesc {
                 label: "line strips".into(),
@@ -253,7 +253,7 @@ impl LineDrawable {
                 format: wgpu::TextureFormat::Rg32Uint,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
-        );
+        )?;
 
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
@@ -292,7 +292,7 @@ impl LineDrawable {
                 texture: &ctx
                     .resource_pools
                     .textures
-                    .get(position_data_texture)?
+                    .get_resource(&position_data_texture)?
                     .texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
@@ -314,7 +314,11 @@ impl LineDrawable {
         );
         queue.write_texture(
             wgpu::ImageCopyTexture {
-                texture: &ctx.resource_pools.textures.get(line_strip_texture)?.texture,
+                texture: &ctx
+                    .resource_pools
+                    .textures
+                    .get_resource(&line_strip_texture)?
+                    .texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -340,8 +344,8 @@ impl LineDrawable {
                 &BindGroupDesc {
                     label: "line drawable".into(),
                     entries: vec![
-                        BindGroupEntry::TextureView(position_data_texture),
-                        BindGroupEntry::TextureView(line_strip_texture),
+                        BindGroupEntry::TextureView(*position_data_texture),
+                        BindGroupEntry::TextureView(*line_strip_texture),
                     ],
                     layout: line_renderer.bind_group_layout,
                 },

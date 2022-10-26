@@ -32,8 +32,8 @@ struct ViewTargetSetup {
     tonemapping_drawable: TonemapperDrawable,
 
     bind_group_0: StrongBindGroupHandle,
-    hdr_render_target: TextureHandle,
-    depth_buffer: TextureHandle,
+    hdr_render_target: TextureHandleStrong,
+    depth_buffer: TextureHandleStrong,
 }
 
 pub type SharedViewBuilder = Arc<RwLock<ViewBuilder>>;
@@ -69,7 +69,7 @@ impl ViewBuilder {
     ) -> anyhow::Result<&mut Self> {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
         // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
-        let hdr_render_target = ctx.resource_pools.textures.request(
+        let hdr_render_target = ctx.resource_pools.textures.alloc(
             device,
             &render_target_2d_desc(
                 Self::FORMAT_HDR,
@@ -77,8 +77,8 @@ impl ViewBuilder {
                 config.resolution_in_pixel[1],
                 1,
             ),
-        );
-        let depth_buffer = ctx.resource_pools.textures.request(
+        )?;
+        let depth_buffer = ctx.resource_pools.textures.alloc(
             device,
             &render_target_2d_desc(
                 Self::FORMAT_DEPTH,
@@ -86,9 +86,9 @@ impl ViewBuilder {
                 config.resolution_in_pixel[1],
                 1,
             ),
-        );
+        )?;
 
-        let tonemapping_drawable = TonemapperDrawable::new(ctx, device, hdr_render_target)?;
+        let tonemapping_drawable = TonemapperDrawable::new(ctx, device, &hdr_render_target)?;
 
         // Setup frame uniform buffer
         let frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
@@ -189,12 +189,12 @@ impl ViewBuilder {
         let color = ctx
             .resource_pools
             .textures
-            .get(setup.hdr_render_target)
+            .get_resource(&setup.hdr_render_target)
             .context("hdr render target")?;
         let depth = ctx
             .resource_pools
             .textures
-            .get(setup.depth_buffer)
+            .get_resource(&setup.depth_buffer)
             .context("depth buffer")?;
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

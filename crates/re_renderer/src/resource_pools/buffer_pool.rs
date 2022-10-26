@@ -69,10 +69,7 @@ impl BufferPool {
         self.pool.get_resource(handle)
     }
 
-    pub(super) fn register_resource_usage(&mut self, handle: BufferHandle) {
-        let _ = self.pool.get_resource(handle);
-    }
-
+    /// Internal method to retrieve a strong handle from a weak handle (used by [`BindGroupPool`])
     pub(super) fn get_strong_handle(&self, handle: BufferHandle) -> &StrongBufferHandle {
         self.pool.get_strong_handle(handle)
     }

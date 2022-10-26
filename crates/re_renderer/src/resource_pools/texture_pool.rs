@@ -2,9 +2,10 @@ use std::{hash::Hash, sync::atomic::AtomicU64};
 
 use crate::debug_label::DebugLabel;
 
-use super::{resource::*, static_resource_pool::*};
+use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
 
 slotmap::new_key_type! { pub struct TextureHandle; }
+pub type TextureHandleStrong = std::sync::Arc<TextureHandle>;
 
 pub(crate) struct Texture {
     last_frame_used: AtomicU64,
@@ -61,32 +62,43 @@ impl TextureDesc {
 
 #[derive(Default)]
 pub(crate) struct TexturePool {
-    pool: StaticResourcePool<TextureHandle, TextureDesc, Texture>,
+    pool: DynamicResourcePool<TextureHandle, TextureDesc, Texture>,
 }
 
 impl TexturePool {
-    pub fn request(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> TextureHandle {
-        self.pool.get_or_create(desc, |desc| {
+    pub fn alloc(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &TextureDesc,
+    ) -> anyhow::Result<TextureHandleStrong> {
+        self.pool.alloc(desc, |desc| {
             let texture = device.create_texture(&desc.to_wgpu_desc());
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            Texture {
+            Ok(Texture {
                 last_frame_used: AtomicU64::new(0),
                 texture,
                 default_view: view,
-            }
+            })
         })
     }
 
     pub fn frame_maintenance(&mut self, frame_index: u64) {
-        // TODO:
+        self.pool.frame_maintenance(frame_index);
     }
 
-    pub fn get(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
+    /// Takes strong buffer handle to ensure the user is still holding on to the buffer.
+    pub fn get_resource(&self, handle: &TextureHandleStrong) -> Result<&Texture, PoolError> {
+        self.pool.get_resource(**handle)
+    }
+
+    /// Internal method to retrieve a resource with a weak handle (used by [`BindGroupPool`])
+    pub(super) fn get_resource_weak(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    pub(super) fn register_resource_usage(&mut self, handle: TextureHandle) {
-        let _ = self.get(handle);
+    /// Internal method to retrieve a strong handle from a weak handle (used by [`BindGroupPool`])
+    pub(super) fn get_strong_handle(&self, handle: TextureHandle) -> &TextureHandleStrong {
+        self.pool.get_strong_handle(handle)
     }
 }
 
