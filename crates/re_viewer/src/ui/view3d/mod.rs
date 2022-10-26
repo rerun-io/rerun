@@ -515,17 +515,15 @@ fn paint_view(
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
-                        let mut resolver = re_renderer::get_resolver();
                         let ctx = paint_callback_resources.get_mut().unwrap();
-                        let triangle = TestTriangleDrawable::new(ctx, device, &mut resolver);
-                        let skybox = GenericSkyboxDrawable::new(ctx, device, &mut resolver);
+                        let triangle = TestTriangleDrawable::new(ctx, device);
+                        let skybox = GenericSkyboxDrawable::new(ctx, device);
                         view_builder_prepare
                             .write()
                             .setup_view(
                                 ctx,
                                 device,
                                 queue,
-                                &mut resolver,
                                 &TargetConfiguration {
                                     resolution_in_pixel,
 

@@ -19,7 +19,8 @@ pub(crate) use self::file_system::{MemFileSystem, OsFileSystem};
 
 mod file_resolver;
 pub use self::file_resolver::{
-    new_recommended as get_resolver, FileResolver, ImportClause, SearchPath,
+    new_recommended as new_recommended_file_resolver, FileResolver, ImportClause,
+    RecommendedFileResolver, SearchPath,
 };
 
 mod file_server;

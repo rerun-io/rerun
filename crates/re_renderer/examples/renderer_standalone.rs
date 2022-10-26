@@ -60,13 +60,11 @@ fn draw_view(
         target_identifier: 0,
     };
 
-    let mut resolver = re_renderer::get_resolver();
-
-    let triangle = TestTriangleDrawable::new(re_ctx, device, &mut resolver);
-    let skybox = GenericSkyboxDrawable::new(re_ctx, device, &mut resolver);
+    let triangle = TestTriangleDrawable::new(re_ctx, device);
+    let skybox = GenericSkyboxDrawable::new(re_ctx, device);
 
     view_builder
-        .setup_view(re_ctx, device, queue, &mut resolver, &target_cfg)
+        .setup_view(re_ctx, device, queue, &target_cfg)
         .unwrap()
         .queue_draw(&triangle)
         .queue_draw(&skybox)

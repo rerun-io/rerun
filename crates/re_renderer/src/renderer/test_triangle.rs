@@ -21,16 +21,12 @@ impl Drawable for TestTriangleDrawable {
 }
 
 impl TestTriangleDrawable {
-    pub fn new<Fs: FileSystem>(
-        ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
-    ) -> Self {
+    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
         ctx.renderers.get_or_create::<_, TestTriangle>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
             device,
-            resolver,
+            &mut ctx.resolver,
         );
 
         TestTriangleDrawable {}

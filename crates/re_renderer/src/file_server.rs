@@ -10,9 +10,14 @@ macro_rules! include_file {
     ($path:expr $(,)?) => {{
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
         {
-            let mut resolver = $crate::get_resolver();
+            let mut resolver = $crate::new_recommended_file_resolver();
 
-            // Will be canonicalized automatically by `FileServer::watch()`.
+            // The path returned by the `file!()` macro is always hermetic, which is actually
+            // an issue for us in this case since we allow non-hermetic imports in debug
+            // builds (we encourage them, even!).
+            //
+            // Thus, we need to do an actual OS canonicalization here, but it turns out that
+            // `FileServer::watch()` already does it for us, so we're covered.
             let path = ::std::path::Path::new(file!())
                 .parent()
                 .unwrap()
@@ -24,7 +29,8 @@ macro_rules! include_file {
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
         {
             // Make sure `workspace_shaders::init()` is called at least once, which will
-            // register all shaders defined in the workspace into the run-time memory filesystem.
+            // register all shaders defined in the workspace into the run-time in-memory
+            // filesystem.
             $crate::workspace_shaders::init();
 
             let path = ::std::path::Path::new(file!())
@@ -32,38 +38,12 @@ macro_rules! include_file {
                 .unwrap()
                 .join($path);
 
-            // Coerce the path into a standardized form, which mean canonicalizing it if we can,
-            // or simply lexicographically normalizing otherwise.
+            // The path returned by the `file!()` macro is always hermetic, and we pre-load
+            // our run-time virtual filesystem using the exact same hermetic prefix.
             //
-            // This is mandatory to get right, otherwise we couldn't compare paths at
-            // runtime and everything would crumble!
-            let path = if cfg!(not(target_arch = "wasm32")) {
-                // Canonicalize the path in non-wasm release builds, as we do have an actual
-                // filesystem to rely on.
-                use anyhow::Context as _;
-                ::std::fs::canonicalize(&path)
-                    .with_context(|| format!("failed to canonicalize path at {path:?}"))
-                    .unwrap()
-            } else {
-                // Best we can do on wasm is lexicographically normalize the path.
-                clean_path::clean(&path)
-            };
-
-            if cfg!(not(target_arch = "wasm32")) {
-                // On native, we want to make sure to strip the local workspace prefix from
-                // our paths, otherwise they won't make any sense at run-time, since the
-                // shader paths embedded into the binary are hermetic.
-                let strip_prefix = ::std::path::Path::new(env!("CARGO_WORKSPACE_DIR"))
-                    .parent()
-                    .unwrap();
-                path.strip_prefix(strip_prefix).unwrap().to_owned()
-            } else {
-                // On wasm, the build system already takes care of hermeticism for us: all
-                // paths have the local workspace prefix pre-stripped.
-                // They even go a bit too far in fact: they remove the root folder from
-                // the path too. We need to bring that back.
-                ::std::path::Path::new("rerun").join(path)
-            }
+            // Therefore, the in-memory filesystem will actually be able to find this path,
+            // and canonicalize it.
+            $crate::get_filesystem().canonicalize(&path).unwrap()
         }
     }};
 }
@@ -181,14 +161,7 @@ mod file_server_impl {
 
                 for path in imports {
                     self.watcher
-                        .watch(
-                            path.as_ref(),
-                            if recursive {
-                                RecursiveMode::Recursive
-                            } else {
-                                RecursiveMode::NonRecursive
-                            },
-                        )
+                        .watch(path.as_ref(), RecursiveMode::NonRecursive)
                         .with_context(|| format!("couldn't watch file at {path:?}"))?;
                 }
             }

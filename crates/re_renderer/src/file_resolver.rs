@@ -38,9 +38,9 @@
 //!    2.1. If this leads to an existing file, we're done.
 //!    2.2. Otherwise, we go to 3.
 //!
-//! 3. Finally, we try to interpret the imported path as relative to all paths in search path,
-//!    in their prefined priority order, similar to e.g. how the standard `$PATH` environment
-//!    variable behaves.
+//! 3. Finally, we try to interpret the imported path as relative to all the directories
+//!    present in the search path, in their prefined priority order, similar to e.g. how
+//!    the standard `$PATH` environment variable behaves.
 //!    3.1. If this leads to an existing file, we're done.
 //!    3.2. Otherwise, resolution failed: throw an error.
 //!
@@ -49,6 +49,37 @@
 //! Interpolation is done in the simplest way possible: the entire line containing the import
 //! clause is overwritten with the contents of the imported file.
 //! This is of course a recursive process.
+//!
+//! #### A word about `#pragma` semantics
+//!
+//! Imports can behave in two different ways: `#pragma once` and `#pragma many`.
+//!
+//! `#pragma once` means that each unique #import clause is only be resolved once even if it
+//! used several times, e.g. assuming that `a.txt` contains the string `"xyz"` then:
+//! ```raw
+//! #import <a.txt>
+//! #import <a.txt>
+//! ```
+//! becomes
+//! ```raw
+//! xyz
+//! ```
+//!
+//! `#pragma many` on the other hand will resolve the clause as many times as it is used:
+//! ```raw
+//! #import <a.txt>
+//! #import <a.txt>
+//! ```
+//! becomes
+//! ```raw
+//! xyz
+//! xyz
+//! ```
+//!
+//! Both have their use cases and drawbacks, there's no "right solution".
+//!
+//! At the moment, our import system only provides support for `#pragma many` semantics.
+//! We will most likely add support for `#pragma once` at some point.
 //!
 //! ## Hot-reloading: platform specifics
 //!
@@ -129,11 +160,11 @@
 //! from the original build environments into the final binary (think: paths, timestamps, etc).
 //! We need to the build to be _hermetic_.
 //!
-//! Rust's wasm build toolchain takes care of that to some extent, and we need to match that
+//! Rust's `file!()` macro already takes care of that to some extent, and we need to match that
 //! behaviour on our side (e.g. by not leaking local paths), otherwise we won't be able to
 //! compare paths at runtime.
 //!
-//! Think of it as `chrooting` into our Cargo workspace :)
+//! Think of it as `chroot`ing into our Cargo workspace :)
 //!
 //! In our case, there's an extra invariant on top on that: we must never embed shaders from
 //! outside the workspace into our release artifacts!
@@ -164,7 +195,7 @@ use crate::FileSystem;
 /// This is akin to the standard `$PATH` environment variable.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SearchPath {
-    /// All paths currently in the search path, in decreasing order of priority.
+    /// All directories currently in the search path, in decreasing order of priority.
     /// They are guaranteed to be normalized, but not canonicalized.
     dirs: Vec<PathBuf>,
 }
@@ -181,19 +212,19 @@ impl SearchPath {
     /// Push a path to search path.
     ///
     /// The path is normalized first, but not canonicalized.
-    pub fn push(&mut self, path: impl AsRef<Path>) {
-        self.dirs.push(path.as_ref().clean());
+    pub fn push(&mut self, dir: impl AsRef<Path>) {
+        self.dirs.push(dir.as_ref().clean());
     }
 
     /// Insert a path into search path.
     ///
     /// The path is normalized first, but not canonicalized.
-    pub fn insert(&mut self, index: usize, path: impl AsRef<Path>) {
-        self.dirs.insert(index, path.as_ref().clean());
+    pub fn insert(&mut self, index: usize, dir: impl AsRef<Path>) {
+        self.dirs.insert(index, dir.as_ref().clean());
     }
 
-    /// Returns an iterator over the paths in the search path, in decreasing order of
-    /// priority.
+    /// Returns an iterator over the directories in the search path, in decreasing
+    /// order of priority.
     pub fn iter(&self) -> impl Iterator<Item = &Path> {
         self.dirs.iter().map(|p| p.as_path())
     }
@@ -426,15 +457,16 @@ mod tests_import_clause {
 
 // ---
 
-/// Returns the recommended `FileResolver` for the current platform/target.
+/// The recommended `FileResolver` type for the current platform/target.
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
-pub fn new_recommended() -> FileResolver<crate::OsFileSystem> {
-    FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
-}
+pub type RecommendedFileResolver = FileResolver<crate::OsFileSystem>;
+
+/// The recommended `FileResolver` type for the current platform/target.
+#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
+pub type RecommendedFileResolver = FileResolver<&'static crate::MemFileSystem>;
 
 /// Returns the recommended `FileResolver` for the current platform/target.
-#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
-pub fn new_recommended() -> FileResolver<&'static crate::MemFileSystem> {
+pub fn new_recommended() -> RecommendedFileResolver {
     FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
 }
 
@@ -450,7 +482,8 @@ struct InterpolatedFile {
 /// A `FileResolver` lazily caches all resolved and interpolated files, and keeps track of
 /// those for the entire duration of its lifetime.
 /// This means you should never keep a `FileResolver` alive across frames in a hot-reloading
-/// setup!
+/// setup (...unless you `clear()` it as needed)!
+// TODO(cmc): support "#pragma once".
 #[derive(Default)]
 pub struct FileResolver<Fs> {
     /// A handle to the filesystem being used.
@@ -481,6 +514,13 @@ impl<Fs: FileSystem> FileResolver<Fs> {
             search_path,
             files: Default::default(),
         }
+    }
+
+    /// Wipes out the internal cache.
+    ///
+    /// Useful when keeping a long-lived `FileResolver` around.
+    pub fn clear(&mut self) {
+        self.files.clear();
     }
 }
 
@@ -545,7 +585,9 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                 "import cycle detected: {path_stack:?}"
             );
 
-            if !this.files.contains_key(&path) {
+            let contents = if let Some(contents) = &this.files.get(&path).map(|f| &f.contents) {
+                (*contents).to_string()
+            } else {
                 let contents = this.fs.read_to_string(&path)?;
 
                 // Using implicit Vec<Result> -> Result<Vec> collection.
@@ -582,17 +624,14 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                     },
                 );
 
-                path_stack.pop().unwrap();
-                visited.remove(&path);
-
-                return Ok(contents);
-            }
+                contents
+            };
 
             // Cycle detection
             path_stack.pop().unwrap();
             visited.remove(&path);
 
-            Ok(this.files.get(&path).unwrap().contents.clone())
+            Ok(contents)
         }
 
         let mut path_stack = Vec::new();
@@ -624,9 +663,9 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         // If the imported path isn't relative to the importer's, then maybe it is relative
         // with regards to one of the search paths: let's try there.
         for dir in self.search_path.iter() {
-            let path = dir.join(&path).clean();
-            if self.fs.exists(&path) {
-                return path.into();
+            let dir = dir.join(&path).clean();
+            if self.fs.exists(&dir) {
+                return dir.into();
             }
         }
 

@@ -27,18 +27,13 @@ impl Drawable for TonemapperDrawable {
 }
 
 impl TonemapperDrawable {
-    pub fn new<Fs: FileSystem>(
-        ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
-        hdr_target: TextureHandle,
-    ) -> Self {
+    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device, hdr_target: TextureHandle) -> Self {
         let pools = &mut ctx.resource_pools;
         let tonemapper = ctx.renderers.get_or_create::<_, Tonemapper>(
             &ctx.shared_renderer_data,
             pools,
             device,
-            resolver,
+            &mut ctx.resolver,
         );
         TonemapperDrawable {
             hdr_target_bind_group: pools.bind_groups.request(

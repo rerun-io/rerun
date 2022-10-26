@@ -11,7 +11,6 @@ use crate::{
         buffer_pool::{BufferDesc, BufferHandle},
         texture_pool::*,
     },
-    FileResolver, FileSystem,
 };
 
 type DrawFn = dyn for<'a, 'b> Fn(&'b RenderContext, &'a mut wgpu::RenderPass<'b>) -> anyhow::Result<()>
@@ -76,12 +75,11 @@ impl ViewBuilder {
         Arc::new(RwLock::new(ViewBuilder::new()))
     }
 
-    pub fn setup_view<Fs: FileSystem>(
+    pub fn setup_view(
         &mut self,
         ctx: &mut RenderContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        resolver: &mut FileResolver<Fs>,
         config: &TargetConfiguration,
     ) -> anyhow::Result<&mut Self> {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
@@ -105,8 +103,7 @@ impl ViewBuilder {
             ),
         );
 
-        self.tonemapping_draw_data =
-            TonemapperDrawable::new(ctx, device, resolver, self.hdr_render_target);
+        self.tonemapping_draw_data = TonemapperDrawable::new(ctx, device, self.hdr_render_target);
 
         // Setup frame uniform buffer
         {

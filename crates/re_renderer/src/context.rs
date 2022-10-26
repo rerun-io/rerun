@@ -3,7 +3,7 @@ use type_map::concurrent::{self, TypeMap};
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
-use crate::{FileResolver, FileServer, FileSystem};
+use crate::{FileResolver, FileServer, FileSystem, RecommendedFileResolver};
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
@@ -11,6 +11,7 @@ pub struct RenderContext {
     pub(crate) shared_renderer_data: SharedRendererData,
     pub(crate) renderers: Renderers,
     pub(crate) resource_pools: WgpuResourcePools,
+    pub(crate) resolver: RecommendedFileResolver,
 
     // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
@@ -74,17 +75,20 @@ impl RenderContext {
             },
             resource_pools,
 
+            resolver: crate::new_recommended_file_resolver(),
+
             frame_index: 0,
         }
     }
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
-        let mut resolver = crate::get_resolver(); // do _NOT_ cache me!
+        // Clear the resolver cache before we start reloading shaders!
+        self.resolver.clear();
 
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
         // Always an empty set in release builds.
-        let modified_paths = FileServer::get_mut(|fs| fs.collect(&mut resolver));
+        let modified_paths = FileServer::get_mut(|fs| fs.collect(&mut self.resolver));
         if !modified_paths.is_empty() {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
@@ -112,7 +116,7 @@ impl RenderContext {
 
             shader_modules.frame_maintenance(
                 device,
-                &mut resolver,
+                &mut self.resolver,
                 self.frame_index,
                 &modified_paths,
             );

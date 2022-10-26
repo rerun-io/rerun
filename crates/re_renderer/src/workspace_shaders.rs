@@ -12,7 +12,7 @@ pub fn init() {
     let fs = crate::MemFileSystem::get();
 
     {
-        let virtpath = ::std::path::Path::new("rerun/crates/re_renderer/shader/frame_uniform.wgsl");
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/frame_uniform.wgsl");
         fs.create_file(
             &virtpath,
             include_str!("../shader/frame_uniform.wgsl").into(),
@@ -21,8 +21,7 @@ pub fn init() {
     }
 
     {
-        let virtpath =
-            ::std::path::Path::new("rerun/crates/re_renderer/shader/generic_skybox.wgsl");
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/generic_skybox.wgsl");
         fs.create_file(
             &virtpath,
             include_str!("../shader/generic_skybox.wgsl").into(),
@@ -31,7 +30,7 @@ pub fn init() {
     }
 
     {
-        let virtpath = ::std::path::Path::new("rerun/crates/re_renderer/shader/test_triangle.wgsl");
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/test_triangle.wgsl");
         fs.create_file(
             &virtpath,
             include_str!("../shader/test_triangle.wgsl").into(),
@@ -40,8 +39,7 @@ pub fn init() {
     }
 
     {
-        let virtpath =
-            ::std::path::Path::new("rerun/crates/re_renderer/shader/screen_triangle.wgsl");
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/screen_triangle.wgsl");
         fs.create_file(
             &virtpath,
             include_str!("../shader/screen_triangle.wgsl").into(),
@@ -50,7 +48,7 @@ pub fn init() {
     }
 
     {
-        let virtpath = ::std::path::Path::new("rerun/crates/re_renderer/shader/tonemap.wgsl");
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/tonemap.wgsl");
         fs.create_file(&virtpath, include_str!("../shader/tonemap.wgsl").into())
             .unwrap();
     }
