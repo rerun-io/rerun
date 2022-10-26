@@ -22,10 +22,10 @@ WIDTH_H: Final = 0.7
 
 
 def log_clock() -> None:
-    def rotate(theta: float, len: float) -> Tuple[float, float, float]:
+    def rotate(angle: float, len: float) -> Tuple[float, float, float]:
         return (
-            math.cos(theta) - len * math.sin(theta),
-            math.sin(theta) + len * math.cos(theta),
+            -math.cos(angle) + len * math.sin(angle),
+            math.sin(angle) + len * math.cos(angle),
             0.0,
         )
 
