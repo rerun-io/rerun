@@ -1,4 +1,4 @@
-#import <./frame_uniform.wgsl>
+#import <./global_bindings.wgsl>
 
 struct VertexOut {
     @location(0) color: vec4<f32>,

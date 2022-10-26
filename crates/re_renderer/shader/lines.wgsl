@@ -1,45 +1,11 @@
-struct FrameUniformBuffer {
-    view_from_world: mat4x3<f32>,
-    projection_from_view: mat4x4<f32>,
-    projection_from_world: mat4x4<f32>,
-
-    camera_position: vec3<f32>,
-    top_right_screen_corner_in_view: vec2<f32>,
-};
-@group(0) @binding(0)
-var<uniform> frame: FrameUniformBuffer;
+#import <./global_bindings.wgsl>
+#import <./utils/srgb.wgsl>
+#import <./utils/encoding.wgsl>
 
 @group(1) @binding(0)
 var line_strip_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var position_data_texture: texture_2d<u32>;
-
-
-// ---------------------------------------------------------------------------
-// TODO(andreas): Utilities that belong to a shared header
-
-// workaround for https://github.com/gfx-rs/naga/issues/2006
-fn unpack4x8unorm_workaround(v: u32) -> vec4<f32> {
-    var shifted = vec4<u32>(v, v >> 8u, v >> 16u, v >> 24u);
-    var bytes = shifted & vec4<u32>(0xFFu);
-    return vec4<f32>(bytes) * (1.0 / 255.0);
-}
-
-// Converts a color from 0-1 sRGB to 0-1 linear
-fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
-    let cutoff = ceil(srgb - 0.04045);
-    let under = srgb / 12.92;
-    let over = pow((srgb + 0.055) / 1.055,  vec3<f32>(2.4));
-    return mix(under, over, cutoff);
-}
-
-// Converts a color from 0-1 sRGB to 0-1 linear, leaves alpha untouched
-fn linear_from_srgba(srgb_a: vec4<f32>) -> vec4<f32> {
-    return vec4<f32>(linear_from_srgb(srgb_a.rgb), srgb_a.a);
-}
-
-// ---------------------------------------------------------------------------
-
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
@@ -101,7 +67,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var pos_data_current = read_position_data(pos_data_idx);
     var pos_data_next = read_position_data(pos_data_idx + 1);
 
-    // Is this a degenerated quad? Collapse it!
+    // Are we at the end of a previous and start of a new line strip? If so, collapse the quad between them.
     if is_at_quad_end == 1 && pos_data_before.strip_index != pos_data_current.strip_index {
         pos_data_current = pos_data_before;
     }

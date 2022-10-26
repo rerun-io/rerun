@@ -12,19 +12,19 @@ pub fn init() {
     let fs = crate::MemFileSystem::get();
 
     {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/frame_uniform.wgsl");
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/generic_skybox.wgsl");
         fs.create_file(
             &virtpath,
-            include_str!("../shader/frame_uniform.wgsl").into(),
+            include_str!("../shader/generic_skybox.wgsl").into(),
         )
         .unwrap();
     }
 
     {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/generic_skybox.wgsl");
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/global_bindings.wgsl");
         fs.create_file(
             &virtpath,
-            include_str!("../shader/generic_skybox.wgsl").into(),
+            include_str!("../shader/global_bindings.wgsl").into(),
         )
         .unwrap();
     }
@@ -56,6 +56,27 @@ pub fn init() {
     {
         let virtpath = ::std::path::Path::new("crates/re_renderer/shader/tonemap.wgsl");
         fs.create_file(&virtpath, include_str!("../shader/tonemap.wgsl").into())
+            .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/typedefs.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/typedefs.wgsl").into())
+            .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/utils/encoding.wgsl");
+        fs.create_file(
+            &virtpath,
+            include_str!("../shader/utils/encoding.wgsl").into(),
+        )
+        .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/utils/srgb.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/utils/srgb.wgsl").into())
             .unwrap();
     }
 }

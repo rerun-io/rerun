@@ -1,4 +1,4 @@
-#import <./frame_uniform.wgsl>
+#import <./global_bindings.wgsl>
 
 fn camera_dir_from_screenuv(texcoord: vec2<f32>) -> vec3<f32> {
     let x = texcoord.x * 2.0 - 1.0;
