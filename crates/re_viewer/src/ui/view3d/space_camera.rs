@@ -12,7 +12,7 @@ pub struct SpaceCamera {
     /// The coordinate system of the camera.
     pub view_space: Option<CoordinateSystem>,
 
-    pub extrinsics: re_log_types::Extrinsics,
+    pub world_from_camera: IsoTransform,
     pub intrinsics: Option<re_log_types::Intrinsics>,
 
     /// The child 2D space we project into.
@@ -20,14 +20,16 @@ pub struct SpaceCamera {
 }
 
 impl SpaceCamera {
+    /// Where in scene-space is the camera origin?
+    pub fn position(&self) -> Vec3 {
+        self.world_from_camera.translation()
+    }
+
     /// Scene-space from Rerun view-space (RUB).
     pub fn world_from_view(&self) -> Option<IsoTransform> {
         match user_view_from_rerun_view(self.view_space) {
             Ok(user_view_from_rerun_view) => {
-                let rotation = Quat::from_slice(&self.extrinsics.rotation);
-                let translation = Vec3::from_slice(&self.extrinsics.position);
-                let extrinsics = IsoTransform::from_rotation_translation(rotation, translation);
-                Some(extrinsics * IsoTransform::from_quat(user_view_from_rerun_view))
+                Some(self.world_from_camera * IsoTransform::from_quat(user_view_from_rerun_view))
             }
             Err(err) => {
                 re_log::warn_once!("Camera {:?}: {}", self.obj_path, err);
@@ -78,7 +80,7 @@ impl SpaceCamera {
     /// Unproject a 2D image coordinate as a ray in 3D space
     pub fn unproject_as_ray(&self, pos2d: Vec2) -> Option<Ray3> {
         self.world_from_image().map(|world_from_pixel| {
-            let origin = Vec3::from_slice(&self.extrinsics.position);
+            let origin = self.position();
             let stop = world_from_pixel.transform_point3(pos2d.extend(1.0));
             let dir = (stop - origin).normalize();
             Ray3::from_origin_dir(origin, dir)

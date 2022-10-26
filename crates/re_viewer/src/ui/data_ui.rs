@@ -398,7 +398,7 @@ pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Respon
 fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
     match transform {
         Transform::Unknown => ui.label("Unknown"),
-        Transform::Extrinsics(extrinsics) => ui_extrinsics(ui, extrinsics),
+        Transform::Rigid3(rigid3) => ui_rigid3(ui, rigid3),
         Transform::Intrinsics(intrinsics) => ui_intrinsics(ui, intrinsics),
     }
 }
@@ -407,13 +407,16 @@ fn ui_coordinate_system(ui: &mut egui::Ui, system: &CoordinateSystem) -> egui::R
     ui.label(system.describe())
 }
 
-fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
-    let Extrinsics { rotation, position } = extrinsics;
+fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
+    let Rigid3 {
+        rotation,
+        translation,
+    } = rigid3;
 
     ui.vertical(|ui| {
-        ui.label("Extrinsics");
-        ui.indent("extrinsics", |ui| {
-            egui::Grid::new("extrinsics")
+        ui.label("Rigid3");
+        ui.indent("rigid3", |ui| {
+            egui::Grid::new("rigid3")
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
@@ -421,8 +424,8 @@ fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
                     ui.monospace(format!("{rotation:?}"));
                     ui.end_row();
 
-                    ui.label("position");
-                    ui.monospace(format!("{position:?}"));
+                    ui.label("translation");
+                    ui.monospace(format!("{translation:?}"));
                     ui.end_row();
                 });
         });

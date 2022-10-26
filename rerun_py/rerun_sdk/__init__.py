@@ -431,32 +431,30 @@ def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
     rerun_rs.log_unknown_transform(obj_path, timeless=timeless)
 
 
-def log_extrinsics(
+def log_rigid3_transform(
     obj_path: str,
     rotation_q: npt.ArrayLike,
-    position: npt.ArrayLike,
+    translation: npt.ArrayLike,
     timeless: bool = False,
 ) -> None:
     """
-    Log camera extrinsics.
-
-    This logs a transform between this object and the parent object.
+    Log the rigid transform of one object to its parent, also known as pose (e.g. camera extrinsics).
 
     Example
     -------
     ```
-    rerun.log_extrinsics("3d/camera", …)
+    rerun.log_rigid3_transform("3d/camera", …)
     rerun.log_intrinsics("3d/camera/image", …)
     ```
 
-    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
-    `position`: Array with [x, y, z] position of the camera in world space.
+    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from object to parent space
+    `translation`: Array with [x, y, z] position of the object in parent space.
 
     """
-    rerun_rs.log_extrinsics(
+    rerun_rs.log_rigid3_transform(
         obj_path,
         rotation_q=_to_sequence(rotation_q),
-        position=_to_sequence(position),
+        translation=_to_sequence(translation),
         timeless=timeless,
     )
 
@@ -472,7 +470,7 @@ def log_intrinsics(
     Example
     -------
     ```
-    rerun.log_extrinsics("3d/camera", …)
+    rerun.log_rigid3_transform("3d/camera", …)
     rerun.log_intrinsics("3d/camera/image", …)
     ```
 
@@ -516,7 +514,7 @@ def log_coordinate_system(obj_path: str, xyz: str, timeless: bool = False) -> No
     -------
     ```
     rerun.log_coordinate_system("3d/camera", "RUB")
-    rerun.log_extrinsics("3d/camera", …)
+    rerun.log_rigid3_transform("3d/camera", …)
     ```
     """
     rerun_rs.log_coordinate_system(obj_path, xyz, timeless)

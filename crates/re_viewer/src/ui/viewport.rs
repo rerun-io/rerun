@@ -566,7 +566,7 @@ impl ViewState {
     }
 }
 
-/// Look for camera extrinsics and intrinsics in the transform hierarchy
+/// Look for camera transform and intrinsics in the transform hierarchy
 /// and return them as cameras.
 fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera> {
     crate::profile_function!();
@@ -574,7 +574,13 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
     let mut space_cameras = vec![];
 
     for (child_path, child_transform) in &space_info.child_spaces {
-        if let Transform::Extrinsics(extrinsics) = child_transform {
+        if let Transform::Rigid3(world_from_camera) = child_transform {
+            let world_from_camera = {
+                let rotation = glam::Quat::from_slice(&world_from_camera.rotation);
+                let translation = glam::Vec3::from_slice(&world_from_camera.translation);
+                macaw::IsoTransform::from_rotation_translation(rotation, translation)
+            };
+
             let view_space = spaces_info
                 .spaces
                 .get(child_path)
@@ -589,7 +595,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                             obj_path: child_path.clone(),
                             instance_index_hash: re_log_types::IndexHash::NONE,
                             view_space,
-                            extrinsics: *extrinsics,
+                            world_from_camera,
                             intrinsics: Some(*intrinsics),
                             target_space: Some(grand_child_path.clone()),
                         });
@@ -603,7 +609,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                     obj_path: child_path.clone(),
                     instance_index_hash: re_log_types::IndexHash::NONE,
                     view_space,
-                    extrinsics: *extrinsics,
+                    world_from_camera,
                     intrinsics: None,
                     target_space: None,
                 });

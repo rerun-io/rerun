@@ -103,7 +103,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(log_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
-    m.add_function(wrap_pyfunction!(log_extrinsics, m)?)?;
+    m.add_function(wrap_pyfunction!(log_rigid3_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_coordinate_system, m)?)?;
@@ -414,17 +414,17 @@ fn log_unknown_transform(obj_path: &str, timeless: bool) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn log_extrinsics(
+fn log_rigid3_transform(
     obj_path: &str,
     rotation_q: re_log_types::Quaternion,
-    position: [f32; 3],
+    translation: [f32; 3],
     timeless: bool,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
 
-    let transform = re_log_types::Transform::Extrinsics(re_log_types::Extrinsics {
+    let transform = re_log_types::Transform::Rigid3(re_log_types::Rigid3 {
         rotation: rotation_q,
-        position,
+        translation,
     });
 
     let mut sdk = Sdk::global();

@@ -133,10 +133,10 @@ def log_camera(cam: ARCamera) -> None:
     rot = rot * R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
     (w, h) = (h, w)
 
-    rerun.log_extrinsics(
+    rerun.log_rigid3_transform(
         "3d/camera",
         rotation_q=rot.as_quat(),
-        position=translation,
+        translation=translation,
     )
     rerun.log_coordinate_system("3d/camera", "RUB") # X=Right, Y=Up, Z=Back
     rerun.log_intrinsics(

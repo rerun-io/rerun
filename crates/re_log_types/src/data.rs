@@ -440,17 +440,19 @@ pub type Quaternion = [f32; 4];
 
 // ----------------------------------------------------------------------------
 
-/// Camera pose
+/// A proper rigid 3D transform, i.e. a rotation and a translation.
+///
+/// Also known as an isometric transform, or a pose.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Extrinsics {
-    /// How is the camera rotated?
+pub struct Rigid3 {
+    /// How is the object rotated?
     ///
-    /// This transforms world-space from camera-space.
+    /// This transforms to parent-space from object-space.
     pub rotation: Quaternion,
 
-    /// Where is the camera in world space?
-    pub position: [f32; 3],
+    /// You can also think of this as the position of the object.
+    pub translation: [f32; 3],
 }
 
 /// Camera projection
@@ -495,7 +497,7 @@ pub enum Transform {
     Unknown,
 
     /// The parent is a 3D space, the child a camera space.
-    Extrinsics(Extrinsics),
+    Rigid3(Rigid3),
 
     /// The parent is some local camera space, the child an image space.
     Intrinsics(Intrinsics),

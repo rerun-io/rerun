@@ -116,10 +116,10 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                     rerun.log_points("3d/points", point_cloud, colors=np.array([255, 255, 255, 255]))
 
                     # Log the camera transforms:
-                    rerun.log_extrinsics(
+                    rerun.log_rigid3_transform(
                         "3d/camera",
                         rotation_q=np.array((0, 0, 0, 1)),
-                        position=np.array((0, 0, 0)),
+                        translation=np.array((0, 0, 0)),
                     )
                     rerun.log_coordinate_system("3d/camera", "RDF") # X=Right, Y=Down, Z=Forward
                     rerun.log_intrinsics(
