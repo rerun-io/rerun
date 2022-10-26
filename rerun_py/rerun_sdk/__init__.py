@@ -457,7 +457,7 @@ def log_rigid3(
 
     * `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from this object space to the parent space
     * `translation`: Array with [x, y, z] position of the object in parent space.
-    * `xyz`: optionally set the view coordinates, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
+    * `xyz`: optionally set the view coordinates of this object, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
        This is a convenience for also calling `log_view_coordinates`.
 
     """
@@ -483,7 +483,7 @@ def log_pinhole(
     point_image_hom = image_from_cam * point_cam
     point_image = point_image_hom[:,1] / point_image_hom[2]
     ```
-    
+
     Where `point_image_hom` is the projected point in the image space expressed in homogeneous coordinates.
 
     Example

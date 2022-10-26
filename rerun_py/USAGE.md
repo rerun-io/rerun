@@ -81,8 +81,11 @@ and `rerun.log_rigid3("foo/bar/baz", …)` is logging the relationship between t
 ## View coordinates
 You can use `log_view_coordinates` to set your preferred view coordinate systems.
 
-For camera spaces this can be for instance `rerun.log_view_coordinates("3d/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3` also takes this as an argument.
-This is required for Rerun to know how to orient your cameras in the 3D view.
+Each object defines its own coordinate system, called a space.
+By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
+This is for instance useful for camera objects ("what axis is forward?").
+
+For camera spaces this can be for instance `rerun.log_view_coordinates("3d/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3` also takes this as an argument. Logging view coordinates helps Rerun figure out how to interpret your logged cameras.
 
 For 3D world spaces it can be useful to log what the up-axis is in your coordinate system. This will help Rerun setup a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rerun.log_view_coordinates("3d", up="+Z", timeless=True)`.
 
