@@ -19,7 +19,7 @@ pub use space_camera::SpaceCamera;
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
-use re_log_types::{CoordinateSystem, ObjPath};
+use re_log_types::{ObjPath, ViewCoordinates};
 
 use crate::{
     misc::{HoveredSpace, Selection},
@@ -217,7 +217,7 @@ fn show_settings_ui(
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
                     ui.label("Set with ");
-                    ui.code("rerun.log_world_coordinate_system");
+                    ui.code("rerun.log_view_coordinates");
                     ui.label(".");
                 });
             });
@@ -265,8 +265,8 @@ pub(crate) struct SpaceSpecs {
 }
 
 impl SpaceSpecs {
-    pub fn from_coordinate_system(system: Option<CoordinateSystem>) -> Self {
-        let up = (|| Some(system?.up()?.as_vec3().into()))();
+    pub fn from_view_coordinates(coordinates: Option<ViewCoordinates>) -> Self {
+        let up = (|| Some(coordinates?.up()?.as_vec3().into()))();
 
         if let Some(up) = up {
             Self { up }

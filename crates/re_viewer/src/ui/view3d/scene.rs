@@ -7,7 +7,6 @@ use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
 use re_data_store::InstanceIdHash;
-use re_log_types::CoordinateSystem;
 
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
@@ -361,9 +360,7 @@ impl Scene {
                 }
 
                 if ctx.options.show_camera_axes_in_3d {
-                    if let Some(CoordinateSystem::Relative(coordinates)) =
-                        camera.camera_coordinate_system
-                    {
+                    if let Some(coordinates) = camera.camera_view_coordinates {
                         // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
                         let center = world_from_view.translation();
                         let radius = Size::new_scene(dist_to_eye * line_radius_from_distance * 2.0);

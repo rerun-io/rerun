@@ -344,7 +344,7 @@ pub(crate) fn ui_data(
             Preview::Small | Preview::Specific(_) => ui.label("Transform"),
             Preview::Medium => ui_transform(ui, transform),
         },
-        Data::CoordinateSystem(coordinate_system) => ui_coordinate_system(ui, coordinate_system),
+        Data::ViewCoordinates(coordinates) => ui_view_coordinates(ui, coordinates),
 
         Data::Tensor(tensor) => {
             let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
@@ -403,7 +403,7 @@ fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
     }
 }
 
-fn ui_coordinate_system(ui: &mut egui::Ui, system: &CoordinateSystem) -> egui::Response {
+fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Response {
     ui.label(system.describe())
 }
 

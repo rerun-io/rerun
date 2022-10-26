@@ -127,7 +127,7 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
 
 
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:
-    # rerun.log_world_coordinate_system("3d", up="+Y") # TODO(cmc): depends on the mesh really
+    # rerun.log_view_coordinates("3d", up="+Y", timeless=True # TODO(cmc): depends on the mesh really
 
     inside = points[sdf <= 0]
     rerun.log_text_entry(

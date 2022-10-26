@@ -87,7 +87,7 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
 def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
     depth_images_counter = 0
 
-    rerun.log_world_coordinate_system("3d", up="-Y")
+    rerun.log_view_coordinates("3d", up="-Y", timeless=True)
 
     with zipfile.ZipFile(dataset, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
@@ -121,7 +121,7 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                         rotation_q=np.array((0, 0, 0, 1)),
                         translation=np.array((0, 0, 0)),
                     )
-                    rerun.log_coordinate_system("3d/camera", "RDF")  # X=Right, Y=Down, Z=Forward
+                    rerun.log_view_coordinates("3d/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
                     rerun.log_intrinsics(
                         "3d/camera/image",
                         width=img_depth.shape[1],

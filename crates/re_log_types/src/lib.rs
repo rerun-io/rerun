@@ -29,7 +29,7 @@ pub mod objects;
 pub mod path;
 mod time;
 
-pub use coordinates::CoordinateSystem;
+pub use coordinates::ViewCoordinates;
 pub use data::*;
 pub use index::*;
 pub use objects::ObjectType;

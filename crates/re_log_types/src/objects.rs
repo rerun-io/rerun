@@ -65,4 +65,4 @@ impl ObjectType {
 }
 
 /// These are fields not part of the actual object, but express meta-info about paths.
-pub const META_FIELDS: &[&str] = &["_coordinate_system", "_transform", "_visible"];
+pub const META_FIELDS: &[&str] = &["_view_coordinates", "_transform", "_visible"];

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{impl_into_enum, CoordinateSystem, ObjPath};
+use crate::{impl_into_enum, ObjPath, ViewCoordinates};
 
 // ----------------------------------------------------------------------------
 
@@ -38,7 +38,7 @@ pub enum DataType {
     ObjPath,
 
     Transform,
-    CoordinateSystem,
+    ViewCoordinates,
 }
 
 // ----------------------------------------------------------------------------
@@ -155,9 +155,9 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::CoordinateSystem {
+    impl DataTrait for crate::ViewCoordinates {
         fn data_typ() -> DataType {
-            DataType::CoordinateSystem
+            DataType::ViewCoordinates
         }
     }
 }
@@ -199,7 +199,7 @@ pub enum Data {
     ObjPath(ObjPath),
 
     Transform(Transform),
-    CoordinateSystem(CoordinateSystem),
+    ViewCoordinates(ViewCoordinates),
 }
 
 impl Data {
@@ -226,7 +226,7 @@ impl Data {
             Self::ObjPath(_) => DataType::ObjPath,
 
             Self::Transform(_) => DataType::Transform,
-            Self::CoordinateSystem(_) => DataType::CoordinateSystem,
+            Self::ViewCoordinates(_) => DataType::ViewCoordinates,
         }
     }
 }
@@ -240,7 +240,7 @@ impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(ObjPath, Data, ObjPath);
 impl_into_enum!(Transform, Data, Transform);
-impl_into_enum!(CoordinateSystem, Data, CoordinateSystem);
+impl_into_enum!(ViewCoordinates, Data, ViewCoordinates);
 
 // ----------------------------------------------------------------------------
 
@@ -271,7 +271,7 @@ pub enum DataVec {
     ObjPath(Vec<ObjPath>),
 
     Transform(Vec<Transform>),
-    CoordinateSystem(Vec<CoordinateSystem>),
+    ViewCoordinates(Vec<ViewCoordinates>),
 }
 
 /// Do the same thing with all members of a [`Data`].
@@ -300,7 +300,7 @@ macro_rules! data_map(
             $crate::Data::DataVec($value) => $action,
             $crate::Data::ObjPath($value) => $action,
             $crate::Data::Transform($value) => $action,
-            $crate::Data::CoordinateSystem($value) => $action,
+            $crate::Data::ViewCoordinates($value) => $action,
         }
     });
 );
@@ -331,7 +331,7 @@ macro_rules! data_vec_map(
             $crate::DataVec::DataVec($vec) => $action,
             $crate::DataVec::ObjPath($vec) => $action,
             $crate::DataVec::Transform($vec) => $action,
-            $crate::DataVec::CoordinateSystem($vec) => $action,
+            $crate::DataVec::ViewCoordinates($vec) => $action,
         }
     });
 );
@@ -360,7 +360,7 @@ impl DataVec {
             Self::ObjPath(_) => DataType::ObjPath,
 
             Self::Transform(_) => DataType::Transform,
-            Self::CoordinateSystem(_) => DataType::CoordinateSystem,
+            Self::ViewCoordinates(_) => DataType::ViewCoordinates,
         }
     }
 
@@ -394,7 +394,7 @@ impl DataVec {
             Self::ObjPath(vec) => vec.last().cloned().map(Data::ObjPath),
 
             Self::Transform(vec) => vec.last().cloned().map(Data::Transform),
-            Self::CoordinateSystem(vec) => vec.last().cloned().map(Data::CoordinateSystem),
+            Self::ViewCoordinates(vec) => vec.last().cloned().map(Data::ViewCoordinates),
         }
     }
 }

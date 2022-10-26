@@ -1,7 +1,7 @@
 /// The six cardinal directions for 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum RelativeDirection {
+pub enum ViewDir {
     Up,
     Down,
     Right,
@@ -10,7 +10,7 @@ pub enum RelativeDirection {
     Back,
 }
 
-impl RelativeDirection {
+impl ViewDir {
     #[inline]
     fn from_ascii_char(c: u8) -> Result<Self, String> {
         match c {
@@ -51,20 +51,49 @@ impl RelativeDirection {
 
 // ----------------------------------------------------------------------------
 
+/// How we interpret the coordinate system of an object/space.
+///
+/// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
+///
 /// For 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RelativeSystem(pub [RelativeDirection; 3]);
+pub struct ViewCoordinates(pub [ViewDir; 3]);
 
-impl RelativeSystem {
+impl ViewCoordinates {
+    pub const RUB: Self = Self([ViewDir::Right, ViewDir::Up, ViewDir::Back]);
+
+    /// Choses a coordinate system based on just an up-axis.
+    pub fn from_up_and_handedness(up: SignedAxis3, handedness: Handedness) -> Self {
+        use ViewDir::{Back, Down, Forward, Right, Up};
+        match handedness {
+            Handedness::Right => match up {
+                SignedAxis3::POSITIVE_X => Self([Up, Right, Forward]),
+                SignedAxis3::NEGATIVE_X => Self([Down, Right, Back]),
+                SignedAxis3::POSITIVE_Y => Self([Right, Up, Back]),
+                SignedAxis3::NEGATIVE_Y => Self([Right, Down, Forward]),
+                SignedAxis3::POSITIVE_Z => Self([Right, Forward, Up]),
+                SignedAxis3::NEGATIVE_Z => Self([Right, Back, Down]),
+            },
+            Handedness::Left => match up {
+                SignedAxis3::POSITIVE_X => Self([Up, Right, Back]),
+                SignedAxis3::NEGATIVE_X => Self([Down, Right, Forward]),
+                SignedAxis3::POSITIVE_Y => Self([Right, Up, Forward]),
+                SignedAxis3::NEGATIVE_Y => Self([Right, Down, Back]),
+                SignedAxis3::POSITIVE_Z => Self([Right, Back, Up]),
+                SignedAxis3::NEGATIVE_Z => Self([Right, Forward, Down]),
+            },
+        }
+    }
+
     /// Returns an error if this does not span all three dimensions.
     pub fn sanity_check(&self) -> Result<(), String> {
         let mut dims = [false; 3];
         for dir in self.0 {
             let dim = match dir {
-                RelativeDirection::Up | RelativeDirection::Down => 0,
-                RelativeDirection::Right | RelativeDirection::Left => 1,
-                RelativeDirection::Forward | RelativeDirection::Back => 2,
+                ViewDir::Up | ViewDir::Down => 0,
+                ViewDir::Right | ViewDir::Left => 1,
+                ViewDir::Forward | ViewDir::Back => 2,
             };
             dims[dim] = true;
         }
@@ -81,9 +110,9 @@ impl RelativeSystem {
     #[inline]
     pub fn up(&self) -> Option<SignedAxis3> {
         for (dim, &dir) in self.0.iter().enumerate() {
-            if dir == RelativeDirection::Up {
+            if dir == ViewDir::Up {
                 return Some(SignedAxis3::new(Sign::Positive, Axis3::from_dim(dim)));
-            } else if dir == RelativeDirection::Down {
+            } else if dir == ViewDir::Down {
                 return Some(SignedAxis3::new(Sign::Negative, Axis3::from_dim(dim)));
             }
         }
@@ -121,110 +150,49 @@ impl RelativeSystem {
     /// (RUB: X=Right, Y=Up, B=Back)
     #[cfg(feature = "glam")]
     pub fn to_rub(&self) -> glam::Mat3 {
-        fn rub(dir: RelativeDirection) -> [f32; 3] {
+        fn rub(dir: ViewDir) -> [f32; 3] {
             match dir {
-                RelativeDirection::Right => [1.0, 0.0, 0.0],
-                RelativeDirection::Left => [-1.0, 0.0, 0.0],
-                RelativeDirection::Up => [0.0, 1.0, 0.0],
-                RelativeDirection::Down => [0.0, -1.0, 0.0],
-                RelativeDirection::Back => [0.0, 0.0, 1.0],
-                RelativeDirection::Forward => [0.0, 0.0, -1.0],
+                ViewDir::Right => [1.0, 0.0, 0.0],
+                ViewDir::Left => [-1.0, 0.0, 0.0],
+                ViewDir::Up => [0.0, 1.0, 0.0],
+                ViewDir::Down => [0.0, -1.0, 0.0],
+                ViewDir::Back => [0.0, 0.0, 1.0],
+                ViewDir::Forward => [0.0, 0.0, -1.0],
             }
         }
 
         glam::Mat3::from_cols_array_2d(&[rub(self.0[0]), rub(self.0[1]), rub(self.0[2])])
     }
+
+    pub fn handedness(&self) -> Option<Handedness> {
+        let to_rub = self.to_rub();
+        let det = to_rub.determinant();
+        if det == -1.0 {
+            Some(Handedness::Left)
+        } else if det == 0.0 {
+            None // bad system that doesn't pass the sanity check
+        } else {
+            Some(Handedness::Right)
+        }
+    }
 }
 
-impl std::str::FromStr for RelativeSystem {
+impl std::str::FromStr for ViewCoordinates {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.as_bytes() {
             [x, y, z] => {
                 let slf = Self([
-                    RelativeDirection::from_ascii_char(*x)?,
-                    RelativeDirection::from_ascii_char(*y)?,
-                    RelativeDirection::from_ascii_char(*z)?,
+                    ViewDir::from_ascii_char(*x)?,
+                    ViewDir::from_ascii_char(*y)?,
+                    ViewDir::from_ascii_char(*z)?,
                 ]);
                 slf.sanity_check()?;
                 Ok(slf)
             }
             _ => Err(format!("Expected three letters, got: {s:?}")),
         }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// The size cardinal directions for 3D worlds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum AbsoluteDirection {
-    Up,
-    Down,
-    East,
-    West,
-    North,
-    South,
-}
-
-impl AbsoluteDirection {
-    #[inline]
-    pub fn short(&self) -> &'static str {
-        match self {
-            Self::Up => "U",
-            Self::Down => "D",
-            Self::East => "E",
-            Self::West => "W",
-            Self::North => "N",
-            Self::South => "S",
-        }
-    }
-
-    #[inline]
-    pub fn long(&self) -> &'static str {
-        match self {
-            Self::Up => "Up",
-            Self::Down => "Down",
-            Self::East => "East",
-            Self::West => "West",
-            Self::North => "North",
-            Self::South => "South",
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// For 3D worlds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct AbsoluteSystem(pub [AbsoluteDirection; 3]);
-
-impl AbsoluteSystem {
-    pub fn up(&self) -> Option<SignedAxis3> {
-        for (dim, &dir) in self.0.iter().enumerate() {
-            if dir == AbsoluteDirection::Up {
-                return Some(SignedAxis3::new(Sign::Positive, Axis3::from_dim(dim)));
-            } else if dir == AbsoluteDirection::Down {
-                return Some(SignedAxis3::new(Sign::Negative, Axis3::from_dim(dim)));
-            }
-        }
-        None
-    }
-
-    pub fn describe(&self) -> String {
-        let [x, y, z] = self.0;
-        format!(
-            "{}{}{} (X={}, Y={}, Z={})",
-            x.short(),
-            y.short(),
-            z.short(),
-            x.long(),
-            y.long(),
-            z.long()
-        )
     }
 }
 
@@ -280,8 +248,15 @@ pub struct SignedAxis3 {
 }
 
 impl SignedAxis3 {
+    pub const POSITIVE_X: Self = Self::new(Sign::Positive, Axis3::X);
+    pub const NEGATIVE_X: Self = Self::new(Sign::Negative, Axis3::X);
+    pub const POSITIVE_Y: Self = Self::new(Sign::Positive, Axis3::Y);
+    pub const NEGATIVE_Y: Self = Self::new(Sign::Negative, Axis3::Y);
+    pub const POSITIVE_Z: Self = Self::new(Sign::Positive, Axis3::Z);
+    pub const NEGATIVE_Z: Self = Self::new(Sign::Negative, Axis3::Z);
+
     #[inline]
-    pub fn new(sign: Sign, axis: Axis3) -> Self {
+    pub const fn new(sign: Sign, axis: Axis3) -> Self {
         Self { sign, axis }
     }
 
@@ -336,6 +311,15 @@ pub enum Handedness {
 
 impl Handedness {
     #[inline]
+    pub const fn from_right_handed(right_handed: bool) -> Self {
+        if right_handed {
+            Handedness::Right
+        } else {
+            Handedness::Left
+        }
+    }
+
+    #[inline]
     pub fn describe(&self) -> &'static str {
         match self {
             Self::Left => "left handed",
@@ -346,88 +330,16 @@ impl Handedness {
 
 // ----------------------------------------------------------------------------
 
-// For 3D worlds
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum WorldSystem {
-    /// For when you don't know/care about where north is.
-    Partial {
-        up: Option<SignedAxis3>,
-        handedness: Handedness,
-    },
-
-    /// For when you know where north is.
-    Full(AbsoluteSystem),
-}
-
-impl WorldSystem {
-    #[inline]
-    pub fn up(&self) -> Option<SignedAxis3> {
-        match self {
-            Self::Partial { up, .. } => *up,
-            Self::Full(system) => system.up(),
-        }
-    }
-
-    pub fn describe(&self) -> String {
-        match self {
-            Self::Partial { up, handedness } => {
-                if let Some(up) = up {
-                    format!("Up = {}, {}", up, handedness.describe())
-                } else {
-                    handedness.describe().to_owned()
-                }
-            }
-            Self::Full(system) => system.describe(),
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// How we interpret the coordinate system of an object/space.
-///
-/// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum CoordinateSystem {
-    /// For 3D worlds
-    World(WorldSystem),
-
-    /// For anything else (cameras, images, …)
-    Relative(RelativeSystem),
-}
-
-impl CoordinateSystem {
-    /// What axis is the up-axis?
-    #[inline]
-    pub fn up(&self) -> Option<SignedAxis3> {
-        match self {
-            Self::World(system) => system.up(),
-            Self::Relative(system) => system.up(),
-        }
-    }
-
-    pub fn describe(&self) -> String {
-        match self {
-            Self::World(system) => system.describe(),
-            Self::Relative(system) => system.describe(),
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
 #[cfg(feature = "glam")]
 #[test]
-fn coordinate_systems() {
+fn view_coordinatess() {
     use glam::*;
 
-    assert!("UUDDLRLRBAStart".parse::<RelativeSystem>().is_err());
-    assert!("UUD".parse::<RelativeSystem>().is_err());
+    assert!("UUDDLRLRBAStart".parse::<ViewCoordinates>().is_err());
+    assert!("UUD".parse::<ViewCoordinates>().is_err());
 
-    let rub = "RUB".parse::<RelativeSystem>().unwrap();
-    let bru = "BRU".parse::<RelativeSystem>().unwrap();
+    let rub = "RUB".parse::<ViewCoordinates>().unwrap();
+    let bru = "BRU".parse::<ViewCoordinates>().unwrap();
 
     assert_eq!(rub.to_rub(), Mat3::IDENTITY);
     assert_eq!(

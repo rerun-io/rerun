@@ -106,8 +106,8 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_rigid3_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
 
-    m.add_function(wrap_pyfunction!(log_coordinate_system, m)?)?;
-    m.add_function(wrap_pyfunction!(log_world_coordinate_system, m)?)?;
+    m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
+    m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_point, m)?)?;
     m.add_function(wrap_pyfunction!(log_points, m)?)?;
@@ -474,16 +474,34 @@ fn log_intrinsics(
 // ----------------------------------------------------------------------------
 
 #[pyfunction]
-fn log_coordinate_system(obj_path: &str, xyz: &str, timeless: bool) -> PyResult<()> {
+fn log_view_coordinates_xyz(
+    obj_path: &str,
+    xyz: &str,
+    right_handed: Option<bool>,
+    timeless: bool,
+) -> PyResult<()> {
     use re_log_types::coordinates::*;
-    let system = xyz.parse().map_err(PyTypeError::new_err)?;
-    let coordinate_system = CoordinateSystem::Relative(system);
-    log_coordiate_system(obj_path, coordinate_system, timeless)
+
+    let coordinates: ViewCoordinates = xyz.parse().map_err(PyTypeError::new_err)?;
+
+    if let Some(right_handed) = right_handed {
+        let expected_handedness = Handedness::from_right_handed(right_handed);
+        let actual_handedness = coordinates.handedness().unwrap(); // can't fail if we managed to parse
+
+        if actual_handedness != expected_handedness {
+            return Err(PyTypeError::new_err(format!(
+                "Mismatched handedness. {} is {}",
+                coordinates.describe(),
+                actual_handedness.describe(),
+            )));
+        }
+    }
+
+    log_view_coordinates(obj_path, coordinates, timeless)
 }
 
-/// Set the preferred up-axis for a given 3D space.
 #[pyfunction]
-fn log_world_coordinate_system(
+fn log_view_coordinates_up_handedness(
     obj_path: &str,
     up: &str,
     right_handed: bool,
@@ -491,31 +509,29 @@ fn log_world_coordinate_system(
 ) -> PyResult<()> {
     use re_log_types::coordinates::*;
 
-    let handedness = if right_handed {
-        Handedness::Right
-    } else {
-        Handedness::Left
-    };
     let up = up.parse::<SignedAxis3>().map_err(PyTypeError::new_err)?;
-    let coordinate_system = CoordinateSystem::World(WorldSystem::Partial {
-        up: Some(up),
-        handedness,
-    });
-    log_coordiate_system(obj_path, coordinate_system, timeless)
+    let handedness = Handedness::from_right_handed(right_handed);
+    let coordinates = ViewCoordinates::from_up_and_handedness(up, handedness);
+
+    log_view_coordinates(obj_path, coordinates, timeless)
 }
 
-fn log_coordiate_system(
+fn log_view_coordinates(
     obj_path: &str,
-    coordinate_system: CoordinateSystem,
+    coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
+    if coordinates.handedness() == Some(coordinates::Handedness::Left) {
+        re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
+    }
+
     let mut sdk = Sdk::global();
     let obj_path = parse_obj_path(obj_path)?;
     let time_point = time(timeless);
     sdk.send_data(
         &time_point,
-        (&obj_path, "_coordinate_system"),
-        LoggedData::Single(Data::CoordinateSystem(coordinate_system)),
+        (&obj_path, "_view_coordinates"),
+        LoggedData::Single(Data::ViewCoordinates(coordinates)),
     );
 
     Ok(())

@@ -2,7 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
-* 2022-10-24: Replace old `space=…` and `set_space_up` code with new space transform hierarchy. See [`USAGE.md`](rerun_py/USAGE.md) for details ([#224](https://github.com/rerun-io/rerun/pull/224)).
+* 2022-10-26: Replace old `space=…` and `set_space_up` code with new space transform hierarchy. See [`USAGE.md`](rerun_py/USAGE.md) for details ([#224](https://github.com/rerun-io/rerun/pull/224)).
 * 2022-10-19: Add support for SegmentationMaps ([#187](https://github.com/rerun-io/rerun/pull/187)).
 * 2022-10-14: Add support for logging 3D Arrows ([#199](https://github.com/rerun-io/rerun/pull/199)).
 * 2022-10-10: Python SDK: add `set_visible` API ([#176](https://github.com/rerun-io/rerun/pull/176)).

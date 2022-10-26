@@ -101,7 +101,7 @@ def read_annotations(dirpath: Path) -> Sequence:
 def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
-    rerun.log_world_coordinate_system("3d", up="+Y")
+    rerun.log_view_coordinates("3d", up="+Y", timeless=True)
 
     frame_times = []
     for sample in samples:
@@ -138,7 +138,7 @@ def log_camera(cam: ARCamera) -> None:
         rotation_q=rot.as_quat(),
         translation=translation,
     )
-    rerun.log_coordinate_system("3d/camera", "RUB")  # X=Right, Y=Up, Z=Back
+    rerun.log_view_coordinates("3d/camera", xyz="RUB")  # X=Right, Y=Up, Z=Back
     rerun.log_intrinsics(
         "3d/camera/video",
         width=w,

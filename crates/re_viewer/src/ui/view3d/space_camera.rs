@@ -2,7 +2,7 @@ use glam::*;
 use macaw::{IsoTransform, Ray3};
 
 use re_data_store::ObjPath;
-use re_log_types::{CoordinateSystem, IndexHash};
+use re_log_types::{IndexHash, ViewCoordinates};
 
 /// A logged camera that connects spaces.
 pub struct SpaceCamera {
@@ -13,7 +13,7 @@ pub struct SpaceCamera {
     pub instance_index_hash: IndexHash,
 
     /// The coordinate system of the camera ("view-space").
-    pub camera_coordinate_system: Option<CoordinateSystem>,
+    pub camera_view_coordinates: Option<ViewCoordinates>,
 
     pub world_from_camera: IsoTransform,
 
@@ -34,7 +34,7 @@ impl SpaceCamera {
 
     /// Scene-space from Rerun view-space (RUB).
     pub fn world_from_view(&self) -> Option<IsoTransform> {
-        match from_rub_quat(self.camera_coordinate_system) {
+        match from_rub_quat(self.camera_view_coordinates) {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
                 re_log::warn_once!("Camera {:?}: {}", self.camera_obj_path, err);
@@ -56,7 +56,7 @@ impl SpaceCamera {
         let intrinsics_matrix = Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
         Some(
             world_from_view
-                * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different. TODO(emilk): use the `CoordinateSystem` of the image space
+                * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different. TODO(emilk): use the `ViewCoordinates` of the image space
                 * Affine3A::from_mat3(intrinsics_matrix.inverse()),
         )
     }
@@ -69,7 +69,7 @@ impl SpaceCamera {
         let intrinsics_matrix = Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
         Some(
             Affine3A::from_mat3(intrinsics_matrix)
-            * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different. TODO(emilk): use the `CoordinateSystem` of the image space
+            * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different. TODO(emilk): use the `ViewCoordinates` of the image space
             * view_from_world,
         )
     }
@@ -94,17 +94,14 @@ impl SpaceCamera {
 }
 
 /// Rerun uses RUB (X=Right Y=Up Z=Back) view coordinates.
-fn from_rub_mat3(system: Option<CoordinateSystem>) -> Result<Mat3, String> {
+fn from_rub_mat3(system: Option<ViewCoordinates>) -> Result<Mat3, String> {
     match system {
         None => Err("lacks a coordinate system".to_owned()),
-        Some(CoordinateSystem::World(_)) => {
-            Err("has a world coordinate system but needs a _relative_ coordinate system".to_owned())
-        }
-        Some(CoordinateSystem::Relative(system)) => Ok(system.from_rub()),
+        Some(system) => Ok(system.from_rub()),
     }
 }
 
-fn from_rub_quat(system: Option<CoordinateSystem>) -> Result<Quat, String> {
+fn from_rub_quat(system: Option<ViewCoordinates>) -> Result<Quat, String> {
     let mat3 = from_rub_mat3(system)?;
     let system = system.unwrap(); // Safe, or `from_rub_mat3` would have returned an `Err`.
 

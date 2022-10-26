@@ -17,7 +17,7 @@ def log_car_data() -> None:
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
-    rerun.log_world_coordinate_system("3d", up="-Y")
+    rerun.log_view_coordinates("3d", up="-Y", timeless=True)
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a timeline called `frame_nr`.
@@ -33,7 +33,7 @@ def log_car_data() -> None:
             rotation_q=sample.camera.rotation_q,
             translation=sample.camera.position,
         )
-        rerun.log_coordinate_system("3d/camera", "RDF")  # X=Right, Y=Down, Z=Forward
+        rerun.log_view_coordinates("3d/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
 
         # Log the camera projection matrix:
         rerun.log_intrinsics(

@@ -489,12 +489,13 @@ def log_intrinsics(
 # -----------------------------------------------------------------------------
 
 
-def log_coordinate_system(obj_path: str, xyz: str, timeless: bool = False) -> None:
+def log_view_coordinates(
+    obj_path: str, *, xyz: str = "", up: str = "", right_handed: Optional[bool] = None, timeless: bool = False
+) -> None:
     """
-    Log the coordinate system convention for a cameras or image.
+    Log the view coordinates for a world, a camera, or an image.
 
-    There are many different conventions for how a camera is aligned along the X, Y, and Z axes.
-    This function lets you specify your convention using a three-letter acronym, where each letter represents:
+    You can call this with the `xyz` parameter, setting it to a three-letter acronym, where each letter represents:
 
     * R: Right
     * L: Left
@@ -513,23 +514,28 @@ def log_coordinate_system(obj_path: str, xyz: str, timeless: bool = False) -> No
     Example
     -------
     ```
-    rerun.log_coordinate_system("3d/camera", "RUB")
-    rerun.log_rigid3_transform("3d/camera", …)
+    rerun.log_view_coordinates("3d/camera", xyz="RUB")
+    ```
+
+    For world-coordinates it's often conventient to just specify an up-axis.
+    You can do so by using the `up`-parameter (where `up` is one of "+X", "-X", "+Y", "-Y", "+Z", "-Z"):
+
+    ```
+    rerun.log_view_coordinates("3d", up="+Z", right_handed=True, timeless=True)
+    rerun.log_view_coordinates("3d", up="-Y", right_handed=False, timeless=True)
     ```
 
     """
-    rerun_rs.log_coordinate_system(obj_path, xyz, timeless)
-
-
-def log_world_coordinate_system(obj_path: str, up: str, right_handed: bool = True, timeless: bool = False) -> None:
-    """
-    Set the preferred up-axis for this world 3D space.
-
-    - obj_path: The path of the space
-    - up: One of "+X", "-X", "+Y", "-Y", "+Z", "-Z"
-    - right_handed: is this a right-handed system or not?
-    """
-    rerun_rs.log_world_coordinate_system(obj_path, up=up, right_handed=right_handed, timeless=right_handed)
+    if xyz == "" and up == "":
+        raise TypeError("You must set either 'xyz' or 'up'")
+    if xyz != "" and up != "":
+        raise TypeError("You must set either 'xyz' or 'up', but not both")
+    if xyz != "":
+        rerun_rs.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
+    else:
+        if right_handed is None:
+            right_handed = True
+        rerun_rs.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
 
 
 # -----------------------------------------------------------------------------

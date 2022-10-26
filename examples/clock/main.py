@@ -29,7 +29,7 @@ def log_clock() -> None:
             0.0,
         )
 
-    rerun.log_world_coordinate_system("3d", up="+Y")
+    rerun.log_view_coordinates("3d", up="+Y", timeless=True)
 
     rerun.log_obb(
         "3d/frame",

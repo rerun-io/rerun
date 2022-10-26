@@ -16,7 +16,7 @@ use nohash_hasher::IntSet;
 use re_data_store::{
     log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, TimelineStore,
 };
-use re_log_types::{CoordinateSystem, ObjectType, Transform};
+use re_log_types::{ObjectType, Transform, ViewCoordinates};
 
 use crate::misc::{TimeControl, ViewerContext};
 
@@ -42,7 +42,7 @@ impl SpaceViewId {
 #[derive(Default)]
 struct SpaceInfo {
     /// The latest known coordinate system for this space.
-    coordinate_system: Option<CoordinateSystem>,
+    coordinates: Option<ViewCoordinates>,
 
     /// All paths in this space (including self and children connected by the identity transform).
     objects: IntSet<ObjPath>,
@@ -148,7 +148,7 @@ impl SpacesInfo {
         }
 
         for (obj_path, space_info) in &mut spaces_info.spaces {
-            space_info.coordinate_system = query_coordinate_system(obj_db, time_ctrl, obj_path);
+            space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
         }
 
         spaces_info
@@ -178,12 +178,12 @@ fn query_transform(
     Some(latest.unwrap_or(Transform::Unknown))
 }
 
-/// Get the latest value of the `_coordinate_system` meta-field of the given object.
-fn query_coordinate_system(
+/// Get the latest value of the `_view_coordinates` meta-field of the given object.
+fn query_view_coordinates(
     obj_db: &ObjDb,
     time_ctrl: &TimeControl,
     obj_path: &ObjPath,
-) -> Option<re_log_types::CoordinateSystem> {
+) -> Option<re_log_types::ViewCoordinates> {
     let query_time = time_ctrl.time()?;
     let timeline = time_ctrl.timeline();
 
@@ -191,11 +191,11 @@ fn query_coordinate_system(
 
     let field_store = store
         .get(obj_path)?
-        .get(&re_data_store::FieldName::from("_coordinate_system"))?;
+        .get(&re_data_store::FieldName::from("_view_coordinates"))?;
 
-    // `_coordinate_system` is only allowed to be stored in a mono-field.
+    // `_view_coordinates` is only allowed to be stored in a mono-field.
     let mono_field_store = field_store
-        .get_mono::<re_log_types::CoordinateSystem>()
+        .get_mono::<re_log_types::ViewCoordinates>()
         .ok()?;
 
     mono_field_store
@@ -530,8 +530,8 @@ impl ViewState {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
             let space_cameras = &space_cameras(spaces_info, space_info);
-            let coordinate_system = space_info.coordinate_system;
-            let space_specs = crate::view3d::SpaceSpecs::from_coordinate_system(coordinate_system);
+            let coordinates = space_info.coordinates;
+            let space_specs = crate::view3d::SpaceSpecs::from_view_coordinates(coordinates);
             let scene = crate::view3d::scene::Scene::from_objects(ctx, objects);
             crate::view3d::view_3d(
                 ctx,
@@ -584,7 +584,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
             let view_space = spaces_info
                 .spaces
                 .get(child_path)
-                .and_then(|child| child.coordinate_system);
+                .and_then(|child| child.coordinates);
 
             let mut found_any_intrinsics = false;
 
@@ -594,7 +594,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                         space_cameras.push(SpaceCamera {
                             camera_obj_path: child_path.clone(),
                             instance_index_hash: re_log_types::IndexHash::NONE,
-                            camera_coordinate_system: view_space,
+                            camera_view_coordinates: view_space,
                             world_from_camera,
                             intrinsics: Some(*intrinsics),
                             target_space: Some(grand_child_path.clone()),
@@ -608,7 +608,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                 space_cameras.push(SpaceCamera {
                     camera_obj_path: child_path.clone(),
                     instance_index_hash: re_log_types::IndexHash::NONE,
-                    camera_coordinate_system: view_space,
+                    camera_view_coordinates: view_space,
                     world_from_camera,
                     intrinsics: None,
                     target_space: None,
