@@ -357,26 +357,22 @@ impl Scene {
             }
 
             if ctx.options.show_camera_axes_in_3d {
-                if let Some(coordinates) = camera.camera_view_coordinates {
-                    let world_from_cam = camera.world_from_cam();
+                let world_from_cam = camera.world_from_cam();
 
-                    // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
-                    let cam_origin = camera.position().into();
-                    let radius = Size::new_scene(dist_to_eye * line_radius_from_distance * 2.0);
+                // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
+                let cam_origin = camera.position();
+                let radius = Size::new_scene(dist_to_eye * line_radius_from_distance * 2.0);
 
-                    for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
-                        let color = axis_color(axis_index);
-                        let dir = coordinates.to_rub().mul_vec3(*dir);
+                for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
+                    let axis_end = world_from_cam.transform_point3(scale * *dir);
+                    let color = axis_color(axis_index);
 
-                        let axis_end =
-                            world_from_cam.transform_point3(scale * glam::Vec3::from(*dir));
-                        self.line_segments.push(LineSegments {
-                            instance_id,
-                            segments: vec![[cam_origin, axis_end.into()]],
-                            radius,
-                            color,
-                        });
-                    }
+                    self.line_segments.push(LineSegments {
+                        instance_id,
+                        segments: vec![[cam_origin.into(), axis_end.into()]],
+                        radius,
+                        color,
+                    });
                 }
             }
 
