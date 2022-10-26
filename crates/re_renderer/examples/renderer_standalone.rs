@@ -15,7 +15,6 @@ use std::f32::consts::TAU;
 use anyhow::Context as _;
 use glam::Vec3;
 use instant::Instant;
-use log::info;
 use macaw::IsoTransform;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},

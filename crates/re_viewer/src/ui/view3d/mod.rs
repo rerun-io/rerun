@@ -542,12 +542,15 @@ fn paint_view(
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();
-                        Arc::try_unwrap(view_builder_draw)
-                            .unwrap()
-                            .into_inner()
-                            .composite(ctx, render_pass)
-                            .unwrap();
-                        // TODO(andreas): Graceful error handling
+                        if let Ok(view_builder) =
+                            std::sync::Arc::try_unwrap(view_builder_draw.clone())
+                        {
+                            view_builder
+                                .into_inner()
+                                .composite(ctx, render_pass)
+                                .unwrap();
+                            // TODO(andreas): Graceful error handling
+                        }
                     }),
             ),
         }
