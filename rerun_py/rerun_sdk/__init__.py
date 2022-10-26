@@ -516,6 +516,7 @@ def log_coordinate_system(obj_path: str, xyz: str, timeless: bool = False) -> No
     rerun.log_coordinate_system("3d/camera", "RUB")
     rerun.log_rigid3_transform("3d/camera", …)
     ```
+
     """
     rerun_rs.log_coordinate_system(obj_path, xyz, timeless)
 

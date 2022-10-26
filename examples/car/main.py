@@ -33,7 +33,7 @@ def log_car_data() -> None:
             rotation_q=sample.camera.rotation_q,
             translation=sample.camera.position,
         )
-        rerun.log_coordinate_system("3d/camera", "RDF") # X=Right, Y=Down, Z=Forward
+        rerun.log_coordinate_system("3d/camera", "RDF")  # X=Right, Y=Down, Z=Forward
 
         # Log the camera projection matrix:
         rerun.log_intrinsics(
