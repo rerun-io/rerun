@@ -21,6 +21,7 @@
     "python.linting.enabled": true,
     "cSpell.words": [
         "andreas",
+        "bbox",
         "nyud",
         "objectron",
         "Skybox",

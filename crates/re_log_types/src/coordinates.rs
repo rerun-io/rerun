@@ -61,8 +61,6 @@ impl ViewDir {
 pub struct ViewCoordinates(pub [ViewDir; 3]);
 
 impl ViewCoordinates {
-    pub const RUB: Self = Self([ViewDir::Right, ViewDir::Up, ViewDir::Back]);
-
     /// Choses a coordinate system based on just an up-axis.
     pub fn from_up_and_handedness(up: SignedAxis3, handedness: Handedness) -> Self {
         use ViewDir::{Back, Down, Forward, Right, Up};
@@ -161,7 +159,7 @@ impl ViewCoordinates {
         )
     }
 
-    /// Returns a matrix that translated RUB to this coordinate system.
+    /// Returns a matrix that translates RUB to this coordinate system.
     ///
     /// (RUB: X=Right, Y=Up, B=Back)
     #[cfg(feature = "glam")]
@@ -169,7 +167,7 @@ impl ViewCoordinates {
         self.to_rub().transpose()
     }
 
-    /// Returns a matrix that translated this coordinate system to RUB.
+    /// Returns a matrix that translates this coordinate system to RUB.
     ///
     /// (RUB: X=Right, Y=Up, B=Back)
     #[cfg(feature = "glam")]
@@ -237,7 +235,7 @@ impl Axis3 {
             0 => Self::X,
             1 => Self::Y,
             2 => Self::Z,
-            _ => panic!("Only 3D"),
+            _ => panic!("Expected a 3D axis, got {dim}"),
         }
     }
 }
@@ -359,16 +357,42 @@ impl Handedness {
 fn view_coordinatess() {
     use glam::*;
 
-    assert!("UUDDLRLRBAStart".parse::<ViewCoordinates>().is_err());
-    assert!("UUD".parse::<ViewCoordinates>().is_err());
+    {
+        assert!("UUDDLRLRBAStart".parse::<ViewCoordinates>().is_err());
+        assert!("UUD".parse::<ViewCoordinates>().is_err());
 
-    let rub = "RUB".parse::<ViewCoordinates>().unwrap();
-    let bru = "BRU".parse::<ViewCoordinates>().unwrap();
+        let rub = "RUB".parse::<ViewCoordinates>().unwrap();
+        let bru = "BRU".parse::<ViewCoordinates>().unwrap();
 
-    assert_eq!(rub.to_rub(), Mat3::IDENTITY);
-    assert_eq!(
-        bru.to_rub(),
-        Mat3::from_cols_array_2d(&[[0., 0., 1.], [1., 0., 0.], [0., 1., 0.]])
-    );
-    assert_eq!(bru.to_rub() * vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0));
+        assert_eq!(rub.to_rub(), Mat3::IDENTITY);
+        assert_eq!(
+            bru.to_rub(),
+            Mat3::from_cols_array_2d(&[[0., 0., 1.], [1., 0., 0.], [0., 1., 0.]])
+        );
+        assert_eq!(bru.to_rub() * vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0));
+    }
+
+    {
+        let cardinal_direction = [
+            SignedAxis3::POSITIVE_X,
+            SignedAxis3::NEGATIVE_X,
+            SignedAxis3::POSITIVE_Y,
+            SignedAxis3::NEGATIVE_Y,
+            SignedAxis3::POSITIVE_Z,
+            SignedAxis3::NEGATIVE_Z,
+        ];
+
+        for axis in cardinal_direction {
+            for handedness in [Handedness::Right, Handedness::Left] {
+                let system = ViewCoordinates::from_up_and_handedness(axis, handedness);
+                assert_eq!(system.handedness(), Some(handedness));
+
+                let det = system.to_rub().determinant();
+                assert!(det == -1.0 || det == 0.0 || det == 1.0);
+
+                let short = system.describe_short();
+                assert_eq!(short.parse(), Ok(system));
+            }
+        }
+    }
 }

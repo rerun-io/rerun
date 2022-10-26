@@ -15,6 +15,7 @@ pub struct SpaceCamera {
     /// The coordinate system of the camera ("view-space").
     pub camera_view_coordinates: Option<ViewCoordinates>,
 
+    /// Camera "Extrinsics", i.e. the pose of the camera.
     pub world_from_camera: IsoTransform,
 
     // -------------------------
@@ -102,14 +103,14 @@ fn from_rub_quat(system: Option<ViewCoordinates>) -> Result<Quat, String> {
     let system = system.unwrap(); // Safe, or `from_rub_mat3` would have returned an `Err`.
 
     let det = mat3.determinant();
-    if det < -0.5 {
+    if det == 1.0 {
+        Ok(Quat::from_mat3(&mat3))
+    } else if det == -1.0 {
         Err("has a left-handed coordinate system - Rerun does not yet support this!".to_owned())
-    } else if det < 0.5 {
+    } else {
         Err(format!(
             "has a degenerate coordinate system: {}",
             system.describe()
         ))
-    } else {
-        Ok(Quat::from_mat3(&mat3))
     }
 }

@@ -32,7 +32,7 @@ def log_car_data() -> None:
             "3d/camera",
             rotation_q=sample.camera.rotation_q,
             translation=sample.camera.position,
-            xyz="RDF"  # X=Right, Y=Down, Z=Forward
+            xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
         # Log the camera projection matrix:
