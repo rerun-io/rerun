@@ -472,7 +472,13 @@ def log_pinhole(
     """
     Log a perspective camera model.
 
-    This logs a transform between this object and the parent object.
+    This logs the pinhole model that projects points from the parent (camera) space to this space (image) such that:
+    ```
+    point_image_hom = image_from_cam * point_cam
+    point_image = point_image_hom[:,1] / point_image_hom[2]
+    ```
+    
+    Where `point_image_hom` is the projected point in the image space expressed in homogeneous coordinates.
 
     Example
     -------
