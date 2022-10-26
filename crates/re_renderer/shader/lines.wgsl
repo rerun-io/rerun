@@ -1,3 +1,4 @@
+#import <./types.wgsl>
 #import <./global_bindings.wgsl>
 #import <./utils/srgb.wgsl>
 #import <./utils/encoding.wgsl>
@@ -13,19 +14,19 @@ var<private> line_strip_texture_SIZE: i32 = 512;
 var<private> POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 
 struct VertexOut {
-    @location(0) color: vec4<f32>,
-    @builtin(position) position: vec4<f32>,
+    @location(0) color: Vec4,
+    @builtin(position) position: Vec4,
 };
 
 struct LineStripData {
-    color: vec4<f32>,
+    color: Vec4,
     thickness: f32,
     stippling: f32,
 }
 
 // Read and unpack line strip data at a given location
 fn read_strip_data(idx: i32) -> LineStripData {
-    var raw_data = textureLoad(position_data_texture, vec2<i32>(idx % POSITION_DATA_TEXTURE_SIZE, idx / POSITION_DATA_TEXTURE_SIZE), 0).xy;
+    var raw_data = textureLoad(position_data_texture, IVec2(idx % POSITION_DATA_TEXTURE_SIZE, idx / POSITION_DATA_TEXTURE_SIZE), 0).xy;
 
     var data: LineStripData;
     data.color = linear_from_srgba(unpack4x8unorm_workaround(raw_data.x));
@@ -45,7 +46,7 @@ struct PositionData {
 
 // Read and unpack position data at a given location
 fn read_position_data(idx: i32) -> PositionData {
-    var raw_data = textureLoad(line_strip_texture, vec2<i32>(idx % line_strip_texture_SIZE, idx / line_strip_texture_SIZE), 0);
+    var raw_data = textureLoad(line_strip_texture, IVec2(idx % line_strip_texture_SIZE, idx / line_strip_texture_SIZE), 0);
 
     var data: PositionData;
     data.pos = raw_data.xyz;
@@ -89,14 +90,14 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Output, transform to projection space and done.
     var out: VertexOut;
-    out.position = frame.projection_from_world * vec4<f32>(pos, 1.0);
+    out.position = frame.projection_from_world * Vec4(pos, 1.0);
     out.color = strip_data.color;
 
     return out;
 }
 
 @fragment
-fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
+fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // TODO(andreas): Shading, rounded caps, etc.
     return in.color;
 }

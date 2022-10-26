@@ -60,8 +60,8 @@ pub fn init() {
     }
 
     {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/typedefs.wgsl");
-        fs.create_file(&virtpath, include_str!("../shader/typedefs.wgsl").into())
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/types.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/types.wgsl").into())
             .unwrap();
     }
 

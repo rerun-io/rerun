@@ -1,8 +1,9 @@
+#import <./types.wgsl>
 #import <./utils/srgb.wgsl>
 
 struct VertexOutput {
-    @builtin(position) position: vec4<f32>,
-    @location(0) texcoord: vec2<f32>,
+    @builtin(position) position: Vec4,
+    @location(0) texcoord: Vec2,
 };
 
 // TODO(andreas): Move global bindings to shared include
@@ -13,10 +14,10 @@ var nearest_sampler: sampler;
 var hdr_texture: texture_2d<f32>;
 
 @fragment
-fn main(in: VertexOutput) -> @location(0) vec4<f32> {
+fn main(in: VertexOutput) -> @location(0) Vec4 {
     // Note that we can't use a simple textureLoad using @builtin(position) here despite the lack of filtering.
     // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
     // but are about the location of the texel in the target texture.
     var hdr = textureSample(hdr_texture, nearest_sampler, in.texcoord);
-    return vec4<f32>(srgb_from_linear(hdr.rgb), 1.0);
+    return Vec4(srgb_from_linear(hdr.rgb), 1.0);
 }
