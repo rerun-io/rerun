@@ -77,6 +77,10 @@ Note that none of the names in the path are special.
 `rerun.log_rigid3("foo/bar", …)` is logging the relationship between the parent `foo` and the child `bar`,
 and `rerun.log_rigid3("foo/bar/baz", …)` is logging the relationship between the parent `bar` and the child `baz`.
 
+### Unknown transforms
+Sometimes you have a child space that do not have an identity transform to the parent, but you don't know the transform, or don't know it yet.
+You can use `rerun.log_unknown_transform("parent/child")` to indicate to that `child` is separate from `parent`. You can later replace this unknown transform with a known once, using e.g. `log_rigid`.
+
 
 ## View coordinates
 You can use `log_view_coordinates` to set your preferred view coordinate systems.
