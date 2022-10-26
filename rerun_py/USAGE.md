@@ -70,7 +70,7 @@ rerun.log_image("3d/camera/#0/image", …)
 rerun.log_rect("3d/camera/#0/image/detection", …)
 ```
 
-Rerun will from this understand out how the `3d` space and the two image spaces (`3d/camera/#0/image` and `3d/camera/#1/image`) relate to each other, allowing you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space.
+Rerun will from this understand out how the `3d` space and the two image spaces (`3d/camera/#0/image` and `3d/camera/#1/image`) relate to each other, allowing you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space. In the future Rerun will also be able to transform objects between spaces, so that you can view 3D objects projected onto a 2D space, for instance.
 
 Note that none of the names in the path are special.
 

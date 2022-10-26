@@ -440,7 +440,13 @@ def log_rigid3(
     timeless: bool = False,
 ) -> None:
     """
-    Log the rigid transform of one object to its parent, also known as pose (e.g. camera extrinsics).
+    Log a proper rigid 3D transform of this object to its parent space. This is also known as pose (e.g. camera extrinsics).
+
+    The resulting transform from child to parent corresponds to taking
+    a point in the child space, rotating it by the given rotations,
+    and then translating it by the given translation:
+
+    * `point_parent = quat * point_child * quat* + translation`
 
     Example
     -------
@@ -449,7 +455,7 @@ def log_rigid3(
     rerun.log_pinhole("3d/camera/image", …)
     ```
 
-    * `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from object to parent space
+    * `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from this object space to the parent space
     * `translation`: Array with [x, y, z] position of the object in parent space.
     * `xyz`: optionally set the view coordinates, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
        This is a convenience for also calling `log_view_coordinates`.
@@ -506,9 +512,13 @@ def log_view_coordinates(
     obj_path: str, *, xyz: str = "", up: str = "", right_handed: Optional[bool] = None, timeless: bool = False
 ) -> None:
     """
-    Log the view coordinates for a world, a camera, or an image.
+    Log the view coordinates for an object.
 
-    You can call this with the `xyz` parameter, setting it to a three-letter acronym, where each letter represents:
+    Each object defines its own coordinate system, called a space.
+    By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
+    This is for instance useful for camera objects ("what axis is forward?").
+
+    For full control, set the `xyz` parameter to a three-letter acronym (`xyz="RDF"`). Each letter represents:
 
     * R: Right
     * L: Left
@@ -519,10 +529,10 @@ def log_view_coordinates(
 
     Some of the most common are:
 
-    RDF: X=Right Y=Down Z=Forward  (right-handed)
-    RUB  X=Right Y=Up   Z=Back     (right-handed)
-    RDB: X=Right Y=Down Z=Back     (left-handed)
-    RUF: X=Right Y=Up   Z=Forward  (left-handed)
+    * "RDF": X=Right Y=Down Z=Forward  (right-handed)
+    * "RUB"  X=Right Y=Up   Z=Back     (right-handed)
+    * "RDB": X=Right Y=Down Z=Back     (left-handed)
+    * "RUF": X=Right Y=Up   Z=Forward  (left-handed)
 
     Example
     -------

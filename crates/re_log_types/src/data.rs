@@ -445,6 +445,9 @@ pub type Quaternion = [f32; 4];
 /// Also known as an isometric transform, or a pose.
 ///
 /// Represents a transformation to parent from child.
+///
+/// Points in the child space are first rotated by [`Self::rotation`]
+/// and then translated by [`Self::translation`].
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Rigid3 {
