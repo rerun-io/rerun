@@ -1,6 +1,6 @@
 use crate::debug_label::DebugLabel;
 
-use super::{bind_group_layout_pool::*, resource_pool::*};
+use super::{bind_group_layout_pool::*, resource::*, static_resource_pool::*};
 
 slotmap::new_key_type! { pub(crate) struct PipelineLayoutHandle; }
 

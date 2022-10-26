@@ -9,7 +9,9 @@ pub(crate) mod sampler_pool;
 pub(crate) mod shader_module_pool;
 pub(crate) mod texture_pool;
 
-mod resource_pool;
+mod dynamic_resource_pool;
+mod resource;
+mod static_resource_pool;
 
 use self::{
     bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,

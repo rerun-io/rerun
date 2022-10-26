@@ -4,9 +4,9 @@ use std::{hash::Hash, path::PathBuf, sync::atomic::AtomicU64};
 use ahash::HashSet;
 use anyhow::Context as _;
 
-use crate::debug_label::DebugLabel;
-use crate::resource_pools::resource_pool::*;
-use crate::{FileResolver, FileSystem};
+use crate::{debug_label::DebugLabel, FileResolver, FileSystem};
+
+use super::{resource::*, static_resource_pool::StaticResourcePool};
 
 // ---
 

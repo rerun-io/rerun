@@ -5,8 +5,9 @@ use crate::debug_label::DebugLabel;
 use super::{
     bind_group_layout_pool::{BindGroupLayoutHandle, BindGroupLayoutPool},
     buffer_pool::{BufferHandle, BufferPool},
-    resource_pool::*,
+    resource::*,
     sampler_pool::{SamplerHandle, SamplerPool},
+    static_resource_pool::*,
     texture_pool::{TextureHandle, TexturePool},
 };
 
@@ -51,6 +52,14 @@ pub(crate) struct BindGroupDesc {
     pub layout: BindGroupLayoutHandle,
 }
 
+// TODO: proper doc of what we're doing
+
+// Different expectations regarding ownership:
+// * alloc buffer/texture, pass it to bind group, throw handle to buffer/texture away, hold on to bind group indefinitely
+//      => BindGroup should keep buffer/texture alive!
+// * alloc buffer/texture, pass it to bind group, throw both away, do the same next frame
+//      => BindGroupPool should *try* to re-use previously created bind groups!
+//      => musn't prevent buffer/texture re-use on next frame
 #[derive(Default)]
 pub(crate) struct BindGroupPool {
     pool: StaticResourcePool<BindGroupHandle, BindGroupDesc, BindGroup>,

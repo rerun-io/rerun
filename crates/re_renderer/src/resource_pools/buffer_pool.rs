@@ -2,7 +2,7 @@ use std::{hash::Hash, sync::atomic::AtomicU64};
 
 use crate::debug_label::DebugLabel;
 
-use super::resource_pool::*;
+use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
 
 slotmap::new_key_type! { pub struct BufferHandleInner; }
 pub type BufferHandle = std::sync::Arc<BufferHandleInner>;

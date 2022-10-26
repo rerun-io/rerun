@@ -4,7 +4,7 @@ use anyhow::Context;
 
 use crate::debug_label::DebugLabel;
 
-use super::{pipeline_layout_pool::*, resource_pool::*, shader_module_pool::*};
+use super::{pipeline_layout_pool::*, resource::*, shader_module_pool::*, static_resource_pool::*};
 
 slotmap::new_key_type! { pub(crate) struct RenderPipelineHandle; }
 

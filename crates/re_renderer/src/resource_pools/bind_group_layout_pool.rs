@@ -1,6 +1,6 @@
 use crate::debug_label::DebugLabel;
 
-use super::resource_pool::*;
+use super::{resource::*, static_resource_pool::*};
 
 slotmap::new_key_type! { pub(crate) struct BindGroupLayoutHandle; }
 

@@ -1,6 +1,6 @@
 use std::{hash::Hash, num::NonZeroU8};
 
-use super::resource_pool::*;
+use super::{resource::*, static_resource_pool::*};
 use crate::debug_label::DebugLabel;
 
 slotmap::new_key_type! { pub(crate) struct SamplerHandle; }

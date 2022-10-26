@@ -1,6 +1,6 @@
 use std::{hash::Hash, sync::atomic::AtomicU64};
 
-use super::resource_pool::*;
+use super::{resource::*, static_resource_pool::*};
 
 slotmap::new_key_type! { pub struct TextureHandle; }
 
