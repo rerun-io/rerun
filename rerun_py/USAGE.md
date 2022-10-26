@@ -51,7 +51,7 @@ Rerun uses the term _space_ to mean _coordinate system_ or _coordinate frame_.
 
 Objects can be separated into their own spaces by logging special transforms relative to their parents using `rerun.log_rigid3_transform` and `rerun.log_pinhole`. `log_rigid3_transform` is for the camera pose (translation and rotation), while `log_pinhole` is for the camera pinhole projection matrix and image resolution.
 
-Say you have a 3D world with two cameras with known pose (extrinsics) and intrinsics (pinhole model and resolution). You want to log some things in the shared 3D space, and also log each camera image and some detection in these images.
+Say you have a 3D world with two cameras with known extrinsics (pose) and intrinsics (pinhole model and resolution). You want to log some things in the shared 3D space, and also log each camera image and some detection in these images.
 
 ```py
 # Log some data to the 3D world:
