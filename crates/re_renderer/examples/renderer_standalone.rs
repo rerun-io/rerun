@@ -339,7 +339,7 @@ impl Application {
                             1.0 / time_passed.as_secs_f32()
                         );
                         self.window.set_title(&time_info_str);
-                        info!("{time_info_str}");
+                        re_log::info!("{time_info_str}");
                     }
                 }
                 Event::MainEventsCleared => {
@@ -377,6 +377,8 @@ fn main() {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
+        tracing_subscriber::fmt::init();
+
         // Set size to a common physical resolution as a comparable start-up default.
         window.set_inner_size(winit::dpi::PhysicalSize {
             width: 1920,
@@ -384,17 +386,16 @@ fn main() {
         });
 
         // Enable wgpu info messages by default
-        env_logger::init_from_env(env_logger::Env::default().filter_or(
-            env_logger::DEFAULT_FILTER_ENV,
-            "wgpu=info,renderer_standalone",
-        ));
         pollster::block_on(run(event_loop, window));
     }
 
     #[cfg(target_arch = "wasm32")]
     {
-        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-        console_log::init().expect("could not initialize logger");
+        // Make sure panics are logged using `console.error`.
+        console_error_panic_hook::set_once();
+        // Redirect tracing to console.log and friends:
+        tracing_wasm::set_as_global_default();
+
         use winit::platform::web::WindowExtWebSys;
         // On wasm, append the canvas to the document body
         web_sys::window()
