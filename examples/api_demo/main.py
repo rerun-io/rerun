@@ -29,9 +29,9 @@ def run_misc() -> None:
             [0, 0, 2, 0],
         ]
     )
-    rerun.log_mesh_file("3d/example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
+    rerun.log_mesh_file("world/example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
 
-    rerun.log_path("3d/a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]))
+    rerun.log_path("world/a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]))
 
 
 def run_segmentation() -> None:

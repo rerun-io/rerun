@@ -17,19 +17,19 @@ def log_car_data() -> None:
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
-    rerun.log_view_coordinates("3d", up="-Y", timeless=True)
+    rerun.log_view_coordinates("world", up="-Y", timeless=True)
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a timeline called `frame_nr`.
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
         rerun.set_time_sequence("frame_nr", sample.frame_idx)
 
-        # We log the projected points in the '3d' space:
-        rerun.log_points("3d/points", sample.point_cloud)
+        # We log the projected points in the "world" space:
+        rerun.log_points("world/points", sample.point_cloud)
 
         # Log the camera pose:
         rerun.log_rigid3(
-            "3d/camera",
+            "world/camera",
             rotation_q=sample.camera.rotation_q,
             translation=sample.camera.position,
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
@@ -37,21 +37,21 @@ def log_car_data() -> None:
 
         # Log the camera projection matrix:
         rerun.log_pinhole(
-            "3d/camera/image",
+            "world/camera/image",
             width=sample.camera.resolution[0],
             height=sample.camera.resolution[1],
             image_from_cam=sample.camera.intrinsics,
         )
 
         # We log the rgb image to the image-space of the camera:
-        rerun.log_image("3d/camera/image/rgb", sample.rgb_image)
+        rerun.log_image("world/camera/image/rgb", sample.rgb_image)
 
         # Same with the bounding box:
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rerun.log_rect("3d/camera/image/bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
+        rerun.log_rect("world/camera/image/bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
 
         # The depth image is in millimeters, so we set meter=1000
-        rerun.log_depth_image("3d/camera/image/depth", sample.depth_image_mm, meter=1000)
+        rerun.log_depth_image("world/camera/image/depth", sample.depth_image_mm, meter=1000)
 
 
 class DummyCar:

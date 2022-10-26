@@ -23,7 +23,7 @@ See more in [`example_car.py`](rerun_sdk/examples/example_car.py).
 ## Paths
 The first argument to each log function is an _object path_. Each time you log to a specific object path you will update the object, i.e. log a new instance of it along the timeline. Each logging to a path bust be of the same type (you cannot log an image to the same path as a point cloud).
 
-A path can look like this: `3d/camera/image/detection/#42/bbox`. Each component (between the slashes) can either be:
+A path can look like this: `world/camera/image/detection/#42/bbox`. Each component (between the slashes) can either be:
 
 * A name (`detections`). Intended for hard-coded names.
 * A `"quoted string"`. Intended for things like serial numbers.
@@ -55,22 +55,22 @@ Say you have a 3D world with two cameras with known extrinsics (pose) and intrin
 
 ```py
 # Log some data to the 3D world:
-rerun.log_points("3d/points", …)
+rerun.log_points("world/points", …)
 
 # Log first camera:
-rerun.log_rigid3("3d/camera/#0", …)
-rerun.log_pinhole("3d/camera/#0/image", …)
+rerun.log_rigid3("world/camera/#0", …)
+rerun.log_pinhole("world/camera/#0/image", …)
 
 # Log second camera:
-rerun.log_rigid3("3d/camera/#1", …)
-rerun.log_pinhole("3d/camera/#1/image", …)
+rerun.log_rigid3("world/camera/#1", …)
+rerun.log_pinhole("world/camera/#1/image", …)
 
 # Log some data to the image spaces of the first camera:
-rerun.log_image("3d/camera/#0/image", …)
-rerun.log_rect("3d/camera/#0/image/detection", …)
+rerun.log_image("world/camera/#0/image", …)
+rerun.log_rect("world/camera/#0/image/detection", …)
 ```
 
-Rerun will from this understand out how the `3d` space and the two image spaces (`3d/camera/#0/image` and `3d/camera/#1/image`) relate to each other, allowing you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space. In the future Rerun will also be able to transform objects between spaces, so that you can view 3D objects projected onto a 2D space, for instance.
+Rerun will from this understand out how the `world` space and the two image spaces (`world/camera/#0/image` and `world/camera/#1/image`) relate to each other, allowing you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space. In the future Rerun will also be able to transform objects between spaces, so that you can view 3D objects projected onto a 2D space, for instance.
 
 Note that none of the names in the path are special.
 
@@ -85,9 +85,9 @@ Each object defines its own coordinate system, called a space.
 By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
 This is for instance useful for camera objects ("what axis is forward?").
 
-For camera spaces this can be for instance `rerun.log_view_coordinates("3d/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3` also takes this as an argument. Logging view coordinates helps Rerun figure out how to interpret your logged cameras.
+For camera spaces this can be for instance `rerun.log_view_coordinates("world/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3` also takes this as an argument. Logging view coordinates helps Rerun figure out how to interpret your logged cameras.
 
-For 3D world spaces it can be useful to log what the up-axis is in your coordinate system. This will help Rerun setup a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rerun.log_view_coordinates("3d", up="+Z", timeless=True)`.
+For 3D world spaces it can be useful to log what the up-axis is in your coordinate system. This will help Rerun setup a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rerun.log_view_coordinates("world", up="+Z", timeless=True)`.
 
 
 ## Timeless data

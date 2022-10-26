@@ -434,7 +434,9 @@ def log_rigid3(
     timeless: bool = False,
 ) -> None:
     """
-    Log a proper rigid 3D transform of this object to its parent space. This is also known as pose (e.g. camera extrinsics).
+    Log a proper rigid 3D transform of this object to its parent space.
+
+    This is also known as pose (e.g. camera extrinsics).
 
     The resulting transform from child to parent corresponds to taking
     a point in the child space, rotating it by the given rotations,
@@ -445,11 +447,12 @@ def log_rigid3(
     Example
     -------
     ```
-    rerun.log_rigid3("3d/camera", …)
-    rerun.log_pinhole("3d/camera/image", …)
+    rerun.log_rigid3("world/camera", …)
+    rerun.log_pinhole("world/camera/image", …)
     ```
 
-    * `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from this object space to the parent space
+    * `rotation_q`: Array with quaternion coordinates [x, y, z, w]
+      for the rotation from this object space to the parent space
     * `translation`: Array with [x, y, z] position of the object in parent space.
     * `xyz`: optionally set the view coordinates of this object, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
        This is a convenience for also calling `log_view_coordinates`.
@@ -483,8 +486,8 @@ def log_pinhole(
     Example
     -------
     ```
-    rerun.log_rigid3("3d/camera", …)
-    rerun.log_pinhole("3d/camera/image", …)
+    rerun.log_rigid3("world/camera", …)
+    rerun.log_pinhole("world/camera/image", …)
     ```
 
     `image_from_cam`: Row-major intrinsics matrix for projecting from camera space to image space
@@ -531,15 +534,15 @@ def log_view_coordinates(
     Example
     -------
     ```
-    rerun.log_view_coordinates("3d/camera", xyz="RUB")
+    rerun.log_view_coordinates("world/camera", xyz="RUB")
     ```
 
     For world-coordinates it's often conventient to just specify an up-axis.
     You can do so by using the `up`-parameter (where `up` is one of "+X", "-X", "+Y", "-Y", "+Z", "-Z"):
 
     ```
-    rerun.log_view_coordinates("3d", up="+Z", right_handed=True, timeless=True)
-    rerun.log_view_coordinates("3d", up="-Y", right_handed=False, timeless=True)
+    rerun.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
+    rerun.log_view_coordinates("world", up="-Y", right_handed=False, timeless=True)
     ```
 
     """

@@ -29,10 +29,10 @@ def log_clock() -> None:
             0.0,
         )
 
-    rerun.log_view_coordinates("3d", up="+Y", timeless=True)
+    rerun.log_view_coordinates("world", up="+Y", timeless=True)
 
     rerun.log_obb(
-        "3d/frame",
+        "world/frame",
         half_size=[2 * LENGTH_S, 2 * LENGTH_S, 1.0],
         position=[0.0, 0.0, 0.0],
         rotation_q=[0.0, 0.0, 0.0, 0.0],
@@ -46,20 +46,24 @@ def log_clock() -> None:
         scaled_s = (t_secs % 60) / 60.0
         point_s = np.array(rotate(2 * math.pi * scaled_s, LENGTH_S))
         color_s = (int(255 - (scaled_s * 255)), int(scaled_s * 255), 0, 128)
-        rerun.log_point("3d/seconds_pt", position=point_s, color=color_s)
-        rerun.log_arrow("3d/seconds_hand", origin=[0.0, 0.0, 0.0], vector=point_s, color=color_s, width_scale=WIDTH_S)
+        rerun.log_point("world/seconds_pt", position=point_s, color=color_s)
+        rerun.log_arrow(
+            "world/seconds_hand", origin=[0.0, 0.0, 0.0], vector=point_s, color=color_s, width_scale=WIDTH_S
+        )
 
         scaled_m = (t_secs % 3600) / 3600.0
         point_m = np.array(rotate(2 * math.pi * scaled_m, LENGTH_M))
         color_m = (int(255 - (scaled_m * 255)), int(scaled_m * 255), 128, 128)
-        rerun.log_point("3d/minutes_pt", position=point_m, color=color_m)
-        rerun.log_arrow("3d/minutes_hand", origin=[0.0, 0.0, 0.0], vector=point_m, color=color_m, width_scale=WIDTH_M)
+        rerun.log_point("world/minutes_pt", position=point_m, color=color_m)
+        rerun.log_arrow(
+            "world/minutes_hand", origin=[0.0, 0.0, 0.0], vector=point_m, color=color_m, width_scale=WIDTH_M
+        )
 
         scaled_h = (t_secs % 43200) / 43200.0
         point_h = np.array(rotate(2 * math.pi * scaled_h, LENGTH_H))
         color_h = (int(255 - (scaled_h * 255)), int(scaled_h * 255), 255, 255)
-        rerun.log_point("3d/hours_pt", position=point_h, color=color_h)
-        rerun.log_arrow("3d/hours_hand", origin=[0.0, 0.0, 0.0], vector=point_h, color=color_h, width_scale=WIDTH_M)
+        rerun.log_point("world/hours_pt", position=point_h, color=color_h)
+        rerun.log_arrow("world/hours_hand", origin=[0.0, 0.0, 0.0], vector=point_h, color=color_h, width_scale=WIDTH_M)
 
 
 if __name__ == "__main__":

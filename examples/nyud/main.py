@@ -87,7 +87,7 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
 def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
     depth_images_counter = 0
 
-    rerun.log_view_coordinates("3d", up="-Y", timeless=True)
+    rerun.log_view_coordinates("world", up="-Y", timeless=True)
 
     with zipfile.ZipFile(dataset, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
@@ -105,7 +105,7 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)
                 img_rgb = read_image_rgb(buf)
-                rerun.log_image("3d/camera/image/rgb", img_rgb)
+                rerun.log_image("world/camera/image/rgb", img_rgb)
 
             elif f.filename.endswith(".pgm"):
                 if depth_images_counter % DEPTH_IMAGE_INTERVAL == 0:
@@ -113,24 +113,24 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                     img_depth = read_image(buf)
 
                     point_cloud = back_project(depth_image=img_depth / DEPTH_IMAGE_SCALING)
-                    rerun.log_points("3d/points", point_cloud, colors=np.array([255, 255, 255, 255]))
+                    rerun.log_points("world/points", point_cloud, colors=np.array([255, 255, 255, 255]))
 
                     # Log the camera transforms:
                     rerun.log_rigid3(
-                        "3d/camera",
+                        "world/camera",
                         rotation_q=np.array((0, 0, 0, 1)),
                         translation=np.array((0, 0, 0)),
                         xyz="RDF",  # X=Right, Y=Down, Z=Forward
                     )
                     rerun.log_pinhole(
-                        "3d/camera/image",
+                        "world/camera/image",
                         width=img_depth.shape[1],
                         height=img_depth.shape[0],
                         image_from_cam=camera_intrinsics(img_depth),
                     )
 
                     # Log the depth image to the cameras image-space:
-                    rerun.log_depth_image("3d/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
+                    rerun.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
 
                 depth_images_counter += 1
 

@@ -101,7 +101,7 @@ def read_annotations(dirpath: Path) -> Sequence:
 def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
-    rerun.log_view_coordinates("3d", up="+Y", timeless=True)
+    rerun.log_view_coordinates("world", up="+Y", timeless=True)
 
     frame_times = []
     for sample in samples:
@@ -110,7 +110,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         frame_times.append(sample.timestamp)
 
         img_path = Path(os.path.join(sample.dirpath, f"video/{sample.index}.jpg"))
-        rerun.log_image_file("3d/camera/video", img_path, img_format=ImageFormat.JPEG)
+        rerun.log_image_file("world/camera/video", img_path, img_format=ImageFormat.JPEG)
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
@@ -139,10 +139,10 @@ def log_camera(cam: ARCamera) -> None:
     rot = rot * R.from_rotvec((math.tau / 2.0) * X)  # TODO(emilk): figure out why this is needed
 
     rerun.log_rigid3(
-        "3d/camera", rotation_q=rot.as_quat(), translation=translation, xyz="RDF"  # X=Right, Y=Down, Z=Forward
+        "world/camera", rotation_q=rot.as_quat(), translation=translation, xyz="RDF"  # X=Right, Y=Down, Z=Forward
     )
     rerun.log_pinhole(
-        "3d/camera/video",
+        "world/camera/video",
         width=w,
         height=h,
         image_from_cam=intrinsics,
@@ -156,7 +156,7 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
         point_raw = point_cloud.point[i]
         point = np.array([point_raw.x, point_raw.y, point_raw.z], dtype=np.float32)
         ident = point_cloud.identifier[i]
-        rerun.log_point(f"3d/points/{ident}", point, color=[255, 255, 255, 255])
+        rerun.log_point(f"world/points/{ident}", point, color=[255, 255, 255, 255])
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
@@ -169,7 +169,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
         rerun.log_obb(
-            f"3d/objects/{bbox.id}",
+            f"world/objects/{bbox.id}",
             bbox.scale,
             bbox.translation,
             rot.as_quat(),
@@ -198,11 +198,11 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             keypoint_pos2s *= IMAGE_RESOLUTION
 
             if len(keypoint_pos2s) == 9:
-                log_projected_bbox(f"3d/camera/video/objects/{obj_ann.object_id}", keypoint_pos2s)
+                log_projected_bbox(f"world/camera/video/objects/{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
                     rerun.log_point(
-                        f"3d/camera/video/objects/{obj_ann.object_id}/{id}",
+                        f"world/camera/video/objects/{obj_ann.object_id}/{id}",
                         pos2,
                         color=[130, 160, 250, 255],
                     )
