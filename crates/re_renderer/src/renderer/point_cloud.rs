@@ -99,6 +99,13 @@ impl PointCloudDrawable {
             0
         );
 
+        // TODO(andreas) split up point cloud into several textures when that happens.
+        anyhow::ensure!(
+            points.len() <= (TEXTURE_SIZE * TEXTURE_SIZE) as usize,
+            "Current maximum number of points supported for a point cloud is {}",
+            TEXTURE_SIZE * TEXTURE_SIZE
+        );
+
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several PointDrawable!
         let pos_and_size_texture_desc = wgpu::TextureDescriptor {
