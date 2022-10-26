@@ -46,12 +46,12 @@ pub(crate) struct SamplerDesc {
 
 #[derive(Default)]
 pub(crate) struct SamplerPool {
-    pool: ResourcePool<SamplerHandle, SamplerDesc, Sampler>,
+    pool: StaticResourcePool<SamplerHandle, SamplerDesc, Sampler>,
 }
 
 impl SamplerPool {
     pub fn request(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> SamplerHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
             let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
                 label: desc.label.get(),

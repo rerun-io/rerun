@@ -19,7 +19,7 @@ pub(crate) struct BindGroupLayoutDesc {
 
 #[derive(Default)]
 pub(crate) struct BindGroupLayoutPool {
-    pool: ResourcePool<BindGroupLayoutHandle, BindGroupLayoutDesc, BindGroupLayout>,
+    pool: StaticResourcePool<BindGroupLayoutHandle, BindGroupLayoutDesc, BindGroupLayout>,
 }
 
 impl BindGroupLayoutPool {
@@ -28,7 +28,7 @@ impl BindGroupLayoutPool {
         device: &wgpu::Device,
         desc: &BindGroupLayoutDesc,
     ) -> BindGroupLayoutHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
             let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: desc.label.get(),

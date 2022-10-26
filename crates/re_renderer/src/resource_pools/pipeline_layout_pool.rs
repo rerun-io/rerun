@@ -20,7 +20,7 @@ pub(crate) struct PipelineLayoutDesc {
 
 #[derive(Default)]
 pub(crate) struct PipelineLayoutPool {
-    pool: ResourcePool<PipelineLayoutHandle, PipelineLayoutDesc, PipelineLayout>,
+    pool: StaticResourcePool<PipelineLayoutHandle, PipelineLayoutDesc, PipelineLayout>,
 }
 
 impl PipelineLayoutPool {
@@ -30,7 +30,7 @@ impl PipelineLayoutPool {
         desc: &PipelineLayoutDesc,
         bind_group_layout_pool: &BindGroupLayoutPool,
     ) -> PipelineLayoutHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: desc.label.get(),

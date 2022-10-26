@@ -53,7 +53,7 @@ pub(crate) struct BindGroupDesc {
 
 #[derive(Default)]
 pub(crate) struct BindGroupPool {
-    pool: ResourcePool<BindGroupHandle, BindGroupDesc, BindGroup>,
+    pool: StaticResourcePool<BindGroupHandle, BindGroupDesc, BindGroup>,
 }
 
 impl BindGroupPool {
@@ -66,7 +66,7 @@ impl BindGroupPool {
         buffers: &BufferPool,
         samplers: &SamplerPool,
     ) -> BindGroupHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: desc.label.get(),

@@ -20,7 +20,7 @@ impl UsageTrackedResource for Texture {
 // TODO(andreas) use a custom descriptor type with [`DebugLabel`] and a content id.
 #[derive(Default)]
 pub(crate) struct TexturePool {
-    pool: ResourcePool<TextureHandle, wgpu::TextureDescriptor<'static>, Texture>,
+    pool: StaticResourcePool<TextureHandle, wgpu::TextureDescriptor<'static>, Texture>,
 }
 
 impl TexturePool {
@@ -29,7 +29,7 @@ impl TexturePool {
         device: &wgpu::Device,
         desc: &wgpu::TextureDescriptor<'static>,
     ) -> TextureHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             let texture = device.create_texture(desc);
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             Texture {

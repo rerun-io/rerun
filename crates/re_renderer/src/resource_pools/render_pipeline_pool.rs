@@ -92,7 +92,7 @@ impl RenderPipelineDesc {
 
 #[derive(Default)]
 pub(crate) struct RenderPipelinePool {
-    pool: ResourcePool<RenderPipelineHandle, RenderPipelineDesc, RenderPipeline>,
+    pool: StaticResourcePool<RenderPipelineHandle, RenderPipelineDesc, RenderPipeline>,
 }
 
 impl RenderPipelinePool {
@@ -103,7 +103,7 @@ impl RenderPipelinePool {
         pipeline_layout_pool: &PipelineLayoutPool,
         shader_module_pool: &ShaderModulePool,
     ) -> RenderPipelineHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             RenderPipeline {
                 last_frame_used: AtomicU64::new(0),
                 pipeline: desc
@@ -156,7 +156,7 @@ impl RenderPipelinePool {
         // Recompile render pipelines referencing recompiled shader modules.
         for desc in descs {
             // TODO(cmc): obviously terrible, we'll see as things evolve.
-            let handle = self.pool.get_handle(&desc, |_| {
+            let handle = self.pool.get_or_create(&desc, |_| {
                 unreachable!("the pool itself handed us that descriptor")
             });
             let res = self

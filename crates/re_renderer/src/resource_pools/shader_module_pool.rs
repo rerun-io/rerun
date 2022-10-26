@@ -68,7 +68,7 @@ impl UsageTrackedResource for ShaderModule {
 
 #[derive(Default)]
 pub struct ShaderModulePool {
-    pool: ResourcePool<ShaderModuleHandle, ShaderModuleDesc, ShaderModule>,
+    pool: StaticResourcePool<ShaderModuleHandle, ShaderModuleDesc, ShaderModule>,
 }
 
 impl ShaderModulePool {
@@ -77,7 +77,7 @@ impl ShaderModulePool {
         device: &wgpu::Device,
         desc: &ShaderModuleDesc,
     ) -> ShaderModuleHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             // TODO(cmc): must provide a way to properly handle errors in requests.
             // Probably better to wait for a first PoC of #import to land though,
             // as that will surface a bunch of shortcomings in our error handling too.
@@ -118,7 +118,7 @@ impl ShaderModulePool {
         // Recompile shader modules for outdated descriptors.
         for (path, desc) in descs {
             // TODO(cmc): obviously terrible, we'll see as things evolve.
-            let handle = self.pool.get_handle(&desc, |_| {
+            let handle = self.pool.get_or_create(&desc, |_| {
                 unreachable!("the pool itself handed us that descriptor")
             });
             let res = self
