@@ -373,7 +373,7 @@ impl Renderer for LineRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        let bind_group_layout = pools.bind_group_layouts.request(
+        let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
                 label: "line renderer".into(),
@@ -402,7 +402,7 @@ impl Renderer for LineRenderer {
             },
         );
 
-        let pipeline_layout = pools.pipeline_layouts.request(
+        let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
                 label: "line renderer".into(),
@@ -411,7 +411,7 @@ impl Renderer for LineRenderer {
             &pools.bind_group_layouts,
         );
 
-        let shader_module = pools.shader_modules.request(
+        let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
             &ShaderModuleDesc {
@@ -420,7 +420,7 @@ impl Renderer for LineRenderer {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.request(
+        let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
                 label: "LineRenderer".into(),
@@ -462,7 +462,7 @@ impl Renderer for LineRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
-        let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;
 
         pass.set_pipeline(&pipeline.pipeline);

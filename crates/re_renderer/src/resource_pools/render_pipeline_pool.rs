@@ -56,7 +56,7 @@ impl RenderPipelineDesc {
         shader_modules: &ShaderModulePool,
     ) -> anyhow::Result<wgpu::RenderPipeline> {
         let pipeline_layout = pipeline_layouts
-            .get(self.pipeline_layout)
+            .get_resource(self.pipeline_layout)
             .context("referenced pipeline layout not found")?;
 
         let vertex_shader_module = shader_modules
@@ -96,7 +96,7 @@ pub(crate) struct RenderPipelinePool {
 }
 
 impl RenderPipelinePool {
-    pub fn request(
+    pub fn get_or_create(
         &mut self,
         device: &wgpu::Device,
         desc: &RenderPipelineDesc,
@@ -183,7 +183,7 @@ impl RenderPipelinePool {
         }
     }
 
-    pub fn get(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
+    pub fn get_resource(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
         self.pool.get_resource(handle)
     }
 }

@@ -50,7 +50,7 @@ pub(crate) struct SamplerPool {
 }
 
 impl SamplerPool {
-    pub fn request(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> SamplerHandle {
+    pub fn get_or_create(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> SamplerHandle {
         self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
             let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -73,7 +73,7 @@ impl SamplerPool {
         })
     }
 
-    pub fn get(&self, handle: SamplerHandle) -> Result<&Sampler, PoolError> {
+    pub fn get_resource(&self, handle: SamplerHandle) -> Result<&Sampler, PoolError> {
         self.pool.get_resource(handle)
     }
 }

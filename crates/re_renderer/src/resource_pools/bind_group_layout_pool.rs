@@ -23,7 +23,7 @@ pub(crate) struct BindGroupLayoutPool {
 }
 
 impl BindGroupLayoutPool {
-    pub fn request(
+    pub fn get_or_create(
         &mut self,
         device: &wgpu::Device,
         desc: &BindGroupLayoutDesc,
@@ -38,7 +38,10 @@ impl BindGroupLayoutPool {
         })
     }
 
-    pub fn get(&self, handle: BindGroupLayoutHandle) -> Result<&BindGroupLayout, PoolError> {
+    pub fn get_resource(
+        &self,
+        handle: BindGroupLayoutHandle,
+    ) -> Result<&BindGroupLayout, PoolError> {
         self.pool.get_resource(handle)
     }
 }

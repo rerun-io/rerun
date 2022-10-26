@@ -37,7 +37,7 @@ pub(crate) struct GlobalBindings {
 impl GlobalBindings {
     pub fn new(pools: &mut WgpuResourcePools, device: &wgpu::Device) -> Self {
         Self {
-            layout: pools.bind_group_layouts.request(
+            layout: pools.bind_group_layouts.get_or_create(
                 device,
                 &BindGroupLayoutDesc {
                     label: "global bind group layout".into(),
@@ -68,7 +68,7 @@ impl GlobalBindings {
                     ],
                 },
             ),
-            nearest_neighbor_sampler: pools.samplers.request(
+            nearest_neighbor_sampler: pools.samplers.get_or_create(
                 device,
                 &SamplerDesc {
                     label: "nearest".into(),

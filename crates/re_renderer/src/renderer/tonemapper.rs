@@ -65,7 +65,7 @@ impl Renderer for Tonemapper {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        let bind_group_layout = pools.bind_group_layouts.request(
+        let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
                 label: "tonemapping".into(),
@@ -82,11 +82,11 @@ impl Renderer for Tonemapper {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.request(
+        let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
                 label: "tonemapping".into(),
-                pipeline_layout: pools.pipeline_layouts.request(
+                pipeline_layout: pools.pipeline_layouts.get_or_create(
                     device,
                     &PipelineLayoutDesc {
                         label: "tonemapping".into(),
@@ -95,7 +95,7 @@ impl Renderer for Tonemapper {
                     &pools.bind_group_layouts,
                 ),
                 vertex_entrypoint: "main".into(),
-                vertex_handle: pools.shader_modules.request(
+                vertex_handle: pools.shader_modules.get_or_create(
                     device,
                     resolver,
                     &ShaderModuleDesc {
@@ -104,7 +104,7 @@ impl Renderer for Tonemapper {
                     },
                 ),
                 fragment_entrypoint: "main".into(),
-                fragment_handle: pools.shader_modules.request(
+                fragment_handle: pools.shader_modules.get_or_create(
                     device,
                     resolver,
                     &ShaderModuleDesc {
@@ -134,7 +134,7 @@ impl Renderer for Tonemapper {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &TonemapperDrawable,
     ) -> anyhow::Result<()> {
-        let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         let bind_group = pools
             .bind_groups
             .get_resource(&draw_data.hdr_target_bind_group)?;

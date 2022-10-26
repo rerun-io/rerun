@@ -127,12 +127,12 @@ impl BindGroupPool {
                                 size: *size,
                             }),
                             BindGroupEntry::Sampler(handle) => wgpu::BindingResource::Sampler(
-                                &samplers.get(*handle).unwrap().sampler,
+                                &samplers.get_resource(*handle).unwrap().sampler,
                             ),
                         },
                     })
                     .collect::<Vec<_>>(),
-                layout: &bind_group_layout.get(desc.layout).unwrap().layout,
+                layout: &bind_group_layout.get_resource(desc.layout).unwrap().layout,
             });
             Ok(BindGroup {
                 bind_group,

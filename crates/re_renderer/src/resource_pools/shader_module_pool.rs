@@ -76,7 +76,7 @@ pub struct ShaderModulePool {
 }
 
 impl ShaderModulePool {
-    pub fn request<Fs: FileSystem>(
+    pub fn get_or_create<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
