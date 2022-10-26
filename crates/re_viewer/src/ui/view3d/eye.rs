@@ -81,6 +81,7 @@ pub(crate) struct OrbitEye {
     pub orbit_radius: f32,
     pub world_from_view_rot: Quat,
     pub fov_y: f32,
+
     /// Zero = no up (3dof rotation)
     pub up: Vec3,
 

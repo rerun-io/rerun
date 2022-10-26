@@ -119,6 +119,30 @@ impl ViewCoordinates {
         None
     }
 
+    #[inline]
+    pub fn right(&self) -> Option<SignedAxis3> {
+        for (dim, &dir) in self.0.iter().enumerate() {
+            if dir == ViewDir::Right {
+                return Some(SignedAxis3::new(Sign::Positive, Axis3::from_dim(dim)));
+            } else if dir == ViewDir::Left {
+                return Some(SignedAxis3::new(Sign::Negative, Axis3::from_dim(dim)));
+            }
+        }
+        None
+    }
+
+    #[inline]
+    pub fn forward(&self) -> Option<SignedAxis3> {
+        for (dim, &dir) in self.0.iter().enumerate() {
+            if dir == ViewDir::Forward {
+                return Some(SignedAxis3::new(Sign::Positive, Axis3::from_dim(dim)));
+            } else if dir == ViewDir::Back {
+                return Some(SignedAxis3::new(Sign::Negative, Axis3::from_dim(dim)));
+            }
+        }
+        None
+    }
+
     pub fn describe_short(&self) -> String {
         let [x, y, z] = self.0;
         format!("{}{}{}", x.short(), y.short(), z.short(),)

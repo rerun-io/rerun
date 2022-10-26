@@ -193,22 +193,24 @@ fn show_settings_ui(
 ) {
     ui.horizontal(|ui| {
         {
-            let up = space_specs.up.normalize_or_zero();
-
-            let up_response = if up == Vec3::X {
-                ui.label("Up: +X")
-            } else if up == -Vec3::X {
-                ui.label("Up: -X")
-            } else if up == Vec3::Y {
-                ui.label("Up: +Y")
-            } else if up == -Vec3::Y {
-                ui.label("Up: -Y")
-            } else if up == Vec3::Z {
-                ui.label("Up: +Z")
-            } else if up == -Vec3::Z {
-                ui.label("Up: -Z")
-            } else if up != Vec3::ZERO {
-                ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
+            let up_response = if let Some(up) = space_specs.up {
+                if up == Vec3::X {
+                    ui.label("Up: +X")
+                } else if up == -Vec3::X {
+                    ui.label("Up: -X")
+                } else if up == Vec3::Y {
+                    ui.label("Up: +Y")
+                } else if up == -Vec3::Y {
+                    ui.label("Up: -Y")
+                } else if up == Vec3::Z {
+                    ui.label("Up: +Z")
+                } else if up == -Vec3::Z {
+                    ui.label("Up: -Z")
+                } else if up != Vec3::ZERO {
+                    ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
+                } else {
+                    ui.label("Up: —")
+                }
             } else {
                 ui.label("Up: —")
             };
@@ -260,19 +262,16 @@ fn show_settings_ui(
 
 #[derive(Default)]
 pub(crate) struct SpaceSpecs {
-    /// ZERO = unset
-    up: glam::Vec3,
+    up: Option<glam::Vec3>,
+    right: Option<glam::Vec3>,
 }
 
 impl SpaceSpecs {
     pub fn from_view_coordinates(coordinates: Option<ViewCoordinates>) -> Self {
         let up = (|| Some(coordinates?.up()?.as_vec3().into()))();
+        let right = (|| Some(coordinates?.right()?.as_vec3().into()))();
 
-        if let Some(up) = up {
-            Self { up }
-        } else {
-            Default::default()
-        }
+        Self { up, right }
     }
 }
 
@@ -639,7 +638,7 @@ fn project_onto_other_spaces(
     }
 }
 
-fn default_eye(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> OrbitEye {
+fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {
     let mut center = scene_bbox.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
@@ -650,16 +649,20 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> Or
         radius = 1.0;
     }
 
-    let look_up = if space_spects.up == Vec3::ZERO {
-        Vec3::Z
+    let look_up = space_specs.up.unwrap_or(Vec3::Z);
+
+    let look_dir = if let Some(right) = space_specs.right {
+        // Make sure right is to the right, and up is up:
+        let fwd = look_up.cross(right);
+        0.75 * fwd + 0.25 * right - 0.25 * look_up
     } else {
-        space_spects.up.normalize()
+        // Look along the cardinal directions:
+        let look_dir = vec3(1.0, 1.0, 1.0);
+
+        // Make sure the eye is looking down, but just slightly:
+        look_dir + look_up * (-0.5 - look_dir.dot(look_up))
     };
 
-    // Look along the cardinal directions:
-    let look_dir = vec3(1.0, 1.0, 1.0);
-    // Make sure the eye is looking down, but just slightly:
-    let look_dir = look_dir + look_up * (-0.5 - look_dir.dot(look_up));
     let look_dir = look_dir.normalize();
 
     let eye_pos = center - radius * look_dir;
@@ -671,7 +674,7 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> Or
             &Affine3A::look_at_rh(eye_pos, center, look_up).inverse(),
         ),
         fov_y: eye::DEFAULT_FOV_Y,
-        up: space_spects.up,
+        up: space_specs.up.unwrap_or(Vec3::ZERO),
         velocity: Vec3::ZERO,
     }
 }
