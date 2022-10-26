@@ -37,7 +37,7 @@ impl SpaceCamera {
     }
 
     /// Rerun view-space (RUB) from scene-space
-    pub fn view_from_world(&self) -> Option<macaw::IsoTransform> {
+    pub fn view_from_world(&self) -> Option<IsoTransform> {
         self.world_from_view().map(|t| t.inverse())
     }
 
