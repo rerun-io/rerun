@@ -145,8 +145,7 @@ where
 
 /// Generic resource pool for all resources that have varying contents beyond their description.
 ///
-/// Unlike in StaticResourcePool, a resource is not uniquely identified by its description.
-#[derive(Default)]
+/// Unlike in [`StaticResourcePool`], a resource is not uniquely identified by its description.
 pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
     // All known resources of this type.
     resources: SlotMap<Handle, (Desc, Res)>,
@@ -161,13 +160,24 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
     current_frame_index: u64,
 }
 
+impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res> {
+    fn default() -> Self {
+        Self {
+            resources: Default::default(),
+            alive_handles: Default::default(),
+            last_frame_deallocated: Default::default(),
+            current_frame_index: Default::default(),
+        }
+    }
+}
+
 impl<Handle, Desc, Res> DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
     Desc: Clone + Eq + Hash + Debug,
     Res: Resource,
 {
-    fn alloc<F: FnOnce(&Desc) -> anyhow::Result<Res>>(
+    pub fn alloc<F: FnOnce(&Desc) -> anyhow::Result<Res>>(
         &mut self,
         desc: &Desc,
         creation_func: F,
@@ -182,13 +192,13 @@ where
         }
 
         // Otherwise create a new resource
-        let resource = creation_func(&desc)?;
+        let resource = creation_func(desc)?;
         Ok(Arc::new(self.resources.insert((desc.clone(), resource))))
     }
 
-    fn get_resource(&self, handle: Arc<Handle>) -> Result<&Res, PoolError> {
+    pub fn get_resource(&self, handle: &Arc<Handle>) -> Result<&Res, PoolError> {
         self.resources
-            .get(*handle)
+            .get(**handle)
             .map(|(_, resource)| {
                 resource.on_handle_resolve(self.current_frame_index);
                 resource
@@ -202,7 +212,7 @@ where
             })
     }
 
-    fn frame_maintenance(&mut self, current_frame_index: u64) {
+    pub fn frame_maintenance(&mut self, current_frame_index: u64) {
         self.current_frame_index = current_frame_index;
 
         // Throw out any resources that we haven't reclaimed last frame.

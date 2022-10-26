@@ -83,7 +83,7 @@ impl GlobalBindings {
         &self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        frame_uniform_buffer: BufferHandle,
+        frame_uniform_buffer: &BufferHandle,
     ) -> BindGroupHandle {
         pools.bind_groups.request(
             device,
@@ -91,7 +91,7 @@ impl GlobalBindings {
                 label: "global bind group".into(),
                 entries: vec![
                     BindGroupEntry::Buffer {
-                        handle: frame_uniform_buffer,
+                        handle: frame_uniform_buffer.clone(),
                         offset: 0,
                         size: None,
                     },

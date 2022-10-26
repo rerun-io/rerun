@@ -87,7 +87,7 @@ impl BindGroupPool {
                                 offset,
                                 size,
                             } => wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                                buffer: &buffers.get(*handle).unwrap().buffer,
+                                buffer: &buffers.get_resource(handle).unwrap().buffer,
                                 offset: *offset,
                                 size: *size,
                             }),
@@ -123,7 +123,7 @@ impl BindGroupPool {
                         textures.register_resource_usage(*handle);
                     }
                     BindGroupEntry::Buffer { handle, .. } => {
-                        buffers.register_resource_usage(*handle);
+                        buffers.register_resource_usage(handle);
                     }
                     BindGroupEntry::Sampler(handle) => {
                         samplers.register_resource_usage(*handle);

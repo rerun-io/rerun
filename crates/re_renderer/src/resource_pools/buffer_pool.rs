@@ -4,11 +4,12 @@ use crate::debug_label::DebugLabel;
 
 use super::resource_pool::*;
 
-slotmap::new_key_type! { pub(crate) struct BufferHandle; }
+slotmap::new_key_type! { pub struct BufferHandleInner; }
+pub type BufferHandle = std::sync::Arc<BufferHandleInner>;
 
-pub(crate) struct Buffer {
+pub struct Buffer {
     last_frame_used: AtomicU64,
-    pub(crate) buffer: wgpu::Buffer,
+    pub buffer: wgpu::Buffer,
 }
 
 impl UsageTrackedResource for Buffer {
@@ -18,7 +19,7 @@ impl UsageTrackedResource for Buffer {
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub(crate) struct BufferDesc {
+pub struct BufferDesc {
     /// Debug label of a buffer. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
 
@@ -30,35 +31,39 @@ pub(crate) struct BufferDesc {
 }
 
 #[derive(Default)]
-pub(crate) struct BufferPool {
-    pool: StaticResourcePool<BufferHandle, BufferDesc, Buffer>,
+pub struct BufferPool {
+    pool: DynamicResourcePool<BufferHandleInner, BufferDesc, Buffer>,
 }
 
 impl BufferPool {
-    pub fn request(&mut self, device: &wgpu::Device, desc: &BufferDesc) -> BufferHandle {
-        self.pool.get_or_create(desc, |desc| {
+    pub fn alloc(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &BufferDesc,
+    ) -> anyhow::Result<BufferHandle> {
+        self.pool.alloc(desc, |desc| {
             let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
                 size: desc.size,
                 usage: desc.usage,
                 mapped_at_creation: false,
             });
-            Buffer {
+            Ok(Buffer {
                 last_frame_used: AtomicU64::new(0),
                 buffer,
-            }
+            })
         })
     }
 
     pub fn frame_maintenance(&mut self, frame_index: u64) {
-        self.pool.discard_unused_resources(frame_index);
+        self.pool.frame_maintenance(frame_index);
     }
 
-    pub fn get(&self, handle: BufferHandle) -> Result<&Buffer, PoolError> {
+    pub fn get_resource(&self, handle: &BufferHandle) -> Result<&Buffer, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    pub(super) fn register_resource_usage(&mut self, handle: BufferHandle) {
-        let _ = self.get(handle);
+    pub(super) fn register_resource_usage(&mut self, handle: &BufferHandle) {
+        let _ = self.get_resource(handle);
     }
 }

@@ -107,14 +107,14 @@ impl ViewBuilder {
 
         // Setup frame uniform buffer
         {
-            self.frame_uniform_buffer = ctx.resource_pools.buffers.request(
+            self.frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
                 device,
                 &BufferDesc {
                     label: "frame uniform buffer".into(),
                     size: std::mem::size_of::<FrameUniformBuffer>() as _,
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 },
-            );
+            )?;
 
             let view_from_world = config.view_from_world.to_mat4();
 
@@ -142,7 +142,7 @@ impl ViewBuilder {
             queue.write_buffer(
                 &ctx.resource_pools
                     .buffers
-                    .get(self.frame_uniform_buffer)
+                    .get_resource(&self.frame_uniform_buffer)
                     .unwrap()
                     .buffer,
                 0,
@@ -159,7 +159,7 @@ impl ViewBuilder {
         self.bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
             &mut ctx.resource_pools,
             device,
-            self.frame_uniform_buffer,
+            &self.frame_uniform_buffer,
         );
 
         Ok(self)
