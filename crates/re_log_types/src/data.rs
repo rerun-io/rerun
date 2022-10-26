@@ -483,7 +483,7 @@ pub struct Pinhole {
     /// [1920.0, 1440.0]
     /// ```
     ///
-    /// [`Self::image_from_view`] project onto the space spanned by `(0,0)` and `resolution - 1`.
+    /// [`Self::image_from_cam`] project onto the space spanned by `(0,0)` and `resolution - 1`.
     pub resolution: Option<[f32; 2]>,
 }
 
