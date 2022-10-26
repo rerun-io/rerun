@@ -431,7 +431,7 @@ def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
     rerun_rs.log_unknown_transform(obj_path, timeless=timeless)
 
 
-def log_rigid3_transform(
+def log_rigid3(
     obj_path: str,
     *,
     rotation_q: npt.ArrayLike,
@@ -445,7 +445,7 @@ def log_rigid3_transform(
     Example
     -------
     ```
-    rerun.log_rigid3_transform("3d/camera", …)
+    rerun.log_rigid3("3d/camera", …)
     rerun.log_pinhole("3d/camera/image", …)
     ```
 
@@ -455,7 +455,7 @@ def log_rigid3_transform(
        This is a convenience for also calling `log_view_coordinates`.
 
     """
-    rerun_rs.log_rigid3_transform(
+    rerun_rs.log_rigid3(
         obj_path,
         rotation_q=_to_sequence(rotation_q),
         translation=_to_sequence(translation),
@@ -483,7 +483,7 @@ def log_pinhole(
     Example
     -------
     ```
-    rerun.log_rigid3_transform("3d/camera", …)
+    rerun.log_rigid3("3d/camera", …)
     rerun.log_pinhole("3d/camera/image", …)
     ```
 

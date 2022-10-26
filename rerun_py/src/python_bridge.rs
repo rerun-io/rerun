@@ -103,7 +103,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(log_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
-    m.add_function(wrap_pyfunction!(log_rigid3_transform, m)?)?;
+    m.add_function(wrap_pyfunction!(log_rigid3, m)?)?;
     m.add_function(wrap_pyfunction!(log_pinhole, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
@@ -414,7 +414,7 @@ fn log_unknown_transform(obj_path: &str, timeless: bool) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn log_rigid3_transform(
+fn log_rigid3(
     obj_path: &str,
     rotation_q: re_log_types::Quaternion,
     translation: [f32; 3],

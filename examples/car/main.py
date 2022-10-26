@@ -28,7 +28,7 @@ def log_car_data() -> None:
         rerun.log_points("3d/points", sample.point_cloud)
 
         # Log the camera pose:
-        rerun.log_rigid3_transform(
+        rerun.log_rigid3(
             "3d/camera",
             rotation_q=sample.camera.rotation_q,
             translation=sample.camera.position,

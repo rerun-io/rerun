@@ -116,7 +116,7 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                     rerun.log_points("3d/points", point_cloud, colors=np.array([255, 255, 255, 255]))
 
                     # Log the camera transforms:
-                    rerun.log_rigid3_transform(
+                    rerun.log_rigid3(
                         "3d/camera",
                         rotation_q=np.array((0, 0, 0, 1)),
                         translation=np.array((0, 0, 0)),

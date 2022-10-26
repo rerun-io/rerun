@@ -49,7 +49,7 @@ Rerun uses the term _space_ to mean _coordinate system_ or _coordinate frame_.
 * `world/car` and `world/bike` will be in the same space (same parent)
 * `world/car` and `image/detection` will be in different spaces (different root objects)
 
-Objects can be separated into their own spaces by logging special transforms relative to their parents using `rerun.log_rigid3_transform` and `rerun.log_pinhole`. `log_rigid3_transform` is for the camera pose (translation and rotation), while `log_pinhole` is for the camera pinhole projection matrix and image resolution.
+Objects can be separated into their own spaces by logging special transforms relative to their parents using `rerun.log_rigid3` and `rerun.log_pinhole`. `log_rigid3` is for the camera pose (translation and rotation), while `log_pinhole` is for the camera pinhole projection matrix and image resolution.
 
 Say you have a 3D world with two cameras with known extrinsics (pose) and intrinsics (pinhole model and resolution). You want to log some things in the shared 3D space, and also log each camera image and some detection in these images.
 
@@ -58,11 +58,11 @@ Say you have a 3D world with two cameras with known extrinsics (pose) and intrin
 rerun.log_points("3d/points", …)
 
 # Log first camera:
-rerun.log_rigid3_transform("3d/camera/#0", …)
+rerun.log_rigid3("3d/camera/#0", …)
 rerun.log_pinhole("3d/camera/#0/image", …)
 
 # Log second camera:
-rerun.log_rigid3_transform("3d/camera/#1", …)
+rerun.log_rigid3("3d/camera/#1", …)
 rerun.log_pinhole("3d/camera/#1/image", …)
 
 # Log some data to the image spaces of the first camera:
@@ -74,14 +74,14 @@ Rerun will from this understand out how the `3d` space and the two image spaces 
 
 Note that none of the names in the path are special.
 
-`rerun.log_rigid3_transform("foo/bar", …)` is logging the relationship between the parent `foo` and the child `bar`,
-and `rerun.log_rigid3_transform("foo/bar/baz", …)` is logging the relationship between the parent `bar` and the child `baz`.
+`rerun.log_rigid3("foo/bar", …)` is logging the relationship between the parent `foo` and the child `bar`,
+and `rerun.log_rigid3("foo/bar/baz", …)` is logging the relationship between the parent `bar` and the child `baz`.
 
 
 ## View coordinates
 You can use `log_view_coordinates` to set your preferred view coordinate systems.
 
-For camera spaces this can be for instance `rerun.log_view_coordinates("3d/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3_transform` also takes this as an argument.
+For camera spaces this can be for instance `rerun.log_view_coordinates("3d/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3` also takes this as an argument.
 This is required for Rerun to know how to orient your cameras in the 3D view.
 
 For 3D world spaces it can be useful to log what the up-axis is in your coordinate system. This will help Rerun setup a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rerun.log_view_coordinates("3d", up="+Z", timeless=True)`.
