@@ -1,73 +1,67 @@
-use anyhow::Context;
-use std::{borrow::Cow, path::PathBuf};
-
-// ---
-
-#[cfg_attr(predicate, attr)]
-
-/// A macro to read the contents of a file on disk.
+/// A macro to read the contents of a file on disk, and resolve #import clauses as required.
 ///
 /// - On WASM and/or release builds, this will behave like the standard [`include_str`]
 ///   macro.
 /// - On native debug builds, this will actually load the specified path through
-///   our [`FileServer`], and keep watching for changes in the background.
+///   our [`FileServer`], and keep watching for changes in the background (both the root file
+///   and whatever direct and indirect dependencies it may have through #import clauses).
 #[macro_export]
 macro_rules! include_file {
     ($path:expr $(,)?) => {{
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
         {
+            let mut resolver = $crate::new_recommended_file_resolver();
+
+            // The path returned by the `file!()` macro is always hermetic, which is actually
+            // an issue for us in this case since we allow non-hermetic imports in debug
+            // builds (we encourage them, even!).
+            //
+            // Thus, we need to do an actual OS canonicalization here, but it turns out that
+            // `FileServer::watch()` already does it for us, so we're covered.
             let path = ::std::path::Path::new(file!())
                 .parent()
                 .unwrap()
                 .join($path);
-            $crate::FileServer::get_mut(|fs| fs.watch(&path, false)).unwrap()
+
+            $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false)).unwrap()
         }
 
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
         {
-            $crate::FileContentsHandle::Inlined(include_str!($path))
+            // Make sure `workspace_shaders::init()` is called at least once, which will
+            // register all shaders defined in the workspace into the run-time in-memory
+            // filesystem.
+            $crate::workspace_shaders::init();
+
+            let path = ::std::path::Path::new(file!())
+                .parent()
+                .unwrap()
+                .join($path);
+
+            // The path returned by the `file!()` macro is always hermetic, and we pre-load
+            // our run-time virtual filesystem using the exact same hermetic prefix.
+            //
+            // Therefore, the in-memory filesystem will actually be able to find this path,
+            // and canonicalize it.
+            $crate::get_filesystem().canonicalize(&path).unwrap()
         }
     }};
 }
 
 // ---
 
-/// A handle to the contents of a file.
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub enum FileContentsHandle {
-    /// Contents inlined as a UTF-8 string.
-    Inlined(&'static str),
-    /// Contents sit on disk, path is pre-canonicalized.
-    Path(PathBuf),
-}
-impl FileContentsHandle {
-    /// Resolve the contents of the handle.
-    // TODO(cmc): #import support
-    pub fn resolve(&self) -> anyhow::Result<Cow<'_, str>> {
-        match self {
-            Self::Inlined(data) => Ok(Cow::Borrowed(data)),
-            Self::Path(path) => std::fs::read_to_string(path)
-                .with_context(|| "failed to read file at {path:?}")
-                .map(Into::into),
-        }
-    }
-}
-
 pub use self::file_server_impl::FileServer;
-
-// ---
 
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
 mod file_server_impl {
-    use std::path::{Path, PathBuf};
-
     use ahash::HashSet;
     use anyhow::Context;
     use crossbeam::channel::Receiver;
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::RwLock;
+    use std::path::{Path, PathBuf};
 
-    use super::FileContentsHandle;
+    use crate::{FileResolver, FileSystem};
 
     /// The global [`FileServer`].
     static FILE_SERVER: RwLock<Option<FileServer>> = RwLock::new(None);
@@ -99,7 +93,7 @@ mod file_server_impl {
         }
     }
 
-    // Sigleton API
+    // Singleton API
     impl FileServer {
         /// Returns a reference to the global `FileServer`.
         pub fn get<T>(mut f: impl FnMut(&FileServer) -> T) -> T {
@@ -138,11 +132,14 @@ mod file_server_impl {
     // Public API
     impl FileServer {
         /// Starts watching for file events at the given `path`.
-        pub fn watch(
+        ///
+        /// The given `path` is canonicalized.
+        pub fn watch<Fs: FileSystem>(
             &mut self,
+            resolver: &mut FileResolver<Fs>,
             path: impl AsRef<Path>,
             recursive: bool,
-        ) -> anyhow::Result<FileContentsHandle> {
+        ) -> anyhow::Result<PathBuf> {
             let path = std::fs::canonicalize(path.as_ref())?;
 
             self.watcher
@@ -154,9 +151,22 @@ mod file_server_impl {
                         RecursiveMode::NonRecursive
                     },
                 )
-                .with_context(|| "couldn't watch file at {path:?}")?;
+                .with_context(|| format!("couldn't watch file at {path:?}"))?;
 
-            Ok(FileContentsHandle::Path(path))
+            // Watch all of its imported dependencies too!
+            {
+                let imports = resolver
+                    .resolve_imports(&path)
+                    .with_context(|| format!("couldn't resolve imports for file at {path:?}"))?;
+
+                for path in imports {
+                    self.watcher
+                        .watch(path.as_ref(), RecursiveMode::NonRecursive)
+                        .with_context(|| format!("couldn't watch file at {path:?}"))?;
+                }
+            }
+
+            Ok(path)
         }
 
         /// Stops watching for file events at the given `path`.
@@ -164,19 +174,24 @@ mod file_server_impl {
             let path = std::fs::canonicalize(path.as_ref())?;
             self.watcher
                 .unwatch(path.as_ref())
-                .with_context(|| "couldn't unwatch file at {path:?}")
+                .with_context(|| format!("couldn't unwatch file at {path:?}"))
         }
 
         /// Coalesces all filesystem events since the last call to `collect`,
         /// and returns a set of all modified paths.
-        pub fn collect(&mut self) -> HashSet<PathBuf> {
+        pub fn collect<Fs: FileSystem>(
+            &mut self,
+            resolver: &mut FileResolver<Fs>,
+        ) -> HashSet<PathBuf> {
             fn canonicalize_opt(path: impl AsRef<Path>) -> Option<PathBuf> {
+                let path = path.as_ref();
                 std::fs::canonicalize(path)
-                    .map_err(|err| re_log::error!(%err, "couldn't canonicalize path"))
+                    .map_err(|err| re_log::error!(%err, ?path, "couldn't canonicalize path"))
                     .ok()
             }
 
-            self.events_rx
+            let paths = self
+                .events_rx
                 .try_iter()
                 .flat_map(|ev| {
                     #[allow(clippy::enum_glob_use)]
@@ -190,7 +205,20 @@ mod file_server_impl {
                         Remove(_) | Other => Vec::new(),
                     }
                 })
-                .collect()
+                .collect();
+
+            // A file has been modified, which means it might have new import clauses now!
+            //
+            // On the other hand, we don't care whether a file has dropped one of its imported
+            // dependencies: worst case we'll watch a file that's not used anymore, that's
+            // not an issue.
+            for path in &paths {
+                if let Err(err) = self.watch(resolver, path, false) {
+                    re_log::error!(err=%re_error::format(err), "couldn't watch imported dependency");
+                }
+            }
+
+            paths
         }
     }
 }
@@ -199,6 +227,8 @@ mod file_server_impl {
 mod file_server_impl {
     use ahash::HashSet;
     use std::path::PathBuf;
+
+    use crate::{FileResolver, FileSystem};
 
     /// A noop implementation of a `FileServer`.
     pub struct FileServer;
@@ -212,7 +242,10 @@ mod file_server_impl {
             f(&mut Self)
         }
 
-        pub fn collect(&mut self) -> HashSet<PathBuf> {
+        pub fn collect<Fs: FileSystem>(
+            &mut self,
+            _resolver: &mut FileResolver<Fs>,
+        ) -> HashSet<PathBuf> {
             Default::default()
         }
     }

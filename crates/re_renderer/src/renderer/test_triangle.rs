@@ -22,10 +22,11 @@ impl Drawable for TestTriangleDrawable {
 
 impl TestTriangleDrawable {
     pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
-        ctx.renderers.get_or_create::<TestTriangle>(
+        ctx.renderers.get_or_create::<_, TestTriangle>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
             device,
+            &mut ctx.resolver,
         );
 
         TestTriangleDrawable {}
@@ -35,10 +36,11 @@ impl TestTriangleDrawable {
 impl Renderer for TestTriangle {
     type DrawData = TestTriangleDrawable;
 
-    fn create_renderer(
+    fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
     ) -> Self {
         let render_pipeline = pools.render_pipelines.request(
             device,
@@ -55,6 +57,7 @@ impl Renderer for TestTriangle {
                 vertex_entrypoint: "vs_main".into(),
                 vertex_handle: pools.shader_modules.request(
                     device,
+                    resolver,
                     &ShaderModuleDesc {
                         label: "test_triangle (vertex)".into(),
                         source: include_file!("../../shader/test_triangle.wgsl"),
@@ -63,6 +66,7 @@ impl Renderer for TestTriangle {
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: pools.shader_modules.request(
                     device,
+                    resolver,
                     &ShaderModuleDesc {
                         label: "test_triangle (fragment)".into(),
                         source: include_file!("../../shader/test_triangle.wgsl"),

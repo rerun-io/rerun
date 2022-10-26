@@ -6,10 +6,16 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = []
+## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
+puffin = ["dep:puffin"]
+
 [dependencies]
 ahash = "0.8"
 anyhow = "1.0"
 bytemuck = { version = "1.12", features = ["derive"] }
+clean-path = "0.2"
 glam = { version = "0.20", features = [
   "bytemuck",
 ] } # can't upgrade until macaw gets a new version using glam 0.21
@@ -23,11 +29,13 @@ slotmap = "1.0.6"
 static_assertions = "1.1"
 thiserror = "1.0"
 type-map = "0.5"
+unindent = "0.1"
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossbeam = "0.8"
 notify = "5.0"
+puffin = { version = "0.13", optional = true }
 wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
 
 # wasm
@@ -36,6 +44,7 @@ wgpu = { version = "0.14", default-features = false, features = [
   "webgl",
   "wgsl",
 ] }
+
 
 ## Examples
 
@@ -64,3 +73,12 @@ web-sys = { version = "0.3.60", features = [
   "Request",
   "Response",
 ] }
+
+
+## Build
+
+[build-dependencies]
+glob = "0.3"
+pathdiff = "0.2"
+unindent = "0.1"
+walkdir = "2.0"

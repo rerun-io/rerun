@@ -76,10 +76,11 @@ impl PointCloudDrawable {
         queue: &wgpu::Queue,
         points: &[PointCloudPoint],
     ) -> anyhow::Result<Self> {
-        let line_renderer = ctx.renderers.get_or_create::<PointCloudRenderer>(
+        let line_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
             device,
+            &mut ctx.resolver,
         );
 
         // Textures are 2D since 1D textures are very limited in size (8k typically).
@@ -221,10 +222,11 @@ pub struct PointCloudRenderer {
 impl Renderer for PointCloudRenderer {
     type DrawData = PointCloudDrawable;
 
-    fn create_renderer(
+    fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
     ) -> Self {
         let bind_group_layout = pools.bind_group_layouts.request(
             device,
@@ -266,6 +268,7 @@ impl Renderer for PointCloudRenderer {
 
         let shader_module = pools.shader_modules.request(
             device,
+            resolver,
             &ShaderModuleDesc {
                 label: "point cloud".into(),
                 source: include_file!("../../shader/point_cloud.wgsl"),

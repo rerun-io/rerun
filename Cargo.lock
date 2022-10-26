@@ -527,6 +527,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "clean-path"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaa6b4b263a5d737e9bf6b7c09b72c41a5480aec4d7219af827f6564e950b6a5"
+
+[[package]]
 name = "clipboard-win"
 version = "4.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2682,6 +2688,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1de2e551fb905ac83f73f7aedf2f0cb4a0da7e35efa24a202a936269f1f18e1"
 
 [[package]]
+name = "pathdiff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
+
+[[package]]
 name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3065,11 +3077,13 @@ dependencies = [
  "anyhow",
  "async-executor",
  "bytemuck",
+ "clean-path",
  "console_error_panic_hook",
  "console_log",
  "crossbeam",
  "env_logger",
  "glam",
+ "glob",
  "half 2.1.0",
  "instant",
  "log",
@@ -3077,7 +3091,9 @@ dependencies = [
  "notify",
  "ordered-float",
  "parking_lot",
+ "pathdiff",
  "pollster",
+ "puffin",
  "rand",
  "re_error",
  "re_log",
@@ -3085,6 +3101,8 @@ dependencies = [
  "static_assertions",
  "thiserror",
  "type-map",
+ "unindent",
+ "walkdir",
  "wasm-bindgen-futures",
  "web-sys",
  "wgpu",

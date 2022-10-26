@@ -1,9 +1,9 @@
 use type_map::concurrent::{self, TypeMap};
 
-use crate::FileServer;
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
+use crate::{FileResolver, FileServer, FileSystem, RecommendedFileResolver};
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
@@ -11,6 +11,7 @@ pub struct RenderContext {
     pub(crate) shared_renderer_data: SharedRendererData,
     pub(crate) renderers: Renderers,
     pub(crate) resource_pools: WgpuResourcePools,
+    pub(crate) resolver: RecommendedFileResolver,
 
     // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
@@ -41,15 +42,16 @@ pub(crate) struct Renderers {
 }
 
 impl Renderers {
-    pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
+    pub fn get_or_create<Fs: FileSystem, R: 'static + Renderer + Send + Sync>(
         &mut self,
         shared_data: &SharedRendererData,
         resource_pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
     ) -> &R {
         self.renderers
             .entry()
-            .or_insert_with(|| R::create_renderer(shared_data, resource_pools, device))
+            .or_insert_with(|| R::create_renderer(shared_data, resource_pools, device, resolver))
     }
 
     pub fn get<R: 'static + Renderer>(&self) -> Option<&R> {
@@ -73,15 +75,23 @@ impl RenderContext {
             },
             resource_pools,
 
+            resolver: crate::new_recommended_file_resolver(),
+
             frame_index: 0,
         }
     }
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
+        // Clear the resolver cache before we start reloading shaders!
+        self.resolver.clear();
+
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
         // Always an empty set in release builds.
-        let modified_paths = FileServer::get_mut(|fs| fs.collect());
+        let modified_paths = FileServer::get_mut(|fs| fs.collect(&mut self.resolver));
+        if !modified_paths.is_empty() {
+            re_log::debug!(?modified_paths, "got some filesystem events");
+        }
 
         {
             let WgpuResourcePools {
@@ -104,7 +114,12 @@ impl RenderContext {
                 pipeline_layouts,
             );
 
-            shader_modules.frame_maintenance(device, self.frame_index, &modified_paths);
+            shader_modules.frame_maintenance(
+                device,
+                &mut self.resolver,
+                self.frame_index,
+                &modified_paths,
+            );
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use

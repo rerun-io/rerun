@@ -168,10 +168,11 @@ impl LineDrawable {
         queue: &wgpu::Queue,
         line_strips: &[LineStrip],
     ) -> anyhow::Result<Self> {
-        let line_renderer = ctx.renderers.get_or_create::<LineRenderer>(
+        let line_renderer = ctx.renderers.get_or_create::<_, LineRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
             device,
+            &mut ctx.resolver,
         );
 
         // Textures are 2D since 1D textures are very limited in size (8k typically).
@@ -361,10 +362,11 @@ pub struct LineRenderer {
 impl Renderer for LineRenderer {
     type DrawData = LineDrawable;
 
-    fn create_renderer(
+    fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
     ) -> Self {
         let bind_group_layout = pools.bind_group_layouts.request(
             device,
@@ -406,6 +408,7 @@ impl Renderer for LineRenderer {
 
         let shader_module = pools.shader_modules.request(
             device,
+            resolver,
             &ShaderModuleDesc {
                 label: "LineRenderer".into(),
                 source: include_file!("../../shader/lines.wgsl"),
