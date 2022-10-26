@@ -1552,6 +1552,7 @@ version = "0.20.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f43e957e744be03f5801a55472f593d43fabdebf25a4585db250f04d86b1675f"
 dependencies = [
+ "bytemuck",
  "mint",
  "serde",
 ]
@@ -1787,6 +1788,7 @@ version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad6a9459c9c30b177b925162351f97e7d967c7ea8bab3b8352805327daf45554"
 dependencies = [
+ "bytemuck",
  "crunchy",
 ]
 
@@ -2595,9 +2597,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.14.0"
+version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f7254b99e31cad77da24b08ebf628882739a608578bb1bcdfc1f9c21260d7c0"
+checksum = "e82dad04139b71a90c080c8463fe0dc7902db5192d939bd0950f074d014339e1"
 
 [[package]]
 name = "oorandom"
@@ -3023,6 +3025,7 @@ dependencies = [
  "itertools",
  "mimalloc",
  "nohash-hasher",
+ "once_cell",
  "puffin",
  "re_log",
  "re_log_types",
@@ -3081,6 +3084,7 @@ dependencies = [
  "env_logger",
  "glam",
  "glob",
+ "half 2.1.0",
  "instant",
  "log",
  "macaw",
@@ -3093,6 +3097,7 @@ dependencies = [
  "re_error",
  "re_log",
  "slotmap",
+ "static_assertions",
  "thiserror",
  "type-map",
  "unindent",

@@ -16,13 +16,17 @@ ahash = "0.8"
 anyhow = "1.0"
 bytemuck = { version = "1.12", features = ["derive"] }
 clean-path = "0.2"
-glam = "0.20"                                          # can't upgrade until macaw gets a new version using glam 0.21
+glam = { version = "0.20", features = [
+  "bytemuck",
+] } # can't upgrade until macaw gets a new version using glam 0.21
+half = { version = "2.1", features = ["bytemuck"] }
 macaw = "0.17"
 ordered-float = "3.2"
 parking_lot = "0.12"
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 slotmap = "1.0.6"
+static_assertions = "1.1"
 thiserror = "1.0"
 type-map = "0.5"
 unindent = "0.1"

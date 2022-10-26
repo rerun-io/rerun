@@ -192,8 +192,50 @@ fn big_clouds_batched() {
     );
 }
 
+fn big_clouds_sequential_batched() {
+    let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+
+    const NUM_CAMERAS: usize = 4;
+    const NUM_FRAMES: usize = 100;
+    const NUM_POINTS_PER_CAMERA: usize = 1_000;
+
+    let point: [f32; 3] = [1.0, 2.0, 3.0];
+    let positions = vec![point; NUM_POINTS_PER_CAMERA];
+
+    let mut store = TimelineStore::default();
+    let mut frame = 0;
+    let mut num_points = 0;
+    while frame < NUM_FRAMES {
+        for camera in 0..NUM_CAMERAS {
+            let batch = BatchOrSplat::new_sequential_batch(&positions).unwrap();
+            store
+                .insert_batch::<[f32; 3]>(
+                    obj_path_batch(camera as _),
+                    "pos".into(),
+                    frame,
+                    MsgId::random(),
+                    batch,
+                )
+                .unwrap();
+
+            num_points += NUM_POINTS_PER_CAMERA;
+
+            frame += 1;
+        }
+    }
+
+    let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+
+    let bytes_per_point = used_bytes as f32 / num_points as f32;
+    let overhead_factor = bytes_per_point / OPTIMAL_BYTES_PER_POINT as f32;
+
+    // Since we are only storing history for the entire batch, we should be able to approach OPTIMAL_BYTES_PER_POINT.
+    println!("big clouds sequential batched overhead_factor: {overhead_factor} (should ideally be just above 1)");
+}
+
 fn main() {
     tracking_points();
     big_clouds();
     big_clouds_batched();
+    big_clouds_sequential_batched();
 }

@@ -10,7 +10,7 @@ pub mod view_builder;
 mod debug_label;
 mod global_bindings;
 mod resource_pools;
-mod wgsl_types;
+mod wgpu_buffer_types;
 
 mod file_system;
 pub use self::file_system::{get_filesystem, FileSystem};
