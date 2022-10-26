@@ -20,7 +20,7 @@ pub struct SpaceCamera {
     // -------------------------
     // Optional projection-related things:
     /// The projection transform of a child-object.
-    pub intrinsics: Option<re_log_types::Intrinsics>,
+    pub pinhole: Option<re_log_types::Pinhole>,
 
     /// The child 2D space we project into.
     pub target_space: Option<ObjPath>,
@@ -53,19 +53,19 @@ impl SpaceCamera {
 
     /// Projects image coordinates into world coordinates
     pub fn world_from_image(&self) -> Option<Affine3A> {
-        let intrinsics = self.intrinsics?;
+        let pinhole = self.pinhole?;
         let world_from_cam = self.world_from_cam();
-        let image_from_cam = Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
+        let image_from_cam = Mat3::from_cols_array_2d(&pinhole.image_from_cam);
         let cam_from_image = Affine3A::from_mat3(image_from_cam.inverse());
         Some(world_from_cam * cam_from_image)
     }
 
     /// Projects world coordinates onto 2D image coordinates
     pub fn image_from_world(&self) -> Option<Affine3A> {
-        let intrinsics = self.intrinsics?;
+        let pinhole = self.pinhole?;
         let cam_from_world = self.cam_from_world();
 
-        let image_from_cam = Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
+        let image_from_cam = Mat3::from_cols_array_2d(&pinhole.image_from_cam);
         let image_from_cam = Affine3A::from_mat3(image_from_cam);
         Some(image_from_cam * cam_from_world)
     }

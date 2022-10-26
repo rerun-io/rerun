@@ -566,7 +566,7 @@ impl ViewState {
     }
 }
 
-/// Look for camera transform and intrinsics in the transform hierarchy
+/// Look for camera transform and pinhole in the transform hierarchy
 /// and return them as cameras.
 fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera> {
     crate::profile_function!();
@@ -586,31 +586,31 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                 .get(child_path)
                 .and_then(|child| child.coordinates);
 
-            let mut found_any_intrinsics = false;
+            let mut found_any_pinhole = false;
 
             if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
                 for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
-                    if let Transform::Intrinsics(intrinsics) = grand_child_transform {
+                    if let Transform::Pinhole(pinhole) = grand_child_transform {
                         space_cameras.push(SpaceCamera {
                             camera_obj_path: child_path.clone(),
                             instance_index_hash: re_log_types::IndexHash::NONE,
                             camera_view_coordinates: view_space,
                             world_from_camera,
-                            intrinsics: Some(*intrinsics),
+                            pinhole: Some(*pinhole),
                             target_space: Some(grand_child_path.clone()),
                         });
-                        found_any_intrinsics = true;
+                        found_any_pinhole = true;
                     }
                 }
             }
 
-            if !found_any_intrinsics {
+            if !found_any_pinhole {
                 space_cameras.push(SpaceCamera {
                     camera_obj_path: child_path.clone(),
                     instance_index_hash: re_log_types::IndexHash::NONE,
                     camera_view_coordinates: view_space,
                     world_from_camera,
-                    intrinsics: None,
+                    pinhole: None,
                     target_space: None,
                 });
             }

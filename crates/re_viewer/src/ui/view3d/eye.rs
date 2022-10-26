@@ -20,7 +20,7 @@ pub struct Eye {
 impl Eye {
     pub fn from_camera(space_cameras: &SpaceCamera) -> Option<Eye> {
         let fov_y = space_cameras
-            .intrinsics
+            .pinhole
             .and_then(|i| i.fov_y())
             .unwrap_or(DEFAULT_FOV_Y);
 

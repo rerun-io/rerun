@@ -36,11 +36,11 @@ def log_car_data() -> None:
         rerun.log_view_coordinates("3d/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
 
         # Log the camera projection matrix:
-        rerun.log_intrinsics(
+        rerun.log_pinhole(
             "3d/camera/image",
             width=sample.camera.resolution[0],
             height=sample.camera.resolution[1],
-            intrinsics_matrix=sample.camera.intrinsics,
+            image_from_cam=sample.camera.intrinsics,
         )
 
         # We log the rgb image to the image-space of the camera:
@@ -190,7 +190,7 @@ class SimpleDepthCamera:
         - `depth_image_mm`: Depth image expressed in millimeters
         """
 
-        # Apply inverse of the intrinsics matrix:
+        # Apply inverse of the `intrinsics` matrix:
         z = depth_image_mm.reshape(-1) / 1000.0
         x = (self.u_coords.reshape(-1).astype(float) - self.u_center) * z / self.focal_length
         y = (self.v_coords.reshape(-1).astype(float) - self.v_center) * z / self.focal_length

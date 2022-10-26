@@ -144,11 +144,11 @@ def log_camera(cam: ARCamera) -> None:
         translation=translation,
     )
     rerun.log_view_coordinates("3d/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
-    rerun.log_intrinsics(
+    rerun.log_pinhole(
         "3d/camera/video",
         width=w,
         height=h,
-        intrinsics_matrix=intrinsics,
+        image_from_cam=intrinsics,
     )
 
 

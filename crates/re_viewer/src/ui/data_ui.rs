@@ -399,7 +399,7 @@ fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
     match transform {
         Transform::Unknown => ui.label("Unknown"),
         Transform::Rigid3(rigid3) => ui_rigid3(ui, rigid3),
-        Transform::Intrinsics(intrinsics) => ui_intrinsics(ui, intrinsics),
+        Transform::Pinhole(pinhole) => ui_pinhole(ui, pinhole),
     }
 }
 
@@ -433,21 +433,21 @@ fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
     .response
 }
 
-fn ui_intrinsics(ui: &mut egui::Ui, intrinsics: &Intrinsics) -> egui::Response {
-    let Intrinsics {
-        intrinsics_matrix,
+fn ui_pinhole(ui: &mut egui::Ui, pinhole: &Pinhole) -> egui::Response {
+    let Pinhole {
+        image_from_cam: image_from_view,
         resolution,
-    } = intrinsics;
+    } = pinhole;
 
     ui.vertical(|ui| {
-        ui.label("Intrinsics");
-        ui.indent("intrinsics", |ui| {
-            egui::Grid::new("intrinsics")
+        ui.label("Pinhole");
+        ui.indent("pinole", |ui| {
+            egui::Grid::new("pinole")
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
-                    ui.label("intrinsics matrix");
-                    ui_intrinsics_matrix(ui, intrinsics_matrix);
+                    ui.label("image from view");
+                    ui_mat3(ui, image_from_view);
                     ui.end_row();
 
                     ui.label("resolution");
@@ -459,21 +459,21 @@ fn ui_intrinsics(ui: &mut egui::Ui, intrinsics: &Intrinsics) -> egui::Response {
     .response
 }
 
-fn ui_intrinsics_matrix(ui: &mut egui::Ui, intrinsics: &[[f32; 3]; 3]) {
-    egui::Grid::new("intrinsics").num_columns(3).show(ui, |ui| {
-        ui.monospace(intrinsics[0][0].to_string());
-        ui.monospace(intrinsics[1][0].to_string());
-        ui.monospace(intrinsics[2][0].to_string());
+fn ui_mat3(ui: &mut egui::Ui, mat: &[[f32; 3]; 3]) {
+    egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
+        ui.monospace(mat[0][0].to_string());
+        ui.monospace(mat[1][0].to_string());
+        ui.monospace(mat[2][0].to_string());
         ui.end_row();
 
-        ui.monospace(intrinsics[0][1].to_string());
-        ui.monospace(intrinsics[1][1].to_string());
-        ui.monospace(intrinsics[2][1].to_string());
+        ui.monospace(mat[0][1].to_string());
+        ui.monospace(mat[1][1].to_string());
+        ui.monospace(mat[2][1].to_string());
         ui.end_row();
 
-        ui.monospace(intrinsics[0][2].to_string());
-        ui.monospace(intrinsics[1][2].to_string());
-        ui.monospace(intrinsics[2][2].to_string());
+        ui.monospace(mat[0][2].to_string());
+        ui.monospace(mat[1][2].to_string());
+        ui.monospace(mat[2][2].to_string());
         ui.end_row();
     });
 }

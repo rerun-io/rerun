@@ -443,25 +443,30 @@ pub type Quaternion = [f32; 4];
 /// A proper rigid 3D transform, i.e. a rotation and a translation.
 ///
 /// Also known as an isometric transform, or a pose.
+///
+/// Represents a transformation to parent from child.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Rigid3 {
-    /// How is the object rotated?
+    /// How is the child rotated?
     ///
-    /// This transforms to parent-space from object-space.
+    /// This transforms to parent-space from child-space.
     pub rotation: Quaternion,
 
-    /// You can also think of this as the position of the object.
+    /// Translation to parent from child.
+    ///
+    /// You can also think of this as the position of the child.
     pub translation: [f32; 3],
 }
 
-/// Camera projection
+/// Camera perspective projection (a.k.a. intrinsics).
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Intrinsics {
-    /// Column-major intrinsics matrix.
+pub struct Pinhole {
+    /// Column-major projection matrix.
     ///
-    /// Image coordinates from view coordinates (via projection).
+    /// Image coordinates from camera view coordinates.
+    /// Transform to child-space from parent-space.
     ///
     /// Example:
     /// ```text
@@ -469,7 +474,7 @@ pub struct Intrinsics {
     ///  [0.0,    1496.1, 0.0], // col 1
     ///  [980.5,  744.5,  1.0]] // col 2
     /// ```
-    pub intrinsics_matrix: [[f32; 3]; 3],
+    pub image_from_cam: [[f32; 3]; 3],
 
     /// Pixel resolution (usually integers). Width and height.
     ///
@@ -478,15 +483,15 @@ pub struct Intrinsics {
     /// [1920.0, 1440.0]
     /// ```
     ///
-    /// [`Self::intrinsics_matrix`] project onto the space spanned by `(0,0)` and `resolution - 1`.
+    /// [`Self::image_from_view`] project onto the space spanned by `(0,0)` and `resolution - 1`.
     pub resolution: Option<[f32; 2]>,
 }
 
-impl Intrinsics {
-    /// Field of View on the Y axis, i.e. the angle between top and bottom.
+impl Pinhole {
+    /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
     pub fn fov_y(&self) -> Option<f32> {
         self.resolution
-            .map(|resolution| 2.0 * (0.5 * resolution[1] / self.intrinsics_matrix[1][1]).atan())
+            .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_cam[1][1]).atan())
     }
 }
 
@@ -500,11 +505,11 @@ pub enum Transform {
     /// Maybe the user intend to set the transform later.
     Unknown,
 
-    /// The parent is a 3D space, the child a camera space.
+    /// For instance: the parent is a 3D world space, the child a camera space.
     Rigid3(Rigid3),
 
     /// The parent is some local camera space, the child an image space.
-    Intrinsics(Intrinsics),
+    Pinhole(Pinhole),
 }
 
 // ----------------------------------------------------------------------------

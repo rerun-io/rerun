@@ -104,7 +104,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_rigid3_transform, m)?)?;
-    m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
+    m.add_function(wrap_pyfunction!(log_pinhole, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
@@ -443,16 +443,16 @@ fn log_rigid3_transform(
 }
 
 #[pyfunction]
-fn log_intrinsics(
+fn log_pinhole(
     obj_path: &str,
     resolution: [f32; 2],
-    intrinsics_matrix: [[f32; 3]; 3],
+    image_from_cam: [[f32; 3]; 3],
     timeless: bool,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
 
-    let transform = re_log_types::Transform::Intrinsics(re_log_types::Intrinsics {
-        intrinsics_matrix,
+    let transform = re_log_types::Transform::Pinhole(re_log_types::Pinhole {
+        image_from_cam,
         resolution: Some(resolution),
     });
 

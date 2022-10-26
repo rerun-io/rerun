@@ -444,7 +444,7 @@ def log_rigid3_transform(
     -------
     ```
     rerun.log_rigid3_transform("3d/camera", …)
-    rerun.log_intrinsics("3d/camera/image", …)
+    rerun.log_pinhole("3d/camera/image", …)
     ```
 
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from object to parent space
@@ -459,8 +459,8 @@ def log_rigid3_transform(
     )
 
 
-def log_intrinsics(
-    obj_path: str, *, width: int, height: int, intrinsics_matrix: npt.ArrayLike, timeless: bool = False
+def log_pinhole(
+    obj_path: str, *, width: int, height: int, image_from_cam: npt.ArrayLike, timeless: bool = False
 ) -> None:
     """
     Log a perspective camera model.
@@ -471,17 +471,17 @@ def log_intrinsics(
     -------
     ```
     rerun.log_rigid3_transform("3d/camera", …)
-    rerun.log_intrinsics("3d/camera/image", …)
+    rerun.log_pinhole("3d/camera/image", …)
     ```
 
-    `intrinsics_matrix`: Row-major intrinsics matrix for projecting from camera space to image space
+    `image_from_cam`: Row-major intrinsics matrix for projecting from camera space to image space
     `resolution`: Array with [width, height] image resolution in pixels.
 
     """
-    rerun_rs.log_intrinsics(
+    rerun_rs.log_pinhole(
         obj_path,
         resolution=[width, height],
-        intrinsics_matrix=np.asarray(intrinsics_matrix).T.tolist(),
+        image_from_cam=np.asarray(image_from_cam).T.tolist(),
         timeless=timeless,
     )
 

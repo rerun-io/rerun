@@ -501,7 +501,7 @@ impl Scene {
         color: [u8; 4],
     ) -> Option<()> {
         let world_from_image = camera.world_from_image()?;
-        let [w, h] = camera.intrinsics?.resolution?;
+        let [w, h] = camera.pinhole?.resolution?;
 
         // At what distance do we end the frustum?
         let d = scene_bbox.size().length() * 0.3;

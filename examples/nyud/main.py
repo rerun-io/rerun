@@ -122,11 +122,11 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                         translation=np.array((0, 0, 0)),
                     )
                     rerun.log_view_coordinates("3d/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
-                    rerun.log_intrinsics(
+                    rerun.log_pinhole(
                         "3d/camera/image",
                         width=img_depth.shape[1],
                         height=img_depth.shape[0],
-                        intrinsics_matrix=camera_intrinsics(img_depth),
+                        image_from_cam=camera_intrinsics(img_depth),
                     )
 
                     # Log the depth image to the cameras image-space:
