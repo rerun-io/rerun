@@ -54,12 +54,12 @@ fn draw_view(
     let mut view_builder = ViewBuilder::new();
 
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
-    let seconds_since_startup = time.seconds_since_startup();
+    let seconds_since_startup = state.time.seconds_since_startup();
     let pos = Vec3::new(
         seconds_since_startup.sin(),
         0.5,
         seconds_since_startup.cos(),
-    ) * 20.0;
+    ) * 15.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
     let target_cfg = TargetConfiguration {
         resolution_in_pixel: resolution,
@@ -72,6 +72,7 @@ fn draw_view(
     let triangle = TestTriangleDrawable::new(re_ctx, device);
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
+    let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
 
     view_builder
         .setup_view(re_ctx, device, queue, &target_cfg)
