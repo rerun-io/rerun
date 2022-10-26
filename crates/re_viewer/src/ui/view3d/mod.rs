@@ -542,8 +542,9 @@ fn paint_view(
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();
-                        view_builder_draw
-                            .read()
+                        Arc::try_unwrap(view_builder_draw)
+                            .unwrap()
+                            .into_inner()
                             .composite(ctx, render_pass)
                             .unwrap();
                         // TODO(andreas): Graceful error handling

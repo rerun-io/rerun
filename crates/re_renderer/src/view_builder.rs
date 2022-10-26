@@ -245,7 +245,7 @@ impl ViewBuilder {
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
     pub fn composite<'a>(
-        &self,
+        self,
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
     ) -> anyhow::Result<()> {
