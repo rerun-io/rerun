@@ -1,9 +1,12 @@
 pub mod generic_skybox;
+pub mod lines;
 pub mod test_triangle;
 pub mod tonemapper;
 
 pub use generic_skybox::GenericSkyboxDrawable;
 pub use test_triangle::TestTriangleDrawable;
+
+mod utils;
 
 use crate::{
     context::{RenderContext, SharedRendererData},

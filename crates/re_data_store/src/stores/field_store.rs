@@ -138,7 +138,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
                                     time_msgid_index.push((*time, *msg_id));
                                     values.push(value.clone());
                                 } else {
-                                    for (_index_hash, value) in batch.iter() {
+                                    for (_index_hash, _, value) in batch.iter() {
                                         time_msgid_index.push((*time, *msg_id));
                                         values.push(value.clone());
                                     }
