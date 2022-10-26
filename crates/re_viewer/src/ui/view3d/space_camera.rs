@@ -32,8 +32,16 @@ impl SpaceCamera {
         self.world_from_camera.translation()
     }
 
+    pub fn world_from_cam(&self) -> IsoTransform {
+        self.world_from_camera
+    }
+
+    pub fn cam_from_world(&self) -> IsoTransform {
+        self.world_from_cam().inverse()
+    }
+
     /// Scene-space from Rerun view-space (RUB).
-    pub fn world_from_view(&self) -> Option<IsoTransform> {
+    pub fn world_from_rub_view(&self) -> Option<IsoTransform> {
         match from_rub_quat(self.camera_view_coordinates) {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
@@ -43,35 +51,23 @@ impl SpaceCamera {
         }
     }
 
-    /// Rerun view-space (RUB) from scene-space
-    pub fn view_from_world(&self) -> Option<IsoTransform> {
-        self.world_from_view().map(|t| t.inverse())
-    }
-
     /// Projects image coordinates into world coordinates
     pub fn world_from_image(&self) -> Option<Affine3A> {
         let intrinsics = self.intrinsics?;
-        let world_from_view = self.world_from_view()?;
-
-        let intrinsics_matrix = Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
-        Some(
-            world_from_view
-                * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different. TODO(emilk): use the `ViewCoordinates` of the image space
-                * Affine3A::from_mat3(intrinsics_matrix.inverse()),
-        )
+        let world_from_cam = self.world_from_cam();
+        let image_from_cam = Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
+        let cam_from_image = Affine3A::from_mat3(image_from_cam.inverse());
+        Some(world_from_cam * cam_from_image)
     }
 
     /// Projects world coordinates onto 2D image coordinates
     pub fn image_from_world(&self) -> Option<Affine3A> {
         let intrinsics = self.intrinsics?;
-        let view_from_world = self.view_from_world()?;
+        let cam_from_world = self.cam_from_world();
 
-        let intrinsics_matrix = Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
-        Some(
-            Affine3A::from_mat3(intrinsics_matrix)
-            * Affine3A::from_scale([1.0, -1.0, -1.0].into()) // negate Y and Z here here because image space and view space are different. TODO(emilk): use the `ViewCoordinates` of the image space
-            * view_from_world,
-        )
+        let image_from_cam = Mat3::from_cols_array_2d(&intrinsics.intrinsics_matrix);
+        let image_from_cam = Affine3A::from_mat3(image_from_cam);
+        Some(image_from_cam * cam_from_world)
     }
 
     /// Returns x, y, and depth in image coordinates.

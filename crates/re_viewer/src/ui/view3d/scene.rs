@@ -322,68 +322,66 @@ impl Scene {
                 instance_index_hash: camera.instance_index_hash,
             };
 
-            if let Some(world_from_view) = camera.world_from_view() {
-                let dist_to_eye = eye_camera_plane
-                    .distance(world_from_view.translation())
-                    .at_least(0.0);
-                let color = [255, 128, 128, 255]; // TODO(emilk): camera color
+            let dist_to_eye = eye_camera_plane.distance(camera.position()).at_least(0.0);
+            let color = [255, 128, 128, 255]; // TODO(emilk): camera color
 
-                let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
-                let scale_based_on_distance = dist_to_eye * point_size_at_one_meter * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
-                let scale = scale_based_on_scene_size.min(scale_based_on_distance);
+            let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
+            let scale_based_on_distance = dist_to_eye * point_size_at_one_meter * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
+            let scale = scale_based_on_scene_size.min(scale_based_on_distance);
 
-                #[cfg(feature = "glow")]
-                {
-                    if ctx.options.show_camera_mesh_in_3d {
-                        // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
-                        // The lens is at the origin.
+            #[cfg(feature = "glow")]
+            if ctx.options.show_camera_mesh_in_3d {
+                if let Some(world_from_rub_view) = camera.world_from_rub_view() {
+                    // The camera mesh file is 1m long in RUB (X=Right, Y=Up, Z=Back).
+                    // The lens is at the origin.
 
-                        let scale = Vec3::splat(scale);
+                    let scale = Vec3::splat(scale);
 
-                        let mesh_id = hash("camera_mesh");
-                        let world_from_mesh = world_from_view * glam::Affine3A::from_scale(scale);
+                    let mesh_id = hash("camera_mesh");
+                    let world_from_mesh = world_from_rub_view * glam::Affine3A::from_scale(scale);
 
-                        if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
+                    if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
+                        mesh_id,
+                        "camera_mesh",
+                        &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                    ) {
+                        self.meshes.push(MeshSource {
+                            instance_id,
                             mesh_id,
-                            "camera_mesh",
-                            &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
-                        ) {
-                            self.meshes.push(MeshSource {
-                                instance_id,
-                                mesh_id,
-                                world_from_mesh,
-                                cpu_mesh,
-                                tint: None,
-                            });
-                        }
+                            world_from_mesh,
+                            cpu_mesh,
+                            tint: None,
+                        });
                     }
                 }
-
-                if ctx.options.show_camera_axes_in_3d {
-                    if let Some(coordinates) = camera.camera_view_coordinates {
-                        // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
-                        let center = world_from_view.translation();
-                        let radius = Size::new_scene(dist_to_eye * line_radius_from_distance * 2.0);
-
-                        for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
-                            let color = axis_color(axis_index);
-                            let dir = coordinates.to_rub().mul_vec3(*dir);
-
-                            let axis_end =
-                                world_from_view.transform_point3(scale * glam::Vec3::from(*dir));
-                            self.line_segments.push(LineSegments {
-                                instance_id,
-                                segments: vec![[center.into(), axis_end.into()]],
-                                radius,
-                                color,
-                            });
-                        }
-                    }
-                }
-
-                let line_radius = Size::new_scene(dist_to_eye * line_radius_from_distance);
-                self.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, color);
             }
+
+            if ctx.options.show_camera_axes_in_3d {
+                if let Some(coordinates) = camera.camera_view_coordinates {
+                    let world_from_cam = camera.world_from_cam();
+
+                    // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
+                    let cam_origin = camera.position().into();
+                    let radius = Size::new_scene(dist_to_eye * line_radius_from_distance * 2.0);
+
+                    for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
+                        let color = axis_color(axis_index);
+                        let dir = coordinates.to_rub().mul_vec3(*dir);
+
+                        let axis_end =
+                            world_from_cam.transform_point3(scale * glam::Vec3::from(*dir));
+                        self.line_segments.push(LineSegments {
+                            instance_id,
+                            segments: vec![[cam_origin, axis_end.into()]],
+                            radius,
+                            color,
+                        });
+                    }
+                }
+            }
+
+            let line_radius = Size::new_scene(dist_to_eye * line_radius_from_distance);
+            self.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, color);
         }
     }
 
@@ -506,7 +504,6 @@ impl Scene {
         line_radius: Size,
         color: [u8; 4],
     ) -> Option<()> {
-        let world_from_view = camera.world_from_view()?;
         let world_from_image = camera.world_from_image()?;
         let [w, h] = camera.intrinsics?.resolution?;
 
@@ -528,7 +525,7 @@ impl Scene {
                 .into(),
         ];
 
-        let center = world_from_view.translation().into();
+        let center = camera.position().into();
 
         let segments = vec![
             [center, corners[0]],     // frustum corners

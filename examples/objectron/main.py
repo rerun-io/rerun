@@ -121,6 +121,9 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
 def log_camera(cam: ARCamera) -> None:
     """Logs a camera from an `ARFrame` using the Rerun SDK."""
 
+    X = np.asarray([1.0, 0.0, 0.0])
+    Z = np.asarray([0.0, 0.0, 1.0])
+
     world_from_cam = np.asarray(cam.transform).reshape((4, 4))
     translation = world_from_cam[0:3, 3]
     intrinsics = np.asarray(cam.intrinsics).reshape((3, 3))
@@ -130,15 +133,17 @@ def log_camera(cam: ARCamera) -> None:
     # Because the dataset was collected in portrait:
     swizzle_x_y = np.asarray([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
     intrinsics = swizzle_x_y @ intrinsics @ swizzle_x_y
-    rot = rot * R.from_rotvec((math.tau / 4.0) * np.asarray([0.0, 0.0, 1.0]))
+    rot = rot * R.from_rotvec((math.tau / 4.0) * Z)
     (w, h) = (h, w)
+
+    rot = rot * R.from_rotvec((math.tau / 2.0) * X) # TODO(emilk): figure out why this is needed
 
     rerun.log_rigid3_transform(
         "3d/camera",
         rotation_q=rot.as_quat(),
         translation=translation,
     )
-    rerun.log_view_coordinates("3d/camera", xyz="RUB")  # X=Right, Y=Up, Z=Back
+    rerun.log_view_coordinates("3d/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
     rerun.log_intrinsics(
         "3d/camera/video",
         width=w,

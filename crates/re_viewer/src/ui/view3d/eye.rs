@@ -10,7 +10,7 @@ pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 ///
 /// Note: we prefer the word "eye" to not confuse it with logged cameras.
 ///
-/// Our view-space uses X=right, Y=up, Z=back.
+/// Our view-space uses RUB (X=Right, Y=Up, Z=Back).
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Eye {
     pub world_from_view: IsoTransform,
@@ -25,7 +25,7 @@ impl Eye {
             .unwrap_or(DEFAULT_FOV_Y);
 
         Some(Self {
-            world_from_view: space_cameras.world_from_view()?,
+            world_from_view: space_cameras.world_from_rub_view()?,
             fov_y,
         })
     }
@@ -52,7 +52,7 @@ impl Eye {
     }
 
     pub fn forward_in_world(&self) -> glam::Vec3 {
-        self.world_from_view.rotation() * -Vec3::Z
+        self.world_from_view.rotation() * -Vec3::Z // because we use RUB
     }
 
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
