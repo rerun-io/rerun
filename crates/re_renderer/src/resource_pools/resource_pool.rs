@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{hash_map::Entry, HashMap},
     fmt::Debug,
     hash::Hash,
     sync::{
@@ -9,6 +9,8 @@ use std::{
 };
 
 use slotmap::{Key, SlotMap};
+
+use smallvec::{smallvec, SmallVec};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PoolError {
@@ -42,6 +44,8 @@ impl<T: UsageTrackedResource> Resource for T {
 }
 
 /// Generic resource pool for all resources that are fully described upon creation, i.e. never have any variable content.
+///
+/// This implies, a resource is uniquely defined by its description.
 /// We call these resources "static" because they never change their content over their lifetime.
 pub(super) struct StaticResourcePool<Handle: Key, Desc, Res> {
     resources: SlotMap<Handle, Res>,
@@ -140,6 +144,8 @@ where
 // ------------------------------------------------------------------------------------------------
 
 /// Generic resource pool for all resources that have varying contents beyond their description.
+///
+/// Unlike in StaticResourcePool, a resource is not uniquely identified by its description.
 #[derive(Default)]
 pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
     // All known resources of this type.
@@ -150,7 +156,7 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
 
     // Any resource that has been allocated last frame.
     // We keep them around for a bit longer to allow reclamation
-    last_frame_deallocated: HashMap<Desc, Arc<Handle>>,
+    last_frame_deallocated: HashMap<Desc, SmallVec<[Arc<Handle>; 4]>>,
 
     current_frame_index: u64,
 }
@@ -158,21 +164,34 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
 impl<Handle, Desc, Res> DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
-    Desc: Clone + Eq + Hash,
+    Desc: Clone + Eq + Hash + Debug,
     Res: Resource,
 {
-    fn alloc(&mut self) -> anyhow::Result<Arc<Handle>> {
-        // First check if we can reclaim a resource we have around from previous frame.
+    fn alloc<F: FnOnce(&Desc) -> anyhow::Result<Res>>(
+        &mut self,
+        desc: &Desc,
+        creation_func: F,
+    ) -> anyhow::Result<Arc<Handle>> {
+        // First check if we can reclaim a resource we have around from a previous frame.
+        if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
+            let handle = entry.get_mut().pop().unwrap();
+            if entry.get().is_empty() {
+                entry.remove();
+            }
+            return Ok(handle);
+        }
 
-        // TODO:
+        // Otherwise create a new resource
+        let resource = creation_func(&desc)?;
+        Ok(Arc::new(self.resources.insert((desc.clone(), resource))))
     }
 
     fn get_resource(&self, handle: Arc<Handle>) -> Result<&Res, PoolError> {
         self.resources
             .get(*handle)
-            .map(|resource| {
+            .map(|(_, resource)| {
                 resource.on_handle_resolve(self.current_frame_index);
-                &resource.1
+                resource
             })
             .ok_or_else(|| {
                 if handle.is_null() {
@@ -187,21 +206,37 @@ where
         self.current_frame_index = current_frame_index;
 
         // Throw out any resources that we haven't reclaimed last frame.
-        // TODO: Trace log this!
-        self.last_frame_deallocated.clear();
+        for (desc, handles) in self.last_frame_deallocated.drain() {
+            re_log::debug!(
+                "Removed {} resources with description: {:?}",
+                handles.len(),
+                desc
+            );
+            for handle in handles {
+                self.resources.remove(*handle);
+            }
+        }
 
         // If the strong count went down to 1, we must be the only ones holding on to handle.
+        //
         // thread safety:
-        // Since the count is pushed from 1 to 2 by `alloc`
-        // it should not be possible to ever get temporarily get back down to 1 without dropping the last
-        // user available copy of the Arc<Handle>.
-        // Want drain_filter here - https://github.com/rust-lang/rust/issues/43244
-
+        // Since the count is pushed from 1 to 2 by `alloc`, it should not be possible to ever
+        // get temporarily get back down to 1 without dropping the last user available copy of the Arc<Handle>.
+        //
+        // Use `drain_filter` once available - https://github.com/rust-lang/rust/issues/43244
         let mut i = 0;
         while i < self.alive_handles.len() {
             if Arc::<Handle>::strong_count(&self.alive_handles[i]) == 1 {
-                self.last_frame_deallocated
-                    .push(self.alive_handles.remove(i));
+                let handle = self.alive_handles.remove(i);
+                let desc = &self.resources[*handle].0;
+                match self.last_frame_deallocated.entry(desc.clone()) {
+                    Entry::Occupied(mut e) => {
+                        e.get_mut().push(handle);
+                    }
+                    Entry::Vacant(e) => {
+                        e.insert(smallvec![handle]);
+                    }
+                }
             } else {
                 i += 1;
             }

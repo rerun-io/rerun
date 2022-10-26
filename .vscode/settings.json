@@ -23,6 +23,7 @@
         "andreas",
         "nyud",
         "Skybox",
+        "smallvec",
         "Tonemapper",
         "tonemapping",
         "Wgsl"

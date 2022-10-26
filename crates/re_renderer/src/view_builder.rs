@@ -113,12 +113,6 @@ impl ViewBuilder {
                     label: "frame uniform buffer".into(),
                     size: std::mem::size_of::<FrameUniformBuffer>() as _,
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-
-                    // We need to make sure that every target gets a different frame uniform buffer.
-                    // If we don't do that, frame uniform buffers from different [`ViewBuilder`] might overwrite each other.
-                    // (note thought that we do *not* want to hash the current contents of the uniform buffer
-                    // because then we'd create a new buffer every frame!)
-                    content_id: config.target_identifier,
                 },
             );
 
