@@ -506,6 +506,10 @@ impl Scene {
         // At what distance do we end the frustum?
         let d = scene_bbox.size().length() * 0.3;
 
+        // TODO(emilk): there is probably a off-by-one or off-by-half error here.
+        // The image coordinates are in [0, w-1] range, so either we should use those limits
+        // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
+
         let corners = [
             world_from_image
                 .transform_point3(d * vec3(0.0, 0.0, 1.0))
