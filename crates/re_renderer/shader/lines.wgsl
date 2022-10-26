@@ -10,8 +10,8 @@ var position_data_texture: texture_2d<u32>;
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
-var<private> line_strip_texture_SIZE: i32 = 512;
-var<private> POSITION_DATA_TEXTURE_SIZE: i32 = 256;
+let LINESTRIP_TEXTURE_SIZE: i32 = 512;
+let POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 
 struct VertexOut {
     @location(0) color: Vec4,
@@ -46,7 +46,7 @@ struct PositionData {
 
 // Read and unpack position data at a given location
 fn read_position_data(idx: i32) -> PositionData {
-    var raw_data = textureLoad(line_strip_texture, IVec2(idx % line_strip_texture_SIZE, idx / line_strip_texture_SIZE), 0);
+    var raw_data = textureLoad(line_strip_texture, IVec2(idx % LINESTRIP_TEXTURE_SIZE, idx / LINESTRIP_TEXTURE_SIZE), 0);
 
     var data: PositionData;
     data.pos = raw_data.xyz;
@@ -57,16 +57,16 @@ fn read_position_data(idx: i32) -> PositionData {
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Basic properties of the vertex we're at.
-    var is_at_quad_end = i32(vertex_idx) % 2;
-    var quad_idx = i32(vertex_idx) / 6;
-    var local_idx = vertex_idx % 6u;
-    var top_bottom = f32(local_idx <= 1u || local_idx == 5u) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
+    let is_at_quad_end = i32(vertex_idx) % 2;
+    let quad_idx = i32(vertex_idx) / 6;
+    let local_idx = vertex_idx % 6u;
+    let top_bottom = f32(local_idx <= 1u || local_idx == 5u) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
 
     // data at and before the vertex
-    var pos_data_idx = quad_idx + is_at_quad_end;
-    var pos_data_before = read_position_data(pos_data_idx - 1);
+    let pos_data_idx = quad_idx + is_at_quad_end;
+    let pos_data_before = read_position_data(pos_data_idx - 1);
     var pos_data_current = read_position_data(pos_data_idx);
-    var pos_data_next = read_position_data(pos_data_idx + 1);
+    let pos_data_next = read_position_data(pos_data_idx + 1);
 
     // Are we at the end of a previous and start of a new line strip? If so, collapse the quad between them.
     if is_at_quad_end == 1 && pos_data_before.strip_index != pos_data_current.strip_index {
@@ -84,9 +84,9 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     quad_dir = normalize(quad_dir);
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
-    var to_camera = normalize(frame.camera_position - pos_data_current.pos);
-    var dir_up = normalize(cross(to_camera, quad_dir));
-    var pos = pos_data_current.pos + (strip_data.thickness * top_bottom) * dir_up;
+    let to_camera = normalize(frame.camera_position - pos_data_current.pos);
+    let dir_up = normalize(cross(to_camera, quad_dir));
+    let pos = pos_data_current.pos + (strip_data.thickness * top_bottom) * dir_up;
 
     // Output, transform to projection space and done.
     var out: VertexOut;

@@ -12,6 +12,9 @@ type IVec3 = vec3<i32>;
 type IVec4 = vec4<i32>;
 type Mat4 = mat4x4<f32>;
 
+// Following should be const expressions once available
+// https://github.com/gfx-rs/naga/issues/1829
+
 let f32min = -3.4028235e38;
 let f32max = 3.4028235e38;
 let f32eps = 0.00000011920928955078125;
