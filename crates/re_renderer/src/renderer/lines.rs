@@ -102,6 +102,7 @@ use crate::{
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::*,
         shader_module_pool::ShaderModuleDesc,
+        texture_pool::TextureDesc,
     },
     view_builder::ViewBuilder,
 };
@@ -223,8 +224,8 @@ impl LineDrawable {
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawable!
         let position_data_texture = ctx.resource_pools.textures.request(
             device,
-            &wgpu::TextureDescriptor {
-                label: Some("line position data"),
+            &TextureDesc {
+                label: "line position data".into(),
                 size: wgpu::Extent3d {
                     width: POSITION_TEXTURE_SIZE,
                     height: POSITION_TEXTURE_SIZE,
@@ -239,8 +240,8 @@ impl LineDrawable {
         );
         let line_strip_texture = ctx.resource_pools.textures.request(
             device,
-            &wgpu::TextureDescriptor {
-                label: Some("line strips"),
+            &TextureDesc {
+                label: "line strips".into(),
                 size: wgpu::Extent3d {
                     width: LINE_STRIP_TEXTURE_SIZE,
                     height: LINE_STRIP_TEXTURE_SIZE,
