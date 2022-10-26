@@ -67,12 +67,22 @@ fn mono_data_messages() -> Vec<DataMsg> {
     messages
 }
 
-fn batch_data_messages() -> Vec<DataMsg> {
+enum BatchType {
+    Sequential,
+    FullIndex,
+}
+
+fn batch_data_messages(batch_type: &BatchType) -> Vec<DataMsg> {
     let positions = vec![[1.0, 2.0, 3.0]; NUM_POINTS as usize];
     let colors = vec![[255; 4]; NUM_POINTS as usize];
-    let indices = (0..NUM_POINTS)
-        .map(|pi| Index::Sequence(pi as _))
-        .collect_vec();
+    let indices = match batch_type {
+        BatchType::Sequential => BatchIndex::SequentialIndex(NUM_POINTS as usize),
+        BatchType::FullIndex => BatchIndex::FullIndex(
+            (0..NUM_POINTS)
+                .map(|pi| Index::Sequence(pi as _))
+                .collect_vec(),
+        ),
+    };
 
     let mut messages = Vec::with_capacity((NUM_FRAMES * 3) as _);
 
@@ -152,7 +162,7 @@ fn obj_mono_points(c: &mut Criterion) {
 }
 
 fn obj_batch_points(c: &mut Criterion) {
-    let data_messages = batch_data_messages();
+    let data_messages = batch_data_messages(&BatchType::FullIndex);
 
     let mut obj_types = IntMap::default();
     obj_types.insert(
@@ -180,5 +190,39 @@ fn obj_batch_points(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, obj_mono_points, obj_batch_points);
+fn obj_batch_points_sequential(c: &mut Criterion) {
+    let data_messages = batch_data_messages(&BatchType::Sequential);
+
+    let mut obj_types = IntMap::default();
+    obj_types.insert(
+        ObjTypePath::new(vec![TypePathComp::Name("points".into())]),
+        ObjectType::Point3D,
+    );
+
+    {
+        let mut group = c.benchmark_group("obj_batch_points_sequential");
+        group.throughput(criterion::Throughput::Elements(
+            (NUM_POINTS * NUM_FRAMES) as _,
+        ));
+        group.bench_function("insert", |b| {
+            b.iter(|| insert_data(&data_messages));
+        });
+    }
+
+    {
+        let mut group = c.benchmark_group("obj_batch_points_sequential");
+        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+        let store = insert_data(&data_messages);
+        group.bench_function("query", |b| {
+            b.iter(|| do_query(&obj_types, &store));
+        });
+    }
+}
+
+criterion_group!(
+    benches,
+    obj_mono_points,
+    obj_batch_points,
+    obj_batch_points_sequential
+);
 criterion_main!(benches);

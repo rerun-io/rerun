@@ -6,7 +6,7 @@ use anyhow::Context as _;
 
 use crate::debug_label::DebugLabel;
 use crate::resource_pools::resource_pool::*;
-use crate::FileContentsHandle;
+use crate::{FileResolver, FileSystem};
 
 // ---
 
@@ -24,8 +24,8 @@ pub struct ShaderModuleDesc {
     /// This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
 
-    /// Actual source code of the shader module.
-    pub source: FileContentsHandle,
+    /// Path to the source code of this shader module.
+    pub source: PathBuf,
 }
 impl PartialEq for ShaderModuleDesc {
     fn eq(&self, rhs: &Self) -> bool {
@@ -40,11 +40,15 @@ impl Hash for ShaderModuleDesc {
     }
 }
 impl ShaderModuleDesc {
-    fn create_shader_module(&self, device: &wgpu::Device) -> anyhow::Result<wgpu::ShaderModule> {
-        let code = self
-            .source
-            .resolve()
-            .context("couldn't resolve file contents")?;
+    fn create_shader_module<Fs: FileSystem>(
+        &self,
+        device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
+    ) -> anyhow::Result<wgpu::ShaderModule> {
+        let code = resolver
+            .resolve_contents(&self.source)
+            .map(|s| s.to_owned().into())
+            .context("couldn't resolve shader module's source code path")?;
 
         // All wgpu errors come asynchronously: this call will succeed whether the given
         // source is valid or not.
@@ -72,16 +76,17 @@ pub struct ShaderModulePool {
 }
 
 impl ShaderModulePool {
-    pub fn request(
+    pub fn request<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
         desc: &ShaderModuleDesc,
     ) -> ShaderModuleHandle {
         self.pool.get_or_create(desc, |desc| {
             // TODO(cmc): must provide a way to properly handle errors in requests.
             // Probably better to wait for a first PoC of #import to land though,
             // as that will surface a bunch of shortcomings in our error handling too.
-            let shader_module = desc.create_shader_module(device).unwrap();
+            let shader_module = desc.create_shader_module(device, resolver).unwrap();
             ShaderModule {
                 last_frame_used: AtomicU64::new(0),
                 last_frame_modified: AtomicU64::new(0),
@@ -90,9 +95,10 @@ impl ShaderModulePool {
         })
     }
 
-    pub fn frame_maintenance(
+    pub fn frame_maintenance<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
         frame_index: u64,
         updated_paths: &HashSet<PathBuf>,
     ) {
@@ -103,12 +109,23 @@ impl ShaderModulePool {
         let descs = self
             .pool
             .resource_descs()
-            .filter_map(|desc| match &desc.source {
-                FileContentsHandle::Inlined(_) => None,
-                FileContentsHandle::Path(path) => {
-                    updated_paths.contains(path).then_some((path, desc))
-                }
+            .filter_map(|desc| {
+                // Not only do we care about filesystem events that touch upon the source
+                // path of the current shader, we also care about events that affect any of
+                // our direct and indirect dependencies (#import)!
+                (!updated_paths.is_empty()).then(|| {
+                    let mut paths = vec![desc.source.as_path()];
+                    if let Ok(imports) = resolver.resolve_imports(&desc.source) {
+                        paths.extend(imports);
+                    }
+
+                    paths
+                        .iter()
+                        .any(|p| updated_paths.contains(*p))
+                        .then_some((&desc.source, desc))
+                })
             })
+            .flatten()
             // TODO(cmc): clearly none of this is nice, but I don't want try and figure
             // out better APIs until #import has landed, as that will probably point out
             // a whole bunch of shortcomings in our APIs too.
@@ -126,7 +143,7 @@ impl ShaderModulePool {
                 .get_resource_mut(handle)
                 .expect("the pool itself handed us that handle");
 
-            let shader_module = match desc.create_shader_module(device) {
+            let shader_module = match desc.create_shader_module(device, resolver) {
                 Ok(sm) => sm,
                 Err(err) => {
                     re_log::error!(

@@ -117,11 +117,11 @@ impl ViewBuilder {
             )?;
 
             let view_from_world = config.view_from_world.to_mat4();
+            let camera_position = config.view_from_world.inverse().translation();
 
             // We use infinite reverse-z projection matrix.
             // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
             // * no need to worry about far plane
-            // * 0 depth == near is more intuitive anyway!
             let projection_from_view = glam::Mat4::perspective_infinite_reverse_rh(
                 config.fov_y,
                 config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32,
@@ -150,7 +150,7 @@ impl ViewBuilder {
                     view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
                     projection_from_view: projection_from_view.into(),
                     projection_from_world: projection_from_world.into(),
-                    camera_position: config.view_from_world.translation().into(),
+                    camera_position: camera_position.into(),
                     top_right_screen_corner_in_view: top_right_screen_corner_in_view.into(),
                 }),
             );
@@ -215,7 +215,7 @@ impl ViewBuilder {
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &depth.default_view,
                 depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
+                    load: wgpu::LoadOp::Clear(0.0), // 0.0 == far since we're using reverse-z
                     store: false, // discards the depth buffer after use, can be faster
                 }),
                 stencil_ops: None,

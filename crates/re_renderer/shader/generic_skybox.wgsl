@@ -1,13 +1,4 @@
-struct FrameUniformBuffer {
-    view_from_world: mat4x3<f32>,
-    projection_from_view: mat4x4<f32>,
-    projection_from_world: mat4x4<f32>,
-
-    camera_position: vec3<f32>,
-    top_right_screen_corner_in_view: vec2<f32>,
-};
-@group(0) @binding(0)
-var<uniform> frame: FrameUniformBuffer;
+#import <./frame_uniform.wgsl>
 
 fn camera_dir_from_screenuv(texcoord: vec2<f32>) -> vec3<f32> {
     let x = texcoord.x * 2.0 - 1.0;

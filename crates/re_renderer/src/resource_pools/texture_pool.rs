@@ -6,7 +6,7 @@ slotmap::new_key_type! { pub struct TextureHandle; }
 
 pub(crate) struct Texture {
     last_frame_used: AtomicU64,
-    pub(crate) _texture: wgpu::Texture,
+    pub(crate) texture: wgpu::Texture,
     pub(crate) default_view: wgpu::TextureView,
     // TODO(andreas) what about custom views
 }
@@ -34,7 +34,7 @@ impl TexturePool {
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             Texture {
                 last_frame_used: AtomicU64::new(0),
-                _texture: texture,
+                texture,
                 default_view: view,
             }
         })
