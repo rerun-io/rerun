@@ -10,7 +10,7 @@ struct FrameUniformBuffer {
 var<uniform> frame: FrameUniformBuffer;
 
 @group(1) @binding(0)
-var segment_texture: texture_2d<f32>;
+var line_strip_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var position_data_texture: texture_2d<u32>;
 
@@ -43,7 +43,7 @@ fn linear_from_srgba(srgb_a: vec4<f32>) -> vec4<f32> {
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
-var<private> SEGMENT_TEXTURE_SIZE: i32 = 512;
+var<private> line_strip_texture_SIZE: i32 = 512;
 var<private> POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 
 struct VertexOut {
@@ -63,6 +63,8 @@ fn read_strip_data(idx: i32) -> LineStripData {
 
     var data: LineStripData;
     data.color = linear_from_srgba(unpack4x8unorm_workaround(raw_data.x));
+    // raw_data.y packs { thickness: float16, unused: u8, stippling: u8 }
+    // See `gpu_data::LineStripInfo` in `lines.rs`
     data.thickness = unpack2x16float(raw_data.y).y;
     data.stippling = f32((raw_data.y >> 24u) & 0xFFu) * (1.0 / 255.0);
     return data;
@@ -70,12 +72,14 @@ fn read_strip_data(idx: i32) -> LineStripData {
 
 struct PositionData {
     pos: vec3<f32>,
+    // i32 for convenience in texture sampling
+    // (can be u32 once https://github.com/gfx-rs/naga/issues/1997 is solved)
     strip_index: i32,
 }
 
 // Read and unpack position data at a given location
 fn read_position_data(idx: i32) -> PositionData {
-    var raw_data = textureLoad(segment_texture, vec2<i32>(idx % SEGMENT_TEXTURE_SIZE, idx / SEGMENT_TEXTURE_SIZE), 0);
+    var raw_data = textureLoad(line_strip_texture, vec2<i32>(idx % line_strip_texture_SIZE, idx / line_strip_texture_SIZE), 0);
 
     var data: PositionData;
     data.pos = raw_data.xyz;

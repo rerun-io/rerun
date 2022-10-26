@@ -52,8 +52,12 @@ fn draw_view(
     let mut view_builder = ViewBuilder::new();
 
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
-    let t = time.seconds_since_startup();
-    let pos = Vec3::new(t.sin(), 0.5, t.cos()) * 20.0;
+    let seconds_since_startup = time.seconds_since_startup();
+    let pos = Vec3::new(
+        seconds_since_startup.sin(),
+        0.5,
+        seconds_since_startup.cos(),
+    ) * 20.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
     let target_cfg = TargetConfiguration {
         resolution_in_pixel: resolution,
@@ -65,7 +69,26 @@ fn draw_view(
 
     let triangle = TestTriangleDrawable::new(re_ctx, device);
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
+    let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
 
+    view_builder
+        .setup_view(re_ctx, device, queue, &target_cfg)
+        .unwrap()
+        .queue_draw(&triangle)
+        .queue_draw(&skybox)
+        .queue_draw(&lines)
+        .draw(re_ctx, encoder)
+        .unwrap();
+
+    view_builder
+}
+
+fn build_lines(
+    re_ctx: &mut RenderContext,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    seconds_since_startup: f32,
+) -> LineDrawable {
     // Calculate some points that look nice for an animated line.
     let lorenz_points = {
         // Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
@@ -82,23 +105,20 @@ fn draw_view(
         }
 
         // slow buildup and reset
-        let num_points = (((t * 0.05).fract() * 10000.0) as u32).max(1);
+        let num_points = (((seconds_since_startup * 0.05).fract() * 10000.0) as u32).max(1);
 
-        let mut lorenz_points = Vec::new();
-        lorenz_points.push(glam::vec3(-0.1, 0.001, 0.0));
-        for _ in 0..num_points {
-            lorenz_points.push(lorenz_integrate(*lorenz_points.last().unwrap(), 0.005));
-        }
-        for p in &mut lorenz_points {
-            // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
-            *p += glam::vec3(-5.0, 0.0, -23.0);
-            *p *= 0.6;
-        }
-
-        lorenz_points
+        let mut latest_point = glam::vec3(-0.1, 0.001, 0.0);
+        std::iter::repeat_with(move || {
+            latest_point = lorenz_integrate(latest_point, 0.005);
+            latest_point
+        })
+        // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
+        .map(|p| (p + glam::vec3(-5.0, 0.0, -23.0)) * 0.6)
+        .take(num_points as _)
+        .collect::<Vec<_>>()
     };
 
-    let lines = LineDrawable::new(
+    LineDrawable::new(
         re_ctx,
         device,
         queue,
@@ -136,18 +156,7 @@ fn draw_view(
             },
         ],
     )
-    .unwrap();
-
-    view_builder
-        .setup_view(re_ctx, device, queue, &target_cfg)
-        .unwrap()
-        .queue_draw(&triangle)
-        .queue_draw(&skybox)
-        .queue_draw(&lines)
-        .draw(re_ctx, encoder)
-        .unwrap();
-
-    view_builder
+    .unwrap()
 }
 
 // ---

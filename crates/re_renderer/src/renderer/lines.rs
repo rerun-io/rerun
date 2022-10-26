@@ -109,6 +109,8 @@ use crate::{
 use super::*;
 
 mod gpu_data {
+    // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
+
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct PositionData {
@@ -117,12 +119,13 @@ mod gpu_data {
         // We probably want to store accumulated line length in there so that we can do stippling in the fragment shader
         pub strip_index: u32,
     }
+    // (unlike the fields in a uniform buffer)
     static_assertions::assert_eq_size!(PositionData, glam::Vec4);
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripInfo {
-        pub color: [u8; 4], // alpha unused right now
+        pub srgb_color: [u8; 4], // alpha unused right now
         pub stippling: u8,
         pub unused: u8,
         pub thickness: half::f16,
@@ -176,7 +179,7 @@ impl LineDrawable {
         const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4mb, 262144 PositionDatas
         const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5mb, 65536 line strips
 
-        // Make sure rows the texture can be copied easily.
+        // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
         static_assertions::const_assert_eq!(
             POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
@@ -189,29 +192,27 @@ impl LineDrawable {
         );
 
         let num_line_strips = line_strips.len() as u32;
-        if num_line_strips > LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE {
-            // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
-            anyhow::bail!(
-                "Too many line strips! The maximum is {} but passed were {num_line_strips}",
-                LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE
-            );
-        }
-
-        if line_strips.iter().any(|strip| strip.points.len() < 2) {
-            anyhow::bail!("Line strips need to have at least two points each.");
-        }
-
-        let num_positions = (line_strips
+        let num_positions = line_strips
             .iter()
-            .fold(0, |c, strip| strip.points.len() + c)) as u32;
-        if num_positions > POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE {
-            // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
-            //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
-            anyhow::bail!(
+            .map(|strip| strip.points.len())
+            .sum::<usize>() as u32;
+
+        // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
+        anyhow::ensure!(
+            num_line_strips <= LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE,
+            "Too many line strips! The maximum is {} but passed were {num_line_strips}",
+            LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE
+        );
+        anyhow::ensure!(
+            line_strips.iter().any(|strip| strip.points.len() >= 2),
+            "Line strips need to have at least two points each."
+        );
+        // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
+        //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
+        anyhow::ensure!(num_positions <= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
                 "Too many line segments! The maximum number of positions is {} but specified were {num_positions}",
                 POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE
             );
-        }
 
         // No index buffer, so after each strip we have a quad that is discarded.
         // This means from a geometry perspective there is only ONE strip, i.e. 2 less quads than there are half-PositionDatas!
@@ -273,7 +274,7 @@ impl LineDrawable {
             Vec::with_capacity(next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
         line_strip_info_staging.extend(line_strips.iter().map(|line_strip| {
             gpu_data::LineStripInfo {
-                color: line_strip.color,
+                srgb_color: line_strip.color,
                 thickness: half::f16::from_f32(line_strip.radius),
                 stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
                 unused: 0,
