@@ -183,17 +183,26 @@ where
         creation_func: F,
     ) -> anyhow::Result<Arc<Handle>> {
         // First check if we can reclaim a resource we have around from a previous frame.
-        if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
-            let handle = entry.get_mut().pop().unwrap();
-            if entry.get().is_empty() {
-                entry.remove();
-            }
-            return Ok(handle);
-        }
+        let handle =
+            if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
+                re_log::trace!(
+                    "Re-used previously discarded resource with description {:?}",
+                    desc
+                );
 
-        // Otherwise create a new resource
-        let resource = creation_func(desc)?;
-        Ok(Arc::new(self.resources.insert((desc.clone(), resource))))
+                let handle = entry.get_mut().pop().unwrap();
+                if entry.get().is_empty() {
+                    entry.remove();
+                }
+                handle
+            // Otherwise create a new resource
+            } else {
+                let resource = creation_func(desc)?;
+                Arc::new(self.resources.insert((desc.clone(), resource)))
+            };
+
+        self.alive_handles.push(handle.clone());
+        Ok(handle)
     }
 
     pub fn get_resource(&self, handle: &Arc<Handle>) -> Result<&Res, PoolError> {
