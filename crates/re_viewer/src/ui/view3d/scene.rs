@@ -509,9 +509,7 @@ impl Scene {
     ) -> Option<()> {
         let world_from_view = camera.world_from_view()?;
         let world_from_image = camera.world_from_image()?;
-        let intrinsics = camera.intrinsics?;
-
-        let [w, h] = intrinsics.resolution;
+        let [w, h] = camera.intrinsics?.resolution?;
 
         // At what distance do we end the frustum?
         let d = scene_bbox.size().length() * 0.3;

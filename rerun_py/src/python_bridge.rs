@@ -453,7 +453,7 @@ fn log_intrinsics(
 
     let transform = re_log_types::Transform::Intrinsics(re_log_types::Intrinsics {
         intrinsics_matrix,
-        resolution,
+        resolution: Some(resolution),
     });
 
     let mut sdk = Sdk::global();

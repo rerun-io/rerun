@@ -460,6 +460,7 @@ pub struct Rigid3 {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Intrinsics {
     /// Column-major intrinsics matrix.
+    ///
     /// Image coordinates from view coordinates (via projection).
     ///
     /// Example:
@@ -476,13 +477,16 @@ pub struct Intrinsics {
     /// ```text
     /// [1920.0, 1440.0]
     /// ```
-    pub resolution: [f32; 2],
+    ///
+    /// [`Self::intrinsics_matrix`] project onto the space spanned by `(0,0)` and `resolution - 1`.
+    pub resolution: Option<[f32; 2]>,
 }
 
 impl Intrinsics {
     /// Field of View on the Y axis, i.e. the angle between top and bottom.
-    pub fn fov_y(&self) -> f32 {
-        2.0 * (0.5 * self.resolution[1] / self.intrinsics_matrix[1][1]).atan()
+    pub fn fov_y(&self) -> Option<f32> {
+        self.resolution
+            .map(|resolution| 2.0 * (0.5 * resolution[1] / self.intrinsics_matrix[1][1]).atan())
     }
 }
 
