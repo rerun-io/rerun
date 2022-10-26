@@ -2,6 +2,8 @@ use egui::{lerp, NumExt as _, Rect};
 use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
+use super::SpaceCamera;
+
 pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 
 /// An eye in a 3D view.
@@ -16,20 +18,17 @@ pub struct Eye {
 }
 
 impl Eye {
-    pub fn from_camera(
-        extrinsics: &re_log_types::Extrinsics,
-        intrinsics: Option<&re_log_types::Intrinsics>,
-    ) -> Eye {
-        let fov_y = if let Some(intrinsis) = intrinsics {
+    pub fn from_camera(space_cameras: &SpaceCamera) -> Option<Eye> {
+        let fov_y = if let Some(intrinsis) = space_cameras.intrinsics {
             intrinsis.fov_y()
         } else {
             DEFAULT_FOV_Y
         };
 
-        Self {
-            world_from_view: crate::misc::cam::world_from_view(extrinsics),
+        Some(Self {
+            world_from_view: space_cameras.world_from_view()?,
             fov_y,
-        }
+        })
     }
 
     #[allow(clippy::unused_self)]
@@ -78,7 +77,7 @@ impl Eye {
 
 /// Note: we use "eye" so we don't confuse this with logged camera.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
-pub struct OrbitEye {
+pub(crate) struct OrbitEye {
     pub orbit_center: Vec3,
     pub orbit_radius: f32,
     pub world_from_view_rot: Quat,

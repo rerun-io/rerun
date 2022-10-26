@@ -3043,6 +3043,7 @@ dependencies = [
  "bytemuck",
  "chrono",
  "document-features",
+ "glam",
  "nohash-hasher",
  "puffin",
  "re_string_interner",

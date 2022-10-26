@@ -34,6 +34,7 @@ def log_car_data() -> None:
             position=sample.camera.position,
             camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
         )
+        rerun.log_coordinate_system("3d/camera", "RDF") # X=Right, Y=Down, Z=Forward
 
         # Log the camera projection matrix:
         rerun.log_intrinsics(

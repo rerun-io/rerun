@@ -106,6 +106,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_extrinsics, m)?)?;
     m.add_function(wrap_pyfunction!(log_intrinsics, m)?)?;
 
+    m.add_function(wrap_pyfunction!(log_coordinate_system, m)?)?;
     m.add_function(wrap_pyfunction!(log_world_coordinate_system, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_point, m)?)?;
@@ -486,6 +487,14 @@ fn log_intrinsics(
 
 // ----------------------------------------------------------------------------
 
+#[pyfunction]
+fn log_coordinate_system(obj_path: &str, xyz: &str, timeless: bool) -> PyResult<()> {
+    use re_log_types::coordinates::*;
+    let system = xyz.parse().map_err(PyTypeError::new_err)?;
+    let coordinate_system = CoordinateSystem::Relative(system);
+    log_coordiate_system(obj_path, coordinate_system, timeless)
+}
+
 /// Set the preferred up-axis for a given 3D space.
 #[pyfunction]
 fn log_world_coordinate_system(
@@ -501,9 +510,7 @@ fn log_world_coordinate_system(
     } else {
         Handedness::Left
     };
-    let up = up
-        .parse::<SignedAxis3>()
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+    let up = up.parse::<SignedAxis3>().map_err(PyTypeError::new_err)?;
     let coordinate_system = CoordinateSystem::World(WorldSystem::Partial {
         up: Some(up),
         handedness,

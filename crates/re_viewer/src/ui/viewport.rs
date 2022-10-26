@@ -253,7 +253,7 @@ impl Blueprint {
 
         if !space_make_infos.is_empty() {
             let layout = layout_spaces(available_size, &mut space_make_infos);
-        tree_from_split(&mut blueprint.tree, egui_dock::NodeIndex(0), &layout);
+            tree_from_split(&mut blueprint.tree, egui_dock::NodeIndex(0), &layout);
         }
 
         blueprint
@@ -575,6 +575,11 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
 
     for (child_path, child_transform) in &space_info.child_spaces {
         if let Transform::Extrinsics(extrinsics) = child_transform {
+            let view_space = spaces_info
+                .spaces
+                .get(child_path)
+                .and_then(|child| child.coordinate_system);
+
             let mut found_any_intrinsics = false;
 
             if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
@@ -583,6 +588,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                         space_cameras.push(SpaceCamera {
                             obj_path: child_path.clone(),
                             instance_index_hash: re_log_types::IndexHash::NONE,
+                            view_space,
                             extrinsics: *extrinsics,
                             intrinsics: Some(*intrinsics),
                             target_space: Some(grand_child_path.clone()),
@@ -596,6 +602,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                 space_cameras.push(SpaceCamera {
                     obj_path: child_path.clone(),
                     instance_index_hash: re_log_types::IndexHash::NONE,
+                    view_space,
                     extrinsics: *extrinsics,
                     intrinsics: None,
                     target_space: None,

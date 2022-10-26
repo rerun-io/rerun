@@ -12,6 +12,19 @@ pub enum RelativeDirection {
 
 impl RelativeDirection {
     #[inline]
+    fn from_ascii_char(c: u8) -> Result<Self, String> {
+        match c {
+            b'U' => Ok(Self::Up),
+            b'D' => Ok(Self::Down),
+            b'R' => Ok(Self::Right),
+            b'L' => Ok(Self::Left),
+            b'F' => Ok(Self::Forward),
+            b'B' => Ok(Self::Back),
+            _ => Err("Expected one of UDRLFB (Up Down Right Left Forward Back)".to_owned()),
+        }
+    }
+
+    #[inline]
     pub fn short(&self) -> &'static str {
         match self {
             Self::Up => "U",
@@ -44,6 +57,27 @@ impl RelativeDirection {
 pub struct RelativeSystem(pub [RelativeDirection; 3]);
 
 impl RelativeSystem {
+    /// Returns an error if this does not span all three dimensions.
+    pub fn sanity_check(&self) -> Result<(), String> {
+        let mut dims = [false; 3];
+        for dir in self.0 {
+            let dim = match dir {
+                RelativeDirection::Up | RelativeDirection::Down => 0,
+                RelativeDirection::Right | RelativeDirection::Left => 1,
+                RelativeDirection::Forward | RelativeDirection::Back => 2,
+            };
+            dims[dim] = true;
+        }
+        if dims == [true; 3] {
+            Ok(())
+        } else {
+            Err(format!(
+                "Coordinate system does not cover all three cardinal directions: {}",
+                self.describe()
+            ))
+        }
+    }
+
     #[inline]
     pub fn up(&self) -> Option<SignedAxis3> {
         for (dim, &dir) in self.0.iter().enumerate() {
@@ -54,6 +88,11 @@ impl RelativeSystem {
             }
         }
         None
+    }
+
+    pub fn describe_short(&self) -> String {
+        let [x, y, z] = self.0;
+        format!("{}{}{}", x.short(), y.short(), z.short(),)
     }
 
     pub fn describe(&self) -> String {
@@ -67,6 +106,52 @@ impl RelativeSystem {
             y.long(),
             z.long()
         )
+    }
+
+    /// Returns a matrix that translated RUB to this coordinate system.
+    ///
+    /// (RUB: X=Right, Y=Up, B=Back)
+    #[cfg(feature = "glam")]
+    pub fn from_rub(&self) -> glam::Mat3 {
+        self.to_rub().transpose()
+    }
+
+    /// Returns a matrix that translated this coordinate system to RUB.
+    ///
+    /// (RUB: X=Right, Y=Up, B=Back)
+    #[cfg(feature = "glam")]
+    pub fn to_rub(&self) -> glam::Mat3 {
+        fn rub(dir: RelativeDirection) -> [f32; 3] {
+            match dir {
+                RelativeDirection::Right => [1.0, 0.0, 0.0],
+                RelativeDirection::Left => [-1.0, 0.0, 0.0],
+                RelativeDirection::Up => [0.0, 1.0, 0.0],
+                RelativeDirection::Down => [0.0, -1.0, 0.0],
+                RelativeDirection::Back => [0.0, 0.0, 1.0],
+                RelativeDirection::Forward => [0.0, 0.0, -1.0],
+            }
+        }
+
+        glam::Mat3::from_cols_array_2d(&[rub(self.0[0]), rub(self.0[1]), rub(self.0[2])])
+    }
+}
+
+impl std::str::FromStr for RelativeSystem {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.as_bytes() {
+            [x, y, z] => {
+                let slf = Self([
+                    RelativeDirection::from_ascii_char(*x)?,
+                    RelativeDirection::from_ascii_char(*y)?,
+                    RelativeDirection::from_ascii_char(*z)?,
+                ]);
+                slf.sanity_check()?;
+                Ok(slf)
+            }
+            _ => Err(format!("Expected three letters, got: {s:?}")),
+        }
     }
 }
 
@@ -224,17 +309,8 @@ impl std::fmt::Display for SignedAxis3 {
     }
 }
 
-pub struct SignedAxis3Error;
-
-impl std::fmt::Display for SignedAxis3Error {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "Expected one of: +X -X +Y -Y +Z -Z".fmt(f)
-    }
-}
-
 impl std::str::FromStr for SignedAxis3 {
-    type Err = SignedAxis3Error;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -244,7 +320,7 @@ impl std::str::FromStr for SignedAxis3 {
             "-Y" => Ok(Self::new(Sign::Negative, Axis3::Y)),
             "+Z" => Ok(Self::new(Sign::Positive, Axis3::Z)),
             "-Z" => Ok(Self::new(Sign::Negative, Axis3::Z)),
-            _ => Err(SignedAxis3Error),
+            _ => Err("Expected one of: +X -X +Y -Y +Z -Z".to_owned()),
         }
     }
 }
@@ -338,4 +414,25 @@ impl CoordinateSystem {
             Self::Relative(system) => system.describe(),
         }
     }
+}
+
+// ----------------------------------------------------------------------------
+
+#[cfg(feature = "glam")]
+#[test]
+fn coordinate_systems() {
+    use glam::*;
+
+    assert!("UUDDLRLRBAStart".parse::<RelativeSystem>().is_err());
+    assert!("UUD".parse::<RelativeSystem>().is_err());
+
+    let rub = "RUB".parse::<RelativeSystem>().unwrap();
+    let bru = "BRU".parse::<RelativeSystem>().unwrap();
+
+    assert_eq!(rub.to_rub(), Mat3::IDENTITY);
+    assert_eq!(
+        bru.to_rub(),
+        Mat3::from_cols_array_2d(&[[0., 0., 1.], [1., 0., 0.], [0., 1., 0.]])
+    );
+    assert_eq!(bru.to_rub() * vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0));
 }

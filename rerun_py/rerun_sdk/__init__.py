@@ -510,6 +510,37 @@ def log_intrinsics(
 # -----------------------------------------------------------------------------
 
 
+def log_coordinate_system(obj_path: str, xyz: str, timeless: bool = False) -> None:
+    """
+    Log the coordinate system convention for a cameras or image.
+
+    There are many different conventions for how a camera is aligned along the X, Y, and Z axes.
+    This function lets you specify your convention using a three-letter acronym, where each letter represents:
+
+    * R: Right
+    * L: Left
+    * U: Up
+    * D: Down
+    * F: Forward
+    * B: Back
+
+    Some of the most common are:
+
+    RDF: X=Right Y=Down Z=Forward  (right-handed)
+    RUB  X=Right Y=Up   Z=Back     (right-handed)
+    RDB: X=Right Y=Down Z=Back     (left-handed)
+    RUF: X=Right Y=Up   Z=Forward  (left-handed)
+
+    Example
+    -------
+    ```
+    rerun.log_coordinate_system("3d/camera", "RUB")
+    rerun.log_extrinsics("3d/camera", …)
+    ```
+    """
+    rerun_rs.log_coordinate_system(obj_path, xyz, timeless)
+
+
 def log_world_coordinate_system(obj_path: str, up: str, right_handed: bool = True, timeless: bool = False) -> None:
     """
     Set the preferred up-axis for this world 3D space.

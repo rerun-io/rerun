@@ -122,6 +122,7 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                         position=np.array((0, 0, 0)),
                         camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
                     )
+                    rerun.log_coordinate_system("3d/camera", "RDF") # X=Right, Y=Down, Z=Forward
                     rerun.log_intrinsics(
                         "3d/camera/image",
                         width=img_depth.shape[1],
