@@ -15,11 +15,11 @@ pub struct Tonemapper {
     bind_group_layout: BindGroupLayoutHandle,
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct TonemapperDrawable {
     /// [`BindGroup`] pointing at the current HDR source and
     /// a uniform buffer for describing a tonemapper configuration.
-    hdr_target_bind_group: BindGroupHandle,
+    hdr_target_bind_group: StrongBindGroupHandle,
 }
 
 impl Drawable for TonemapperDrawable {
@@ -27,7 +27,11 @@ impl Drawable for TonemapperDrawable {
 }
 
 impl TonemapperDrawable {
-    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device, hdr_target: TextureHandle) -> Self {
+    pub fn new(
+        ctx: &mut RenderContext,
+        device: &wgpu::Device,
+        hdr_target: TextureHandle,
+    ) -> anyhow::Result<Self> {
         let pools = &mut ctx.resource_pools;
         let tonemapper = ctx.renderers.get_or_create::<_, Tonemapper>(
             &ctx.shared_renderer_data,
@@ -35,8 +39,8 @@ impl TonemapperDrawable {
             device,
             &mut ctx.resolver,
         );
-        TonemapperDrawable {
-            hdr_target_bind_group: pools.bind_groups.request(
+        Ok(TonemapperDrawable {
+            hdr_target_bind_group: pools.bind_groups.alloc(
                 device,
                 &BindGroupDesc {
                     label: "tonemapping".into(),
@@ -47,8 +51,8 @@ impl TonemapperDrawable {
                 &pools.textures,
                 &pools.buffers,
                 &pools.samplers,
-            ),
-        }
+            )?,
+        })
     }
 }
 
@@ -131,7 +135,9 @@ impl Renderer for Tonemapper {
         draw_data: &TonemapperDrawable,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
-        let bind_group = pools.bind_groups.get(draw_data.hdr_target_bind_group)?;
+        let bind_group = pools
+            .bind_groups
+            .get_resource(&draw_data.hdr_target_bind_group)?;
 
         pass.set_pipeline(&pipeline.pipeline);
         pass.set_bind_group(1, &bind_group.bind_group, &[]);

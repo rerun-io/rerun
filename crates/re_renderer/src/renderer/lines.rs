@@ -98,7 +98,7 @@ use crate::{
     renderer::utils::next_multiple_of,
     resource_pools::{
         bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, BindGroupHandle},
+        bind_group_pool::{BindGroupDesc, BindGroupEntry, StrongBindGroupHandle},
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::*,
         shader_module_pool::ShaderModuleDesc,
@@ -137,7 +137,7 @@ mod gpu_data {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct LineDrawable {
-    bind_group: BindGroupHandle,
+    bind_group: StrongBindGroupHandle,
     num_quads: u32,
 }
 
@@ -334,7 +334,7 @@ impl LineDrawable {
         );
 
         Ok(LineDrawable {
-            bind_group: ctx.resource_pools.bind_groups.request(
+            bind_group: ctx.resource_pools.bind_groups.alloc(
                 device,
                 &BindGroupDesc {
                     label: "line drawable".into(),
@@ -348,7 +348,7 @@ impl LineDrawable {
                 &ctx.resource_pools.textures,
                 &ctx.resource_pools.buffers,
                 &ctx.resource_pools.samplers,
-            ),
+            )?,
             num_quads,
         })
     }
@@ -458,7 +458,7 @@ impl Renderer for LineRenderer {
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
-        let bind_group = pools.bind_groups.get(draw_data.bind_group)?;
+        let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;
 
         pass.set_pipeline(&pipeline.pipeline);
         pass.set_bind_group(1, &bind_group.bind_group, &[]);

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash, sync::atomic::Ordering};
+use std::{collections::HashMap, hash::Hash};
 
 use slotmap::{Key, SlotMap};
 
@@ -77,27 +77,5 @@ where
 
     pub fn resource_descs(&self) -> impl Iterator<Item = &Desc> {
         self.lookup.keys()
-    }
-}
-
-impl<Handle, Desc, Res> StaticResourcePool<Handle, Desc, Res>
-where
-    Handle: Key,
-    Res: UsageTrackedResource,
-    Desc: Debug,
-{
-    pub fn discard_unused_resources(&mut self, frame_index: u64) {
-        self.resources.retain(|_, resource| {
-            resource.last_frame_used().load(Ordering::Acquire) >= self.current_frame_index
-        });
-        self.lookup.retain(|desc, handle| {
-            let retain = self.resources.contains_key(*handle);
-            if !retain {
-                re_log::debug!("discarded resource with desc {:?}", desc);
-            }
-            retain
-        });
-
-        self.current_frame_index = frame_index;
     }
 }

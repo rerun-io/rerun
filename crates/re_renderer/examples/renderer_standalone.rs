@@ -48,7 +48,7 @@ fn draw_view(
     encoder: &mut wgpu::CommandEncoder,
     resolution: [u32; 2],
 ) -> ViewBuilder {
-    let mut view_builder = ViewBuilder::new();
+    let mut view_builder = ViewBuilder::default();
 
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
     let seconds_since_startup = time.seconds_since_startup();

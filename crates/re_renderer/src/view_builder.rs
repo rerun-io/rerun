@@ -7,9 +7,7 @@ use crate::{
     global_bindings::FrameUniformBuffer,
     renderer::{tonemapper::*, Drawable, Renderer},
     resource_pools::{
-        bind_group_pool::BindGroupHandle,
-        buffer_pool::{BufferDesc, BufferHandle},
-        texture_pool::*,
+        bind_group_pool::StrongBindGroupHandle, buffer_pool::BufferDesc, texture_pool::*,
     },
 };
 
@@ -26,15 +24,16 @@ struct QueuedDraw {
 /// Used to build up/collect various resources and then send them off for rendering of  a single view.
 #[derive(Default)]
 pub struct ViewBuilder {
-    tonemapping_draw_data: TonemapperDrawable,
+    setup: Option<ViewTargetSetup>,
+    queued_draws: Vec<QueuedDraw>, // &mut wgpu::RenderPass
+}
 
-    bind_group_0: BindGroupHandle,
+struct ViewTargetSetup {
+    tonemapping_drawable: TonemapperDrawable,
 
-    frame_uniform_buffer: BufferHandle,
+    bind_group_0: StrongBindGroupHandle,
     hdr_render_target: TextureHandle,
     depth_buffer: TextureHandle,
-
-    queued_draws: Vec<QueuedDraw>, // &mut wgpu::RenderPass
 }
 
 pub type SharedViewBuilder = Arc<RwLock<ViewBuilder>>;
@@ -57,22 +56,8 @@ impl ViewBuilder {
     pub const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
     pub const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
-    pub fn new() -> Self {
-        ViewBuilder {
-            tonemapping_draw_data: Default::default(),
-
-            bind_group_0: BindGroupHandle::default(),
-
-            frame_uniform_buffer: BufferHandle::default(),
-            hdr_render_target: TextureHandle::default(),
-            depth_buffer: TextureHandle::default(),
-
-            queued_draws: Vec::new(),
-        }
-    }
-
     pub fn new_shared() -> SharedViewBuilder {
-        Arc::new(RwLock::new(ViewBuilder::new()))
+        Arc::new(RwLock::new(ViewBuilder::default()))
     }
 
     pub fn setup_view(
@@ -84,7 +69,7 @@ impl ViewBuilder {
     ) -> anyhow::Result<&mut Self> {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
         // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
-        self.hdr_render_target = ctx.resource_pools.textures.request(
+        let hdr_render_target = ctx.resource_pools.textures.request(
             device,
             &render_target_2d_desc(
                 Self::FORMAT_HDR,
@@ -93,7 +78,7 @@ impl ViewBuilder {
                 1,
             ),
         );
-        self.depth_buffer = ctx.resource_pools.textures.request(
+        let depth_buffer = ctx.resource_pools.textures.request(
             device,
             &render_target_2d_desc(
                 Self::FORMAT_DEPTH,
@@ -103,64 +88,69 @@ impl ViewBuilder {
             ),
         );
 
-        self.tonemapping_draw_data = TonemapperDrawable::new(ctx, device, self.hdr_render_target);
+        let tonemapping_drawable = TonemapperDrawable::new(ctx, device, hdr_render_target)?;
 
         // Setup frame uniform buffer
-        {
-            self.frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
-                device,
-                &BufferDesc {
-                    label: "frame uniform buffer".into(),
-                    size: std::mem::size_of::<FrameUniformBuffer>() as _,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                },
-            )?;
+        let frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
+            device,
+            &BufferDesc {
+                label: "frame uniform buffer".into(),
+                size: std::mem::size_of::<FrameUniformBuffer>() as _,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            },
+        )?;
 
-            let view_from_world = config.view_from_world.to_mat4();
-            let camera_position = config.view_from_world.inverse().translation();
+        let view_from_world = config.view_from_world.to_mat4();
+        let camera_position = config.view_from_world.inverse().translation();
 
-            // We use infinite reverse-z projection matrix.
-            // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
-            // * no need to worry about far plane
-            let projection_from_view = glam::Mat4::perspective_infinite_reverse_rh(
-                config.fov_y,
-                config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32,
-                config.near_plane_distance,
-            );
-            let projection_from_world = projection_from_view * view_from_world;
+        // We use infinite reverse-z projection matrix.
+        // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
+        // * no need to worry about far plane
+        let projection_from_view = glam::Mat4::perspective_infinite_reverse_rh(
+            config.fov_y,
+            config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32,
+            config.near_plane_distance,
+        );
+        let projection_from_world = projection_from_view * view_from_world;
 
-            let view_from_projection = projection_from_view.inverse();
+        let view_from_projection = projection_from_view.inverse();
 
-            // Calculate the top right corner of the screen in view space.
-            // Top right corner in projection space is (also called Normalized Device Coordinates) is (1, 1, 0)
-            // (z zero means it sits on the near-plane)
-            let top_right_screen_corner_in_view = view_from_projection
-                .transform_point3(glam::vec3(1.0, 1.0, 0.0))
-                .truncate()
-                .normalize();
+        // Calculate the top right corner of the screen in view space.
+        // Top right corner in projection space is (also called Normalized Device Coordinates) is (1, 1, 0)
+        // (z zero means it sits on the near-plane)
+        let top_right_screen_corner_in_view = view_from_projection
+            .transform_point3(glam::vec3(1.0, 1.0, 0.0))
+            .truncate()
+            .normalize();
 
-            queue.write_buffer(
-                &ctx.resource_pools
-                    .buffers
-                    .get_resource(&self.frame_uniform_buffer)
-                    .unwrap()
-                    .buffer,
-                0,
-                bytemuck::bytes_of(&FrameUniformBuffer {
-                    view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
-                    projection_from_view: projection_from_view.into(),
-                    projection_from_world: projection_from_world.into(),
-                    camera_position: camera_position.into(),
-                    top_right_screen_corner_in_view: top_right_screen_corner_in_view.into(),
-                }),
-            );
-        }
+        queue.write_buffer(
+            &ctx.resource_pools
+                .buffers
+                .get_resource(&frame_uniform_buffer)
+                .unwrap()
+                .buffer,
+            0,
+            bytemuck::bytes_of(&FrameUniformBuffer {
+                view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
+                projection_from_view: projection_from_view.into(),
+                projection_from_world: projection_from_world.into(),
+                camera_position: camera_position.into(),
+                top_right_screen_corner_in_view: top_right_screen_corner_in_view.into(),
+            }),
+        );
 
-        self.bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
+        let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
             &mut ctx.resource_pools,
             device,
-            &self.frame_uniform_buffer,
-        );
+            &frame_uniform_buffer,
+        )?;
+
+        self.setup = Some(ViewTargetSetup {
+            tonemapping_drawable,
+            bind_group_0,
+            hdr_render_target,
+            depth_buffer,
+        });
 
         Ok(self)
     }
@@ -191,15 +181,20 @@ impl ViewBuilder {
         ctx: &RenderContext,
         encoder: &mut wgpu::CommandEncoder,
     ) -> anyhow::Result<()> {
+        let setup = self
+            .setup
+            .as_ref()
+            .context("ViewBuilder::setup_view wasn't called yet")?;
+
         let color = ctx
             .resource_pools
             .textures
-            .get(self.hdr_render_target)
+            .get(setup.hdr_render_target)
             .context("hdr render target")?;
         let depth = ctx
             .resource_pools
             .textures
-            .get(self.depth_buffer)
+            .get(setup.depth_buffer)
             .context("depth buffer")?;
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -226,7 +221,7 @@ impl ViewBuilder {
             0,
             &ctx.resource_pools
                 .bind_groups
-                .get(self.bind_group_0)
+                .get_resource(&setup.bind_group_0)
                 .context("get global bind group")?
                 .bind_group,
             &[],
@@ -249,11 +244,15 @@ impl ViewBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
     ) -> anyhow::Result<()> {
+        let setup = self
+            .setup
+            .context("ViewBuilder::setup_view wasn't called yet")?;
+
         pass.set_bind_group(
             0,
             &ctx.resource_pools
                 .bind_groups
-                .get(self.bind_group_0)
+                .get_resource(&setup.bind_group_0)
                 .context("get global bind group")?
                 .bind_group,
             &[],
@@ -264,7 +263,7 @@ impl ViewBuilder {
             .get::<Tonemapper>()
             .context("get tonemapper")?;
         tonemapper
-            .draw(&ctx.resource_pools, pass, &self.tonemapping_draw_data)
+            .draw(&ctx.resource_pools, pass, &setup.tonemapping_drawable)
             .context("perform tonemapping")
     }
 }

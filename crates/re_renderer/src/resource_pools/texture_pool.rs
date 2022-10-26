@@ -41,7 +41,7 @@ impl TexturePool {
     }
 
     pub fn frame_maintenance(&mut self, frame_index: u64) {
-        self.pool.discard_unused_resources(frame_index);
+        // TODO:
     }
 
     pub fn get(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {

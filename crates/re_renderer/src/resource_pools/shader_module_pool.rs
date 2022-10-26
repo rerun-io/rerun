@@ -102,9 +102,6 @@ impl ShaderModulePool {
         frame_index: u64,
         updated_paths: &HashSet<PathBuf>,
     ) {
-        // Garbage collect shaders not being used by any pipeline.
-        self.pool.discard_unused_resources(frame_index);
-
         // All shader descriptors that refer to paths modified since last frame.
         let descs = self
             .pool

@@ -121,9 +121,6 @@ impl RenderPipelinePool {
         shader_modules: &mut ShaderModulePool,
         pipeline_layouts: &mut PipelineLayoutPool,
     ) {
-        // Garbage collect render pipelines that haven't seen any use since last frame.
-        self.pool.discard_unused_resources(frame_index);
-
         // Make sure the shader modules we rely on don't get GC'd!
         for desc in self.pool.resource_descs() {
             shader_modules.register_resource_usage(desc.vertex_handle);

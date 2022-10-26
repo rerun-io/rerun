@@ -4,8 +4,8 @@ use crate::debug_label::DebugLabel;
 
 use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
 
-slotmap::new_key_type! { pub struct BufferHandleInner; }
-pub type BufferHandle = std::sync::Arc<BufferHandleInner>;
+slotmap::new_key_type! { pub struct BufferHandle; }
+pub type StrongBufferHandle = std::sync::Arc<BufferHandle>;
 
 pub struct Buffer {
     last_frame_used: AtomicU64,
@@ -32,7 +32,7 @@ pub struct BufferDesc {
 
 #[derive(Default)]
 pub struct BufferPool {
-    pool: DynamicResourcePool<BufferHandleInner, BufferDesc, Buffer>,
+    pool: DynamicResourcePool<BufferHandle, BufferDesc, Buffer>,
 }
 
 impl BufferPool {
@@ -40,7 +40,7 @@ impl BufferPool {
         &mut self,
         device: &wgpu::Device,
         desc: &BufferDesc,
-    ) -> anyhow::Result<BufferHandle> {
+    ) -> anyhow::Result<StrongBufferHandle> {
         self.pool.alloc(desc, |desc| {
             let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
@@ -59,11 +59,21 @@ impl BufferPool {
         self.pool.frame_maintenance(frame_index);
     }
 
-    pub fn get_resource(&self, handle: &BufferHandle) -> Result<&Buffer, PoolError> {
+    /// Takes strong buffer handle to ensure the user is still holding on to the buffer.
+    pub fn get_resource(&self, handle: &StrongBufferHandle) -> Result<&Buffer, PoolError> {
+        self.pool.get_resource(**handle)
+    }
+
+    /// Internal method to retrieve a resource with a weak handle (used by [`BindGroupPool`])
+    pub(super) fn get_resource_weak(&self, handle: BufferHandle) -> Result<&Buffer, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    pub(super) fn register_resource_usage(&mut self, handle: &BufferHandle) {
-        let _ = self.get_resource(handle);
+    pub(super) fn register_resource_usage(&mut self, handle: BufferHandle) {
+        let _ = self.pool.get_resource(handle);
+    }
+
+    pub(super) fn get_strong_handle(&self, handle: BufferHandle) -> &StrongBufferHandle {
+        self.pool.get_strong_handle(handle)
     }
 }

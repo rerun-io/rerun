@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use slotmap::{Key, SlotMap};
+use slotmap::{Key, SecondaryMap, SlotMap};
 
 use smallvec::{smallvec, SmallVec};
 
@@ -19,7 +19,7 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
     resources: SlotMap<Handle, (Desc, Res)>,
 
     // Handles to all alive resources.
-    alive_handles: Vec<Arc<Handle>>,
+    alive_handles: SecondaryMap<Handle, Arc<Handle>>,
 
     // Any resource that has been allocated last frame.
     // We keep them around for a bit longer to allow reclamation
@@ -69,13 +69,13 @@ where
                 Arc::new(self.resources.insert((desc.clone(), resource)))
             };
 
-        self.alive_handles.push(handle.clone());
+        self.alive_handles.insert(*handle, handle.clone());
         Ok(handle)
     }
 
-    pub fn get_resource(&self, handle: &Arc<Handle>) -> Result<&Res, PoolError> {
+    pub fn get_resource(&self, handle: Handle) -> Result<&Res, PoolError> {
         self.resources
-            .get(**handle)
+            .get(handle)
             .map(|(_, resource)| {
                 resource.on_handle_resolve(self.current_frame_index);
                 resource
@@ -89,8 +89,8 @@ where
             })
     }
 
-    pub fn frame_maintenance(&mut self, current_frame_index: u64) {
-        self.current_frame_index = current_frame_index;
+    pub fn frame_maintenance(&mut self, frame_index: u64) {
+        self.current_frame_index = frame_index;
 
         // Throw out any resources that we haven't reclaimed last frame.
         for (desc, handles) in self.last_frame_deallocated.drain() {
@@ -109,24 +109,25 @@ where
         // thread safety:
         // Since the count is pushed from 1 to 2 by `alloc`, it should not be possible to ever
         // get temporarily get back down to 1 without dropping the last user available copy of the Arc<Handle>.
-        //
-        // Use `drain_filter` once available - https://github.com/rust-lang/rust/issues/43244
-        let mut i = 0;
-        while i < self.alive_handles.len() {
-            if Arc::<Handle>::strong_count(&self.alive_handles[i]) == 1 {
-                let handle = self.alive_handles.remove(i);
-                let desc = &self.resources[*handle].0;
+        self.alive_handles.retain(|handle, strong_handle| {
+            if Arc::<Handle>::strong_count(strong_handle) == 1 {
+                let desc = &self.resources[handle].0;
                 match self.last_frame_deallocated.entry(desc.clone()) {
                     Entry::Occupied(mut e) => {
-                        e.get_mut().push(handle);
+                        e.get_mut().push(strong_handle.clone());
                     }
                     Entry::Vacant(e) => {
-                        e.insert(smallvec![handle]);
+                        e.insert(smallvec![strong_handle.clone()]);
                     }
                 }
+                false
             } else {
-                i += 1;
+                true
             }
-        }
+        });
+    }
+
+    pub(super) fn get_strong_handle(&self, handle: Handle) -> &Arc<Handle> {
+        &self.alive_handles[handle]
     }
 }
