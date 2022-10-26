@@ -12,12 +12,6 @@ pub fn init() {
     let fs = crate::MemFileSystem::get();
 
     {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/lines.wgsl");
-        fs.create_file(&virtpath, include_str!("../shader/lines.wgsl").into())
-            .unwrap();
-    }
-
-    {
         let virtpath = ::std::path::Path::new("crates/re_renderer/shader/frame_uniform.wgsl");
         fs.create_file(
             &virtpath,
@@ -36,12 +30,9 @@ pub fn init() {
     }
 
     {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/test_triangle.wgsl");
-        fs.create_file(
-            &virtpath,
-            include_str!("../shader/test_triangle.wgsl").into(),
-        )
-        .unwrap();
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/lines.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/lines.wgsl").into())
+            .unwrap();
     }
 
     {
@@ -49,6 +40,15 @@ pub fn init() {
         fs.create_file(
             &virtpath,
             include_str!("../shader/screen_triangle.wgsl").into(),
+        )
+        .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/test_triangle.wgsl");
+        fs.create_file(
+            &virtpath,
+            include_str!("../shader/test_triangle.wgsl").into(),
         )
         .unwrap();
     }
