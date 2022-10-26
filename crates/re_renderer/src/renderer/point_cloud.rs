@@ -4,13 +4,13 @@
 //! How it works:
 //! =================
 //! Points are rendered as quads and stenciled out by a fragment shader.
-//! Quad spanning happens in the vertex shader, uploaded are only the data for the actual points.
+//! Quad spanning happens in the vertex shader, uploaded are only the data for the actual points (no vertex buffer!).
 //!
 //! Like with the [`super::lines::LineRenderer`], we're rendering as all quads in a single triangle list draw call.
 //! (Rationale for this can be found in the [`lines.rs`]'s documentation)
 //!
 //! For WebGL compatibility, data is uploaded as textures. Color is stored in a separate srgb texture, meaning
-//! that srgb->linear conversion should be happening on sampling.
+//! that srgb->linear conversion happens on texture load.
 //!
 
 use std::num::NonZeroU32;
@@ -33,11 +33,13 @@ use crate::{
 use super::*;
 
 mod gpu_data {
+    // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
+
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct PositionData {
         pub pos: glam::Vec3,
-        pub radius: f32, // Might use a half here to free memory for more!
+        pub radius: f32, // Might use a f16 here to free memory for more data!
     }
     static_assertions::assert_eq_size!(PositionData, glam::Vec4);
 }
@@ -55,7 +57,7 @@ impl Drawable for PointCloudDrawable {
 }
 
 /// Description of a point cloud.
-pub struct Point {
+pub struct PointCloudPoint {
     /// Connected points. Must be at least 2.
     pub position: glam::Vec3,
 
@@ -63,8 +65,8 @@ pub struct Point {
     /// TODO(andreas) Should be able to specify if this is in pixels, or has a minimum width in pixels.
     pub radius: f32,
 
-    /// srgb color. Alpha unused right now
-    pub color: [u8; 4],
+    /// The points color in srgb color space. Alpha unused right now
+    pub srgb_color: [u8; 4],
 }
 
 impl PointCloudDrawable {
@@ -72,7 +74,7 @@ impl PointCloudDrawable {
         ctx: &mut RenderContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        points: &[Point],
+        points: &[PointCloudPoint],
     ) -> anyhow::Result<Self> {
         let line_renderer = ctx.renderers.get_or_create::<PointCloudRenderer>(
             &ctx.shared_renderer_data,
@@ -81,10 +83,10 @@ impl PointCloudDrawable {
         );
 
         // Textures are 2D since 1D textures are very limited in size (8k typically).
-        // Need to keep these values in sync with lines.wgsl!
+        // Need to keep this value in sync with lines.wgsl!
         const TEXTURE_SIZE: u32 = 1024; // 1024 x 1024 x (vec4<f32> + [u8;4]) == 20mb, ~1mio points
 
-        // Make sure rows the texture can be copied easily.
+        // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
         static_assertions::const_assert_eq!(
             TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
@@ -131,16 +133,19 @@ impl PointCloudDrawable {
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let num_points_written = next_multiple_of(points.len() as u32, TEXTURE_SIZE) as usize;
         let num_points_zeroed = num_points_written - points.len();
-        let mut position_and_size_staging = Vec::with_capacity(num_points_written);
-        position_and_size_staging.extend(points.iter().map(|point| gpu_data::PositionData {
-            pos: point.position,
-            radius: point.radius,
-        }));
-        position_and_size_staging
-            .extend(std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_points_zeroed));
-        let mut color_staging = Vec::with_capacity(num_points_written);
-        color_staging.extend(points.iter().map(|point| point.color));
-        color_staging.extend(std::iter::repeat([0, 0, 0, 0]).take(num_points_zeroed));
+        let position_and_size_staging = points
+            .iter()
+            .map(|point| gpu_data::PositionData {
+                pos: point.position,
+                radius: point.radius,
+            })
+            .chain(std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_points_zeroed))
+            .collect::<Vec<_>>();
+        let color_staging = points
+            .iter()
+            .map(|point| point.srgb_color)
+            .chain(std::iter::repeat([0, 0, 0, 0]).take(num_points_zeroed))
+            .collect::<Vec<_>>();
 
         // Upload data from staging buffers to gpu.
         let size = wgpu::Extent3d {

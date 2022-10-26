@@ -113,9 +113,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         discard;
     }
 
-    // TODO(andreas): Do we want real depth on higher-tier platforms? Used this code in the past:
-    //vec2 projected_zw = (Camera.ViewProjection * vec4(sphereWorldPos, 1.0)).zw; // (trusting optimizer to pick the right thing ;-))
-    //gl_FragDepth = projected_zw.x / projected_zw.y;
+    // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
 
     // TODO(andreas): Proper shading
     let shading = min(1.0, 1.2 - distance(in.point_center, in.world_position) / in.radius); // quick and dirty coloring)

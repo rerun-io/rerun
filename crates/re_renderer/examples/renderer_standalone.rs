@@ -22,7 +22,7 @@ use re_renderer::{
     context::{RenderContext, RenderContextConfig},
     renderer::{
         lines::{LineDrawable, LineStrip},
-        point_cloud::Point,
+        point_cloud::PointCloudPoint,
         GenericSkyboxDrawable, PointCloudDrawable, TestTriangleDrawable,
     },
     view_builder::{TargetConfiguration, ViewBuilder},
@@ -372,7 +372,7 @@ struct AppState {
     time: Time,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
-    random_points: Vec<Point>,
+    random_points: Vec<PointCloudPoint>,
 }
 
 impl AppState {
@@ -380,14 +380,14 @@ impl AppState {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -2.0_f32..2.0_f32;
         let random_points = (0..500000)
-            .map(|_| Point {
+            .map(|_| PointCloudPoint {
                 position: glam::vec3(
                     rnd.gen_range(random_point_range.clone()),
                     rnd.gen_range(random_point_range.clone()),
                     rnd.gen_range(random_point_range.clone()),
                 ),
                 radius: rnd.gen_range(0.005..0.025),
-                color: [rnd.gen(), rnd.gen(), rnd.gen(), 255],
+                srgb_color: [rnd.gen(), rnd.gen(), rnd.gen(), 255],
             })
             .collect::<Vec<_>>();
 
