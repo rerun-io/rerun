@@ -433,8 +433,10 @@ def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
 
 def log_rigid3_transform(
     obj_path: str,
+    *,
     rotation_q: npt.ArrayLike,
     translation: npt.ArrayLike,
+    xyz: str = "",
     timeless: bool = False,
 ) -> None:
     """
@@ -447,8 +449,10 @@ def log_rigid3_transform(
     rerun.log_pinhole("3d/camera/image", …)
     ```
 
-    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from object to parent space
-    `translation`: Array with [x, y, z] position of the object in parent space.
+    * `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from object to parent space
+    * `translation`: Array with [x, y, z] position of the object in parent space.
+    * `xyz`: optionally set the view coordinates, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
+       This is a convenience for also calling `log_view_coordinates`.
 
     """
     rerun_rs.log_rigid3_transform(
@@ -457,6 +461,9 @@ def log_rigid3_transform(
         translation=_to_sequence(translation),
         timeless=timeless,
     )
+
+    if xyz != "":
+        log_view_coordinates(obj_path, xyz=xyz, timeless=timeless)
 
 
 def log_pinhole(

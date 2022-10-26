@@ -142,8 +142,8 @@ def log_camera(cam: ARCamera) -> None:
         "3d/camera",
         rotation_q=rot.as_quat(),
         translation=translation,
+        xyz="RDF"  # X=Right, Y=Down, Z=Forward
     )
-    rerun.log_view_coordinates("3d/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
     rerun.log_pinhole(
         "3d/camera/video",
         width=w,

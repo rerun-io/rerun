@@ -32,8 +32,8 @@ def log_car_data() -> None:
             "3d/camera",
             rotation_q=sample.camera.rotation_q,
             translation=sample.camera.position,
+            xyz="RDF"  # X=Right, Y=Down, Z=Forward
         )
-        rerun.log_view_coordinates("3d/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
 
         # Log the camera projection matrix:
         rerun.log_pinhole(

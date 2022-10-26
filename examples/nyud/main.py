@@ -120,8 +120,8 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                         "3d/camera",
                         rotation_q=np.array((0, 0, 0, 1)),
                         translation=np.array((0, 0, 0)),
+                        xyz="RDF"  # X=Right, Y=Down, Z=Forward
                     )
-                    rerun.log_view_coordinates("3d/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
                     rerun.log_pinhole(
                         "3d/camera/image",
                         width=img_depth.shape[1],
