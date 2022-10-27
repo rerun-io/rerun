@@ -754,7 +754,8 @@ fn filter_objects<'s>(ctx: &mut ViewerContext<'_>, objects: &'_ Objects<'s>) -> 
         props.visible
             && ctx
                 .rec_cfg
-                .projected_object_properties
+                .obj_tree_propertis
+                .projected
                 .get(props.obj_path)
                 .visible
     })

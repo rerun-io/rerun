@@ -259,10 +259,16 @@ impl TimePanel {
         if is_visible {
             let are_all_ancestors_visible = match tree.path.parent() {
                 None => true, // root
-                Some(parent) => ctx.rec_cfg.projected_object_properties.get(&parent).visible,
+                Some(parent) => {
+                    ctx.rec_cfg
+                        .obj_tree_propertis
+                        .projected
+                        .get(&parent)
+                        .visible
+                }
             };
 
-            let mut props = ctx.rec_cfg.individual_object_properties.get(&tree.path);
+            let mut props = ctx.rec_cfg.obj_tree_propertis.individual.get(&tree.path);
             let property_rect =
                 Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response_rect.y_range());
             let mut ui = ui.child_ui(
@@ -273,7 +279,8 @@ impl TimePanel {
             ui.toggle_value(&mut props.visible, "👁")
                 .on_hover_text("Toggle visibility");
             ctx.rec_cfg
-                .individual_object_properties
+                .obj_tree_propertis
+                .individual
                 .set(tree.path.clone(), props);
         }
 
