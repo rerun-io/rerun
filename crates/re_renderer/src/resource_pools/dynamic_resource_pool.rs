@@ -45,11 +45,7 @@ where
     Desc: Clone + Eq + Hash + Debug,
     Res: Resource,
 {
-    pub fn alloc<F: FnOnce(&Desc) -> anyhow::Result<Res>>(
-        &mut self,
-        desc: &Desc,
-        creation_func: F,
-    ) -> anyhow::Result<Arc<Handle>> {
+    pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
         // First check if we can reclaim a resource we have around from a previous frame.
         let handle =
             if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
@@ -65,12 +61,12 @@ where
                 handle
             // Otherwise create a new resource
             } else {
-                let resource = creation_func(desc)?;
+                let resource = creation_func(desc);
                 Arc::new(self.resources.insert((desc.clone(), resource)))
             };
 
         self.alive_handles.insert(*handle, handle.clone());
-        Ok(handle)
+        handle
     }
 
     pub fn get_resource(&self, handle: Handle) -> Result<&Res, PoolError> {

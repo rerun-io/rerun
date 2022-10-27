@@ -33,7 +33,7 @@ impl TonemapperDrawable {
         ctx: &mut RenderContext,
         device: &wgpu::Device,
         hdr_target: &TextureHandleStrong,
-    ) -> anyhow::Result<Self> {
+    ) -> Self {
         let pools = &mut ctx.resource_pools;
         let tonemapper = ctx.renderers.get_or_create::<_, Tonemapper>(
             &ctx.shared_renderer_data,
@@ -41,7 +41,7 @@ impl TonemapperDrawable {
             device,
             &mut ctx.resolver,
         );
-        Ok(TonemapperDrawable {
+        TonemapperDrawable {
             hdr_target_bind_group: pools.bind_groups.alloc(
                 device,
                 &BindGroupDesc {
@@ -53,8 +53,8 @@ impl TonemapperDrawable {
                 &pools.textures,
                 &pools.buffers,
                 &pools.samplers,
-            )?,
-        })
+            ),
+        }
     }
 }
 

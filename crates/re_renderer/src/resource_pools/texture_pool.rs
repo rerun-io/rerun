@@ -71,19 +71,15 @@ pub(crate) struct TexturePool {
 impl TexturePool {
     /// Returns a ref counted handle to a currently unused texture.
     /// Once ownership to the handle is given up, the texture may be reclaimed in future frames.
-    pub fn alloc(
-        &mut self,
-        device: &wgpu::Device,
-        desc: &TextureDesc,
-    ) -> anyhow::Result<TextureHandleStrong> {
+    pub fn alloc(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> TextureHandleStrong {
         self.pool.alloc(desc, |desc| {
             let texture = device.create_texture(&desc.to_wgpu_desc());
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            Ok(Texture {
+            Texture {
                 last_frame_used: AtomicU64::new(0),
                 texture,
                 default_view: view,
-            })
+            }
         })
     }
 

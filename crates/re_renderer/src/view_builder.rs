@@ -77,7 +77,7 @@ impl ViewBuilder {
                 config.resolution_in_pixel[1],
                 1,
             ),
-        )?;
+        );
         let depth_buffer = ctx.resource_pools.textures.alloc(
             device,
             &render_target_2d_desc(
@@ -86,9 +86,9 @@ impl ViewBuilder {
                 config.resolution_in_pixel[1],
                 1,
             ),
-        )?;
+        );
 
-        let tonemapping_drawable = TonemapperDrawable::new(ctx, device, &hdr_render_target)?;
+        let tonemapping_drawable = TonemapperDrawable::new(ctx, device, &hdr_render_target);
 
         // Setup frame uniform buffer
         let frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
@@ -98,7 +98,7 @@ impl ViewBuilder {
                 size: std::mem::size_of::<FrameUniformBuffer>() as _,
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             },
-        )?;
+        );
 
         let view_from_world = config.view_from_world.to_mat4();
         let camera_position = config.view_from_world.inverse().translation();
@@ -143,7 +143,7 @@ impl ViewBuilder {
             &mut ctx.resource_pools,
             device,
             &frame_uniform_buffer,
-        )?;
+        );
 
         self.setup = Some(ViewTargetSetup {
             tonemapping_drawable,

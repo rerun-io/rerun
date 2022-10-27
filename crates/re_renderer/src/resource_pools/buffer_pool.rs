@@ -45,11 +45,7 @@ impl BufferPool {
     ///
     /// For more efficient allocation (faster, less fragmentation) you should sub-allocate buffers whenever possible
     /// either manually or using a higher level allocator.
-    pub fn alloc(
-        &mut self,
-        device: &wgpu::Device,
-        desc: &BufferDesc,
-    ) -> anyhow::Result<BufferHandleStrong> {
+    pub fn alloc(&mut self, device: &wgpu::Device, desc: &BufferDesc) -> BufferHandleStrong {
         self.pool.alloc(desc, |desc| {
             let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
@@ -57,10 +53,10 @@ impl BufferPool {
                 usage: desc.usage,
                 mapped_at_creation: false,
             });
-            Ok(Buffer {
+            Buffer {
                 last_frame_used: AtomicU64::new(0),
                 buffer,
-            })
+            }
         })
     }
 

@@ -238,7 +238,7 @@ impl LineDrawable {
                 format: wgpu::TextureFormat::Rgba32Float,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
-        )?;
+        );
         let line_strip_texture = ctx.resource_pools.textures.alloc(
             device,
             &TextureDesc {
@@ -254,7 +254,7 @@ impl LineDrawable {
                 format: wgpu::TextureFormat::Rg32Uint,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
-        )?;
+        );
 
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
@@ -354,7 +354,7 @@ impl LineDrawable {
                 &ctx.resource_pools.textures,
                 &ctx.resource_pools.buffers,
                 &ctx.resource_pools.samplers,
-            )?,
+            ),
             num_quads,
         })
     }

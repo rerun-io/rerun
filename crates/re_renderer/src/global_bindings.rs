@@ -86,7 +86,7 @@ impl GlobalBindings {
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
         frame_uniform_buffer: &BufferHandleStrong,
-    ) -> anyhow::Result<BindGroupHandleStrong> {
+    ) -> BindGroupHandleStrong {
         pools.bind_groups.alloc(
             device,
             &BindGroupDesc {

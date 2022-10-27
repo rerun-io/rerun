@@ -114,7 +114,7 @@ impl BindGroupPool {
         textures: &TexturePool,
         buffers: &BufferPool,
         samplers: &SamplerPool,
-    ) -> anyhow::Result<BindGroupHandleStrong> {
+    ) -> BindGroupHandleStrong {
         let handle = self.pool.alloc(desc, |desc| {
             // TODO(andreas): error handling
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -148,11 +148,11 @@ impl BindGroupPool {
                     .collect::<Vec<_>>(),
                 layout: &bind_group_layout.get_resource(desc.layout).unwrap().layout,
             });
-            Ok(BindGroup {
+            BindGroup {
                 bind_group,
                 last_frame_used: AtomicU64::new(0),
-            })
-        })?;
+            }
+        });
 
         // Retrieve strong handles to buffers and textures.
         // This way, an owner of a bind group handle keeps buffers & textures alive!.
@@ -180,11 +180,11 @@ impl BindGroupPool {
             })
             .collect();
 
-        Ok(BindGroupHandleStrong {
+        BindGroupHandleStrong {
             handle,
             _owned_buffers: owned_buffers,
             _owned_textures: owned_textures,
-        })
+        }
     }
 
     pub fn frame_maintenance(
