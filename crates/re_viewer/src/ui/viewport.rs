@@ -301,6 +301,8 @@ impl Blueprint {
                         default_open,
                     )
                     .show_header(ui, |ui| {
+                        ui.label("🗖"); // icon indicating this is a space-view
+
                         if ui.selectable_label(is_focused, &space_view.name).clicked() {
                             if let Some((node_index, tab_index)) = self.tree.find_tab(space_view_id)
                             {
