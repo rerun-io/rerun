@@ -278,8 +278,6 @@ impl Blueprint {
     ) {
         crate::profile_function!();
 
-        ui.heading("Blueprint");
-
         let focused = self.tree.find_active_focused().map(|(_, id)| *id);
 
         egui::ScrollArea::vertical()
@@ -852,9 +850,7 @@ impl ViewportPanel {
 
         let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
-        if ui.button("Reset space views / blueprint").clicked()
-            || self.blueprint.space_views.is_empty()
-        {
+        if self.blueprint.space_views.is_empty() {
             self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
         } else {
             // Check if the blueprint is missing a space,
@@ -870,67 +866,99 @@ impl ViewportPanel {
 
         self.blueprint.on_frame_start(&ctx.log_db.obj_db.tree);
 
+        let side_panel_frame = egui::Frame {
+            fill: ui.style().visuals.window_fill(),
+            inner_margin: egui::style::Margin::same(4.0),
+            stroke: ui.style().visuals.window_stroke(),
+            ..Default::default()
+        };
+
         egui::SidePanel::left("blueprint_panel")
             .resizable(true)
+            .frame(side_panel_frame)
             .default_width(200.0)
             .show_inside(ui, |ui| {
+                ui.vertical_centered(|ui| {
+                    if ui.button("Reset space views").clicked() {
+                        self.blueprint =
+                            Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
+                    }
+                });
+
+                ui.separator();
+
                 self.blueprint
                     .tree_ui(ctx, ui, &spaces_info, &ctx.log_db.obj_db.tree);
             });
 
-        egui::CentralPanel::default().show_inside(ui, |ui| {
-            let num_space_views = num_tabs(&self.blueprint.tree);
+        let viewport_frame = egui::Frame {
+            fill: ui.style().visuals.window_fill(),
+            ..Default::default()
+        };
 
-            if num_space_views == 0 {
-                // nothing to show
-            } else if num_space_views == 1 {
-                let space_view_id = first_tab(&self.blueprint.tree).unwrap();
-                let space_view = self
-                    .blueprint
-                    .space_views
-                    .get_mut(&space_view_id)
-                    .expect("Should have been populated beforehand");
+        egui::CentralPanel::default()
+            .frame(viewport_frame)
+            .show_inside(ui, |ui| {
+                self.viewport_ui(ui, ctx, &spaces_info);
+            });
+    }
 
+    fn viewport_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+        spaces_info: &SpacesInfo,
+    ) {
+        let num_space_views = num_tabs(&self.blueprint.tree);
+        if num_space_views == 0 {
+            // nothing to show
+        } else if num_space_views == 1 {
+            let space_view_id = first_tab(&self.blueprint.tree).unwrap();
+            let space_view = self
+                .blueprint
+                .space_views
+                .get_mut(&space_view_id)
+                .expect("Should have been populated beforehand");
+
+            ui.strong(&space_view.name);
+
+            space_view_ui(ctx, ui, spaces_info, space_view);
+        } else if let Some(space_view_id) = self.blueprint.maximized {
+            let space_view = self
+                .blueprint
+                .space_views
+                .get_mut(&space_view_id)
+                .expect("Should have been populated beforehand");
+
+            ui.horizontal(|ui| {
+                if ui
+                    .button("⬅")
+                    .on_hover_text("Restore - show all spaces")
+                    .clicked()
+                {
+                    self.blueprint.maximized = None;
+                }
                 ui.strong(&space_view.name);
+            });
 
-                space_view_ui(ctx, ui, &spaces_info, space_view);
-            } else if let Some(space_view_id) = self.blueprint.maximized {
-                let space_view = self
-                    .blueprint
-                    .space_views
-                    .get_mut(&space_view_id)
-                    .expect("Should have been populated beforehand");
+            space_view_ui(ctx, ui, spaces_info, space_view);
+        } else {
+            let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
+            dock_style.separator_width = 2.0;
+            dock_style.show_close_buttons = false;
+            dock_style.tab_include_scrollarea = false;
 
-                ui.horizontal(|ui| {
-                    if ui
-                        .button("⬅")
-                        .on_hover_text("Restore - show all spaces")
-                        .clicked()
-                    {
-                        self.blueprint.maximized = None;
-                    }
-                    ui.strong(&space_view.name);
-                });
+            let mut tab_viewer = TabViewer {
+                ctx,
+                spaces_info,
+                space_views: &mut self.blueprint.space_views,
+                maximized: &mut self.blueprint.maximized,
+            };
 
-                space_view_ui(ctx, ui, &spaces_info, space_view);
-            } else {
-                let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
-                dock_style.separator_width = 2.0;
-                dock_style.show_close_buttons = false;
-                dock_style.tab_include_scrollarea = false;
-
-                let mut tab_viewer = TabViewer {
-                    ctx,
-                    spaces_info: &spaces_info,
-                    space_views: &mut self.blueprint.space_views,
-                    maximized: &mut self.blueprint.maximized,
-                };
-
-                egui_dock::DockArea::new(&mut self.blueprint.tree)
-                    .style(dock_style)
-                    .show_inside(ui, &mut tab_viewer);
-            }
-        });
+            egui_dock::DockArea::new(&mut self.blueprint.tree)
+                .style(dock_style)
+                .show_inside(ui, &mut tab_viewer);
+        }
     }
 }
 
