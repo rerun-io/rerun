@@ -31,7 +31,7 @@ A path can look like this: `world/camera/image/detection/#42/bbox`. Each compone
 * A number sequence, prefixed by `#`, intended for indices.
 * A UUID.
 
-So for instance, `/foo/bar/#42/5678/"CA426571"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d` is a valid path.
+So for instance, `foo/bar/#42/5678/"CA426571"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d` is a valid path.
 
 Example usage:
 
