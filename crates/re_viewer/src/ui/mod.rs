@@ -11,6 +11,8 @@ pub(crate) mod view3d;
 pub(crate) mod view_tensor;
 pub(crate) mod viewport;
 
+pub(crate) use viewport::{Blueprint, SpaceView, SpaceViewId};
+
 mod tensor_dimension_mapper;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
