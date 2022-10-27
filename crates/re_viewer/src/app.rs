@@ -235,7 +235,7 @@ impl eframe::App for App {
                 .recording_configs
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
             self.state
-                .viewport_panels
+                .blueprints
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
@@ -371,7 +371,7 @@ struct AppState {
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
 
-    viewport_panels: IntMap<RecordingId, crate::ui::viewport::ViewportPanel>,
+    blueprints: IntMap<RecordingId, crate::ui::viewport::Blueprint>,
 
     panel_selection: PanelSelection,
     event_log_view: crate::event_log_view::EventLogView,
@@ -398,7 +398,7 @@ impl AppState {
             recording_configs,
             panel_selection,
             event_log_view,
-            viewport_panels,
+            blueprints,
             selection_panel,
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -417,11 +417,7 @@ impl AppState {
 
         if ctx.rec_cfg.selection.is_some() {
             egui::SidePanel::right("selection_view").show(egui_ctx, |ui| {
-                let blueprint = &mut viewport_panels
-                    .entry(*selected_recording_id)
-                    .or_default()
-                    .blueprint;
-
+                let blueprint = blueprints.entry(*selected_recording_id).or_default();
                 selection_panel.ui(&mut ctx, blueprint, ui);
             });
         }
@@ -442,10 +438,10 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show(egui_ctx, |ui| match *panel_selection {
-                PanelSelection::Viewport => viewport_panels
+                PanelSelection::Viewport => blueprints
                     .entry(*selected_recording_id)
                     .or_default()
-                    .ui(&mut ctx, ui),
+                    .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
             });
 

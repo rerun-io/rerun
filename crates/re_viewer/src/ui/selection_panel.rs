@@ -119,7 +119,7 @@ impl SelectionPanel {
                 // I really don't know what we should show here.
             }
             Selection::SpaceView(space_view_id) => {
-                if let Some(space_view) = blueprint.get_space_view_mut(space_view_id) {
+                if let Some(space_view) = blueprint.viewport.get_space_view_mut(space_view_id) {
                     ui.label("SpaceView");
                     ui_space_view(ctx, ui, space_view);
                 } else {

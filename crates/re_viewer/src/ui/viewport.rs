@@ -212,7 +212,7 @@ type VisibilitySet = BTreeMap<SpaceViewId, bool>;
 
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct Blueprint {
+pub struct ViewportBlueprint {
     /// Where the space views are stored.
     space_views: HashMap<SpaceViewId, SpaceView>,
 
@@ -230,7 +230,7 @@ pub struct Blueprint {
     maximized: Option<SpaceViewId>,
 }
 
-impl Blueprint {
+impl ViewportBlueprint {
     /// Create a default suggested blueprint using some heuristics.
     fn new(obj_db: &ObjDb, spaces_info: &SpacesInfo) -> Self {
         crate::profile_function!();
@@ -260,13 +260,6 @@ impl Blueprint {
         self.space_views
             .values()
             .any(|view| &view.space_path == space_path)
-    }
-
-    fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
-        crate::profile_function!();
-        for space_view in self.space_views.values_mut() {
-            space_view.on_frame_start(obj_tree);
-        }
     }
 
     /// Show the blueprint panel tree view.
@@ -888,33 +881,62 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
 
 // ----------------------------------------------------------------------------
 
+/// Defines the layout of the whole Viewer (or will, eventually).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub(crate) struct ViewportPanel {
-    pub blueprint: Blueprint,
+pub(crate) struct Blueprint {
+    pub viewport: ViewportBlueprint,
 }
 
-impl ViewportPanel {
-    pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+impl Blueprint {
+    pub fn blueprint_panel_and_viewport(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
-        if self.blueprint.space_views.is_empty() {
-            self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info);
+        self.viewport.on_frame_start(ctx, &spaces_info);
+        self.viewport.blueprint_panel(ctx, ui, &spaces_info);
+
+        let viewport_frame = egui::Frame {
+            fill: ui.style().visuals.window_fill(),
+            ..Default::default()
+        };
+
+        egui::CentralPanel::default()
+            .frame(viewport_frame)
+            .show_inside(ui, |ui| {
+                self.viewport.viewport_ui(ui, ctx, &spaces_info);
+            });
+    }
+}
+
+impl ViewportBlueprint {
+    fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
+        crate::profile_function!();
+
+        if self.space_views.is_empty() {
+            *self = Self::new(&ctx.log_db.obj_db, spaces_info);
         } else {
             // Check if the blueprint is missing a space,
             // maybe one that has been added by new data:
             for (path, space_info) in &spaces_info.spaces {
-                if should_have_default_view(&ctx.log_db.obj_db, space_info)
-                    && !self.blueprint.has_space(path)
+                if should_have_default_view(&ctx.log_db.obj_db, space_info) && !self.has_space(path)
                 {
-                    self.blueprint.add_space_view(path);
+                    self.add_space_view(path);
                 }
             }
         }
 
-        self.blueprint.on_frame_start(&ctx.log_db.obj_db.tree);
+        for space_view in self.space_views.values_mut() {
+            space_view.on_frame_start(&ctx.log_db.obj_db.tree);
+        }
+    }
 
+    fn blueprint_panel(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+    ) {
         let side_panel_frame = egui::Frame {
             fill: ui.style().visuals.window_fill(),
             inner_margin: egui::style::Margin::same(4.0),
@@ -929,25 +951,13 @@ impl ViewportPanel {
             .show_inside(ui, |ui| {
                 ui.vertical_centered(|ui| {
                     if ui.button("Reset space views").clicked() {
-                        self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info);
+                        *self = Self::new(&ctx.log_db.obj_db, spaces_info);
                     }
                 });
 
                 ui.separator();
 
-                self.blueprint
-                    .tree_ui(ctx, ui, &spaces_info, &ctx.log_db.obj_db.tree);
-            });
-
-        let viewport_frame = egui::Frame {
-            fill: ui.style().visuals.window_fill(),
-            ..Default::default()
-        };
-
-        egui::CentralPanel::default()
-            .frame(viewport_frame)
-            .show_inside(ui, |ui| {
-                self.viewport_ui(ui, ctx, &spaces_info);
+                self.tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
             });
     }
 
@@ -958,17 +968,9 @@ impl ViewportPanel {
         spaces_info: &SpacesInfo,
     ) {
         // Lazily create a layout tree based on which SpaceViews are currently visible:
-        let tree = self
-            .blueprint
-            .trees
-            .entry(self.blueprint.visible.clone())
-            .or_insert_with(|| {
-                tree_from_space_views(
-                    ui.available_size(),
-                    &self.blueprint.visible,
-                    &self.blueprint.space_views,
-                )
-            });
+        let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
+            tree_from_space_views(ui.available_size(), &self.visible, &self.space_views)
+        });
 
         let num_space_views = num_tabs(tree);
         if num_space_views == 0 {
@@ -976,7 +978,6 @@ impl ViewportPanel {
         } else if num_space_views == 1 {
             let space_view_id = first_tab(tree).unwrap();
             let space_view = self
-                .blueprint
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
@@ -984,9 +985,8 @@ impl ViewportPanel {
             ui.strong(&space_view.name);
 
             space_view_ui(ctx, ui, spaces_info, space_view);
-        } else if let Some(space_view_id) = self.blueprint.maximized {
+        } else if let Some(space_view_id) = self.maximized {
             let space_view = self
-                .blueprint
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
@@ -997,7 +997,7 @@ impl ViewportPanel {
                     .on_hover_text("Restore - show all spaces")
                     .clicked()
                 {
-                    self.blueprint.maximized = None;
+                    self.maximized = None;
                 }
                 ui.strong(&space_view.name);
             });
@@ -1012,8 +1012,8 @@ impl ViewportPanel {
             let mut tab_viewer = TabViewer {
                 ctx,
                 spaces_info,
-                space_views: &mut self.blueprint.space_views,
-                maximized: &mut self.blueprint.maximized,
+                space_views: &mut self.space_views,
+                maximized: &mut self.maximized,
             };
 
             egui_dock::DockArea::new(tree)
