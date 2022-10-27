@@ -39,7 +39,7 @@ while cap.isOpened():
         break
 
     rgb = cv.cvtColor(bgr, cv.COLOR_BGR2RGB)
-    rerun.log_image("video", rgb)
+    rerun.log_image("image", rgb)
 
     if tracker is None or frame_idx % 40 == 0:
         pil_im = Image.fromarray(rgb)
@@ -57,7 +57,7 @@ while cap.isOpened():
         num_cars = car_boxes.shape[0]
         labels = ["car" for _ in range(num_cars)]
         # TODO(Niko): Remove workaround for PRO-213 and PRO-214
-        rerun.log_rects("image/detections", car_boxes, rect_format=rerun.RectFormat.XYXY, labels=labels)
+        # rerun.log_rect("image/detections", car_boxes, rect_format=rerun.RectFormat.XYXY, label=labels)
 
         if num_cars > 0:
             top_car_bbox = car_boxes[0, :]
