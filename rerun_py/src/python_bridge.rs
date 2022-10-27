@@ -170,12 +170,10 @@ authkey = multiprocessing.current_process().authkey
 
 // ----------------------------------------------------------------------------
 
-fn parse_obj_path_comps(obj_path: &str) -> PyResult<Vec<ObjPathComp>> {
-    re_log_types::parse_obj_path(obj_path).map_err(|err| PyTypeError::new_err(err.to_string()))
-}
-
 fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
-    parse_obj_path_comps(obj_path).map(ObjPath::from)
+    let components = re_log_types::parse_obj_path(obj_path)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+    Ok(ObjPath::from(components))
 }
 
 fn vec_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
