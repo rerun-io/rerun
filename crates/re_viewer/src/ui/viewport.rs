@@ -272,61 +272,71 @@ impl Blueprint {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
-                for (space_view_id, space_view) in self
+                let space_view_ids = self
                     .space_views
-                    .iter_mut()
-                    .sorted_by_key(|(_, space_view)| space_view.name.clone())
-                {
-                    let space_path = &space_view.space_path;
-
-                    let collapsing_header_id = ui.make_persistent_id(&space_view_id);
-                    let default_open = true;
-
-                    egui::collapsing_header::CollapsingState::load_with_default_open(
-                        ui.ctx(),
-                        collapsing_header_id,
-                        default_open,
-                    )
-                    .show_header(ui, |ui| {
-                        ui.label("🗖"); // icon indicating this is a space-view
-
-                        let is_selected =
-                            ctx.rec_cfg.selection == Selection::SpaceView(*space_view_id);
-                        if ui.selectable_label(is_selected, &space_view.name).clicked() {
-                            ctx.rec_cfg.selection = Selection::SpaceView(*space_view_id);
-                            focus_tab(&mut self.tree, space_view_id);
-                        }
-
-                        let space_is_also_object = ctx
-                            .log_db
-                            .obj_db
-                            .types
-                            .contains_key(space_path.obj_type_path());
-                        if space_is_also_object {
-                            // For instance: this image-space has an image logged to it,
-                            // so we need to have a way to toggle the image on/off.
-                            object_visibility_button(
-                                ui,
-                                &mut space_view.obj_tree_properties,
-                                space_path,
-                            );
-                        }
+                    .keys()
+                    .sorted_by_key(|space_view_id| {
+                        &self.space_views.get(space_view_id).unwrap().name
                     })
-                    .body(|ui| {
-                        if let Some(space_info) = spaces_info.spaces.get(space_path) {
-                            if let Some(tree) = obj_tree.subtree(space_path) {
-                                show_obj_tree_children(
-                                    ctx,
-                                    ui,
-                                    &mut space_view.obj_tree_properties,
-                                    space_info,
-                                    tree,
-                                );
-                            }
-                        }
-                    });
+                    .copied()
+                    .collect_vec();
+
+                for space_view_id in &space_view_ids {
+                    self.space_view_tree_ui(ctx, ui, spaces_info, obj_tree, space_view_id);
                 }
             });
+    }
+
+    fn space_view_tree_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+        obj_tree: &ObjectTree,
+        space_view_id: &SpaceViewId,
+    ) {
+        let space_view = self.space_views.get_mut(space_view_id).unwrap();
+        let space_path = &space_view.space_path;
+        let collapsing_header_id = ui.make_persistent_id(&space_view_id);
+        let default_open = true;
+        egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            collapsing_header_id,
+            default_open,
+        )
+        .show_header(ui, |ui| {
+            ui.label("🗖"); // icon indicating this is a space-view
+
+            let is_selected = ctx.rec_cfg.selection == Selection::SpaceView(*space_view_id);
+            if ui.selectable_label(is_selected, &space_view.name).clicked() {
+                ctx.rec_cfg.selection = Selection::SpaceView(*space_view_id);
+                focus_tab(&mut self.tree, space_view_id);
+            }
+
+            let space_is_also_object = ctx
+                .log_db
+                .obj_db
+                .types
+                .contains_key(space_path.obj_type_path());
+            if space_is_also_object {
+                // For instance: this image-space has an image logged to it,
+                // so we need to have a way to toggle the image on/off.
+                object_visibility_button(ui, &mut space_view.obj_tree_properties, space_path);
+            }
+        })
+        .body(|ui| {
+            if let Some(space_info) = spaces_info.spaces.get(space_path) {
+                if let Some(tree) = obj_tree.subtree(space_path) {
+                    show_obj_tree_children(
+                        ctx,
+                        ui,
+                        &mut space_view.obj_tree_properties,
+                        space_info,
+                        tree,
+                    );
+                }
+            }
+        });
     }
 
     fn add_space_view(&mut self, path: &ObjPath) {
