@@ -173,7 +173,13 @@ authkey = multiprocessing.current_process().authkey
 fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
     let components = re_log_types::parse_obj_path(obj_path)
         .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-    Ok(ObjPath::from(components))
+    if components.is_empty() {
+        Err(PyTypeError::new_err(
+            "You cannot log to the root {obj_path:?}",
+        ))
+    } else {
+        Ok(ObjPath::from(components))
+    }
 }
 
 fn vec_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
