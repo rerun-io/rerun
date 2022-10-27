@@ -395,22 +395,8 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
 
 #[pyfunction]
 fn log_unknown_transform(obj_path: &str, timeless: bool) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
     let transform = re_log_types::Transform::Unknown;
-
-    let mut sdk = Sdk::global();
-
-    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
-
-    let time_point = time(timeless);
-
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "_transform"),
-        LoggedData::Single(Data::Transform(transform)),
-    );
-
-    Ok(())
+    log_transform(obj_path, transform, timeless)
 }
 
 #[pyfunction]
@@ -421,8 +407,6 @@ fn log_rigid3(
     translation: [f32; 3],
     timeless: bool,
 ) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
-
     let rotation = glam::Quat::from_slice(&rotation_q);
     let translation = glam::Vec3::from_slice(&translation);
     let transform = macaw::IsoTransform::from_rotation_translation(rotation, translation);
@@ -435,19 +419,7 @@ fn log_rigid3(
 
     let transform = re_log_types::Transform::Rigid3(transform);
 
-    let mut sdk = Sdk::global();
-
-    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
-
-    let time_point = time(timeless);
-
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "_transform"),
-        LoggedData::Single(Data::Transform(transform)),
-    );
-
-    Ok(())
+    log_transform(obj_path, transform, timeless)
 }
 
 #[pyfunction]
@@ -457,25 +429,27 @@ fn log_pinhole(
     child_from_parent: [[f32; 3]; 3],
     timeless: bool,
 ) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
-
     let transform = re_log_types::Transform::Pinhole(re_log_types::Pinhole {
         image_from_cam: child_from_parent,
         resolution: Some(resolution),
     });
 
+    log_transform(obj_path, transform, timeless)
+}
+
+fn log_transform(
+    obj_path: &str,
+    transform: re_log_types::Transform,
+    timeless: bool,
+) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
     let mut sdk = Sdk::global();
-
-    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
-
     let time_point = time(timeless);
-
     sdk.send_data(
         &time_point,
         (&obj_path, "_transform"),
         LoggedData::Single(Data::Transform(transform)),
     );
-
     Ok(())
 }
 
