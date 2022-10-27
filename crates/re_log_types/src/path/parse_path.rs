@@ -5,7 +5,7 @@ pub enum PathParseError {
     #[error("Expected path, found empty string")]
     EmptyString,
 
-    #[error("Path had leasing slash")]
+    #[error("Path had leading slash")]
     LeadingSlash,
 
     #[error("Missing closing quote (\")")]
