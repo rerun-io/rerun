@@ -181,6 +181,88 @@ impl ViewportBlueprint {
 
         self.trees.clear(); // Reset them
     }
+
+    fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
+        crate::profile_function!();
+
+        if self.space_views.is_empty() {
+            *self = Self::new(&ctx.log_db.obj_db, spaces_info);
+        } else {
+            // Check if the blueprint is missing a space,
+            // maybe one that has been added by new data:
+            for (path, space_info) in &spaces_info.spaces {
+                if should_have_default_view(&ctx.log_db.obj_db, space_info) && !self.has_space(path)
+                {
+                    self.add_space_view(path);
+                }
+            }
+        }
+
+        for space_view in self.space_views.values_mut() {
+            space_view.on_frame_start(&ctx.log_db.obj_db.tree);
+        }
+    }
+
+    fn viewport_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+        spaces_info: &SpacesInfo,
+    ) {
+        // Lazily create a layout tree based on which SpaceViews are currently visible:
+        let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
+            tree_from_space_views(ui.available_size(), &self.visible, &self.space_views)
+        });
+
+        let num_space_views = num_tabs(tree);
+        if num_space_views == 0 {
+            // nothing to show
+        } else if num_space_views == 1 {
+            let space_view_id = first_tab(tree).unwrap();
+            let space_view = self
+                .space_views
+                .get_mut(&space_view_id)
+                .expect("Should have been populated beforehand");
+
+            ui.strong(&space_view.name);
+
+            space_view_ui(ctx, ui, spaces_info, space_view);
+        } else if let Some(space_view_id) = self.maximized {
+            let space_view = self
+                .space_views
+                .get_mut(&space_view_id)
+                .expect("Should have been populated beforehand");
+
+            ui.horizontal(|ui| {
+                if ui
+                    .button("⬅")
+                    .on_hover_text("Restore - show all spaces")
+                    .clicked()
+                {
+                    self.maximized = None;
+                }
+                ui.strong(&space_view.name);
+            });
+
+            space_view_ui(ctx, ui, spaces_info, space_view);
+        } else {
+            let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
+            dock_style.separator_width = 2.0;
+            dock_style.show_close_buttons = false;
+            dock_style.tab_include_scrollarea = false;
+
+            let mut tab_viewer = TabViewer {
+                ctx,
+                spaces_info,
+                space_views: &mut self.space_views,
+                maximized: &mut self.maximized,
+            };
+
+            egui_dock::DockArea::new(tree)
+                .style(dock_style)
+                .show_inside(ui, &mut tab_viewer);
+        }
+    }
 }
 
 /// Is this space worthy of its on space view by default?
@@ -440,7 +522,8 @@ impl Blueprint {
         let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
         self.viewport.on_frame_start(ctx, &spaces_info);
-        self.viewport.blueprint_panel(ctx, ui, &spaces_info);
+
+        self.blueprint_panel(ctx, ui, &spaces_info);
 
         let viewport_frame = egui::Frame {
             fill: ui.style().visuals.window_fill(),
@@ -452,29 +535,6 @@ impl Blueprint {
             .show_inside(ui, |ui| {
                 self.viewport.viewport_ui(ui, ctx, &spaces_info);
             });
-    }
-}
-
-impl ViewportBlueprint {
-    fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
-        crate::profile_function!();
-
-        if self.space_views.is_empty() {
-            *self = Self::new(&ctx.log_db.obj_db, spaces_info);
-        } else {
-            // Check if the blueprint is missing a space,
-            // maybe one that has been added by new data:
-            for (path, space_info) in &spaces_info.spaces {
-                if should_have_default_view(&ctx.log_db.obj_db, space_info) && !self.has_space(path)
-                {
-                    self.add_space_view(path);
-                }
-            }
-        }
-
-        for space_view in self.space_views.values_mut() {
-            space_view.on_frame_start(&ctx.log_db.obj_db.tree);
-        }
     }
 
     fn blueprint_panel(
@@ -497,75 +557,15 @@ impl ViewportBlueprint {
             .show_inside(ui, |ui| {
                 ui.vertical_centered(|ui| {
                     if ui.button("Reset space views").clicked() {
-                        *self = Self::new(&ctx.log_db.obj_db, spaces_info);
+                        self.viewport = ViewportBlueprint::new(&ctx.log_db.obj_db, spaces_info);
                     }
                 });
 
                 ui.separator();
 
-                self.tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
+                self.viewport
+                    .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
             });
-    }
-
-    fn viewport_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpacesInfo,
-    ) {
-        // Lazily create a layout tree based on which SpaceViews are currently visible:
-        let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
-            tree_from_space_views(ui.available_size(), &self.visible, &self.space_views)
-        });
-
-        let num_space_views = num_tabs(tree);
-        if num_space_views == 0 {
-            // nothing to show
-        } else if num_space_views == 1 {
-            let space_view_id = first_tab(tree).unwrap();
-            let space_view = self
-                .space_views
-                .get_mut(&space_view_id)
-                .expect("Should have been populated beforehand");
-
-            ui.strong(&space_view.name);
-
-            space_view_ui(ctx, ui, spaces_info, space_view);
-        } else if let Some(space_view_id) = self.maximized {
-            let space_view = self
-                .space_views
-                .get_mut(&space_view_id)
-                .expect("Should have been populated beforehand");
-
-            ui.horizontal(|ui| {
-                if ui
-                    .button("⬅")
-                    .on_hover_text("Restore - show all spaces")
-                    .clicked()
-                {
-                    self.maximized = None;
-                }
-                ui.strong(&space_view.name);
-            });
-
-            space_view_ui(ctx, ui, spaces_info, space_view);
-        } else {
-            let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
-            dock_style.separator_width = 2.0;
-            dock_style.show_close_buttons = false;
-            dock_style.tab_include_scrollarea = false;
-
-            let mut tab_viewer = TabViewer {
-                ctx,
-                spaces_info,
-                space_views: &mut self.space_views,
-                maximized: &mut self.maximized,
-            };
-
-            egui_dock::DockArea::new(tree)
-                .style(dock_style)
-                .show_inside(ui, &mut tab_viewer);
-        }
     }
 }
 
