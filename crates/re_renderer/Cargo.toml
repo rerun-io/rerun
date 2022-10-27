@@ -53,6 +53,7 @@ wgpu = { version = "0.14", default-features = false, features = [
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 pollster = "0.2"
+rand = "0.8"
 tracing-subscriber = "0.3"
 winit = "0.27"
 

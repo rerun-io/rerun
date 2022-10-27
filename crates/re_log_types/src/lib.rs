@@ -21,6 +21,7 @@
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
+pub mod coordinates;
 mod data;
 pub mod hash;
 mod index;
@@ -28,6 +29,7 @@ pub mod objects;
 pub mod path;
 mod time;
 
+pub use coordinates::ViewCoordinates;
 pub use data::*;
 pub use index::*;
 pub use objects::ObjectType;
@@ -324,7 +326,6 @@ impl_into_logged_data!(BBox2D, BBox2D);
 impl_into_logged_data!(Tensor, Tensor);
 impl_into_logged_data!(Box3, Box3);
 impl_into_logged_data!(Mesh3D, Mesh3D);
-impl_into_logged_data!(Camera, Camera);
 impl_into_logged_data!(ObjPath, ObjPath);
 
 // ----------------------------------------------------------------------------

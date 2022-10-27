@@ -59,7 +59,6 @@ def read_and_log_dicom_dataset() -> None:
     rerun.log_tensor(
         "tensor",
         voxels_volume_u16,
-        space="tensor",
         names=["right", "back", "up"],
     )
 

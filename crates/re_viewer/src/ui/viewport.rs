@@ -1,15 +1,8 @@
-//! New experimental viewport panel.
+//! The viewport panel.
 //!
-//! Before the new panel is up-to-par with the existing viewport panel, we need to:
+//! Contains all space views.
 //!
-//! * [x] Render the 3D camera
-//! * [x] Project rays and points between spaces
-//! * [x] Don't create extraneous views of "intermediate" spaces (e.g. camera space)
-//! * [ ] Convert existing python examples to the new style
-//! * [ ] Write good docs for how to use the new system
-//! * [ ] Remove the old code path
-//!
-//! After that we can implement:
+//! To do:
 //! * [ ] Opening up new Space Views
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
@@ -21,9 +14,10 @@ use itertools::Itertools as _;
 
 use nohash_hasher::IntSet;
 use re_data_store::{
-    log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, TimelineStore,
+    log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, Objects,
+    TimeQuery, TimelineStore,
 };
-use re_log_types::{ObjectType, Transform};
+use re_log_types::{ObjectType, Transform, ViewCoordinates};
 
 use crate::misc::{TimeControl, ViewerContext};
 
@@ -48,6 +42,9 @@ impl SpaceViewId {
 /// This is gathered by analyzing the transform hierarchy of the objects.
 #[derive(Default)]
 struct SpaceInfo {
+    /// The latest known coordinate system for this space.
+    coordinates: Option<ViewCoordinates>,
+
     /// All paths in this space (including self and children connected by the identity transform).
     objects: IntSet<ObjPath>,
 
@@ -151,13 +148,17 @@ impl SpacesInfo {
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
+        for (obj_path, space_info) in &mut spaces_info.spaces {
+            space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
+        }
+
         spaces_info
     }
 }
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value of the "_transform" meta-field of the given object.
+/// Get the latest value of the `_transform` meta-field of the given object.
 fn query_transform(
     store: Option<&TimelineStore<i64>>,
     obj_path: &ObjPath,
@@ -176,6 +177,31 @@ fn query_transform(
     // If not, return an unknown transform to indicate that there is
     // still a space-split.
     Some(latest.unwrap_or(Transform::Unknown))
+}
+
+/// Get the latest value of the `_view_coordinates` meta-field of the given object.
+fn query_view_coordinates(
+    obj_db: &ObjDb,
+    time_ctrl: &TimeControl,
+    obj_path: &ObjPath,
+) -> Option<re_log_types::ViewCoordinates> {
+    let query_time = time_ctrl.time()?;
+    let timeline = time_ctrl.timeline();
+
+    let store = obj_db.store.get(timeline)?;
+
+    let field_store = store
+        .get(obj_path)?
+        .get(&re_data_store::FieldName::from("_view_coordinates"))?;
+
+    // `_view_coordinates` is only allowed to be stored in a mono-field.
+    let mono_field_store = field_store
+        .get_mono::<re_log_types::ViewCoordinates>()
+        .ok()?;
+
+    mono_field_store
+        .latest_at(&query_time.floor().as_i64())
+        .map(|(_time, (_msg_id, system))| *system)
 }
 
 // ----------------------------------------------------------------------------
@@ -203,18 +229,8 @@ impl Blueprint {
         let mut space_make_infos = vec![];
 
         for (path, space_info) in &spaces_info.spaces {
-            // Is this space worthy of its own view?
-            if space_info.objects.len() == 1 {
-                // Only one object in this view…
-                let obj = space_info.objects.iter().next().unwrap();
-                match obj_db.types.get(obj.obj_type_path()) {
-                    None | Some(ObjectType::Camera) => {
-                        // Either nothing to show, or it is the legacy camera
-                        // that will be removed as soon as this new viewport replaces the old.
-                        continue;
-                    }
-                    _ => {}
-                }
+            if !should_have_default_view(obj_db, space_info) {
+                continue;
             }
 
             let space_view_id = SpaceViewId::random();
@@ -224,7 +240,8 @@ impl Blueprint {
                     name: path.to_string(),
                     space_path: path.clone(),
                     view_state: Default::default(),
-                    selected_category: ViewCategory::TwoD,
+                    selected_category: Default::default(),
+                    obj_tree_properties: Default::default(),
                 },
             );
             space_make_infos.push(SpaceMakeInfo {
@@ -234,18 +251,32 @@ impl Blueprint {
             });
         }
 
-        let layout = layout_spaces(available_size, &mut space_make_infos);
         blueprint.tree = egui_dock::Tree::new(vec![]);
-        tree_from_split(&mut blueprint.tree, egui_dock::NodeIndex(0), &layout);
+
+        if !space_make_infos.is_empty() {
+            let layout = layout_spaces(available_size, &mut space_make_infos);
+            tree_from_split(&mut blueprint.tree, egui_dock::NodeIndex(0), &layout);
+        }
 
         blueprint
     }
 
-    /// Show the blueprint panel tree view.
-    pub fn tree_ui(&mut self, ui: &mut egui::Ui, spaces_info: &SpacesInfo, obj_tree: &ObjectTree) {
+    pub fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
         crate::profile_function!();
+        for space_view in self.space_views.values_mut() {
+            space_view.on_frame_start(obj_tree);
+        }
+    }
 
-        ui.heading("Blueprint");
+    /// Show the blueprint panel tree view.
+    pub fn tree_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+        obj_tree: &ObjectTree,
+    ) {
+        crate::profile_function!();
 
         let focused = self.tree.find_active_focused().map(|(_, id)| *id);
 
@@ -254,13 +285,16 @@ impl Blueprint {
             .show(ui, |ui| {
                 for (space_view_id, space_view) in self
                     .space_views
-                    .iter()
-                    .sorted_by_key(|(_, space_view)| &space_view.name)
+                    .iter_mut()
+                    .sorted_by_key(|(_, space_view)| space_view.name.clone())
                 {
                     let is_focused = Some(*space_view_id) == focused;
 
+                    let space_path = &space_view.space_path;
+
                     let collapsing_header_id = ui.make_persistent_id(&space_view_id);
                     let default_open = true;
+
                     egui::collapsing_header::CollapsingState::load_with_default_open(
                         ui.ctx(),
                         collapsing_header_id,
@@ -274,38 +308,162 @@ impl Blueprint {
                                 self.tree.set_active_tab(node_index, tab_index);
                             }
                         }
+
+                        let space_is_also_object = ctx
+                            .log_db
+                            .obj_db
+                            .types
+                            .contains_key(space_path.obj_type_path());
+                        if space_is_also_object {
+                            // For instance: this image-space has an image logged to it,
+                            // so we need to have a way to toggle the image on/off.
+                            visibility_button(ui, &mut space_view.obj_tree_properties, space_path);
+                        }
                     })
                     .body(|ui| {
-                        if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-                            if let Some(tree) = obj_tree.subtree(&space_view.space_path) {
-                                show_children(ui, space_info, tree);
+                        if let Some(space_info) = spaces_info.spaces.get(space_path) {
+                            if let Some(tree) = obj_tree.subtree(space_path) {
+                                show_obj_tree_children(
+                                    ctx,
+                                    ui,
+                                    &mut space_view.obj_tree_properties,
+                                    space_info,
+                                    tree,
+                                );
                             }
                         }
                     });
                 }
             });
     }
-}
 
-fn show_children(ui: &mut egui::Ui, space_info: &SpaceInfo, tree: &ObjectTree) {
-    for (path_comp, child) in &tree.children {
-        if space_info.objects.contains(&child.path) {
-            if child.is_leaf() {
-                ui.label(path_comp.to_string());
-            } else {
-                ui.collapsing(path_comp.to_string(), |ui| {
-                    show_children(ui, space_info, child);
-                });
-            }
+    pub fn has_space(&self, space_path: &ObjPath) -> bool {
+        self.space_views
+            .values()
+            .any(|view| &view.space_path == space_path)
+    }
+
+    pub fn add_space(&mut self, path: &ObjPath) {
+        let space_view_id = SpaceViewId::random();
+        self.space_views.insert(
+            space_view_id,
+            SpaceView {
+                name: path.to_string(),
+                space_path: path.clone(),
+                view_state: Default::default(),
+                selected_category: Default::default(),
+                obj_tree_properties: Default::default(),
+            },
+        );
+
+        if let Some(first_leaf) = self
+            .tree
+            .iter()
+            .enumerate()
+            .find_map(|(i, node)| node.is_leaf().then_some(i))
+        {
+            self.tree
+                .split_right(first_leaf.into(), 0.5, vec![space_view_id]);
+        } else {
+            self.tree.push_to_first_leaf(space_view_id);
         }
     }
 }
 
+/// Is this space worthy of its on space view by default?
+fn should_have_default_view(obj_db: &ObjDb, space_info: &SpaceInfo) -> bool {
+    if space_info.objects.len() == 1 {
+        // Only one object in this view…
+        let obj = space_info.objects.iter().next().unwrap();
+        if obj_db.types.get(obj.obj_type_path()).is_none() {
+            return false; // It doesn't have a type, so it is probably just the `_transform`, so nothing to show.
+        }
+    }
+    true
+}
+
+fn show_obj_tree(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    obj_tree_properties: &mut ObjectTreeProperties,
+    space_info: &SpaceInfo,
+    name: String,
+    tree: &ObjectTree,
+) {
+    if tree.is_leaf() {
+        ui.horizontal(|ui| {
+            ctx.obj_path_button_to(ui, name, &tree.path);
+            visibility_button(ui, obj_tree_properties, &tree.path);
+        });
+    } else {
+        let collapsing_header_id = ui.id().with(&tree.path);
+        let default_open = false;
+        egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            collapsing_header_id,
+            default_open,
+        )
+        .show_header(ui, |ui| {
+            ctx.obj_path_button_to(ui, name, &tree.path);
+            visibility_button(ui, obj_tree_properties, &tree.path);
+        })
+        .body(|ui| {
+            show_obj_tree_children(ctx, ui, obj_tree_properties, space_info, tree);
+        });
+    }
+}
+
+fn show_obj_tree_children(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    obj_tree_properties: &mut ObjectTreeProperties,
+    space_info: &SpaceInfo,
+    tree: &ObjectTree,
+) {
+    for (path_comp, child) in &tree.children {
+        if space_info.objects.contains(&child.path) {
+            show_obj_tree(
+                ctx,
+                ui,
+                obj_tree_properties,
+                space_info,
+                path_comp.to_string(),
+                child,
+            );
+        }
+    }
+}
+
+fn visibility_button(
+    ui: &mut egui::Ui,
+    obj_tree_properties: &mut ObjectTreeProperties,
+    path: &ObjPath,
+) {
+    let are_all_ancestors_visible = match path.parent() {
+        None => true, // root
+        Some(parent) => obj_tree_properties.projected.get(&parent).visible,
+    };
+
+    let mut props = obj_tree_properties.individual.get(path);
+
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        ui.set_enabled(are_all_ancestors_visible);
+        if ui
+            .toggle_value(&mut props.visible, "👁")
+            .on_hover_text("Toggle visibility")
+            .changed()
+        {
+            obj_tree_properties.individual.set(path.clone(), props);
+        }
+    });
+}
+
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 enum ViewCategory {
     TwoD,
+    #[default]
     ThreeD,
     Tensor,
     Text,
@@ -322,14 +480,21 @@ struct SpaceView {
 
     /// In case we are a mix of 2d/3d/tensor/text, we show what?
     selected_category: ViewCategory,
+
+    obj_tree_properties: ObjectTreeProperties,
 }
 
 impl SpaceView {
+    fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
+        self.obj_tree_properties.on_frame_start(obj_tree);
+    }
+
     fn objects_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_cameras: &[SpaceCamera],
+        spaces_info: &SpacesInfo,
+        space_info: &SpaceInfo,
         time_objects: &Objects<'_>,
         sticky_objects: &Objects<'_>,
     ) -> egui::Response {
@@ -362,8 +527,14 @@ impl SpaceView {
                     self.view_state
                         .ui_2d(ctx, ui, &self.space_path, time_objects)
                 } else if has_3d {
-                    self.view_state
-                        .ui_3d(ctx, ui, &self.space_path, space_cameras, time_objects)
+                    self.view_state.ui_3d(
+                        ctx,
+                        ui,
+                        &self.space_path,
+                        spaces_info,
+                        space_info,
+                        time_objects,
+                    )
                 } else if let Some(multidim_tensor) = multidim_tensor {
                     self.view_state.ui_tensor(ui, multidim_tensor)
                 } else {
@@ -401,7 +572,8 @@ impl SpaceView {
                                 ctx,
                                 ui,
                                 &self.space_path,
-                                space_cameras,
+                                spaces_info,
+                                space_info,
                                 time_objects,
                             );
                         }
@@ -454,12 +626,15 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
-        space_cameras: &[SpaceCamera],
+        spaces_info: &SpacesInfo,
+        space_info: &SpaceInfo,
         objects: &Objects<'_>,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
-            let space_specs = crate::view3d::SpaceSpecs::from_objects(Some(space), objects);
+            let space_cameras = &space_cameras(spaces_info, space_info);
+            let coordinates = space_info.coordinates;
+            let space_specs = crate::view3d::SpaceSpecs::from_view_coordinates(coordinates);
             let scene = crate::view3d::scene::Scene::from_objects(ctx, objects);
             crate::view3d::view_3d(
                 ctx,
@@ -494,7 +669,7 @@ impl ViewState {
     }
 }
 
-/// Look for camera extrinsics and intrinsics in the transform hierarchy
+/// Look for camera transform and pinhole in the transform hierarchy
 /// and return them as cameras.
 fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera> {
     crate::profile_function!();
@@ -502,30 +677,39 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
     let mut space_cameras = vec![];
 
     for (child_path, child_transform) in &space_info.child_spaces {
-        if let Transform::Extrinsics(extrinsics) = child_transform {
-            let mut found_any_intrinsics = false;
+        if let Transform::Rigid3(world_from_camera) = child_transform {
+            let world_from_camera = world_from_camera.parent_from_child();
+
+            let view_space = spaces_info
+                .spaces
+                .get(child_path)
+                .and_then(|child| child.coordinates);
+
+            let mut found_any_pinhole = false;
 
             if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
                 for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
-                    if let Transform::Intrinsics(intrinsics) = grand_child_transform {
+                    if let Transform::Pinhole(pinhole) = grand_child_transform {
                         space_cameras.push(SpaceCamera {
-                            obj_path: child_path.clone(),
+                            camera_obj_path: child_path.clone(),
                             instance_index_hash: re_log_types::IndexHash::NONE,
-                            extrinsics: *extrinsics,
-                            intrinsics: Some(*intrinsics),
+                            camera_view_coordinates: view_space,
+                            world_from_camera,
+                            pinhole: Some(*pinhole),
                             target_space: Some(grand_child_path.clone()),
                         });
-                        found_any_intrinsics = true;
+                        found_any_pinhole = true;
                     }
                 }
             }
 
-            if !found_any_intrinsics {
+            if !found_any_pinhole {
                 space_cameras.push(SpaceCamera {
-                    obj_path: child_path.clone(),
+                    camera_obj_path: child_path.clone(),
                     instance_index_hash: re_log_types::IndexHash::NONE,
-                    extrinsics: *extrinsics,
-                    intrinsics: None,
+                    camera_view_coordinates: view_space,
+                    world_from_camera,
+                    pinhole: None,
                     target_space: None,
                 });
             }
@@ -599,6 +783,8 @@ fn space_view_ui(
     space_view: &mut SpaceView,
 ) -> egui::Response {
     if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
+        let obj_tree_properties = &space_view.obj_tree_properties;
+
         // Get the latest objects for the currently selected time:
         let mut time_objects = Objects::default();
         {
@@ -607,14 +793,45 @@ fn space_view_ui(
             if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
                 if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
                     for obj_path in &space_info.objects {
+                        if obj_tree_properties.projected.get(obj_path).visible {
+                            if let Some(obj_store) = timeline_store.get(obj_path) {
+                                if let Some(obj_type) =
+                                    ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
+                                {
+                                    if !is_sticky_type(obj_type) {
+                                        time_objects.query_object(
+                                            obj_store,
+                                            &time_query,
+                                            obj_path,
+                                            obj_type,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let time_objects = filter_objects(&time_objects);
+
+        // Get the "sticky" objects (e.g. text logs)
+        // that don't care about the current time:
+        let mut sticky_objects = Objects::default();
+        {
+            crate::profile_scope!("sticky_query");
+            let timeline = ctx.rec_cfg.time_ctrl.timeline();
+            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
+                for obj_path in &space_info.objects {
+                    if obj_tree_properties.projected.get(obj_path).visible {
                         if let Some(obj_store) = timeline_store.get(obj_path) {
                             if let Some(obj_type) =
                                 ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
                             {
-                                if !is_sticky_type(obj_type) {
-                                    time_objects.query_object(
+                                if is_sticky_type(obj_type) {
+                                    sticky_objects.query_object(
                                         obj_store,
-                                        &time_query,
+                                        &TimeQuery::EVERYTHING,
                                         obj_path,
                                         obj_type,
                                     );
@@ -625,53 +842,24 @@ fn space_view_ui(
                 }
             }
         }
-        let time_objects = filter_objects(ctx, &time_objects);
+        let sticky_objects = filter_objects(&sticky_objects);
 
-        // Get the "sticky" objects (e.g. text logs)
-        // that don't care about the current time:
-        let mut sticky_objects = Objects::default();
-        {
-            crate::profile_scope!("sticky_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                for obj_path in &space_info.objects {
-                    if let Some(obj_store) = timeline_store.get(obj_path) {
-                        if let Some(obj_type) =
-                            ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                        {
-                            if is_sticky_type(obj_type) {
-                                sticky_objects.query_object(
-                                    obj_store,
-                                    &TimeQuery::EVERYTHING,
-                                    obj_path,
-                                    obj_type,
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        let sticky_objects = filter_objects(ctx, &sticky_objects);
-
-        let space_cameras = &space_cameras(spaces_info, space_info);
-
-        space_view.objects_ui(ctx, ui, space_cameras, &time_objects, &sticky_objects)
+        space_view.objects_ui(
+            ctx,
+            ui,
+            spaces_info,
+            space_info,
+            &time_objects,
+            &sticky_objects,
+        )
     } else {
         unknown_space_label(ui, &space_view.space_path)
     }
 }
 
-fn filter_objects<'s>(ctx: &mut ViewerContext<'_>, objects: &'_ Objects<'s>) -> Objects<'s> {
+fn filter_objects<'s>(objects: &'_ Objects<'s>) -> Objects<'s> {
     crate::profile_function!();
-    objects.filter(|props| {
-        props.visible
-            && ctx
-                .rec_cfg
-                .projected_object_properties
-                .get(props.obj_path)
-                .visible
-    })
+    objects.filter(|props| props.visible)
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
@@ -684,83 +872,125 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
 // ----------------------------------------------------------------------------
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub(crate) struct ExperimentalViewportPanel {
+pub(crate) struct ViewportPanel {
     blueprint: Blueprint,
 }
 
-impl ExperimentalViewportPanel {
+impl ViewportPanel {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
-        if ui.button("Reset space views / blueprint").clicked()
-            || self.blueprint.space_views.is_empty()
-        {
+        if self.blueprint.space_views.is_empty() {
             self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
+        } else {
+            // Check if the blueprint is missing a space,
+            // maybe one that has been added by new data:
+            for (path, space_info) in &spaces_info.spaces {
+                if should_have_default_view(&ctx.log_db.obj_db, space_info)
+                    && !self.blueprint.has_space(path)
+                {
+                    self.blueprint.add_space(path);
+                }
+            }
         }
+
+        self.blueprint.on_frame_start(&ctx.log_db.obj_db.tree);
+
+        let side_panel_frame = egui::Frame {
+            fill: ui.style().visuals.window_fill(),
+            inner_margin: egui::style::Margin::same(4.0),
+            stroke: ui.style().visuals.window_stroke(),
+            ..Default::default()
+        };
 
         egui::SidePanel::left("blueprint_panel")
             .resizable(true)
+            .frame(side_panel_frame)
             .default_width(200.0)
             .show_inside(ui, |ui| {
-                self.blueprint
-                    .tree_ui(ui, &spaces_info, &ctx.log_db.obj_db.tree);
-            });
-
-        egui::CentralPanel::default().show_inside(ui, |ui| {
-            let num_space_views = num_tabs(&self.blueprint.tree);
-
-            if num_space_views == 0 {
-                // nothing to show
-            } else if num_space_views == 1 {
-                let space_view_id = first_tab(&self.blueprint.tree).unwrap();
-                let space_view = self
-                    .blueprint
-                    .space_views
-                    .get_mut(&space_view_id)
-                    .expect("Should have been populated beforehand");
-
-                ui.strong(&space_view.name);
-
-                space_view_ui(ctx, ui, &spaces_info, space_view);
-            } else if let Some(space_view_id) = self.blueprint.maximized {
-                let space_view = self
-                    .blueprint
-                    .space_views
-                    .get_mut(&space_view_id)
-                    .expect("Should have been populated beforehand");
-
-                ui.horizontal(|ui| {
-                    if ui
-                        .button("⬅")
-                        .on_hover_text("Restore - show all spaces")
-                        .clicked()
-                    {
-                        self.blueprint.maximized = None;
+                ui.vertical_centered(|ui| {
+                    if ui.button("Reset space views").clicked() {
+                        self.blueprint =
+                            Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
                     }
-                    ui.strong(&space_view.name);
                 });
 
-                space_view_ui(ctx, ui, &spaces_info, space_view);
-            } else {
-                let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
-                dock_style.separator_width = 2.0;
-                dock_style.show_close_buttons = false;
-                dock_style.tab_include_scrollarea = false;
+                ui.separator();
 
-                let mut tab_viewer = TabViewer {
-                    ctx,
-                    spaces_info: &spaces_info,
-                    space_views: &mut self.blueprint.space_views,
-                    maximized: &mut self.blueprint.maximized,
-                };
+                self.blueprint
+                    .tree_ui(ctx, ui, &spaces_info, &ctx.log_db.obj_db.tree);
+            });
 
-                egui_dock::DockArea::new(&mut self.blueprint.tree)
-                    .style(dock_style)
-                    .show_inside(ui, &mut tab_viewer);
-            }
-        });
+        let viewport_frame = egui::Frame {
+            fill: ui.style().visuals.window_fill(),
+            ..Default::default()
+        };
+
+        egui::CentralPanel::default()
+            .frame(viewport_frame)
+            .show_inside(ui, |ui| {
+                self.viewport_ui(ui, ctx, &spaces_info);
+            });
+    }
+
+    fn viewport_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+        spaces_info: &SpacesInfo,
+    ) {
+        let num_space_views = num_tabs(&self.blueprint.tree);
+        if num_space_views == 0 {
+            // nothing to show
+        } else if num_space_views == 1 {
+            let space_view_id = first_tab(&self.blueprint.tree).unwrap();
+            let space_view = self
+                .blueprint
+                .space_views
+                .get_mut(&space_view_id)
+                .expect("Should have been populated beforehand");
+
+            ui.strong(&space_view.name);
+
+            space_view_ui(ctx, ui, spaces_info, space_view);
+        } else if let Some(space_view_id) = self.blueprint.maximized {
+            let space_view = self
+                .blueprint
+                .space_views
+                .get_mut(&space_view_id)
+                .expect("Should have been populated beforehand");
+
+            ui.horizontal(|ui| {
+                if ui
+                    .button("⬅")
+                    .on_hover_text("Restore - show all spaces")
+                    .clicked()
+                {
+                    self.blueprint.maximized = None;
+                }
+                ui.strong(&space_view.name);
+            });
+
+            space_view_ui(ctx, ui, spaces_info, space_view);
+        } else {
+            let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
+            dock_style.separator_width = 2.0;
+            dock_style.show_close_buttons = false;
+            dock_style.tab_include_scrollarea = false;
+
+            let mut tab_viewer = TabViewer {
+                ctx,
+                spaces_info,
+                space_views: &mut self.blueprint.space_views,
+                maximized: &mut self.blueprint.maximized,
+            };
+
+            egui_dock::DockArea::new(&mut self.blueprint.tree)
+                .style(dock_style)
+                .show_inside(ui, &mut tab_viewer);
+        }
     }
 }
 

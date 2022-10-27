@@ -16,11 +16,13 @@ use anyhow::Context as _;
 use glam::Vec3;
 use instant::Instant;
 use macaw::IsoTransform;
+use rand::Rng;
 use re_renderer::{
     context::{RenderContext, RenderContextConfig},
     renderer::{
         lines::{LineDrawable, LineStrip},
-        GenericSkyboxDrawable, TestTriangleDrawable,
+        point_cloud::PointCloudPoint,
+        GenericSkyboxDrawable, PointCloudDrawable, TestTriangleDrawable,
     },
     view_builder::{TargetConfiguration, ViewBuilder},
 };
@@ -41,7 +43,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
 /// Uses a [`re_renderer::ViewBuilder`] to draw an example scene.
 fn draw_view(
-    time: &Time,
+    state: &AppState,
     re_ctx: &mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -51,12 +53,12 @@ fn draw_view(
     let mut view_builder = ViewBuilder::default();
 
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
-    let seconds_since_startup = time.seconds_since_startup();
+    let seconds_since_startup = state.time.seconds_since_startup();
     let pos = Vec3::new(
         seconds_since_startup.sin(),
         0.5,
         seconds_since_startup.cos(),
-    ) * 20.0;
+    ) * 15.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
     let target_cfg = TargetConfiguration {
         resolution_in_pixel: resolution,
@@ -69,12 +71,14 @@ fn draw_view(
     let triangle = TestTriangleDrawable::new(re_ctx, device);
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
+    let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
 
     view_builder
         .setup_view(re_ctx, device, queue, &target_cfg)
         .unwrap()
         .queue_draw(&triangle)
         .queue_draw(&skybox)
+        .queue_draw(&point_cloud)
         .queue_draw(&lines)
         .draw(re_ctx, encoder)
         .unwrap();
@@ -169,7 +173,7 @@ struct Application {
     queue: wgpu::Queue,
     surface: wgpu::Surface,
     surface_config: wgpu::SurfaceConfiguration,
-    time: Time,
+    state: AppState,
 
     pub re_ctx: RenderContext,
 }
@@ -236,10 +240,7 @@ impl Application {
             surface,
             surface_config,
             re_ctx,
-            time: Time {
-                start_time: Instant::now(),
-                last_draw_time: Instant::now(),
-            },
+            state: AppState::new(),
         })
     }
 
@@ -286,7 +287,7 @@ impl Application {
                         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
                     let view_builder = draw_view(
-                        &self.time,
+                        &self.state,
                         &mut self.re_ctx,
                         &self.device,
                         &self.queue,
@@ -324,13 +325,14 @@ impl Application {
                     // (wgpu has a swap chain with a limited amount of buffers, the exact count is dependent on `present_mode` and backend!).
                     // It's important to keep in mind that depending on the `present_mode`, the GPU might be waiting on the screen in turn.
                     let current_time = Instant::now();
-                    let time_passed = Instant::now() - self.time.last_draw_time;
-                    self.time.last_draw_time = current_time;
+                    let time_passed = Instant::now() - self.state.time.last_draw_time;
+                    self.state.time.last_draw_time = current_time;
 
                     // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
                     // Repeatedly setting the title causes issues on some platforms
                     // Do it only every second.
-                    let time_until_next_report = 1.0 - self.time.seconds_since_startup().fract();
+                    let time_until_next_report =
+                        1.0 - self.state.time.seconds_since_startup().fract();
                     if time_until_next_report - time_passed.as_secs_f32() < 0.0 {
                         let time_info_str = format!(
                             "{:.2} ms ({:.2} fps)",
@@ -362,6 +364,39 @@ struct Time {
 impl Time {
     fn seconds_since_startup(&self) -> f32 {
         (Instant::now() - self.start_time).as_secs_f32()
+    }
+}
+
+struct AppState {
+    time: Time,
+
+    // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
+    random_points: Vec<PointCloudPoint>,
+}
+
+impl AppState {
+    fn new() -> Self {
+        let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
+        let random_point_range = -2.0_f32..2.0_f32;
+        let random_points = (0..500000)
+            .map(|_| PointCloudPoint {
+                position: glam::vec3(
+                    rnd.gen_range(random_point_range.clone()),
+                    rnd.gen_range(random_point_range.clone()),
+                    rnd.gen_range(random_point_range.clone()),
+                ),
+                radius: rnd.gen_range(0.005..0.025),
+                srgb_color: [rnd.gen(), rnd.gen(), rnd.gen(), 255],
+            })
+            .collect::<Vec<_>>();
+
+        Self {
+            time: Time {
+                start_time: Instant::now(),
+                last_draw_time: Instant::now(),
+            },
+            random_points,
+        }
     }
 }
 

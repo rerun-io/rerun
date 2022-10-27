@@ -42,11 +42,13 @@ rerun = { path = "../crates/rerun" }
 
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 document-features = "0.2"
+glam = "0.20"
 image = { version = "0.24", default-features = false, features = [
   "jpeg",
   "jpeg_rayon",
 ] }
 itertools = "0.10"
+macaw = "0.17"
 nohash-hasher = "0.2"
 numpy = "0.17"
 once_cell = "1.12"

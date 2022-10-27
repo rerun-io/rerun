@@ -1,6 +1,6 @@
 use macaw::Ray3;
 
-use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath, ObjectTree};
+use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
 /// Common things needed by many parts of the viewer.
@@ -29,7 +29,7 @@ impl<'a> ViewerContext<'a> {
         self.type_path_button_to(ui, type_path.to_string(), type_path)
     }
 
-    /// Show an typeect path and make it selectable.
+    /// Show a type path and make it selectable.
     pub fn type_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
@@ -112,17 +112,6 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    /// Button to select the current space.
-    pub fn space_button(&mut self, ui: &mut egui::Ui, space: &ObjPath) -> egui::Response {
-        // TODO(emilk): common hover-effect of all buttons for the same space!
-        let response =
-            ui.selectable_label(self.rec_cfg.selection.is_space(space), space.to_string());
-        if response.clicked() {
-            self.rec_cfg.selection = Selection::Space(space.clone());
-        }
-        response
-    }
-
     pub fn time_button(
         &mut self,
         ui: &mut egui::Ui,
@@ -192,15 +181,6 @@ pub(crate) struct RecordingConfig {
     /// Currently selected thing; shown in the [`crate::selection_panel::SelectionPanel`].
     pub selection: Selection,
 
-    /// Individual settings. Mutate this.
-    pub individual_object_properties: ObjectsProperties,
-
-    /// Properties, as inherited from parent. Read from this.
-    ///
-    /// Recalculated at the start of each frame form [`Self::individual_object_properties`].
-    #[serde(skip)]
-    pub projected_object_properties: ObjectsProperties,
-
     /// What space is the pointer hovering over? Read from this.
     #[serde(skip)]
     pub hovered_space_previous_frame: HoveredSpace,
@@ -212,34 +192,11 @@ pub(crate) struct RecordingConfig {
 
 impl RecordingConfig {
     /// Called at the start of each frame
-    pub fn on_frame_start(&mut self, log_db: &LogDb) {
+    pub fn on_frame_start(&mut self) {
         crate::profile_function!();
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
-
-        self.project_object_properties(log_db);
-    }
-
-    fn project_object_properties(&mut self, log_db: &LogDb) {
-        crate::profile_function!();
-
-        // NOTE(emilk): we could do this projection only when the object properties changes
-        // and/or when new object paths are added, but such memoization would add complexity,
-        // and in most cases this is pretty fast already.
-
-        fn project_tree(rec_cfg: &mut RecordingConfig, prop: ObjectProps, tree: &ObjectTree) {
-            let prop = prop.with_child(&rec_cfg.individual_object_properties.get(&tree.path));
-            rec_cfg
-                .projected_object_properties
-                .set(tree.path.clone(), prop);
-
-            for child in tree.children.values() {
-                project_tree(rec_cfg, prop, child);
-            }
-        }
-
-        project_tree(self, ObjectProps::default(), &log_db.obj_db.tree);
     }
 }
 
@@ -339,56 +296,6 @@ impl Selection {
             hay == needle
         } else {
             false
-        }
-    }
-
-    pub fn is_space(&self, needle: &ObjPath) -> bool {
-        if let Self::Space(hay) = self {
-            hay == needle
-        } else {
-            false
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
-pub(crate) struct ObjectsProperties {
-    props: nohash_hasher::IntMap<ObjPath, ObjectProps>,
-}
-
-impl ObjectsProperties {
-    pub fn get(&self, obj_path: &ObjPath) -> ObjectProps {
-        self.props.get(obj_path).copied().unwrap_or_default()
-    }
-
-    pub fn set(&mut self, obj_path: ObjPath, prop: ObjectProps) {
-        if prop == ObjectProps::default() {
-            self.props.remove(&obj_path); // save space
-        } else {
-            self.props.insert(obj_path, prop);
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub(crate) struct ObjectProps {
-    pub visible: bool,
-}
-
-impl Default for ObjectProps {
-    fn default() -> Self {
-        Self { visible: true }
-    }
-}
-
-impl ObjectProps {
-    /// Multiply/and these together.
-    fn with_child(&self, child: &ObjectProps) -> ObjectProps {
-        ObjectProps {
-            visible: self.visible && child.visible,
         }
     }
 }

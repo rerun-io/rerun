@@ -39,7 +39,7 @@ Note: If you are unable to upgrade pip to version `>=21.3`, you need to pass `--
 
 ### Run the example
 ```sh
-example_car
+python examples/car/main.py
 ```
 
 ### Using the Rerun Python SDK

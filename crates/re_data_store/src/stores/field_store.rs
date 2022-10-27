@@ -164,11 +164,13 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::Vec3 => handle_type!(Vec3, data_types::Vec3),
             DataType::Box3 => handle_type!(Box3, re_log_types::Box3),
             DataType::Mesh3D => handle_type!(Mesh3D, re_log_types::Mesh3D),
-            DataType::Camera => handle_type!(Camera, re_log_types::Camera),
             DataType::Arrow3D => handle_type!(Arrow3D, re_log_types::Arrow3D),
             DataType::Tensor => handle_type!(Tensor, re_log_types::Tensor),
             DataType::ObjPath => handle_type!(ObjPath, ObjPath),
             DataType::Transform => handle_type!(Transform, re_log_types::Transform),
+            DataType::ViewCoordinates => {
+                handle_type!(ViewCoordinates, re_log_types::ViewCoordinates)
+            }
             DataType::DataVec => handle_type!(DataVec, DataVec),
         }
     }
