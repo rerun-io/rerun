@@ -232,16 +232,9 @@ impl Blueprint {
             }
 
             let space_view_id = SpaceViewId::random();
-            blueprint.space_views.insert(
-                space_view_id,
-                SpaceView {
-                    name: path.to_string(),
-                    space_path: path.clone(),
-                    view_state: Default::default(),
-                    selected_category: Default::default(),
-                    obj_tree_properties: Default::default(),
-                },
-            );
+            blueprint
+                .space_views
+                .insert(space_view_id, SpaceView::from_path(path.clone()));
         }
 
         blueprint.tree = tree_from_space_views(available_size, &blueprint.space_views);
@@ -333,18 +326,10 @@ impl Blueprint {
             .any(|view| &view.space_path == space_path)
     }
 
-    pub fn add_space(&mut self, path: &ObjPath) {
+    pub fn add_space_view(&mut self, path: &ObjPath) {
         let space_view_id = SpaceViewId::random();
-        self.space_views.insert(
-            space_view_id,
-            SpaceView {
-                name: path.to_string(),
-                space_path: path.clone(),
-                view_state: Default::default(),
-                selected_category: Default::default(),
-                obj_tree_properties: Default::default(),
-            },
-        );
+        self.space_views
+            .insert(space_view_id, SpaceView::from_path(path.clone()));
 
         if let Some(first_leaf) = self
             .tree
@@ -475,6 +460,16 @@ struct SpaceView {
 }
 
 impl SpaceView {
+    fn from_path(space_path: ObjPath) -> Self {
+        Self {
+            name: space_path.to_string(),
+            space_path,
+            view_state: Default::default(),
+            selected_category: Default::default(),
+            obj_tree_properties: Default::default(),
+        }
+    }
+
     fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
         self.obj_tree_properties.on_frame_start(obj_tree);
     }
@@ -881,7 +876,7 @@ impl ViewportPanel {
                 if should_have_default_view(&ctx.log_db.obj_db, space_info)
                     && !self.blueprint.has_space(path)
                 {
-                    self.blueprint.add_space(path);
+                    self.blueprint.add_space_view(path);
                 }
             }
         }
