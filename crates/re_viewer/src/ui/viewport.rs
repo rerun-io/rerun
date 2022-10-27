@@ -269,7 +269,13 @@ impl Blueprint {
     }
 
     /// Show the blueprint panel tree view.
-    pub fn tree_ui(&mut self, ui: &mut egui::Ui, spaces_info: &SpacesInfo, obj_tree: &ObjectTree) {
+    pub fn tree_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+        obj_tree: &ObjectTree,
+    ) {
         crate::profile_function!();
 
         ui.heading("Blueprint");
@@ -306,6 +312,7 @@ impl Blueprint {
                         if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
                             if let Some(tree) = obj_tree.subtree(&space_view.space_path) {
                                 show_obj_tree(
+                                    ctx,
                                     ui,
                                     &mut space_view.obj_tree_properties,
                                     space_info,
@@ -364,6 +371,7 @@ fn should_have_default_view(obj_db: &ObjDb, space_info: &SpaceInfo) -> bool {
 }
 
 fn show_obj_tree(
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     obj_tree_properties: &mut ObjectTreeProperties,
     space_info: &SpaceInfo,
@@ -373,7 +381,7 @@ fn show_obj_tree(
         if space_info.objects.contains(&child.path) {
             if child.is_leaf() {
                 ui.horizontal(|ui| {
-                    ui.label(path_comp.to_string());
+                    ctx.obj_path_button_to(ui, path_comp.to_string(), &child.path);
                     visibility_button(ui, obj_tree_properties, &child.path);
                 });
             } else {
@@ -385,11 +393,11 @@ fn show_obj_tree(
                     default_open,
                 )
                 .show_header(ui, |ui| {
-                    ui.label(path_comp.to_string());
+                    ctx.obj_path_button_to(ui, path_comp.to_string(), &child.path);
                     visibility_button(ui, obj_tree_properties, &child.path);
                 })
                 .body(|ui| {
-                    show_obj_tree(ui, obj_tree_properties, space_info, child);
+                    show_obj_tree(ctx, ui, obj_tree_properties, space_info, child);
                 });
             }
         }
@@ -867,7 +875,7 @@ impl ViewportPanel {
             .default_width(200.0)
             .show_inside(ui, |ui| {
                 self.blueprint
-                    .tree_ui(ui, &spaces_info, &ctx.log_db.obj_db.tree);
+                    .tree_ui(ctx, ui, &spaces_info, &ctx.log_db.obj_db.tree);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
