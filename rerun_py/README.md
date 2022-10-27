@@ -22,7 +22,7 @@ See [`USAGE.md`](USAGE.md).
 
 ## Running the example code
 ```sh
-python rerun_sdk/examples/example_car.py
+python examples/car/main.py
 ```
 
 By default, the example runs Rerun in buffered mode, in the same process as the example code. This means all logged data is buffered until `rerun_sdk.show()` is called in the end, which shows the viewer and blocks until the viewer is closed.
@@ -58,7 +58,7 @@ just py-test
 just py-lint
 
 # Run an example
-example_car
+python examples/car/main.py
 ```
 
 ### Logging and viewing in different processes
@@ -72,7 +72,7 @@ cargo run -p rerun --release
 
 In a second terminal, run the example with the `--connect` option:
 ```sh
-example_car --connect
+python examples/car/main.py --connect
 ```
 
 ## Building an installable Python Wheel
