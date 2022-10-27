@@ -305,7 +305,11 @@ impl Blueprint {
                         if space_is_also_object {
                             // For instance: this image-space has an image logged to it,
                             // so we need to have a way to toggle the image on/off.
-                            visibility_button(ui, &mut space_view.obj_tree_properties, space_path);
+                            object_visibility_button(
+                                ui,
+                                &mut space_view.obj_tree_properties,
+                                space_path,
+                            );
                         }
                     })
                     .body(|ui| {
@@ -367,7 +371,7 @@ fn show_obj_tree(
     if tree.is_leaf() {
         ui.horizontal(|ui| {
             ctx.obj_path_button_to(ui, name, &tree.path);
-            visibility_button(ui, obj_tree_properties, &tree.path);
+            object_visibility_button(ui, obj_tree_properties, &tree.path);
         });
     } else {
         let collapsing_header_id = ui.id().with(&tree.path);
@@ -379,7 +383,7 @@ fn show_obj_tree(
         )
         .show_header(ui, |ui| {
             ctx.obj_path_button_to(ui, name, &tree.path);
-            visibility_button(ui, obj_tree_properties, &tree.path);
+            object_visibility_button(ui, obj_tree_properties, &tree.path);
         })
         .body(|ui| {
             show_obj_tree_children(ctx, ui, obj_tree_properties, space_info, tree);
@@ -408,7 +412,7 @@ fn show_obj_tree_children(
     }
 }
 
-fn visibility_button(
+fn object_visibility_button(
     ui: &mut egui::Ui,
     obj_tree_properties: &mut ObjectTreeProperties,
     path: &ObjPath,
@@ -420,16 +424,23 @@ fn visibility_button(
 
     let mut props = obj_tree_properties.individual.get(path);
 
+    if visibility_button(ui, are_all_ancestors_visible, &mut props.visible).changed() {
+        obj_tree_properties.individual.set(path.clone(), props);
+    }
+}
+
+fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        ui.set_enabled(are_all_ancestors_visible);
-        if ui
-            .toggle_value(&mut props.visible, "👁")
-            .on_hover_text("Toggle visibility")
-            .changed()
-        {
-            obj_tree_properties.individual.set(path.clone(), props);
+        ui.set_enabled(enabled);
+        if enabled {
+            ui.toggle_value(visible, "👁")
+        } else {
+            let mut always_false = false;
+            ui.toggle_value(&mut always_false, "👁")
         }
-    });
+        .on_hover_text("Toggle visibility")
+    })
+    .inner
 }
 
 // ----------------------------------------------------------------------------
