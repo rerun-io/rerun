@@ -136,7 +136,7 @@ fn default_recording_id(py: Python<'_>) -> RecordingId {
     // We can use authkey for this, because it is the same for parent
     // and child processes.
     //
-    // TODO(emilk): are there any security conserns with leaking authkey?
+    // TODO(emilk): are there any security concerns with leaking authkey?
     //
     // https://docs.python.org/3/library/multiprocessing.html#multiprocessing.Process.authkey
     let seed = authkey(py);
