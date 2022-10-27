@@ -14,7 +14,8 @@ use itertools::Itertools as _;
 
 use nohash_hasher::IntSet;
 use re_data_store::{
-    log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, TimelineStore,
+    log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, Objects,
+    TimeQuery, TimelineStore,
 };
 use re_log_types::{ObjectType, Transform, ViewCoordinates};
 
@@ -239,7 +240,8 @@ impl Blueprint {
                     name: path.to_string(),
                     space_path: path.clone(),
                     view_state: Default::default(),
-                    selected_category: ViewCategory::TwoD,
+                    selected_category: Default::default(),
+                    obj_tree_properties: Default::default(),
                 },
             );
             space_make_infos.push(SpaceMakeInfo {
@@ -259,11 +261,22 @@ impl Blueprint {
         blueprint
     }
 
-    /// Show the blueprint panel tree view.
-    pub fn tree_ui(&mut self, ui: &mut egui::Ui, spaces_info: &SpacesInfo, obj_tree: &ObjectTree) {
+    pub fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
         crate::profile_function!();
+        for space_view in self.space_views.values_mut() {
+            space_view.on_frame_start(obj_tree);
+        }
+    }
 
-        ui.heading("Blueprint");
+    /// Show the blueprint panel tree view.
+    pub fn tree_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+        obj_tree: &ObjectTree,
+    ) {
+        crate::profile_function!();
 
         let focused = self.tree.find_active_focused().map(|(_, id)| *id);
 
@@ -272,13 +285,16 @@ impl Blueprint {
             .show(ui, |ui| {
                 for (space_view_id, space_view) in self
                     .space_views
-                    .iter()
-                    .sorted_by_key(|(_, space_view)| &space_view.name)
+                    .iter_mut()
+                    .sorted_by_key(|(_, space_view)| space_view.name.clone())
                 {
                     let is_focused = Some(*space_view_id) == focused;
 
+                    let space_path = &space_view.space_path;
+
                     let collapsing_header_id = ui.make_persistent_id(&space_view_id);
                     let default_open = true;
+
                     egui::collapsing_header::CollapsingState::load_with_default_open(
                         ui.ctx(),
                         collapsing_header_id,
@@ -292,11 +308,28 @@ impl Blueprint {
                                 self.tree.set_active_tab(node_index, tab_index);
                             }
                         }
+
+                        let space_is_also_object = ctx
+                            .log_db
+                            .obj_db
+                            .types
+                            .contains_key(space_path.obj_type_path());
+                        if space_is_also_object {
+                            // For instance: this image-space has an image logged to it,
+                            // so we need to have a way to toggle the image on/off.
+                            visibility_button(ui, &mut space_view.obj_tree_properties, space_path);
+                        }
                     })
                     .body(|ui| {
-                        if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-                            if let Some(tree) = obj_tree.subtree(&space_view.space_path) {
-                                show_children(ui, space_info, tree);
+                        if let Some(space_info) = spaces_info.spaces.get(space_path) {
+                            if let Some(tree) = obj_tree.subtree(space_path) {
+                                show_obj_tree_children(
+                                    ctx,
+                                    ui,
+                                    &mut space_view.obj_tree_properties,
+                                    space_info,
+                                    tree,
+                                );
                             }
                         }
                     });
@@ -318,7 +351,8 @@ impl Blueprint {
                 name: path.to_string(),
                 space_path: path.clone(),
                 view_state: Default::default(),
-                selected_category: ViewCategory::TwoD,
+                selected_category: Default::default(),
+                obj_tree_properties: Default::default(),
             },
         );
 
@@ -348,25 +382,88 @@ fn should_have_default_view(obj_db: &ObjDb, space_info: &SpaceInfo) -> bool {
     true
 }
 
-fn show_children(ui: &mut egui::Ui, space_info: &SpaceInfo, tree: &ObjectTree) {
+fn show_obj_tree(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    obj_tree_properties: &mut ObjectTreeProperties,
+    space_info: &SpaceInfo,
+    name: String,
+    tree: &ObjectTree,
+) {
+    if tree.is_leaf() {
+        ui.horizontal(|ui| {
+            ctx.obj_path_button_to(ui, name, &tree.path);
+            visibility_button(ui, obj_tree_properties, &tree.path);
+        });
+    } else {
+        let collapsing_header_id = ui.id().with(&tree.path);
+        let default_open = false;
+        egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            collapsing_header_id,
+            default_open,
+        )
+        .show_header(ui, |ui| {
+            ctx.obj_path_button_to(ui, name, &tree.path);
+            visibility_button(ui, obj_tree_properties, &tree.path);
+        })
+        .body(|ui| {
+            show_obj_tree_children(ctx, ui, obj_tree_properties, space_info, tree);
+        });
+    }
+}
+
+fn show_obj_tree_children(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    obj_tree_properties: &mut ObjectTreeProperties,
+    space_info: &SpaceInfo,
+    tree: &ObjectTree,
+) {
     for (path_comp, child) in &tree.children {
         if space_info.objects.contains(&child.path) {
-            if child.is_leaf() {
-                ui.label(path_comp.to_string());
-            } else {
-                ui.collapsing(path_comp.to_string(), |ui| {
-                    show_children(ui, space_info, child);
-                });
-            }
+            show_obj_tree(
+                ctx,
+                ui,
+                obj_tree_properties,
+                space_info,
+                path_comp.to_string(),
+                child,
+            );
         }
     }
 }
 
+fn visibility_button(
+    ui: &mut egui::Ui,
+    obj_tree_properties: &mut ObjectTreeProperties,
+    path: &ObjPath,
+) {
+    let are_all_ancestors_visible = match path.parent() {
+        None => true, // root
+        Some(parent) => obj_tree_properties.projected.get(&parent).visible,
+    };
+
+    let mut props = obj_tree_properties.individual.get(path);
+
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        ui.set_enabled(are_all_ancestors_visible);
+        if ui
+            .toggle_value(&mut props.visible, "👁")
+            .on_hover_text("Toggle visibility")
+            .changed()
+        {
+            obj_tree_properties.individual.set(path.clone(), props);
+        }
+    });
+}
+
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 enum ViewCategory {
     TwoD,
+    #[default]
     ThreeD,
     Tensor,
     Text,
@@ -383,9 +480,15 @@ struct SpaceView {
 
     /// In case we are a mix of 2d/3d/tensor/text, we show what?
     selected_category: ViewCategory,
+
+    obj_tree_properties: ObjectTreeProperties,
 }
 
 impl SpaceView {
+    fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
+        self.obj_tree_properties.on_frame_start(obj_tree);
+    }
+
     fn objects_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -680,6 +783,8 @@ fn space_view_ui(
     space_view: &mut SpaceView,
 ) -> egui::Response {
     if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
+        let obj_tree_properties = &space_view.obj_tree_properties;
+
         // Get the latest objects for the currently selected time:
         let mut time_objects = Objects::default();
         {
@@ -688,14 +793,45 @@ fn space_view_ui(
             if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
                 if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
                     for obj_path in &space_info.objects {
+                        if obj_tree_properties.projected.get(obj_path).visible {
+                            if let Some(obj_store) = timeline_store.get(obj_path) {
+                                if let Some(obj_type) =
+                                    ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
+                                {
+                                    if !is_sticky_type(obj_type) {
+                                        time_objects.query_object(
+                                            obj_store,
+                                            &time_query,
+                                            obj_path,
+                                            obj_type,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let time_objects = filter_objects(&time_objects);
+
+        // Get the "sticky" objects (e.g. text logs)
+        // that don't care about the current time:
+        let mut sticky_objects = Objects::default();
+        {
+            crate::profile_scope!("sticky_query");
+            let timeline = ctx.rec_cfg.time_ctrl.timeline();
+            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
+                for obj_path in &space_info.objects {
+                    if obj_tree_properties.projected.get(obj_path).visible {
                         if let Some(obj_store) = timeline_store.get(obj_path) {
                             if let Some(obj_type) =
                                 ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
                             {
-                                if !is_sticky_type(obj_type) {
-                                    time_objects.query_object(
+                                if is_sticky_type(obj_type) {
+                                    sticky_objects.query_object(
                                         obj_store,
-                                        &time_query,
+                                        &TimeQuery::EVERYTHING,
                                         obj_path,
                                         obj_type,
                                     );
@@ -706,34 +842,7 @@ fn space_view_ui(
                 }
             }
         }
-        let time_objects = filter_objects(ctx, &time_objects);
-
-        // Get the "sticky" objects (e.g. text logs)
-        // that don't care about the current time:
-        let mut sticky_objects = Objects::default();
-        {
-            crate::profile_scope!("sticky_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                for obj_path in &space_info.objects {
-                    if let Some(obj_store) = timeline_store.get(obj_path) {
-                        if let Some(obj_type) =
-                            ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                        {
-                            if is_sticky_type(obj_type) {
-                                sticky_objects.query_object(
-                                    obj_store,
-                                    &TimeQuery::EVERYTHING,
-                                    obj_path,
-                                    obj_type,
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        let sticky_objects = filter_objects(ctx, &sticky_objects);
+        let sticky_objects = filter_objects(&sticky_objects);
 
         space_view.objects_ui(
             ctx,
@@ -748,16 +857,9 @@ fn space_view_ui(
     }
 }
 
-fn filter_objects<'s>(ctx: &mut ViewerContext<'_>, objects: &'_ Objects<'s>) -> Objects<'s> {
+fn filter_objects<'s>(objects: &'_ Objects<'s>) -> Objects<'s> {
     crate::profile_function!();
-    objects.filter(|props| {
-        props.visible
-            && ctx
-                .rec_cfg
-                .projected_object_properties
-                .get(props.obj_path)
-                .visible
-    })
+    objects.filter(|props| props.visible)
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
@@ -780,9 +882,7 @@ impl ViewportPanel {
 
         let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
-        if ui.button("Reset space views / blueprint").clicked()
-            || self.blueprint.space_views.is_empty()
-        {
+        if self.blueprint.space_views.is_empty() {
             self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
         } else {
             // Check if the blueprint is missing a space,
@@ -796,67 +896,101 @@ impl ViewportPanel {
             }
         }
 
+        self.blueprint.on_frame_start(&ctx.log_db.obj_db.tree);
+
+        let side_panel_frame = egui::Frame {
+            fill: ui.style().visuals.window_fill(),
+            inner_margin: egui::style::Margin::same(4.0),
+            stroke: ui.style().visuals.window_stroke(),
+            ..Default::default()
+        };
+
         egui::SidePanel::left("blueprint_panel")
             .resizable(true)
+            .frame(side_panel_frame)
             .default_width(200.0)
             .show_inside(ui, |ui| {
-                self.blueprint
-                    .tree_ui(ui, &spaces_info, &ctx.log_db.obj_db.tree);
-            });
-
-        egui::CentralPanel::default().show_inside(ui, |ui| {
-            let num_space_views = num_tabs(&self.blueprint.tree);
-
-            if num_space_views == 0 {
-                // nothing to show
-            } else if num_space_views == 1 {
-                let space_view_id = first_tab(&self.blueprint.tree).unwrap();
-                let space_view = self
-                    .blueprint
-                    .space_views
-                    .get_mut(&space_view_id)
-                    .expect("Should have been populated beforehand");
-
-                ui.strong(&space_view.name);
-
-                space_view_ui(ctx, ui, &spaces_info, space_view);
-            } else if let Some(space_view_id) = self.blueprint.maximized {
-                let space_view = self
-                    .blueprint
-                    .space_views
-                    .get_mut(&space_view_id)
-                    .expect("Should have been populated beforehand");
-
-                ui.horizontal(|ui| {
-                    if ui
-                        .button("⬅")
-                        .on_hover_text("Restore - show all spaces")
-                        .clicked()
-                    {
-                        self.blueprint.maximized = None;
+                ui.vertical_centered(|ui| {
+                    if ui.button("Reset space views").clicked() {
+                        self.blueprint =
+                            Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
                     }
-                    ui.strong(&space_view.name);
                 });
 
-                space_view_ui(ctx, ui, &spaces_info, space_view);
-            } else {
-                let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
-                dock_style.separator_width = 2.0;
-                dock_style.show_close_buttons = false;
-                dock_style.tab_include_scrollarea = false;
+                ui.separator();
 
-                let mut tab_viewer = TabViewer {
-                    ctx,
-                    spaces_info: &spaces_info,
-                    space_views: &mut self.blueprint.space_views,
-                    maximized: &mut self.blueprint.maximized,
-                };
+                self.blueprint
+                    .tree_ui(ctx, ui, &spaces_info, &ctx.log_db.obj_db.tree);
+            });
 
-                egui_dock::DockArea::new(&mut self.blueprint.tree)
-                    .style(dock_style)
-                    .show_inside(ui, &mut tab_viewer);
-            }
-        });
+        let viewport_frame = egui::Frame {
+            fill: ui.style().visuals.window_fill(),
+            ..Default::default()
+        };
+
+        egui::CentralPanel::default()
+            .frame(viewport_frame)
+            .show_inside(ui, |ui| {
+                self.viewport_ui(ui, ctx, &spaces_info);
+            });
+    }
+
+    fn viewport_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+        spaces_info: &SpacesInfo,
+    ) {
+        let num_space_views = num_tabs(&self.blueprint.tree);
+        if num_space_views == 0 {
+            // nothing to show
+        } else if num_space_views == 1 {
+            let space_view_id = first_tab(&self.blueprint.tree).unwrap();
+            let space_view = self
+                .blueprint
+                .space_views
+                .get_mut(&space_view_id)
+                .expect("Should have been populated beforehand");
+
+            ui.strong(&space_view.name);
+
+            space_view_ui(ctx, ui, spaces_info, space_view);
+        } else if let Some(space_view_id) = self.blueprint.maximized {
+            let space_view = self
+                .blueprint
+                .space_views
+                .get_mut(&space_view_id)
+                .expect("Should have been populated beforehand");
+
+            ui.horizontal(|ui| {
+                if ui
+                    .button("⬅")
+                    .on_hover_text("Restore - show all spaces")
+                    .clicked()
+                {
+                    self.blueprint.maximized = None;
+                }
+                ui.strong(&space_view.name);
+            });
+
+            space_view_ui(ctx, ui, spaces_info, space_view);
+        } else {
+            let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
+            dock_style.separator_width = 2.0;
+            dock_style.show_close_buttons = false;
+            dock_style.tab_include_scrollarea = false;
+
+            let mut tab_viewer = TabViewer {
+                ctx,
+                spaces_info,
+                space_views: &mut self.blueprint.space_views,
+                maximized: &mut self.blueprint.maximized,
+            };
+
+            egui_dock::DockArea::new(&mut self.blueprint.tree)
+                .style(dock_style)
+                .show_inside(ui, &mut tab_viewer);
+        }
     }
 }
 
