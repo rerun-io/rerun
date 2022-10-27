@@ -417,7 +417,12 @@ impl AppState {
 
         if ctx.rec_cfg.selection.is_some() {
             egui::SidePanel::right("selection_view").show(egui_ctx, |ui| {
-                selection_panel.ui(&mut ctx, ui);
+                let blueprint = &mut viewport_panels
+                    .entry(*selected_recording_id)
+                    .or_default()
+                    .blueprint;
+
+                selection_panel.ui(&mut ctx, blueprint, ui);
             });
         }
 

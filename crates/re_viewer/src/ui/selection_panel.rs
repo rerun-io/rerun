@@ -1,7 +1,9 @@
 use re_data_store::log_db::LogDb;
 use re_log_types::LogMsg;
 
-use crate::{data_ui::*, Preview, Selection, ViewerContext};
+use crate::{data_ui::*, Blueprint, Preview, Selection, ViewerContext};
+
+use super::SpaceView;
 
 /// The "Selection View" side-bar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -10,7 +12,12 @@ pub(crate) struct SelectionPanel {}
 
 impl SelectionPanel {
     #[allow(clippy::unused_self)]
-    pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        ui: &mut egui::Ui,
+    ) {
         crate::profile_function!();
 
         ui.horizontal(|ui| {
@@ -24,12 +31,17 @@ impl SelectionPanel {
         ui.separator();
 
         egui::ScrollArea::vertical().show(ui, |ui| {
-            self.inner_ui(ctx, ui);
+            self.inner_ui(ctx, blueprint, ui);
         });
     }
 
     #[allow(clippy::unused_self)]
-    fn inner_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    fn inner_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        ui: &mut egui::Ui,
+    ) {
         match &ctx.rec_cfg.selection.clone() {
             Selection::None => {
                 ui.weak("(nothing)");
@@ -106,6 +118,14 @@ impl SelectionPanel {
                 ui.label(format!("Selected space: {}", space));
                 // I really don't know what we should show here.
             }
+            Selection::SpaceView(space_view_id) => {
+                if let Some(space_view) = blueprint.get_space_view_mut(space_view_id) {
+                    ui.label("SpaceView");
+                    ui_space_view(ctx, ui, space_view);
+                } else {
+                    ctx.rec_cfg.selection = Selection::None;
+                }
+            }
         }
     }
 }
@@ -116,4 +136,18 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
     } else {
         "<UNKNOWN>".to_owned()
     }
+}
+
+fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
+    egui::Grid::new("space_view").striped(true).show(ui, |ui| {
+        ui.label("Name:");
+        ui.label(&space_view.name);
+        ui.end_row();
+
+        ui.label("Path:");
+        ctx.obj_path_button(ui, &space_view.space_path);
+        ui.end_row();
+    });
+
+    // TODO(emilk): view settings
 }

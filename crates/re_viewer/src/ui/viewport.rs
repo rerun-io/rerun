@@ -19,7 +19,7 @@ use re_data_store::{
 };
 use re_log_types::{ObjectType, Transform, ViewCoordinates};
 
-use crate::misc::{TimeControl, ViewerContext};
+use crate::misc::{Selection, TimeControl, ViewerContext};
 
 use super::view3d::SpaceCamera;
 
@@ -27,7 +27,7 @@ use super::view3d::SpaceCamera;
 
 /// A unique id for each space view.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-struct SpaceViewId(uuid::Uuid);
+pub struct SpaceViewId(uuid::Uuid);
 
 impl SpaceViewId {
     pub fn random() -> Self {
@@ -208,7 +208,7 @@ fn query_view_coordinates(
 
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-struct Blueprint {
+pub struct Blueprint {
     /// Where the space views are stored.
     space_views: HashMap<SpaceViewId, SpaceView>,
 
@@ -221,7 +221,7 @@ struct Blueprint {
 
 impl Blueprint {
     /// Create a default suggested blueprint using some heuristics.
-    pub fn new(obj_db: &ObjDb, spaces_info: &SpacesInfo, available_size: egui::Vec2) -> Self {
+    fn new(obj_db: &ObjDb, spaces_info: &SpacesInfo, available_size: egui::Vec2) -> Self {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
@@ -242,7 +242,17 @@ impl Blueprint {
         blueprint
     }
 
-    pub fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
+    pub fn get_space_view_mut(&mut self, space_view: &SpaceViewId) -> Option<&mut SpaceView> {
+        self.space_views.get_mut(space_view)
+    }
+
+    fn has_space(&self, space_path: &ObjPath) -> bool {
+        self.space_views
+            .values()
+            .any(|view| &view.space_path == space_path)
+    }
+
+    fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
         crate::profile_function!();
         for space_view in self.space_views.values_mut() {
             space_view.on_frame_start(obj_tree);
@@ -250,7 +260,7 @@ impl Blueprint {
     }
 
     /// Show the blueprint panel tree view.
-    pub fn tree_ui(
+    fn tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -258,8 +268,6 @@ impl Blueprint {
         obj_tree: &ObjectTree,
     ) {
         crate::profile_function!();
-
-        let focused = self.tree.find_active_focused().map(|(_, id)| *id);
 
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
@@ -269,8 +277,6 @@ impl Blueprint {
                     .iter_mut()
                     .sorted_by_key(|(_, space_view)| space_view.name.clone())
                 {
-                    let is_focused = Some(*space_view_id) == focused;
-
                     let space_path = &space_view.space_path;
 
                     let collapsing_header_id = ui.make_persistent_id(&space_view_id);
@@ -284,12 +290,11 @@ impl Blueprint {
                     .show_header(ui, |ui| {
                         ui.label("🗖"); // icon indicating this is a space-view
 
-                        if ui.selectable_label(is_focused, &space_view.name).clicked() {
-                            if let Some((node_index, tab_index)) = self.tree.find_tab(space_view_id)
-                            {
-                                self.tree.set_focused_node(node_index);
-                                self.tree.set_active_tab(node_index, tab_index);
-                            }
+                        let is_selected =
+                            ctx.rec_cfg.selection == Selection::SpaceView(*space_view_id);
+                        if ui.selectable_label(is_selected, &space_view.name).clicked() {
+                            ctx.rec_cfg.selection = Selection::SpaceView(*space_view_id);
+                            focus_tab(&mut self.tree, space_view_id);
                         }
 
                         let space_is_also_object = ctx
@@ -320,13 +325,7 @@ impl Blueprint {
             });
     }
 
-    pub fn has_space(&self, space_path: &ObjPath) -> bool {
-        self.space_views
-            .values()
-            .any(|view| &view.space_path == space_path)
-    }
-
-    pub fn add_space_view(&mut self, path: &ObjPath) {
+    fn add_space_view(&mut self, path: &ObjPath) {
         let space_view_id = SpaceViewId::random();
         self.space_views
             .insert(space_view_id, SpaceView::from_path(path.clone()));
@@ -448,9 +447,9 @@ enum ViewCategory {
 
 /// A view of a space.
 #[derive(serde::Deserialize, serde::Serialize)]
-struct SpaceView {
-    name: String,
-    space_path: ObjPath,
+pub struct SpaceView {
+    pub name: String,
+    pub space_path: ObjPath,
     view_state: ViewState,
 
     /// In case we are a mix of 2d/3d/tensor/text, we show what?
@@ -858,7 +857,7 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewportPanel {
-    blueprint: Blueprint,
+    pub blueprint: Blueprint,
 }
 
 impl ViewportPanel {
@@ -1179,4 +1178,11 @@ fn first_tab(tree: &egui_dock::Tree<SpaceViewId>) -> Option<SpaceViewId> {
         }
     }
     None
+}
+
+fn focus_tab(tree: &mut egui_dock::Tree<SpaceViewId>, tab: &SpaceViewId) {
+    if let Some((node_index, tab_index)) = tree.find_tab(tab) {
+        tree.set_focused_node(node_index);
+        tree.set_active_tab(node_index, tab_index);
+    }
 }
