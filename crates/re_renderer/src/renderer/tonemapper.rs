@@ -46,7 +46,7 @@ impl TonemapperDrawable {
                 device,
                 &BindGroupDesc {
                     label: "tonemapping".into(),
-                    entries: smallvec![BindGroupEntry::TextureView(**hdr_target)],
+                    entries: smallvec![BindGroupEntry::DefaultTextureView(**hdr_target)],
                     layout: tonemapper.bind_group_layout,
                 },
                 &pools.bind_group_layouts,

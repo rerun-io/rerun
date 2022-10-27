@@ -69,6 +69,8 @@ pub(crate) struct TexturePool {
 }
 
 impl TexturePool {
+    /// Returns a ref counted handle to a currently unused texture.
+    /// Once ownership to the handle is given up, the texture may be reclaimed in future frames.
     pub fn alloc(
         &mut self,
         device: &wgpu::Device,
@@ -85,21 +87,22 @@ impl TexturePool {
         })
     }
 
+    /// Called by [`crate::RenderContext`] every frame. Updates statistics and may free unused textures.
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         self.pool.frame_maintenance(frame_index);
     }
 
-    /// Takes strong buffer handle to ensure the user is still holding on to the buffer.
+    /// Takes strong texture handle to ensure the user is still holding on to the texture.
     pub fn get_resource(&self, handle: &TextureHandleStrong) -> Result<&Texture, PoolError> {
         self.pool.get_resource(**handle)
     }
 
-    /// Internal method to retrieve a resource with a weak handle (used by [`BindGroupPool`])
+    /// Internal method to retrieve a resource with a weak handle (used by [`BindGroupPool`]).
     pub(super) fn get_resource_weak(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    /// Internal method to retrieve a strong handle from a weak handle (used by [`BindGroupPool`])
+    /// Internal method to retrieve a strong handle from a weak handle (used by [`BindGroupPool`]).
     pub(super) fn get_strong_handle(&self, handle: TextureHandle) -> &TextureHandleStrong {
         self.pool.get_strong_handle(handle)
     }

@@ -50,7 +50,7 @@ impl UsageTrackedResource for BindGroup {
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) enum BindGroupEntry {
-    TextureView(TextureHandle), // TODO(andreas) what about non-default views?
+    DefaultTextureView(TextureHandle), // TODO(andreas) what about non-default views?
     Buffer {
         handle: BufferHandle,
 
@@ -91,10 +91,16 @@ pub(crate) struct BindGroupDesc {
 pub(crate) struct BindGroupPool {
     // Use a DynamicResourcePool because it gives out reference counted handles
     // which makes interacting with buffer/textures easier.
+    //
+    // On the flipside if someone requests the exact same bind group again as before,
+    // they'll get a new one which is unnecessary. But this is *very* unlikely to ever happen.
     pool: DynamicResourcePool<BindGroupHandle, BindGroupDesc, BindGroup>,
 }
 
 impl BindGroupPool {
+    /// Returns a ref counted handle to a currently unused bind-group.
+    /// Once ownership to the handle is given up, the bind group may be reclaimed in future frames.
+    /// The handle also keeps alive any dependent resources.
     pub fn alloc(
         &mut self,
         device: &wgpu::Device,
@@ -115,7 +121,7 @@ impl BindGroupPool {
                     .map(|(index, entry)| wgpu::BindGroupEntry {
                         binding: index as _,
                         resource: match entry {
-                            BindGroupEntry::TextureView(handle) => {
+                            BindGroupEntry::DefaultTextureView(handle) => {
                                 wgpu::BindingResource::TextureView(
                                     &textures.get_resource_weak(*handle).unwrap().default_view,
                                 )
@@ -166,7 +172,7 @@ impl BindGroupPool {
             .entries
             .iter()
             .filter_map(|e| {
-                if let BindGroupEntry::TextureView(handle) = e {
+                if let BindGroupEntry::DefaultTextureView(handle) = e {
                     Some(textures.get_strong_handle(*handle).clone())
                 } else {
                     None

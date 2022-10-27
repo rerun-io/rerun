@@ -345,8 +345,8 @@ impl LineDrawable {
                 &BindGroupDesc {
                     label: "line drawable".into(),
                     entries: smallvec![
-                        BindGroupEntry::TextureView(*position_data_texture),
-                        BindGroupEntry::TextureView(*line_strip_texture),
+                        BindGroupEntry::DefaultTextureView(*position_data_texture),
+                        BindGroupEntry::DefaultTextureView(*line_strip_texture),
                     ],
                     layout: line_renderer.bind_group_layout,
                 },

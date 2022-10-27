@@ -13,7 +13,7 @@ use super::resource::*;
 
 /// Generic resource pool for all resources that have varying contents beyond their description.
 ///
-/// Unlike in [`StaticResourcePool`], a resource is not uniquely identified by its description.
+/// Unlike in [`super::static_resource_pool::StaticResourcePool`], a resource is not uniquely identified by its description.
 pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
     // All known resources of this type.
     resources: SlotMap<Handle, (Desc, Res)>,

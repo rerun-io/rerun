@@ -40,6 +40,11 @@ pub struct BufferPool {
 }
 
 impl BufferPool {
+    /// Returns a ref counted handle to a currently unused buffer.
+    /// Once ownership to the handle is given up, the buffer may be reclaimed in future frames.
+    ///
+    /// For more efficient allocation (faster, less fragmentation) you should sub-allocate buffers whenever possible
+    /// either manually or using a higher level allocator.
     pub fn alloc(
         &mut self,
         device: &wgpu::Device,
@@ -59,6 +64,7 @@ impl BufferPool {
         })
     }
 
+    /// Called by [`crate::RenderContext`] every frame. Updates statistics and may free unused buffers.
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         self.pool.frame_maintenance(frame_index);
     }
