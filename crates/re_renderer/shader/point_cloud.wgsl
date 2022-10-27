@@ -1,4 +1,4 @@
-#import <./frame_uniform.wgsl>
+#import <./global_bindings.wgsl>
 
 @group(1) @binding(0)
 var position_data_texture: texture_2d<f32>;

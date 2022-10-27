@@ -333,10 +333,6 @@ pub(crate) fn ui_data(
         Data::Vec3([x, y, z]) => ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]")),
         Data::Box3(_) => ui.label("3D box"),
         Data::Mesh3D(_) => ui.label("3D mesh"),
-        Data::Camera(cam) => match preview {
-            Preview::Small | Preview::Specific(_) => ui.label("Camera"),
-            Preview::Medium => ui_camera(ui, cam),
-        },
         Data::Arrow3D(Arrow3D { origin, vector }) => {
             let &[x, y, z] = origin;
             let &[v0, v1, v2] = vector;
@@ -348,6 +344,7 @@ pub(crate) fn ui_data(
             Preview::Small | Preview::Specific(_) => ui.label("Transform"),
             Preview::Medium => ui_transform(ui, transform),
         },
+        Data::ViewCoordinates(coordinates) => ui_view_coordinates(ui, coordinates),
 
         Data::Tensor(tensor) => {
             let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
@@ -384,22 +381,7 @@ pub(crate) fn ui_data(
             .response
         }
 
-        Data::ObjPath(obj_path) => {
-            // NOTE(emilk): Hack that will be fixed by https://linear.app/rerun/issue/PRO-98/refactor-spaces
-            let is_space = ctx.log_db.get_log_msg(msg_id).map_or(false, |log_msg| {
-                if let LogMsg::DataMsg(data_msg) = log_msg {
-                    data_msg.data_path.field_name == "space"
-                } else {
-                    false
-                }
-            });
-
-            if is_space {
-                ctx.space_button(ui, obj_path)
-            } else {
-                ctx.obj_path_button(ui, obj_path)
-            }
-        }
+        Data::ObjPath(obj_path) => ctx.obj_path_button(ui, obj_path),
 
         Data::DataVec(data_vec) => ui_data_vec(ui, data_vec),
     }
@@ -413,82 +395,27 @@ pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Respon
     ))
 }
 
-fn ui_camera(ui: &mut egui::Ui, cam: &Camera) -> egui::Response {
-    let Camera {
-        extrinsics,
-        intrinsics,
-        target_space,
-    } = cam;
-
-    let Extrinsics {
-        rotation,
-        position,
-        camera_space_convention,
-    } = extrinsics;
-
-    ui.vertical(|ui| {
-        ui.label("Camera");
-        ui.indent("camera", |ui| {
-            egui::Grid::new("camera")
-                .striped(true)
-                .num_columns(2)
-                .show(ui, |ui| {
-                    ui.label("rotation");
-                    ui.monospace(format!("{rotation:?}"));
-                    ui.end_row();
-
-                    ui.label("position");
-                    ui.monospace(format!("{position:?}"));
-                    ui.end_row();
-
-                    ui.label("camera_space_convention");
-                    ui.monospace(format!("{camera_space_convention:?}"));
-                    ui.end_row();
-
-                    if let Some(Intrinsics {
-                        intrinsics_matrix,
-                        resolution,
-                    }) = intrinsics
-                    {
-                        ui.label("intrinsics matrix");
-                        ui_intrinsics_matrix(ui, intrinsics_matrix);
-                        ui.end_row();
-
-                        ui.label("resolution");
-                        ui.monospace(format!("{resolution:?}"));
-                        ui.end_row();
-                    }
-
-                    ui.label("target_space");
-                    if let Some(target_space) = target_space {
-                        ui.monospace(target_space.to_string());
-                    }
-                    ui.end_row();
-                });
-        });
-    })
-    .response
-}
-
 fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
     match transform {
         Transform::Unknown => ui.label("Unknown"),
-        Transform::Extrinsics(extrinsics) => ui_extrinsics(ui, extrinsics),
-        Transform::Intrinsics(intrinsics) => ui_intrinsics(ui, intrinsics),
+        Transform::Rigid3(rigid3) => ui_rigid3(ui, rigid3),
+        Transform::Pinhole(pinhole) => ui_pinhole(ui, pinhole),
     }
 }
 
-fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
-    let Extrinsics {
-        rotation,
-        position,
-        camera_space_convention,
-    } = extrinsics;
+fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Response {
+    ui.label(system.describe())
+}
+
+fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
+    let pose = rigid3.parent_from_child(); // TODO(emilk): which one to show?
+    let rotation = pose.rotation();
+    let translation = pose.translation();
 
     ui.vertical(|ui| {
-        ui.label("Extrinsics");
-        ui.indent("extrinsics", |ui| {
-            egui::Grid::new("extrinsics")
+        ui.label("Rigid3");
+        ui.indent("rigid3", |ui| {
+            egui::Grid::new("rigid3")
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
@@ -496,12 +423,8 @@ fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
                     ui.monospace(format!("{rotation:?}"));
                     ui.end_row();
 
-                    ui.label("position");
-                    ui.monospace(format!("{position:?}"));
-                    ui.end_row();
-
-                    ui.label("camera_space_convention");
-                    ui.monospace(format!("{camera_space_convention:?}"));
+                    ui.label("translation");
+                    ui.monospace(format!("{translation:?}"));
                     ui.end_row();
                 });
         });
@@ -509,21 +432,21 @@ fn ui_extrinsics(ui: &mut egui::Ui, extrinsics: &Extrinsics) -> egui::Response {
     .response
 }
 
-fn ui_intrinsics(ui: &mut egui::Ui, intrinsics: &Intrinsics) -> egui::Response {
-    let Intrinsics {
-        intrinsics_matrix,
+fn ui_pinhole(ui: &mut egui::Ui, pinhole: &Pinhole) -> egui::Response {
+    let Pinhole {
+        image_from_cam: image_from_view,
         resolution,
-    } = intrinsics;
+    } = pinhole;
 
     ui.vertical(|ui| {
-        ui.label("Intrinsics");
-        ui.indent("intrinsics", |ui| {
-            egui::Grid::new("intrinsics")
+        ui.label("Pinhole");
+        ui.indent("pinole", |ui| {
+            egui::Grid::new("pinole")
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
-                    ui.label("intrinsics matrix");
-                    ui_intrinsics_matrix(ui, intrinsics_matrix);
+                    ui.label("image from view");
+                    ui_mat3(ui, image_from_view);
                     ui.end_row();
 
                     ui.label("resolution");
@@ -535,21 +458,21 @@ fn ui_intrinsics(ui: &mut egui::Ui, intrinsics: &Intrinsics) -> egui::Response {
     .response
 }
 
-fn ui_intrinsics_matrix(ui: &mut egui::Ui, intrinsics: &[[f32; 3]; 3]) {
-    egui::Grid::new("intrinsics").num_columns(3).show(ui, |ui| {
-        ui.monospace(intrinsics[0][0].to_string());
-        ui.monospace(intrinsics[1][0].to_string());
-        ui.monospace(intrinsics[2][0].to_string());
+fn ui_mat3(ui: &mut egui::Ui, mat: &[[f32; 3]; 3]) {
+    egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
+        ui.monospace(mat[0][0].to_string());
+        ui.monospace(mat[1][0].to_string());
+        ui.monospace(mat[2][0].to_string());
         ui.end_row();
 
-        ui.monospace(intrinsics[0][1].to_string());
-        ui.monospace(intrinsics[1][1].to_string());
-        ui.monospace(intrinsics[2][1].to_string());
+        ui.monospace(mat[0][1].to_string());
+        ui.monospace(mat[1][1].to_string());
+        ui.monospace(mat[2][1].to_string());
         ui.end_row();
 
-        ui.monospace(intrinsics[0][2].to_string());
-        ui.monospace(intrinsics[1][2].to_string());
-        ui.monospace(intrinsics[2][2].to_string());
+        ui.monospace(mat[0][2].to_string());
+        ui.monospace(mat[1][2].to_string());
+        ui.monospace(mat[2][2].to_string());
         ui.end_row();
     });
 }

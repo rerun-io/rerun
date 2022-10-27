@@ -67,13 +67,17 @@ fn main() {
     .to_owned();
 
     let walker = WalkDir::new(&root_path).into_iter();
-    for entry in walker.filter_entry(is_wgsl_or_dir) {
-        let entry = entry.unwrap();
+    let entries = {
+        let mut entries = walker
+            .filter_entry(is_wgsl_or_dir)
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| entry.file_type().is_file())
+            .collect::<Vec<_>>();
+        entries.sort_by(|a, b| a.path().cmp(b.path()));
+        entries
+    };
 
-        if !entry.file_type().is_file() {
-            continue;
-        }
-
+    for entry in entries {
         rerun_if_changed(entry.path().to_string_lossy().as_ref());
 
         // The relative path to get from the current shader file to `workspace_shaders.rs`.

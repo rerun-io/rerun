@@ -21,12 +21,24 @@ pub fn init() {
     }
 
     {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/test_triangle.wgsl");
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/global_bindings.wgsl");
         fs.create_file(
             &virtpath,
-            include_str!("../shader/test_triangle.wgsl").into(),
+            include_str!("../shader/global_bindings.wgsl").into(),
         )
         .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/lines.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/lines.wgsl").into())
+            .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/point_cloud.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/point_cloud.wgsl").into())
+            .unwrap();
     }
 
     {
@@ -39,16 +51,10 @@ pub fn init() {
     }
 
     {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/point_cloud.wgsl");
-        fs.create_file(&virtpath, include_str!("../shader/point_cloud.wgsl").into())
-            .unwrap();
-    }
-
-    {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/frame_uniform.wgsl");
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/test_triangle.wgsl");
         fs.create_file(
             &virtpath,
-            include_str!("../shader/frame_uniform.wgsl").into(),
+            include_str!("../shader/test_triangle.wgsl").into(),
         )
         .unwrap();
     }
@@ -60,8 +66,23 @@ pub fn init() {
     }
 
     {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/lines.wgsl");
-        fs.create_file(&virtpath, include_str!("../shader/lines.wgsl").into())
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/types.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/types.wgsl").into())
+            .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/utils/encoding.wgsl");
+        fs.create_file(
+            &virtpath,
+            include_str!("../shader/utils/encoding.wgsl").into(),
+        )
+        .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/utils/srgb.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/utils/srgb.wgsl").into())
             .unwrap();
     }
 }

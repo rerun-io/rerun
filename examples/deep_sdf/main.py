@@ -65,7 +65,7 @@ def log_timing_decorator(objpath: str, level: str):  # type: ignore[no-untyped-d
             now = timer()
             result = func(*args, **kwargs)
             elapsed_ms = (timer() - now) * 1_000.0
-            rerun.log_text_entry(objpath, f"execution took {elapsed_ms:.1f}ms", level=level, space="autologs")
+            rerun.log_text_entry(objpath, f"execution took {elapsed_ms:.1f}ms", level=level)
             return result
 
         return wrapper
@@ -119,33 +119,32 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
         scale = bs2.scale / bs1.scale
         center = bs2.center - bs1.center * scale
         rerun.log_mesh_file(
-            "3d/mesh",
+            "world/mesh",
             mesh_format,
             file.read(),
-            space="3d",
             transform=np.array([[scale, 0, 0, center[0]], [0, scale, 0, center[1]], [0, 0, scale, center[2]]]),
         )
 
 
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:
-    rerun.set_space_up("3d", [0, 1, 0])  # TODO(cmc): depends on the mesh really
+    # rerun.log_view_coordinates("world", up="+Y", timeless=True # TODO(cmc): depends on the mesh really
 
     inside = points[sdf <= 0]
     rerun.log_text_entry(
-        "3d/sdf/inside/logs", f"{len(inside)} points inside ({len(points)} total)", level=LogLevel.TRACE
+        "world/sdf/inside/logs", f"{len(inside)} points inside ({len(points)} total)", level=LogLevel.TRACE
     )
-    rerun.log_points("3d/sdf/inside", points[sdf <= 0], colors=np.array([255, 0, 0, 255]), space="3d")
+    rerun.log_points("world/sdf/inside", points[sdf <= 0], colors=np.array([255, 0, 0, 255]))
 
     outside = points[sdf > 0]
     rerun.log_text_entry(
-        "3d/sdf/outside/logs", f"{len(outside)} points outside ({len(points)} total)", level=LogLevel.TRACE
+        "world/sdf/outside/logs", f"{len(outside)} points outside ({len(points)} total)", level=LogLevel.TRACE
     )
-    rerun.log_points("3d/sdf/outside", points[sdf > 0], colors=np.array([0, 255, 0, 255]), space="3d")
+    rerun.log_points("world/sdf/outside", points[sdf > 0], colors=np.array([0, 255, 0, 255]))
 
 
 def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
     names = ["width", "height", "depth"]
-    rerun.log_tensor("tensor", voxvol, names=names, space="tensor")
+    rerun.log_tensor("tensor", voxvol, names=names)
 
 
 if __name__ == "__main__":

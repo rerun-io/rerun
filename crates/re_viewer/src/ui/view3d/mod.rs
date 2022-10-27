@@ -1,5 +1,6 @@
 mod eye;
 pub(crate) mod scene;
+mod space_camera;
 
 #[cfg(feature = "glow")]
 mod glow_rendering;
@@ -13,11 +14,12 @@ pub use mesh_cache::CpuMeshCache;
 use eye::*;
 use re_data_store::{InstanceId, InstanceIdHash};
 use scene::*;
+pub use space_camera::SpaceCamera;
 
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
-use re_log_types::{IndexHash, ObjPath};
+use re_log_types::{ObjPath, ViewCoordinates};
 
 use crate::{
     misc::{HoveredSpace, Selection},
@@ -191,22 +193,24 @@ fn show_settings_ui(
 ) {
     ui.horizontal(|ui| {
         {
-            let up = space_specs.up.normalize_or_zero();
-
-            let up_response = if up == Vec3::X {
-                ui.label("Up: +X")
-            } else if up == -Vec3::X {
-                ui.label("Up: -X")
-            } else if up == Vec3::Y {
-                ui.label("Up: +Y")
-            } else if up == -Vec3::Y {
-                ui.label("Up: -Y")
-            } else if up == Vec3::Z {
-                ui.label("Up: +Z")
-            } else if up == -Vec3::Z {
-                ui.label("Up: -Z")
-            } else if up != Vec3::ZERO {
-                ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
+            let up_response = if let Some(up) = space_specs.up {
+                if up == Vec3::X {
+                    ui.label("Up: +X")
+                } else if up == -Vec3::X {
+                    ui.label("Up: -X")
+                } else if up == Vec3::Y {
+                    ui.label("Up: +Y")
+                } else if up == -Vec3::Y {
+                    ui.label("Up: -Y")
+                } else if up == Vec3::Z {
+                    ui.label("Up: +Z")
+                } else if up == -Vec3::Z {
+                    ui.label("Up: -Z")
+                } else if up != Vec3::ZERO {
+                    ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
+                } else {
+                    ui.label("Up: —")
+                }
             } else {
                 ui.label("Up: —")
             };
@@ -215,7 +219,7 @@ fn show_settings_ui(
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
                     ui.label("Set with ");
-                    ui.code("rerun.set_space_up");
+                    ui.code("rerun.log_view_coordinates");
                     ui.label(".");
                 });
             });
@@ -258,20 +262,16 @@ fn show_settings_ui(
 
 #[derive(Default)]
 pub(crate) struct SpaceSpecs {
-    /// ZERO = unset
-    up: glam::Vec3,
+    up: Option<glam::Vec3>,
+    right: Option<glam::Vec3>,
 }
 
 impl SpaceSpecs {
-    pub fn from_objects(space: Option<&ObjPath>, objects: &re_data_store::Objects<'_>) -> Self {
-        if let Some(space) = space {
-            if let Some(space) = objects.space.get(&space) {
-                return SpaceSpecs {
-                    up: Vec3::from(*space.up).normalize_or_zero(),
-                };
-            }
-        }
-        Default::default()
+    pub fn from_view_coordinates(coordinates: Option<ViewCoordinates>) -> Self {
+        let up = (|| Some(coordinates?.up()?.as_vec3().into()))();
+        let right = (|| Some(coordinates?.right()?.as_vec3().into()))();
+
+        Self { up, right }
     }
 }
 
@@ -288,18 +288,18 @@ fn find_camera(space_cameras: &[SpaceCamera], needle: &InstanceId) -> Option<Eye
     let mut found_camera = None;
 
     for camera in space_cameras {
-        if needle.obj_path == camera.obj_path
+        if needle.obj_path == camera.camera_obj_path
             && camera.instance_index_hash == needle.instance_index_hash()
         {
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {
-                found_camera = Some((&camera.extrinsics, camera.intrinsics.as_ref()));
+                found_camera = Some(camera);
             }
         }
     }
 
-    found_camera.map(|(extrinsics, intrinsics)| Eye::from_camera(extrinsics, intrinsics))
+    found_camera.and_then(Eye::from_camera)
 }
 
 fn click_object(
@@ -322,32 +322,7 @@ fn click_object(
     }
 }
 
-/// A camera that projects spaces
-pub(crate) struct SpaceCamera {
-    pub obj_path: ObjPath,
-    pub instance_index_hash: IndexHash,
-
-    pub extrinsics: re_log_types::Extrinsics,
-    pub intrinsics: Option<re_log_types::Intrinsics>,
-
-    /// The 2D space we project into.
-    pub target_space: Option<ObjPath>,
-}
-
-/// Gathers all camera objects.
-pub(crate) fn space_cameras(objects: &re_data_store::Objects<'_>) -> Vec<SpaceCamera> {
-    objects
-        .camera
-        .iter()
-        .map(|(props, cam)| SpaceCamera {
-            obj_path: props.obj_path.clone(),
-            instance_index_hash: props.instance_index,
-            extrinsics: *cam.extrinsics,
-            intrinsics: *cam.intrinsics,
-            target_space: cam.target_space.clone(),
-        })
-        .collect()
-}
+// ----------------------------------------------------------------------------
 
 pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
@@ -584,27 +559,18 @@ fn show_projections_from_2d_space(
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
         for cam in space_cameras {
             if &cam.target_space == space_2d {
-                let extrinsics = &cam.extrinsics;
-                let intrinsics = cam.intrinsics.as_ref();
-
-                if let Some(ray) = crate::misc::cam::unproject_as_ray(
-                    extrinsics,
-                    intrinsics,
-                    glam::vec2(pos.x, pos.y),
-                ) {
+                if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // TODO(emilk): better visualization of a ray
                     let mut hit_pos = None;
                     if pos.z.is_finite() && pos.z > 0.0 {
-                        if let Some(world_from_image) =
-                            crate::misc::cam::world_from_image(extrinsics, intrinsics)
-                        {
+                        if let Some(world_from_image) = cam.world_from_image() {
                             let pos = world_from_image
                                 .transform_point3(glam::vec3(pos.x, pos.y, 1.0) * pos.z);
                             hit_pos = Some(pos);
                         }
                     }
                     let length = if let Some(hit_pos) = hit_pos {
-                        hit_pos.distance(Vec3::from_slice(&extrinsics.position))
+                        hit_pos.distance(cam.position())
                     } else {
                         4.0 * state.scene_bbox.half_size().length() // should be long enough
                     };
@@ -654,15 +620,13 @@ fn project_onto_other_spaces(
         let mut target_spaces = vec![];
         for cam in space_cameras {
             if let Some(target_space) = cam.target_space.clone() {
-                let extrinsics = &cam.extrinsics;
-                let intrinsics = cam.intrinsics.as_ref();
-
-                let ray_in_2d = crate::misc::cam::image_from_world(extrinsics, intrinsics)
+                let ray_in_2d = cam
+                    .image_from_world()
                     .map(|image_from_world| (image_from_world * ray_in_world).normalize());
 
-                let point_in_2d = state.hovered_point.and_then(|hovered_point| {
-                    crate::misc::cam::project_onto_2d(extrinsics, intrinsics, hovered_point)
-                });
+                let point_in_2d = state
+                    .hovered_point
+                    .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
 
                 target_spaces.push((target_space, ray_in_2d, point_in_2d));
             }
@@ -674,7 +638,7 @@ fn project_onto_other_spaces(
     }
 }
 
-fn default_eye(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> OrbitEye {
+fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {
     let mut center = scene_bbox.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
@@ -685,16 +649,20 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> Or
         radius = 1.0;
     }
 
-    let look_up = if space_spects.up == Vec3::ZERO {
-        Vec3::Z
+    let look_up = space_specs.up.unwrap_or(Vec3::Z);
+
+    let look_dir = if let Some(right) = space_specs.right {
+        // Make sure right is to the right, and up is up:
+        let fwd = look_up.cross(right);
+        0.75 * fwd + 0.25 * right - 0.25 * look_up
     } else {
-        space_spects.up.normalize()
+        // Look along the cardinal directions:
+        let look_dir = vec3(1.0, 1.0, 1.0);
+
+        // Make sure the eye is looking down, but just slightly:
+        look_dir + look_up * (-0.5 - look_dir.dot(look_up))
     };
 
-    // Look along the cardinal directions:
-    let look_dir = vec3(1.0, 1.0, 1.0);
-    // Make sure the eye is looking down, but just slightly:
-    let look_dir = look_dir + look_up * (-0.5 - look_dir.dot(look_up));
     let look_dir = look_dir.normalize();
 
     let eye_pos = center - radius * look_dir;
@@ -706,7 +674,7 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_spects: &SpaceSpecs) -> Or
             &Affine3A::look_at_rh(eye_pos, center, look_up).inverse(),
         ),
         fov_y: eye::DEFAULT_FOV_Y,
-        up: space_spects.up,
+        up: space_specs.up.unwrap_or(Vec3::ZERO),
         velocity: Vec3::ZERO,
     }
 }

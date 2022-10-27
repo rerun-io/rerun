@@ -1,15 +1,8 @@
-//! New experimental viewport panel.
+//! The viewport panel.
 //!
-//! Before the new panel is up-to-par with the existing viewport panel, we need to:
+//! Contains all space views.
 //!
-//! * [x] Render the 3D camera
-//! * [x] Project rays and points between spaces
-//! * [x] Don't create extraneous views of "intermediate" spaces (e.g. camera space)
-//! * [ ] Convert existing python examples to the new style
-//! * [ ] Write good docs for how to use the new system
-//! * [ ] Remove the old code path
-//!
-//! After that we can implement:
+//! To do:
 //! * [ ] Opening up new Space Views
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
@@ -23,7 +16,7 @@ use nohash_hasher::IntSet;
 use re_data_store::{
     log_db::ObjDb, FieldName, ObjPath, ObjPathComp, ObjectTree, Objects, TimeQuery, TimelineStore,
 };
-use re_log_types::{ObjectType, Transform};
+use re_log_types::{ObjectType, Transform, ViewCoordinates};
 
 use crate::misc::{TimeControl, ViewerContext};
 
@@ -48,6 +41,9 @@ impl SpaceViewId {
 /// This is gathered by analyzing the transform hierarchy of the objects.
 #[derive(Default)]
 struct SpaceInfo {
+    /// The latest known coordinate system for this space.
+    coordinates: Option<ViewCoordinates>,
+
     /// All paths in this space (including self and children connected by the identity transform).
     objects: IntSet<ObjPath>,
 
@@ -151,13 +147,17 @@ impl SpacesInfo {
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
+        for (obj_path, space_info) in &mut spaces_info.spaces {
+            space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
+        }
+
         spaces_info
     }
 }
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value of the "_transform" meta-field of the given object.
+/// Get the latest value of the `_transform` meta-field of the given object.
 fn query_transform(
     store: Option<&TimelineStore<i64>>,
     obj_path: &ObjPath,
@@ -176,6 +176,31 @@ fn query_transform(
     // If not, return an unknown transform to indicate that there is
     // still a space-split.
     Some(latest.unwrap_or(Transform::Unknown))
+}
+
+/// Get the latest value of the `_view_coordinates` meta-field of the given object.
+fn query_view_coordinates(
+    obj_db: &ObjDb,
+    time_ctrl: &TimeControl,
+    obj_path: &ObjPath,
+) -> Option<re_log_types::ViewCoordinates> {
+    let query_time = time_ctrl.time()?;
+    let timeline = time_ctrl.timeline();
+
+    let store = obj_db.store.get(timeline)?;
+
+    let field_store = store
+        .get(obj_path)?
+        .get(&re_data_store::FieldName::from("_view_coordinates"))?;
+
+    // `_view_coordinates` is only allowed to be stored in a mono-field.
+    let mono_field_store = field_store
+        .get_mono::<re_log_types::ViewCoordinates>()
+        .ok()?;
+
+    mono_field_store
+        .latest_at(&query_time.floor().as_i64())
+        .map(|(_time, (_msg_id, system))| *system)
 }
 
 // ----------------------------------------------------------------------------
@@ -203,18 +228,8 @@ impl Blueprint {
         let mut space_make_infos = vec![];
 
         for (path, space_info) in &spaces_info.spaces {
-            // Is this space worthy of its own view?
-            if space_info.objects.len() == 1 {
-                // Only one object in this view…
-                let obj = space_info.objects.iter().next().unwrap();
-                match obj_db.types.get(obj.obj_type_path()) {
-                    None | Some(ObjectType::Camera) => {
-                        // Either nothing to show, or it is the legacy camera
-                        // that will be removed as soon as this new viewport replaces the old.
-                        continue;
-                    }
-                    _ => {}
-                }
+            if !should_have_default_view(obj_db, space_info) {
+                continue;
             }
 
             let space_view_id = SpaceViewId::random();
@@ -234,9 +249,12 @@ impl Blueprint {
             });
         }
 
-        let layout = layout_spaces(available_size, &mut space_make_infos);
         blueprint.tree = egui_dock::Tree::new(vec![]);
-        tree_from_split(&mut blueprint.tree, egui_dock::NodeIndex(0), &layout);
+
+        if !space_make_infos.is_empty() {
+            let layout = layout_spaces(available_size, &mut space_make_infos);
+            tree_from_split(&mut blueprint.tree, egui_dock::NodeIndex(0), &layout);
+        }
 
         blueprint
     }
@@ -285,6 +303,49 @@ impl Blueprint {
                 }
             });
     }
+
+    pub fn has_space(&self, space_path: &ObjPath) -> bool {
+        self.space_views
+            .values()
+            .any(|view| &view.space_path == space_path)
+    }
+
+    pub fn add_space(&mut self, path: &ObjPath) {
+        let space_view_id = SpaceViewId::random();
+        self.space_views.insert(
+            space_view_id,
+            SpaceView {
+                name: path.to_string(),
+                space_path: path.clone(),
+                view_state: Default::default(),
+                selected_category: ViewCategory::TwoD,
+            },
+        );
+
+        if let Some(first_leaf) = self
+            .tree
+            .iter()
+            .enumerate()
+            .find_map(|(i, node)| node.is_leaf().then_some(i))
+        {
+            self.tree
+                .split_right(first_leaf.into(), 0.5, vec![space_view_id]);
+        } else {
+            self.tree.push_to_first_leaf(space_view_id);
+        }
+    }
+}
+
+/// Is this space worthy of its on space view by default?
+fn should_have_default_view(obj_db: &ObjDb, space_info: &SpaceInfo) -> bool {
+    if space_info.objects.len() == 1 {
+        // Only one object in this view…
+        let obj = space_info.objects.iter().next().unwrap();
+        if obj_db.types.get(obj.obj_type_path()).is_none() {
+            return false; // It doesn't have a type, so it is probably just the `_transform`, so nothing to show.
+        }
+    }
+    true
 }
 
 fn show_children(ui: &mut egui::Ui, space_info: &SpaceInfo, tree: &ObjectTree) {
@@ -329,7 +390,8 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_cameras: &[SpaceCamera],
+        spaces_info: &SpacesInfo,
+        space_info: &SpaceInfo,
         time_objects: &Objects<'_>,
         sticky_objects: &Objects<'_>,
     ) -> egui::Response {
@@ -362,8 +424,14 @@ impl SpaceView {
                     self.view_state
                         .ui_2d(ctx, ui, &self.space_path, time_objects)
                 } else if has_3d {
-                    self.view_state
-                        .ui_3d(ctx, ui, &self.space_path, space_cameras, time_objects)
+                    self.view_state.ui_3d(
+                        ctx,
+                        ui,
+                        &self.space_path,
+                        spaces_info,
+                        space_info,
+                        time_objects,
+                    )
                 } else if let Some(multidim_tensor) = multidim_tensor {
                     self.view_state.ui_tensor(ui, multidim_tensor)
                 } else {
@@ -401,7 +469,8 @@ impl SpaceView {
                                 ctx,
                                 ui,
                                 &self.space_path,
-                                space_cameras,
+                                spaces_info,
+                                space_info,
                                 time_objects,
                             );
                         }
@@ -454,12 +523,15 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
-        space_cameras: &[SpaceCamera],
+        spaces_info: &SpacesInfo,
+        space_info: &SpaceInfo,
         objects: &Objects<'_>,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
-            let space_specs = crate::view3d::SpaceSpecs::from_objects(Some(space), objects);
+            let space_cameras = &space_cameras(spaces_info, space_info);
+            let coordinates = space_info.coordinates;
+            let space_specs = crate::view3d::SpaceSpecs::from_view_coordinates(coordinates);
             let scene = crate::view3d::scene::Scene::from_objects(ctx, objects);
             crate::view3d::view_3d(
                 ctx,
@@ -494,7 +566,7 @@ impl ViewState {
     }
 }
 
-/// Look for camera extrinsics and intrinsics in the transform hierarchy
+/// Look for camera transform and pinhole in the transform hierarchy
 /// and return them as cameras.
 fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera> {
     crate::profile_function!();
@@ -502,30 +574,39 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
     let mut space_cameras = vec![];
 
     for (child_path, child_transform) in &space_info.child_spaces {
-        if let Transform::Extrinsics(extrinsics) = child_transform {
-            let mut found_any_intrinsics = false;
+        if let Transform::Rigid3(world_from_camera) = child_transform {
+            let world_from_camera = world_from_camera.parent_from_child();
+
+            let view_space = spaces_info
+                .spaces
+                .get(child_path)
+                .and_then(|child| child.coordinates);
+
+            let mut found_any_pinhole = false;
 
             if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
                 for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
-                    if let Transform::Intrinsics(intrinsics) = grand_child_transform {
+                    if let Transform::Pinhole(pinhole) = grand_child_transform {
                         space_cameras.push(SpaceCamera {
-                            obj_path: child_path.clone(),
+                            camera_obj_path: child_path.clone(),
                             instance_index_hash: re_log_types::IndexHash::NONE,
-                            extrinsics: *extrinsics,
-                            intrinsics: Some(*intrinsics),
+                            camera_view_coordinates: view_space,
+                            world_from_camera,
+                            pinhole: Some(*pinhole),
                             target_space: Some(grand_child_path.clone()),
                         });
-                        found_any_intrinsics = true;
+                        found_any_pinhole = true;
                     }
                 }
             }
 
-            if !found_any_intrinsics {
+            if !found_any_pinhole {
                 space_cameras.push(SpaceCamera {
-                    obj_path: child_path.clone(),
+                    camera_obj_path: child_path.clone(),
                     instance_index_hash: re_log_types::IndexHash::NONE,
-                    extrinsics: *extrinsics,
-                    intrinsics: None,
+                    camera_view_coordinates: view_space,
+                    world_from_camera,
+                    pinhole: None,
                     target_space: None,
                 });
             }
@@ -654,9 +735,14 @@ fn space_view_ui(
         }
         let sticky_objects = filter_objects(ctx, &sticky_objects);
 
-        let space_cameras = &space_cameras(spaces_info, space_info);
-
-        space_view.objects_ui(ctx, ui, space_cameras, &time_objects, &sticky_objects)
+        space_view.objects_ui(
+            ctx,
+            ui,
+            spaces_info,
+            space_info,
+            &time_objects,
+            &sticky_objects,
+        )
     } else {
         unknown_space_label(ui, &space_view.space_path)
     }
@@ -684,11 +770,11 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
 // ----------------------------------------------------------------------------
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub(crate) struct ExperimentalViewportPanel {
+pub(crate) struct ViewportPanel {
     blueprint: Blueprint,
 }
 
-impl ExperimentalViewportPanel {
+impl ViewportPanel {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
@@ -698,6 +784,16 @@ impl ExperimentalViewportPanel {
             || self.blueprint.space_views.is_empty()
         {
             self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
+        } else {
+            // Check if the blueprint is missing a space,
+            // maybe one that has been added by new data:
+            for (path, space_info) in &spaces_info.spaces {
+                if should_have_default_view(&ctx.log_db.obj_db, space_info)
+                    && !self.blueprint.has_space(path)
+                {
+                    self.blueprint.add_space(path);
+                }
+            }
         }
 
         egui::SidePanel::left("blueprint_panel")
