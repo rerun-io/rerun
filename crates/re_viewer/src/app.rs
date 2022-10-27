@@ -248,7 +248,7 @@ impl eframe::App for App {
             .recording_configs
             .entry(self.state.selected_rec_id)
             .or_default()
-            .on_frame_start(log_db);
+            .on_frame_start();
 
         if log_db.is_empty() && self.rx.is_some() {
             egui::CentralPanel::default().show(egui_ctx, |ui| {

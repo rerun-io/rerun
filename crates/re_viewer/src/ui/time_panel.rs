@@ -13,9 +13,6 @@ use crate::{
     TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
 };
 
-/// A column where we should button to hide/show a property.
-const PROPERY_COLUMN_WIDTH: f32 = 14.0;
-
 /// A panel that shows objects to the left, time on the top.
 ///
 /// This includes the timeline controls and streams view.
@@ -24,10 +21,6 @@ const PROPERY_COLUMN_WIDTH: f32 = 14.0;
 pub(crate) struct TimePanel {
     /// Width of the object name columns previous frame.
     prev_col_width: f32,
-
-    /// Set at the start of the frame
-    #[serde(skip)]
-    propery_column_x_range: RangeInclusive<f32>,
 
     /// The right side of the object name column; updated during its painting.
     #[serde(skip)]
@@ -42,7 +35,6 @@ impl Default for TimePanel {
     fn default() -> Self {
         Self {
             prev_col_width: 400.0,
-            propery_column_x_range: 0.0..=0.0,
             next_col_right: 0.0,
             time_ranges_ui: Default::default(),
         }
@@ -58,11 +50,7 @@ impl TimePanel {
 
         self.next_col_right = ui.min_rect().left(); // this will expand during the call
 
-        let prop_column_left =
-            ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x;
-        let prop_column_right = prop_column_left + PROPERY_COLUMN_WIDTH;
-        self.propery_column_x_range = prop_column_left..=prop_column_right;
-        let time_x_left = prop_column_right + ui.spacing().item_spacing.x;
+        let time_x_left = ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x;
 
         // Where the time will be shown.
         let time_x_range = {
@@ -251,37 +239,6 @@ impl TimePanel {
             let left = response_rect.left() + ui.spacing().indent;
             let y = response_rect.bottom() + ui.spacing().item_spacing.y * 0.5;
             ui.painter().hline(left..=ui.max_rect().right(), y, stroke);
-        }
-
-        // ----------------------------------------------
-        // Property column:
-
-        if is_visible {
-            let are_all_ancestors_visible = match tree.path.parent() {
-                None => true, // root
-                Some(parent) => {
-                    ctx.rec_cfg
-                        .obj_tree_propertis
-                        .projected
-                        .get(&parent)
-                        .visible
-                }
-            };
-
-            let mut props = ctx.rec_cfg.obj_tree_propertis.individual.get(&tree.path);
-            let property_rect =
-                Rect::from_x_y_ranges(self.propery_column_x_range.clone(), response_rect.y_range());
-            let mut ui = ui.child_ui(
-                property_rect,
-                egui::Layout::left_to_right(egui::Align::Center),
-            );
-            ui.set_enabled(are_all_ancestors_visible);
-            ui.toggle_value(&mut props.visible, "👁")
-                .on_hover_text("Toggle visibility");
-            ctx.rec_cfg
-                .obj_tree_propertis
-                .individual
-                .set(tree.path.clone(), props);
         }
 
         // ----------------------------------------------
