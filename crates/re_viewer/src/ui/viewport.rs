@@ -226,8 +226,6 @@ impl Blueprint {
 
         let mut blueprint = Self::default();
 
-        let mut space_make_infos = vec![];
-
         for (path, space_info) in &spaces_info.spaces {
             if !should_have_default_view(obj_db, space_info) {
                 continue;
@@ -244,19 +242,9 @@ impl Blueprint {
                     obj_tree_properties: Default::default(),
                 },
             );
-            space_make_infos.push(SpaceMakeInfo {
-                id: space_view_id,
-                path: path.clone(),
-                size2d: None, // TODO(emilk): figure out the size of spaces somehow. Each object path could have a running bbox?
-            });
         }
 
-        blueprint.tree = egui_dock::Tree::new(vec![]);
-
-        if !space_make_infos.is_empty() {
-            let layout = layout_spaces(available_size, &mut space_make_infos);
-            tree_from_split(&mut blueprint.tree, egui_dock::NodeIndex(0), &layout);
-        }
+        blueprint.tree = tree_from_space_views(available_size, &blueprint.space_views);
 
         blueprint
     }
@@ -998,6 +986,31 @@ impl ViewportPanel {
 
 // ----------------------------------------------------------------------------
 // Code for automatic layout of panels:
+
+fn tree_from_space_views(
+    available_size: egui::Vec2,
+    space_views: &HashMap<SpaceViewId, SpaceView>,
+) -> egui_dock::Tree<SpaceViewId> {
+    let mut tree = egui_dock::Tree::new(vec![]);
+
+    if !space_views.is_empty() {
+        let mut space_make_infos = space_views
+            .iter()
+            .map(|(space_view_id, space_view)| {
+                SpaceMakeInfo {
+                    id: *space_view_id,
+                    path: space_view.space_path.clone(),
+                    size2d: None, // TODO(emilk): figure out the size of spaces somehow. Each object path could have a running bbox?
+                }
+            })
+            .collect_vec();
+
+        let layout = layout_spaces(available_size, &mut space_make_infos);
+        tree_from_split(&mut tree, egui_dock::NodeIndex(0), &layout);
+    }
+
+    tree
+}
 
 #[derive(Clone, Debug)]
 struct SpaceMakeInfo {
