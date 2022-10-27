@@ -26,7 +26,9 @@ use super::view3d::SpaceCamera;
 // ----------------------------------------------------------------------------
 
 /// A unique id for each space view.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+)]
 pub struct SpaceViewId(uuid::Uuid);
 
 impl SpaceViewId {
@@ -206,14 +208,23 @@ fn query_view_coordinates(
 
 // ----------------------------------------------------------------------------
 
+type VisibilitySet = BTreeMap<SpaceViewId, bool>;
+
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct Blueprint {
     /// Where the space views are stored.
     space_views: HashMap<SpaceViewId, SpaceView>,
 
+    /// Which views are visible.
+    visible: VisibilitySet,
+
     /// The layouts of all the space views.
-    tree: egui_dock::Tree<SpaceViewId>,
+    ///
+    /// One for each combination of what views are visible.
+    /// So if a user toggles the visibility of one SpaceView, we
+    /// switch which layout we are using. This is somewhat hacky.
+    trees: HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>,
 
     /// Show one tab as maximized?
     maximized: Option<SpaceViewId>,
@@ -221,23 +232,22 @@ pub struct Blueprint {
 
 impl Blueprint {
     /// Create a default suggested blueprint using some heuristics.
-    fn new(obj_db: &ObjDb, spaces_info: &SpacesInfo, available_size: egui::Vec2) -> Self {
+    fn new(obj_db: &ObjDb, spaces_info: &SpacesInfo) -> Self {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
-            if !should_have_default_view(obj_db, space_info) {
-                continue;
+            if should_have_default_view(obj_db, space_info) {
+                let space_view_id = SpaceViewId::random();
+
+                blueprint
+                    .space_views
+                    .insert(space_view_id, SpaceView::from_path(path.clone()));
+
+                blueprint.visible.insert(space_view_id, true);
             }
-
-            let space_view_id = SpaceViewId::random();
-            blueprint
-                .space_views
-                .insert(space_view_id, SpaceView::from_path(path.clone()));
         }
-
-        blueprint.tree = tree_from_space_views(available_size, &blueprint.space_views);
 
         blueprint
     }
@@ -296,6 +306,7 @@ impl Blueprint {
         space_view_id: &SpaceViewId,
     ) {
         let space_view = self.space_views.get_mut(space_view_id).unwrap();
+
         let space_path = &space_view.space_path;
         let collapsing_header_id = ui.make_persistent_id(&space_view_id);
         let default_open = true;
@@ -310,26 +321,22 @@ impl Blueprint {
             let is_selected = ctx.rec_cfg.selection == Selection::SpaceView(*space_view_id);
             if ui.selectable_label(is_selected, &space_view.name).clicked() {
                 ctx.rec_cfg.selection = Selection::SpaceView(*space_view_id);
-                focus_tab(&mut self.tree, space_view_id);
+                if let Some(tree) = self.trees.get_mut(&self.visible) {
+                    focus_tab(tree, space_view_id);
+                }
             }
 
-            let space_is_also_object = ctx
-                .log_db
-                .obj_db
-                .types
-                .contains_key(space_path.obj_type_path());
-            if space_is_also_object {
-                // For instance: this image-space has an image logged to it,
-                // so we need to have a way to toggle the image on/off.
-                object_visibility_button(ui, &mut space_view.obj_tree_properties, space_path);
-            }
+            let is_space_view_visible = self.visible.entry(*space_view_id).or_insert(true);
+            visibility_button(ui, true, is_space_view_visible);
         })
         .body(|ui| {
             if let Some(space_info) = spaces_info.spaces.get(space_path) {
                 if let Some(tree) = obj_tree.subtree(space_path) {
+                    let is_space_view_visible = self.visible.entry(*space_view_id).or_insert(true);
                     show_obj_tree_children(
                         ctx,
                         ui,
+                        *is_space_view_visible,
                         &mut space_view.obj_tree_properties,
                         space_info,
                         tree,
@@ -341,20 +348,13 @@ impl Blueprint {
 
     fn add_space_view(&mut self, path: &ObjPath) {
         let space_view_id = SpaceViewId::random();
+
         self.space_views
             .insert(space_view_id, SpaceView::from_path(path.clone()));
 
-        if let Some(first_leaf) = self
-            .tree
-            .iter()
-            .enumerate()
-            .find_map(|(i, node)| node.is_leaf().then_some(i))
-        {
-            self.tree
-                .split_right(first_leaf.into(), 0.5, vec![space_view_id]);
-        } else {
-            self.tree.push_to_first_leaf(space_view_id);
-        }
+        self.visible.insert(space_view_id, true);
+
+        self.trees.clear(); // Reset them
     }
 }
 
@@ -373,6 +373,7 @@ fn should_have_default_view(obj_db: &ObjDb, space_info: &SpaceInfo) -> bool {
 fn show_obj_tree(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
+    parent_is_visible: bool,
     obj_tree_properties: &mut ObjectTreeProperties,
     space_info: &SpaceInfo,
     name: String,
@@ -381,7 +382,7 @@ fn show_obj_tree(
     if tree.is_leaf() {
         ui.horizontal(|ui| {
             ctx.obj_path_button_to(ui, name, &tree.path);
-            object_visibility_button(ui, obj_tree_properties, &tree.path);
+            object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         });
     } else {
         let collapsing_header_id = ui.id().with(&tree.path);
@@ -393,10 +394,17 @@ fn show_obj_tree(
         )
         .show_header(ui, |ui| {
             ctx.obj_path_button_to(ui, name, &tree.path);
-            object_visibility_button(ui, obj_tree_properties, &tree.path);
+            object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         })
         .body(|ui| {
-            show_obj_tree_children(ctx, ui, obj_tree_properties, space_info, tree);
+            show_obj_tree_children(
+                ctx,
+                ui,
+                parent_is_visible,
+                obj_tree_properties,
+                space_info,
+                tree,
+            );
         });
     }
 }
@@ -404,6 +412,7 @@ fn show_obj_tree(
 fn show_obj_tree_children(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
+    parent_is_visible: bool,
     obj_tree_properties: &mut ObjectTreeProperties,
     space_info: &SpaceInfo,
     tree: &ObjectTree,
@@ -413,6 +422,7 @@ fn show_obj_tree_children(
             show_obj_tree(
                 ctx,
                 ui,
+                parent_is_visible,
                 obj_tree_properties,
                 space_info,
                 path_comp.to_string(),
@@ -424,13 +434,15 @@ fn show_obj_tree_children(
 
 fn object_visibility_button(
     ui: &mut egui::Ui,
+    parent_is_visible: bool,
     obj_tree_properties: &mut ObjectTreeProperties,
     path: &ObjPath,
 ) {
-    let are_all_ancestors_visible = match path.parent() {
-        None => true, // root
-        Some(parent) => obj_tree_properties.projected.get(&parent).visible,
-    };
+    let are_all_ancestors_visible = parent_is_visible
+        && match path.parent() {
+            None => true, // root
+            Some(parent) => obj_tree_properties.projected.get(&parent).visible,
+        };
 
     let mut props = obj_tree_properties.individual.get(path);
 
@@ -888,7 +900,7 @@ impl ViewportPanel {
         let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
         if self.blueprint.space_views.is_empty() {
-            self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
+            self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info);
         } else {
             // Check if the blueprint is missing a space,
             // maybe one that has been added by new data:
@@ -917,8 +929,7 @@ impl ViewportPanel {
             .show_inside(ui, |ui| {
                 ui.vertical_centered(|ui| {
                     if ui.button("Reset space views").clicked() {
-                        self.blueprint =
-                            Blueprint::new(&ctx.log_db.obj_db, &spaces_info, ui.available_size());
+                        self.blueprint = Blueprint::new(&ctx.log_db.obj_db, &spaces_info);
                     }
                 });
 
@@ -946,11 +957,24 @@ impl ViewportPanel {
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpacesInfo,
     ) {
-        let num_space_views = num_tabs(&self.blueprint.tree);
+        // Lazily create a layout tree based on which SpaceViews are currently visible:
+        let tree = self
+            .blueprint
+            .trees
+            .entry(self.blueprint.visible.clone())
+            .or_insert_with(|| {
+                tree_from_space_views(
+                    ui.available_size(),
+                    &self.blueprint.visible,
+                    &self.blueprint.space_views,
+                )
+            });
+
+        let num_space_views = num_tabs(tree);
         if num_space_views == 0 {
             // nothing to show
         } else if num_space_views == 1 {
-            let space_view_id = first_tab(&self.blueprint.tree).unwrap();
+            let space_view_id = first_tab(tree).unwrap();
             let space_view = self
                 .blueprint
                 .space_views
@@ -992,7 +1016,7 @@ impl ViewportPanel {
                 maximized: &mut self.blueprint.maximized,
             };
 
-            egui_dock::DockArea::new(&mut self.blueprint.tree)
+            egui_dock::DockArea::new(tree)
                 .style(dock_style)
                 .show_inside(ui, &mut tab_viewer);
         }
@@ -1004,22 +1028,26 @@ impl ViewportPanel {
 
 fn tree_from_space_views(
     available_size: egui::Vec2,
+    visible: &BTreeMap<SpaceViewId, bool>,
     space_views: &HashMap<SpaceViewId, SpaceView>,
 ) -> egui_dock::Tree<SpaceViewId> {
     let mut tree = egui_dock::Tree::new(vec![]);
 
-    if !space_views.is_empty() {
-        let mut space_make_infos = space_views
-            .iter()
-            .map(|(space_view_id, space_view)| {
-                SpaceMakeInfo {
-                    id: *space_view_id,
-                    path: space_view.space_path.clone(),
-                    size2d: None, // TODO(emilk): figure out the size of spaces somehow. Each object path could have a running bbox?
-                }
-            })
-            .collect_vec();
+    let mut space_make_infos = space_views
+        .iter()
+        .filter(|(space_view_id, _space_view)| {
+            visible.get(space_view_id).copied().unwrap_or_default()
+        })
+        .map(|(space_view_id, space_view)| {
+            SpaceMakeInfo {
+                id: *space_view_id,
+                path: space_view.space_path.clone(),
+                size2d: None, // TODO(emilk): figure out the size of spaces somehow. Each object path could have a running bbox?
+            }
+        })
+        .collect_vec();
 
+    if !space_make_infos.is_empty() {
         let layout = layout_spaces(available_size, &mut space_make_infos);
         tree_from_split(&mut tree, egui_dock::NodeIndex(0), &layout);
     }
