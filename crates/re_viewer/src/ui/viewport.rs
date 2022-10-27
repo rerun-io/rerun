@@ -290,8 +290,11 @@ impl Blueprint {
                 {
                     let is_focused = Some(*space_view_id) == focused;
 
+                    let space_path = &space_view.space_path;
+
                     let collapsing_header_id = ui.make_persistent_id(&space_view_id);
                     let default_open = true;
+
                     egui::collapsing_header::CollapsingState::load_with_default_open(
                         ui.ctx(),
                         collapsing_header_id,
@@ -305,11 +308,22 @@ impl Blueprint {
                                 self.tree.set_active_tab(node_index, tab_index);
                             }
                         }
+
+                        let space_is_also_object = ctx
+                            .log_db
+                            .obj_db
+                            .types
+                            .contains_key(space_path.obj_type_path());
+                        if space_is_also_object {
+                            // For instance: this image-space has an image logged to it,
+                            // so we need to have a way to toggle the image on/off.
+                            visibility_button(ui, &mut space_view.obj_tree_properties, space_path);
+                        }
                     })
                     .body(|ui| {
-                        if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-                            if let Some(tree) = obj_tree.subtree(&space_view.space_path) {
-                                show_obj_tree(
+                        if let Some(space_info) = spaces_info.spaces.get(space_path) {
+                            if let Some(tree) = obj_tree.subtree(space_path) {
+                                show_obj_tree_children(
                                     ctx,
                                     ui,
                                     &mut space_view.obj_tree_properties,
@@ -373,31 +387,49 @@ fn show_obj_tree(
     ui: &mut egui::Ui,
     obj_tree_properties: &mut ObjectTreeProperties,
     space_info: &SpaceInfo,
+    name: String,
+    tree: &ObjectTree,
+) {
+    if tree.is_leaf() {
+        ui.horizontal(|ui| {
+            ctx.obj_path_button_to(ui, name, &tree.path);
+            visibility_button(ui, obj_tree_properties, &tree.path);
+        });
+    } else {
+        let collapsing_header_id = ui.id().with(&tree.path);
+        let default_open = false;
+        egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            collapsing_header_id,
+            default_open,
+        )
+        .show_header(ui, |ui| {
+            ctx.obj_path_button_to(ui, name, &tree.path);
+            visibility_button(ui, obj_tree_properties, &tree.path);
+        })
+        .body(|ui| {
+            show_obj_tree_children(ctx, ui, obj_tree_properties, space_info, tree);
+        });
+    }
+}
+
+fn show_obj_tree_children(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    obj_tree_properties: &mut ObjectTreeProperties,
+    space_info: &SpaceInfo,
     tree: &ObjectTree,
 ) {
     for (path_comp, child) in &tree.children {
         if space_info.objects.contains(&child.path) {
-            if child.is_leaf() {
-                ui.horizontal(|ui| {
-                    ctx.obj_path_button_to(ui, path_comp.to_string(), &child.path);
-                    visibility_button(ui, obj_tree_properties, &child.path);
-                });
-            } else {
-                let collapsing_header_id = ui.id().with(&child.path);
-                let default_open = false;
-                egui::collapsing_header::CollapsingState::load_with_default_open(
-                    ui.ctx(),
-                    collapsing_header_id,
-                    default_open,
-                )
-                .show_header(ui, |ui| {
-                    ctx.obj_path_button_to(ui, path_comp.to_string(), &child.path);
-                    visibility_button(ui, obj_tree_properties, &child.path);
-                })
-                .body(|ui| {
-                    show_obj_tree(ctx, ui, obj_tree_properties, space_info, child);
-                });
-            }
+            show_obj_tree(
+                ctx,
+                ui,
+                obj_tree_properties,
+                space_info,
+                path_comp.to_string(),
+                child,
+            );
         }
     }
 }
