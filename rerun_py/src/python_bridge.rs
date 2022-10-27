@@ -443,6 +443,9 @@ fn log_transform(
     timeless: bool,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
+    if obj_path.len() == 1 {
+        return Err(PyTypeError::new_err("Transforms are between a child object and its parent, so root objects cannot have transforms"));
+    }
     let mut sdk = Sdk::global();
     let time_point = time(timeless);
     sdk.send_data(
