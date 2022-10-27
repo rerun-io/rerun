@@ -143,9 +143,9 @@ def log_camera(cam: ARCamera) -> None:
     )
     rerun.log_pinhole(
         "world/camera/video",
+        child_from_parent=intrinsics,
         width=w,
         height=h,
-        image_from_cam=intrinsics,
     )
 
 

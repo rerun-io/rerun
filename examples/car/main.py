@@ -37,9 +37,9 @@ def log_car_data() -> None:
         # Log the camera projection matrix:
         rerun.log_pinhole(
             "world/camera/image",
+            child_from_parent=sample.camera.intrinsics,
             width=sample.camera.resolution[0],
             height=sample.camera.resolution[1],
-            image_from_cam=sample.camera.intrinsics,
         )
 
         # We log the rgb image to the image-space of the camera:

@@ -498,14 +498,14 @@ def log_rigid3(
 
 
 def log_pinhole(
-    obj_path: str, *, width: int, height: int, image_from_cam: npt.ArrayLike, timeless: bool = False
+    obj_path: str, *, child_from_parent: npt.ArrayLike, width: int, height: int, timeless: bool = False
 ) -> None:
     """
     Log a perspective camera model.
 
     This logs the pinhole model that projects points from the parent (camera) space to this space (image) such that:
     ```
-    point_image_hom = image_from_cam * point_cam
+    point_image_hom = child_from_parent * point_cam
     point_image = point_image_hom[:,1] / point_image_hom[2]
     ```
 
@@ -518,14 +518,14 @@ def log_pinhole(
     rerun.log_pinhole("world/camera/image", …)
     ```
 
-    `image_from_cam`: Row-major intrinsics matrix for projecting from camera space to image space
+    `child_from_parent`: Row-major intrinsics matrix for projecting from camera space to image space
     `resolution`: Array with [width, height] image resolution in pixels.
 
     """
     rerun_rs.log_pinhole(
         obj_path,
         resolution=[width, height],
-        image_from_cam=np.asarray(image_from_cam).T.tolist(),
+        child_from_parent=np.asarray(child_from_parent).T.tolist(),
         timeless=timeless,
     )
 

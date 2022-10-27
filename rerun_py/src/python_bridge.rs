@@ -454,13 +454,13 @@ fn log_rigid3(
 fn log_pinhole(
     obj_path: &str,
     resolution: [f32; 2],
-    image_from_cam: [[f32; 3]; 3],
+    child_from_parent: [[f32; 3]; 3],
     timeless: bool,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
 
     let transform = re_log_types::Transform::Pinhole(re_log_types::Pinhole {
-        image_from_cam,
+        image_from_cam: child_from_parent,
         resolution: Some(resolution),
     });
 

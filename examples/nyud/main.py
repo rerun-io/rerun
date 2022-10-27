@@ -116,8 +116,8 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                     rerun.log_points("world/points", point_cloud, colors=np.array([255, 255, 255, 255]))
 
                     # Log the camera transforms:
-                    rotation_q = [0, 0, 0, 1]
                     translation = [0, 0, 0]
+                    rotation_q = [0, 0, 0, 1]
                     rerun.log_rigid3(
                         "world/camera",
                         parent_from_child=(translation, rotation_q),
@@ -125,9 +125,9 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                     )
                     rerun.log_pinhole(
                         "world/camera/image",
+                        child_from_parent=camera_intrinsics(img_depth),
                         width=img_depth.shape[1],
                         height=img_depth.shape[0],
-                        image_from_cam=camera_intrinsics(img_depth),
                     )
 
                     # Log the depth image to the cameras image-space:
