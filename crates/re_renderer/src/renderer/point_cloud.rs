@@ -61,7 +61,7 @@ pub struct PointCloudPoint {
     /// Connected points. Must be at least 2.
     pub position: glam::Vec3,
 
-    /// Radius of the line strip in world space
+    /// Radius of the point in world space
     /// TODO(andreas) Should be able to specify if this is in pixels, or has a minimum width in pixels.
     pub radius: f32,
 
@@ -84,7 +84,7 @@ impl PointCloudDrawable {
         );
 
         // Textures are 2D since 1D textures are very limited in size (8k typically).
-        // Need to keep this value in sync with lines.wgsl!
+        // Need to keep this value in sync with point_cloud.wgsl!
         const TEXTURE_SIZE: u32 = 1024; // 1024 x 1024 x (vec4<f32> + [u8;4]) == 20mb, ~1mio points
 
         // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
@@ -108,7 +108,7 @@ impl PointCloudDrawable {
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several PointDrawable!
-        let pos_and_size_texture_desc = wgpu::TextureDescriptor {
+        let position_data_texture_desc = wgpu::TextureDescriptor {
             label: Some("point cloud position data"),
             size: wgpu::Extent3d {
                 width: TEXTURE_SIZE,
@@ -125,14 +125,14 @@ impl PointCloudDrawable {
         let position_data_texture = ctx
             .resource_pools
             .textures
-            .request(device, &pos_and_size_texture_desc);
+            .request(device, &position_data_texture_desc);
         let color_texture = ctx.resource_pools.textures.request(
             device,
             &wgpu::TextureDescriptor {
                 label: Some("point cloud color data"),
                 dimension: wgpu::TextureDimension::D2,
                 format: wgpu::TextureFormat::Rgba8UnormSrgb, // Declaring this as srgb here saves us manual conversion in the shader!
-                ..pos_and_size_texture_desc
+                ..position_data_texture_desc
             },
         );
 
