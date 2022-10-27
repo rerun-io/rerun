@@ -72,7 +72,7 @@ cargo run -p rerun --release
 
 In a second terminal, run the example with the `--connect` option:
 ```sh
-python examples/car/main.py --connect
+examples/car/main.py --connect
 ```
 
 ## Building an installable Python Wheel
