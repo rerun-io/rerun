@@ -2,6 +2,12 @@ use crate::{Index, ObjPathComp};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
+    #[error("Expected path, found empty string")]
+    EmptyString,
+
+    #[error("Path had leasing slash")]
+    LeadingSlash,
+
     #[error("Missing closing quote (\")")]
     UnterminatedString,
 
@@ -20,7 +26,17 @@ pub enum PathParseError {
 
 /// Parses an object path, e.g. `/foo/bar/#1234/5678/"string index"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d`
 pub fn parse_obj_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
-    let path = path.strip_prefix('/').unwrap_or(path); // Allow optional leading slash
+    if path.is_empty() {
+        return Err(PathParseError::EmptyString);
+    }
+
+    if path == "/" {
+        return Ok(vec![]); // special-case root object
+    }
+
+    if path.starts_with('/') {
+        return Err(PathParseError::LeadingSlash);
+    }
 
     let mut bytes = path.as_bytes();
 
@@ -132,11 +148,12 @@ fn test_unescape_string() {
 fn test_parse_path() {
     use crate::obj_path_vec;
 
-    assert_eq!(parse_obj_path(""), Ok(obj_path_vec!()));
+    assert_eq!(parse_obj_path(""), Err(PathParseError::EmptyString));
     assert_eq!(parse_obj_path("/"), Ok(obj_path_vec!()));
-    assert_eq!(parse_obj_path("//"), Err(PathParseError::DoubleSlash));
     assert_eq!(parse_obj_path("foo"), Ok(obj_path_vec!("foo")));
+    assert_eq!(parse_obj_path("/foo"), Err(PathParseError::LeadingSlash));
     assert_eq!(parse_obj_path("foo/bar"), Ok(obj_path_vec!("foo", "bar")));
+    assert_eq!(parse_obj_path("foo//bar"), Err(PathParseError::DoubleSlash));
     assert_eq!(
         parse_obj_path(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
         Ok(obj_path_vec!(
