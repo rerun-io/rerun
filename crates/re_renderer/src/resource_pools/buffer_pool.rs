@@ -64,7 +64,7 @@ impl BufferPool {
         })
     }
 
-    /// Called by [`crate::RenderContext`] every frame. Updates statistics and may free unused buffers.
+    /// Called by `RenderContext` every frame. Updates statistics and may free unused buffers.
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         self.pool.frame_maintenance(frame_index);
     }
@@ -74,12 +74,12 @@ impl BufferPool {
         self.pool.get_resource(**handle)
     }
 
-    /// Internal method to retrieve a resource with a weak handle (used by [`BindGroupPool`])
+    /// Internal method to retrieve a resource with a weak handle (used by [`super::BindGroupPool`])
     pub(super) fn get_resource_weak(&self, handle: BufferHandle) -> Result<&Buffer, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    /// Internal method to retrieve a strong handle from a weak handle (used by [`BindGroupPool`])
+    /// Internal method to retrieve a strong handle from a weak handle (used by [`super::BindGroupPool`])
     pub(super) fn get_strong_handle(&self, handle: BufferHandle) -> &BufferHandleStrong {
         self.pool.get_strong_handle(handle)
     }

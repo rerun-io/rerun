@@ -36,7 +36,7 @@ pub struct TextureDesc {
     /// Mip count of texture. For a texture with no extra mips, this must be 1.
     pub mip_level_count: u32,
 
-    /// Sample count of texture. If this is not 1, texture must have [`BindingType::Texture::multisampled`] set to true.
+    /// Sample count of texture. If this is not 1, texture must have [`wgpu::BindingType::Texture::multisampled`] set to true.
     pub sample_count: u32,
 
     /// Dimensions of the texture.
@@ -87,7 +87,7 @@ impl TexturePool {
         })
     }
 
-    /// Called by [`crate::RenderContext`] every frame. Updates statistics and may free unused textures.
+    /// Called by `RenderContext` every frame. Updates statistics and may free unused textures.
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         self.pool.frame_maintenance(frame_index);
     }
@@ -97,12 +97,12 @@ impl TexturePool {
         self.pool.get_resource(**handle)
     }
 
-    /// Internal method to retrieve a resource with a weak handle (used by [`BindGroupPool`]).
+    /// Internal method to retrieve a resource with a weak handle (used by [`super::BindGroupPool`]).
     pub(super) fn get_resource_weak(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    /// Internal method to retrieve a strong handle from a weak handle (used by [`BindGroupPool`]).
+    /// Internal method to retrieve a strong handle from a weak handle (used by [`super::BindGroupPool`]).
     pub(super) fn get_strong_handle(&self, handle: TextureHandle) -> &TextureHandleStrong {
         self.pool.get_strong_handle(handle)
     }

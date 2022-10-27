@@ -9,18 +9,14 @@ pub enum PoolError {
     NullHandle,
 }
 
-/// A resource that can be owned & lifetime tracked by [`ResourcePool`]
+/// A resource that can be owned & lifetime tracked by a resource pool.
 pub(crate) trait Resource {
     /// Called every time a resource handle was resolved to its [`Resource`] object.
-    /// (typically on [`ResourcePool::get_resource`])
     fn on_handle_resolve(&self, _current_frame_index: u64) {}
 }
 
 // TODO(andreas): Make all resources usage tracked
 /// A resource that keeps track of the last frame it was used.
-///
-/// All resources should implement this, except those which are regarded lightweight enough to keep around indefinitely but heavy enough
-/// that we don't want to create them every frame (i.e. need a [`ResourcePool`])
 pub(crate) trait UsageTrackedResource {
     fn last_frame_used(&self) -> &AtomicU64;
 }
