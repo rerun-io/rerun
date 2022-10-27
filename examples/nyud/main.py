@@ -87,7 +87,7 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
 def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
     depth_images_counter = 0
 
-    rerun.set_space_up("3d", [0, -1, 0])
+    rerun.log_view_coordinates("world", up="-Y", timeless=True)
 
     with zipfile.ZipFile(dataset, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
@@ -105,41 +105,33 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)
                 img_rgb = read_image_rgb(buf)
-                rerun.log_image("3d/camera/image/rgb", img_rgb, space="image")
+                rerun.log_image("world/camera/image/rgb", img_rgb)
 
             elif f.filename.endswith(".pgm"):
                 if depth_images_counter % DEPTH_IMAGE_INTERVAL == 0:
                     buf = archive.read(f)
                     img_depth = read_image(buf)
-                    rerun.log_depth_image("3d/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING, space="image")
 
                     point_cloud = back_project(depth_image=img_depth / DEPTH_IMAGE_SCALING)
-                    rerun.log_points("3d/points", point_cloud, colors=np.array([255, 255, 255, 255]), space="3d")
+                    rerun.log_points("world/points", point_cloud, colors=np.array([255, 255, 255, 255]))
 
-                    rerun.log_camera(
-                        "camera",
-                        resolution=[img_depth.shape[1], img_depth.shape[0]],
-                        intrinsics=camera_intrinsics(img_depth),
-                        rotation_q=np.array((0, 0, 0, 1)),
-                        position=np.array((0, 0, 0)),
-                        camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
-                        target_space="image",
-                        space="3d",
+                    # Log the camera transforms:
+                    translation = [0, 0, 0]
+                    rotation_q = [0, 0, 0, 1]
+                    rerun.log_rigid3(
+                        "world/camera",
+                        parent_from_child=(translation, rotation_q),
+                        xyz="RDF",  # X=Right, Y=Down, Z=Forward
                     )
-
-                    # Experimental new API which will replace log_camera:
-                    rerun.log_extrinsics(
-                        "3d/camera",
-                        rotation_q=np.array((0, 0, 0, 1)),
-                        position=np.array((0, 0, 0)),
-                        camera_space_convention=rerun.CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
-                    )
-                    rerun.log_intrinsics(
-                        "3d/camera/image",
+                    rerun.log_pinhole(
+                        "world/camera/image",
+                        child_from_parent=camera_intrinsics(img_depth),
                         width=img_depth.shape[1],
                         height=img_depth.shape[0],
-                        intrinsics_matrix=camera_intrinsics(img_depth),
                     )
+
+                    # Log the depth image to the cameras image-space:
+                    rerun.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
 
                 depth_images_counter += 1
 

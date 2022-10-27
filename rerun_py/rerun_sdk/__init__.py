@@ -44,22 +44,6 @@ class MeshFormat(Enum):
     OBJ = "OBJ"
 
 
-class CameraSpaceConvention(Enum):
-    """The convention used for the camera space's (3D) coordinate system."""
-
-    # Right-handed system used by ARKit and PyTorch3D.
-    # * +X = right
-    # * +Y = up
-    # * +Z = back (camera looks along -Z)
-    X_RIGHT_Y_UP_Z_BACK = "XRightYUpZBack"
-
-    # Right-handed system used by OpenCV.
-    # * +X = right
-    # * +Y = down
-    # * +Z = forward
-    X_RIGHT_Y_DOWN_Z_FWD = "XRightYDownZFwd"
-
-
 @dataclass
 class ImageFormat(Enum):
     # """ jpeg """"
@@ -201,16 +185,6 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     rerun_rs.set_time_nanos(timeline, nanos)
 
 
-def set_space_up(space: str, up: Sequence[float]) -> None:
-    """
-    Set the preferred up-axis in the viewer for a given 3D space.
-
-    - space: The name of the space
-    - up: The (x, y, z) values of the up-axis
-    """
-    rerun_rs.set_space_up(space, up)
-
-
 @dataclass
 class LogLevel:
     """
@@ -241,18 +215,16 @@ class LoggingHandler(logging.Handler):
     Because Rerun's data model doesn't match 1-to-1 with the different concepts from
     python's logging ecosystem, we need a way to map the latter to the former:
 
+    * Root Object: Optional root object to gather all the logs under.
+
     * Object path: the name of the logger responsible for the creation of the LogRecord
-                   is used as the final object path.
+                   is used as the final object path, appended after the Root Object path.
 
     * Level: the log level is mapped as-is.
 
     * Body: the body of the text entry corresponds to the formatted output of
             the LogRecord using the standard formatter of the logging package,
             unless it has been overridden by the user.
-
-    * Space: the notion of a Rerun space has no equivalence on the python side, and
-             is manually specified during the creation of the handler.
-             This feature allows you to maintain multiple distinct logging streams.
 
     Read more about logging handlers at https://docs.python.org/3/howto/logging.html#handlers.
     """
@@ -265,19 +237,19 @@ class LoggingHandler(logging.Handler):
         logging.DEBUG: LogLevel.DEBUG,
     }
 
-    def __init__(self, space: Optional[str] = None):
+    def __init__(self, root_obj_path: Optional[str] = None):
         logging.Handler.__init__(self)
-        self.space = space
+        self.root_obj_path = root_obj_path
 
     def emit(self, record: logging.LogRecord) -> None:
         """Emits a record to the Rerun SDK."""
         objpath = record.name.replace(".", "/")
-        if self.space is not None:
-            objpath = f"{self.space}/{objpath}"
+        if self.root_obj_path is not None:
+            objpath = f"{self.root_obj_path}/{objpath}"
         level = self.LVL2NAME.get(record.levelno)
         if level is None:  # user-defined level
             level = record.levelname
-        log_text_entry(objpath, record.getMessage(), level=level, space=self.space)
+        log_text_entry(objpath, record.getMessage(), level=level)
 
 
 def log_text_entry(
@@ -286,16 +258,14 @@ def log_text_entry(
     level: Optional[str] = LogLevel.INFO,
     color: Optional[Sequence[int]] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log a text entry, with optional level.
 
     * If no `level` is given, it will default to `LogLevel.INFO`.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
-    * If no `space` is given, the space name "logs" will be used.
     """
-    rerun_rs.log_text_entry(obj_path, text, level, color, timeless, space)
+    rerun_rs.log_text_entry(obj_path, text, level, color, timeless)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
@@ -327,7 +297,6 @@ def log_rect(
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log a 2D rectangle.
@@ -337,9 +306,8 @@ def log_rect(
     * `rect_format`: how to interpret the `rect` argument
     * `label` is an optional text to show inside the rectangle.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
-    If no `space` is given, the space name "2D" will be used.
     """
-    rerun_rs.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless, space)
+    rerun_rs.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless)
 
 
 def log_rects(
@@ -350,7 +318,6 @@ def log_rects(
     colors: Optional[Colors] = None,
     labels: Optional[Sequence[str]] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log multiple 2D rectangles.
@@ -371,14 +338,13 @@ def log_rects(
     space.
     * float32/float64: all color components should be in 0-1 linear space.
 
-    If no `space` is given, the space name "2D" will be used.
     """
     rects = np.require(rects, dtype="float32")
     colors = _normalize_colors(colors)
     if labels is None:
         labels = []
 
-    rerun_rs.log_rects(obj_path, rect_format.value, rects, colors, labels, timeless, space)
+    rerun_rs.log_rects(obj_path, rect_format.value, rects, colors, labels, timeless)
 
 
 def log_point(
@@ -386,7 +352,6 @@ def log_point(
     position: npt.NDArray[np.float32],
     color: Optional[Sequence[int]] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log a 2D or 3D point, with optional color.
@@ -403,12 +368,9 @@ def log_point(
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
     * float32/float64: all color components should be in 0-1 linear space.
-
-    If no `space` is given, the space name "2D" or "3D" will be used,
-    depending on the dimensionality of the data.
     """
     position = np.require(position, dtype="float32")
-    rerun_rs.log_point(obj_path, position, color, timeless, space)
+    rerun_rs.log_point(obj_path, position, color, timeless)
 
 
 def log_points(
@@ -417,7 +379,6 @@ def log_points(
     *,
     colors: Optional[Colors] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log 2D or 3D points, with optional colors.
@@ -434,14 +395,11 @@ def log_points(
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
     * float32/float64: all color components should be in 0-1 linear space.
-
-    If no `space` is given, the space name "2D" or "3D" will be used,
-    depending on the dimensionality of the data.
     """
     positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
 
-    rerun_rs.log_points(obj_path, positions, colors, timeless, space)
+    rerun_rs.log_points(obj_path, positions, colors, timeless)
 
 
 def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:
@@ -459,79 +417,176 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
         return np.require(colors_array, np.uint8)
 
 
-def log_camera(
+# -----------------------------------------------------------------------------
+
+
+def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
+    """Log that this object is NOT in the same space as the parent, but you do not (yet) know how they relate."""
+    rerun_rs.log_unknown_transform(obj_path, timeless=timeless)
+
+
+def log_rigid3(
     obj_path: str,
-    rotation_q: npt.ArrayLike,
-    position: npt.ArrayLike,
-    intrinsics: npt.ArrayLike,
-    resolution: npt.ArrayLike,
-    camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
+    *,
+    parent_from_child: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
+    child_from_parent: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
+    xyz: str = "",
     timeless: bool = False,
-    space: Optional[str] = None,
-    target_space: Optional[str] = None,
+) -> None:
+    """
+    Log a proper rigid 3D transform between this object and the parent.
+
+    Set either `parent_from_child` or `child_from_parent` to
+    a tuple of `(translation_xyz, quat_xyzw)`.
+
+    `parent_from_child`
+    -------------------
+    `parent_from_child=(translation_xyz, quat_xyzw)`
+
+    Also known as pose (e.g. camera extrinsics).
+
+    The translation is the position of the object in the parent space.
+    The resulting transform from child to parent corresponds to taking a point in the child space,
+    rotating it by the given rotations, and then translating it by the given translation:
+
+    `point_parent = translation + quat * point_child * quat*
+
+    `child_from_parent`
+    -------------------
+    `child_from_parent=(translation_xyz, quat_xyzw)`
+
+    the inverse of `parent_from_child`
+
+    `xyz`
+    ----
+    Optionally set the view coordinates of this object, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
+    This is a convenience for also calling `log_view_coordinates`.
+
+    Example
+    -------
+    ```
+    rerun.log_rigid3("world/camera", parent_from_child=(t,q))
+    rerun.log_pinhole("world/camera/image", …)
+    ```
+
+    """
+    if parent_from_child and child_from_parent:
+        raise TypeError("Set either parent_from_child or child_from_parent, but not both")
+    elif parent_from_child:
+        (t, q) = parent_from_child
+        rerun_rs.log_rigid3(
+            obj_path,
+            parent_from_child=True,
+            rotation_q=_to_sequence(q),
+            translation=_to_sequence(t),
+            timeless=timeless,
+        )
+    elif child_from_parent:
+        (t, q) = child_from_parent
+        rerun_rs.log_rigid3(
+            obj_path,
+            parent_from_child=False,
+            rotation_q=_to_sequence(q),
+            translation=_to_sequence(t),
+            timeless=timeless,
+        )
+    else:
+        raise TypeError("Set either parent_from_child or child_from_parent")
+
+    if xyz != "":
+        log_view_coordinates(obj_path, xyz=xyz, timeless=timeless)
+
+
+def log_pinhole(
+    obj_path: str, *, child_from_parent: npt.ArrayLike, width: int, height: int, timeless: bool = False
 ) -> None:
     """
     Log a perspective camera model.
 
-    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
-    `position`: Array with [x, y, z] position of the camera in world space.
-    `intrinsics`: Row-major intrinsics matrix for projecting from camera space to image space
+    This logs the pinhole model that projects points from the parent (camera) space to this space (image) such that:
+    ```
+    point_image_hom = child_from_parent * point_cam
+    point_image = point_image_hom[:,1] / point_image_hom[2]
+    ```
+
+    Where `point_image_hom` is the projected point in the image space expressed in homogeneous coordinates.
+
+    Example
+    -------
+    ```
+    rerun.log_rigid3("world/camera", …)
+    rerun.log_pinhole("world/camera/image", …)
+    ```
+
+    `child_from_parent`: Row-major intrinsics matrix for projecting from camera space to image space
     `resolution`: Array with [width, height] image resolution in pixels.
-    `camera_space_convention`: The convention used for the orientation of the camera's 3D coordinate system.
-    `space`: The 3D space the camera is in. Will default to "3D".
-    `target_space`: The 2D space that the camera projects into.
+
     """
-    rerun_rs.log_camera(
-        obj_path,
-        resolution=_to_sequence(resolution),
-        intrinsics_matrix=np.asarray(intrinsics).T.tolist(),
-        rotation_q=_to_sequence(rotation_q),
-        position=_to_sequence(position),
-        camera_space_convention=camera_space_convention.value,
-        timeless=timeless,
-        space=space,
-        target_space=target_space,
-    )
-
-
-def log_extrinsics(
-    obj_path: str,
-    rotation_q: npt.ArrayLike,
-    position: npt.ArrayLike,
-    camera_space_convention: CameraSpaceConvention = CameraSpaceConvention.X_RIGHT_Y_DOWN_Z_FWD,
-    timeless: bool = False,
-) -> None:
-    """
-    EXPERIMENTAL: Log camera extrinsics.
-
-    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from camera to world space
-    `position`: Array with [x, y, z] position of the camera in world space.
-    `camera_space_convention`: The convention used for the orientation of the camera's 3D coordinate system.
-    """
-    rerun_rs.log_extrinsics(
-        obj_path,
-        rotation_q=_to_sequence(rotation_q),
-        position=_to_sequence(position),
-        camera_space_convention=camera_space_convention.value,
-        timeless=timeless,
-    )
-
-
-def log_intrinsics(
-    obj_path: str, *, width: int, height: int, intrinsics_matrix: npt.ArrayLike, timeless: bool = False
-) -> None:
-    """
-    EXPERIMENTAL: Log a perspective camera model.
-
-    `intrinsics_matrix`: Row-major intrinsics matrix for projecting from camera space to image space
-    `resolution`: Array with [width, height] image resolution in pixels.
-    """
-    rerun_rs.log_intrinsics(
+    rerun_rs.log_pinhole(
         obj_path,
         resolution=[width, height],
-        intrinsics_matrix=np.asarray(intrinsics_matrix).T.tolist(),
+        child_from_parent=np.asarray(child_from_parent).T.tolist(),
         timeless=timeless,
     )
+
+
+# -----------------------------------------------------------------------------
+
+
+def log_view_coordinates(
+    obj_path: str, *, xyz: str = "", up: str = "", right_handed: Optional[bool] = None, timeless: bool = False
+) -> None:
+    """
+    Log the view coordinates for an object.
+
+    Each object defines its own coordinate system, called a space.
+    By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
+    This is for instance useful for camera objects ("what axis is forward?").
+
+    For full control, set the `xyz` parameter to a three-letter acronym (`xyz="RDF"`). Each letter represents:
+
+    * R: Right
+    * L: Left
+    * U: Up
+    * D: Down
+    * F: Forward
+    * B: Back
+
+    Some of the most common are:
+
+    * "RDF": X=Right Y=Down Z=Forward  (right-handed)
+    * "RUB"  X=Right Y=Up   Z=Back     (right-handed)
+    * "RDB": X=Right Y=Down Z=Back     (left-handed)
+    * "RUF": X=Right Y=Up   Z=Forward  (left-handed)
+
+    Example
+    -------
+    ```
+    rerun.log_view_coordinates("world/camera", xyz="RUB")
+    ```
+
+    For world-coordinates it's often conventient to just specify an up-axis.
+    You can do so by using the `up`-parameter (where `up` is one of "+X", "-X", "+Y", "-Y", "+Z", "-Z"):
+
+    ```
+    rerun.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
+    rerun.log_view_coordinates("world", up="-Y", right_handed=False, timeless=True)
+    ```
+
+    """
+    if xyz == "" and up == "":
+        raise TypeError("You must set either 'xyz' or 'up'")
+    if xyz != "" and up != "":
+        raise TypeError("You must set either 'xyz' or 'up', but not both")
+    if xyz != "":
+        rerun_rs.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
+    else:
+        if right_handed is None:
+            right_handed = True
+        rerun_rs.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
+
+
+# -----------------------------------------------------------------------------
 
 
 def log_path(
@@ -541,7 +596,6 @@ def log_path(
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     r"""
     Log a 3D path.
@@ -558,11 +612,9 @@ def log_path(
     `positions`: a Nx3 array of points along the path.
     `stroke_width`: width of the line.
     `color` is optional RGB or RGBA triplet in 0-255 sRGB.
-
-    If no `space` is given, the space name "3D" will be used.
     """
     positions = np.require(positions, dtype="float32")
-    rerun_rs.log_path(obj_path, positions, stroke_width, color, timeless, space)
+    rerun_rs.log_path(obj_path, positions, stroke_width, color, timeless)
 
 
 def log_line_segments(
@@ -572,7 +624,6 @@ def log_line_segments(
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     r"""
     Log many 2D or 3D line segments.
@@ -587,11 +638,9 @@ def log_line_segments(
     `positions`: a Nx3 array of points along the path.
     `stroke_width`: width of the line.
     `color` is optional RGB or RGBA triplet in 0-255 sRGB.
-
-    If no `space` is given, the space name "3D" will be used.
     """
     positions = np.require(positions, dtype="float32")
-    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless, space)
+    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless)
 
 
 def log_arrow(
@@ -602,7 +651,6 @@ def log_arrow(
     label: Optional[str] = None,
     width_scale: Optional[float] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log a 3D arrow.
@@ -629,8 +677,6 @@ def log_arrow(
         An optional scaling factor, default=1.0.
     timeless
         Object is not time-dependent, and will be visible at any time point.
-    space
-        The 3D space the OBB is in. Will default to "3D".
 
     """
     rerun_rs.log_arrow(
@@ -641,7 +687,6 @@ def log_arrow(
         label=label,
         width_scale=width_scale,
         timeless=timeless,
-        space=space,
     )
 
 
@@ -654,7 +699,6 @@ def log_obb(
     stroke_width: Optional[float] = None,
     label: Optional[str] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log a 3D oriented bounding box, defined by its half size.
@@ -665,7 +709,6 @@ def log_obb(
     `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     `stroke_width`: width of the OBB edges.
     `label` is an optional text label placed at `position`.
-    `space`: The 3D space the OBB is in. Will default to "3D".
     """
     rerun_rs.log_obb(
         obj_path,
@@ -676,7 +719,6 @@ def log_obb(
         stroke_width=stroke_width,
         label=label,
         timeless=timeless,
-        space=space,
     )
 
 
@@ -685,7 +727,6 @@ def log_image(
     image: Colors,
     *,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log a gray or color image.
@@ -699,7 +740,6 @@ def log_image(
     linear space.
     * float32/float64: all color components should be in 0-1 linear space.
 
-    If no `space` is given, the space name "2D" will be used.
     """
     # Catch some errors early:
     if len(image.shape) < 2 or 3 < len(image.shape):
@@ -712,7 +752,7 @@ def log_image(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}"
             )
 
-    log_tensor(obj_path, image, timeless=timeless, space=space)
+    log_tensor(obj_path, image, timeless=timeless)
 
 
 def log_depth_image(
@@ -721,7 +761,6 @@ def log_depth_image(
     *,
     meter: Optional[float] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log a depth image.
@@ -732,13 +771,12 @@ def log_depth_image(
            For instance: with uint16, perhaps meter=1000 which would mean
            you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
 
-    If no `space` is given, the space name "2D" will be used.
     """
     # Catch some errors early:
     if len(image.shape) != 2:
         raise TypeError(f"Expected 2D depth image, got array of shape {image.shape}")
 
-    log_tensor(obj_path, image, meter=meter, timeless=timeless, space=space)
+    log_tensor(obj_path, image, meter=meter, timeless=timeless)
 
 
 def log_segmentation_image(
@@ -747,7 +785,6 @@ def log_segmentation_image(
     class_descriptions: str = "",
     *,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log an image made up of uint8 or uint16 class-ids.
@@ -759,7 +796,6 @@ def log_segmentation_image(
     * uint16: components should be 0-65535 class ids
     * class_descriptions: obj_path for a class_descriptions object logged with `log_class_descriptions`
 
-    If no `space` is given, the space name "2D" will be used.
     """
     # Catch some errors early:
     if len(image.shape) < 2 or 3 < len(image.shape):
@@ -771,9 +807,9 @@ def log_segmentation_image(
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
     if image.dtype == "uint8":
-        rerun_rs.log_tensor_u8(obj_path, image, None, None, class_descriptions, timeless, space)
+        rerun_rs.log_tensor_u8(obj_path, image, None, None, class_descriptions, timeless)
     elif image.dtype == "uint16":
-        rerun_rs.log_tensor_u16(obj_path, image, None, None, class_descriptions, timeless, space)
+        rerun_rs.log_tensor_u16(obj_path, image, None, None, class_descriptions, timeless)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")
 
@@ -784,21 +820,20 @@ def log_tensor(
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
-    """If no `space` is given, the space name "2D" will be used."""
+    """Log a general tensor, perhaps with named dimensions."""
     if names is not None:
         names = list(names)
         assert len(tensor.shape) == len(names)
 
     if tensor.dtype == "uint8":
-        rerun_rs.log_tensor_u8(obj_path, tensor, names, meter, None, timeless, space)
+        rerun_rs.log_tensor_u8(obj_path, tensor, names, meter, None, timeless)
     elif tensor.dtype == "uint16":
-        rerun_rs.log_tensor_u16(obj_path, tensor, names, meter, None, timeless, space)
+        rerun_rs.log_tensor_u16(obj_path, tensor, names, meter, None, timeless)
     elif tensor.dtype == "float32":
-        rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, None, timeless, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, None, timeless)
     elif tensor.dtype == "float64":
-        rerun_rs.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, None, timeless, space)
+        rerun_rs.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, None, timeless)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
@@ -810,7 +845,6 @@ def log_mesh_file(
     *,
     transform: Optional[npt.NDArray[np.float32]] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
@@ -833,7 +867,7 @@ def log_mesh_file(
     else:
         transform = np.require(transform, dtype="float32")
 
-    rerun_rs.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless, space)
+    rerun_rs.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
 
 
 def log_image_file(
@@ -841,16 +875,14 @@ def log_image_file(
     img_path: Path,
     img_format: Optional[ImageFormat] = None,
     timeless: bool = False,
-    space: Optional[str] = None,
 ) -> None:
     """
     Log the contents of an image file (only JPEGs supported for now).
 
     If no `img_format` is specified, we will try and guess it.
-    If no `space` is given, the space name "2D" will be used.
     """
     img_format = getattr(img_format, "value", None)
-    rerun_rs.log_image_file(obj_path, img_path, img_format, timeless, space)
+    rerun_rs.log_image_file(obj_path, img_path, img_format, timeless)
 
 
 def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:

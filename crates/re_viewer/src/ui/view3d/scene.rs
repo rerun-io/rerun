@@ -317,18 +317,12 @@ impl Scene {
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
         for camera in cameras {
-            let extrinsics = &camera.extrinsics;
-            let intrinsics = camera.intrinsics.as_ref();
             let instance_id = InstanceIdHash {
-                obj_path_hash: *camera.obj_path.hash(),
+                obj_path_hash: *camera.camera_obj_path.hash(),
                 instance_index_hash: camera.instance_index_hash,
             };
 
-            let world_from_view = crate::misc::cam::world_from_view(extrinsics);
-
-            let dist_to_eye = eye_camera_plane
-                .distance(world_from_view.translation())
-                .at_least(0.0);
+            let dist_to_eye = eye_camera_plane.distance(camera.position()).at_least(0.0);
             let color = [255, 128, 128, 255]; // TODO(emilk): camera color
 
             let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
@@ -336,15 +330,15 @@ impl Scene {
             let scale = scale_based_on_scene_size.min(scale_based_on_distance);
 
             #[cfg(feature = "glow")]
-            {
-                if ctx.options.show_camera_mesh_in_3d {
-                    // The camera mesh file is 1m long, looking down -Z, with X=right, Y=up.
+            if ctx.options.show_camera_mesh_in_3d {
+                if let Some(world_from_rub_view) = camera.world_from_rub_view() {
+                    // The camera mesh file is 1m long in RUB (X=Right, Y=Up, Z=Back).
                     // The lens is at the origin.
 
                     let scale = Vec3::splat(scale);
 
                     let mesh_id = hash("camera_mesh");
-                    let world_from_mesh = world_from_view * glam::Affine3A::from_scale(scale);
+                    let world_from_mesh = world_from_rub_view * glam::Affine3A::from_scale(scale);
 
                     if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
                         mesh_id,
@@ -363,20 +357,19 @@ impl Scene {
             }
 
             if ctx.options.show_camera_axes_in_3d {
-                let center = world_from_view.translation();
+                let world_from_cam = camera.world_from_cam();
+
+                // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
+                let cam_origin = camera.position();
                 let radius = Size::new_scene(dist_to_eye * line_radius_from_distance * 2.0);
 
-                for (axis_index, dir) in extrinsics
-                    .camera_space_convention
-                    .axis_dirs_in_rerun_view_space()
-                    .iter()
-                    .enumerate()
-                {
+                for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
+                    let axis_end = world_from_cam.transform_point3(scale * *dir);
                     let color = axis_color(axis_index);
-                    let axis_end = world_from_view.transform_point3(scale * glam::Vec3::from(*dir));
+
                     self.line_segments.push(LineSegments {
                         instance_id,
-                        segments: vec![[center.into(), axis_end.into()]],
+                        segments: vec![[cam_origin.into(), axis_end.into()]],
                         radius,
                         color,
                     });
@@ -384,14 +377,7 @@ impl Scene {
             }
 
             let line_radius = Size::new_scene(dist_to_eye * line_radius_from_distance);
-            self.add_camera_frustum(
-                extrinsics,
-                intrinsics,
-                scene_bbox,
-                instance_id,
-                line_radius,
-                color,
-            );
+            self.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, color);
         }
     }
 
@@ -508,59 +494,58 @@ impl Scene {
     /// Paint frustum lines
     fn add_camera_frustum(
         &mut self,
-        extrinsics: &re_log_types::Extrinsics,
-        intrinsics: Option<&re_log_types::Intrinsics>,
+        camera: &SpaceCamera,
         scene_bbox: &macaw::BoundingBox,
         instance_id: InstanceIdHash,
         line_radius: Size,
         color: [u8; 4],
-    ) {
-        if let (Some(world_from_image), Some(intrinsics)) = (
-            crate::misc::cam::world_from_image(extrinsics, intrinsics),
-            intrinsics,
-        ) {
-            let [w, h] = intrinsics.resolution;
+    ) -> Option<()> {
+        let world_from_image = camera.world_from_image()?;
+        let [w, h] = camera.pinhole?.resolution?;
 
-            let world_from_view = crate::misc::cam::world_from_view(extrinsics);
+        // At what distance do we end the frustum?
+        let d = scene_bbox.size().length() * 0.3;
 
-            // At what distance do we end the frustum?
-            let d = scene_bbox.size().length() * 0.3;
+        // TODO(emilk): there is probably a off-by-one or off-by-half error here.
+        // The image coordinates are in [0, w-1] range, so either we should use those limits
+        // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
 
-            let corners = [
-                world_from_image
-                    .transform_point3(d * vec3(0.0, 0.0, 1.0))
-                    .into(),
-                world_from_image
-                    .transform_point3(d * vec3(0.0, h, 1.0))
-                    .into(),
-                world_from_image
-                    .transform_point3(d * vec3(w, h, 1.0))
-                    .into(),
-                world_from_image
-                    .transform_point3(d * vec3(w, 0.0, 1.0))
-                    .into(),
-            ];
+        let corners = [
+            world_from_image
+                .transform_point3(d * vec3(0.0, 0.0, 1.0))
+                .into(),
+            world_from_image
+                .transform_point3(d * vec3(0.0, h, 1.0))
+                .into(),
+            world_from_image
+                .transform_point3(d * vec3(w, h, 1.0))
+                .into(),
+            world_from_image
+                .transform_point3(d * vec3(w, 0.0, 1.0))
+                .into(),
+        ];
 
-            let center = world_from_view.translation().into();
+        let center = camera.position().into();
 
-            let segments = vec![
-                [center, corners[0]],     // frustum corners
-                [center, corners[1]],     // frustum corners
-                [center, corners[2]],     // frustum corners
-                [center, corners[3]],     // frustum corners
-                [corners[0], corners[1]], // `d` distance plane sides
-                [corners[1], corners[2]], // `d` distance plane sides
-                [corners[2], corners[3]], // `d` distance plane sides
-                [corners[3], corners[0]], // `d` distance plane sides
-            ];
+        let segments = vec![
+            [center, corners[0]],     // frustum corners
+            [center, corners[1]],     // frustum corners
+            [center, corners[2]],     // frustum corners
+            [center, corners[3]],     // frustum corners
+            [corners[0], corners[1]], // `d` distance plane sides
+            [corners[1], corners[2]], // `d` distance plane sides
+            [corners[2], corners[3]], // `d` distance plane sides
+            [corners[3], corners[0]], // `d` distance plane sides
+        ];
 
-            self.line_segments.push(LineSegments {
-                instance_id,
-                segments,
-                radius: line_radius,
-                color,
-            });
-        }
+        self.line_segments.push(LineSegments {
+            instance_id,
+            segments,
+            radius: line_radius,
+            color,
+        });
+
+        Some(())
     }
 
     #[cfg(feature = "glow")]

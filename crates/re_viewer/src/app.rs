@@ -235,10 +235,7 @@ impl eframe::App for App {
                 .recording_configs
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
             self.state
-                .viewport_panel
-                .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
-            self.state
-                .experimental_viewport_panel
+                .viewport_panels
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
         }
 
@@ -356,8 +353,6 @@ enum PanelSelection {
     #[default]
     Viewport,
 
-    ExperimentalViewport,
-
     EventLog,
 }
 
@@ -376,9 +371,7 @@ struct AppState {
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
 
-    experimental_viewport_panel:
-        IntMap<RecordingId, crate::ui::experimental_viewport_panel::ExperimentalViewportPanel>,
-    viewport_panel: IntMap<RecordingId, crate::viewport_panel::ViewportPanel>,
+    viewport_panels: IntMap<RecordingId, crate::ui::viewport::ViewportPanel>,
 
     panel_selection: PanelSelection,
     event_log_view: crate::event_log_view::EventLogView,
@@ -405,8 +398,7 @@ impl AppState {
             recording_configs,
             panel_selection,
             event_log_view,
-            experimental_viewport_panel,
-            viewport_panel,
+            viewport_panels,
             selection_panel,
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -445,11 +437,7 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show(egui_ctx, |ui| match *panel_selection {
-                PanelSelection::Viewport => viewport_panel
-                    .entry(*selected_recording_id)
-                    .or_default()
-                    .ui(&mut ctx, ui),
-                PanelSelection::ExperimentalViewport => experimental_viewport_panel
+                PanelSelection::Viewport => viewport_panels
                     .entry(*selected_recording_id)
                     .or_default()
                     .ui(&mut ctx, ui),
@@ -525,13 +513,6 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                         &mut app.state.panel_selection,
                         PanelSelection::Viewport,
                         "Viewport",
-                    );
-
-                    #[cfg(debug_assertions)] // poor mans feature gate
-                    ui.selectable_value(
-                        &mut app.state.panel_selection,
-                        PanelSelection::ExperimentalViewport,
-                        "New Experimental Viewport",
                     );
 
                     ui.selectable_value(

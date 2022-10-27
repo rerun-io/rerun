@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use crate::{impl_into_enum, ObjPath};
-
-use self::data_types::Vec3;
+use crate::{impl_into_enum, ObjPath, ViewCoordinates};
 
 // ----------------------------------------------------------------------------
 
@@ -26,7 +24,6 @@ pub enum DataType {
     Vec3,
     Box3,
     Mesh3D,
-    Camera,
     Arrow3D,
 
     // ----------------------------
@@ -41,6 +38,7 @@ pub enum DataType {
     ObjPath,
 
     Transform,
+    ViewCoordinates,
 }
 
 // ----------------------------------------------------------------------------
@@ -137,12 +135,6 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::Camera {
-        fn data_typ() -> DataType {
-            DataType::Camera
-        }
-    }
-
     impl DataTrait for crate::Arrow3D {
         fn data_typ() -> DataType {
             DataType::Arrow3D
@@ -160,6 +152,12 @@ pub mod data_types {
     impl DataTrait for crate::Transform {
         fn data_typ() -> DataType {
             DataType::Transform
+        }
+    }
+
+    impl DataTrait for crate::ViewCoordinates {
+        fn data_typ() -> DataType {
+            DataType::ViewCoordinates
         }
     }
 }
@@ -186,7 +184,6 @@ pub enum Data {
     Vec3(data_types::Vec3),
     Box3(Box3),
     Mesh3D(Mesh3D),
-    Camera(Camera),
     Arrow3D(Arrow3D),
 
     // ----------------------------
@@ -202,6 +199,7 @@ pub enum Data {
     ObjPath(ObjPath),
 
     Transform(Transform),
+    ViewCoordinates(ViewCoordinates),
 }
 
 impl Data {
@@ -220,7 +218,6 @@ impl Data {
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
             Self::Mesh3D(_) => DataType::Mesh3D,
-            Self::Camera(_) => DataType::Camera,
             Self::Arrow3D(_) => DataType::Arrow3D,
 
             Self::Tensor(_) => DataType::Tensor,
@@ -229,6 +226,7 @@ impl Data {
             Self::ObjPath(_) => DataType::ObjPath,
 
             Self::Transform(_) => DataType::Transform,
+            Self::ViewCoordinates(_) => DataType::ViewCoordinates,
         }
     }
 }
@@ -240,9 +238,9 @@ impl_into_enum!(BBox2D, Data, BBox2D);
 impl_into_enum!(Tensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
-impl_into_enum!(Camera, Data, Camera);
 impl_into_enum!(ObjPath, Data, ObjPath);
 impl_into_enum!(Transform, Data, Transform);
+impl_into_enum!(ViewCoordinates, Data, ViewCoordinates);
 
 // ----------------------------------------------------------------------------
 
@@ -263,7 +261,6 @@ pub enum DataVec {
     Vec3(Vec<data_types::Vec3>),
     Box3(Vec<Box3>),
     Mesh3D(Vec<Mesh3D>),
-    Camera(Vec<Camera>),
     Arrow3D(Vec<Arrow3D>),
 
     Tensor(Vec<Tensor>),
@@ -274,6 +271,7 @@ pub enum DataVec {
     ObjPath(Vec<ObjPath>),
 
     Transform(Vec<Transform>),
+    ViewCoordinates(Vec<ViewCoordinates>),
 }
 
 /// Do the same thing with all members of a [`Data`].
@@ -297,12 +295,12 @@ macro_rules! data_map(
             $crate::Data::Vec3($value) => $action,
             $crate::Data::Box3($value) => $action,
             $crate::Data::Mesh3D($value) => $action,
-            $crate::Data::Camera($value) => $action,
             $crate::Data::Arrow3D($value) => $action,
             $crate::Data::Tensor($value) => $action,
             $crate::Data::DataVec($value) => $action,
             $crate::Data::ObjPath($value) => $action,
             $crate::Data::Transform($value) => $action,
+            $crate::Data::ViewCoordinates($value) => $action,
         }
     });
 );
@@ -328,12 +326,12 @@ macro_rules! data_vec_map(
             $crate::DataVec::Vec3($vec) => $action,
             $crate::DataVec::Box3($vec) => $action,
             $crate::DataVec::Mesh3D($vec) => $action,
-            $crate::DataVec::Camera($vec) => $action,
             $crate::DataVec::Arrow3D($vec) => $action,
             $crate::DataVec::Tensor($vec) => $action,
             $crate::DataVec::DataVec($vec) => $action,
             $crate::DataVec::ObjPath($vec) => $action,
             $crate::DataVec::Transform($vec) => $action,
+            $crate::DataVec::ViewCoordinates($vec) => $action,
         }
     });
 );
@@ -354,7 +352,6 @@ impl DataVec {
             Self::Vec3(_) => DataType::Vec3,
             Self::Box3(_) => DataType::Box3,
             Self::Mesh3D(_) => DataType::Mesh3D,
-            Self::Camera(_) => DataType::Camera,
             Self::Arrow3D(_) => DataType::Arrow3D,
 
             Self::Tensor(_) => DataType::Tensor,
@@ -363,6 +360,7 @@ impl DataVec {
             Self::ObjPath(_) => DataType::ObjPath,
 
             Self::Transform(_) => DataType::Transform,
+            Self::ViewCoordinates(_) => DataType::ViewCoordinates,
         }
     }
 
@@ -388,7 +386,6 @@ impl DataVec {
             Self::Vec3(vec) => vec.last().cloned().map(Data::Vec3),
             Self::Box3(vec) => vec.last().cloned().map(Data::Box3),
             Self::Mesh3D(vec) => vec.last().cloned().map(Data::Mesh3D),
-            Self::Camera(vec) => vec.last().cloned().map(Data::Camera),
             Self::Arrow3D(vec) => vec.last().cloned().map(Data::Arrow3D),
 
             Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
@@ -397,6 +394,7 @@ impl DataVec {
             Self::ObjPath(vec) => vec.last().cloned().map(Data::ObjPath),
 
             Self::Transform(vec) => vec.last().cloned().map(Data::Transform),
+            Self::ViewCoordinates(vec) => vec.last().cloned().map(Data::ViewCoordinates),
         }
     }
 }
@@ -442,43 +440,59 @@ pub type Quaternion = [f32; 4];
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Camera {
-    pub extrinsics: Extrinsics,
-    pub intrinsics: Option<Intrinsics>,
-
-    /// The 2D space that this camera projects into.
-    pub target_space: Option<ObjPath>,
-}
-
-/// Camera pose
+/// A proper rigid 3D transform, i.e. a rotation and a translation.
+///
+/// Also known as an isometric transform, or a pose.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Extrinsics {
-    /// How is the camera rotated?
+pub struct Rigid3 {
+    /// How is the child rotated?
     ///
-    /// This transforms world-space from camera-space.
+    /// This transforms to parent-space from child-space.
+    rotation: Quaternion,
+
+    /// Translation to parent from child.
     ///
-    /// The exact meaning of this depends on [`Self::camera_space_convention`].
-    /// For instance, using [`CameraSpaceConvention::XRightYDownZFwd`],
-    /// [`Self::rotation`] rotates the +Z axis so that it points in the direction
-    /// the camera is facing in world space.
-    pub rotation: Quaternion,
-
-    /// Where is the camera in world space?
-    pub position: [f32; 3],
-
-    /// What is the users camera-space coordinate system?
-    pub camera_space_convention: CameraSpaceConvention,
+    /// You can also think of this as the position of the child.
+    translation: [f32; 3],
 }
 
-/// Camera projection
+#[cfg(feature = "glam")]
+impl Rigid3 {
+    #[inline]
+    pub fn new_parent_from_child(parent_from_child: macaw::IsoTransform) -> Self {
+        Self {
+            rotation: parent_from_child.rotation().into(),
+            translation: parent_from_child.translation().into(),
+        }
+    }
+
+    #[inline]
+    pub fn new_child_from_parent(child_from_parent: macaw::IsoTransform) -> Self {
+        Self::new_parent_from_child(child_from_parent.inverse())
+    }
+
+    #[inline]
+    pub fn parent_from_child(&self) -> macaw::IsoTransform {
+        let rotation = glam::Quat::from_slice(&self.rotation);
+        let translation = glam::Vec3::from_slice(&self.translation);
+        macaw::IsoTransform::from_rotation_translation(rotation, translation)
+    }
+
+    #[inline]
+    pub fn child_from_parent(&self) -> macaw::IsoTransform {
+        self.parent_from_child().inverse()
+    }
+}
+
+/// Camera perspective projection (a.k.a. intrinsics).
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Intrinsics {
-    /// Column-major intrinsics matrix.
-    /// Image coordinates from view coordinates (via projection).
+pub struct Pinhole {
+    /// Column-major projection matrix.
+    ///
+    /// Child from parent.
+    /// Image coordinates from camera view coordinates.
     ///
     /// Example:
     /// ```text
@@ -486,65 +500,24 @@ pub struct Intrinsics {
     ///  [0.0,    1496.1, 0.0], // col 1
     ///  [980.5,  744.5,  1.0]] // col 2
     /// ```
-    pub intrinsics_matrix: [[f32; 3]; 3],
+    pub image_from_cam: [[f32; 3]; 3],
 
-    /// Pixel resolution (usually integers). Width and height.
+    /// Pixel resolution (usually integers) of child image space. Width and height.
     ///
     /// Example:
     /// ```text
     /// [1920.0, 1440.0]
     /// ```
-    pub resolution: [f32; 2],
-}
-
-impl Intrinsics {
-    /// Field of View on the Y axis, i.e. the angle between top and bottom.
-    pub fn fov_y(&self) -> f32 {
-        2.0 * (0.5 * self.resolution[1] / self.intrinsics_matrix[1][1]).atan()
-    }
-}
-
-/// Convention for the coordinate system of the camera.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum CameraSpaceConvention {
-    /// Right-handed system used by ARKit and PyTorch3D.
-    /// * +X=right
-    /// * +Y=up
-    /// * +Z=back (camera looks long -Z)
-    XRightYUpZBack,
-
-    /// Right-handed system used by OpenCV.
-    /// * +X=right
-    /// * +Y=down
-    /// * +Z=forward
-    XRightYDownZFwd,
-}
-
-impl CameraSpaceConvention {
-    /// Rerun uses the view-space convention of +X=right, +Y=up, -Z=fwd.
     ///
-    /// This returns the direction of the X,Y,Z axis in the Rerun convention.
-    ///
-    /// Another way of looking at this is that it returns the columns in
-    /// the matrix that transforms one convention to the other.
-    pub fn axis_dirs_in_rerun_view_space(&self) -> [Vec3; 3] {
-        match self {
-            Self::XRightYUpZBack => {
-                [
-                    [1.0, 0.0, 0.0], //
-                    [0.0, 1.0, 0.0], //
-                    [0.0, 0.0, 1.0], //
-                ]
-            }
-            Self::XRightYDownZFwd => {
-                [
-                    [1.0, 0.0, 0.0],  //
-                    [0.0, -1.0, 0.0], //
-                    [0.0, 0.0, -1.0], //
-                ]
-            }
-        }
+    /// [`Self::image_from_cam`] project onto the space spanned by `(0,0)` and `resolution - 1`.
+    pub resolution: Option<[f32; 2]>,
+}
+
+impl Pinhole {
+    /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
+    pub fn fov_y(&self) -> Option<f32> {
+        self.resolution
+            .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_cam[1][1]).atan())
     }
 }
 
@@ -558,11 +531,11 @@ pub enum Transform {
     /// Maybe the user intend to set the transform later.
     Unknown,
 
-    /// The parent is a 3D space, the child a camera space.
-    Extrinsics(Extrinsics),
+    /// For instance: the parent is a 3D world space, the child a camera space.
+    Rigid3(Rigid3),
 
     /// The parent is some local camera space, the child an image space.
-    Intrinsics(Intrinsics),
+    Pinhole(Pinhole),
 }
 
 // ----------------------------------------------------------------------------

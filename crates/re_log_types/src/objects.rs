@@ -4,8 +4,6 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjectType {
-    /// Information about a space (up axis etc).
-    Space,
     // A label and color associated with a particular class id
     ClassDescription,
 
@@ -39,9 +37,6 @@ pub enum ObjectType {
     /// A 3D mesh.
     Mesh3D,
 
-    /// Camera extrinsics and intrinsics.
-    Camera,
-
     /// A 3D arrow
     Arrow3D,
 }
@@ -50,33 +45,24 @@ impl ObjectType {
     pub fn members(self) -> &'static [&'static str] {
         #[allow(clippy::match_same_arms)]
         match self {
-            Self::Space => &["up"],
             Self::ClassDescription => &["id", "label", "color"],
 
-            Self::TextEntry => &["space", "color", "body", "level"],
+            Self::TextEntry => &["color", "body", "level"],
 
-            Self::Image => &["space", "color", "tensor", "meter", "legend"],
-            Self::Point2D => &["space", "color", "pos", "radius"],
-            Self::BBox2D => &["space", "color", "bbox", "stroke_width", "label"],
-            Self::LineSegments2D => &["space", "color", "points", "stroke_width"],
+            Self::Image => &["color", "tensor", "meter", "legend"],
+            Self::Point2D => &["color", "pos", "radius"],
+            Self::BBox2D => &["color", "bbox", "stroke_width", "label"],
+            Self::LineSegments2D => &["color", "points", "stroke_width"],
 
-            Self::Point3D => &["space", "color", "pos", "radius"],
-            Self::Box3D => &["space", "color", "obb", "stroke_width", "label"],
-            Self::Path3D => &["space", "color", "points", "stroke_width"],
-            Self::LineSegments3D => &["space", "color", "points", "stroke_width"],
-            Self::Mesh3D => &["space", "color", "mesh"],
-            Self::Camera => &["space", "color", "camera"],
-            Self::Arrow3D => &[
-                "space",
-                "color",
-                "origin",
-                "arrow3d",
-                "width_scale",
-                "label",
-            ],
+            Self::Point3D => &["color", "pos", "radius"],
+            Self::Box3D => &["color", "obb", "stroke_width", "label"],
+            Self::Path3D => &["color", "points", "stroke_width"],
+            Self::LineSegments3D => &["color", "points", "stroke_width"],
+            Self::Mesh3D => &["color", "mesh"],
+            Self::Arrow3D => &["color", "origin", "arrow3d", "width_scale", "label"],
         }
     }
 }
 
 /// These are fields not part of the actual object, but express meta-info about paths.
-pub const META_FIELDS: &[&str] = &["_transform", "_visible"];
+pub const META_FIELDS: &[&str] = &["_transform", "_view_coordinates", "_visible"];
