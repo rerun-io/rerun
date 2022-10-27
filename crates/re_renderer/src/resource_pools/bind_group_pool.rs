@@ -16,6 +16,7 @@ use super::{
 slotmap::new_key_type! { pub struct BindGroupHandle; }
 
 /// A reference counter baked bind group handle.
+///
 /// Once all strong handles are dropped, the bind group will be marked for reclamation in the following frame.
 /// Tracks use of dependent resources as well.
 #[derive(Clone)]
@@ -77,6 +78,8 @@ pub(crate) struct BindGroupDesc {
     pub layout: BindGroupLayoutHandle,
 }
 
+/// Resource pool for bind groups.
+///
 /// Requirements regarding ownership & resource lifetime:
 /// * owned [`BindGroup`] should keep buffer/texture alive
 ///   (user should not need to hold strong buffer/texture handles manually)
@@ -157,12 +160,7 @@ impl BindGroupPool {
             .entries
             .iter()
             .filter_map(|e| {
-                if let BindGroupEntry::Buffer {
-                    handle,
-                    offset: _,
-                    size: _,
-                } = e
-                {
+                if let BindGroupEntry::Buffer { handle, .. } = e {
                     Some(buffers.get_strong_handle(*handle).clone())
                 } else {
                     None
