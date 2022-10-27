@@ -448,6 +448,7 @@ fn log_transform(
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
     if obj_path.len() == 1 {
+        // Stop people from logging a transform to a root-object, such as "world" (which doesn't have a parent).
         return Err(PyTypeError::new_err("Transforms are between a child object and its parent, so root objects cannot have transforms"));
     }
     let mut sdk = Sdk::global();
