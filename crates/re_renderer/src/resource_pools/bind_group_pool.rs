@@ -45,8 +45,10 @@ impl UsageTrackedResource for BindGroup {
     }
 }
 
-// TODO(andreas) Can we force the user to provide strong handles here without too much effort?
-//               Ideally it would be only a reference to a strong handle in order to avoid bumping ref counts all the time.
+// TODO(andreas): Can we force the user to provide strong handles here without too much effort?
+//                Ideally it would be only a reference to a strong handle in order to avoid bumping ref counts all the time.
+//                This way we can also remove the dubious get_strong_handle methods from buffer/texture pool and allows us to hide any non-ref counted handles!
+//                Seems though this requires us to have duplicate versions of BindGroupDesc/Entry structs
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) enum BindGroupEntry {
