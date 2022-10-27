@@ -472,6 +472,34 @@ fn paint_view(
         },
     );
 
+
+    // TODO(andreas): Scene's data structure should lend itself better to conversion.
+    let strips = Vec::with_capacity(scene.line_segments.len());
+    for segments in scene.line_segments.iter() {
+        let mut current_strip = LineStrip {
+            points: Vec::new(),
+            radius: segments.radius,
+            color: segments.color,
+        };
+        for segment in segments.segments {
+            let a = glam::Vec3 segment[0]
+
+            if let Some(prev) = current_strip.points.front() {
+                if prev == segment
+            }
+        }
+
+        let points = Vec::with_capacity(strip.segments.len());
+        for seg in strip.segments {
+        }
+
+        re_renderer::LineStrip {
+            points: strip.segments.map(|seg| seg),
+            radius: f32,
+            color: [u8; 4],
+        }
+    })
+
     #[cfg(feature = "wgpu")]
     let _callback = {
         use re_renderer::renderer::*;
@@ -493,6 +521,7 @@ fn paint_view(
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         let triangle = TestTriangleDrawable::new(ctx, device);
                         let skybox = GenericSkyboxDrawable::new(ctx, device);
+                        let lines = LineDrawable::new(ctx, device, )
                         view_builder_prepare
                             .write()
                             .setup_view(
