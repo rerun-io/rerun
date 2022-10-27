@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Example applying simple object detection and tracking on a video."""
+import io
 import os
 from pathlib import Path
 from typing import Final
@@ -16,12 +17,14 @@ CACHE_DIR: Final = Path(os.path.dirname(__file__)) / "cache"
 DOWNSCALE_FACTOR = 2
 
 os.environ["TRANSFORMERS_CACHE"] = str(CACHE_DIR.absolute())
-from transformers import DetrFeatureExtractor, DetrForObjectDetection
+from transformers import DetrFeatureExtractor, DetrForSegmentation
+from transformers.models.detr.feature_extraction_detr import rgb_to_id, masks_to_boxes
+
 
 rerun.connect()
 
-feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
-model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50")
+feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50-panoptic")
+model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
 
 car_id = model.config.label2id["car"]
 
@@ -47,38 +50,48 @@ while cap.isOpened():
         small_size = (int(width / DOWNSCALE_FACTOR), int(height / DOWNSCALE_FACTOR))
         rgb_small = cv.resize(rgb, small_size)
 
-        rerun.log_image("image/downscaled", rgb_small)
-        rerun.log_unknown_transform("image/downscaled")  # Note: Haven't implemented 2D transforms yet.
-
         pil_im_smal = Image.fromarray(rgb_small)
 
         inputs = feature_extractor(images=pil_im_smal, return_tensors="pt")
+        preprocessed = inputs["pixel_values"].detach().cpu().numpy()
+        rerun.log_image("image/nn_preprocessed", rgb_small)
+        rerun.log_unknown_transform("image/nn_preprocessed")  # Note: Haven't implemented 2D transforms yet.
+
         outputs = model(**inputs)
 
-        target_sizes = torch.tensor([pil_im_smal.size[::-1]])
-        results = feature_extractor.post_process_object_detection(outputs, target_sizes=target_sizes)[0]
+        # model predicts COCO classes, bounding boxes, and masks
+        logits = outputs.logits.detach().cpu().numpy()
+        bboxes = outputs.pred_boxes.detach().cpu().numpy()
+        masks = outputs.pred_masks.detach().cpu().numpy()
 
-        labels = results["labels"].detach().cpu().numpy()
-        boxes_small = results["boxes"].detach().cpu().numpy()
+        # use the `post_process_panoptic` method of `DetrFeatureExtractor` to convert to COCO format
+        processed_sizes = torch.as_tensor(inputs["pixel_values"].shape[-2:]).unsqueeze(0)
+        result = feature_extractor.post_process_segmentation(outputs, processed_sizes)[0]
 
-        car_boxes_small = boxes_small[labels == car_id, :]
-        num_cars = car_boxes_small.shape[0]
-        labels = ["car" for _ in range(num_cars)]
+        scores = result["scores"].detach().cpu().numpy()
+        bboxes = result["labels"].detach().cpu().numpy()
+        masks = result["masks"].detach().cpu().numpy()
+
+        # retrieve the ids corresponding to each mask
+        boxes = masks_to_boxes(masks)
+
         rerun.log_rects(
-            "image/downscaled/detections", car_boxes_small, rect_format=rerun.RectFormat.XYXY, labels=labels
+            "image/nn_preprocessed/detections", boxes, rect_format=rerun.RectFormat.XYXY, labels=["?", "?", "?"]
         )
 
-        if num_cars > 0:
-            top_car_bbox_small = car_boxes_small[0, :]
+        num_cars = 0
 
-            x_min, y_min, x_max, y_max = top_car_bbox_small.tolist()
-            bbox_small_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]
-
-            bbox_xywh = [int(val * DOWNSCALE_FACTOR) for val in bbox_small_xywh]
-            tracker = cv.TrackerCSRT_create()
-            tracker.init(bgr, bbox_xywh)
-
-            rerun.log_rect("image/tracked", bbox_xywh, rect_format=rerun.RectFormat.XYWH, label="car")
+        # if num_cars > 0:
+        #    top_car_bbox_small = car_boxes_small[0, :]
+        #
+        #    x_min, y_min, x_max, y_max = top_car_bbox_small.tolist()
+        #    bbox_small_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]
+        #
+        #    bbox_xywh = [int(val * DOWNSCALE_FACTOR) for val in bbox_small_xywh]
+        #    tracker = cv.TrackerCSRT_create()
+        #    tracker.init(bgr, bbox_xywh)
+        #
+        #    rerun.log_rect("image/tracked", bbox_xywh, rect_format=rerun.RectFormat.XYWH, label="car")
     else:
         success, bbox_xywh = tracker.update(bgr)
 
