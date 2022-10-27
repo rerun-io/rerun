@@ -116,10 +116,11 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                     rerun.log_points("world/points", point_cloud, colors=np.array([255, 255, 255, 255]))
 
                     # Log the camera transforms:
+                    rotation_q = [0, 0, 0, 1]
+                    translation = [0, 0, 0]
                     rerun.log_rigid3(
                         "world/camera",
-                        rotation_q=np.array((0, 0, 0, 1)),
-                        translation=np.array((0, 0, 0)),
+                        parent_from_child=(translation, rotation_q),
                         xyz="RDF",  # X=Right, Y=Down, Z=Forward
                     )
                     rerun.log_pinhole(

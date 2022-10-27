@@ -443,23 +443,46 @@ pub type Quaternion = [f32; 4];
 /// A proper rigid 3D transform, i.e. a rotation and a translation.
 ///
 /// Also known as an isometric transform, or a pose.
-///
-/// Represents a transformation to parent from child.
-///
-/// Points in the child space are first rotated by [`Self::rotation`]
-/// and then translated by [`Self::translation`].
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Rigid3 {
     /// How is the child rotated?
     ///
     /// This transforms to parent-space from child-space.
-    pub rotation: Quaternion,
+    rotation: Quaternion,
 
     /// Translation to parent from child.
     ///
     /// You can also think of this as the position of the child.
-    pub translation: [f32; 3],
+    translation: [f32; 3],
+}
+
+#[cfg(feature = "glam")]
+impl Rigid3 {
+    #[inline]
+    pub fn new_parent_from_child(parent_from_child: macaw::IsoTransform) -> Self {
+        Self {
+            rotation: parent_from_child.rotation().into(),
+            translation: parent_from_child.translation().into(),
+        }
+    }
+
+    #[inline]
+    pub fn new_child_from_parent(child_from_parent: macaw::IsoTransform) -> Self {
+        Self::new_parent_from_child(child_from_parent.inverse())
+    }
+
+    #[inline]
+    pub fn parent_from_child(&self) -> macaw::IsoTransform {
+        let rotation = glam::Quat::from_slice(&self.rotation);
+        let translation = glam::Vec3::from_slice(&self.translation);
+        macaw::IsoTransform::from_rotation_translation(rotation, translation)
+    }
+
+    #[inline]
+    pub fn child_from_parent(&self) -> macaw::IsoTransform {
+        self.parent_from_child().inverse()
+    }
 }
 
 /// Camera perspective projection (a.k.a. intrinsics).
@@ -468,8 +491,8 @@ pub struct Rigid3 {
 pub struct Pinhole {
     /// Column-major projection matrix.
     ///
+    /// Child from parent.
     /// Image coordinates from camera view coordinates.
-    /// Transform to child-space from parent-space.
     ///
     /// Example:
     /// ```text
@@ -479,7 +502,7 @@ pub struct Pinhole {
     /// ```
     pub image_from_cam: [[f32; 3]; 3],
 
-    /// Pixel resolution (usually integers). Width and height.
+    /// Pixel resolution (usually integers) of child image space. Width and height.
     ///
     /// Example:
     /// ```text

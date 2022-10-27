@@ -575,11 +575,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
 
     for (child_path, child_transform) in &space_info.child_spaces {
         if let Transform::Rigid3(world_from_camera) = child_transform {
-            let world_from_camera = {
-                let rotation = glam::Quat::from_slice(&world_from_camera.rotation);
-                let translation = glam::Vec3::from_slice(&world_from_camera.translation);
-                macaw::IsoTransform::from_rotation_translation(rotation, translation)
-            };
+            let world_from_camera = world_from_camera.parent_from_child();
 
             let view_space = spaces_info
                 .spaces

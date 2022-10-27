@@ -139,7 +139,7 @@ def log_camera(cam: ARCamera) -> None:
     rot = rot * R.from_rotvec((math.tau / 2.0) * X)  # TODO(emilk): figure out why this is needed
 
     rerun.log_rigid3(
-        "world/camera", rotation_q=rot.as_quat(), translation=translation, xyz="RDF"  # X=Right, Y=Down, Z=Forward
+        "world/camera", parent_from_child=(translation, rot.as_quat()), xyz="RDF"  # X=Right, Y=Down, Z=Forward
     )
     rerun.log_pinhole(
         "world/camera/video",

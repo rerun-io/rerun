@@ -58,11 +58,11 @@ Say you have a 3D world with two cameras with known extrinsics (pose) and intrin
 rerun.log_points("world/points", …)
 
 # Log first camera:
-rerun.log_rigid3("world/camera/#0", …)
+rerun.log_rigid3("world/camera/#0", parent_from_child=(cam0_pose.pos, cam0_pose.rot))
 rerun.log_pinhole("world/camera/#0/image", …)
 
 # Log second camera:
-rerun.log_rigid3("world/camera/#1", …)
+rerun.log_rigid3("world/camera/#1", parent_from_child=(cam1_pose.pos, cam1_pose.rot))
 rerun.log_pinhole("world/camera/#1/image", …)
 
 # Log some data to the image spaces of the first camera:

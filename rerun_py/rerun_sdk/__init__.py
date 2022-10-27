@@ -428,42 +428,70 @@ def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
 def log_rigid3(
     obj_path: str,
     *,
-    rotation_q: npt.ArrayLike,
-    translation: npt.ArrayLike,
+    parent_from_child: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
+    child_from_parent: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
     xyz: str = "",
     timeless: bool = False,
 ) -> None:
     """
-    Log a proper rigid 3D transform of this object to its parent space.
+    Log a proper rigid 3D transform between this object and the parent.
 
-    This is also known as pose (e.g. camera extrinsics).
+    Set either `parent_from_child` or `child_from_parent` to
+    a tuple of `(translation_xyz, quat_xyzw)`.
 
-    The resulting transform from child to parent corresponds to taking
-    a point in the child space, rotating it by the given rotations,
-    and then translating it by the given translation:
+    `parent_from_child`
+    -------------------
+    `parent_from_child=(translation_xyz, quat_xyzw)`
 
-    * `point_parent = quat * point_child * quat* + translation`
+    Also known as pose (e.g. camera extrinsics).
+
+    The translation is the position of the object in the parent space.
+    The resulting transform from child to parent corresponds to taking a point in the child space,
+    rotating it by the given rotations, and then translating it by the given translation:
+
+    `point_parent = translation + quat * point_child * quat*
+
+    `child_from_parent`
+    -------------------
+    `child_from_parent=(translation_xyz, quat_xyzw)`
+
+    the inverse of `parent_from_child`
+
+    `xyz`
+    ----
+    Optionally set the view coordinates of this object, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
+    This is a convenience for also calling `log_view_coordinates`.
 
     Example
     -------
     ```
-    rerun.log_rigid3("world/camera", …)
+    rerun.log_rigid3("world/camera", parent_from_child=(t,q))
     rerun.log_pinhole("world/camera/image", …)
     ```
 
-    * `rotation_q`: Array with quaternion coordinates [x, y, z, w]
-      for the rotation from this object space to the parent space
-    * `translation`: Array with [x, y, z] position of the object in parent space.
-    * `xyz`: optionally set the view coordinates of this object, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
-       This is a convenience for also calling `log_view_coordinates`.
-
     """
-    rerun_rs.log_rigid3(
-        obj_path,
-        rotation_q=_to_sequence(rotation_q),
-        translation=_to_sequence(translation),
-        timeless=timeless,
-    )
+    if parent_from_child and child_from_parent:
+        raise TypeError("Set either parent_from_child or child_from_parent, but not both")
+    elif parent_from_child:
+        (t, q) = parent_from_child
+        rerun_rs.log_rigid3(
+            obj_path,
+            parent_from_child=True,
+            rotation_q=_to_sequence(q),
+            translation=_to_sequence(t),
+            timeless=timeless,
+        )
+    elif child_from_parent:
+        (t, q) = child_from_parent
+        rerun_rs.log_rigid3(
+            obj_path,
+            parent_from_child=False,
+            rotation_q=_to_sequence(q),
+            translation=_to_sequence(t),
+            timeless=timeless,
+        )
+    else:
+        raise TypeError("Set either parent_from_child or child_from_parent")
 
     if xyz != "":
         log_view_coordinates(obj_path, xyz=xyz, timeless=timeless)

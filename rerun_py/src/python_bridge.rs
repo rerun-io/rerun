@@ -416,16 +416,24 @@ fn log_unknown_transform(obj_path: &str, timeless: bool) -> PyResult<()> {
 #[pyfunction]
 fn log_rigid3(
     obj_path: &str,
+    parent_from_child: bool,
     rotation_q: re_log_types::Quaternion,
     translation: [f32; 3],
     timeless: bool,
 ) -> PyResult<()> {
     let obj_path = parse_obj_path(obj_path)?;
 
-    let transform = re_log_types::Transform::Rigid3(re_log_types::Rigid3 {
-        rotation: rotation_q,
-        translation,
-    });
+    let rotation = glam::Quat::from_slice(&rotation_q);
+    let translation = glam::Vec3::from_slice(&translation);
+    let transform = macaw::IsoTransform::from_rotation_translation(rotation, translation);
+
+    let transform = if parent_from_child {
+        re_log_types::Rigid3::new_parent_from_child(transform)
+    } else {
+        re_log_types::Rigid3::new_child_from_parent(transform)
+    };
+
+    let transform = re_log_types::Transform::Rigid3(transform);
 
     let mut sdk = Sdk::global();
 

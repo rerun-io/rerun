@@ -408,10 +408,9 @@ fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Res
 }
 
 fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
-    let Rigid3 {
-        rotation,
-        translation,
-    } = rigid3;
+    let pose = rigid3.parent_from_child(); // TODO(emilk): which one to show?
+    let rotation = pose.rotation();
+    let translation = pose.translation();
 
     ui.vertical(|ui| {
         ui.label("Rigid3");

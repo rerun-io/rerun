@@ -30,8 +30,7 @@ def log_car_data() -> None:
         # Log the camera pose:
         rerun.log_rigid3(
             "world/camera",
-            rotation_q=sample.camera.rotation_q,
-            translation=sample.camera.position,
+            parent_from_child=(sample.camera.position, sample.camera.rotation_q),
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
