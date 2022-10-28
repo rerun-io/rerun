@@ -203,6 +203,7 @@ pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMs
     ui.code("BeginRecordingMsg");
     let BeginRecordingMsg { msg_id: _, info } = msg;
     let RecordingInfo {
+        application_id,
         recording_id,
         started,
         recording_source,
@@ -212,6 +213,10 @@ pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMs
         .striped(true)
         .num_columns(2)
         .show(ui, |ui| {
+            ui.monospace("application_id:");
+            ui.label(application_id.to_string());
+            ui.end_row();
+
             ui.monospace("recording_id:");
             ui.label(format!("{recording_id:?}"));
             ui.end_row();

@@ -105,6 +105,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    rerun.init("api_demo")
+
     if args.serve:
         rerun.serve()
     elif args.connect:

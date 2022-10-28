@@ -97,6 +97,7 @@ fn table_row(
         LogMsg::BeginRecordingMsg(msg) => {
             let BeginRecordingMsg { msg_id: _, info } = msg;
             let RecordingInfo {
+                application_id,
                 recording_id,
                 started,
                 recording_source,
@@ -115,7 +116,7 @@ fn table_row(
                 ui.label(started.format());
             });
             row.col(|ui| {
-                ui.monospace(format!("{recording_id:?}"));
+                ui.monospace(format!("{application_id} - {recording_id:?}"));
             });
         }
         LogMsg::TypeMsg(msg) => {

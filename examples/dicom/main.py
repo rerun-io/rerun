@@ -85,6 +85,8 @@ if __name__ == "__main__":
     parser.add_argument("--download", action="store_true", help="Download dataset")
     args = parser.parse_args()
 
+    rerun.init("dicom")
+
     if args.download:
         download_dataset()
 
