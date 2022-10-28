@@ -4,6 +4,7 @@ pub mod test_triangle;
 pub mod tonemapper;
 
 pub use generic_skybox::GenericSkyboxDrawable;
+pub use lines::{LineDrawable, LineStrip};
 pub use test_triangle::TestTriangleDrawable;
 
 mod utils;

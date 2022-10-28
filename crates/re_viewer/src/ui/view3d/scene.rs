@@ -37,7 +37,7 @@ use super::{eye::Eye, SpaceCamera};
 /// * If NaN, auto-size it.
 /// Resolved in [`Scene::finalize_sizes_and_colors`].
 #[derive(Clone, Copy, Debug)]
-pub struct Size(f32);
+pub struct Size(pub f32);
 
 impl Size {
     /// Automatically sized based on how many there are in the scene etc.

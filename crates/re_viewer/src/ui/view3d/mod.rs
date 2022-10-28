@@ -472,34 +472,6 @@ fn paint_view(
         },
     );
 
-
-    // TODO(andreas): Scene's data structure should lend itself better to conversion.
-    let strips = Vec::with_capacity(scene.line_segments.len());
-    for segments in scene.line_segments.iter() {
-        let mut current_strip = LineStrip {
-            points: Vec::new(),
-            radius: segments.radius,
-            color: segments.color,
-        };
-        for segment in segments.segments {
-            let a = glam::Vec3 segment[0]
-
-            if let Some(prev) = current_strip.points.front() {
-                if prev == segment
-            }
-        }
-
-        let points = Vec::with_capacity(strip.segments.len());
-        for seg in strip.segments {
-        }
-
-        re_renderer::LineStrip {
-            points: strip.segments.map(|seg| seg),
-            radius: f32,
-            color: [u8; 4],
-        }
-    })
-
     #[cfg(feature = "wgpu")]
     let _callback = {
         use re_renderer::renderer::*;
@@ -513,17 +485,44 @@ fn paint_view(
         let resolution_in_pixel = rect.size() * ui.ctx().pixels_per_point();
         let resolution_in_pixel = [resolution_in_pixel.x as _, resolution_in_pixel.y as _];
 
+        // TODO(andreas): Scene's data structure should lend itself better to conversion.
+        let mut line_strips = Vec::with_capacity(scene.line_segments.len());
+        for segments in &scene.line_segments {
+            let mut current_strip = LineStrip {
+                points: Vec::new(),
+                radius: segments.radius.0,
+                color: segments.color,
+            };
+            for segment in &segments.segments {
+                let a = glam::vec3(segment[0][0], segment[0][1], segment[0][2]);
+                let b = glam::vec3(segment[1][0], segment[1][1], segment[1][2]);
+
+                if let Some(prev) = current_strip.points.last() {
+                    if *prev == a {
+                        current_strip.points.push(b);
+                    } else {
+                        line_strips.push(current_strip.clone());
+                        current_strip.points = vec![a, b];
+                    }
+                } else {
+                    current_strip.points.push(a);
+                    current_strip.points.push(b);
+                }
+            }
+
+            if current_strip.points.len() > 1 {
+                line_strips.push(current_strip);
+            }
+        }
+
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
-                        let triangle = TestTriangleDrawable::new(ctx, device);
-                        let skybox = GenericSkyboxDrawable::new(ctx, device);
-                        let lines = LineDrawable::new(ctx, device, )
-                        view_builder_prepare
-                            .write()
+                        let mut view_builder_lock = view_builder_prepare.write();
+                        let view_builder = view_builder_lock
                             .setup_view(
                                 ctx,
                                 device,
@@ -539,10 +538,15 @@ fn paint_view(
                                 },
                             )
                             .unwrap()
-                            .queue_draw(&skybox)
-                            .queue_draw(&triangle)
-                            .draw(ctx, encoder)
-                            .unwrap(); // TODO(andreas): Graceful error handling
+                            .queue_draw(&GenericSkyboxDrawable::new(ctx, device));
+
+                        if !line_strips.is_empty() {
+                            view_builder.queue_draw(
+                                &LineDrawable::new(ctx, device, queue, &line_strips).unwrap(),
+                            );
+                        }
+
+                        view_builder.draw(ctx, encoder).unwrap(); // TODO(andreas): Graceful error handling
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();
