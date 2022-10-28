@@ -443,17 +443,9 @@ impl AppState {
             rec_cfg,
         };
 
-        {
-            let blueprint = blueprints.entry(*selected_recording_id).or_default();
-            selection_panel.show_panel(&mut ctx, blueprint, egui_ctx);
-        }
-
-        egui::TopBottomPanel::bottom("time_panel")
-            .resizable(true)
-            .default_height(210.0)
-            .show(egui_ctx, |ui| {
-                time_panel.ui(&mut ctx, ui);
-            });
+        let blueprint = blueprints.entry(*selected_recording_id).or_default();
+        selection_panel.show_panel(&mut ctx, blueprint, egui_ctx);
+        time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
         let central_panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.window_fill(),

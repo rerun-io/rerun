@@ -18,7 +18,7 @@ impl SelectionPanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
-        let side_panel_frame = egui::Frame {
+        let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.window_fill(),
             inner_margin: egui::style::Margin::same(4.0),
             stroke: egui_ctx.style().visuals.window_stroke(),
@@ -27,11 +27,11 @@ impl SelectionPanel {
 
         let collapsed = egui::SidePanel::right("selection_view_collapsed")
             .resizable(false)
-            .frame(side_panel_frame)
+            .frame(panel_frame)
             .default_width(16.0);
         let expanded = egui::SidePanel::right("selection_view_expanded")
             .resizable(true)
-            .frame(side_panel_frame);
+            .frame(panel_frame);
 
         egui::SidePanel::show_animated_between(
             egui_ctx,

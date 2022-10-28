@@ -515,6 +515,7 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
 pub(crate) struct Blueprint {
     pub blueprint_panel_expanded: bool,
     pub selection_panel_expanded: bool,
+    pub time_panel_expanded: bool,
 
     pub viewport: ViewportBlueprint,
 }
@@ -524,6 +525,7 @@ impl Default for Blueprint {
         Self {
             blueprint_panel_expanded: true,
             selection_panel_expanded: true,
+            time_panel_expanded: true,
             viewport: Default::default(),
         }
     }
@@ -557,7 +559,7 @@ impl Blueprint {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
     ) {
-        let side_panel_frame = egui::Frame {
+        let panel_frame = egui::Frame {
             fill: ui.style().visuals.window_fill(),
             inner_margin: egui::style::Margin::same(4.0),
             stroke: ui.style().visuals.window_stroke(),
@@ -566,12 +568,12 @@ impl Blueprint {
 
         let collapsed_panel = egui::SidePanel::left("blueprint_panel_collapsed")
             .resizable(false)
-            .frame(side_panel_frame)
+            .frame(panel_frame)
             .default_width(16.0);
 
         let expanded_panel = egui::SidePanel::left("blueprint_panel_expanded")
             .resizable(true)
-            .frame(side_panel_frame)
+            .frame(panel_frame)
             .min_width(120.0)
             .default_width(200.0);
 

@@ -13,6 +13,8 @@ use crate::{
     TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
 };
 
+use super::Blueprint;
+
 /// A panel that shows objects to the left, time on the top.
 ///
 /// This includes the timeline controls and streams view.
@@ -42,11 +44,56 @@ impl Default for TimePanel {
 }
 
 impl TimePanel {
-    pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn show_panel(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        egui_ctx: &egui::Context,
+    ) {
+        let panel_frame = egui::Frame {
+            fill: egui_ctx.style().visuals.window_fill(),
+            inner_margin: egui::style::Margin::same(4.0),
+            stroke: egui_ctx.style().visuals.window_stroke(),
+            ..Default::default()
+        };
+
+        let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
+            .resizable(false)
+            .frame(panel_frame)
+            .default_height(16.0);
+        let expanded = egui::TopBottomPanel::bottom("time_panel_expanded")
+            .resizable(true)
+            .frame(panel_frame)
+            .default_height(250.0);
+
+        egui::TopBottomPanel::show_animated_between(
+            egui_ctx,
+            blueprint.time_panel_expanded,
+            collapsed,
+            expanded,
+            |ui: &mut egui::Ui, expansion: f32| {
+                if expansion < 1.0 {
+                    // Collapsed, or animating:
+                    if ui
+                        .small_button("⏶")
+                        .on_hover_text("Expand Timeline View")
+                        .clicked()
+                    {
+                        blueprint.time_panel_expanded = true;
+                    }
+                } else {
+                    // Expanded:
+                    self.ui(ctx, blueprint, ui);
+                }
+            },
+        );
+    }
+
+    fn ui(&mut self, ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         // play control and current time
-        top_row_ui(ctx, ui);
+        top_row_ui(ctx, blueprint, ui);
 
         self.next_col_right = ui.min_rect().left(); // this will expand during the call
 
@@ -359,8 +406,18 @@ impl TimePanel {
     }
 }
 
-fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+fn top_row_ui(ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
+        if ui
+            .small_button("⏷")
+            .on_hover_text("Collapse Timeline View")
+            .clicked()
+        {
+            blueprint.time_panel_expanded = false;
+        }
+
+        ui.separator();
+
         ctx.rec_cfg
             .time_ctrl
             .timeline_selector_ui(&ctx.log_db.time_points, ui);
