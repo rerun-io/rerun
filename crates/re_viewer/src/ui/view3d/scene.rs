@@ -381,6 +381,7 @@ impl Scene {
         }
     }
 
+    // TODO(andreas): A lof of the things this method does, the renderer should be able to do for us
     /// Translate screen-space sizes (ui points) and missing sizes, into proper
     /// scene-space sizes.
     ///
