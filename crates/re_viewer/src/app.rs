@@ -207,6 +207,7 @@ impl eframe::App for App {
             self.reset(egui_ctx);
         }
 
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         if egui_ctx.input_mut().consume_key(
             egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
             egui::Key::P,
