@@ -165,6 +165,151 @@ fn build_lines(
 
 // ---
 
+// Special error handling datastructures for debug builds (never crash!)
+
+#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+use error_handling::*;
+
+#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+mod error_handling {
+    use ahash::HashSet;
+    use parking_lot::Mutex;
+    use std::sync::{atomic::AtomicUsize, Arc};
+    use wgpu_core::error::ContextError;
+
+    fn type_of_wgpu_error(
+        error: &Box<(dyn std::error::Error + Send + Sync + 'static)>,
+    ) -> Option<std::any::TypeId> {
+        fn type_of_var<T: 'static>(_: &T) -> std::any::TypeId {
+            std::any::TypeId::of::<T>()
+        }
+
+        macro_rules! try_downcast {
+        [$typ:ty $(,)*] => {
+            if let Some(inner) = error.downcast_ref::<$typ>() {
+                return Some(type_of_var(inner));
+            }
+        };
+        [$typ:ty, $($rest:ty),+ $(,)*] => {
+            try_downcast![$typ];
+            try_downcast![$($rest),+];
+        };
+    }
+
+        try_downcast![
+            wgpu_core::command::ClearError,
+            wgpu_core::command::CommandEncoderError,
+            wgpu_core::command::ComputePassError,
+            wgpu_core::command::CopyError,
+            wgpu_core::command::DispatchError,
+            wgpu_core::command::DrawError,
+            wgpu_core::command::ExecutionError,
+            wgpu_core::command::PassErrorScope,
+            wgpu_core::command::QueryError,
+            wgpu_core::command::QueryUseError,
+            wgpu_core::command::RenderBundleError,
+            wgpu_core::command::RenderCommandError,
+            wgpu_core::command::RenderPassError,
+            wgpu_core::command::ResolveError,
+            wgpu_core::command::TransferError,
+            wgpu_core::binding_model::BindError,
+            wgpu_core::binding_model::BindingTypeMaxCountError,
+            wgpu_core::binding_model::CreateBindGroupError,
+            wgpu_core::binding_model::CreatePipelineLayoutError,
+            wgpu_core::binding_model::GetBindGroupLayoutError,
+            wgpu_core::binding_model::PushConstantUploadError,
+            wgpu_core::device::CreateDeviceError,
+            wgpu_core::device::DeviceError,
+            wgpu_core::device::RenderPassCompatibilityError,
+            wgpu_core::pipeline::ColorStateError,
+            wgpu_core::pipeline::CreateComputePipelineError,
+            wgpu_core::pipeline::CreateRenderPipelineError,
+            wgpu_core::pipeline::CreateShaderModuleError,
+            wgpu_core::pipeline::DepthStencilStateError,
+            wgpu_core::pipeline::ImplicitLayoutError,
+        ];
+
+        None
+    }
+
+    #[derive(Debug)]
+    pub struct WrappedContextError(Box<ContextError>);
+    impl std::hash::Hash for WrappedContextError {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.0.label.hash(state); // e.g. "composite_encoder"
+            self.0.label_key.hash(state); // e.g. "encoder"
+            self.0.string.hash(state); // e.g. "a RenderPass"
+
+            if let Some(type_id) = type_of_wgpu_error(&self.0.cause) {
+                type_id.hash(state);
+            } else {
+                re_log::warn!(cause=?self.0.cause, "unknown error cause");
+            }
+        }
+    }
+    impl PartialEq for WrappedContextError {
+        fn eq(&self, rhs: &Self) -> bool {
+            self.0.label.eq(&rhs.0.label)
+                && self.0.label_key.eq(rhs.0.label_key)
+                && self.0.string.eq(rhs.0.string)
+                && type_of_wgpu_error(&self.0.cause).eq(&type_of_wgpu_error(&rhs.0.cause))
+        }
+    }
+    impl Eq for WrappedContextError {}
+
+    #[derive(Default, Clone)]
+    pub struct ErrorTracker {
+        frame_nr: Arc<AtomicUsize>,
+        errors: Arc<Mutex<HashSet<WrappedContextError>>>,
+    }
+    impl ErrorTracker {
+        pub fn tick(&self) {
+            self.frame_nr
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+
+        pub fn clear(&self) {
+            self.errors.lock().clear();
+        }
+
+        pub fn handle_error(&self, error: wgpu::Error) {
+            match error {
+                wgpu::Error::OutOfMemory { source: _ } => panic!("{error}"),
+                wgpu::Error::Validation {
+                    source,
+                    description,
+                } => {
+                    match source.downcast::<ContextError>() {
+                        Ok(ctx_err) => {
+                            if ctx_err
+                                .cause
+                                .downcast_ref::<wgpu_core::command::CommandEncoderError>()
+                                .is_some()
+                            {
+                                // Actual command encoder errors never carry any meaningful
+                                // information.
+                                return;
+                            }
+                            let ctx_err = WrappedContextError(ctx_err);
+                            if !self.errors.lock().insert(ctx_err) {
+                                return;
+                            }
+                            re_log::error!(
+                                frame_nr = self.frame_nr.load(std::sync::atomic::Ordering::Relaxed),
+                                %description,
+                                "WGPU error",
+                            )
+                        }
+                        Err(err) => panic!("{err}"),
+                    };
+                }
+            }
+        }
+    }
+}
+
+// ---
+
 // Usual winit + wgpu initialization stuff
 
 struct Application {
@@ -174,6 +319,8 @@ struct Application {
     queue: wgpu::Queue,
     surface: wgpu::Surface,
     surface_config: wgpu::SurfaceConfiguration,
+    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+    err_tracker: ErrorTracker,
     state: AppState,
 
     pub re_ctx: RenderContext,
@@ -226,6 +373,16 @@ impl Application {
         };
         surface.configure(&device, &surface_config);
 
+        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+        let err_tracker = {
+            let err_tracker = ErrorTracker::default();
+            device.on_uncaptured_error({
+                let err_tracker = err_tracker.clone();
+                move |err| err_tracker.handle_error(err)
+            });
+            err_tracker
+        };
+
         let re_ctx = RenderContext::new(
             &device,
             &queue,
@@ -240,12 +397,17 @@ impl Application {
             queue,
             surface,
             surface_config,
+            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+            err_tracker,
             re_ctx,
             state: AppState::new(),
         })
     }
 
     fn run(mut self) {
+        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+        let mut cleared = 10usize;
+
         self.event_loop.run(move |event, _, control_flow| {
             // Keep our example busy.
             // Not how one should generally do it, but great for animated content and checking on perf.
@@ -275,17 +437,45 @@ impl Application {
                     self.window.request_redraw();
                 }
                 Event::RedrawRequested(_) => {
+                    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
+                    // native debug build
+                    self.err_tracker.tick();
+
+                    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+                    let frame = match self.surface.get_current_texture() {
+                        Ok(frame) => {
+                            cleared = cleared.saturating_sub(1);
+                            if cleared == 0 {
+                                self.err_tracker.clear();
+                            }
+                            frame
+                        }
+                        Err(wgpu::SurfaceError::Outdated) => {
+                            // TODO: explain
+                            cleared = 10;
+                            self.surface.configure(&self.device, &self.surface_config);
+                            return;
+                        }
+                        Err(err) => {
+                            re_log::warn!(%err, "dropped frame");
+                            return;
+                        }
+                    };
+                    #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
                     let frame = self
                         .surface
                         .get_current_texture()
                         .expect("failed to acquire next swap chain texture");
+
                     let view = frame
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let mut encoder = self
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                    let mut encoder =
+                        self.device
+                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                label: "composite_encoder".into(),
+                            });
 
                     let view_builder = draw_view(
                         &self.state,
@@ -412,17 +602,14 @@ fn main() {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
+        tracing_subscriber::fmt::init();
+
         // Set size to a common physical resolution as a comparable start-up default.
         window.set_inner_size(winit::dpi::PhysicalSize {
             width: 1920,
             height: 1080,
         });
 
-        // Enable wgpu info messages by default
-        env_logger::init_from_env(env_logger::Env::default().filter_or(
-            env_logger::DEFAULT_FILTER_ENV,
-            "wgpu=info,renderer_standalone",
-        ));
         pollster::block_on(run(event_loop, window));
     }
 
