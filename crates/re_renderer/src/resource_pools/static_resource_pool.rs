@@ -79,3 +79,77 @@ where
         self.lookup.keys()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::cell::Cell;
+
+    use slotmap::Key;
+
+    use super::StaticResourcePool;
+    use crate::resource_pools::resource::{PoolError, Resource};
+
+    slotmap::new_key_type! { pub struct ConcreteHandle; }
+
+    #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+    pub struct ConcreteResourceDesc(u32);
+
+    #[derive(PartialEq, Eq, Debug)]
+    pub struct ConcreteResource(u32);
+
+    impl Resource for ConcreteResource {
+        fn on_handle_resolve(&self, _current_frame_index: u64) {}
+    }
+
+    type Pool = StaticResourcePool<ConcreteHandle, ConcreteResourceDesc, ConcreteResource>;
+
+    #[test]
+    fn resource_reuse() {
+        let mut pool = Pool::default();
+
+        // New resource
+        let res0 = {
+            let new_resource_created = Cell::new(false);
+            let handle = pool.get_or_create(&ConcreteResourceDesc(0), |d| {
+                new_resource_created.set(true);
+                ConcreteResource(d.0)
+            });
+            assert!(new_resource_created.get());
+            handle
+        };
+
+        // Get same resource again
+        {
+            let new_resource_created = Cell::new(false);
+            let handle = pool.get_or_create(&ConcreteResourceDesc(0), |d| {
+                new_resource_created.set(true);
+                ConcreteResource(d.0)
+            });
+            assert!(!new_resource_created.get());
+            assert_eq!(handle, res0);
+        }
+    }
+
+    #[test]
+    fn get_resource() {
+        let mut pool = Pool::default();
+
+        // Query with valid handle
+        let handle = pool.get_or_create(&ConcreteResourceDesc(0), |d| ConcreteResource(d.0));
+        assert!(pool.get_resource(handle).is_ok());
+        assert_eq!(*pool.get_resource(handle).unwrap(), ConcreteResource(0));
+
+        // Query with null handle
+        assert_eq!(
+            pool.get_resource(ConcreteHandle::null()),
+            Err(PoolError::NullHandle)
+        );
+
+        // Query with invalid handle
+        pool = Pool::default();
+        assert_eq!(
+            pool.get_resource(handle),
+            Err(PoolError::ResourceNotAvailable)
+        );
+    }
+}
