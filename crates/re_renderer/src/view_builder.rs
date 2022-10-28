@@ -36,7 +36,7 @@ struct ViewTargetSetup {
     depth_buffer: TextureHandleStrong,
 }
 
-pub type SharedViewBuilder = Arc<RwLock<ViewBuilder>>;
+pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
 
 /// Basic configuration for a target view.
 pub struct TargetConfiguration {
@@ -57,7 +57,7 @@ impl ViewBuilder {
     pub const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
     pub fn new_shared() -> SharedViewBuilder {
-        Arc::new(RwLock::new(ViewBuilder::default()))
+        Arc::new(RwLock::new(Some(ViewBuilder::default())))
     }
 
     pub fn setup_view(
