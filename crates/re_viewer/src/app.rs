@@ -200,6 +200,20 @@ impl eframe::App for App {
             return;
         }
 
+        if egui_ctx.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::R,
+        ) {
+            self.reset(egui_ctx);
+        }
+
+        if egui_ctx.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::P,
+        ) {
+            self.state.profiler.start();
+        }
+
         self.state.cache.new_frame();
 
         if let Some(rx) = &mut self.rx {
@@ -277,6 +291,20 @@ impl eframe::App for App {
 }
 
 impl App {
+    /// Reset the viewer to how it looked the first time you ran it.
+    fn reset(&mut self, egui_ctx: &egui::Context) {
+        self.state = Default::default();
+
+        // Keep dark/light mode setting:
+        let is_dark_mode = egui_ctx.style().visuals.dark_mode;
+        *egui_ctx.memory() = Default::default();
+        egui_ctx.set_visuals(if is_dark_mode {
+            egui::Visuals::dark()
+        } else {
+            egui::Visuals::light()
+        });
+    }
+
     fn log_db(&mut self) -> &mut LogDb {
         self.log_dbs.entry(self.state.selected_rec_id).or_default()
     }
@@ -689,27 +717,23 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     ui.menu_button("Advanced", |ui| {
         if ui
             .button("Reset viewer")
-            .on_hover_text("Reset the viewer to how it looked the first time you ran it.")
+            .on_hover_text(
+                "Reset the viewer to how it looked the first time you ran it.\n\
+                            Shortcut: Cmd-Shift-R or Ctrl-Shift-R",
+            )
             .clicked()
         {
-            app.state = Default::default();
-
-            // Keep dark/light mode setting:
-            let is_dark_mode = ui.ctx().style().visuals.dark_mode;
-            *ui.ctx().memory() = Default::default();
-            ui.ctx().set_visuals(if is_dark_mode {
-                egui::Visuals::dark()
-            } else {
-                egui::Visuals::light()
-            });
-
+            app.reset(ui.ctx());
             ui.close_menu();
         }
 
         #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         if ui
             .button("Profile viewer")
-            .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
+            .on_hover_text(
+                "Starts a profiler, showing what makes the viewer run slow\n\
+                            Shortcut: Cmd-Shift-P or Ctrl-Shift-P",
+            )
             .clicked()
         {
             app.state.profiler.start();
