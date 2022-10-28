@@ -514,6 +514,15 @@ fn paint_view(
                 line_strips.push(current_strip);
             }
         }
+        let point_cloud_points = scene
+            .points
+            .iter()
+            .map(|point| PointCloudPoint {
+                position: glam::vec3(point.pos[0], point.pos[1], point.pos[2]),
+                radius: point.radius.0,
+                srgb_color: point.color,
+            })
+            .collect::<Vec<_>>();
 
         egui::PaintCallback {
             rect,
@@ -543,6 +552,12 @@ fn paint_view(
                         if !line_strips.is_empty() {
                             view_builder.queue_draw(
                                 &LineDrawable::new(ctx, device, queue, &line_strips).unwrap(),
+                            );
+                        }
+                        if !point_cloud_points.is_empty() {
+                            view_builder.queue_draw(
+                                &PointCloudDrawable::new(ctx, device, queue, &point_cloud_points)
+                                    .unwrap(),
                             );
                         }
 
