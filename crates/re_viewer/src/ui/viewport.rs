@@ -510,9 +510,21 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
 // ----------------------------------------------------------------------------
 
 /// Defines the layout of the whole Viewer (or will, eventually).
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub(crate) struct Blueprint {
+    blueprint_panel_expanded: bool,
+
     pub viewport: ViewportBlueprint,
+}
+
+impl Default for Blueprint {
+    fn default() -> Self {
+        Self {
+            blueprint_panel_expanded: true,
+            viewport: Default::default(),
+        }
+    }
 }
 
 impl Blueprint {
@@ -550,22 +562,54 @@ impl Blueprint {
             ..Default::default()
         };
 
-        egui::SidePanel::left("blueprint_panel")
-            .resizable(true)
-            .frame(side_panel_frame)
-            .default_width(200.0)
-            .show_inside(ui, |ui| {
-                ui.vertical_centered(|ui| {
-                    if ui.button("Reset space views").clicked() {
-                        self.viewport = ViewportBlueprint::new(&ctx.log_db.obj_db, spaces_info);
+        if self.blueprint_panel_expanded {
+            egui::SidePanel::left("blueprint_panel")
+                .resizable(true)
+                .frame(side_panel_frame)
+                .default_width(200.0)
+                .show_inside(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        if ui
+                            .small_button("⏴")
+                            .on_hover_text("Collapse Blueprint View")
+                            .clicked()
+                        {
+                            self.blueprint_panel_expanded = false;
+                        }
+
+                        ui.vertical_centered(|ui| {
+                            ui.label("Blueprint");
+                        });
+                    });
+
+                    ui.separator();
+
+                    ui.vertical_centered(|ui| {
+                        if ui.button("Reset space views").clicked() {
+                            self.viewport = ViewportBlueprint::new(&ctx.log_db.obj_db, spaces_info);
+                        }
+                    });
+
+                    ui.separator();
+
+                    self.viewport
+                        .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
+                });
+        } else {
+            egui::SidePanel::left("collapsed_blueprint_panel")
+                .resizable(false)
+                .frame(side_panel_frame)
+                .default_width(0.0) // as small as possible
+                .show_inside(ui, |ui| {
+                    if ui
+                        .small_button("⏵")
+                        .on_hover_text("Expand Blueprint View")
+                        .clicked()
+                    {
+                        self.blueprint_panel_expanded = true;
                     }
                 });
-
-                ui.separator();
-
-                self.viewport
-                    .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
-            });
+        }
     }
 }
 
