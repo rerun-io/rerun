@@ -178,23 +178,23 @@ mod error_handling {
     use wgpu_core::error::ContextError;
 
     fn type_of_wgpu_error(
-        error: &Box<(dyn std::error::Error + Send + Sync + 'static)>,
+        error: &(dyn std::error::Error + Send + Sync + 'static),
     ) -> Option<std::any::TypeId> {
         fn type_of_var<T: 'static>(_: &T) -> std::any::TypeId {
             std::any::TypeId::of::<T>()
         }
 
         macro_rules! try_downcast {
-        [$typ:ty $(,)*] => {
-            if let Some(inner) = error.downcast_ref::<$typ>() {
-                return Some(type_of_var(inner));
-            }
-        };
-        [$typ:ty, $($rest:ty),+ $(,)*] => {
-            try_downcast![$typ];
-            try_downcast![$($rest),+];
-        };
-    }
+            [$typ:ty $(,)*] => {
+                if let Some(inner) = error.downcast_ref::<$typ>() {
+                    return Some(type_of_var(inner));
+                }
+            };
+            [$typ:ty, $($rest:ty),+ $(,)*] => {
+                try_downcast![$typ];
+                try_downcast![$($rest),+];
+            };
+        }
 
         try_downcast![
             wgpu_core::command::ClearError,
@@ -240,7 +240,7 @@ mod error_handling {
             self.0.label_key.hash(state); // e.g. "encoder"
             self.0.string.hash(state); // e.g. "a RenderPass"
 
-            if let Some(type_id) = type_of_wgpu_error(&self.0.cause) {
+            if let Some(type_id) = type_of_wgpu_error(&*self.0.cause) {
                 type_id.hash(state);
             } else {
                 re_log::warn!(cause=?self.0.cause, "unknown error cause");
@@ -252,7 +252,7 @@ mod error_handling {
             self.0.label.eq(&rhs.0.label)
                 && self.0.label_key.eq(rhs.0.label_key)
                 && self.0.string.eq(rhs.0.string)
-                && type_of_wgpu_error(&self.0.cause).eq(&type_of_wgpu_error(&rhs.0.cause))
+                && type_of_wgpu_error(&*self.0.cause).eq(&type_of_wgpu_error(&*rhs.0.cause))
         }
     }
     impl Eq for WrappedContextError {}
@@ -270,6 +270,7 @@ mod error_handling {
 
         pub fn clear(&self) {
             self.errors.lock().clear();
+            re_log::debug!("cleared WGPU error tracker");
         }
 
         pub fn handle_error(&self, error: wgpu::Error) {
@@ -298,7 +299,7 @@ mod error_handling {
                                 frame_nr = self.frame_nr.load(std::sync::atomic::Ordering::Relaxed),
                                 %description,
                                 "WGPU error",
-                            )
+                            );
                         }
                         Err(err) => panic!("{err}"),
                     };
@@ -406,7 +407,7 @@ impl Application {
 
     fn run(mut self) {
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-        let mut cleared = 10usize;
+        let mut clear_countdown = usize::MAX;
 
         self.event_loop.run(move |event, _, control_flow| {
             // Keep our example busy.
@@ -444,15 +445,16 @@ impl Application {
                     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
                     let frame = match self.surface.get_current_texture() {
                         Ok(frame) => {
-                            cleared = cleared.saturating_sub(1);
-                            if cleared == 0 {
+                            clear_countdown = clear_countdown.saturating_sub(1);
+                            if clear_countdown == 0 {
+                                clear_countdown = usize::MAX;
                                 self.err_tracker.clear();
                             }
                             frame
                         }
                         Err(wgpu::SurfaceError::Outdated) => {
                             // TODO: explain
-                            cleared = 10;
+                            clear_countdown = 10;
                             self.surface.configure(&self.device, &self.surface_config);
                             return;
                         }
