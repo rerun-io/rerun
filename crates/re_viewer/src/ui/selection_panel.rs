@@ -12,21 +12,66 @@ pub(crate) struct SelectionPanel {}
 
 impl SelectionPanel {
     #[allow(clippy::unused_self)]
-    pub fn ui(
+    pub fn show_panel(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        egui_ctx: &egui::Context,
+    ) {
+        let side_panel_frame = egui::Frame {
+            fill: egui_ctx.style().visuals.window_fill(),
+            inner_margin: egui::style::Margin::same(4.0),
+            stroke: egui_ctx.style().visuals.window_stroke(),
+            ..Default::default()
+        };
+
+        let collapsed = egui::SidePanel::right("selection_view_collapsed")
+            .resizable(false)
+            .frame(side_panel_frame)
+            .default_width(16.0);
+        let expanded = egui::SidePanel::right("selection_view_expanded")
+            .resizable(true)
+            .frame(side_panel_frame);
+
+        egui::SidePanel::show_animated_between(
+            egui_ctx,
+            blueprint.selection_panel_expanded,
+            collapsed,
+            expanded,
+            |ui: &mut egui::Ui, expansion: f32| {
+                if expansion < 1.0 {
+                    // Collapsed, or animating:
+                    if ui
+                        .small_button("⏴")
+                        .on_hover_text("Expand Selection View")
+                        .clicked()
+                    {
+                        blueprint.selection_panel_expanded = true;
+                    }
+                } else {
+                    // Expanded:
+                    if ui
+                        .small_button("⏵")
+                        .on_hover_text("Collapse Selection View")
+                        .clicked()
+                    {
+                        blueprint.selection_panel_expanded = false;
+                    }
+
+                    self.contents(ctx, blueprint, ui);
+                }
+            },
+        );
+    }
+
+    #[allow(clippy::unused_self)]
+    fn contents(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         blueprint: &mut Blueprint,
         ui: &mut egui::Ui,
     ) {
         crate::profile_function!();
-
-        ui.horizontal(|ui| {
-            ui.heading("Selection");
-
-            if ctx.rec_cfg.selection.is_some() && ui.small_button("Deselect").clicked() {
-                ctx.rec_cfg.selection = Selection::None;
-            }
-        });
 
         ui.separator();
 

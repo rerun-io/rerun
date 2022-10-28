@@ -443,11 +443,9 @@ impl AppState {
             rec_cfg,
         };
 
-        if ctx.rec_cfg.selection.is_some() {
-            egui::SidePanel::right("selection_view").show(egui_ctx, |ui| {
-                let blueprint = blueprints.entry(*selected_recording_id).or_default();
-                selection_panel.ui(&mut ctx, blueprint, ui);
-            });
+        {
+            let blueprint = blueprints.entry(*selected_recording_id).or_default();
+            selection_panel.show_panel(&mut ctx, blueprint, egui_ctx);
         }
 
         egui::TopBottomPanel::bottom("time_panel")

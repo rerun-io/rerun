@@ -513,7 +513,8 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct Blueprint {
-    blueprint_panel_expanded: bool,
+    pub blueprint_panel_expanded: bool,
+    pub selection_panel_expanded: bool,
 
     pub viewport: ViewportBlueprint,
 }
@@ -522,6 +523,7 @@ impl Default for Blueprint {
     fn default() -> Self {
         Self {
             blueprint_panel_expanded: true,
+            selection_panel_expanded: true,
             viewport: Default::default(),
         }
     }
@@ -580,7 +582,7 @@ impl Blueprint {
             expanded_panel,
             |ui: &mut egui::Ui, expansion: f32| {
                 if expansion < 1.0 {
-                    // Collapsed, or animation:
+                    // Collapsed, or animating:
                     if ui
                         .small_button("⏵")
                         .on_hover_text("Expand Blueprint View")
