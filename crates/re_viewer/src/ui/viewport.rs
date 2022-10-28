@@ -562,12 +562,34 @@ impl Blueprint {
             ..Default::default()
         };
 
-        if self.blueprint_panel_expanded {
-            egui::SidePanel::left("blueprint_panel")
-                .resizable(true)
-                .frame(side_panel_frame)
-                .default_width(200.0)
-                .show_inside(ui, |ui| {
+        let collapsed_panel = egui::SidePanel::left("blueprint_panel_collapsed")
+            .resizable(false)
+            .frame(side_panel_frame)
+            .default_width(16.0);
+
+        let expanded_panel = egui::SidePanel::left("blueprint_panel_expanded")
+            .resizable(true)
+            .frame(side_panel_frame)
+            .min_width(120.0)
+            .default_width(200.0);
+
+        egui::SidePanel::show_animated_between_inside(
+            ui,
+            self.blueprint_panel_expanded,
+            collapsed_panel,
+            expanded_panel,
+            |ui: &mut egui::Ui, expansion: f32| {
+                if expansion < 1.0 {
+                    // Collapsed, or animation:
+                    if ui
+                        .small_button("⏵")
+                        .on_hover_text("Expand Blueprint View")
+                        .clicked()
+                    {
+                        self.blueprint_panel_expanded = true;
+                    }
+                } else {
+                    // Expanded:
                     ui.horizontal(|ui| {
                         if ui
                             .small_button("⏴")
@@ -594,22 +616,9 @@ impl Blueprint {
 
                     self.viewport
                         .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
-                });
-        } else {
-            egui::SidePanel::left("collapsed_blueprint_panel")
-                .resizable(false)
-                .frame(side_panel_frame)
-                .default_width(0.0) // as small as possible
-                .show_inside(ui, |ui| {
-                    if ui
-                        .small_button("⏵")
-                        .on_hover_text("Expand Blueprint View")
-                        .clicked()
-                    {
-                        self.blueprint_panel_expanded = true;
-                    }
-                });
-        }
+                }
+            },
+        );
     }
 }
 
