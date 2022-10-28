@@ -186,6 +186,7 @@ impl ViewCoordinates {
         glam::Mat3::from_cols_array_2d(&[rub(self.0[0]), rub(self.0[1]), rub(self.0[2])])
     }
 
+    #[cfg(feature = "glam")]
     pub fn handedness(&self) -> Option<Handedness> {
         let to_rub = self.to_rub();
         let det = to_rub.determinant();

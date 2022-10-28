@@ -1,10 +1,12 @@
 pub mod generic_skybox;
 pub mod lines;
+pub mod point_cloud;
 pub mod test_triangle;
 pub mod tonemapper;
 
 pub use generic_skybox::GenericSkyboxDrawable;
 pub use lines::{LineDrawable, LineStrip};
+pub use point_cloud::PointCloudDrawable;
 pub use test_triangle::TestTriangleDrawable;
 
 mod utils;

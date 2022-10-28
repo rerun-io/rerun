@@ -141,14 +141,18 @@ impl std::fmt::Display for ObjTypePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use std::fmt::Write as _;
 
-        f.write_char('/')?;
-        for (i, comp) in self.components.iter().enumerate() {
-            comp.fmt(f)?;
-            if i + 1 != self.components.len() {
+        let mut iter = self.components.iter();
+        if let Some(first_comp) = iter.next() {
+            // no leading nor trailing slash
+            first_comp.fmt(f)?;
+            for comp in iter {
                 f.write_char('/')?;
+                comp.fmt(f)?;
             }
+            Ok(())
+        } else {
+            f.write_char('/') // root
         }
-        Ok(())
     }
 }
 

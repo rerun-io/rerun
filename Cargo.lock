@@ -3096,6 +3096,7 @@ dependencies = [
  "pathdiff",
  "pollster",
  "puffin",
+ "rand",
  "re_error",
  "re_log",
  "slotmap",

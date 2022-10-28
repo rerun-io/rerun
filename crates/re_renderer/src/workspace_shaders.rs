@@ -36,6 +36,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/point_cloud.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/point_cloud.wgsl").into())
+            .unwrap();
+    }
+
+    {
         let virtpath = ::std::path::Path::new("crates/re_renderer/shader/screen_triangle.wgsl");
         fs.create_file(
             &virtpath,

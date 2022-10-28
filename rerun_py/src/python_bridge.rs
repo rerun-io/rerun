@@ -136,7 +136,7 @@ fn default_recording_id(py: Python<'_>) -> RecordingId {
     // We can use authkey for this, because it is the same for parent
     // and child processes.
     //
-    // TODO(emilk): are there any security conserns with leaking authkey?
+    // TODO(emilk): are there any security concerns with leaking authkey?
     //
     // https://docs.python.org/3/library/multiprocessing.html#multiprocessing.Process.authkey
     let seed = authkey(py);
@@ -170,12 +170,16 @@ authkey = multiprocessing.current_process().authkey
 
 // ----------------------------------------------------------------------------
 
-fn parse_obj_path_comps(obj_path: &str) -> PyResult<Vec<ObjPathComp>> {
-    re_log_types::parse_obj_path(obj_path).map_err(|err| PyTypeError::new_err(err.to_string()))
-}
-
 fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
-    parse_obj_path_comps(obj_path).map(ObjPath::from)
+    let components = re_log_types::parse_obj_path(obj_path)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+    if components.is_empty() {
+        Err(PyTypeError::new_err(
+            "You cannot log to the root {obj_path:?}",
+        ))
+    } else {
+        Ok(ObjPath::from(components))
+    }
 }
 
 fn vec_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
@@ -395,22 +399,8 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
 
 #[pyfunction]
 fn log_unknown_transform(obj_path: &str, timeless: bool) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
     let transform = re_log_types::Transform::Unknown;
-
-    let mut sdk = Sdk::global();
-
-    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
-
-    let time_point = time(timeless);
-
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "_transform"),
-        LoggedData::Single(Data::Transform(transform)),
-    );
-
-    Ok(())
+    log_transform(obj_path, transform, timeless)
 }
 
 #[pyfunction]
@@ -421,8 +411,6 @@ fn log_rigid3(
     translation: [f32; 3],
     timeless: bool,
 ) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
-
     let rotation = glam::Quat::from_slice(&rotation_q);
     let translation = glam::Vec3::from_slice(&translation);
     let transform = macaw::IsoTransform::from_rotation_translation(rotation, translation);
@@ -435,19 +423,7 @@ fn log_rigid3(
 
     let transform = re_log_types::Transform::Rigid3(transform);
 
-    let mut sdk = Sdk::global();
-
-    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
-
-    let time_point = time(timeless);
-
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "_transform"),
-        LoggedData::Single(Data::Transform(transform)),
-    );
-
-    Ok(())
+    log_transform(obj_path, transform, timeless)
 }
 
 #[pyfunction]
@@ -457,25 +433,31 @@ fn log_pinhole(
     child_from_parent: [[f32; 3]; 3],
     timeless: bool,
 ) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
-
     let transform = re_log_types::Transform::Pinhole(re_log_types::Pinhole {
         image_from_cam: child_from_parent,
         resolution: Some(resolution),
     });
 
+    log_transform(obj_path, transform, timeless)
+}
+
+fn log_transform(
+    obj_path: &str,
+    transform: re_log_types::Transform,
+    timeless: bool,
+) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+    if obj_path.len() == 1 {
+        // Stop people from logging a transform to a root-object, such as "world" (which doesn't have a parent).
+        return Err(PyTypeError::new_err("Transforms are between a child object and its parent, so root objects cannot have transforms"));
+    }
     let mut sdk = Sdk::global();
-
-    // NOTE(emilk): we don't register a type for this object, because we are only logging a meta-field ("_transform").
-
     let time_point = time(timeless);
-
     sdk.send_data(
         &time_point,
         (&obj_path, "_transform"),
         LoggedData::Single(Data::Transform(transform)),
     );
-
     Ok(())
 }
 
