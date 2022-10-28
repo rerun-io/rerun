@@ -174,7 +174,7 @@ use error_handling::*;
 mod error_handling {
     use ahash::HashSet;
     use parking_lot::Mutex;
-    use std::sync::{atomic::AtomicUsize, Arc};
+    use std::sync::{atomic::AtomicUsize, atomic::Ordering, Arc};
     use wgpu_core::error::ContextError;
 
     fn type_of_wgpu_error(
@@ -232,6 +232,9 @@ mod error_handling {
         None
     }
 
+    /// A `wgpu_core::ContextError` with hashing and equality capabilities.
+    ///
+    /// Used for deduplication purposes.
     #[derive(Debug)]
     pub struct WrappedContextError(Box<ContextError>);
     impl std::hash::Hash for WrappedContextError {
@@ -257,22 +260,30 @@ mod error_handling {
     }
     impl Eq for WrappedContextError {}
 
+    /// Coalesces wgpu errors until the tracker is `clear()`ed.
+    ///
+    /// Used to avoid spamming the user with repeating errors while the pipeline
+    /// is in a poisoned state.
     #[derive(Default, Clone)]
     pub struct ErrorTracker {
         frame_nr: Arc<AtomicUsize>,
         errors: Arc<Mutex<HashSet<WrappedContextError>>>,
     }
     impl ErrorTracker {
+        /// Increment frame count used in logged errors.
         pub fn tick(&self) {
-            self.frame_nr
-                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.frame_nr.fetch_add(1, Ordering::Relaxed);
         }
 
+        /// Resets the tracker.
+        ///
+        /// Call this when the pipeline is back to a sane state.
         pub fn clear(&self) {
             self.errors.lock().clear();
             re_log::debug!("cleared WGPU error tracker");
         }
 
+        /// Logs a wgpu error, making sure to deduplicate them as needed.
         pub fn handle_error(&self, error: wgpu::Error) {
             match error {
                 wgpu::Error::OutOfMemory { source: _ } => panic!("{error}"),
@@ -288,15 +299,19 @@ mod error_handling {
                                 .is_some()
                             {
                                 // Actual command encoder errors never carry any meaningful
-                                // information.
+                                // information: ignore them.
                                 return;
                             }
+
                             let ctx_err = WrappedContextError(ctx_err);
                             if !self.errors.lock().insert(ctx_err) {
+                                // We've already logged this error since we've entered the
+                                // current poisoned state. Don't log it again.
                                 return;
                             }
+
                             re_log::error!(
-                                frame_nr = self.frame_nr.load(std::sync::atomic::Ordering::Relaxed),
+                                frame_nr = self.frame_nr.load(Ordering::Relaxed),
                                 %description,
                                 "WGPU error",
                             );
@@ -374,6 +389,8 @@ impl Application {
         };
         surface.configure(&device, &surface_config);
 
+        // In debug builds, make sure to catch all errors, never crash, and try to
+        // always let the user find a way to returned a poisoned pipeline into a sane state.
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
         let err_tracker = {
             let err_tracker = ErrorTracker::default();
@@ -406,12 +423,17 @@ impl Application {
     }
 
     fn run(mut self) {
+        // This countdown reaching 0 indicates that the pipeline has stabilized into a
+        // sane state, which might take a few frames if we've just left a poisoned state.
+        //
+        // We use this to know when it makes sense to clear the error tracker.
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
         let mut clear_countdown = usize::MAX;
 
         self.event_loop.run(move |event, _, control_flow| {
             // Keep our example busy.
-            // Not how one should generally do it, but great for animated content and checking on perf.
+            // Not how one should generally do it, but great for animated content and
+            // checking on perf.
             *control_flow = ControlFlow::Poll;
 
             match event {
@@ -438,14 +460,18 @@ impl Application {
                     self.window.request_redraw();
                 }
                 Event::RedrawRequested(_) => {
-                    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
                     // native debug build
+                    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
                     self.err_tracker.tick();
 
-                    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+                    // native debug build
+                    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
                     let frame = match self.surface.get_current_texture() {
                         Ok(frame) => {
                             clear_countdown = clear_countdown.saturating_sub(1);
+                            // The pipeline has stabilized back into a sane state, clear
+                            // the error tracker so that we're ready to log errors once again
+                            // if the pipeline gets back into a poisoned state.
                             if clear_countdown == 0 {
                                 clear_countdown = usize::MAX;
                                 self.err_tracker.clear();
@@ -453,9 +479,12 @@ impl Application {
                             frame
                         }
                         Err(wgpu::SurfaceError::Outdated) => {
-                            // TODO: explain
-                            clear_countdown = 10;
+                            // We haven't been able to present anything to the swapchain for
+                            // a while, because the pipeline is poisoned.
+                            // Recreate a sane surface to restart the cycle and see if the
+                            // user has fixed the issue.
                             self.surface.configure(&self.device, &self.surface_config);
+                            clear_countdown = 10; // give it 10 frames to stabilize.
                             return;
                         }
                         Err(err) => {
