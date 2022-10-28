@@ -709,8 +709,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
         if ui
             .button("Reset viewer")
             .on_hover_text(
-                "Reset the viewer to how it looked the first time you ran it.\n\
-                            Shortcut: Cmd-Shift-R or Ctrl-Shift-R",
+                "Reset the viewer to how it looked the first time you ran it (⌘⇧R or ⌃⇧R)",
             )
             .clicked()
         {
@@ -721,10 +720,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
         #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         if ui
             .button("Profile viewer")
-            .on_hover_text(
-                "Starts a profiler, showing what makes the viewer run slow\n\
-                            Shortcut: Cmd-Shift-P or Ctrl-Shift-P",
-            )
+            .on_hover_text("Starts a profiler, showing what makes the viewer run slow (⌘⇧P or ⌃⇧P)")
             .clicked()
         {
             app.state.profiler.start();

@@ -50,6 +50,11 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
+        blueprint.time_panel_expanded ^= egui_ctx.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::T,
+        );
+
         let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.window_fill(),
             inner_margin: egui::style::Margin::same(4.0),
@@ -76,7 +81,7 @@ impl TimePanel {
                     // Collapsed, or animating:
                     if ui
                         .small_button("⏶")
-                        .on_hover_text("Expand Timeline View")
+                        .on_hover_text("Expand Timeline View (⌘⇧T or ⌃⇧T)")
                         .clicked()
                     {
                         blueprint.time_panel_expanded = true;
@@ -410,7 +415,7 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut e
     ui.horizontal(|ui| {
         if ui
             .small_button("⏷")
-            .on_hover_text("Collapse Timeline View")
+            .on_hover_text("Collapse Timeline View (⌘⇧T or ⌃⇧T)")
             .clicked()
         {
             blueprint.time_panel_expanded = false;

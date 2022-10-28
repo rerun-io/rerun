@@ -18,6 +18,11 @@ impl SelectionPanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
+        blueprint.selection_panel_expanded ^= egui_ctx.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::S,
+        );
+
         let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.window_fill(),
             inner_margin: egui::style::Margin::same(4.0),
@@ -43,7 +48,7 @@ impl SelectionPanel {
                     // Collapsed, or animating:
                     if ui
                         .small_button("⏴")
-                        .on_hover_text("Expand Selection View")
+                        .on_hover_text("Expand Selection View (⌘⇧S or ⌃⇧S)")
                         .clicked()
                     {
                         blueprint.selection_panel_expanded = true;
@@ -52,7 +57,7 @@ impl SelectionPanel {
                     // Expanded:
                     if ui
                         .small_button("⏵")
-                        .on_hover_text("Collapse Selection View")
+                        .on_hover_text("Collapse Selection View (⌘⇧S or ⌃⇧S)")
                         .clicked()
                     {
                         blueprint.selection_panel_expanded = false;

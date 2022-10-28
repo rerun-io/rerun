@@ -559,6 +559,11 @@ impl Blueprint {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
     ) {
+        self.blueprint_panel_expanded ^= ui.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::B,
+        );
+
         let panel_frame = egui::Frame {
             fill: ui.style().visuals.window_fill(),
             inner_margin: egui::style::Margin::same(4.0),
@@ -587,7 +592,7 @@ impl Blueprint {
                     // Collapsed, or animating:
                     if ui
                         .small_button("⏵")
-                        .on_hover_text("Expand Blueprint View")
+                        .on_hover_text("Expand Blueprint View (⌘⇧B or ⌃⇧B)")
                         .clicked()
                     {
                         self.blueprint_panel_expanded = true;
@@ -597,7 +602,7 @@ impl Blueprint {
                     ui.horizontal(|ui| {
                         if ui
                             .small_button("⏴")
-                            .on_hover_text("Collapse Blueprint View")
+                            .on_hover_text("Collapse Blueprint View (⌘⇧B or ⌃⇧B)")
                             .clicked()
                         {
                             self.blueprint_panel_expanded = false;
