@@ -36,7 +36,7 @@ where
         creation_func: F,
     ) -> Handle {
         *self.lookup.entry(desc.clone()).or_insert_with(|| {
-            let resource = creation_func(desc); // TODO(andreas): Handle creation failure
+            let resource = creation_func(desc);
             self.resources.insert(resource)
         })
     }

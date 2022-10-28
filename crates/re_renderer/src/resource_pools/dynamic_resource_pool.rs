@@ -15,14 +15,19 @@ use super::resource::*;
 ///
 /// Unlike in [`super::static_resource_pool::StaticResourcePool`], a resource is not uniquely identified by its description.
 pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
-    // All known resources of this type.
+    /// All known resources of this type.
     resources: SlotMap<Handle, (Desc, Res)>,
 
-    // Handles to all alive resources.
+    /// Handles to all alive resources.
+    /// We story any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
+    /// Every [`DynamicResourcePool::frame_maintenance`] we check if the pool is now the only owner of the handle
+    /// and if so mark it as deallocated.
+    /// Being a [`SecondaryMap`] allows us to upgrade "weak" handles to strong handles,
+    /// something required by [`super::BindGroupPool`]
     alive_handles: SecondaryMap<Handle, Arc<Handle>>,
 
-    // Any resource that has been allocated last frame.
-    // We keep them around for a bit longer to allow reclamation
+    /// Any resource that has been deallocated last frame.
+    /// We keep them around for a bit longer to allow reclamation
     last_frame_deallocated: HashMap<Desc, SmallVec<[Arc<Handle>; 4]>>,
 
     current_frame_index: u64,
@@ -49,10 +54,7 @@ where
         // First check if we can reclaim a resource we have around from a previous frame.
         let handle =
             if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
-                re_log::trace!(
-                    "Reclaimed previously discarded resource with description {:?}",
-                    desc
-                );
+                re_log::trace!(?desc, "Reclaimed previously discarded resource",);
 
                 let handle = entry.get_mut().pop().unwrap();
                 if entry.get().is_empty() {
@@ -65,7 +67,7 @@ where
                 Arc::new(self.resources.insert((desc.clone(), resource)))
             };
 
-        self.alive_handles.insert(*handle, handle.clone());
+        self.alive_handles.insert(*handle, Arc::clone(&handle));
         handle
     }
 
@@ -91,9 +93,9 @@ where
         // Throw out any resources that we haven't reclaimed last frame.
         for (desc, handles) in self.last_frame_deallocated.drain() {
             re_log::debug!(
-                "Removed {} resources with description: {:?}",
-                handles.len(),
-                desc
+                count = handles.len(),
+                ?desc,
+                "Drained dangling resources from last frame",
             );
             for handle in handles {
                 self.resources.remove(*handle);
@@ -106,14 +108,14 @@ where
         // Since the count is pushed from 1 to 2 by `alloc`, it should not be possible to ever
         // get temporarily get back down to 1 without dropping the last user available copy of the Arc<Handle>.
         self.alive_handles.retain(|handle, strong_handle| {
-            if Arc::<Handle>::strong_count(strong_handle) == 1 {
+            if Arc::strong_count(strong_handle) == 1 {
                 let desc = &self.resources[handle].0;
                 match self.last_frame_deallocated.entry(desc.clone()) {
                     Entry::Occupied(mut e) => {
-                        e.get_mut().push(strong_handle.clone());
+                        e.get_mut().push(Arc::clone(strong_handle));
                     }
                     Entry::Vacant(e) => {
-                        e.insert(smallvec![strong_handle.clone()]);
+                        e.insert(smallvec![Arc::clone(strong_handle)]);
                     }
                 }
                 false
@@ -123,6 +125,8 @@ where
         });
     }
 
+    /// Upgrades a "weak" handle to a reference counted handle by looking it up.
+    /// Returns a reference in order to avoid needlessly increasing the ref-count.
     pub(super) fn get_strong_handle(&self, handle: Handle) -> &Arc<Handle> {
         &self.alive_handles[handle]
     }

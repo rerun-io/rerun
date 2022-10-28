@@ -76,6 +76,7 @@ impl BufferPool {
     }
 
     /// Internal method to retrieve a strong handle from a weak handle (used by [`super::BindGroupPool`])
+    /// without inrementing the ref-count (note the returned reference!).
     pub(super) fn get_strong_handle(&self, handle: BufferHandle) -> &BufferHandleStrong {
         self.pool.get_strong_handle(handle)
     }
