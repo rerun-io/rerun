@@ -13,6 +13,9 @@ use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 #[cfg(feature = "glow")]
 use crate::misc::mesh_loader::CpuMesh;
 
+#[cfg(feature = "wgpu")]
+use re_renderer::renderer::*;
+
 // TODO(andreas): Dummy for disabling glow. Need a three-d independent mesh obv.
 #[cfg(not(feature = "glow"))]
 pub struct CpuMesh {
@@ -668,6 +671,51 @@ impl Scene {
             radius: line_radius,
             color,
         });
+    }
+
+    #[cfg(feature = "wgpu")]
+    pub fn get_line_strips(&self) -> Vec<LineStrip> {
+        let mut line_strips = Vec::with_capacity(self.line_segments.len());
+        for segments in &self.line_segments {
+            let mut current_strip = LineStrip {
+                points: Vec::new(),
+                radius: segments.radius.0,
+                color: segments.color,
+            };
+            for segment in &segments.segments {
+                let a = glam::vec3(segment[0][0], segment[0][1], segment[0][2]);
+                let b = glam::vec3(segment[1][0], segment[1][1], segment[1][2]);
+
+                if let Some(prev) = current_strip.points.last() {
+                    if *prev == a {
+                        current_strip.points.push(b);
+                    } else {
+                        line_strips.push(current_strip.clone());
+                        current_strip.points = vec![a, b];
+                    }
+                } else {
+                    current_strip.points.push(a);
+                    current_strip.points.push(b);
+                }
+            }
+
+            if current_strip.points.len() > 1 {
+                line_strips.push(current_strip);
+            }
+        }
+        line_strips
+    }
+
+    #[cfg(feature = "wgpu")]
+    pub fn get_point_cloud_points(&self) -> Vec<PointCloudPoint> {
+        self.points
+            .iter()
+            .map(|point| PointCloudPoint {
+                position: glam::vec3(point.pos[0], point.pos[1], point.pos[2]),
+                radius: point.radius.0,
+                srgb_color: point.color,
+            })
+            .collect()
     }
 
     pub fn picking(

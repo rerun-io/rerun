@@ -485,44 +485,8 @@ fn paint_view(
         let resolution_in_pixel = rect.size() * ui.ctx().pixels_per_point();
         let resolution_in_pixel = [resolution_in_pixel.x as _, resolution_in_pixel.y as _];
 
-        // TODO(andreas): Scene's data structure should lend itself better to conversion.
-        let mut line_strips = Vec::with_capacity(scene.line_segments.len());
-        for segments in &scene.line_segments {
-            let mut current_strip = LineStrip {
-                points: Vec::new(),
-                radius: segments.radius.0,
-                color: segments.color,
-            };
-            for segment in &segments.segments {
-                let a = glam::vec3(segment[0][0], segment[0][1], segment[0][2]);
-                let b = glam::vec3(segment[1][0], segment[1][1], segment[1][2]);
-
-                if let Some(prev) = current_strip.points.last() {
-                    if *prev == a {
-                        current_strip.points.push(b);
-                    } else {
-                        line_strips.push(current_strip.clone());
-                        current_strip.points = vec![a, b];
-                    }
-                } else {
-                    current_strip.points.push(a);
-                    current_strip.points.push(b);
-                }
-            }
-
-            if current_strip.points.len() > 1 {
-                line_strips.push(current_strip);
-            }
-        }
-        let point_cloud_points = scene
-            .points
-            .iter()
-            .map(|point| PointCloudPoint {
-                position: glam::vec3(point.pos[0], point.pos[1], point.pos[2]),
-                radius: point.radius.0,
-                srgb_color: point.color,
-            })
-            .collect::<Vec<_>>();
+        let point_cloud_points = scene.get_point_cloud_points();
+        let line_strips = scene.get_line_strips();
 
         egui::PaintCallback {
             rect,

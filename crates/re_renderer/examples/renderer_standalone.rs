@@ -19,13 +19,9 @@ use log::info;
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
-    context::{RenderContext, RenderContextConfig},
-    renderer::{
-        lines::{LineDrawable, LineStrip},
-        point_cloud::PointCloudPoint,
-        GenericSkyboxDrawable, PointCloudDrawable, TestTriangleDrawable,
-    },
+    renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
+    *,
 };
 use winit::{
     event::{Event, WindowEvent},

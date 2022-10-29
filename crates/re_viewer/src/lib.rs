@@ -22,7 +22,7 @@ pub use app::App;
 pub use remote_viewer_app::RemoteViewerApp;
 
 #[cfg(feature = "wgpu")]
-use re_renderer::context::{RenderContext, RenderContextConfig};
+use re_renderer::*;
 
 // ----------------------------------------------------------------------------
 // When compiling for native:
