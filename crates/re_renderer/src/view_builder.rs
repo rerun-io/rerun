@@ -24,6 +24,7 @@ struct QueuedDraw {
 /// Used to build up/collect various resources and then send them off for rendering of  a single view.
 #[derive(Default)]
 pub struct ViewBuilder {
+    /// Result of [`ViewBuilder::setup_view`] - needs to be `Option` sine some of the fields don't have a default.
     setup: Option<ViewTargetSetup>,
     queued_draws: Vec<QueuedDraw>, // &mut wgpu::RenderPass
 }
@@ -36,6 +37,9 @@ struct ViewTargetSetup {
     depth_buffer: TextureHandleStrong,
 }
 
+/// ViewBuilder that can be shared between threads.
+///
+/// Innermost field is an Option, so it can be consumed for `composite`.
 pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
 
 /// Basic configuration for a target view.

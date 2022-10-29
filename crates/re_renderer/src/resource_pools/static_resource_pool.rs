@@ -14,6 +14,7 @@ pub(super) struct StaticResourcePool<Handle: Key, Desc, Res> {
     current_frame_index: u64,
 }
 
+/// We cannot #derive(Default) as that would require Handle/Desc/Res to implement Default too.
 impl<Handle: Key, Desc, Res> Default for StaticResourcePool<Handle, Desc, Res> {
     fn default() -> Self {
         Self {
