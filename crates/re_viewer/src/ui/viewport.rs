@@ -564,12 +564,7 @@ impl Blueprint {
             egui::Key::B,
         );
 
-        let panel_frame = egui::Frame {
-            fill: ui.style().visuals.window_fill(),
-            inner_margin: egui::style::Margin::same(4.0),
-            stroke: ui.style().visuals.window_stroke(),
-            ..Default::default()
-        };
+        let panel_frame = ctx.design_tokens.panel_frame(ui.ctx());
 
         let collapsed_panel = egui::SidePanel::left("blueprint_panel_collapsed")
             .resizable(false)

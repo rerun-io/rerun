@@ -272,7 +272,7 @@ impl eframe::App for App {
                 });
             });
         } else {
-            self.state.show(egui_ctx, log_db);
+            self.state.show(egui_ctx, log_db, &self.design_tokens);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -417,7 +417,7 @@ struct AppState {
 }
 
 impl AppState {
-    fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb) {
+    fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb, design_tokens: &DesignTokens) {
         crate::profile_function!();
 
         let Self {
@@ -442,6 +442,7 @@ impl AppState {
             cache,
             log_db,
             rec_cfg,
+            design_tokens,
         };
 
         let blueprint = blueprints.entry(*selected_recording_id).or_default();

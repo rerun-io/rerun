@@ -55,12 +55,7 @@ impl TimePanel {
             egui::Key::T,
         );
 
-        let panel_frame = egui::Frame {
-            fill: egui_ctx.style().visuals.window_fill(),
-            inner_margin: egui::style::Margin::same(4.0),
-            stroke: egui_ctx.style().visuals.window_stroke(),
-            ..Default::default()
-        };
+        let panel_frame = ctx.design_tokens.panel_frame(egui_ctx);
 
         let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
             .resizable(false)
