@@ -510,9 +510,25 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
 // ----------------------------------------------------------------------------
 
 /// Defines the layout of the whole Viewer (or will, eventually).
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub(crate) struct Blueprint {
+    pub blueprint_panel_expanded: bool,
+    pub selection_panel_expanded: bool,
+    pub time_panel_expanded: bool,
+
     pub viewport: ViewportBlueprint,
+}
+
+impl Default for Blueprint {
+    fn default() -> Self {
+        Self {
+            blueprint_panel_expanded: true,
+            selection_panel_expanded: true,
+            time_panel_expanded: true,
+            viewport: Default::default(),
+        }
+    }
 }
 
 impl Blueprint {
@@ -543,29 +559,70 @@ impl Blueprint {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
     ) {
-        let side_panel_frame = egui::Frame {
-            fill: ui.style().visuals.window_fill(),
-            inner_margin: egui::style::Margin::same(4.0),
-            stroke: ui.style().visuals.window_stroke(),
-            ..Default::default()
-        };
+        self.blueprint_panel_expanded ^= ui.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::B,
+        );
 
-        egui::SidePanel::left("blueprint_panel")
+        let panel_frame = ctx.design_tokens.panel_frame(ui.ctx());
+
+        let collapsed_panel = egui::SidePanel::left("blueprint_panel_collapsed")
+            .resizable(false)
+            .frame(panel_frame)
+            .default_width(16.0);
+
+        let expanded_panel = egui::SidePanel::left("blueprint_panel_expanded")
             .resizable(true)
-            .frame(side_panel_frame)
-            .default_width(200.0)
-            .show_inside(ui, |ui| {
-                ui.vertical_centered(|ui| {
-                    if ui.button("Reset space views").clicked() {
-                        self.viewport = ViewportBlueprint::new(&ctx.log_db.obj_db, spaces_info);
+            .frame(panel_frame)
+            .min_width(120.0)
+            .default_width(200.0);
+
+        egui::SidePanel::show_animated_between_inside(
+            ui,
+            self.blueprint_panel_expanded,
+            collapsed_panel,
+            expanded_panel,
+            |ui: &mut egui::Ui, expansion: f32| {
+                if expansion < 1.0 {
+                    // Collapsed, or animating:
+                    if ui
+                        .small_button("⏵")
+                        .on_hover_text("Expand Blueprint View (⌘⇧B or ⌃⇧B)")
+                        .clicked()
+                    {
+                        self.blueprint_panel_expanded = true;
                     }
-                });
+                } else {
+                    // Expanded:
+                    ui.horizontal(|ui| {
+                        if ui
+                            .small_button("⏴")
+                            .on_hover_text("Collapse Blueprint View (⌘⇧B or ⌃⇧B)")
+                            .clicked()
+                        {
+                            self.blueprint_panel_expanded = false;
+                        }
 
-                ui.separator();
+                        ui.vertical_centered(|ui| {
+                            ui.label("Blueprint");
+                        });
+                    });
 
-                self.viewport
-                    .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
-            });
+                    ui.separator();
+
+                    ui.vertical_centered(|ui| {
+                        if ui.button("Reset space views").clicked() {
+                            self.viewport = ViewportBlueprint::new(&ctx.log_db.obj_db, spaces_info);
+                        }
+                    });
+
+                    ui.separator();
+
+                    self.viewport
+                        .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
+                }
+            },
+        );
     }
 }
 

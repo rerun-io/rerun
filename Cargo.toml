@@ -24,12 +24,17 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-10-16 - table: fix deadlocks caused by lock fairness
-eframe = { git = "https://github.com/emilk/egui", rev = "3d36a20376a8479647557d172e1abc82abbff135" }
-egui = { git = "https://github.com/emilk/egui", rev = "3d36a20376a8479647557d172e1abc82abbff135" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "3d36a20376a8479647557d172e1abc82abbff135" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "3d36a20376a8479647557d172e1abc82abbff135" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "3d36a20376a8479647557d172e1abc82abbff135" }
+# 2022-10-28 - panel toggle animation
+eframe = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
+egui = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
+# eframe = { path = "../../egui/crates/eframe" }
+# egui = { path = "../../egui/crates/egui" }
+# egui_extras = { path = "../../egui/crates/egui_extras" }
+# egui_glow = { path = "../../egui/crates/egui_glow" }
+# egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }
