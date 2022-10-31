@@ -68,14 +68,19 @@ def run_set_visible() -> None:
     rerun.set_time_seconds("sim_time", 1)
     rerun.log_rect("vis_demo/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
     rerun.log_rect("vis_demo/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
+    rerun.log_rects("vis_demo/rects", [[7, 7, 3, 3], [8, 8, 3, 3]], labels=["Rects"], colors=np.array([(0, 0, 255)]))
     rerun.set_time_seconds("sim_time", 2)
     rerun.set_visible("vis_demo/rect/0", False)
     rerun.set_time_seconds("sim_time", 3)
     rerun.set_visible("vis_demo/rect/1", False)
     rerun.set_time_seconds("sim_time", 4)
-    rerun.set_visible("vis_demo/rect/0", True)
+    rerun.set_visible("vis_demo/rects", False)
     rerun.set_time_seconds("sim_time", 5)
+    rerun.set_visible("vis_demo/rect/0", True)
+    rerun.set_time_seconds("sim_time", 6)
     rerun.set_visible("vis_demo/rect/1", True)
+    rerun.set_time_seconds("sim_time", 7)
+    rerun.set_visible("vis_demo/rects", True)
 
 
 def run_rects() -> None:
