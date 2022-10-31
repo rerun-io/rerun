@@ -2190,9 +2190,9 @@ dependencies = [
 
 [[package]]
 name = "macaw"
-version = "0.17.0"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7781d94ea559f76030086786c74fdf28d768535269653382f39824562fd02e73"
+checksum = "ef7e08781990d20e6b33eb49a24f42ae7949dc934dd1bcd08fdcb886074dc623"
 dependencies = [
  "glam",
  "num-traits",
