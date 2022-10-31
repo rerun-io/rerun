@@ -18,10 +18,8 @@ impl SelectionPanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
-        blueprint.selection_panel_expanded ^= egui_ctx.input_mut().consume_key(
-            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
-            egui::Key::S,
-        );
+        let shortcut = crate::ui::kb_shortcuts::TOGGLE_SELECTION_PANEL;
+        blueprint.selection_panel_expanded ^= egui_ctx.input_mut().consume_shortcut(&shortcut);
 
         let panel_frame = ctx.design_tokens.panel_frame(egui_ctx);
 
@@ -43,7 +41,10 @@ impl SelectionPanel {
                     // Collapsed, or animating:
                     if ui
                         .small_button("⏴")
-                        .on_hover_text("Expand Selection View (⌘⇧S or ⌃⇧S)")
+                        .on_hover_text(format!(
+                            "Expand Selection View ({})",
+                            egui_ctx.format_shortcut(&shortcut)
+                        ))
                         .clicked()
                     {
                         blueprint.selection_panel_expanded = true;
@@ -52,7 +53,10 @@ impl SelectionPanel {
                     // Expanded:
                     if ui
                         .small_button("⏵")
-                        .on_hover_text("Collapse Selection View (⌘⇧S or ⌃⇧S)")
+                        .on_hover_text(format!(
+                            "Collapse Selection View ({})",
+                            egui_ctx.format_shortcut(&shortcut)
+                        ))
                         .clicked()
                     {
                         blueprint.selection_panel_expanded = false;

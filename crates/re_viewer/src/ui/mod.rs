@@ -2,6 +2,7 @@ pub(crate) mod class_description_ui;
 pub(crate) mod data_ui;
 pub(crate) mod event_log_view;
 pub(crate) mod image_ui;
+pub(crate) mod kb_shortcuts;
 pub(crate) mod legend;
 pub(crate) mod selection_panel;
 pub(crate) mod space_view;
