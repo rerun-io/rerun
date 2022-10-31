@@ -37,7 +37,7 @@ struct ViewTargetSetup {
     depth_buffer: TextureHandleStrong,
 }
 
-/// ViewBuilder that can be shared between threads.
+/// [`ViewBuilder`] that can be shared between threads.
 ///
 /// Innermost field is an Option, so it can be consumed for `composite`.
 pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
