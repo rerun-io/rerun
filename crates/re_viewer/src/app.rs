@@ -253,13 +253,19 @@ impl eframe::App for App {
             if self.state.blueprints.len() > 100 {
                 re_log::debug!("Pruning blueprints…");
 
-                self.state.blueprints.retain(|application_id, _| {
-                    self.log_dbs.values().any(|log_db| {
-                        log_db.recording_info().map_or(false, |recording_info| {
-                            &recording_info.application_id == application_id
-                        })
+                let used_app_ids: std::collections::HashSet<ApplicationId> = self
+                    .log_dbs
+                    .values()
+                    .filter_map(|log_db| {
+                        log_db
+                            .recording_info()
+                            .map(|recording_info| recording_info.application_id.clone())
                     })
-                });
+                    .collect();
+
+                self.state
+                    .blueprints
+                    .retain(|application_id, _| used_app_ids.contains(application_id));
             }
         }
 
