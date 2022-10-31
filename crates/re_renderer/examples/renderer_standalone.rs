@@ -169,63 +169,152 @@ use error_handling::*;
 mod error_handling {
     use ahash::HashSet;
     use parking_lot::Mutex;
-    use std::sync::{atomic::AtomicUsize, atomic::Ordering, Arc};
+    use std::{
+        hash::Hash,
+        sync::{atomic::AtomicUsize, atomic::Ordering, Arc},
+    };
     use wgpu_core::error::ContextError;
 
-    fn type_of_wgpu_error(
-        error: &(dyn std::error::Error + Send + Sync + 'static),
-    ) -> Option<std::any::TypeId> {
-        fn type_of_var<T: 'static>(_: &T) -> std::any::TypeId {
-            std::any::TypeId::of::<T>()
-        }
+    // ---
 
-        macro_rules! try_downcast {
-            [$typ:ty $(,)*] => {
-                if let Some(inner) = error.downcast_ref::<$typ>() {
-                    return Some(type_of_var(inner));
-                }
-            };
-            [$typ:ty, $($rest:ty),+ $(,)*] => {
-                try_downcast![$typ];
-                try_downcast![$($rest),+];
-            };
-        }
+    macro_rules! try_downcast {
+        ($do:expr => $value:expr => [$ty:ty, $($tail:ty $(,),*)*]) => {
+            try_downcast!($do => $value => $ty);
+            try_downcast!($do => $value => [$($tail),*]);
+        };
+        ($do:expr => $value:expr => [$ty:ty $(,),*]) => {
+            try_downcast!($do => $value => $ty);
+        };
+        ($do:expr => $value:expr => $ty:ty) => {
+            if let Some(inner) = ($value).downcast_ref::<$ty>() {
+                break Some(($do)(inner));
+            }
+        };
+        ($do:expr => $value:expr) => {
+            loop {
+                try_downcast![$do => $value => [
+                    wgpu_core::command::ClearError,
+                    wgpu_core::command::CommandEncoderError,
+                    wgpu_core::command::ComputePassError,
+                    wgpu_core::command::CopyError,
+                    wgpu_core::command::DispatchError,
+                    wgpu_core::command::DrawError,
+                    wgpu_core::command::ExecutionError,
+                    wgpu_core::command::PassErrorScope,
+                    wgpu_core::command::QueryError,
+                    wgpu_core::command::QueryUseError,
+                    wgpu_core::command::RenderBundleError,
+                    wgpu_core::command::RenderCommandError,
+                    wgpu_core::command::RenderPassError,
+                    wgpu_core::command::ResolveError,
+                    wgpu_core::command::TransferError,
+                    wgpu_core::binding_model::BindError,
+                    wgpu_core::binding_model::BindingTypeMaxCountError,
+                    wgpu_core::binding_model::CreateBindGroupError,
+                    wgpu_core::binding_model::CreatePipelineLayoutError,
+                    wgpu_core::binding_model::GetBindGroupLayoutError,
+                    wgpu_core::binding_model::PushConstantUploadError,
+                    wgpu_core::device::CreateDeviceError,
+                    wgpu_core::device::DeviceError,
+                    wgpu_core::device::RenderPassCompatibilityError,
+                    wgpu_core::pipeline::ColorStateError,
+                    wgpu_core::pipeline::CreateComputePipelineError,
+                    wgpu_core::pipeline::CreateRenderPipelineError,
+                    wgpu_core::pipeline::CreateShaderModuleError,
+                    wgpu_core::pipeline::DepthStencilStateError,
+                    wgpu_core::pipeline::ImplicitLayoutError,
+            ]];
 
-        try_downcast![
-            wgpu_core::command::ClearError,
-            wgpu_core::command::CommandEncoderError,
-            wgpu_core::command::ComputePassError,
-            wgpu_core::command::CopyError,
-            wgpu_core::command::DispatchError,
-            wgpu_core::command::DrawError,
-            wgpu_core::command::ExecutionError,
-            wgpu_core::command::PassErrorScope,
-            wgpu_core::command::QueryError,
-            wgpu_core::command::QueryUseError,
-            wgpu_core::command::RenderBundleError,
-            wgpu_core::command::RenderCommandError,
-            wgpu_core::command::RenderPassError,
-            wgpu_core::command::ResolveError,
-            wgpu_core::command::TransferError,
-            wgpu_core::binding_model::BindError,
-            wgpu_core::binding_model::BindingTypeMaxCountError,
-            wgpu_core::binding_model::CreateBindGroupError,
-            wgpu_core::binding_model::CreatePipelineLayoutError,
-            wgpu_core::binding_model::GetBindGroupLayoutError,
-            wgpu_core::binding_model::PushConstantUploadError,
-            wgpu_core::device::CreateDeviceError,
-            wgpu_core::device::DeviceError,
-            wgpu_core::device::RenderPassCompatibilityError,
-            wgpu_core::pipeline::ColorStateError,
-            wgpu_core::pipeline::CreateComputePipelineError,
-            wgpu_core::pipeline::CreateRenderPipelineError,
-            wgpu_core::pipeline::CreateShaderModuleError,
-            wgpu_core::pipeline::DepthStencilStateError,
-            wgpu_core::pipeline::ImplicitLayoutError,
-        ];
-
-        None
+            break None;
+        }};
     }
+
+    fn type_of_var<T: 'static + ?Sized>(_: &T) -> std::any::TypeId {
+        std::any::TypeId::of::<T>()
+    }
+
+    // ---
+
+    trait FinerGrainedDedup: Sized + std::error::Error + 'static {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            type_of_var(self).hash(state)
+        }
+
+        fn eq(&self, rhs: &(dyn std::error::Error + Send + Sync + 'static)) -> bool {
+            rhs.downcast_ref::<Self>().is_some()
+        }
+    }
+
+    macro_rules! impl_trait {
+        [$ty:ty, $($rest:ty),+ $(,)*] => {
+            impl_trait![$ty];
+            impl_trait![$($rest),+];
+        };
+        [$ty:ty $(,)*] => {
+            impl FinerGrainedDedup for $ty {}
+        };
+    }
+
+    impl_trait![
+        wgpu_core::command::ClearError,
+        wgpu_core::command::CommandEncoderError,
+        wgpu_core::command::ComputePassError,
+        wgpu_core::command::CopyError,
+        wgpu_core::command::DispatchError,
+        wgpu_core::command::DrawError,
+        wgpu_core::command::ExecutionError,
+        wgpu_core::command::PassErrorScope,
+        wgpu_core::command::QueryError,
+        wgpu_core::command::QueryUseError,
+        wgpu_core::command::RenderBundleError,
+        wgpu_core::command::RenderCommandError,
+        wgpu_core::command::RenderPassError,
+        wgpu_core::command::ResolveError,
+        wgpu_core::command::TransferError,
+        wgpu_core::binding_model::BindError,
+        wgpu_core::binding_model::BindingTypeMaxCountError,
+        wgpu_core::binding_model::CreateBindGroupError,
+        wgpu_core::binding_model::CreatePipelineLayoutError,
+        wgpu_core::binding_model::GetBindGroupLayoutError,
+        wgpu_core::binding_model::PushConstantUploadError,
+        wgpu_core::device::CreateDeviceError,
+        wgpu_core::device::DeviceError,
+        wgpu_core::device::RenderPassCompatibilityError,
+        wgpu_core::pipeline::ColorStateError,
+        wgpu_core::pipeline::CreateComputePipelineError,
+        wgpu_core::pipeline::CreateRenderPipelineError,
+        // wgpu_core::pipeline::CreateShaderModuleError, // NOTE: custom impl!
+        wgpu_core::pipeline::DepthStencilStateError,
+        wgpu_core::pipeline::ImplicitLayoutError,
+    ];
+
+    // Custom deduplication for shader compilation errors.
+    impl FinerGrainedDedup for wgpu_core::pipeline::CreateShaderModuleError {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            use wgpu_core::pipeline::CreateShaderModuleError::*;
+            match self {
+                Parsing(err) => err.source.hash(state),
+                Validation(err) => err.source.hash(state),
+                _ => {}
+            }
+        }
+
+        fn eq(&self, rhs: &(dyn std::error::Error + Send + Sync + 'static)) -> bool {
+            if rhs.downcast_ref::<Self>().is_none() {
+                return false;
+            }
+            let rhs = rhs.downcast_ref::<Self>().unwrap();
+
+            use wgpu_core::pipeline::CreateShaderModuleError::*;
+            match (self, rhs) {
+                (Parsing(err1), Parsing(err2)) => err1.source == err2.source,
+                (Validation(err1), Validation(err2)) => err1.source == err2.source,
+                _ => true,
+            }
+        }
+    }
+
+    // ---
 
     /// A `wgpu_core::ContextError` with hashing and equality capabilities.
     ///
@@ -238,22 +327,37 @@ mod error_handling {
             self.0.label_key.hash(state); // e.g. "encoder"
             self.0.string.hash(state); // e.g. "a RenderPass"
 
-            if let Some(type_id) = type_of_wgpu_error(&*self.0.cause) {
-                type_id.hash(state);
-            } else {
+            // try to downcast into something that implements `FinerGrainedDedup`, and
+            // then call `FinerGrainedDedup::hash`.
+            if try_downcast!(|inner| FinerGrainedDedup::hash(inner, state) => self.0.cause)
+                .is_none()
+            {
                 re_log::warn!(cause=?self.0.cause, "unknown error cause");
             }
         }
     }
     impl PartialEq for WrappedContextError {
         fn eq(&self, rhs: &Self) -> bool {
-            self.0.label.eq(&rhs.0.label)
+            let mut is_eq = self.0.label.eq(&rhs.0.label)
                 && self.0.label_key.eq(rhs.0.label_key)
-                && self.0.string.eq(rhs.0.string)
-                && type_of_wgpu_error(&*self.0.cause).eq(&type_of_wgpu_error(&*rhs.0.cause))
+                && self.0.string.eq(rhs.0.string);
+
+            // try to downcast into something that implements `FinerGrainedDedup`, and
+            // then call `FinerGrainedDedup::eq`.
+            if let Some(finer_eq) =
+                try_downcast!(|inner| FinerGrainedDedup::eq(inner, &*rhs.0.cause) => self.0.cause)
+            {
+                is_eq |= finer_eq;
+            } else {
+                re_log::warn!(cause=?self.0.cause, "unknown error cause");
+            }
+
+            is_eq
         }
     }
     impl Eq for WrappedContextError {}
+
+    // ---
 
     /// Coalesces wgpu errors until the tracker is `clear()`ed.
     ///
