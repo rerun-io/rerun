@@ -291,6 +291,7 @@ mod error_handling {
     // Custom deduplication for shader compilation errors.
     impl FinerGrainedDedup for wgpu_core::pipeline::CreateShaderModuleError {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            type_of_var(self).hash(state);
             use wgpu_core::pipeline::CreateShaderModuleError::*;
             match self {
                 Parsing(err) => err.source.hash(state),
