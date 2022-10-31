@@ -196,6 +196,7 @@ impl ViewBuilder {
         &mut self,
         ctx: &RenderContext,
         encoder: &mut wgpu::CommandEncoder,
+        clear: bool,
     ) -> anyhow::Result<()> {
         let color = ctx
             .resource_pools
@@ -214,7 +215,12 @@ impl ViewBuilder {
                 view: &color.default_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    load: if clear {
+                        wgpu::LoadOp::Clear(wgpu::Color::BLACK)
+                    } else {
+                        wgpu::LoadOp::Load
+                    },
+                    // load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     store: true,
                 },
             })],
