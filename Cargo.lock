@@ -3091,6 +3091,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "wgpu",
+ "wgpu-core",
  "winit",
 ]
 
