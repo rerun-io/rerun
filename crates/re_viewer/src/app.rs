@@ -200,6 +200,21 @@ impl eframe::App for App {
             return;
         }
 
+        if egui_ctx.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::R,
+        ) {
+            self.reset(egui_ctx);
+        }
+
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        if egui_ctx.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::P,
+        ) {
+            self.state.profiler.start();
+        }
+
         self.state.cache.new_frame();
 
         if let Some(rx) = &mut self.rx {
@@ -266,7 +281,7 @@ impl eframe::App for App {
                 });
             });
         } else {
-            self.state.show(egui_ctx, log_db);
+            self.state.show(egui_ctx, log_db, &self.design_tokens);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -286,6 +301,20 @@ impl eframe::App for App {
 }
 
 impl App {
+    /// Reset the viewer to how it looked the first time you ran it.
+    fn reset(&mut self, egui_ctx: &egui::Context) {
+        self.state = Default::default();
+
+        // Keep dark/light mode setting:
+        let is_dark_mode = egui_ctx.style().visuals.dark_mode;
+        *egui_ctx.memory() = Default::default();
+        egui_ctx.set_visuals(if is_dark_mode {
+            egui::Visuals::dark()
+        } else {
+            egui::Visuals::light()
+        });
+    }
+
     fn log_db(&mut self) -> &mut LogDb {
         self.log_dbs.entry(self.state.selected_rec_id).or_default()
     }
@@ -397,7 +426,7 @@ struct AppState {
 }
 
 impl AppState {
-    fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb) {
+    fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb, design_tokens: &DesignTokens) {
         crate::profile_function!();
 
         let Self {
@@ -427,21 +456,12 @@ impl AppState {
             cache,
             log_db,
             rec_cfg,
+            design_tokens,
         };
 
-        if ctx.rec_cfg.selection.is_some() {
-            egui::SidePanel::right("selection_view").show(egui_ctx, |ui| {
-                let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
-                selection_panel.ui(&mut ctx, blueprint, ui);
-            });
-        }
-
-        egui::TopBottomPanel::bottom("time_panel")
-            .resizable(true)
-            .default_height(210.0)
-            .show(egui_ctx, |ui| {
-                time_panel.ui(&mut ctx, ui);
-            });
+        let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
+        selection_panel.show_panel(&mut ctx, blueprint, egui_ctx);
+        time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
         let central_panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.window_fill(),
@@ -703,27 +723,19 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     ui.menu_button("Advanced", |ui| {
         if ui
             .button("Reset viewer")
-            .on_hover_text("Reset the viewer to how it looked the first time you ran it.")
+            .on_hover_text(
+                "Reset the viewer to how it looked the first time you ran it (⌘⇧R or ⌃⇧R)",
+            )
             .clicked()
         {
-            app.state = Default::default();
-
-            // Keep dark/light mode setting:
-            let is_dark_mode = ui.ctx().style().visuals.dark_mode;
-            *ui.ctx().memory() = Default::default();
-            ui.ctx().set_visuals(if is_dark_mode {
-                egui::Visuals::dark()
-            } else {
-                egui::Visuals::light()
-            });
-
+            app.reset(ui.ctx());
             ui.close_menu();
         }
 
         #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         if ui
             .button("Profile viewer")
-            .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
+            .on_hover_text("Starts a profiler, showing what makes the viewer run slow (⌘⇧P or ⌃⇧P)")
             .clicked()
         {
             app.state.profiler.start();

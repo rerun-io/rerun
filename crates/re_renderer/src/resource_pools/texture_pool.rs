@@ -1,8 +1,14 @@
 use std::{hash::Hash, sync::atomic::AtomicU64};
 
-use super::resource_pool::*;
+use crate::debug_label::DebugLabel;
+
+use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
 
 slotmap::new_key_type! { pub struct TextureHandle; }
+
+/// A reference counter baked texture handle.
+/// Once all strong handles are dropped, the texture will be marked for reclamation in the following frame.
+pub type TextureHandleStrong = std::sync::Arc<TextureHandle>;
 
 pub(crate) struct Texture {
     last_frame_used: AtomicU64,
@@ -17,20 +23,57 @@ impl UsageTrackedResource for Texture {
     }
 }
 
-// TODO(andreas) use a custom descriptor type with [`DebugLabel`] and a content id.
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub struct TextureDesc {
+    /// Debug label of the texture. This will show up in graphics debuggers for easy identification.
+    pub label: DebugLabel,
+
+    /// Size of the texture. All components must be greater than zero. For a
+    /// regular 1D/2D texture, the unused sizes will be 1. For 2DArray textures,
+    /// Z is the number of 2D textures in that array.
+    pub size: wgpu::Extent3d,
+
+    /// Mip count of texture. For a texture with no extra mips, this must be 1.
+    pub mip_level_count: u32,
+
+    /// Sample count of texture. If this is not 1, texture must have [`wgpu::BindingType::Texture::multisampled`] set to true.
+    pub sample_count: u32,
+
+    /// Dimensions of the texture.
+    pub dimension: wgpu::TextureDimension,
+
+    /// Format of the texture.
+    pub format: wgpu::TextureFormat,
+
+    /// Allowed usages of the texture. If used in other ways, the operation will panic.
+    pub usage: wgpu::TextureUsages,
+}
+
+impl TextureDesc {
+    fn to_wgpu_desc(&self) -> wgpu::TextureDescriptor<'_> {
+        wgpu::TextureDescriptor {
+            label: self.label.get(),
+            size: self.size,
+            mip_level_count: self.mip_level_count,
+            sample_count: self.sample_count,
+            dimension: self.dimension,
+            format: self.format,
+            usage: self.usage,
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct TexturePool {
-    pool: ResourcePool<TextureHandle, wgpu::TextureDescriptor<'static>, Texture>,
+    pool: DynamicResourcePool<TextureHandle, TextureDesc, Texture>,
 }
 
 impl TexturePool {
-    pub fn request(
-        &mut self,
-        device: &wgpu::Device,
-        desc: &wgpu::TextureDescriptor<'static>,
-    ) -> TextureHandle {
-        self.pool.get_handle(desc, |desc| {
-            let texture = device.create_texture(desc);
+    /// Returns a ref counted handle to a currently unused texture.
+    /// Once ownership to the handle is given up, the texture may be reclaimed in future frames.
+    pub fn alloc(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> TextureHandleStrong {
+        self.pool.alloc(desc, |desc| {
+            let texture = device.create_texture(&desc.to_wgpu_desc());
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             Texture {
                 last_frame_used: AtomicU64::new(0),
@@ -40,16 +83,25 @@ impl TexturePool {
         })
     }
 
+    /// Called by `RenderContext` every frame. Updates statistics and may free unused textures.
     pub fn frame_maintenance(&mut self, frame_index: u64) {
-        self.pool.discard_unused_resources(frame_index);
+        self.pool.frame_maintenance(frame_index);
     }
 
-    pub fn get(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
+    /// Takes strong texture handle to ensure the user is still holding on to the texture.
+    pub fn get_resource(&self, handle: &TextureHandleStrong) -> Result<&Texture, PoolError> {
+        self.pool.get_resource(**handle)
+    }
+
+    /// Internal method to retrieve a resource with a weak handle (used by [`super::BindGroupPool`]).
+    pub(super) fn get_resource_weak(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    pub(super) fn register_resource_usage(&mut self, handle: TextureHandle) {
-        let _ = self.get(handle);
+    /// Internal method to retrieve a strong handle from a weak handle (used by [`super::BindGroupPool`])
+    /// without inrementing the ref-count (note the returned reference!).
+    pub(super) fn get_strong_handle(&self, handle: TextureHandle) -> &TextureHandleStrong {
+        self.pool.get_strong_handle(handle)
     }
 }
 
@@ -58,9 +110,9 @@ pub(crate) fn render_target_2d_desc(
     width: u32,
     height: u32,
     sample_count: u32,
-) -> wgpu::TextureDescriptor<'static> {
-    wgpu::TextureDescriptor {
-        label: Some("rendertarget"),
+) -> TextureDesc {
+    TextureDesc {
+        label: "rendertarget".into(),
         size: wgpu::Extent3d {
             width,
             height,

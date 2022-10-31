@@ -42,11 +42,11 @@ impl Renderer for TestTriangle {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        let render_pipeline = pools.render_pipelines.request(
+        let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
                 label: "Test Triangle".into(),
-                pipeline_layout: pools.pipeline_layouts.request(
+                pipeline_layout: pools.pipeline_layouts.get_or_create(
                     device,
                     &PipelineLayoutDesc {
                         label: "global only".into(),
@@ -55,7 +55,7 @@ impl Renderer for TestTriangle {
                     &pools.bind_group_layouts,
                 ),
                 vertex_entrypoint: "vs_main".into(),
-                vertex_handle: pools.shader_modules.request(
+                vertex_handle: pools.shader_modules.get_or_create(
                     device,
                     resolver,
                     &ShaderModuleDesc {
@@ -64,7 +64,7 @@ impl Renderer for TestTriangle {
                     },
                 ),
                 fragment_entrypoint: "fs_main".into(),
-                fragment_handle: pools.shader_modules.request(
+                fragment_handle: pools.shader_modules.get_or_create(
                     device,
                     resolver,
                     &ShaderModuleDesc {
@@ -97,7 +97,7 @@ impl Renderer for TestTriangle {
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &TestTriangleDrawable,
     ) -> anyhow::Result<()> {
-        let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         pass.set_pipeline(&pipeline.pipeline);
         pass.draw(0..3, 0..1);
         Ok(())

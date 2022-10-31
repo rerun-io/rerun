@@ -4,9 +4,9 @@ use std::{hash::Hash, path::PathBuf, sync::atomic::AtomicU64};
 use ahash::HashSet;
 use anyhow::Context as _;
 
-use crate::debug_label::DebugLabel;
-use crate::resource_pools::resource_pool::*;
-use crate::{FileResolver, FileSystem};
+use crate::{debug_label::DebugLabel, FileResolver, FileSystem};
+
+use super::{resource::*, static_resource_pool::StaticResourcePool};
 
 // ---
 
@@ -72,17 +72,17 @@ impl UsageTrackedResource for ShaderModule {
 
 #[derive(Default)]
 pub struct ShaderModulePool {
-    pool: ResourcePool<ShaderModuleHandle, ShaderModuleDesc, ShaderModule>,
+    pool: StaticResourcePool<ShaderModuleHandle, ShaderModuleDesc, ShaderModule>,
 }
 
 impl ShaderModulePool {
-    pub fn request<Fs: FileSystem>(
+    pub fn get_or_create<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
         desc: &ShaderModuleDesc,
     ) -> ShaderModuleHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             // TODO(cmc): must provide a way to properly handle errors in requests.
             // Probably better to wait for a first PoC of #import to land though,
             // as that will surface a bunch of shortcomings in our error handling too.
@@ -102,9 +102,6 @@ impl ShaderModulePool {
         frame_index: u64,
         updated_paths: &HashSet<PathBuf>,
     ) {
-        // Garbage collect shaders not being used by any pipeline.
-        self.pool.discard_unused_resources(frame_index);
-
         // All shader descriptors that refer to paths modified since last frame.
         let descs = self
             .pool
@@ -135,7 +132,7 @@ impl ShaderModulePool {
         // Recompile shader modules for outdated descriptors.
         for (path, desc) in descs {
             // TODO(cmc): obviously terrible, we'll see as things evolve.
-            let handle = self.pool.get_handle(&desc, |_| {
+            let handle = self.pool.get_or_create(&desc, |_| {
                 unreachable!("the pool itself handed us that descriptor")
             });
             let res = self

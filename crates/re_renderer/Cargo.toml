@@ -26,6 +26,7 @@ parking_lot = "0.12"
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 slotmap = "1.0.6"
+smallvec = "1.10"
 static_assertions = "1.1"
 thiserror = "1.0"
 type-map = "0.5"
@@ -49,11 +50,11 @@ wgpu = { version = "0.14", default-features = false, features = [
 ## Examples
 
 [dev-dependencies]
-env_logger = "0.9"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 pollster = "0.2"
 rand = "0.8"
+tracing-subscriber = "0.3"
 winit = "0.27"
 
 # native
@@ -62,8 +63,8 @@ async-executor = "1.0"
 
 # wasm
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-console_error_panic_hook = "0.1.7"
-console_log = "0.2"
+console_error_panic_hook = "0.1.6"
+tracing-wasm = "0.2"
 wasm-bindgen-futures = "0.4.33"
 web-sys = { version = "0.3.60", features = [
   "Location",
