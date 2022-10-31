@@ -249,9 +249,24 @@ impl eframe::App for App {
             self.state
                 .recording_configs
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
-            self.state
-                .blueprints
-                .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
+
+            if self.state.blueprints.len() > 100 {
+                re_log::debug!("Pruning blueprints…");
+
+                let used_app_ids: std::collections::HashSet<ApplicationId> = self
+                    .log_dbs
+                    .values()
+                    .filter_map(|log_db| {
+                        log_db
+                            .recording_info()
+                            .map(|recording_info| recording_info.application_id.clone())
+                    })
+                    .collect();
+
+                self.state
+                    .blueprints
+                    .retain(|application_id, _| used_app_ids.contains(application_id));
+            }
         }
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
@@ -400,7 +415,7 @@ struct AppState {
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
 
-    blueprints: IntMap<RecordingId, crate::ui::viewport::Blueprint>,
+    blueprints: HashMap<ApplicationId, crate::ui::viewport::Blueprint>,
 
     panel_selection: PanelSelection,
     event_log_view: crate::event_log_view::EventLogView,
@@ -423,7 +438,7 @@ impl AppState {
         let Self {
             options,
             cache,
-            selected_rec_id: selected_recording_id,
+            selected_rec_id,
             recording_configs,
             panel_selection,
             event_log_view,
@@ -435,7 +450,12 @@ impl AppState {
             static_image_cache: _,
         } = self;
 
-        let rec_cfg = recording_configs.entry(*selected_recording_id).or_default();
+        let rec_cfg = recording_configs.entry(*selected_rec_id).or_default();
+        let selected_app_id = log_db
+            .recording_info()
+            .map_or_else(ApplicationId::unknown, |rec_info| {
+                rec_info.application_id.clone()
+            });
 
         let mut ctx = ViewerContext {
             options,
@@ -445,7 +465,7 @@ impl AppState {
             design_tokens,
         };
 
-        let blueprint = blueprints.entry(*selected_recording_id).or_default();
+        let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
         selection_panel.show_panel(&mut ctx, blueprint, egui_ctx);
         time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
@@ -459,7 +479,7 @@ impl AppState {
             .frame(central_panel_frame)
             .show(egui_ctx, |ui| match *panel_selection {
                 PanelSelection::Viewport => blueprints
-                    .entry(*selected_recording_id)
+                    .entry(selected_app_id)
                     .or_default()
                     .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),

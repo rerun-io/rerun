@@ -70,6 +70,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    rerun.init("logging")
+
     if args.serve:
         rerun.serve()
     elif args.connect:

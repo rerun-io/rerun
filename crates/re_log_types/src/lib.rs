@@ -130,6 +130,21 @@ impl std::str::FromStr for RecordingId {
 
 // ----------------------------------------------------------------------------
 
+/// The user-chosen name of the application doing the logging.
+///
+/// Used to categorize recordings.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::Display)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct ApplicationId(pub String);
+
+impl ApplicationId {
+    pub fn unknown() -> Self {
+        Self("unknown_app_id".to_owned())
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// The most general log message sent from the SDK to the server.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
@@ -175,12 +190,15 @@ pub struct BeginRecordingMsg {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingInfo {
+    /// The user-chosen name of the application doing the logging.
+    pub application_id: ApplicationId,
+
     /// Should be unique for each recording.
     pub recording_id: RecordingId,
 
     /// When the recording started.
     ///
-    /// Should be an abolute time, i.e. relative to Unix Epoch.
+    /// Should be an absolute time, i.e. relative to Unix Epoch.
     pub started: Time,
 
     pub recording_source: RecordingSource,

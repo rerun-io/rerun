@@ -75,6 +75,8 @@ if __name__ == "__main__":
     parser.add_argument("--download", action="store_true", help="Download dataset")
     args = parser.parse_args()
 
+    rerun.init("clock")
+
     if args.connect:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,
