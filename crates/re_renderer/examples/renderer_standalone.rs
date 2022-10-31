@@ -428,7 +428,7 @@ impl Application {
         //
         // We use this to know when it makes sense to clear the error tracker.
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-        let mut clear_countdown = usize::MAX;
+        let mut clear_countdown = u64::MAX;
 
         self.event_loop.run(move |event, _, control_flow| {
             // Keep our example busy.
@@ -473,7 +473,7 @@ impl Application {
                             // the error tracker so that we're ready to log errors once again
                             // if the pipeline gets back into a poisoned state.
                             if clear_countdown == 0 {
-                                clear_countdown = usize::MAX;
+                                clear_countdown = u64::MAX;
                                 self.err_tracker.clear();
                             }
                             frame
