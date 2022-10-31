@@ -17,6 +17,9 @@ pub(crate) struct ViewerContext<'a> {
 
     /// UI config for the current recording (found in [`LogDb`]).
     pub rec_cfg: &'a mut RecordingConfig,
+
+    /// The look and feel of the UI
+    pub design_tokens: &'a crate::design_tokens::DesignTokens,
 }
 
 impl<'a> ViewerContext<'a> {

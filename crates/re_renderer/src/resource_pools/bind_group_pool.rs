@@ -1,16 +1,38 @@
-use std::sync::atomic::AtomicU64;
+use std::sync::{atomic::AtomicU64, Arc};
+
+use smallvec::SmallVec;
 
 use crate::debug_label::DebugLabel;
 
 use super::{
     bind_group_layout_pool::{BindGroupLayoutHandle, BindGroupLayoutPool},
-    buffer_pool::{BufferHandle, BufferPool},
-    resource_pool::*,
+    buffer_pool::{BufferHandle, BufferHandleStrong, BufferPool},
+    dynamic_resource_pool::DynamicResourcePool,
+    resource::*,
     sampler_pool::{SamplerHandle, SamplerPool},
-    texture_pool::{TextureHandle, TexturePool},
+    texture_pool::{TextureHandle, TextureHandleStrong, TexturePool},
 };
 
-slotmap::new_key_type! { pub(crate) struct BindGroupHandle; }
+slotmap::new_key_type! { pub struct BindGroupHandle; }
+
+/// A reference counter baked bind group handle.
+///
+/// Once all strong handles are dropped, the bind group will be marked for reclamation in the following frame.
+/// Tracks use of dependent resources as well.
+#[derive(Clone)]
+pub struct BindGroupHandleStrong {
+    handle: Arc<BindGroupHandle>,
+    _owned_buffers: SmallVec<[BufferHandleStrong; 4]>,
+    _owned_textures: SmallVec<[TextureHandleStrong; 4]>,
+}
+
+impl std::ops::Deref for BindGroupHandleStrong {
+    type Target = BindGroupHandle;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.handle
+    }
+}
 
 pub(crate) struct BindGroup {
     last_frame_used: AtomicU64,
@@ -24,9 +46,14 @@ impl UsageTrackedResource for BindGroup {
     }
 }
 
+// TODO(andreas): Can we force the user to provide strong handles here without too much effort?
+//                Ideally it would be only a reference to a strong handle in order to avoid bumping ref counts all the time.
+//                This way we can also remove the dubious get_strong_handle methods from buffer/texture pool and allows us to hide any non-ref counted handles!
+//                Seems though this requires us to have duplicate versions of BindGroupDesc/Entry structs
+
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) enum BindGroupEntry {
-    TextureView(TextureHandle), // TODO(andreas) what about non-default views?
+    DefaultTextureView(TextureHandle), // TODO(andreas) what about non-default views?
     Buffer {
         handle: BufferHandle,
 
@@ -47,17 +74,39 @@ pub(crate) enum BindGroupEntry {
 pub(crate) struct BindGroupDesc {
     /// Debug label of the bind group. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
-    pub entries: Vec<BindGroupEntry>,
+    pub entries: SmallVec<[BindGroupEntry; 4]>,
     pub layout: BindGroupLayoutHandle,
 }
 
+/// Resource pool for bind groups.
+///
+/// Requirements regarding ownership & resource lifetime:
+/// * owned [`BindGroup`] should keep buffer/texture alive
+///   (user should not need to hold strong buffer/texture handles manually)
+/// * [`BindGroupPool`] should *try* to re-use previously created bind groups if they happen to match
+/// * musn't prevent buffer/texture re-use on next frame
+///   i.e. a internally cached [`BindGroupPool`]s without owner shouldn't keep textures/buffers alive
+///
+/// We satisfy these by retrieving the strong buffer/texture handles and make them part of the [`BindGroupHandleStrong`].
+/// Internally, the [`BindGroupPool`] does *not* hold any strong reference of any resource,
+/// i.e. it does not interfere with the buffer/texture pools at all.
+/// The question whether a bind groups happen to be re-usable becomes again a simple question of matching
+/// bind group descs which itself does not contain any strong references either.
 #[derive(Default)]
 pub(crate) struct BindGroupPool {
-    pool: ResourcePool<BindGroupHandle, BindGroupDesc, BindGroup>,
+    // Use a DynamicResourcePool because it gives out reference counted handles
+    // which makes interacting with buffer/textures easier.
+    //
+    // On the flipside if someone requests the exact same bind group again as before,
+    // they'll get a new one which is unnecessary. But this is *very* unlikely to ever happen.
+    pool: DynamicResourcePool<BindGroupHandle, BindGroupDesc, BindGroup>,
 }
 
 impl BindGroupPool {
-    pub fn request(
+    /// Returns a ref counted handle to a currently unused bind-group.
+    /// Once ownership to the handle is given up, the bind group may be reclaimed in future frames.
+    /// The handle also keeps alive any dependent resources.
+    pub fn alloc(
         &mut self,
         device: &wgpu::Device,
         desc: &BindGroupDesc,
@@ -65,8 +114,8 @@ impl BindGroupPool {
         textures: &TexturePool,
         buffers: &BufferPool,
         samplers: &SamplerPool,
-    ) -> BindGroupHandle {
-        self.pool.get_handle(desc, |desc| {
+    ) -> BindGroupHandleStrong {
+        let handle = self.pool.alloc(desc, |desc| {
             // TODO(andreas): error handling
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: desc.label.get(),
@@ -77,9 +126,9 @@ impl BindGroupPool {
                     .map(|(index, entry)| wgpu::BindGroupEntry {
                         binding: index as _,
                         resource: match entry {
-                            BindGroupEntry::TextureView(handle) => {
+                            BindGroupEntry::DefaultTextureView(handle) => {
                                 wgpu::BindingResource::TextureView(
-                                    &textures.get(*handle).unwrap().default_view,
+                                    &textures.get_resource_weak(*handle).unwrap().default_view,
                                 )
                             }
                             BindGroupEntry::Buffer {
@@ -87,53 +136,70 @@ impl BindGroupPool {
                                 offset,
                                 size,
                             } => wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                                buffer: &buffers.get(*handle).unwrap().buffer,
+                                buffer: &buffers.get_resource_weak(*handle).unwrap().buffer,
                                 offset: *offset,
                                 size: *size,
                             }),
                             BindGroupEntry::Sampler(handle) => wgpu::BindingResource::Sampler(
-                                &samplers.get(*handle).unwrap().sampler,
+                                &samplers.get_resource(*handle).unwrap().sampler,
                             ),
                         },
                     })
                     .collect::<Vec<_>>(),
-                layout: &bind_group_layout.get(desc.layout).unwrap().layout,
+                layout: &bind_group_layout.get_resource(desc.layout).unwrap().layout,
             });
             BindGroup {
                 bind_group,
                 last_frame_used: AtomicU64::new(0),
             }
-        })
+        });
+
+        // Retrieve strong handles to buffers and textures.
+        // This way, an owner of a bind group handle keeps buffers & textures alive!.
+        let owned_buffers = desc
+            .entries
+            .iter()
+            .filter_map(|e| {
+                if let BindGroupEntry::Buffer { handle, .. } = e {
+                    Some(buffers.get_strong_handle(*handle).clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let owned_textures = desc
+            .entries
+            .iter()
+            .filter_map(|e| {
+                if let BindGroupEntry::DefaultTextureView(handle) = e {
+                    Some(textures.get_strong_handle(*handle).clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        BindGroupHandleStrong {
+            handle,
+            _owned_buffers: owned_buffers,
+            _owned_textures: owned_textures,
+        }
     }
 
     pub fn frame_maintenance(
         &mut self,
         frame_index: u64,
-        textures: &mut TexturePool,
-        buffers: &mut BufferPool,
-        samplers: &mut SamplerPool,
+        _textures: &mut TexturePool,
+        _buffers: &mut BufferPool,
+        _samplers: &mut SamplerPool,
     ) {
-        self.pool.discard_unused_resources(frame_index);
-
-        // Of what's left, update dependent resources.
-        for desc in self.pool.resource_descs() {
-            for entry in &desc.entries {
-                match entry {
-                    BindGroupEntry::TextureView(handle) => {
-                        textures.register_resource_usage(*handle);
-                    }
-                    BindGroupEntry::Buffer { handle, .. } => {
-                        buffers.register_resource_usage(*handle);
-                    }
-                    BindGroupEntry::Sampler(handle) => {
-                        samplers.register_resource_usage(*handle);
-                    }
-                }
-            }
-        }
+        self.pool.frame_maintenance(frame_index);
+        // TODO(andreas): Update usage counter on dependent resources.
     }
 
-    pub fn get(&self, handle: BindGroupHandle) -> Result<&BindGroup, PoolError> {
-        self.pool.get_resource(handle)
+    /// Takes a strong handle to ensure the user is still holding on to the bind group (and thus dependent resources).
+    pub fn get_resource(&self, handle: &BindGroupHandleStrong) -> Result<&BindGroup, PoolError> {
+        self.pool.get_resource(*handle.handle)
     }
 }

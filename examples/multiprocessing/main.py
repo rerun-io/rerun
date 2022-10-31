@@ -32,6 +32,8 @@ def main() -> None:
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     args = parser.parse_args()
 
+    rerun.init("multiprocessing")
+
     if args.connect:
         task("main_task")
         p = multiprocessing.Process(target=task, args=("child_task",))

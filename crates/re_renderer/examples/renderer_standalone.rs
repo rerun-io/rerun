@@ -15,17 +15,12 @@ use std::f32::consts::TAU;
 use anyhow::Context as _;
 use glam::Vec3;
 use instant::Instant;
-use log::info;
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
-    context::{RenderContext, RenderContextConfig},
-    renderer::{
-        lines::{LineDrawable, LineStrip},
-        point_cloud::PointCloudPoint,
-        GenericSkyboxDrawable, PointCloudDrawable, TestTriangleDrawable,
-    },
+    renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
+    *,
 };
 use winit::{
     event::{Event, WindowEvent},
@@ -51,7 +46,7 @@ fn draw_view(
     encoder: &mut wgpu::CommandEncoder,
     resolution: [u32; 2],
 ) -> ViewBuilder {
-    let mut view_builder = ViewBuilder::new();
+    let mut view_builder = ViewBuilder::default();
 
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
     let seconds_since_startup = state.time.seconds_since_startup();
@@ -562,7 +557,7 @@ impl Application {
                             1.0 / time_passed.as_secs_f32()
                         );
                         self.window.set_title(&time_info_str);
-                        info!("{time_info_str}");
+                        re_log::info!("{time_info_str}");
                     }
                 }
                 Event::MainEventsCleared => {
@@ -646,8 +641,11 @@ fn main() {
 
     #[cfg(target_arch = "wasm32")]
     {
-        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-        console_log::init().expect("could not initialize logger");
+        // Make sure panics are logged using `console.error`.
+        console_error_panic_hook::set_once();
+        // Redirect tracing to console.log and friends:
+        tracing_wasm::set_as_global_default();
+
         use winit::platform::web::WindowExtWebSys;
         // On wasm, append the canvas to the document body
         web_sys::window()

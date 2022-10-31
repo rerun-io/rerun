@@ -200,6 +200,21 @@ impl eframe::App for App {
             return;
         }
 
+        if egui_ctx.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::R,
+        ) {
+            self.reset(egui_ctx);
+        }
+
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        if egui_ctx.input_mut().consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::P,
+        ) {
+            self.state.profiler.start();
+        }
+
         self.state.cache.new_frame();
 
         if let Some(rx) = &mut self.rx {
@@ -234,9 +249,24 @@ impl eframe::App for App {
             self.state
                 .recording_configs
                 .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
-            self.state
-                .blueprints
-                .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
+
+            if self.state.blueprints.len() > 100 {
+                re_log::debug!("Pruning blueprints…");
+
+                let used_app_ids: std::collections::HashSet<ApplicationId> = self
+                    .log_dbs
+                    .values()
+                    .filter_map(|log_db| {
+                        log_db
+                            .recording_info()
+                            .map(|recording_info| recording_info.application_id.clone())
+                    })
+                    .collect();
+
+                self.state
+                    .blueprints
+                    .retain(|application_id, _| used_app_ids.contains(application_id));
+            }
         }
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
@@ -257,7 +287,7 @@ impl eframe::App for App {
                 });
             });
         } else {
-            self.state.show(egui_ctx, log_db);
+            self.state.show(egui_ctx, log_db, &self.design_tokens);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -269,7 +299,7 @@ impl eframe::App for App {
             let paint_callback_resources =
                 &mut render_state.renderer.write().paint_callback_resources;
             paint_callback_resources
-                .get_mut::<re_renderer::context::RenderContext>()
+                .get_mut::<re_renderer::RenderContext>()
                 .unwrap()
                 .frame_maintenance(&render_state.device);
         }
@@ -277,6 +307,20 @@ impl eframe::App for App {
 }
 
 impl App {
+    /// Reset the viewer to how it looked the first time you ran it.
+    fn reset(&mut self, egui_ctx: &egui::Context) {
+        self.state = Default::default();
+
+        // Keep dark/light mode setting:
+        let is_dark_mode = egui_ctx.style().visuals.dark_mode;
+        *egui_ctx.memory() = Default::default();
+        egui_ctx.set_visuals(if is_dark_mode {
+            egui::Visuals::dark()
+        } else {
+            egui::Visuals::light()
+        });
+    }
+
     fn log_db(&mut self) -> &mut LogDb {
         self.log_dbs.entry(self.state.selected_rec_id).or_default()
     }
@@ -371,7 +415,7 @@ struct AppState {
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
 
-    blueprints: IntMap<RecordingId, crate::ui::viewport::Blueprint>,
+    blueprints: HashMap<ApplicationId, crate::ui::viewport::Blueprint>,
 
     panel_selection: PanelSelection,
     event_log_view: crate::event_log_view::EventLogView,
@@ -388,13 +432,13 @@ struct AppState {
 }
 
 impl AppState {
-    fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb) {
+    fn show(&mut self, egui_ctx: &egui::Context, log_db: &LogDb, design_tokens: &DesignTokens) {
         crate::profile_function!();
 
         let Self {
             options,
             cache,
-            selected_rec_id: selected_recording_id,
+            selected_rec_id,
             recording_configs,
             panel_selection,
             event_log_view,
@@ -406,28 +450,24 @@ impl AppState {
             static_image_cache: _,
         } = self;
 
-        let rec_cfg = recording_configs.entry(*selected_recording_id).or_default();
+        let rec_cfg = recording_configs.entry(*selected_rec_id).or_default();
+        let selected_app_id = log_db
+            .recording_info()
+            .map_or_else(ApplicationId::unknown, |rec_info| {
+                rec_info.application_id.clone()
+            });
 
         let mut ctx = ViewerContext {
             options,
             cache,
             log_db,
             rec_cfg,
+            design_tokens,
         };
 
-        if ctx.rec_cfg.selection.is_some() {
-            egui::SidePanel::right("selection_view").show(egui_ctx, |ui| {
-                let blueprint = blueprints.entry(*selected_recording_id).or_default();
-                selection_panel.ui(&mut ctx, blueprint, ui);
-            });
-        }
-
-        egui::TopBottomPanel::bottom("time_panel")
-            .resizable(true)
-            .default_height(210.0)
-            .show(egui_ctx, |ui| {
-                time_panel.ui(&mut ctx, ui);
-            });
+        let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
+        selection_panel.show_panel(&mut ctx, blueprint, egui_ctx);
+        time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
         let central_panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.window_fill(),
@@ -439,7 +479,7 @@ impl AppState {
             .frame(central_panel_frame)
             .show(egui_ctx, |ui| match *panel_selection {
                 PanelSelection::Viewport => blueprints
-                    .entry(*selected_recording_id)
+                    .entry(selected_app_id)
                     .or_default()
                     .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
@@ -689,27 +729,19 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     ui.menu_button("Advanced", |ui| {
         if ui
             .button("Reset viewer")
-            .on_hover_text("Reset the viewer to how it looked the first time you ran it.")
+            .on_hover_text(
+                "Reset the viewer to how it looked the first time you ran it (⌘⇧R or ⌃⇧R)",
+            )
             .clicked()
         {
-            app.state = Default::default();
-
-            // Keep dark/light mode setting:
-            let is_dark_mode = ui.ctx().style().visuals.dark_mode;
-            *ui.ctx().memory() = Default::default();
-            ui.ctx().set_visuals(if is_dark_mode {
-                egui::Visuals::dark()
-            } else {
-                egui::Visuals::light()
-            });
-
+            app.reset(ui.ctx());
             ui.close_menu();
         }
 
         #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         if ui
             .button("Profile viewer")
-            .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
+            .on_hover_text("Starts a profiler, showing what makes the viewer run slow (⌘⇧P or ⌃⇧P)")
             .clicked()
         {
             app.state.profiler.start();

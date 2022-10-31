@@ -259,6 +259,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    rerun.init("objectron")
+
     if args.connect:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,

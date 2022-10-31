@@ -173,6 +173,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    rerun.init("deep_sdf")
+
     if args.serve:
         rerun.serve()
     elif args.connect:
