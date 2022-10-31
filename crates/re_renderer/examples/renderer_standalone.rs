@@ -69,57 +69,19 @@ fn draw_view(
         target_identifier: 0,
     };
 
-    // let triangle = TestTriangleDrawable::new(re_ctx, device);
-    // let skybox = GenericSkyboxDrawable::new(re_ctx, device);
+    let triangle = TestTriangleDrawable::new(re_ctx, device);
+    let skybox = GenericSkyboxDrawable::new(re_ctx, device);
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
 
     view_builder
         .setup_view(re_ctx, device, queue, &target_cfg)
         .unwrap()
-        // .queue_draw(&triangle)
-        // .queue_draw(&skybox)
+        .queue_draw(&triangle)
+        .queue_draw(&skybox)
         .queue_draw(&point_cloud)
         .queue_draw(&lines)
-        .draw(re_ctx, encoder, false)
-        .unwrap();
-
-    view_builder
-}
-
-fn draw_other_view(
-    state: &AppState,
-    re_ctx: &mut RenderContext,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    resolution: [u32; 2],
-) -> ViewBuilder {
-    let mut view_builder = ViewBuilder::new();
-
-    // Rotate camera around the center at a distance of 5, looking down at 45 deg
-    let seconds_since_startup = state.time.seconds_since_startup();
-    let pos = Vec3::new(
-        seconds_since_startup.sin(),
-        0.5,
-        seconds_since_startup.cos(),
-    ) * 30.0;
-    let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
-    let target_cfg = TargetConfiguration {
-        resolution_in_pixel: resolution,
-        view_from_world,
-        fov_y: 70.0 * TAU / 360.0,
-        near_plane_distance: 0.01,
-        target_identifier: 0,
-    };
-
-    let triangle = TestTriangleDrawable::new(re_ctx, device);
-
-    view_builder
-        .setup_view(re_ctx, device, queue, &target_cfg)
-        .unwrap()
-        .queue_draw(&triangle)
-        .draw(re_ctx, encoder, true)
+        .draw(re_ctx, encoder)
         .unwrap();
 
     view_builder
@@ -281,20 +243,6 @@ mod error_handling {
             self.0.label_key.hash(state); // e.g. "encoder"
             self.0.string.hash(state); // e.g. "a RenderPass"
 
-            // TODO: custom deduplication rules
-            if let Some(shader_error) = self
-                .0
-                .cause
-                .downcast_ref::<wgpu_core::pipeline::CreateShaderModuleError>()
-            {
-                use wgpu_core::pipeline::CreateShaderModuleError::*;
-                match shader_error {
-                    Parsing(err) => err.source.hash(state),
-                    Validation(err) => err.source.hash(state),
-                    _ => {}
-                }
-            }
-
             if let Some(type_id) = type_of_wgpu_error(&*self.0.cause) {
                 type_id.hash(state);
             } else {
@@ -304,19 +252,6 @@ mod error_handling {
     }
     impl PartialEq for WrappedContextError {
         fn eq(&self, rhs: &Self) -> bool {
-            // if let Some(shader_error) = self
-            //     .0
-            //     .cause
-            //     .downcast_ref::<wgpu_core::pipeline::CreateShaderModuleError>()
-            // {
-            //     use wgpu_core::pipeline::CreateShaderModuleError::*;
-            //     match shader_error {
-            //         Parsing(err) => err.source.hash(state),
-            //         Validation(err) => err.source.hash(state),
-            //         _ => {}
-            //     }
-            // }
-
             self.0.label.eq(&rhs.0.label)
                 && self.0.label_key.eq(rhs.0.label_key)
                 && self.0.string.eq(rhs.0.string)
@@ -350,21 +285,12 @@ mod error_handling {
 
         /// Logs a wgpu error, making sure to deduplicate them as needed.
         pub fn handle_error(&self, error: wgpu::Error) {
-
-            // TODO: clear after some time
-
             match error {
                 wgpu::Error::OutOfMemory { source: _ } => panic!("{error}"),
                 wgpu::Error::Validation {
                     source,
                     description,
                 } => {
-                    // re_log::error!(
-                    //     frame_nr = self.frame_nr.load(Ordering::Relaxed),
-                    //     %description,
-                    //     "WGPU error",
-                    // );
-                    // return;
                     match source.downcast::<ContextError>() {
                         Ok(ctx_err) => {
                             if ctx_err
@@ -377,14 +303,12 @@ mod error_handling {
                                 return;
                             }
 
-                            let s = format!("{:?}", &ctx_err.cause);
                             let ctx_err = WrappedContextError(ctx_err);
                             if !self.errors.lock().insert(ctx_err) {
                                 // We've already logged this error since we've entered the
                                 // current poisoned state. Don't log it again.
                                 return;
                             }
-                            println!("{s}");
 
                             re_log::error!(
                                 frame_nr = self.frame_nr.load(Ordering::Relaxed),
@@ -578,69 +502,41 @@ impl Application {
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let mut other_view_encoder =
-                        self.device
-                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: "other_view_encoder".into(),
-                            });
-                    let mut view_encoder =
-                        self.device
-                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: "view_encoder".into(),
-                            });
-                    let mut composite_encoder =
+                    let mut encoder =
                         self.device
                             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                                 label: "composite_encoder".into(),
                             });
 
-                    let other_view_builder = draw_other_view(
-                        &self.state,
-                        &mut self.re_ctx,
-                        &self.device,
-                        &self.queue,
-                        &mut other_view_encoder,
-                        [self.surface_config.width, self.surface_config.height],
-                    );
                     let view_builder = draw_view(
                         &self.state,
                         &mut self.re_ctx,
                         &self.device,
                         &self.queue,
-                        &mut view_encoder,
+                        &mut encoder,
                         [self.surface_config.width, self.surface_config.height],
                     );
 
                     {
-                        let mut pass =
-                            composite_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                                label: None,
-                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                    view: &view,
-                                    resolve_target: None,
-                                    ops: wgpu::Operations {
-                                        load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
-                                        store: true,
-                                    },
-                                })],
-                                depth_stencil_attachment: None,
-                            });
-
-                        other_view_builder
-                            .composite(&self.re_ctx, &mut pass)
-                            .expect("Failed to composite view main surface");
+                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: None,
+                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                view: &view,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                                    store: true,
+                                },
+                            })],
+                            depth_stencil_attachment: None,
+                        });
 
                         view_builder
                             .composite(&self.re_ctx, &mut pass)
                             .expect("Failed to composite view main surface");
                     }
 
-                    // The order here doesn't matter, wgpu tracks the dependency implicitly.
-                    self.queue.submit([
-                        other_view_encoder.finish(),
-                        view_encoder.finish(),
-                        composite_encoder.finish(),
-                    ]);
+                    self.queue.submit(Some(encoder.finish()));
                     frame.present();
 
                     self.re_ctx.frame_maintenance(&self.device);

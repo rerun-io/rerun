@@ -29,10 +29,6 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     return out;
 }
 
-this
-
-kek
-
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     return in.color;
