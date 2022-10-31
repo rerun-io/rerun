@@ -15,11 +15,12 @@ use std::f32::consts::TAU;
 use anyhow::Context as _;
 use glam::Vec3;
 use instant::Instant;
+use itertools::izip;
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     mesh::{MeshData, MeshVertex},
-    mesh_manager::MeshManager,
+    mesh_manager::{MeshHandle, MeshManager},
     renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
     *,
@@ -56,7 +57,7 @@ fn draw_view(
         seconds_since_startup.sin(),
         0.5,
         seconds_since_startup.cos(),
-    ) * 15.0;
+    ) * 10.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
     let target_cfg = TargetConfiguration {
         resolution_in_pixel: resolution,
@@ -71,40 +72,18 @@ fn draw_view(
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
 
-    let triangle_mesh = MeshManager::new_frame_mesh(
-        re_ctx,
-        device,
-        queue,
-        &MeshData {
-            label: "triangle".into(),
-            indices: vec![0, 1, 2],
-            vertices: vec![
-                MeshVertex {
-                    position: glam::vec3(0.0, 1.0, 0.0),
-                    texcoord: glam::vec2(0.0, 1.0),
-                    normal: glam::Vec3::Y,
-                },
-                MeshVertex {
-                    position: glam::vec3(1.0, -1.0, 0.0),
-                    texcoord: glam::vec2(1.0, 1.0),
-                    normal: glam::Vec3::Y,
-                },
-                MeshVertex {
-                    position: glam::vec3(-1.0, -1.0, 0.0),
-                    texcoord: glam::vec2(0.0, -1.0),
-                    normal: glam::Vec3::Y,
-                },
-            ],
-        },
-    );
     let meshes = MeshDrawable::new(
         re_ctx,
         device,
         queue,
-        &[MeshInstance {
-            mesh: triangle_mesh,
-            transformation: macaw::Conformal3::IDENTITY,
-        }],
+        &state
+            .rerun_mesh
+            .iter()
+            .map(|mesh| MeshInstance {
+                mesh: *mesh,
+                transformation: macaw::Conformal3::IDENTITY,
+            })
+            .collect::<Vec<_>>(),
     )
     .unwrap();
 
@@ -322,6 +301,44 @@ impl Application {
                         .device
                         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
+                    if self.state.rerun_mesh.is_empty() {
+                        let (models, _materials) = tobj::load_obj(
+                            "/Users/andreas/rerun logo 3d/rerun.obj",
+                            &tobj::LoadOptions {
+                                single_index: true,
+                                triangulate: true,
+                                ..Default::default()
+                            },
+                        )
+                        .expect("failed loading obj");
+
+                        for mesh in models.iter() {
+                            let mesh = &mesh.mesh;
+                            let vertices = izip!(
+                                mesh.positions.chunks(3),
+                                mesh.normals.chunks(3),
+                                mesh.texcoords.chunks(2)
+                            )
+                            .map(|(p, n, t)| MeshVertex {
+                                position: glam::vec3(p[0], p[1], p[2]),
+                                normal: glam::vec3(n[0], n[1], n[2]),
+                                texcoord: glam::vec2(t[0], t[1]),
+                            })
+                            .collect();
+
+                            self.state.rerun_mesh.push(MeshManager::new_long_lived_mesh(
+                                &mut self.re_ctx,
+                                &self.device,
+                                &self.queue,
+                                &MeshData {
+                                    label: "rerun logo".into(),
+                                    indices: mesh.indices.clone(),
+                                    vertices,
+                                },
+                            ));
+                        }
+                    }
+
                     let view_builder = draw_view(
                         &self.state,
                         &mut self.re_ctx,
@@ -406,6 +423,9 @@ impl Time {
 struct AppState {
     time: Time,
 
+    /// Lazily loaded mesh.
+    rerun_mesh: Vec<MeshHandle>,
+
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,
 }
@@ -431,6 +451,7 @@ impl AppState {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
             },
+            rerun_mesh: Vec::new(),
             random_points,
         }
     }

@@ -3084,6 +3084,7 @@ dependencies = [
  "smallvec",
  "static_assertions",
  "thiserror",
+ "tobj",
  "tracing-subscriber",
  "tracing-wasm",
  "type-map",
@@ -3919,6 +3920,15 @@ name = "tinyvec_macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
+
+[[package]]
+name = "tobj"
+version = "3.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "deacee3abcc4fd8ff3f0f7c08d4583ab51753ed1d5a3acacd6d5773f640c27d6"
+dependencies = [
+ "ahash 0.7.6",
+]
 
 [[package]]
 name = "tokio"
