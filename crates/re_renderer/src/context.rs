@@ -1,5 +1,6 @@
 use type_map::concurrent::{self, TypeMap};
 
+use crate::mesh_manager::MeshManager;
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
@@ -11,6 +12,7 @@ pub struct RenderContext {
     pub(crate) shared_renderer_data: SharedRendererData,
     pub(crate) renderers: Renderers,
     pub(crate) resource_pools: WgpuResourcePools,
+    pub(crate) meshes: MeshManager,
     pub(crate) resolver: RecommendedFileResolver,
 
     // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
@@ -75,6 +77,8 @@ impl RenderContext {
             },
             resource_pools,
 
+            meshes: MeshManager::default(),
+
             resolver: crate::new_recommended_file_resolver(),
 
             frame_index: 0,
@@ -93,6 +97,7 @@ impl RenderContext {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
 
+        self.meshes.frame_maintenance(self.frame_index);
         {
             let WgpuResourcePools {
                 bind_group_layouts: _,

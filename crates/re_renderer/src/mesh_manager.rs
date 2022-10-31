@@ -20,6 +20,7 @@ pub enum MeshHandle {
     },
 }
 
+#[derive(Default)]
 pub struct MeshManager {
     long_lived_meshes: SlotMap<DefaultKey, Mesh>,
     frame_meshes: SlotMap<DefaultKey, Mesh>,
@@ -47,15 +48,17 @@ impl MeshManager {
     /// Memory will be reclaimed once all (strong) handles are dropped
     /// For short lived meshes use [`new_frame_mesh`] as it has more efficient resource usage for this scenario.
     pub fn new_long_lived_mesh(
-        &mut self,
         ctx: &mut RenderContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         data: &MeshData,
     ) -> MeshHandle {
-        let key = self
-            .long_lived_meshes
-            .insert(Mesh::new(ctx, device, queue, data));
+        let key = ctx.meshes.long_lived_meshes.insert(Mesh::new(
+            &mut ctx.resource_pools,
+            device,
+            queue,
+            data,
+        ));
         MeshHandle::LongLived(key)
     }
 
@@ -63,18 +66,18 @@ impl MeshManager {
     ///
     /// Using the handle in the following frame will cause an error.
     pub fn new_frame_mesh(
-        &mut self,
         ctx: &mut RenderContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         data: &MeshData,
     ) -> MeshHandle {
-        let key = self
-            .frame_meshes
-            .insert(Mesh::new(ctx, device, queue, data));
+        let key =
+            ctx.meshes
+                .frame_meshes
+                .insert(Mesh::new(&mut ctx.resource_pools, device, queue, data));
         MeshHandle::Frame {
             key,
-            valid_frame_index: self.frame_index,
+            valid_frame_index: ctx.meshes.frame_index,
         }
     }
 

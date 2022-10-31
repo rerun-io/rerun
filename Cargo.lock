@@ -3068,6 +3068,7 @@ dependencies = [
  "glob",
  "half 2.1.0",
  "instant",
+ "itertools",
  "log",
  "macaw",
  "notify",

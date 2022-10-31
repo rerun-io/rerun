@@ -18,6 +18,8 @@ use instant::Instant;
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
+    mesh::{MeshData, MeshVertex},
+    mesh_manager::MeshManager,
     renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
     *,
@@ -69,13 +71,51 @@ fn draw_view(
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
 
+    let triangle_mesh = MeshManager::new_frame_mesh(
+        re_ctx,
+        device,
+        queue,
+        &MeshData {
+            label: "triangle".into(),
+            indices: vec![0, 1, 2],
+            vertices: vec![
+                MeshVertex {
+                    position: glam::vec3(0.0, 1.0, 0.0),
+                    texcoord: glam::vec2(0.0, 1.0),
+                    normal: glam::Vec3::Y,
+                },
+                MeshVertex {
+                    position: glam::vec3(1.0, -1.0, 0.0),
+                    texcoord: glam::vec2(1.0, 1.0),
+                    normal: glam::Vec3::Y,
+                },
+                MeshVertex {
+                    position: glam::vec3(-1.0, -1.0, 0.0),
+                    texcoord: glam::vec2(0.0, -1.0),
+                    normal: glam::Vec3::Y,
+                },
+            ],
+        },
+    );
+    let meshes = MeshDrawable::new(
+        re_ctx,
+        device,
+        queue,
+        &[MeshInstance {
+            mesh: triangle_mesh,
+            transformation: macaw::Conformal3::IDENTITY,
+        }],
+    )
+    .unwrap();
+
     view_builder
         .setup_view(re_ctx, device, queue, &target_cfg)
         .unwrap()
-        .queue_draw(&triangle)
+        //.queue_draw(&triangle)
         .queue_draw(&skybox)
-        .queue_draw(&point_cloud)
-        .queue_draw(&lines)
+        //.queue_draw(&point_cloud)
+        //.queue_draw(&lines)
+        .queue_draw(&meshes)
         .draw(re_ctx, encoder)
         .unwrap();
 

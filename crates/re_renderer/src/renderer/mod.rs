@@ -7,7 +7,7 @@ pub mod tonemapper;
 
 pub use generic_skybox::GenericSkyboxDrawable;
 pub use lines::{LineDrawable, LineStrip};
-pub use mesh_renderer::MeshDrawable;
+pub use mesh_renderer::{MeshDrawable, MeshInstance};
 pub use point_cloud::{PointCloudDrawable, PointCloudPoint};
 pub use test_triangle::TestTriangleDrawable;
 

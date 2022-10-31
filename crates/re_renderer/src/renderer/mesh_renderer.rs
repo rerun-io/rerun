@@ -1,7 +1,12 @@
-//! Basic mesh renderer
+//! Mesh renderer.
+//!
+//! Uses instancing to render instances of the same mesh in a single draw call.
+
+use itertools::Itertools as _;
 
 use crate::{
     include_file,
+    mesh::{Mesh, MeshVertex},
     mesh_manager::MeshHandle,
     resource_pools::{
         bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
@@ -15,7 +20,15 @@ use crate::{
 use super::*;
 
 #[derive(Clone)]
-pub struct MeshDrawable {}
+struct MeshBatch {
+    mesh: Mesh,
+    count: u32,
+}
+
+#[derive(Clone)]
+pub struct MeshDrawable {
+    batches: Vec<MeshBatch>,
+}
 
 impl Drawable for MeshDrawable {
     type Renderer = MeshRenderer;
@@ -31,7 +44,7 @@ impl MeshDrawable {
         ctx: &mut RenderContext,
         device: &wgpu::Device,
         _queue: &wgpu::Queue,
-        _instances: &[MeshInstance],
+        instances: &[MeshInstance],
     ) -> anyhow::Result<Self> {
         let _mesh_renderer = ctx.renderers.get_or_create::<_, MeshRenderer>(
             &ctx.shared_renderer_data,
@@ -40,13 +53,26 @@ impl MeshDrawable {
             &mut ctx.resolver,
         );
 
-        Ok(MeshDrawable {})
+        // Group by mesh to facilitate instancing.
+        // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
+        // Also, it helps failing early if something is wrong with a mesh!
+        let mut batches = Vec::new();
+        for (mesh_handle, instances) in &instances.iter().group_by(|instance| instance.mesh) {
+            let mesh = ctx.meshes.get_mesh(mesh_handle)?;
+            // TODO: upload transformation data
+            batches.push(MeshBatch {
+                mesh: mesh.clone(),
+                count: instances.count() as _,
+            });
+        }
+
+        Ok(MeshDrawable { batches })
     }
 }
 
 pub struct MeshRenderer {
     render_pipeline: RenderPipelineHandle,
-    bind_group_layout: BindGroupLayoutHandle,
+    //bind_group_layout: BindGroupLayoutHandle,
 }
 
 impl Renderer for MeshRenderer {
@@ -58,19 +84,19 @@ impl Renderer for MeshRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        let bind_group_layout = pools.bind_group_layouts.get_or_create(
-            device,
-            &BindGroupLayoutDesc {
-                label: "mesh renderer".into(),
-                entries: vec![], // TODO: No data at all??
-            },
-        );
+        // let bind_group_layout = pools.bind_group_layouts.get_or_create(
+        //     device,
+        //     &BindGroupLayoutDesc {
+        //         label: "mesh renderer".into(),
+        //         entries: vec![], // TODO: No data at all??
+        //     },
+        // );
 
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
                 label: "mesh renderer".into(),
-                entries: vec![shared_data.global_bindings.layout, bind_group_layout],
+                entries: vec![shared_data.global_bindings.layout], //, bind_group_layout],
             },
             &pools.bind_group_layouts,
         );
@@ -93,9 +119,30 @@ impl Renderer for MeshRenderer {
                 vertex_handle: shader_module,
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
-
-                // Instance buffer with pairwise overlapping instances!
-                vertex_buffers: vec![],
+                vertex_buffers: vec![wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<MeshVertex>() as _,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[
+                        // Position
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x3,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        // Normal
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x3,
+                            offset: std::mem::size_of::<f32>() as u64 * 3,
+                            shader_location: 1,
+                        },
+                        // Texcoord
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: std::mem::size_of::<f32>() as u64 * (3 + 3),
+                            shader_location: 2,
+                        },
+                    ],
+                }],
                 render_targets: vec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -116,7 +163,7 @@ impl Renderer for MeshRenderer {
 
         MeshRenderer {
             render_pipeline,
-            bind_group_layout,
+            //bind_group_layout,
         }
     }
 
@@ -130,16 +177,29 @@ impl Renderer for MeshRenderer {
 
         pass.set_pipeline(&pipeline.pipeline);
 
-        // for instanced_mesh in instanced_meshes {
-        //     pass.set_vertex_buffer(0, buffer_slice);
-        //     pass.set_vertex_buffer(1, buffer_slice);
-        //     pass.set_index_buffer(buffer_slice, index_format);
+        for mesh_batch in &draw_data.batches {
+            let vertex_and_index_buffer = pools
+                .buffers
+                .get_resource(&mesh_batch.mesh.vertex_and_index_buffer)?;
 
-        //     for material in instanced_mesh.materials {
-        //         pass.set_bind_group(1, &bind_group.bind_group, &[]);
-        //         pass.draw_indexed(indices, base_vertex, instances);
-        //     }
-        // }
+            pass.set_vertex_buffer(
+                0,
+                vertex_and_index_buffer
+                    .buffer
+                    .slice(mesh_batch.mesh.vertex_buffer_range.clone()),
+            );
+            pass.set_index_buffer(
+                vertex_and_index_buffer
+                    .buffer
+                    .slice(mesh_batch.mesh.index_buffer_range.clone()),
+                wgpu::IndexFormat::Uint32,
+            );
+
+            for material in &mesh_batch.mesh.materials {
+                debug_assert!(mesh_batch.count > 0);
+                pass.draw_indexed(material.index_range.clone(), 0, 0..mesh_batch.count);
+            }
+        }
 
         Ok(())
     }

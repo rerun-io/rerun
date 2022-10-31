@@ -431,8 +431,6 @@ impl Renderer for LineRenderer {
                 vertex_handle: shader_module,
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
-
-                // Instance buffer with pairwise overlapping instances!
                 vertex_buffers: vec![],
                 render_targets: vec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
