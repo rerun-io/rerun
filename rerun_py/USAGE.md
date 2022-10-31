@@ -13,6 +13,7 @@ Rerun assumes you are using `numpy` for any large chunks of data.
 ```python
 import rerun_sdk as rerun
 
+rerun.init("my_app")
 rerun.connect() # Connect to the separate `rerun` process.
 
 rerun.log_image("rgb_image", image)

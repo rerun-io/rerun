@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-10-28: Add `rerun.init("my_app")` ([#237](https://github.com/rerun-io/rerun/pull/237)).
 * 2022-10-28: Add buttons to collapse/expand the side panels ([#238](https://github.com/rerun-io/rerun/pull/238)).
 * 2022-10-26: Replace old `space=…` and `set_space_up` code with new space transform hierarchy. See [`USAGE.md`](rerun_py/USAGE.md) for details ([#224](https://github.com/rerun-io/rerun/pull/224)).
 * 2022-10-19: Add support for SegmentationMaps ([#187](https://github.com/rerun-io/rerun/pull/187)).

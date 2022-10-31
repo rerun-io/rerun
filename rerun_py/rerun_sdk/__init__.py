@@ -82,6 +82,20 @@ def set_recording_id(value: str) -> None:
     rerun_rs.set_recording_id(str)
 
 
+def init(application_id: str) -> None:
+    """
+    Initialize the Rerun SDK with a user-chosen application id (name).
+
+    Your Rerun recordings will be categorized by this application id, so
+    try to pick a unique one for each application that uses the Rerun SDK.
+
+    For instance, if you have one application doing object detection
+    and another doing camera calibration, you could have
+    `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+    """
+    rerun_rs.init(application_id)
+
+
 def connect(addr: Optional[str] = None) -> None:
     """Connect to a remote Rerun Viewer on the given ip:port."""
     rerun_rs.connect(addr)

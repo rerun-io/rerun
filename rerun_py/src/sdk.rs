@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
 use re_log_types::{
-    BeginRecordingMsg, LogMsg, LoggedData, MsgId, ObjPath, ObjTypePath, ObjectType, RecordingId,
-    RecordingInfo, Time, TimePoint, TypeMsg,
+    ApplicationId, BeginRecordingMsg, LogMsg, LoggedData, MsgId, ObjPath, ObjTypePath, ObjectType,
+    RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
 };
 
 pub struct Sdk {
@@ -14,6 +14,7 @@ pub struct Sdk {
     // TODO(emilk): just store `ObjTypePathHash`
     registered_types: nohash_hasher::IntMap<ObjTypePath, ObjectType>,
 
+    application_id: Option<ApplicationId>,
     recording_id: Option<RecordingId>,
 
     has_sent_begin_recording_msg: bool,
@@ -27,6 +28,7 @@ impl Sdk {
 
             sender: Default::default(),
             registered_types: Default::default(),
+            application_id: None,
             recording_id: None,
             has_sent_begin_recording_msg: false,
         }
@@ -39,6 +41,13 @@ impl Sdk {
         static INSTANCE: OnceCell<Mutex<Sdk>> = OnceCell::new();
         let mutex = INSTANCE.get_or_init(|| Mutex::new(Sdk::new()));
         mutex.lock().unwrap()
+    }
+
+    pub fn set_application_id(&mut self, application_id: ApplicationId) {
+        if self.application_id.as_ref() != Some(&application_id) {
+            self.application_id = Some(application_id);
+            self.has_sent_begin_recording_msg = false;
+        }
     }
 
     pub fn recording_id(&self) -> Option<RecordingId> {
@@ -157,11 +166,22 @@ impl Sdk {
     pub fn send(&mut self, log_msg: LogMsg) {
         if !self.has_sent_begin_recording_msg {
             if let Some(recording_id) = self.recording_id {
-                re_log::debug!("Beginning new recording with recording id {recording_id}");
+                let application_id = self
+                    .application_id
+                    .clone()
+                    .unwrap_or_else(ApplicationId::unknown);
+
+                re_log::debug!(
+                    "Beginning new recording with application_id {:?} and recording id {}",
+                    application_id.0,
+                    recording_id
+                );
+
                 self.sender.send(
                     BeginRecordingMsg {
                         msg_id: MsgId::random(),
                         info: RecordingInfo {
+                            application_id,
                             recording_id,
                             started: Time::now(),
                             recording_source: re_log_types::RecordingSource::PythonSdk,

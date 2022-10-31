@@ -81,6 +81,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
 
+    m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
@@ -238,6 +239,11 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
             recording_id
         )))
     }
+}
+
+#[pyfunction]
+fn init(application_id: String) {
+    Sdk::global().set_application_id(ApplicationId(application_id));
 }
 
 #[pyfunction]
