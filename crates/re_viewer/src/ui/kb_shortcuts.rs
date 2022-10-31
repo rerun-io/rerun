@@ -10,7 +10,10 @@ use egui::{Key, KeyboardShortcut, Modifiers};
 const CTRL_SHIFT: Modifiers = Modifiers::CTRL.plus(Modifiers::SHIFT);
 
 pub const RESET_VIEWER: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::R);
+
+#[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub const SHOW_PROFILER: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::P);
+
 pub const TOGGLE_BLUEPRINT_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::B);
 pub const TOGGLE_SELECTION_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::S);
 pub const TOGGLE_TIME_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::T);
