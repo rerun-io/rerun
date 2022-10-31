@@ -25,6 +25,7 @@
         "nyud",
         "objectron",
         "Skybox",
+        "smallvec",
         "Tonemapper",
         "tonemapping",
         "Wgsl"

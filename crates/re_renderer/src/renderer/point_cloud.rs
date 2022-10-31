@@ -16,16 +16,18 @@
 use std::num::NonZeroU32;
 
 use bytemuck::Zeroable;
+use smallvec::smallvec;
 
 use crate::{
     include_file,
     renderer::utils::next_multiple_of,
     resource_pools::{
         bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, BindGroupHandle},
+        bind_group_pool::{BindGroupDesc, BindGroupEntry, BindGroupHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::*,
         shader_module_pool::ShaderModuleDesc,
+        texture_pool::TextureDesc,
     },
     view_builder::ViewBuilder,
 };
@@ -48,7 +50,7 @@ mod gpu_data {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct PointCloudDrawable {
-    bind_group: BindGroupHandle,
+    bind_group: BindGroupHandleStrong,
     num_quads: u32,
 }
 
@@ -108,8 +110,8 @@ impl PointCloudDrawable {
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several PointDrawable!
-        let position_data_texture_desc = wgpu::TextureDescriptor {
-            label: Some("point cloud position data"),
+        let position_data_texture_desc = TextureDesc {
+            label: "point cloud position data".into(),
             size: wgpu::Extent3d {
                 width: TEXTURE_SIZE,
                 height: TEXTURE_SIZE,
@@ -125,11 +127,11 @@ impl PointCloudDrawable {
         let position_data_texture = ctx
             .resource_pools
             .textures
-            .request(device, &position_data_texture_desc);
-        let color_texture = ctx.resource_pools.textures.request(
+            .alloc(device, &position_data_texture_desc);
+        let color_texture = ctx.resource_pools.textures.alloc(
             device,
-            &wgpu::TextureDescriptor {
-                label: Some("point cloud color data"),
+            &TextureDesc {
+                label: "point cloud color data".into(),
                 dimension: wgpu::TextureDimension::D2,
                 format: wgpu::TextureFormat::Rgba8UnormSrgb, // Declaring this as srgb here saves us manual conversion in the shader!
                 ..position_data_texture_desc
@@ -166,7 +168,7 @@ impl PointCloudDrawable {
                 texture: &ctx
                     .resource_pools
                     .textures
-                    .get(position_data_texture)?
+                    .get_resource(&position_data_texture)?
                     .texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
@@ -184,7 +186,11 @@ impl PointCloudDrawable {
         );
         queue.write_texture(
             wgpu::ImageCopyTexture {
-                texture: &ctx.resource_pools.textures.get(color_texture)?.texture,
+                texture: &ctx
+                    .resource_pools
+                    .textures
+                    .get_resource(&color_texture)?
+                    .texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -201,13 +207,13 @@ impl PointCloudDrawable {
         );
 
         Ok(PointCloudDrawable {
-            bind_group: ctx.resource_pools.bind_groups.request(
+            bind_group: ctx.resource_pools.bind_groups.alloc(
                 device,
                 &BindGroupDesc {
                     label: "line drawable".into(),
-                    entries: vec![
-                        BindGroupEntry::TextureView(position_data_texture),
-                        BindGroupEntry::TextureView(color_texture),
+                    entries: smallvec![
+                        BindGroupEntry::DefaultTextureView(*position_data_texture),
+                        BindGroupEntry::DefaultTextureView(*color_texture),
                     ],
                     layout: line_renderer.bind_group_layout,
                 },
@@ -235,7 +241,7 @@ impl Renderer for PointCloudRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        let bind_group_layout = pools.bind_group_layouts.request(
+        let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
                 label: "point cloud".into(),
@@ -264,7 +270,7 @@ impl Renderer for PointCloudRenderer {
             },
         );
 
-        let pipeline_layout = pools.pipeline_layouts.request(
+        let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
                 label: "point cloud".into(),
@@ -273,7 +279,7 @@ impl Renderer for PointCloudRenderer {
             &pools.bind_group_layouts,
         );
 
-        let shader_module = pools.shader_modules.request(
+        let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
             &ShaderModuleDesc {
@@ -282,7 +288,7 @@ impl Renderer for PointCloudRenderer {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.request(
+        let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
                 label: "point cloud".into(),
@@ -324,8 +330,8 @@ impl Renderer for PointCloudRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
-        let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
-        let bind_group = pools.bind_groups.get(draw_data.bind_group)?;
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;
 
         pass.set_pipeline(&pipeline.pipeline);
         pass.set_bind_group(1, &bind_group.bind_group, &[]);

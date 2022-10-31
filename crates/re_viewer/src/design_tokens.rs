@@ -7,6 +7,18 @@ pub struct DesignTokens {
     pub top_bar_color: egui::Color32,
 }
 
+impl DesignTokens {
+    #[allow(clippy::unused_self)]
+    pub fn panel_frame(&self, egui_ctx: &egui::Context) -> egui::Frame {
+        egui::Frame {
+            fill: egui_ctx.style().visuals.window_fill(),
+            inner_margin: egui::style::Margin::same(4.0),
+            stroke: egui_ctx.style().visuals.window_stroke(),
+            ..Default::default()
+        }
+    }
+}
+
 pub(crate) fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     let apply_font = true;
     let apply_font_size = true;

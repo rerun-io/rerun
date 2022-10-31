@@ -1,6 +1,6 @@
 use crate::debug_label::DebugLabel;
 
-use super::resource_pool::*;
+use super::{resource::*, static_resource_pool::*};
 
 slotmap::new_key_type! { pub(crate) struct BindGroupLayoutHandle; }
 
@@ -19,16 +19,16 @@ pub(crate) struct BindGroupLayoutDesc {
 
 #[derive(Default)]
 pub(crate) struct BindGroupLayoutPool {
-    pool: ResourcePool<BindGroupLayoutHandle, BindGroupLayoutDesc, BindGroupLayout>,
+    pool: StaticResourcePool<BindGroupLayoutHandle, BindGroupLayoutDesc, BindGroupLayout>,
 }
 
 impl BindGroupLayoutPool {
-    pub fn request(
+    pub fn get_or_create(
         &mut self,
         device: &wgpu::Device,
         desc: &BindGroupLayoutDesc,
     ) -> BindGroupLayoutHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
             let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: desc.label.get(),
@@ -38,7 +38,10 @@ impl BindGroupLayoutPool {
         })
     }
 
-    pub fn get(&self, handle: BindGroupLayoutHandle) -> Result<&BindGroupLayout, PoolError> {
+    pub fn get_resource(
+        &self,
+        handle: BindGroupLayoutHandle,
+    ) -> Result<&BindGroupLayout, PoolError> {
         self.pool.get_resource(handle)
     }
 }

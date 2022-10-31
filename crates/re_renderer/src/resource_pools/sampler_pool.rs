@@ -1,6 +1,6 @@
 use std::{hash::Hash, num::NonZeroU8};
 
-use super::resource_pool::*;
+use super::{resource::*, static_resource_pool::*};
 use crate::debug_label::DebugLabel;
 
 slotmap::new_key_type! { pub(crate) struct SamplerHandle; }
@@ -46,12 +46,12 @@ pub(crate) struct SamplerDesc {
 
 #[derive(Default)]
 pub(crate) struct SamplerPool {
-    pool: ResourcePool<SamplerHandle, SamplerDesc, Sampler>,
+    pool: StaticResourcePool<SamplerHandle, SamplerDesc, Sampler>,
 }
 
 impl SamplerPool {
-    pub fn request(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> SamplerHandle {
-        self.pool.get_handle(desc, |desc| {
+    pub fn get_or_create(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> SamplerHandle {
+        self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
             let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
                 label: desc.label.get(),
@@ -73,11 +73,7 @@ impl SamplerPool {
         })
     }
 
-    pub fn get(&self, handle: SamplerHandle) -> Result<&Sampler, PoolError> {
+    pub fn get_resource(&self, handle: SamplerHandle) -> Result<&Sampler, PoolError> {
         self.pool.get_resource(handle)
-    }
-
-    pub(super) fn register_resource_usage(&mut self, handle: SamplerHandle) {
-        let _ = self.get(handle);
     }
 }

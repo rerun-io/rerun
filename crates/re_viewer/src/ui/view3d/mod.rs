@@ -496,6 +496,8 @@ fn paint_view(
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
                         let view_builder = view_builder_lock
+                            .as_mut()
+                            .unwrap()
                             .setup_view(
                                 ctx,
                                 device,
@@ -529,10 +531,8 @@ fn paint_view(
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();
-                        view_builder_draw
-                            .read()
-                            .composite(ctx, render_pass)
-                            .unwrap();
+                        let view_builder = view_builder_draw.write().take();
+                        view_builder.unwrap().composite(ctx, render_pass).unwrap();
                         // TODO(andreas): Graceful error handling
                     }),
             ),
