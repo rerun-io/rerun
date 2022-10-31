@@ -1,17 +1,20 @@
 use std::{any::Any, sync::mpsc::Receiver};
 
-use crate::{
-    design_tokens::DesignTokens,
-    misc::{Caches, Options, RecordingConfig, ViewerContext},
-};
 use ahash::HashMap;
 use egui_extras::RetainedImage;
 use egui_notify::Toasts;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
+
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
+
+use crate::{
+    design_tokens::DesignTokens,
+    misc::{Caches, Options, RecordingConfig, ViewerContext},
+    ui::kb_shortcuts,
+};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::misc::TimeRangeF;
@@ -200,18 +203,18 @@ impl eframe::App for App {
             return;
         }
 
-        if egui_ctx.input_mut().consume_key(
-            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
-            egui::Key::R,
-        ) {
+        if egui_ctx
+            .input_mut()
+            .consume_shortcut(&kb_shortcuts::RESET_VIEWER)
+        {
             self.reset(egui_ctx);
         }
 
         #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
-        if egui_ctx.input_mut().consume_key(
-            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
-            egui::Key::P,
-        ) {
+        if egui_ctx
+            .input_mut()
+            .consume_shortcut(&kb_shortcuts::SHOW_PROFILER)
+        {
             self.state.profiler.start();
         }
 
@@ -727,11 +730,14 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     }
 
     ui.menu_button("Advanced", |ui| {
+        ui.set_min_width(180.0);
+
         if ui
-            .button("Reset viewer")
-            .on_hover_text(
-                "Reset the viewer to how it looked the first time you ran it (⌘⇧R or ⌃⇧R)",
+            .add(
+                egui::Button::new("Reset viewer")
+                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::RESET_VIEWER)),
             )
+            .on_hover_text("Reset the viewer to how it looked the first time you ran it")
             .clicked()
         {
             app.reset(ui.ctx());
@@ -740,8 +746,11 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
 
         #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         if ui
-            .button("Profile viewer")
-            .on_hover_text("Starts a profiler, showing what makes the viewer run slow (⌘⇧P or ⌃⇧P)")
+            .add(
+                egui::Button::new("Profile viewer")
+                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SHOW_PROFILER)),
+            )
+            .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
             .clicked()
         {
             app.state.profiler.start();
