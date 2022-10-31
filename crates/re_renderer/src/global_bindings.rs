@@ -4,13 +4,15 @@ use crate::{
     resource_pools::{
         bind_group_layout_pool::*,
         bind_group_pool::*,
-        buffer_pool::BufferHandle,
+        buffer_pool::BufferHandleStrong,
         sampler_pool::{SamplerDesc, SamplerHandle},
         WgpuResourcePools,
     },
     wgpu_buffer_types,
 };
+
 use bytemuck::{Pod, Zeroable};
+use smallvec::smallvec;
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
 ///
@@ -37,7 +39,7 @@ pub(crate) struct GlobalBindings {
 impl GlobalBindings {
     pub fn new(pools: &mut WgpuResourcePools, device: &wgpu::Device) -> Self {
         Self {
-            layout: pools.bind_group_layouts.request(
+            layout: pools.bind_group_layouts.get_or_create(
                 device,
                 &BindGroupLayoutDesc {
                     label: "global bind group layout".into(),
@@ -68,7 +70,7 @@ impl GlobalBindings {
                     ],
                 },
             ),
-            nearest_neighbor_sampler: pools.samplers.request(
+            nearest_neighbor_sampler: pools.samplers.get_or_create(
                 device,
                 &SamplerDesc {
                     label: "nearest".into(),
@@ -83,15 +85,15 @@ impl GlobalBindings {
         &self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        frame_uniform_buffer: BufferHandle,
-    ) -> BindGroupHandle {
-        pools.bind_groups.request(
+        frame_uniform_buffer: &BufferHandleStrong,
+    ) -> BindGroupHandleStrong {
+        pools.bind_groups.alloc(
             device,
             &BindGroupDesc {
                 label: "global bind group".into(),
-                entries: vec![
+                entries: smallvec![
                     BindGroupEntry::Buffer {
-                        handle: frame_uniform_buffer,
+                        handle: **frame_uniform_buffer,
                         offset: 0,
                         size: None,
                     },

@@ -47,11 +47,11 @@ impl Renderer for GenericSkybox {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        let render_pipeline = pools.render_pipelines.request(
+        let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
                 label: "generic_skybox".into(),
-                pipeline_layout: pools.pipeline_layouts.request(
+                pipeline_layout: pools.pipeline_layouts.get_or_create(
                     device,
                     &PipelineLayoutDesc {
                         label: "global only".into(),
@@ -61,7 +61,7 @@ impl Renderer for GenericSkybox {
                 ),
 
                 vertex_entrypoint: "main".into(),
-                vertex_handle: pools.shader_modules.request(
+                vertex_handle: pools.shader_modules.get_or_create(
                     device,
                     resolver,
                     &ShaderModuleDesc {
@@ -70,7 +70,7 @@ impl Renderer for GenericSkybox {
                     },
                 ),
                 fragment_entrypoint: "main".into(),
-                fragment_handle: pools.shader_modules.request(
+                fragment_handle: pools.shader_modules.get_or_create(
                     device,
                     resolver,
                     &ShaderModuleDesc {
@@ -104,7 +104,7 @@ impl Renderer for GenericSkybox {
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &GenericSkyboxDrawable,
     ) -> anyhow::Result<()> {
-        let pipeline = pools.render_pipelines.get(self.render_pipeline)?;
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 
         pass.set_pipeline(&pipeline.pipeline);
         pass.draw(0..3, 0..1);

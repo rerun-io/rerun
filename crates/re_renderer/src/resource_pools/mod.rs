@@ -9,7 +9,9 @@ pub(crate) mod sampler_pool;
 pub(crate) mod shader_module_pool;
 pub(crate) mod texture_pool;
 
-mod resource_pool;
+mod dynamic_resource_pool;
+mod resource;
+mod static_resource_pool;
 
 use self::{
     bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,
@@ -22,14 +24,18 @@ use self::{
 ///
 /// Note that all resource pools define their resources by type & type properties (the descriptor).
 /// This means they are not directly concerned with contents and tend to act more like allocators.
+/// Garbage collection / resource reclamation strategy differs by type,
+/// for details check their respective allocation/creation functions!
 #[derive(Default)]
 pub struct WgpuResourcePools {
     pub(crate) bind_group_layouts: BindGroupLayoutPool,
-    pub(crate) bind_groups: BindGroupPool,
-    pub(crate) buffers: BufferPool,
     pub(crate) pipeline_layouts: PipelineLayoutPool,
     pub(crate) render_pipelines: RenderPipelinePool,
     pub(crate) samplers: SamplerPool,
     pub(crate) shader_modules: ShaderModulePool,
+
+    pub(crate) bind_groups: BindGroupPool,
+
+    pub(crate) buffers: BufferPool,
     pub(crate) textures: TexturePool,
 }

@@ -2,13 +2,17 @@ use std::{hash::Hash, sync::atomic::AtomicU64};
 
 use crate::debug_label::DebugLabel;
 
-use super::resource_pool::*;
+use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
 
-slotmap::new_key_type! { pub(crate) struct BufferHandle; }
+slotmap::new_key_type! { pub struct BufferHandle; }
 
-pub(crate) struct Buffer {
+/// A reference counter baked bind group handle.
+/// Once all strong handles are dropped, the bind group will be marked for reclamation in the following frame.
+pub type BufferHandleStrong = std::sync::Arc<BufferHandle>;
+
+pub struct Buffer {
     last_frame_used: AtomicU64,
-    pub(crate) buffer: wgpu::Buffer,
+    pub buffer: wgpu::Buffer,
 }
 
 impl UsageTrackedResource for Buffer {
@@ -18,34 +22,31 @@ impl UsageTrackedResource for Buffer {
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub(crate) struct BufferDesc {
+pub struct BufferDesc {
     /// Debug label of a buffer. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
 
     /// Size of a buffer.
     pub size: wgpu::BufferAddress,
+
     /// Usages of a buffer. If the buffer is used in any way that isn't specified here, the operation
     /// will panic.
     pub usage: wgpu::BufferUsages,
-
-    /// Content id used to distinguish otherwise identical buffer descriptions.
-    pub content_id: u64,
-    // TODO(andreas) support buffers that are mapped on creation.
-    // This is *not* the same as mapping the buffer right after creation as it allows mapping even without
-    // [`wgpu::BufferUsages::MAP_WRITE`] flag set!
-    // On the other hand this isn't an amazing fit with our design overall as we'd like to pretend
-    // we never know when a buffer is created the first time.
-    //pub mapped_at_creation: bool,
 }
 
 #[derive(Default)]
-pub(crate) struct BufferPool {
-    pool: ResourcePool<BufferHandle, BufferDesc, Buffer>,
+pub struct BufferPool {
+    pool: DynamicResourcePool<BufferHandle, BufferDesc, Buffer>,
 }
 
 impl BufferPool {
-    pub fn request(&mut self, device: &wgpu::Device, desc: &BufferDesc) -> BufferHandle {
-        self.pool.get_handle(desc, |desc| {
+    /// Returns a ref counted handle to a currently unused buffer.
+    /// Once ownership to the handle is given up, the buffer may be reclaimed in future frames.
+    ///
+    /// For more efficient allocation (faster, less fragmentation) you should sub-allocate buffers whenever possible
+    /// either manually or using a higher level allocator.
+    pub fn alloc(&mut self, device: &wgpu::Device, desc: &BufferDesc) -> BufferHandleStrong {
+        self.pool.alloc(desc, |desc| {
             let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
                 size: desc.size,
@@ -59,15 +60,24 @@ impl BufferPool {
         })
     }
 
+    /// Called by `RenderContext` every frame. Updates statistics and may free unused buffers.
     pub fn frame_maintenance(&mut self, frame_index: u64) {
-        self.pool.discard_unused_resources(frame_index);
+        self.pool.frame_maintenance(frame_index);
     }
 
-    pub fn get(&self, handle: BufferHandle) -> Result<&Buffer, PoolError> {
+    /// Takes strong buffer handle to ensure the user is still holding on to the buffer.
+    pub fn get_resource(&self, handle: &BufferHandleStrong) -> Result<&Buffer, PoolError> {
+        self.pool.get_resource(**handle)
+    }
+
+    /// Internal method to retrieve a resource with a weak handle (used by [`super::BindGroupPool`])
+    pub(super) fn get_resource_weak(&self, handle: BufferHandle) -> Result<&Buffer, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    pub(super) fn register_resource_usage(&mut self, handle: BufferHandle) {
-        let _ = self.get(handle);
+    /// Internal method to retrieve a strong handle from a weak handle (used by [`super::BindGroupPool`])
+    /// without inrementing the ref-count (note the returned reference!).
+    pub(super) fn get_strong_handle(&self, handle: BufferHandle) -> &BufferHandleStrong {
+        self.pool.get_strong_handle(handle)
     }
 }

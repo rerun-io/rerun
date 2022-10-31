@@ -4,7 +4,7 @@ use anyhow::Context;
 
 use crate::debug_label::DebugLabel;
 
-use super::{pipeline_layout_pool::*, resource_pool::*, shader_module_pool::*};
+use super::{pipeline_layout_pool::*, resource::*, shader_module_pool::*, static_resource_pool::*};
 
 slotmap::new_key_type! { pub(crate) struct RenderPipelineHandle; }
 
@@ -56,7 +56,7 @@ impl RenderPipelineDesc {
         shader_modules: &ShaderModulePool,
     ) -> anyhow::Result<wgpu::RenderPipeline> {
         let pipeline_layout = pipeline_layouts
-            .get(self.pipeline_layout)
+            .get_resource(self.pipeline_layout)
             .context("referenced pipeline layout not found")?;
 
         let vertex_shader_module = shader_modules
@@ -92,18 +92,18 @@ impl RenderPipelineDesc {
 
 #[derive(Default)]
 pub(crate) struct RenderPipelinePool {
-    pool: ResourcePool<RenderPipelineHandle, RenderPipelineDesc, RenderPipeline>,
+    pool: StaticResourcePool<RenderPipelineHandle, RenderPipelineDesc, RenderPipeline>,
 }
 
 impl RenderPipelinePool {
-    pub fn request(
+    pub fn get_or_create(
         &mut self,
         device: &wgpu::Device,
         desc: &RenderPipelineDesc,
         pipeline_layout_pool: &PipelineLayoutPool,
         shader_module_pool: &ShaderModulePool,
     ) -> RenderPipelineHandle {
-        self.pool.get_handle(desc, |desc| {
+        self.pool.get_or_create(desc, |desc| {
             RenderPipeline {
                 last_frame_used: AtomicU64::new(0),
                 pipeline: desc
@@ -121,9 +121,6 @@ impl RenderPipelinePool {
         shader_modules: &mut ShaderModulePool,
         pipeline_layouts: &mut PipelineLayoutPool,
     ) {
-        // Garbage collect render pipelines that haven't seen any use since last frame.
-        self.pool.discard_unused_resources(frame_index);
-
         // Make sure the shader modules we rely on don't get GC'd!
         for desc in self.pool.resource_descs() {
             shader_modules.register_resource_usage(desc.vertex_handle);
@@ -156,7 +153,7 @@ impl RenderPipelinePool {
         // Recompile render pipelines referencing recompiled shader modules.
         for desc in descs {
             // TODO(cmc): obviously terrible, we'll see as things evolve.
-            let handle = self.pool.get_handle(&desc, |_| {
+            let handle = self.pool.get_or_create(&desc, |_| {
                 unreachable!("the pool itself handed us that descriptor")
             });
             let res = self
@@ -186,7 +183,7 @@ impl RenderPipelinePool {
         }
     }
 
-    pub fn get(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
+    pub fn get_resource(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
         self.pool.get_resource(handle)
     }
 }
