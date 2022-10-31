@@ -690,8 +690,14 @@ impl Scene {
                     if *prev == a {
                         current_strip.points.push(b);
                     } else {
-                        line_strips.push(current_strip.clone());
-                        current_strip.points = vec![a, b];
+                        line_strips.push(std::mem::replace(
+                            &mut current_strip,
+                            LineStrip {
+                                points: vec![a, b],
+                                radius: segments.radius.0,
+                                color: segments.color,
+                            },
+                        ));
                     }
                 } else {
                     current_strip.points.push(a);
