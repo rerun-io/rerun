@@ -250,6 +250,7 @@ pub(crate) enum Selection {
     Instance(InstanceId),
     DataPath(DataPath),
     Space(ObjPath),
+    SpaceView(crate::SpaceViewId),
 }
 
 impl Default for Selection {
