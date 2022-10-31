@@ -21,9 +21,6 @@ pub(crate) use ui::*;
 pub use app::App;
 pub use remote_viewer_app::RemoteViewerApp;
 
-#[cfg(feature = "wgpu")]
-use re_renderer::context::{RenderContext, RenderContextConfig};
-
 // ----------------------------------------------------------------------------
 // When compiling for native:
 
@@ -70,6 +67,8 @@ macro_rules! profile_scope {
 pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::DesignTokens {
     #[cfg(feature = "wgpu")]
     {
+        use re_renderer::{RenderContext, RenderContextConfig};
+
         let render_state = cc.wgpu_render_state.as_ref().unwrap();
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
 

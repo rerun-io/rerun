@@ -148,6 +148,7 @@ impl Drawable for LineDrawable {
 }
 
 /// Description of series of connected line segments that share a radius and a color.
+#[derive(Clone)]
 pub struct LineStrip {
     /// Connected points. Must be at least 2.
     pub points: Vec<glam::Vec3>,

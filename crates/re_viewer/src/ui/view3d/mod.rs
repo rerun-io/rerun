@@ -485,16 +485,17 @@ fn paint_view(
         let resolution_in_pixel = rect.size() * ui.ctx().pixels_per_point();
         let resolution_in_pixel = [resolution_in_pixel.x as _, resolution_in_pixel.y as _];
 
+        let point_cloud_points = scene.point_cloud_points();
+        let line_strips = scene.line_strips();
+
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
-                        let triangle = TestTriangleDrawable::new(ctx, device);
-                        let skybox = GenericSkyboxDrawable::new(ctx, device);
-                        view_builder_prepare
-                            .write()
+                        let mut view_builder_lock = view_builder_prepare.write();
+                        let view_builder = view_builder_lock
                             .as_mut()
                             .unwrap()
                             .setup_view(
@@ -512,10 +513,21 @@ fn paint_view(
                                 },
                             )
                             .unwrap()
-                            .queue_draw(&skybox)
-                            .queue_draw(&triangle)
-                            .draw(ctx, encoder)
-                            .unwrap(); // TODO(andreas): Graceful error handling
+                            .queue_draw(&GenericSkyboxDrawable::new(ctx, device));
+
+                        if !line_strips.is_empty() {
+                            view_builder.queue_draw(
+                                &LineDrawable::new(ctx, device, queue, &line_strips).unwrap(),
+                            );
+                        }
+                        if !point_cloud_points.is_empty() {
+                            view_builder.queue_draw(
+                                &PointCloudDrawable::new(ctx, device, queue, &point_cloud_points)
+                                    .unwrap(),
+                            );
+                        }
+
+                        view_builder.draw(ctx, encoder).unwrap(); // TODO(andreas): Graceful error handling
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();

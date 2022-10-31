@@ -299,7 +299,7 @@ impl eframe::App for App {
             let paint_callback_resources =
                 &mut render_state.renderer.write().paint_callback_resources;
             paint_callback_resources
-                .get_mut::<re_renderer::context::RenderContext>()
+                .get_mut::<re_renderer::RenderContext>()
                 .unwrap()
                 .frame_maintenance(&render_state.device);
         }
