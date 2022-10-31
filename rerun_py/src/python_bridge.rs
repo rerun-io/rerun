@@ -124,6 +124,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(set_visible, m)?)?;
+    m.add_function(wrap_pyfunction!(set_visible_batch, m)?)?;
 
     Ok(())
 }
@@ -1415,6 +1416,24 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
         &time_point,
         (&obj_path, "_visible"),
         LoggedData::Single(Data::Bool(visibile)),
+    );
+
+    Ok(())
+}
+
+/// Clear the visibility flag of a batch object
+#[pyfunction]
+fn set_visible_batch(obj_path: &str, visibile: bool) -> PyResult<()> {
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let mut sdk = Sdk::global();
+
+    let time_point = time(false);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "_visible"),
+        LoggedData::BatchSplat(Data::Bool(visibile)),
     );
 
     Ok(())

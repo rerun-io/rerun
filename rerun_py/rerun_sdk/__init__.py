@@ -911,6 +911,11 @@ def set_visible(obj_path: str, visibile: bool) -> None:
     rerun_rs.set_visible(obj_path, visibile)
 
 
+def set_visible_batch(obj_path: str, visibile: bool) -> None:
+    """Change the visibility of an object."""
+    rerun_rs.set_visible_batch(obj_path, visibile)
+
+
 @dataclass
 class ClassDescription:
     """
