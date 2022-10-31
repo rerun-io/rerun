@@ -485,8 +485,8 @@ fn paint_view(
         let resolution_in_pixel = rect.size() * ui.ctx().pixels_per_point();
         let resolution_in_pixel = [resolution_in_pixel.x as _, resolution_in_pixel.y as _];
 
-        let point_cloud_points = scene.get_point_cloud_points();
-        let line_strips = scene.get_line_strips();
+        let point_cloud_points = scene.point_cloud_points();
+        let line_strips = scene.line_strips();
 
         egui::PaintCallback {
             rect,

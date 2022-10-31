@@ -674,7 +674,7 @@ impl Scene {
     }
 
     #[cfg(feature = "wgpu")]
-    pub fn get_line_strips(&self) -> Vec<LineStrip> {
+    pub fn line_strips(&self) -> Vec<LineStrip> {
         let mut line_strips = Vec::with_capacity(self.line_segments.len());
         for segments in &self.line_segments {
             let mut current_strip = LineStrip {
@@ -682,9 +682,9 @@ impl Scene {
                 radius: segments.radius.0,
                 color: segments.color,
             };
-            for segment in &segments.segments {
-                let a = glam::vec3(segment[0][0], segment[0][1], segment[0][2]);
-                let b = glam::vec3(segment[1][0], segment[1][1], segment[1][2]);
+            for [a, b] in &segments.segments {
+                let a = glam::Vec3::from(*a);
+                let b = glam::Vec3::from(*b);
 
                 if let Some(prev) = current_strip.points.last() {
                     if *prev == a {
@@ -707,11 +707,11 @@ impl Scene {
     }
 
     #[cfg(feature = "wgpu")]
-    pub fn get_point_cloud_points(&self) -> Vec<PointCloudPoint> {
+    pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
         self.points
             .iter()
             .map(|point| PointCloudPoint {
-                position: glam::vec3(point.pos[0], point.pos[1], point.pos[2]),
+                position: glam::Vec3::from(point.pos),
                 radius: point.radius.0,
                 srgb_color: point.color,
             })
