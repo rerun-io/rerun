@@ -2,6 +2,8 @@
 //!
 //! Uses instancing to render instances of the same mesh in a single draw call.
 
+use std::num::NonZeroU64;
+
 use itertools::Itertools as _;
 
 use crate::{
@@ -9,7 +11,7 @@ use crate::{
     mesh::{Mesh, MeshVertex},
     mesh_manager::MeshHandle,
     resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
+        buffer_pool::{BufferDesc, BufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::{RenderPipelineDesc, RenderPipelineHandle},
         shader_module_pool::ShaderModuleDesc,
@@ -27,6 +29,10 @@ struct MeshBatch {
 
 #[derive(Clone)]
 pub struct MeshDrawable {
+    // There is a single instance buffer for all instances of all meshes.
+    // This means we only ever need to bind the instance buffer once and then change the
+    // instance range on every instanced draw call!
+    instance_buffer: BufferHandleStrong,
     batches: Vec<MeshBatch>,
 }
 
@@ -43,7 +49,7 @@ impl MeshDrawable {
     pub fn new(
         ctx: &mut RenderContext,
         device: &wgpu::Device,
-        _queue: &wgpu::Queue,
+        queue: &wgpu::Queue,
         instances: &[MeshInstance],
     ) -> anyhow::Result<Self> {
         let _mesh_renderer = ctx.renderers.get_or_create::<_, MeshRenderer>(
@@ -53,20 +59,97 @@ impl MeshDrawable {
             &mut ctx.resolver,
         );
 
+        // TODO(andreas): Use a temp allocator
+        let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
+        let instance_buffer = ctx.resource_pools.buffers.alloc(
+            device,
+            &BufferDesc {
+                label: "MeshDrawable instance buffer".into(),
+                size: instance_buffer_size,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            },
+        );
+        let mut instance_buffer_staging = queue.write_buffer_with(
+            &ctx.resource_pools
+                .buffers
+                .get_resource(&instance_buffer)
+                .unwrap()
+                .buffer,
+            0,
+            NonZeroU64::new(instance_buffer_size).unwrap(),
+        );
+        let instance_buffer_staging: &mut [GpuInstanceData] =
+            bytemuck::cast_slice_mut(&mut instance_buffer_staging);
+
         // Group by mesh to facilitate instancing.
         // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
         // Also, it helps failing early if something is wrong with a mesh!
         let mut batches = Vec::new();
+        let mut num_processed_instances = 0;
         for (mesh_handle, instances) in &instances.iter().group_by(|instance| instance.mesh) {
             let mesh = ctx.meshes.get_mesh(mesh_handle)?;
-            // TODO: upload transformation data
+
+            let mut count = 0;
+            for (instance, gpu_instance) in instances.zip(
+                instance_buffer_staging
+                    .iter_mut()
+                    .skip(num_processed_instances),
+            ) {
+                count += 1;
+                gpu_instance.translation_and_scale =
+                    instance.transformation.translation_and_scale();
+                gpu_instance.rotation = instance.transformation.rotation();
+            }
+
             batches.push(MeshBatch {
                 mesh: mesh.clone(),
-                count: instances.count() as _,
+                count,
             });
+            num_processed_instances += count as usize;
         }
 
-        Ok(MeshDrawable { batches })
+        Ok(MeshDrawable {
+            batches,
+            instance_buffer,
+        })
+    }
+}
+
+/// Element in the gpu residing instance buffer.
+///
+/// Keep in sync with mesh_vertex.wgsl
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct GpuInstanceData {
+    translation_and_scale: glam::Vec4,
+    rotation: glam::Quat,
+}
+
+impl GpuInstanceData {
+    pub const fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+        const SHADER_START_LOCATION: u32 =
+            MeshVertex::vertex_buffer_layout().attributes.len() as u32;
+
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<GpuInstanceData>() as _,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[
+                // Position and Scale.
+                // We could move scale to a separate field, it's _probably_ not gonna have any impact at all
+                // But then again it's easy and less confusing to always keep them fused.
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x4,
+                    offset: 0,
+                    shader_location: SHADER_START_LOCATION as u32,
+                },
+                // Rotation (quaternion)
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x4,
+                    offset: std::mem::size_of::<f32>() as u64 * 4,
+                    shader_location: SHADER_START_LOCATION as u32 + 1,
+                },
+            ],
+        }
     }
 }
 
@@ -119,30 +202,11 @@ impl Renderer for MeshRenderer {
                 vertex_handle: shader_module,
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
-                vertex_buffers: vec![wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<MeshVertex>() as _,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[
-                        // Position
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 0,
-                            shader_location: 0,
-                        },
-                        // Normal
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: std::mem::size_of::<f32>() as u64 * 3,
-                            shader_location: 1,
-                        },
-                        // Texcoord
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x2,
-                            offset: std::mem::size_of::<f32>() as u64 * (3 + 3),
-                            shader_location: 2,
-                        },
-                    ],
-                }],
+                vertex_buffers: vec![
+                    // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
+                    GpuInstanceData::vertex_buffer_layout(),
+                    MeshVertex::vertex_buffer_layout(),
+                ],
                 render_targets: vec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -175,8 +239,11 @@ impl Renderer for MeshRenderer {
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
-
         pass.set_pipeline(&pipeline.pipeline);
+
+        let instance_buffer = pools.buffers.get_resource(&draw_data.instance_buffer)?;
+        pass.set_vertex_buffer(0, instance_buffer.buffer.slice(..));
+        let mut instance_start_index = 0;
 
         for mesh_batch in &draw_data.batches {
             let vertex_and_index_buffer = pools
@@ -184,7 +251,7 @@ impl Renderer for MeshRenderer {
                 .get_resource(&mesh_batch.mesh.vertex_and_index_buffer)?;
 
             pass.set_vertex_buffer(
-                0,
+                1,
                 vertex_and_index_buffer
                     .buffer
                     .slice(mesh_batch.mesh.vertex_buffer_range.clone()),
@@ -198,7 +265,13 @@ impl Renderer for MeshRenderer {
 
             for material in &mesh_batch.mesh.materials {
                 debug_assert!(mesh_batch.count > 0);
-                pass.draw_indexed(material.index_range.clone(), 0, 0..mesh_batch.count);
+                let instance_end_index = instance_start_index + mesh_batch.count;
+                pass.draw_indexed(
+                    material.index_range.clone(),
+                    0,
+                    instance_start_index..instance_end_index,
+                );
+                instance_start_index = instance_end_index;
             }
         }
 

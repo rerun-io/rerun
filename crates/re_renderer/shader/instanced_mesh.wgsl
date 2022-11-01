@@ -1,6 +1,7 @@
 #import <./types.wgsl>
 #import <./global_bindings.wgsl>
 #import <./mesh_vertex.wgsl>
+#import <./utils/quaternion.wgsl>
 
 struct VertexOut {
     @builtin(position) position: Vec4,
@@ -9,12 +10,15 @@ struct VertexOut {
 };
 
 @vertex
-fn vs_main(in: VertexIn) -> VertexOut {
-    var out: VertexOut;
+fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
+    let world_position = quat_rotate_vec3(in_instance.rotation, in_vertex.position) * in_instance.position_and_scale.w +
+                         in_instance.position_and_scale.xyz;
+    // TODO: rotate
 
-    out.position = frame.projection_from_world * Vec4(in.position, 1.0);
-    out.texcoord = in.texcoord;
-    out.normal_obj_space = in.normal;
+    var out: VertexOut;
+    out.position = frame.projection_from_world * Vec4(world_position, 1.0);
+    out.texcoord = in_vertex.texcoord;
+    out.normal_obj_space = in_vertex.normal;
 
     return out;
 }

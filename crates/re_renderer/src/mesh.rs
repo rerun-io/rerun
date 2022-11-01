@@ -13,7 +13,7 @@ use crate::{
 
 /// Mesh vertex as used in gpu residing vertex buffers.
 ///
-/// Needs to be kept in sync with `mesh_vertex.wgsl` and `mesh_renderer.rs` pipeline creation.
+/// Needs to be kept in sync with `mesh_vertex.wgsl`.
 #[repr(C, packed)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct MeshVertex {
@@ -21,6 +21,35 @@ pub struct MeshVertex {
     pub normal: glam::Vec3, // TODO(andreas): Compress. Afaik Octahedral Mapping is the best by far, see https://jcgt.org/published/0003/02/01/
     pub texcoord: glam::Vec2,
     // TODO(andreas): More properties? Different kinds of vertices?
+}
+
+impl MeshVertex {
+    pub const fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<MeshVertex>() as _,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                // Position
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x3,
+                    offset: 0,
+                    shader_location: 0,
+                },
+                // Normal
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x3,
+                    offset: std::mem::size_of::<f32>() as u64 * 3,
+                    shader_location: 1,
+                },
+                // Texcoord
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x2,
+                    offset: std::mem::size_of::<f32>() as u64 * (3 + 3),
+                    shader_location: 2,
+                },
+            ],
+        }
+    }
 }
 
 pub struct MeshData {

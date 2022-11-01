@@ -72,20 +72,23 @@ fn draw_view(
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
 
-    let meshes = MeshDrawable::new(
-        re_ctx,
-        device,
-        queue,
-        &state
-            .rerun_mesh
-            .iter()
-            .map(|mesh| MeshInstance {
+    let mesh_instances = lorenz_points(seconds_since_startup)
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            state.rerun_mesh.iter().map(move |mesh| MeshInstance {
                 mesh: *mesh,
-                transformation: macaw::Conformal3::IDENTITY,
+                transformation: macaw::Conformal3::from_scale_rotation_translation(
+                    0.08,
+                    glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
+                    *p,
+                ),
             })
-            .collect::<Vec<_>>(),
-    )
-    .unwrap();
+        })
+        .flatten()
+        .collect::<Vec<_>>();
+
+    let meshes = MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap();
 
     view_builder
         .setup_view(re_ctx, device, queue, &target_cfg)
@@ -93,12 +96,40 @@ fn draw_view(
         //.queue_draw(&triangle)
         .queue_draw(&skybox)
         //.queue_draw(&point_cloud)
-        //.queue_draw(&lines)
+        .queue_draw(&lines)
         .queue_draw(&meshes)
         .draw(re_ctx, encoder)
         .unwrap();
 
     view_builder
+}
+
+fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
+    // Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
+    fn lorenz_integrate(cur: glam::Vec3, dt: f32) -> glam::Vec3 {
+        let sigma: f32 = 10.0;
+        let rho: f32 = 28.0;
+        let beta: f32 = 8.0 / 3.0;
+
+        cur + glam::vec3(
+            sigma * (cur.y - cur.x),
+            cur.x * (rho - cur.z) - cur.y,
+            cur.x * cur.y - beta * cur.z,
+        ) * dt
+    }
+
+    // slow buildup and reset
+    let num_points = (((seconds_since_startup * 0.05).fract() * 10000.0) as u32).max(1);
+
+    let mut latest_point = glam::vec3(-0.1, 0.001, 0.0);
+    std::iter::repeat_with(move || {
+        latest_point = lorenz_integrate(latest_point, 0.005);
+        latest_point
+    })
+    // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
+    .map(|p| (p + glam::vec3(-5.0, 0.0, -23.0)) * 0.6)
+    .take(num_points as _)
+    .collect()
 }
 
 fn build_lines(
@@ -108,34 +139,7 @@ fn build_lines(
     seconds_since_startup: f32,
 ) -> LineDrawable {
     // Calculate some points that look nice for an animated line.
-    let lorenz_points = {
-        // Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
-        fn lorenz_integrate(cur: glam::Vec3, dt: f32) -> glam::Vec3 {
-            let sigma: f32 = 10.0;
-            let rho: f32 = 28.0;
-            let beta: f32 = 8.0 / 3.0;
-
-            cur + glam::vec3(
-                sigma * (cur.y - cur.x),
-                cur.x * (rho - cur.z) - cur.y,
-                cur.x * cur.y - beta * cur.z,
-            ) * dt
-        }
-
-        // slow buildup and reset
-        let num_points = (((seconds_since_startup * 0.05).fract() * 10000.0) as u32).max(1);
-
-        let mut latest_point = glam::vec3(-0.1, 0.001, 0.0);
-        std::iter::repeat_with(move || {
-            latest_point = lorenz_integrate(latest_point, 0.005);
-            latest_point
-        })
-        // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
-        .map(|p| (p + glam::vec3(-5.0, 0.0, -23.0)) * 0.6)
-        .take(num_points as _)
-        .collect::<Vec<_>>()
-    };
-
+    let lorenz_points = lorenz_points(seconds_since_startup);
     LineDrawable::new(
         re_ctx,
         device,
