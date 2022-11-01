@@ -305,15 +305,15 @@ macro_rules! data_map(
     });
 );
 
-/// Do the same thing with all members of a [`DataType`].
+/// Map a [`DataType`] to the correct instance of `Option::<T>::None`.
 ///
 /// ```
-/// # use re_log_types::{DataType, data_type_map};
+/// # use re_log_types::{DataType, data_type_map_none};
 /// # let data_type: DataType = DataType::F32;
-/// data_map!(data, |data| { dbg!(data); });
+/// data_type_map_none!(data_type, |data_none| { dbg!(data_none); });
 /// ```
 #[macro_export]
-macro_rules! data_type_map(
+macro_rules! data_type_map_none(
     ($data_type: expr, |$value: pat_param| $action: expr) => ({
         match $data_type {
             $crate::DataType::Bool => {

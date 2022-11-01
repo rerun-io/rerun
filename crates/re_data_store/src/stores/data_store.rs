@@ -174,7 +174,7 @@ fn insert_msg_into_timeline_store(
 
     match data {
         LoggedData::Null(data_type) => {
-            re_log_types::data_type_map!(data_type, |data_none| timeline_store
+            re_log_types::data_type_map_none!(data_type, |data_none| timeline_store
                 .insert_mono(obj_path, field_name, time_i64, msg_id, data_none))
         }
         LoggedData::Single(data) => {
