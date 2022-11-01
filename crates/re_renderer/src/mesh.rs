@@ -76,7 +76,7 @@ pub(crate) struct Mesh {
 pub(crate) struct Material {
     /// Range of indices in parent mesh that this material covers.
     pub index_range: Range<u32>,
-    // todo(andreas): Material properties etc.
+    // TODO(andreas): Material properties etc.
     //bind_group: BindGroupHandleStrong,
 }
 
