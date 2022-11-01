@@ -181,7 +181,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
 
 /// Stores the history of a mono-field.
 pub struct MonoFieldStore<Time, T> {
-    pub(crate) history: BTreeMap<Time, (MsgId, T)>,
+    pub(crate) history: BTreeMap<Time, (MsgId, Option<T>)>,
 }
 
 impl<Time, T> Default for MonoFieldStore<Time, T> {
@@ -199,18 +199,29 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MonoFieldStore<Time, T> {
         mut visit: impl FnMut(&Time, &MsgId, &'slf T),
     ) {
         crate::query::query(&self.history, time_query, |time, (msg_id, value)| {
-            visit(time, msg_id, value);
+            if let Some(value) = value {
+                visit(time, msg_id, value);
+            }
         });
     }
 
     /// Get the latest value at the given time
-    pub fn latest_at<'s>(&'s self, query_time: &'_ Time) -> Option<(&'s Time, &'s (MsgId, T))> {
-        self.history.range(..=query_time).rev().next()
+    pub fn latest_at<'s>(&'s self, query_time: &'_ Time) -> Option<(&'s Time, (&'s MsgId, &'s T))> {
+        if let Some((time, (msg_id, Some(value)))) = self.history.range(..=query_time).rev().next()
+        {
+            Some((time, (msg_id, value)))
+        } else {
+            None
+        }
     }
 
     /// Get the latest value (unless empty)
-    pub fn latest(&self) -> Option<(&Time, &(MsgId, T))> {
-        self.history.iter().rev().next()
+    pub fn latest(&self) -> Option<(&Time, (&MsgId, &T))> {
+        if let Some((time, (msg_id, Some(value)))) = self.history.iter().rev().next() {
+            Some((time, (msg_id, value)))
+        } else {
+            None
+        }
     }
 }
 

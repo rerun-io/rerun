@@ -103,7 +103,10 @@ impl<'store, Time: 'static + Copy + Ord, T: DataTrait> MonoDataReader<'store, Ti
     }
 
     pub fn latest_at(&self, query_time: &Time) -> Option<&'store T> {
-        latest_at(&self.history?.history, query_time).map(|(_time, (_msg_id, value))| value)
+        match latest_at(&self.history?.history, query_time) {
+            Some((_time, (_msg_id, Some(value)))) => Some(value),
+            _ => None,
+        }
     }
 }
 
@@ -182,7 +185,9 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
             &primary.history,
             time_query,
             |time, (msg_id, primary_value)| {
-                visit(None, *time, msg_id, primary_value);
+                if let Some(primary_value) = primary_value {
+                    visit(None, *time, msg_id, primary_value);
+                }
             },
         );
     } else {
@@ -220,7 +225,9 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
             &primary.history,
             time_query,
             |time, (msg_id, primary_value)| {
-                visit(None, *time, msg_id, primary_value, child1.latest_at(time));
+                if let Some(primary_value) = primary_value {
+                    visit(None, *time, msg_id, primary_value, child1.latest_at(time));
+                }
             },
         );
     } else {
@@ -274,14 +281,16 @@ pub fn visit_type_data_2<
             &primary.history,
             time_query,
             |time, (msg_id, primary_value)| {
-                visit(
-                    None,
-                    *time,
-                    msg_id,
-                    primary_value,
-                    child1.latest_at(time),
-                    child2.latest_at(time),
-                );
+                if let Some(primary_value) = primary_value {
+                    visit(
+                        None,
+                        *time,
+                        msg_id,
+                        primary_value,
+                        child1.latest_at(time),
+                        child2.latest_at(time),
+                    );
+                }
             },
         );
     } else {
@@ -349,15 +358,17 @@ pub fn visit_type_data_3<
             &primary.history,
             time_query,
             |time, (msg_id, primary_value)| {
-                visit(
-                    None,
-                    *time,
-                    msg_id,
-                    primary_value,
-                    child1.latest_at(time),
-                    child2.latest_at(time),
-                    child3.latest_at(time),
-                );
+                if let Some(primary_value) = primary_value {
+                    visit(
+                        None,
+                        *time,
+                        msg_id,
+                        primary_value,
+                        child1.latest_at(time),
+                        child2.latest_at(time),
+                        child3.latest_at(time),
+                    );
+                }
             },
         );
     } else {
@@ -432,16 +443,18 @@ pub fn visit_type_data_4<
             &primary.history,
             time_query,
             |time, (msg_id, primary_value)| {
-                visit(
-                    None,
-                    *time,
-                    msg_id,
-                    primary_value,
-                    child1.latest_at(time),
-                    child2.latest_at(time),
-                    child3.latest_at(time),
-                    child4.latest_at(time),
-                );
+                if let Some(primary_value) = primary_value {
+                    visit(
+                        None,
+                        *time,
+                        msg_id,
+                        primary_value,
+                        child1.latest_at(time),
+                        child2.latest_at(time),
+                        child3.latest_at(time),
+                        child4.latest_at(time),
+                    );
+                }
             },
         );
     } else {
@@ -523,17 +536,19 @@ pub fn visit_type_data_5<
             &primary.history,
             time_query,
             |time, (msg_id, primary_value)| {
-                visit(
-                    None,
-                    *time,
-                    msg_id,
-                    primary_value,
-                    child1.latest_at(time),
-                    child2.latest_at(time),
-                    child3.latest_at(time),
-                    child4.latest_at(time),
-                    child5.latest_at(time),
-                );
+                if let Some(primary_value) = primary_value {
+                    visit(
+                        None,
+                        *time,
+                        msg_id,
+                        primary_value,
+                        child1.latest_at(time),
+                        child2.latest_at(time),
+                        child3.latest_at(time),
+                        child4.latest_at(time),
+                        child5.latest_at(time),
+                    );
+                }
             },
         );
     } else {

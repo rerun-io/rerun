@@ -71,7 +71,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
             .or_insert_with(|| FieldStore::new_mono::<T>())
             .get_mono_mut::<T>()?;
 
-        mono.history.insert(time, (msg_id, value));
+        mono.history.insert(time, (msg_id, Some(value)));
         Ok(())
     }
 
