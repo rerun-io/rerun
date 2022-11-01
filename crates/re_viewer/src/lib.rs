@@ -67,10 +67,12 @@ macro_rules! profile_scope {
 pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::DesignTokens {
     #[cfg(feature = "wgpu")]
     {
-        use re_renderer::{RenderContext, RenderContextConfig};
+        use re_renderer::{config::RenderContextConfig, RenderContext};
 
         let render_state = cc.wgpu_render_state.as_ref().unwrap();
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
+
+        let hardware_tier = re_renderer::config::HardwareTier::Web;
 
         // TODO(andreas): Query used surface format from eframe/renderer.
         let output_format_color = if cfg!(target_arch = "wasm32") {
@@ -84,6 +86,7 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::Desig
             &render_state.queue,
             RenderContextConfig {
                 output_format_color,
+                hardware_tier,
             },
         ));
     }
