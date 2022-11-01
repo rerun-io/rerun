@@ -8,7 +8,6 @@ use crate::{
         buffer_pool::{BufferDesc, BufferHandleStrong},
         WgpuResourcePools,
     },
-    RenderContext,
 };
 
 /// Mesh vertex as used in gpu residing vertex buffers.

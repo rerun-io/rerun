@@ -75,7 +75,7 @@ fn draw_view(
     let mesh_instances = lorenz_points(10.0)
         .iter()
         .enumerate()
-        .map(|(i, p)| {
+        .flat_map(|(i, p)| {
             state.meshes.iter().map(move |mesh| MeshInstance {
                 mesh: *mesh,
                 transformation: macaw::Conformal3::from_scale_rotation_translation(
@@ -85,7 +85,6 @@ fn draw_view(
                 ),
             })
         })
-        .flatten()
         .collect::<Vec<_>>();
 
     let meshes = MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap();

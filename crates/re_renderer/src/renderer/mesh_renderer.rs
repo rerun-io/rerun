@@ -1,8 +1,9 @@
 //! Mesh renderer.
 //!
 //! Uses instancing to render instances of the same mesh in a single draw call.
+//! Instance data is kept in an instance-stepped vertex data, see [`GpuInstanceData`].
 
-use std::{num::NonZeroU64, ops::DerefMut};
+use std::num::NonZeroU64;
 
 use itertools::Itertools as _;
 
@@ -23,7 +24,7 @@ use super::*;
 
 /// Element in the gpu residing instance buffer.
 ///
-/// Keep in sync with mesh_vertex.wgsl
+/// Keep in sync with `mesh_vertex.wgsl`
 #[repr(C, packed)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuInstanceData {
@@ -48,13 +49,13 @@ impl GpuInstanceData {
                 wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Float32x4,
                     offset: 0,
-                    shader_location: SHADER_START_LOCATION as u32,
+                    shader_location: SHADER_START_LOCATION,
                 },
                 // Rotation (quaternion)
                 wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Float32x4,
                     offset: std::mem::size_of::<f32>() as u64 * 4,
-                    shader_location: SHADER_START_LOCATION as u32 + 1,
+                    shader_location: SHADER_START_LOCATION + 1,
                 },
             ],
         }
@@ -118,10 +119,8 @@ impl MeshDrawable {
             0,
             NonZeroU64::new(instance_buffer_size).unwrap(),
         );
-        // any access through `deref` panics, so let's protect ourselves against that by doing a deref_mut right away
-        let instance_buffer_staging = instance_buffer_staging.deref_mut();
         let instance_buffer_staging: &mut [GpuInstanceData] =
-            bytemuck::cast_slice_mut(instance_buffer_staging);
+            bytemuck::cast_slice_mut(&mut instance_buffer_staging);
 
         // Group by mesh to facilitate instancing.
         // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
@@ -159,7 +158,6 @@ impl MeshDrawable {
 
 pub struct MeshRenderer {
     render_pipeline: RenderPipelineHandle,
-    //bind_group_layout: BindGroupLayoutHandle,
 }
 
 impl Renderer for MeshRenderer {
@@ -171,19 +169,11 @@ impl Renderer for MeshRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        // let bind_group_layout = pools.bind_group_layouts.get_or_create(
-        //     device,
-        //     &BindGroupLayoutDesc {
-        //         label: "mesh renderer".into(),
-        //         entries: vec![], // TODO: No data at all??
-        //     },
-        // );
-
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
                 label: "mesh renderer".into(),
-                entries: vec![shared_data.global_bindings.layout], //, bind_group_layout],
+                entries: vec![shared_data.global_bindings.layout],
             },
             &pools.bind_group_layouts,
         );
@@ -230,10 +220,7 @@ impl Renderer for MeshRenderer {
             &pools.shader_modules,
         );
 
-        MeshRenderer {
-            render_pipeline,
-            //bind_group_layout,
-        }
+        MeshRenderer { render_pipeline }
     }
 
     fn draw<'a>(
