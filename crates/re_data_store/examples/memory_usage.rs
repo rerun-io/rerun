@@ -95,7 +95,7 @@ fn tracking_points() {
                     "pos".into(),
                     frame,
                     MsgId::random(),
-                    [1.0, 2.0, 3.0],
+                    Some([1.0, 2.0, 3.0]),
                 )
                 .unwrap();
             num_points += 1;
@@ -132,7 +132,7 @@ fn big_clouds() {
                         "pos".into(),
                         frame,
                         MsgId::random(),
-                        [1.0, 2.0, 3.0],
+                        Some([1.0, 2.0, 3.0]),
                     )
                     .unwrap();
                 num_points += 1;

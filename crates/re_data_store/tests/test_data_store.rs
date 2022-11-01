@@ -74,7 +74,7 @@ fn test_singular() -> re_data_store::Result<()> {
         "pos".into(),
         Time(1),
         id(),
-        [1.0, 1.0, 1.0],
+        Some([1.0, 1.0, 1.0]),
     )?;
 
     store.insert_mono::<[f32; 3]>(
@@ -82,7 +82,7 @@ fn test_singular() -> re_data_store::Result<()> {
         "pos".into(),
         Time(3),
         id(),
-        [3.0, 3.0, 3.0],
+        Some([3.0, 3.0, 3.0]),
     )?;
 
     store.insert_mono::<f32>(
@@ -90,7 +90,7 @@ fn test_singular() -> re_data_store::Result<()> {
         "radius".into(),
         Time(2),
         id(),
-        1.0,
+        Some(1.0),
     )?;
 
     store.insert_mono::<[f32; 3]>(
@@ -98,7 +98,7 @@ fn test_singular() -> re_data_store::Result<()> {
         "pos".into(),
         Time(4),
         id(),
-        [4.0, 4.0, 4.0],
+        Some([4.0, 4.0, 4.0]),
     )?;
 
     assert_eq!(points_at(&store, 0), vec![]);
