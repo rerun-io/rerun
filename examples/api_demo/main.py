@@ -103,8 +103,28 @@ def run_rects() -> None:
     rerun.log_rects("rects_demo/rects", [])
 
 
+def run_log_none() -> None:
+    rerun.set_time_seconds("sim_time", 1)
+    rerun.log_rect("null_demo/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
+    rerun.log_rect("null_demo/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
+    rerun.set_time_seconds("sim_time", 2)
+    rerun.log_rect("null_demo/rect/0", None)
+    rerun.set_time_seconds("sim_time", 3)
+    rerun.log_rect("null_demo/rect/1", None)
+    rerun.set_time_seconds("sim_time", 4)
+    rerun.log_rect("null_demo/rect/0", [5, 5, 4, 4])
+    rerun.set_time_seconds("sim_time", 5)
+    rerun.log_rect("null_demo/rect/1", [10, 5, 4, 4])
+
+
 def main() -> None:
-    demos = {"misc": run_misc, "segmentation": run_segmentation, "set_visible": run_set_visible, "rects": run_rects}
+    demos = {
+        "misc": run_misc,
+        "segmentation": run_segmentation,
+        "set_visible": run_set_visible,
+        "rects": run_rects,
+        "log_none": run_log_none,
+    }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(

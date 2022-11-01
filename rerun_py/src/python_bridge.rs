@@ -627,13 +627,13 @@ impl RectFormat {
 fn log_rect(
     obj_path: &str,
     rect_format: &str,
-    r: [f32; 4],
+    r: Option<[f32; 4]>,
     color: Option<Vec<u8>>,
     label: Option<String>,
     timeless: bool,
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
-    let bbox = rect_format.to_bbox(r);
+    let bbox = r.map(|r| rect_format.to_bbox(r));
 
     let mut sdk = Sdk::global();
 
@@ -642,11 +642,19 @@ fn log_rect(
 
     let time_point = time(timeless);
 
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "bbox"),
-        LoggedData::Single(Data::BBox2D(bbox)),
-    );
+    if let Some(bbox) = bbox {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "bbox"),
+            LoggedData::Single(Data::BBox2D(bbox)),
+        );
+    } else {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "bbox"),
+            LoggedData::Null(DataType::BBox2D),
+        );
+    }
 
     if let Some(color) = color {
         let color = convert_color(color)?;

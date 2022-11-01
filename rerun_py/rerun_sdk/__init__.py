@@ -305,7 +305,7 @@ class RectFormat(Enum):
 
 def log_rect(
     obj_path: str,
-    rect: npt.ArrayLike,
+    rect: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
     color: Optional[Sequence[int]] = None,
@@ -899,7 +899,7 @@ def log_image_file(
     rerun_rs.log_image_file(obj_path, img_path, img_format, timeless)
 
 
-def _to_sequence(array: npt.ArrayLike) -> Sequence[float]:
+def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
     if isinstance(array, np.ndarray):
         return np.require(array, float).tolist()  # type: ignore[no-any-return]
 
