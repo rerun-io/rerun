@@ -243,7 +243,8 @@ impl Application {
     fn run(mut self) {
         self.event_loop.run(move |event, _, control_flow| {
             // Keep our example busy.
-            // Not how one should generally do it, but great for animated content and checking on perf.
+            // Not how one should generally do it, but great for animated content and
+            // checking on perf.
             *control_flow = ControlFlow::Poll;
 
             match event {
@@ -270,17 +271,38 @@ impl Application {
                     self.window.request_redraw();
                 }
                 Event::RedrawRequested(_) => {
+                    // native debug build
+                    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
+                    let frame = match self.surface.get_current_texture() {
+                        Ok(frame) => frame,
+                        Err(wgpu::SurfaceError::Outdated) => {
+                            // We haven't been able to present anything to the swapchain for
+                            // a while, because the pipeline is poisoned.
+                            // Recreate a sane surface to restart the cycle and see if the
+                            // user has fixed the issue.
+                            self.surface.configure(&self.device, &self.surface_config);
+                            return;
+                        }
+                        Err(err) => {
+                            re_log::warn!(%err, "dropped frame");
+                            return;
+                        }
+                    };
+                    #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
                     let frame = self
                         .surface
                         .get_current_texture()
                         .expect("failed to acquire next swap chain texture");
+
                     let view = frame
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let mut encoder = self
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                    let mut encoder =
+                        self.device
+                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                label: "composite_encoder".into(),
+                            });
 
                     let view_builder = draw_view(
                         &self.state,
@@ -415,7 +437,6 @@ fn main() {
             height: 1080,
         });
 
-        // Enable wgpu info messages by default
         pollster::block_on(run(event_loop, window));
     }
 

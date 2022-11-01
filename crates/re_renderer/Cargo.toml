@@ -38,6 +38,7 @@ crossbeam = "0.8"
 notify = "5.0"
 puffin = { version = "0.13", optional = true }
 wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
+wgpu-core = "0.14"
 
 # wasm
 [target.'cfg(target_arch = "wasm32")'.dependencies]
