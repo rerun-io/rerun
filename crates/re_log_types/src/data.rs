@@ -329,7 +329,7 @@ macro_rules! data_type_map_none(
                 $action
             },
             $crate::DataType::Color => {
-                let $value = Option::<data_types::Color>::None;
+                let $value = Option::<$crate::data_types::Color>::None;
                 $action
             },
             $crate::DataType::String => {
@@ -337,47 +337,47 @@ macro_rules! data_type_map_none(
                 $action
             },
             $crate::DataType::Vec2 => {
-                let $value = Option::<data_types::Vec2>::None;
+                let $value = Option::<$crate::data_types::Vec2>::None;
                 $action
             },
             $crate::DataType::BBox2D => {
-                let $value = Option::<BBox2D>::None;
+                let $value = Option::<$crate::BBox2D>::None;
                 $action
             },
             $crate::DataType::Vec3 => {
-                let $value = Option::<data_types::Vec3>::None;
+                let $value = Option::<$crate::data_types::Vec3>::None;
                 $action
             },
             $crate::DataType::Box3 => {
-                let $value = Option::<Box3>::None;
+                let $value = Option::<$crate::Box3>::None;
                 $action
             },
             $crate::DataType::Mesh3D => {
-                let $value = Option::<Mesh3D>::None;
+                let $value = Option::<$crate::Mesh3D>::None;
                 $action
             },
             $crate::DataType::Arrow3D => {
-                let $value = Option::<Arrow3D>::None;
+                let $value = Option::<$crate::Arrow3D>::None;
                 $action
             },
             $crate::DataType::Tensor => {
-                let $value = Option::<Tensor>::None;
+                let $value = Option::<$crate::Tensor>::None;
                 $action
             },
             $crate::DataType::DataVec => {
-                let $value = Option::<DataVec>::None;
+                let $value = Option::<$crate::DataVec>::None;
                 $action
             },
             $crate::DataType::ObjPath => {
-                let $value = Option::<ObjPath>::None;
+                let $value = Option::<$crate::ObjPath>::None;
                 $action
             },
             $crate::DataType::Transform => {
-                let $value = Option::<Transform>::None;
+                let $value = Option::<$crate::Transform>::None;
                 $action
             },
             $crate::DataType::ViewCoordinates => {
-                let $value = Option::<ViewCoordinates>::None;
+                let $value = Option::<$crate::ViewCoordinates>::None;
                 $action
             },
         }
