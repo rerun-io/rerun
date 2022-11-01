@@ -10,7 +10,7 @@
 //! cargo run-wasm --example renderer_standalone
 //! ```
 
-use std::f32::consts::TAU;
+use std::{f32::consts::TAU, sync::Arc};
 
 use anyhow::Context as _;
 use glam::Vec3;
@@ -171,12 +171,20 @@ mod error_handling {
     use parking_lot::Mutex;
     use std::{
         hash::Hash,
-        sync::{atomic::AtomicUsize, atomic::Ordering, Arc},
+        sync::{
+            atomic::Ordering,
+            atomic::{AtomicI64, AtomicU64, AtomicUsize},
+            Arc,
+        },
     };
     use wgpu_core::error::ContextError;
 
     // ---
 
+    /// E.g. to `dbg!()` the downcasted value on a wgpu error:
+    /// ```ignore
+    /// try_downcast!(|inner| { dbg!(inner); } => my_error)
+    /// ```
     macro_rules! try_downcast {
         ($do:expr => $value:expr => [$ty:ty, $($tail:ty $(,),*)*]) => {
             try_downcast!($do => $value => $ty);
@@ -235,7 +243,7 @@ mod error_handling {
 
     // ---
 
-    trait FinerGrainedDedup: Sized + std::error::Error + 'static {
+    trait DedupableError: Sized + std::error::Error + 'static {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
             type_of_var(self).hash(state)
         }
@@ -245,13 +253,17 @@ mod error_handling {
         }
     }
 
+    /// E.g. to implement `DedupableError` for u32 + u64:
+    /// ```ignore
+    /// impl_trait![u32, u64];
+    /// ```
     macro_rules! impl_trait {
         [$ty:ty, $($rest:ty),+ $(,)*] => {
             impl_trait![$ty];
             impl_trait![$($rest),+];
         };
         [$ty:ty $(,)*] => {
-            impl FinerGrainedDedup for $ty {}
+            impl DedupableError for $ty {}
         };
     }
 
@@ -289,7 +301,7 @@ mod error_handling {
     ];
 
     // Custom deduplication for shader compilation errors.
-    impl FinerGrainedDedup for wgpu_core::pipeline::CreateShaderModuleError {
+    impl DedupableError for wgpu_core::pipeline::CreateShaderModuleError {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
             type_of_var(self).hash(state);
             use wgpu_core::pipeline::CreateShaderModuleError::*;
@@ -330,9 +342,7 @@ mod error_handling {
 
             // try to downcast into something that implements `FinerGrainedDedup`, and
             // then call `FinerGrainedDedup::hash`.
-            if try_downcast!(|inner| FinerGrainedDedup::hash(inner, state) => self.0.cause)
-                .is_none()
-            {
+            if try_downcast!(|inner| DedupableError::hash(inner, state) => self.0.cause).is_none() {
                 re_log::warn!(cause=?self.0.cause, "unknown error cause");
             }
         }
@@ -346,7 +356,7 @@ mod error_handling {
             // try to downcast into something that implements `FinerGrainedDedup`, and
             // then call `FinerGrainedDedup::eq`.
             if let Some(finer_eq) =
-                try_downcast!(|inner| FinerGrainedDedup::eq(inner, &*rhs.0.cause) => self.0.cause)
+                try_downcast!(|inner| DedupableError::eq(inner, &*rhs.0.cause) => self.0.cause)
             {
                 is_eq |= finer_eq;
             } else {
@@ -364,15 +374,38 @@ mod error_handling {
     ///
     /// Used to avoid spamming the user with repeating errors while the pipeline
     /// is in a poisoned state.
-    #[derive(Default, Clone)]
     pub struct ErrorTracker {
-        frame_nr: Arc<AtomicUsize>,
-        errors: Arc<Mutex<HashSet<WrappedContextError>>>,
+        frame_nr: AtomicUsize,
+        /// This countdown reaching 0 indicates that the pipeline has stabilized into a
+        /// sane state, which might take a few frames if we've just left a poisoned state.
+        ///
+        /// We use this to know when it makes sense to clear the error tracker.
+        clear_countdown: AtomicI64,
+        errors: Mutex<HashSet<WrappedContextError>>,
+    }
+    impl Default for ErrorTracker {
+        fn default() -> Self {
+            Self {
+                frame_nr: AtomicUsize::new(0),
+                clear_countdown: AtomicI64::new(i64::MAX),
+                errors: Default::default(),
+            }
+        }
     }
     impl ErrorTracker {
         /// Increment frame count used in logged errors.
+        // TODO: update doc
         pub fn tick(&self) {
             self.frame_nr.fetch_add(1, Ordering::Relaxed);
+
+            // The pipeline has stabilized back into a sane state, clear
+            // the error tracker so that we're ready to log errors once again
+            // if the pipeline gets back into a poisoned state.
+            if self.clear_countdown.fetch_sub(1, Ordering::Relaxed) == 1 {
+                self.clear_countdown.store(i64::MAX, Ordering::Relaxed);
+                self.clear();
+                re_log::info!("pipeline back into a sane state!");
+            }
         }
 
         /// Resets the tracker.
@@ -385,6 +418,10 @@ mod error_handling {
 
         /// Logs a wgpu error, making sure to deduplicate them as needed.
         pub fn handle_error(&self, error: wgpu::Error) {
+            // The pipeline is in a poisoned state, errors are still coming in: we won't be
+            // clearing the tracker until it had at least 10 error-free frames to stabilize.
+            self.clear_countdown.store(10, Ordering::Relaxed);
+
             match error {
                 wgpu::Error::OutOfMemory { source: _ } => panic!("{error}"),
                 wgpu::Error::Validation {
@@ -436,7 +473,7 @@ struct Application {
     surface: wgpu::Surface,
     surface_config: wgpu::SurfaceConfiguration,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-    err_tracker: ErrorTracker,
+    err_tracker: Arc<ErrorTracker>,
     state: AppState,
 
     pub re_ctx: RenderContext,
@@ -493,9 +530,9 @@ impl Application {
         // always let the user find a way to returned a poisoned pipeline into a sane state.
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
         let err_tracker = {
-            let err_tracker = ErrorTracker::default();
+            let err_tracker = Arc::new(ErrorTracker::default());
             device.on_uncaptured_error({
-                let err_tracker = err_tracker.clone();
+                let err_tracker = Arc::clone(&err_tracker);
                 move |err| err_tracker.handle_error(err)
             });
             err_tracker
@@ -523,13 +560,6 @@ impl Application {
     }
 
     fn run(mut self) {
-        // This countdown reaching 0 indicates that the pipeline has stabilized into a
-        // sane state, which might take a few frames if we've just left a poisoned state.
-        //
-        // We use this to know when it makes sense to clear the error tracker.
-        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-        let mut clear_countdown = u64::MAX;
-
         self.event_loop.run(move |event, _, control_flow| {
             // Keep our example busy.
             // Not how one should generally do it, but great for animated content and
@@ -567,24 +597,13 @@ impl Application {
                     // native debug build
                     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
                     let frame = match self.surface.get_current_texture() {
-                        Ok(frame) => {
-                            clear_countdown = clear_countdown.saturating_sub(1);
-                            // The pipeline has stabilized back into a sane state, clear
-                            // the error tracker so that we're ready to log errors once again
-                            // if the pipeline gets back into a poisoned state.
-                            if clear_countdown == 0 {
-                                clear_countdown = u64::MAX;
-                                self.err_tracker.clear();
-                            }
-                            frame
-                        }
+                        Ok(frame) => frame,
                         Err(wgpu::SurfaceError::Outdated) => {
                             // We haven't been able to present anything to the swapchain for
                             // a while, because the pipeline is poisoned.
                             // Recreate a sane surface to restart the cycle and see if the
                             // user has fixed the issue.
                             self.surface.configure(&self.device, &self.surface_config);
-                            clear_countdown = 10; // give it 10 frames to stabilize.
                             return;
                         }
                         Err(err) => {
