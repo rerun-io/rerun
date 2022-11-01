@@ -173,8 +173,7 @@ mod error_handling {
         hash::Hash,
         sync::{
             atomic::Ordering,
-            atomic::{AtomicI64, AtomicU64, AtomicUsize},
-            Arc,
+            atomic::{AtomicI64, AtomicUsize},
         },
     };
     use wgpu_core::error::ContextError;
@@ -195,6 +194,7 @@ mod error_handling {
         };
         ($do:expr => $value:expr => $ty:ty) => {
             if let Some(inner) = ($value).downcast_ref::<$ty>() {
+                #[allow(clippy::redundant_closure_call)]
                 break Some(($do)(inner));
             }
         };
@@ -245,7 +245,7 @@ mod error_handling {
 
     trait DedupableError: Sized + std::error::Error + 'static {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-            type_of_var(self).hash(state)
+            type_of_var(self).hash(state);
         }
 
         fn eq(&self, rhs: &(dyn std::error::Error + Send + Sync + 'static)) -> bool {
@@ -304,6 +304,7 @@ mod error_handling {
     impl DedupableError for wgpu_core::pipeline::CreateShaderModuleError {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
             type_of_var(self).hash(state);
+            #[allow(clippy::enum_glob_use)]
             use wgpu_core::pipeline::CreateShaderModuleError::*;
             match self {
                 Parsing(err) => err.source.hash(state),
@@ -318,6 +319,7 @@ mod error_handling {
             }
             let rhs = rhs.downcast_ref::<Self>().unwrap();
 
+            #[allow(clippy::enum_glob_use)]
             use wgpu_core::pipeline::CreateShaderModuleError::*;
             match (self, rhs) {
                 (Parsing(err1), Parsing(err2)) => err1.source == err2.source,
