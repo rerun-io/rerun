@@ -69,7 +69,8 @@ impl RenderContext {
         let global_bindings = GlobalBindings::new(&mut resource_pools, device);
 
         // In debug builds, make sure to catch all errors, never crash, and try to
-        // always let the user find a way to returned a poisoned pipeline into a sane state.
+        // always let the user find a way to return a poisoned pipeline back into a
+        // sane state.
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
         let err_tracker = {
             let err_tracker = std::sync::Arc::new(ErrorTracker::default());
@@ -102,6 +103,8 @@ impl RenderContext {
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
         // Tick the error tracker so that it knows when to reset!
+        // Note that we're ticking on frame_maintenance rather than raw frames, which
+        // makes a world of difference when we're in a poisoned state.
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
         self.err_tracker.tick();
 
@@ -178,6 +181,9 @@ mod error_handling {
 
     // ---
 
+    /// Tries downcasting a given value into the specified possibilities (or all of them
+    /// if none are specified), then run the given expression on the downcasted value.
+    ///
     /// E.g. to `dbg!()` the downcasted value on a wgpu error:
     /// ```ignore
     /// try_downcast!(|inner| { dbg!(inner); } => my_error)
@@ -241,6 +247,10 @@ mod error_handling {
 
     // ---
 
+    /// An error with some extra deduplication logic baked in.
+    ///
+    /// Useful for errors that are too broad by nature: e.g. a shader error cannot
+    /// by deduplicated simply using the shader path.
     trait DedupableError: Sized + std::error::Error + 'static {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
             type_of_var(self).hash(state);
@@ -298,7 +308,7 @@ mod error_handling {
         wgpu_core::pipeline::ImplicitLayoutError,
     ];
 
-    // Custom deduplication for shader compilation errors.
+    // Custom deduplication for shader compilation errors, based on compiler message.
     impl DedupableError for wgpu_core::pipeline::CreateShaderModuleError {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
             type_of_var(self).hash(state);
@@ -340,8 +350,8 @@ mod error_handling {
             self.0.label_key.hash(state); // e.g. "encoder"
             self.0.string.hash(state); // e.g. "a RenderPass"
 
-            // try to downcast into something that implements `FinerGrainedDedup`, and
-            // then call `FinerGrainedDedup::hash`.
+            // try to downcast into something that implements `DedupableError`, and
+            // then call `DedupableError::hash`.
             if try_downcast!(|inner| DedupableError::hash(inner, state) => self.0.cause).is_none() {
                 re_log::warn!(cause=?self.0.cause, "unknown error cause");
             }
@@ -353,8 +363,8 @@ mod error_handling {
                 && self.0.label_key.eq(rhs.0.label_key)
                 && self.0.string.eq(rhs.0.string);
 
-            // try to downcast into something that implements `FinerGrainedDedup`, and
-            // then call `FinerGrainedDedup::eq`.
+            // try to downcast into something that implements `DedupableError`, and
+            // then call `DedupableError::eq`.
             if let Some(finer_eq) =
                 try_downcast!(|inner| DedupableError::eq(inner, &*rhs.0.cause) => self.0.cause)
             {
@@ -375,7 +385,7 @@ mod error_handling {
     /// Used to avoid spamming the user with repeating errors while the pipeline
     /// is in a poisoned state.
     pub struct ErrorTracker {
-        frame_nr: AtomicUsize,
+        tick_nr: AtomicUsize,
         /// This countdown reaching 0 indicates that the pipeline has stabilized into a
         /// sane state, which might take a few frames if we've just left a poisoned state.
         ///
@@ -386,17 +396,16 @@ mod error_handling {
     impl Default for ErrorTracker {
         fn default() -> Self {
             Self {
-                frame_nr: AtomicUsize::new(0),
+                tick_nr: AtomicUsize::new(0),
                 clear_countdown: AtomicI64::new(i64::MAX),
                 errors: Default::default(),
             }
         }
     }
     impl ErrorTracker {
-        /// Increment frame count used in logged errors.
-        // TODO: update doc
+        /// Increment tick count used in logged errors, and clear the tracker as needed.
         pub fn tick(&self) {
-            self.frame_nr.fetch_add(1, Ordering::Relaxed);
+            self.tick_nr.fetch_add(1, Ordering::Relaxed);
 
             // The pipeline has stabilized back into a sane state, clear
             // the error tracker so that we're ready to log errors once again
@@ -410,7 +419,7 @@ mod error_handling {
 
         /// Resets the tracker.
         ///
-        /// Call this when the pipeline is back to a sane state.
+        /// Call this when the pipeline is back into a sane state.
         pub fn clear(&self) {
             self.errors.lock().clear();
             re_log::debug!("cleared WGPU error tracker");
@@ -419,8 +428,9 @@ mod error_handling {
         /// Logs a wgpu error, making sure to deduplicate them as needed.
         pub fn handle_error(&self, error: wgpu::Error) {
             // The pipeline is in a poisoned state, errors are still coming in: we won't be
-            // clearing the tracker until it had at least 3 error-free frames to stabilize.
-            self.clear_countdown.store(3, Ordering::Relaxed);
+            // clearing the tracker until it had at least 2 complete frame_maintenance cycles
+            // without any errors (meaning the swapchain surface is stabilized).
+            self.clear_countdown.store(2, Ordering::Relaxed);
 
             match error {
                 wgpu::Error::OutOfMemory { source: _ } => panic!("{error}"),
@@ -448,7 +458,7 @@ mod error_handling {
                             }
 
                             re_log::error!(
-                                frame_nr = self.frame_nr.load(Ordering::Relaxed),
+                                tick_nr = self.tick_nr.load(Ordering::Relaxed),
                                 %description,
                                 "WGPU error",
                             );

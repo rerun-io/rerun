@@ -90,6 +90,16 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
 ) -> Receiver<T> {
     let (tx, new_rx) = std::sync::mpsc::channel();
     std::thread::Builder::new()
+        .name("ui_waker2".to_owned())
+        .spawn({
+            let ctx = ctx.clone();
+            move || loop {
+                std::thread::sleep(std::time::Duration::from_millis(16));
+                ctx.request_repaint();
+            }
+        })
+        .unwrap();
+    std::thread::Builder::new()
         .name("ui_waker".to_owned())
         .spawn(move || {
             while let Ok(msg) = rx.recv() {
