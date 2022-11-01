@@ -7,12 +7,11 @@ struct VertexOut {
 };
 
 var<private> v_positions: array<Vec2, 3> = array<Vec2, 3>(
-    Vec2(0.0, 10.0),
-    Vec2(10.0, -10.0),
-    Vec2(-10.0, -10.0),
+    Vec2(0.0, 1.0),
+    Vec2(1.0, -1.0),
+    Vec2(-1.0, -1.0),
 );
 
-// kek
 var<private> v_colors: array<Vec4, 3> = array<Vec4, 3>(
     Vec4(1.0, 0.0, 0.0, 1.0),
     Vec4(0.0, 1.0, 0.0, 1.0),
