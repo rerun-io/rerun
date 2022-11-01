@@ -559,10 +559,9 @@ impl Blueprint {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
     ) {
-        self.blueprint_panel_expanded ^= ui.input_mut().consume_key(
-            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
-            egui::Key::B,
-        );
+        let shortcut = crate::ui::kb_shortcuts::TOGGLE_BLUEPRINT_PANEL;
+
+        self.blueprint_panel_expanded ^= ui.input_mut().consume_shortcut(&shortcut);
 
         let panel_frame = ctx.design_tokens.panel_frame(ui.ctx());
 
@@ -587,7 +586,10 @@ impl Blueprint {
                     // Collapsed, or animating:
                     if ui
                         .small_button("⏵")
-                        .on_hover_text("Expand Blueprint View (⌘⇧B or ⌃⇧B)")
+                        .on_hover_text(format!(
+                            "Expand Blueprint View ({})",
+                            ui.ctx().format_shortcut(&shortcut)
+                        ))
                         .clicked()
                     {
                         self.blueprint_panel_expanded = true;
@@ -597,7 +599,10 @@ impl Blueprint {
                     ui.horizontal(|ui| {
                         if ui
                             .small_button("⏴")
-                            .on_hover_text("Collapse Blueprint View (⌘⇧B or ⌃⇧B)")
+                            .on_hover_text(format!(
+                                "Collapse Blueprint View ({})",
+                                ui.ctx().format_shortcut(&shortcut)
+                            ))
                             .clicked()
                         {
                             self.blueprint_panel_expanded = false;
