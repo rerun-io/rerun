@@ -39,7 +39,6 @@ crossbeam = "0.8"
 notify = "5.0"
 puffin = { version = "0.13", optional = true }
 wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
-tobj = "3.2"
 
 # wasm
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -56,8 +55,10 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 pollster = "0.2"
 rand = "0.8"
+tobj = "3.2"
 tracing-subscriber = "0.3"
 winit = "0.27"
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

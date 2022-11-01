@@ -10,7 +10,7 @@
 //! cargo run-wasm --example renderer_standalone
 //! ```
 
-use std::f32::consts::TAU;
+use std::{f32::consts::TAU, io::Read};
 
 use anyhow::Context as _;
 use glam::Vec3;
@@ -72,14 +72,14 @@ fn draw_view(
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
 
-    let mesh_instances = lorenz_points(seconds_since_startup)
+    let mesh_instances = lorenz_points(10.0)
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            state.rerun_mesh.iter().map(move |mesh| MeshInstance {
+            state.meshes.iter().map(move |mesh| MeshInstance {
                 mesh: *mesh,
                 transformation: macaw::Conformal3::from_scale_rotation_translation(
-                    0.08,
+                    0.025 + (i % 10) as f32 * 0.01,
                     glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
                     *p,
                 ),
@@ -93,9 +93,9 @@ fn draw_view(
     view_builder
         .setup_view(re_ctx, device, queue, &target_cfg)
         .unwrap()
-        //.queue_draw(&triangle)
+        .queue_draw(&triangle)
         .queue_draw(&skybox)
-        //.queue_draw(&point_cloud)
+        .queue_draw(&point_cloud)
         .queue_draw(&lines)
         .queue_draw(&meshes)
         .draw(re_ctx, encoder)
@@ -244,13 +244,16 @@ impl Application {
         };
         surface.configure(&device, &surface_config);
 
-        let re_ctx = RenderContext::new(
+        let mut re_ctx = RenderContext::new(
             &device,
             &queue,
             RenderContextConfig {
                 output_format_color: swapchain_format,
             },
         );
+
+        let state = AppState::new(&mut re_ctx, &device, &queue);
+
         Ok(Self {
             event_loop,
             window,
@@ -259,7 +262,7 @@ impl Application {
             surface,
             surface_config,
             re_ctx,
-            state: AppState::new(),
+            state,
         })
     }
 
@@ -304,44 +307,6 @@ impl Application {
                     let mut encoder = self
                         .device
                         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
-                    if self.state.rerun_mesh.is_empty() {
-                        let (models, _materials) = tobj::load_obj(
-                            "/Users/andreas/rerun logo 3d/rerun.obj",
-                            &tobj::LoadOptions {
-                                single_index: true,
-                                triangulate: true,
-                                ..Default::default()
-                            },
-                        )
-                        .expect("failed loading obj");
-
-                        for mesh in models.iter() {
-                            let mesh = &mesh.mesh;
-                            let vertices = izip!(
-                                mesh.positions.chunks(3),
-                                mesh.normals.chunks(3),
-                                mesh.texcoords.chunks(2)
-                            )
-                            .map(|(p, n, t)| MeshVertex {
-                                position: glam::vec3(p[0], p[1], p[2]),
-                                normal: glam::vec3(n[0], n[1], n[2]),
-                                texcoord: glam::vec2(t[0], t[1]),
-                            })
-                            .collect();
-
-                            self.state.rerun_mesh.push(MeshManager::new_long_lived_mesh(
-                                &mut self.re_ctx,
-                                &self.device,
-                                &self.queue,
-                                &MeshData {
-                                    label: "rerun logo".into(),
-                                    indices: mesh.indices.clone(),
-                                    vertices,
-                                },
-                            ));
-                        }
-                    }
 
                     let view_builder = draw_view(
                         &self.state,
@@ -428,14 +393,14 @@ struct AppState {
     time: Time,
 
     /// Lazily loaded mesh.
-    rerun_mesh: Vec<MeshHandle>,
+    meshes: Vec<MeshHandle>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,
 }
 
 impl AppState {
-    fn new() -> Self {
+    fn new(re_ctx: &mut RenderContext, device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -2.0_f32..2.0_f32;
         let random_points = (0..500000)
@@ -450,12 +415,58 @@ impl AppState {
             })
             .collect::<Vec<_>>();
 
+        let meshes = {
+            let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
+            let mut zip = zip::ZipArchive::new(reader).unwrap();
+            let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
+            let mut obj_data = Vec::new();
+            zipped_obj.read_to_end(&mut obj_data).unwrap();
+            let (models, _materials) = tobj::load_obj_buf(
+                &mut std::io::Cursor::new(&obj_data),
+                &tobj::LoadOptions {
+                    single_index: true,
+                    triangulate: true,
+                    ..Default::default()
+                },
+                |_material_path| Err(tobj::LoadError::MaterialParseError),
+            )
+            .expect("failed loading obj");
+            models
+                .iter()
+                .map(|mesh| {
+                    let mesh = &mesh.mesh;
+                    let vertices = izip!(
+                        mesh.positions.chunks(3),
+                        mesh.normals.chunks(3),
+                        mesh.texcoords.chunks(2)
+                    )
+                    .map(|(p, n, t)| MeshVertex {
+                        position: glam::vec3(p[0], p[1], p[2]),
+                        normal: glam::vec3(n[0], n[1], n[2]),
+                        texcoord: glam::vec2(t[0], t[1]),
+                    })
+                    .collect();
+
+                    MeshManager::new_long_lived_mesh(
+                        re_ctx,
+                        device,
+                        queue,
+                        &MeshData {
+                            label: "rerun logo".into(),
+                            indices: mesh.indices.clone(),
+                            vertices,
+                        },
+                    )
+                })
+                .collect()
+        };
+
         Self {
             time: Time {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
             },
-            rerun_mesh: Vec::new(),
+            meshes,
             random_points,
         }
     }
