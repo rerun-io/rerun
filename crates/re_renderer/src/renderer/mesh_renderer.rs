@@ -2,7 +2,7 @@
 //!
 //! Uses instancing to render instances of the same mesh in a single draw call.
 
-use std::num::NonZeroU64;
+use std::{num::NonZeroU64, ops::DerefMut};
 
 use itertools::Itertools as _;
 
@@ -20,6 +20,46 @@ use crate::{
 };
 
 use super::*;
+
+/// Element in the gpu residing instance buffer.
+///
+/// Keep in sync with mesh_vertex.wgsl
+#[repr(C, packed)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct GpuInstanceData {
+    // Don't use alignend glam types because they enforce alignment.
+    // (staging buffer might be 4 byte aligned only!)
+    translation_and_scale: [f32; 4],
+    rotation: [f32; 4],
+}
+
+impl GpuInstanceData {
+    pub const fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+        const SHADER_START_LOCATION: u32 =
+            MeshVertex::vertex_buffer_layout().attributes.len() as u32;
+
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<GpuInstanceData>() as _,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[
+                // Position and Scale.
+                // We could move scale to a separate field, it's _probably_ not gonna have any impact at all
+                // But then again it's easy and less confusing to always keep them fused.
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x4,
+                    offset: 0,
+                    shader_location: SHADER_START_LOCATION as u32,
+                },
+                // Rotation (quaternion)
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x4,
+                    offset: std::mem::size_of::<f32>() as u64 * 4,
+                    shader_location: SHADER_START_LOCATION as u32 + 1,
+                },
+            ],
+        }
+    }
+}
 
 #[derive(Clone)]
 struct MeshBatch {
@@ -78,8 +118,10 @@ impl MeshDrawable {
             0,
             NonZeroU64::new(instance_buffer_size).unwrap(),
         );
+        // any access through `deref` panics, so let's protect ourselves against that by doing a deref_mut right away
+        let instance_buffer_staging = instance_buffer_staging.deref_mut();
         let instance_buffer_staging: &mut [GpuInstanceData] =
-            bytemuck::cast_slice_mut(&mut instance_buffer_staging);
+            bytemuck::cast_slice_mut(instance_buffer_staging);
 
         // Group by mesh to facilitate instancing.
         // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
@@ -97,8 +139,8 @@ impl MeshDrawable {
             ) {
                 count += 1;
                 gpu_instance.translation_and_scale =
-                    instance.transformation.translation_and_scale();
-                gpu_instance.rotation = instance.transformation.rotation();
+                    instance.transformation.translation_and_scale().into();
+                gpu_instance.rotation = instance.transformation.rotation().into();
             }
 
             batches.push(MeshBatch {
@@ -112,44 +154,6 @@ impl MeshDrawable {
             batches,
             instance_buffer,
         })
-    }
-}
-
-/// Element in the gpu residing instance buffer.
-///
-/// Keep in sync with mesh_vertex.wgsl
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct GpuInstanceData {
-    translation_and_scale: glam::Vec4,
-    rotation: glam::Quat,
-}
-
-impl GpuInstanceData {
-    pub const fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
-        const SHADER_START_LOCATION: u32 =
-            MeshVertex::vertex_buffer_layout().attributes.len() as u32;
-
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<GpuInstanceData>() as _,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
-                // Position and Scale.
-                // We could move scale to a separate field, it's _probably_ not gonna have any impact at all
-                // But then again it's easy and less confusing to always keep them fused.
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x4,
-                    offset: 0,
-                    shader_location: SHADER_START_LOCATION as u32,
-                },
-                // Rotation (quaternion)
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x4,
-                    offset: std::mem::size_of::<f32>() as u64 * 4,
-                    shader_location: SHADER_START_LOCATION as u32 + 1,
-                },
-            ],
-        }
     }
 }
 
