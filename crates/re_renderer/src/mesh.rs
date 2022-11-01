@@ -62,12 +62,11 @@ pub struct MeshData {
 
 #[derive(Clone)]
 pub(crate) struct Mesh {
-    pub label: DebugLabel,
-
-    /// Combined vertex and index buffer
-    /// We *always* have them in the same gpu buffer since the mixed usage generally doesn't seem to be an issue in modern APIs
-    pub vertex_and_index_buffer: BufferHandleStrong,
+    // It would be desirable to put both vertex and index buffer into the same buffer, BUT
+    // WebGL doesn't allow us to do so! (see https://github.com/gfx-rs/wgpu/pull/3157)
+    pub index_buffer: BufferHandleStrong,
     pub vertex_buffer_range: Range<u64>,
+    pub vertex_buffer: BufferHandleStrong,
     pub index_buffer_range: Range<u64>,
 
     /// Every mesh has at least one material.
@@ -89,42 +88,61 @@ impl Mesh {
         queue: &wgpu::Queue,
         data: &MeshData,
     ) -> Self {
+        re_log::trace!(
+            "uploading new mesh named {:?} with {} vertices and {} triangles",
+            data.label.get(),
+            data.vertices.len(),
+            data.indices.len() / 3
+        );
+
         // TODO(andreas): Have a variant that gets this from a stack allocator.]
+        // TODO(andreas): Don't use a queue to upload
         let vertex_buffer_size = (std::mem::size_of::<MeshVertex>() * data.vertices.len()) as u64;
         let index_buffer_size = (std::mem::size_of::<u32>() * data.indices.len()) as u64;
-        let total_size = vertex_buffer_size + index_buffer_size;
 
-        let vertex_and_index_buffer = pools.buffers.alloc(
-            device,
-            &BufferDesc {
-                label: data.label.clone(),
-                size: total_size,
-                usage: wgpu::BufferUsages::INDEX
-                    | wgpu::BufferUsages::VERTEX
-                    | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+        let vertex_buffer = {
+            let vertex_buffer = pools.buffers.alloc(
+                device,
+                &BufferDesc {
+                    label: data.label.clone(),
+                    size: vertex_buffer_size,
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                },
+            );
+            let mut staging_buffer = queue.write_buffer_with(
+                &pools.buffers.get_resource(&vertex_buffer).unwrap().buffer,
+                0,
+                NonZeroU64::new(vertex_buffer_size).unwrap(),
+            );
+            staging_buffer[..vertex_buffer_size as usize]
+                .copy_from_slice(bytemuck::cast_slice(&data.vertices));
+            vertex_buffer
+        };
 
-        // TODO(andreas): Don't use a queue to upload
-        let mut staging_buffer = queue.write_buffer_with(
-            &pools
-                .buffers
-                .get_resource(&vertex_and_index_buffer)
-                .unwrap()
-                .buffer,
-            0,
-            NonZeroU64::new(total_size).unwrap(),
-        );
-        staging_buffer[..vertex_buffer_size as usize]
-            .copy_from_slice(bytemuck::cast_slice(&data.vertices));
-        staging_buffer[vertex_buffer_size as usize..total_size as usize]
-            .copy_from_slice(bytemuck::cast_slice(&data.indices));
+        let index_buffer = {
+            let index_buffer = pools.buffers.alloc(
+                device,
+                &BufferDesc {
+                    label: data.label.clone(),
+                    size: index_buffer_size,
+                    usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+                },
+            );
+            let mut staging_buffer = queue.write_buffer_with(
+                &pools.buffers.get_resource(&index_buffer).unwrap().buffer,
+                0,
+                NonZeroU64::new(index_buffer_size).unwrap(),
+            );
+            staging_buffer[..index_buffer_size as usize]
+                .copy_from_slice(bytemuck::cast_slice(&data.indices));
+            index_buffer
+        };
 
         Mesh {
-            label: data.label.clone(),
-            vertex_and_index_buffer,
+            index_buffer,
+            vertex_buffer,
             vertex_buffer_range: 0..vertex_buffer_size,
-            index_buffer_range: vertex_buffer_size..total_size,
+            index_buffer_range: 0..index_buffer_size,
 
             // TODO(andreas): Actual material support
             materials: smallvec![Material {

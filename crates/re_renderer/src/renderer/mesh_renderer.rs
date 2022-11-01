@@ -250,18 +250,17 @@ impl Renderer for MeshRenderer {
         let mut instance_start_index = 0;
 
         for mesh_batch in &draw_data.batches {
-            let vertex_and_index_buffer = pools
-                .buffers
-                .get_resource(&mesh_batch.mesh.vertex_and_index_buffer)?;
+            let vertex_buffer = pools.buffers.get_resource(&mesh_batch.mesh.vertex_buffer)?;
+            let index_buffer = pools.buffers.get_resource(&mesh_batch.mesh.index_buffer)?;
 
             pass.set_vertex_buffer(
                 1,
-                vertex_and_index_buffer
+                vertex_buffer
                     .buffer
                     .slice(mesh_batch.mesh.vertex_buffer_range.clone()),
             );
             pass.set_index_buffer(
-                vertex_and_index_buffer
+                index_buffer
                     .buffer
                     .slice(mesh_batch.mesh.index_buffer_range.clone()),
                 wgpu::IndexFormat::Uint32,
