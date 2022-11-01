@@ -64,6 +64,38 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
+#[cfg(feature = "wgpu")]
+pub(crate) fn hardware_tier() -> re_renderer::config::HardwareTier {
+    re_renderer::config::HardwareTier::Web
+}
+
+#[cfg(feature = "wgpu")]
+pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
+    egui_wgpu::WgpuConfiguration {
+            // When running wgpu on native debug builds, we want some extra control over how
+            // and when a poisoned surface gets recreated.
+            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+            on_surface_error: std::sync::Arc::new(|err| {
+                // On windows, this error also occurs when the app is minimized.
+                // Silently return here to prevent spamming the console with:
+                // "The underlying surface has changed, and therefore the swap chain
+                //  must be updated"
+                if err == wgpu::SurfaceError::Outdated && !cfg!(target_os = "windows"){
+                    // We haven't been able to present anything to the swapchain for
+                    // a while, because the pipeline is poisoned.
+                    // Recreate a sane surface to restart the cycle and see if the
+                    // user has fixed the issue.
+                    egui_wgpu::SurfaceErrorAction::RecreateSurface
+                } else {
+                    egui_wgpu::SurfaceErrorAction::SkipFrame
+                }
+            }),
+            backends: re_renderer::config::supported_backends(),
+            device_descriptor: crate::hardware_tier().device_descriptor(),
+            ..Default::default()
+        }
+}
+
 pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::DesignTokens {
     #[cfg(feature = "wgpu")]
     {
@@ -71,8 +103,6 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::Desig
 
         let render_state = cc.wgpu_render_state.as_ref().unwrap();
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
-
-        let hardware_tier = re_renderer::config::HardwareTier::Web;
 
         // TODO(andreas): Query used surface format from eframe/renderer.
         let output_format_color = if cfg!(target_arch = "wasm32") {
@@ -86,7 +116,7 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::Desig
             &render_state.queue,
             RenderContextConfig {
                 output_format_color,
-                hardware_tier,
+                hardware_tier: crate::hardware_tier(),
             },
         ));
     }
