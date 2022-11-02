@@ -4,7 +4,6 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
     debug_label::DebugLabel,
-    mesh::mesh_vertices::MeshVertexData,
     resource_pools::{
         buffer_pool::{BufferDesc, BufferHandleStrong},
         WgpuResourcePools,
@@ -137,9 +136,8 @@ impl Mesh {
         // TODO(andreas): Have a variant that gets this from a stack allocator.]
         // TODO(andreas): Don't use a queue to upload
         let vertex_buffer_positions_size =
-            (std::mem::size_of::<glam::Vec3>() * data.vertex_positions.len()) as u64;
-        let vertex_buffer_data_size =
-            (std::mem::size_of::<MeshVertexData>() * data.vertex_data.len()) as u64;
+            std::mem::size_of_val(data.vertex_positions.as_slice()) as u64;
+        let vertex_buffer_data_size = std::mem::size_of_val(data.vertex_data.as_slice()) as u64;
         let vertex_buffer_combined_size = vertex_buffer_positions_size + vertex_buffer_data_size;
 
         let vertex_buffer_combined = {
@@ -168,7 +166,7 @@ impl Mesh {
             vertex_buffer_combined
         };
 
-        let index_buffer_size = (std::mem::size_of::<u32>() * data.indices.len()) as u64;
+        let index_buffer_size = std::mem::size_of_val(data.indices.as_slice()) as u64;
         let index_buffer = {
             let index_buffer = pools.buffers.alloc(
                 device,
