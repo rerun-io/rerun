@@ -69,16 +69,10 @@ pub mod mesh_vertices {
     pub fn next_free_shader_location() -> u32 {
         vertex_buffer_layouts()
             .iter()
-            .map(|layout| {
-                layout
-                    .attributes
-                    .iter()
-                    .map(|attrib| attrib.shader_location)
-                    .max()
-                    .unwrap()
-            })
-            .max()
+            .flat_map(|layout| layout.attributes.iter())
+            .max_by(|a1, a2| a1.shader_location.cmp(&a2.shader_location))
             .unwrap()
+            .shader_location
             + 1
     }
 }
