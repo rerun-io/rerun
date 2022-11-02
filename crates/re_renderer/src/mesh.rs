@@ -6,6 +6,7 @@ use crate::{
     debug_label::DebugLabel,
     resource_pools::{
         buffer_pool::{BufferDesc, BufferHandleStrong},
+        render_pipeline_pool::VertexBufferLayout,
         WgpuResourcePools,
     },
 };
@@ -23,27 +24,27 @@ pub struct MeshVertex {
 }
 
 impl MeshVertex {
-    pub const fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
+    pub fn vertex_buffer_layout() -> VertexBufferLayout {
+        VertexBufferLayout {
             array_stride: std::mem::size_of::<MeshVertex>() as _,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
+            attributes: smallvec![
                 // Position
                 wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Float32x3,
-                    offset: 0,
+                    offset: memoffset::offset_of!(MeshVertex, position) as _,
                     shader_location: 0,
                 },
                 // Normal
                 wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Float32x3,
-                    offset: std::mem::size_of::<f32>() as u64 * 3,
+                    offset: memoffset::offset_of!(MeshVertex, normal) as _,
                     shader_location: 1,
                 },
                 // Texcoord
                 wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Float32x2,
-                    offset: std::mem::size_of::<f32>() as u64 * (3 + 3),
+                    offset: memoffset::offset_of!(MeshVertex, texcoord) as _,
                     shader_location: 2,
                 },
             ],

@@ -776,7 +776,7 @@ dependencies = [
  "autocfg",
  "cfg-if",
  "crossbeam-utils",
- "memoffset",
+ "memoffset 0.6.5",
  "once_cell",
  "scopeguard",
 ]
@@ -1124,7 +1124,7 @@ dependencies = [
  "egui",
  "egui-winit",
  "glow",
- "memoffset",
+ "memoffset 0.6.5",
  "puffin",
  "tracing",
  "wasm-bindgen",
@@ -2248,6 +2248,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "memoffset"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
 name = "metal"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2402,7 +2411,7 @@ dependencies = [
  "bitflags",
  "cfg-if",
  "libc",
- "memoffset",
+ "memoffset 0.6.5",
 ]
 
 [[package]]
@@ -2852,7 +2861,7 @@ dependencies = [
  "cfg-if",
  "indoc",
  "libc",
- "memoffset",
+ "memoffset 0.6.5",
  "parking_lot",
  "pyo3-build-config",
  "pyo3-ffi",
@@ -3071,6 +3080,7 @@ dependencies = [
  "itertools",
  "log",
  "macaw",
+ "memoffset 0.7.1",
  "notify",
  "ordered-float",
  "parking_lot",

@@ -431,8 +431,8 @@ impl Renderer for LineRenderer {
                 vertex_handle: shader_module,
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
-                vertex_buffers: vec![],
-                render_targets: vec![Some(ViewBuilder::FORMAT_HDR.into())],
+                vertex_buffers: smallvec![],
+                render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     ..Default::default()

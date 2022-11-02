@@ -3,6 +3,7 @@
 //! Uses instancing to render instances of the same mesh in a single draw call.
 //! Instance data is kept in an instance-stepped vertex data, see [`GpuInstanceData`].
 
+use smallvec::smallvec;
 use std::num::NonZeroU64;
 
 use itertools::Itertools as _;
@@ -14,7 +15,7 @@ use crate::{
     resource_pools::{
         buffer_pool::{BufferDesc, BufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::{RenderPipelineDesc, RenderPipelineHandle},
+        render_pipeline_pool::{RenderPipelineDesc, RenderPipelineHandle, VertexBufferLayout},
         shader_module_pool::ShaderModuleDesc,
     },
     view_builder::ViewBuilder,
@@ -35,27 +36,26 @@ struct GpuInstanceData {
 }
 
 impl GpuInstanceData {
-    pub const fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
-        const SHADER_START_LOCATION: u32 =
-            MeshVertex::vertex_buffer_layout().attributes.len() as u32;
+    pub fn vertex_buffer_layout() -> VertexBufferLayout {
+        let shader_start_location = MeshVertex::vertex_buffer_layout().attributes.len() as u32;
 
-        wgpu::VertexBufferLayout {
+        VertexBufferLayout {
             array_stride: std::mem::size_of::<GpuInstanceData>() as _,
             step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
+            attributes: smallvec![
                 // Position and Scale.
                 // We could move scale to a separate field, it's _probably_ not gonna have any impact at all
                 // But then again it's easy and less confusing to always keep them fused.
                 wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Float32x4,
-                    offset: 0,
-                    shader_location: SHADER_START_LOCATION,
+                    offset: memoffset::offset_of!(GpuInstanceData, translation_and_scale) as _,
+                    shader_location: shader_start_location,
                 },
                 // Rotation (quaternion)
                 wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Float32x4,
-                    offset: std::mem::size_of::<f32>() as u64 * 4,
-                    shader_location: SHADER_START_LOCATION + 1,
+                    offset: memoffset::offset_of!(GpuInstanceData, rotation) as _,
+                    shader_location: shader_start_location + 1,
                 },
             ],
         }
@@ -196,12 +196,12 @@ impl Renderer for MeshRenderer {
                 vertex_handle: shader_module,
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
-                vertex_buffers: vec![
+                vertex_buffers: smallvec![
                     // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
                     GpuInstanceData::vertex_buffer_layout(),
                     MeshVertex::vertex_buffer_layout(),
                 ],
-                render_targets: vec![Some(ViewBuilder::FORMAT_HDR.into())],
+                render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     cull_mode: Some(wgpu::Face::Back),

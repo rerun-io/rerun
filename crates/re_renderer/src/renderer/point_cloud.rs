@@ -299,8 +299,8 @@ impl Renderer for PointCloudRenderer {
                 fragment_handle: shader_module,
 
                 // Instance buffer with pairwise overlapping instances!
-                vertex_buffers: vec![],
-                render_targets: vec![Some(ViewBuilder::FORMAT_HDR.into())],
+                vertex_buffers: smallvec![],
+                render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     ..Default::default()

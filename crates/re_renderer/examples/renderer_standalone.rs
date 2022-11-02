@@ -504,6 +504,9 @@ fn main() {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
+        if std::env::var("RUST_LOG").is_err() {
+            std::env::set_var("RUST_LOG", "info,wgpu_core=off");
+        }
         tracing_subscriber::fmt::init();
 
         // Set size to a common physical resolution as a comparable start-up default.
