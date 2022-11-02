@@ -93,7 +93,7 @@ pub(crate) struct Mesh {
     pub index_buffer: BufferHandleStrong,
 
     /// Buffer for all vertex data, subdivided in several sections for different vertex buffer bindings.
-    /// See [`MeshVertices`]
+    /// See [`mesh_vertices`]
     pub vertex_buffer_combined: BufferHandleStrong,
     pub vertex_buffer_positions_range: Range<u64>,
     pub vertex_buffer_data_range: Range<u64>,
