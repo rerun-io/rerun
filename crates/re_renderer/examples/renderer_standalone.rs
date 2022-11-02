@@ -19,6 +19,7 @@ use itertools::izip;
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
+    config::{supported_backends, HardwareTier, RenderContextConfig},
     mesh::{MeshData, MeshVertex},
     mesh_manager::{MeshHandle, MeshManager},
     renderer::*,
@@ -207,18 +208,20 @@ struct Application {
 impl Application {
     async fn new(event_loop: EventLoop<()>, window: Window) -> anyhow::Result<Self> {
         let size = window.inner_size();
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
+        let instance = wgpu::Instance::new(supported_backends());
         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
         let surface = unsafe { instance.create_surface(&window) };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
+                power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
             })
             .await
             .context("failed to find an appropriate adapter")?;
 
+        let hardware_tier = HardwareTier::Web;
+        hardware_tier.check_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -256,6 +259,7 @@ impl Application {
             &queue,
             RenderContextConfig {
                 output_format_color: swapchain_format,
+                hardware_tier,
             },
         );
 
