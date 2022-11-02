@@ -19,7 +19,6 @@ use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
-    mesh::{mesh_vertices::MeshVertexData, MeshData},
     mesh_manager::{MeshHandle, MeshManager},
     renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
@@ -453,47 +452,11 @@ impl AppState {
             let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
             let mut obj_data = Vec::new();
             zipped_obj.read_to_end(&mut obj_data).unwrap();
-            let (models, _materials) = tobj::load_obj_buf(
-                &mut std::io::Cursor::new(&obj_data),
-                &tobj::LoadOptions {
-                    single_index: true,
-                    triangulate: true,
-                    ..Default::default()
-                },
-                |_material_path| Err(tobj::LoadError::MaterialParseError),
-            )
-            .expect("failed loading obj");
-            models
+            importer::obj::load_obj_from_buffer(&obj_data)
+                .unwrap()
                 .iter()
-                .map(|mesh| {
-                    let mesh = &mesh.mesh;
-                    let vertex_positions = mesh
-                        .positions
-                        .chunks(3)
-                        .map(|p| glam::vec3(p[0], p[1], p[2]))
-                        .collect();
-                    let vertex_data = mesh
-                        .normals
-                        .chunks(3)
-                        .zip(mesh.texcoords.chunks(2))
-                        .map(|(n, t)| MeshVertexData {
-                            normal: glam::vec3(n[0], n[1], n[2]),
-                            texcoord: glam::vec2(t[0], t[1]),
-                        })
-                        .collect();
-
-                    MeshManager::new_long_lived_mesh(
-                        re_ctx,
-                        device,
-                        queue,
-                        &MeshData {
-                            label: "rerun logo".into(),
-                            indices: mesh.indices.clone(),
-                            vertex_positions,
-                            vertex_data,
-                        },
-                    )
-                    .unwrap()
+                .map(|mesh_data| {
+                    MeshManager::new_long_lived_mesh(re_ctx, device, queue, mesh_data).unwrap()
                 })
                 .collect()
         };

@@ -32,3 +32,17 @@ impl From<&str> for DebugLabel {
         }
     }
 }
+
+impl From<String> for DebugLabel {
+    fn from(str: String) -> Self {
+        #[cfg(not(debug_assertions))]
+        {
+            _ = str;
+        }
+
+        Self {
+            #[cfg(debug_assertions)]
+            label: str,
+        }
+    }
+}

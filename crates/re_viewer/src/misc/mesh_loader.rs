@@ -10,8 +10,10 @@ pub struct CpuMesh {
     #[cfg(feature = "glow")]
     materials: Vec<three_d::CpuMaterial>,
 
+    #[cfg(feature = "wgpu")]
+    pub mesh_data: Vec<re_renderer::mesh::MeshData>,
+
     bbox: macaw::BoundingBox,
-    pub raw_mesh: Option<RawMesh3D>,
 }
 
 #[cfg(feature = "glow")]
@@ -64,14 +66,31 @@ impl CpuMesh {
                 meshes,
                 materials,
                 bbox,
-                raw_mesh: None,
+                #[cfg(feature = "wgpu")]
+                mesh_data: Vec::new(),
             });
         }
-
-        // TODO:
-
         #[cfg(not(feature = "glow"))]
-        anyhow::bail!("re_renderer doesn't support loading meshes from files yet");
+        {
+            let mesh_data = match format {
+                MeshFormat::Glb => anyhow::bail!("not supported"),
+                MeshFormat::Gltf => anyhow::bail!("not supported"),
+                MeshFormat::Obj => re_renderer::importer::obj::load_obj_from_buffer(bytes),
+            }?;
+            let bbox = macaw::BoundingBox::from_points(
+                mesh_data
+                    .iter()
+                    .flat_map(|m| m.vertex_positions.iter())
+                    .cloned(),
+            );
+
+            Ok(Self {
+                name,
+                bbox,
+                #[cfg(feature = "wgpu")]
+                mesh_data,
+            })
+        }
     }
 
     fn load_encoded_mesh(name: String, encoded_mesh: &EncodedMesh3D) -> anyhow::Result<Self> {
@@ -134,7 +153,9 @@ impl CpuMesh {
         let bbox = macaw::BoundingBox::from_points(
             raw_mesh.positions.iter().map(|p| glam::Vec3::from(*p)),
         );
-        // TODO: Normals
+
+        #[cfg(feature = "wgpu")]
+        let label = name.clone().into();
 
         Self {
             name,
@@ -143,7 +164,24 @@ impl CpuMesh {
             #[cfg(feature = "glow")]
             materials: vec![material],
             bbox,
-            raw_mesh: Some(raw_mesh.clone()),
+
+            // TODO: Normals
+            #[cfg(feature = "wgpu")]
+            mesh_data: vec![re_renderer::mesh::MeshData {
+                label,
+                indices: raw_mesh.indices.iter().flatten().cloned().collect(),
+                vertex_positions: raw_mesh
+                    .positions
+                    .iter()
+                    .map(|p| glam::Vec3::from(*p))
+                    .collect(),
+                // TODO(andreas): Calculate normals
+                vertex_data: std::iter::repeat(re_renderer::mesh::mesh_vertices::MeshVertexData {
+                    normal: glam::Vec3::ZERO,
+                    texcoord: glam::Vec2::ZERO,
+                })
+                .collect(),
+            }],
         }
     }
 
@@ -161,7 +199,8 @@ impl CpuMesh {
             meshes,
             materials: vec![material],
             bbox,
-            raw_mesh: None,
+            #[cfg(feature = "wgpu")]
+            mesh_data: Vec::new(),
         }
     }
 
@@ -180,7 +219,8 @@ impl CpuMesh {
             meshes,
             materials: vec![material],
             bbox,
-            raw_mesh: None,
+            #[cfg(feature = "wgpu")]
+            mesh_data: Vec::new(),
         }
     }
 

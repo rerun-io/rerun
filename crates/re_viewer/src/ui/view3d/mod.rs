@@ -471,10 +471,9 @@ fn paint_view(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
-        use re_renderer::mesh::mesh_vertices::MeshVertexData;
+        use re_renderer::mesh_manager::MeshManager;
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-        use re_renderer::{mesh::MeshData, mesh_manager::MeshManager};
 
         let view_builder_prepare = ViewBuilder::new_shared();
         let view_builder_draw = view_builder_prepare.clone();
@@ -487,43 +486,22 @@ fn paint_view(
         let point_cloud_points = scene.point_cloud_points();
         let line_strips = scene.line_strips();
 
+        // TODO(andreas): Right now we can't borrow the scene into a context where we have a device.
+        //                  Once we can do that, this awful clone is no longer needed as we can acquire gpu data directly
         let meshdata = scene
             .meshes
             .iter()
-            .filter_map(|mesh| {
-                if mesh.cpu_mesh.raw_mesh.is_none() {
-                    return None;
-                }
-                let raw_mesh = mesh.cpu_mesh.raw_mesh.as_ref().unwrap();
-
-                Some(MeshData {
-                    label: "temp mesh".into(),
-                    indices: raw_mesh.indices.iter().flatten().cloned().collect(),
-                    vertex_positions: raw_mesh
-                        .positions
-                        .iter()
-                        .map(|p| glam::Vec3::from(*p))
-                        .collect(),
-                    // TODO(andreas): Calculate normals
-                    vertex_data: std::iter::repeat(MeshVertexData {
-                        normal: glam::Vec3::ZERO,
-                        texcoord: glam::Vec2::ZERO,
-                    })
-                    .take(raw_mesh.positions.len())
-                    .collect(),
-                })
-            })
+            .map(|mesh| mesh.cpu_mesh.mesh_data.clone())
+            .flatten()
             .collect::<Vec<_>>();
         let instance_transforms = scene
             .meshes
             .iter()
-            .filter_map(|mesh| {
-                if mesh.cpu_mesh.raw_mesh.is_none() {
-                    return None;
-                }
-                Some(macaw::Conformal3::from_affine3a_lossy(
+            .flat_map(|mesh| {
+                std::iter::repeat(macaw::Conformal3::from_affine3a_lossy(
                     &mesh.world_from_mesh,
                 ))
+                .take(mesh.cpu_mesh.mesh_data.len())
             })
             .collect::<Vec<_>>();
 

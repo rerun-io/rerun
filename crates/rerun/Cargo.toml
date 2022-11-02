@@ -9,7 +9,7 @@ default-run = "rerun"
 
 
 [features]
-default = ["server", "glow"]
+default = ["server", "wgpu"]
 
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]
