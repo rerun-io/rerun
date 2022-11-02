@@ -52,14 +52,14 @@ impl MeshManager {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         data: &MeshData,
-    ) -> MeshHandle {
+    ) -> anyhow::Result<MeshHandle> {
         let key = ctx.meshes.long_lived_meshes.insert(Mesh::new(
             &mut ctx.resource_pools,
             device,
             queue,
             data,
-        ));
-        MeshHandle::LongLived(key)
+        )?);
+        Ok(MeshHandle::LongLived(key))
     }
 
     /// Creates a mesh that lives for the duration of the frame
@@ -70,15 +70,17 @@ impl MeshManager {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         data: &MeshData,
-    ) -> MeshHandle {
-        let key =
-            ctx.meshes
-                .frame_meshes
-                .insert(Mesh::new(&mut ctx.resource_pools, device, queue, data));
-        MeshHandle::Frame {
+    ) -> anyhow::Result<MeshHandle> {
+        let key = ctx.meshes.frame_meshes.insert(Mesh::new(
+            &mut ctx.resource_pools,
+            device,
+            queue,
+            data,
+        )?);
+        Ok(MeshHandle::Frame {
             key,
             valid_frame_index: ctx.meshes.frame_index,
-        }
+        })
     }
 
     /// Retrieve a mesh.

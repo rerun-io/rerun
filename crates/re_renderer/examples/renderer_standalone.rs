@@ -15,12 +15,11 @@ use std::{f32::consts::TAU, io::Read};
 use anyhow::Context as _;
 use glam::Vec3;
 use instant::Instant;
-use itertools::izip;
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
-    mesh::{MeshData, MeshVertex},
+    mesh::{mesh_vertices::MeshVertexData, MeshData},
     mesh_manager::{MeshHandle, MeshManager},
     renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
@@ -468,17 +467,20 @@ impl AppState {
                 .iter()
                 .map(|mesh| {
                     let mesh = &mesh.mesh;
-                    let vertices = izip!(
-                        mesh.positions.chunks(3),
-                        mesh.normals.chunks(3),
-                        mesh.texcoords.chunks(2)
-                    )
-                    .map(|(p, n, t)| MeshVertex {
-                        position: glam::vec3(p[0], p[1], p[2]),
-                        normal: glam::vec3(n[0], n[1], n[2]),
-                        texcoord: glam::vec2(t[0], t[1]),
-                    })
-                    .collect();
+                    let vertex_positions = mesh
+                        .positions
+                        .chunks(3)
+                        .map(|p| glam::vec3(p[0], p[1], p[2]))
+                        .collect();
+                    let vertex_data = mesh
+                        .normals
+                        .chunks(3)
+                        .zip(mesh.texcoords.chunks(2))
+                        .map(|(n, t)| MeshVertexData {
+                            normal: glam::vec3(n[0], n[1], n[2]),
+                            texcoord: glam::vec2(t[0], t[1]),
+                        })
+                        .collect();
 
                     MeshManager::new_long_lived_mesh(
                         re_ctx,
@@ -487,9 +489,11 @@ impl AppState {
                         &MeshData {
                             label: "rerun logo".into(),
                             indices: mesh.indices.clone(),
-                            vertices,
+                            vertex_positions,
+                            vertex_data,
                         },
                     )
+                    .unwrap()
                 })
                 .collect()
         };

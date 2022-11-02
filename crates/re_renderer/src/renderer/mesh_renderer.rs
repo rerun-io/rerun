@@ -8,7 +8,7 @@ use smallvec::smallvec;
 
 use crate::{
     include_file,
-    mesh::{Mesh, MeshVertex},
+    mesh::{mesh_vertices, Mesh},
     mesh_manager::MeshHandle,
     resource_pools::{
         buffer_pool::{BufferDesc, BufferHandleStrong},
@@ -35,7 +35,7 @@ struct GpuInstanceData {
 
 impl GpuInstanceData {
     pub fn vertex_buffer_layout() -> VertexBufferLayout {
-        let shader_start_location = MeshVertex::vertex_buffer_layout().attributes.len() as u32;
+        let shader_start_location = mesh_vertices::next_free_shader_location();
 
         VertexBufferLayout {
             array_stride: std::mem::size_of::<GpuInstanceData>() as _,
@@ -195,11 +195,12 @@ impl Renderer for MeshRenderer {
                 vertex_handle: shader_module,
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
-                vertex_buffers: smallvec![
-                    // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
-                    GpuInstanceData::vertex_buffer_layout(),
-                    MeshVertex::vertex_buffer_layout(),
-                ],
+
+                // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
+                vertex_buffers: std::iter::once(GpuInstanceData::vertex_buffer_layout())
+                    .chain(mesh_vertices::vertex_buffer_layouts())
+                    .collect(),
+
                 render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -236,14 +237,22 @@ impl Renderer for MeshRenderer {
         let mut instance_start_index = 0;
 
         for mesh_batch in &draw_data.batches {
-            let vertex_buffer = pools.buffers.get_resource(&mesh_batch.mesh.vertex_buffer)?;
+            let vertex_buffer_combined = pools
+                .buffers
+                .get_resource(&mesh_batch.mesh.vertex_buffer_combined)?;
             let index_buffer = pools.buffers.get_resource(&mesh_batch.mesh.index_buffer)?;
 
             pass.set_vertex_buffer(
                 1,
-                vertex_buffer
+                vertex_buffer_combined
                     .buffer
-                    .slice(mesh_batch.mesh.vertex_buffer_range.clone()),
+                    .slice(mesh_batch.mesh.vertex_buffer_positions_range.clone()),
+            );
+            pass.set_vertex_buffer(
+                2,
+                vertex_buffer_combined
+                    .buffer
+                    .slice(mesh_batch.mesh.vertex_buffer_data_range.clone()),
             );
             pass.set_index_buffer(
                 index_buffer
