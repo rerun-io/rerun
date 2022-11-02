@@ -13,7 +13,7 @@ use crate::{
 /// Defines how mesh vertices are built.
 ///
 /// Mesh vertices consist of two vertex buffers right now.
-/// One for positions ([`glam::Vec3`]) and one for the rest, called [`MeshVertexData`] here
+/// One for positions ([`glam::Vec3`]) and one for the rest, called [`mesh_vertices::MeshVertexData`] here
 pub mod mesh_vertices {
     use crate::resource_pools::render_pipeline_pool::VertexBufferLayout;
     use smallvec::smallvec;
