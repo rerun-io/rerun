@@ -16,7 +16,9 @@ impl HardwareTier {
     /// Wgpu limits required by the given hardware tier.
     pub fn limits(self) -> wgpu::Limits {
         wgpu::Limits {
-            // In any scenario require high texture resolution to facilitate rendering into large surfaces (e.g. 4k)
+            // In any scenario require high texture resolution to facilitate rendering into large surfaces
+            // (important for 4k screens and beyond)
+            // 8192 is widely supported by now.
             max_texture_dimension_2d: 8192,
             ..wgpu::Limits::downlevel_webgl2_defaults()
         }
@@ -70,10 +72,10 @@ impl HardwareTier {
     }
 }
 
-/// Startup configuration for a [`RenderContext`]
+/// Startup configuration for a [`crate::RenderContext`]
 ///
-/// Contains any kind of configuration that doesn't change for the entire lifetime of a [`RenderContext`].
-/// (flipside, if we do want to change any of these, the [`RenderContext`] needs to be re-created)
+/// Contains any kind of configuration that doesn't change for the entire lifetime of a [`crate::RenderContext`].
+/// (flipside, if we do want to change any of these, the [`crate::RenderContext`] needs to be re-created)
 pub struct RenderContextConfig {
     /// The color format used by the eframe output buffer.
     pub output_format_color: wgpu::TextureFormat,
