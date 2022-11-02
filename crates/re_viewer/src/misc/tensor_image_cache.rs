@@ -158,7 +158,13 @@ impl CachedImage {
         let memory_used = egui_color_image.pixels.len() * std::mem::size_of::<egui::Color32>()
             + dynamic_img.as_bytes().len();
 
-        let retained_img = RetainedImage::from_color_image(debug_name, egui_color_image);
+        let options = egui::TextureOptions {
+            // This is best for low-res depth-images and the like
+            magnification: egui::TextureFilter::Nearest,
+            minification: egui::TextureFilter::Linear,
+        };
+        let retained_img =
+            RetainedImage::from_color_image(debug_name, egui_color_image).with_options(options);
 
         Self {
             dynamic_img,

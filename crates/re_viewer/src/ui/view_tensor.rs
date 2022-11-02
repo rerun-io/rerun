@@ -115,10 +115,12 @@ impl Display for TextureScaling {
 struct TextureSettings {
     /// Should the aspect ratio of the tensor be kept when scaling?
     keep_aspect_ratio: bool,
+
     /// Should we scale the texture when rendering?
     scaling: TextureScaling,
+
     /// Specifies the sampling filter used to render the texture.
-    filter: egui::TextureFilter,
+    options: egui::TextureOptions,
 }
 
 impl Default for TextureSettings {
@@ -126,7 +128,11 @@ impl Default for TextureSettings {
         Self {
             keep_aspect_ratio: true,
             scaling: TextureScaling::default(),
-            filter: egui::TextureFilter::Nearest,
+            options: egui::TextureOptions {
+                // This is best for low-res depth-images and the like
+                magnification: egui::TextureFilter::Nearest,
+                minification: egui::TextureFilter::Linear,
+            },
         }
     }
 }
@@ -156,7 +162,7 @@ impl TextureSettings {
         };
 
         // TODO(cmc): don't recreate texture unless necessary
-        let texture = ui.ctx().load_texture("tensor_slice", image, self.filter);
+        let texture = ui.ctx().load_texture("tensor_slice", image, self.options);
 
         let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
         let rect = response.rect;
@@ -175,11 +181,6 @@ impl TextureSettings {
 // ui
 impl TextureSettings {
     fn show(&mut self, ui: &mut egui::Ui) {
-        let tf_to_string = |tf: egui::TextureFilter| match tf {
-            egui::TextureFilter::Nearest => "Nearest",
-            egui::TextureFilter::Linear => "Linear",
-        };
-
         ui.group(|ui| {
             ui.horizontal(|ui| {
                 egui::ComboBox::from_label("Texture scaling")
@@ -194,17 +195,31 @@ impl TextureSettings {
                 ui.checkbox(&mut self.keep_aspect_ratio, "Keep aspect ratio");
             });
 
-            egui::ComboBox::from_label("Texture filter")
-                .selected_text(tf_to_string(self.filter))
-                .show_ui(ui, |ui| {
-                    let mut selectable_value = |ui: &mut egui::Ui, e| {
-                        ui.selectable_value(&mut self.filter, e, tf_to_string(e))
-                    };
-                    selectable_value(ui, egui::TextureFilter::Linear);
-                    selectable_value(ui, egui::TextureFilter::Nearest);
-                });
+            texture_filter_ui(
+                ui,
+                "Texture magnification filter",
+                &mut self.options.magnification,
+            );
         });
     }
+}
+
+fn texture_filter_ui(ui: &mut egui::Ui, label: &str, filter: &mut egui::TextureFilter) {
+    fn tf_to_string(tf: egui::TextureFilter) -> &'static str {
+        match tf {
+            egui::TextureFilter::Nearest => "Nearest",
+            egui::TextureFilter::Linear => "Linear",
+        }
+    }
+
+    egui::ComboBox::from_label(label)
+        .selected_text(tf_to_string(*filter))
+        .show_ui(ui, |ui| {
+            let mut selectable_value =
+                |ui: &mut egui::Ui, e| ui.selectable_value(filter, e, tf_to_string(e));
+            selectable_value(ui, egui::TextureFilter::Linear);
+            selectable_value(ui, egui::TextureFilter::Nearest);
+        });
 }
 
 // ----------------------------------------------------------------------------
