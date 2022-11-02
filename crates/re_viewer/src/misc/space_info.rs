@@ -47,6 +47,7 @@ impl SpacesInfo {
             parent_space_path: &ObjPath,
             parent_space_info: &mut SpaceInfo,
             tree: &ObjectTree,
+            spaceless_objects: &mut IntSet<ObjPath>,
         ) {
             if let Some(transform) = query_transform(timeline_store, &tree.path, query_time) {
                 // A set transform (likely non-identity) - create a new space.
@@ -68,6 +69,7 @@ impl SpacesInfo {
                         &tree.path,
                         &mut child_space_info,
                         child_tree,
+                        spaceless_objects,
                     );
                 }
                 spaces_info
@@ -85,8 +87,19 @@ impl SpacesInfo {
                         parent_space_path,
                         parent_space_info,
                         child_tree,
+                        spaceless_objects,
                     );
                 }
+            }
+
+            // TODO(jleibs) -- This is a terrible hack, avert your eyes.
+            // We want every SpaceView to have access to class_descriptions
+            // We don't have type information at this point, but class_descriptions are (currently)
+            // the only object with "id" field. We use that to store it off in related_objects
+            // as we traverse the tree so we can then append it to the object-sets of all SpaceInfos
+            // once we're done with our traversal.
+            if tree.fields.contains_key(&FieldName::from("id")) {
+                spaceless_objects.insert(tree.path.clone());
             }
         }
 
@@ -95,6 +108,10 @@ impl SpacesInfo {
         let timeline_store = obj_db.store.get(timeline);
 
         let mut spaces_info = Self::default();
+
+        // Add_children can insert paths to spaceless objects which will then
+        // be added to all spaces when we are done with the traversal.
+        let mut spaceless_objects = IntSet::<ObjPath>::default();
 
         for tree in obj_db.tree.children.values() {
             // Each root object is its own space (or should be)
@@ -114,12 +131,18 @@ impl SpacesInfo {
                 &tree.path,
                 &mut space_info,
                 tree,
+                &mut spaceless_objects,
             );
-            spaces_info.spaces.insert(tree.path.clone(), space_info);
+
+            // Only add the space_info to spaces if it contains a non-spaceless object
+            if !space_info.objects.is_subset(&spaceless_objects) {
+                spaces_info.spaces.insert(tree.path.clone(), space_info);
+            }
         }
 
         for (obj_path, space_info) in &mut spaces_info.spaces {
             space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
+            space_info.objects.extend(spaceless_objects.clone());
         }
 
         spaces_info
