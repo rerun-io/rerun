@@ -24,7 +24,7 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-10-31 - configurable wgpu backend
+# 2022-11-02 - configurable texture filters
 eframe = { git = "https://github.com/emilk/egui", rev = "34e6e12f002e7b477a8e8af6032097b00b96deea" }
 egui = { git = "https://github.com/emilk/egui", rev = "34e6e12f002e7b477a8e8af6032097b00b96deea" }
 egui_extras = { git = "https://github.com/emilk/egui", rev = "34e6e12f002e7b477a8e8af6032097b00b96deea" }
