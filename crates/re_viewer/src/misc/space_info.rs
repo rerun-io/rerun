@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntSet;
 
 use re_data_store::{log_db::ObjDb, FieldName, ObjPath, ObjectTree, TimelineStore};
-use re_log_types::{Transform, ViewCoordinates};
+use re_log_types::{ObjectType, Transform, ViewCoordinates};
 
 use super::TimeControl;
 
@@ -41,6 +41,7 @@ impl SpacesInfo {
         crate::profile_function!();
 
         fn add_children(
+            obj_db: &ObjDb,
             timeline_store: Option<&TimelineStore<i64>>,
             query_time: Option<i64>,
             spaces_info: &mut SpacesInfo,
@@ -63,6 +64,7 @@ impl SpacesInfo {
 
                 for child_tree in tree.children.values() {
                     add_children(
+                        obj_db,
                         timeline_store,
                         query_time,
                         spaces_info,
@@ -81,6 +83,7 @@ impl SpacesInfo {
 
                 for child_tree in tree.children.values() {
                     add_children(
+                        obj_db,
                         timeline_store,
                         query_time,
                         spaces_info,
@@ -92,15 +95,15 @@ impl SpacesInfo {
                 }
             }
 
-            // TODO(jleibs) -- This is a terrible hack, avert your eyes.
-            // We want every SpaceView to have access to class_descriptions
-            // We don't have type information at this point, but class_descriptions are (currently)
-            // the only object with "id" field. We use that to store it off in related_objects
-            // as we traverse the tree so we can then append it to the object-sets of all SpaceInfos
-            // once we're done with our traversal.
-            if tree.fields.contains_key(&FieldName::from("id")) {
-                spaceless_objects.insert(tree.path.clone());
-            }
+            // We want every SpaceView to have access to `ClassDescription`
+            // If this path is actually a class description object, store it in spaceless_objects
+            // so we can later append them to the objects for all spaces.
+            match obj_db.types.get(tree.path.obj_type_path()) {
+                Some(ObjectType::ClassDescription) => {
+                    spaceless_objects.insert(tree.path.clone());
+                }
+                _ => {}
+            };
         }
 
         let timeline = time_ctrl.timeline();
@@ -125,6 +128,7 @@ impl SpacesInfo {
 
             let mut space_info = SpaceInfo::default();
             add_children(
+                obj_db,
                 timeline_store,
                 query_time,
                 &mut spaces_info,
@@ -134,10 +138,7 @@ impl SpacesInfo {
                 &mut spaceless_objects,
             );
 
-            // Only add the space_info to spaces if it contains a non-spaceless object
-            if !space_info.objects.is_subset(&spaceless_objects) {
-                spaces_info.spaces.insert(tree.path.clone(), space_info);
-            }
+            spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
         for (obj_path, space_info) in &mut spaces_info.spaces {
