@@ -8,7 +8,6 @@ from typing import Final
 import cv2 as cv
 import numpy as np
 from PIL import Image
-import torch
 import rerun_sdk as rerun
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
@@ -32,10 +31,15 @@ feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-5
 model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
 
 with open(COCO_CATEGORIES_PATH) as f:
-    categories = json.load(f)
-id2Lable = {cat["id"]: cat["name"] for cat in categories}
-id2IsThing = {cat["id"]: cat["isthing"] for cat in categories}
-id2Color = {cat["id"]: cat["color"] for cat in categories}
+    coco_categories = json.load(f)
+class_descriptions = [
+    rerun.ClassDescription(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
+]
+rerun.log_class_descriptions("image/coco_categories", class_descriptions, timeless=True)
+
+id2Lable = {cat["id"]: cat["name"] for cat in coco_categories}
+id2IsThing = {cat["id"]: cat["isthing"] for cat in coco_categories}
+id2Color = {cat["id"]: cat["color"] for cat in coco_categories}
 
 car_id = model.config.label2id["car"]
 
@@ -65,27 +69,32 @@ while cap.isOpened():
 
         inputs = feature_extractor(images=pil_im_smal, return_tensors="pt")
         preprocessed = inputs["pixel_values"].detach().cpu().numpy()
-        rerun.log_image("image/nn_preprocessed", rgb_small)
-        rerun.log_unknown_transform("image/nn_preprocessed")  # Note: Haven't implemented 2D transforms yet.
+        rerun.log_image("image/downscaled", rgb_small)
+        rerun.log_unknown_transform("image/downscaled")  # Note: Haven't implemented 2D transforms yet.
 
         outputs = model(**inputs)
 
         # use the `post_process_panoptic` method of `DetrFeatureExtractor` to convert to COCO format
-        processed_sizes = torch.as_tensor(tuple(reversed(small_size))).unsqueeze(0)
-        result = feature_extractor.post_process_segmentation(outputs, processed_sizes)[0]
+        processed_sizes = [tuple(reversed(small_size))]
+        segmentation_mask = feature_extractor.post_process_semantic_segmentation(outputs, processed_sizes)[0]
 
-        scores = result["scores"].detach().cpu().numpy()
-        masks = result["masks"].detach().cpu().numpy()
-        labels = result["labels"].detach().cpu().numpy()
+        detections = feature_extractor.post_process_object_detection(
+            outputs, threshold=0.8, target_sizes=processed_sizes
+        )[0]
+
+        mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
+        rerun.log_segmentation_image("image/downscaled/segmentation", mask, class_descriptions="image/coco_categories")
+
+        boxes = detections["boxes"].detach().cpu().numpy()
+        labels = detections["labels"].detach().cpu().numpy()
         str_labels = [id2Lable[l] for l in labels]
         colors = [id2Color[l] for l in labels]
         isThing = [id2IsThing[l] for l in labels]
 
         # retrieve the ids corresponding to each mask
-        boxes = masks_to_boxes(masks)
 
         rerun.log_rects(
-            "image/nn_preprocessed/detections",
+            "image/downscaled/detections",
             boxes,
             rect_format=rerun.RectFormat.XYXY,
             labels=str_labels,
