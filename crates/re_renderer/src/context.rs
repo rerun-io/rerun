@@ -1,5 +1,6 @@
 use type_map::concurrent::{self, TypeMap};
 
+use crate::config::RenderContextConfig;
 use crate::{
     global_bindings::GlobalBindings, renderer::Renderer, resource_pools::WgpuResourcePools,
 };
@@ -19,15 +20,6 @@ pub struct RenderContext {
 
     // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
-}
-
-/// Startup configuration for a [`RenderContext`]
-///
-/// Contains any kind of configuration that doesn't change for the entire lifetime of a [`RenderContext`].
-/// (flipside, if we do want to change any of these, the [`RenderContext`] needs to be re-created)
-pub struct RenderContextConfig {
-    /// The color format used by the eframe output buffer.
-    pub output_format_color: wgpu::TextureFormat,
 }
 
 /// Immutable data that is shared between all [`Renderer`]
@@ -67,6 +59,31 @@ impl RenderContext {
     pub fn new(device: &wgpu::Device, _queue: &wgpu::Queue, config: RenderContextConfig) -> Self {
         let mut resource_pools = WgpuResourcePools::default();
         let global_bindings = GlobalBindings::new(&mut resource_pools, device);
+
+        // Validate capabilities of the device.
+        assert!(
+            config.hardware_tier.limits().check_limits(&device.limits()),
+            "The given device doesn't support the required limits for the given hardware tier {:?}.
+            Required:
+            {:?}
+            Actual:
+            {:?}",
+            config.hardware_tier,
+            config.hardware_tier.limits(),
+            device.limits(),
+        );
+        assert!(
+            device.features().contains(config.hardware_tier.features()),
+            "The given device doesn't support the required features for the given hardware tier {:?}.
+            Required:
+            {:?}
+            Actual:
+            {:?}",
+            config.hardware_tier,
+            config.hardware_tier.features(),
+            device.features(),
+        );
+        // Can't check downlevel feature flags since they sit on the adapter, not on the device.
 
         // In debug builds, make sure to catch all errors, never crash, and try to
         // always let the user find a way to return a poisoned pipeline back into a
