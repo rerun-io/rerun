@@ -3,10 +3,8 @@
 //! Uses instancing to render instances of the same mesh in a single draw call.
 //! Instance data is kept in an instance-stepped vertex data, see [`GpuInstanceData`].
 
-use smallvec::smallvec;
-use std::num::NonZeroU64;
-
 use itertools::Itertools as _;
+use smallvec::smallvec;
 
 use crate::{
     include_file,
@@ -117,7 +115,7 @@ impl MeshDrawable {
                 .unwrap()
                 .buffer,
             0,
-            NonZeroU64::new(instance_buffer_size).unwrap(),
+            instance_buffer_size.try_into().unwrap(),
         );
         let instance_buffer_staging: &mut [GpuInstanceData] =
             bytemuck::cast_slice_mut(&mut instance_buffer_staging);
@@ -148,6 +146,7 @@ impl MeshDrawable {
             });
             num_processed_instances += count as usize;
         }
+        assert_eq!(num_processed_instances, instances.len());
 
         Ok(MeshDrawable {
             batches,

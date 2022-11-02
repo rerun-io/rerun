@@ -46,7 +46,7 @@ impl MeshManager {
     /// Creates a new, long lived mesh.
     ///
     /// Memory will be reclaimed once all (strong) handles are dropped
-    /// For short lived meshes use [`new_frame_mesh`] as it has more efficient resource usage for this scenario.
+    /// For short lived meshes use [`Self::new_frame_mesh`] as it has more efficient resource usage for this scenario.
     pub fn new_long_lived_mesh(
         ctx: &mut RenderContext,
         device: &wgpu::Device,

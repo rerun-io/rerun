@@ -1,4 +1,4 @@
-use std::{num::NonZeroU64, ops::Range};
+use std::ops::Range;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -112,7 +112,7 @@ impl Mesh {
             let mut staging_buffer = queue.write_buffer_with(
                 &pools.buffers.get_resource(&vertex_buffer).unwrap().buffer,
                 0,
-                NonZeroU64::new(vertex_buffer_size).unwrap(),
+                vertex_buffer_size.try_into().unwrap(),
             );
             staging_buffer[..vertex_buffer_size as usize]
                 .copy_from_slice(bytemuck::cast_slice(&data.vertices));
@@ -131,7 +131,7 @@ impl Mesh {
             let mut staging_buffer = queue.write_buffer_with(
                 &pools.buffers.get_resource(&index_buffer).unwrap().buffer,
                 0,
-                NonZeroU64::new(index_buffer_size).unwrap(),
+                index_buffer_size.try_into().unwrap(),
             );
             staging_buffer[..index_buffer_size as usize]
                 .copy_from_slice(bytemuck::cast_slice(&data.indices));

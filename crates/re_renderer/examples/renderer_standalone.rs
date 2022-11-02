@@ -71,23 +71,7 @@ fn draw_view(
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
-
-    let mesh_instances = lorenz_points(10.0)
-        .iter()
-        .enumerate()
-        .flat_map(|(i, p)| {
-            state.meshes.iter().map(move |mesh| MeshInstance {
-                mesh: *mesh,
-                transformation: macaw::Conformal3::from_scale_rotation_translation(
-                    0.025 + (i % 10) as f32 * 0.01,
-                    glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
-                    *p,
-                ),
-            })
-        })
-        .collect::<Vec<_>>();
-
-    let meshes = MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap();
+    let meshes = build_meshes(re_ctx, device, queue, &state.meshes, seconds_since_startup);
 
     view_builder
         .setup_view(re_ctx, device, queue, &target_cfg)
@@ -101,6 +85,30 @@ fn draw_view(
         .unwrap();
 
     view_builder
+}
+
+fn build_meshes(
+    re_ctx: &mut RenderContext,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    mesh_handles: &[MeshHandle],
+    seconds_since_startup: f32,
+) -> MeshDrawable {
+    let mesh_instances = lorenz_points(10.0)
+        .iter()
+        .enumerate()
+        .flat_map(|(i, p)| {
+            mesh_handles.iter().map(move |mesh| MeshInstance {
+                mesh: *mesh,
+                transformation: macaw::Conformal3::from_scale_rotation_translation(
+                    0.025 + (i % 10) as f32 * 0.01,
+                    glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
+                    *p,
+                ),
+            })
+        })
+        .collect::<Vec<_>>();
+    MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap()
 }
 
 fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
