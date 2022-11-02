@@ -44,21 +44,23 @@ impl ShaderModuleDesc {
         &self,
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
-    ) -> anyhow::Result<wgpu::ShaderModule> {
+    ) -> wgpu::ShaderModule {
         let code = resolver
             .resolve_contents(&self.source)
-            .map(|s| s.to_owned().into())
-            .context("couldn't resolve shader module's source code path")?;
+            .map(|s| s.to_owned())
+            .context("couldn't resolve shader module's contents")
+            .map_err(|err| re_log::error!(err=%re_error::format(err)))
+            .unwrap_or_default();
 
         // All wgpu errors come asynchronously: this call will succeed whether the given
         // source is valid or not.
-        // Only when building an actual pipeline using this shader will we know if
-        // something is wrong.
-        Ok(device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        // Only when actually submitting passes that make use of this shader will we know if
+        // something is wrong or not.
+        device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: self.label.get(),
             // TODO(cmc): handle non-WGSL shaders.
-            source: wgpu::ShaderSource::Wgsl(code),
-        }))
+            source: wgpu::ShaderSource::Wgsl(code.into()),
+        })
     }
 }
 
@@ -83,10 +85,7 @@ impl ShaderModulePool {
         desc: &ShaderModuleDesc,
     ) -> ShaderModuleHandle {
         self.pool.get_or_create(desc, |desc| {
-            // TODO(cmc): must provide a way to properly handle errors in requests.
-            // Probably better to wait for a first PoC of #import to land though,
-            // as that will surface a bunch of shortcomings in our error handling too.
-            let shader_module = desc.create_shader_module(device, resolver).unwrap();
+            let shader_module = desc.create_shader_module(device, resolver);
             ShaderModule {
                 last_frame_used: AtomicU64::new(0),
                 last_frame_modified: AtomicU64::new(0),
@@ -140,25 +139,9 @@ impl ShaderModulePool {
                 .get_resource_mut(handle)
                 .expect("the pool itself handed us that handle");
 
-            let shader_module = match desc.create_shader_module(device, resolver) {
-                Ok(sm) => sm,
-                Err(err) => {
-                    re_log::error!(
-                        err = re_error::format(err),
-                        ?path,
-                        "couldn't recompile shader module"
-                    );
-                    continue;
-                }
-            };
+            re_log::debug!(?path, label = desc.label.get(), "recompiled shader module");
 
-            re_log::debug!(
-                ?path,
-                label = desc.label.get(),
-                "successfully recompiled shader module"
-            );
-
-            res.shader_module = shader_module;
+            res.shader_module = desc.create_shader_module(device, resolver);
             res.last_frame_modified
                 // NOTE: we add an extra frame here because render pipeline maintenance
                 // has already run for the current frame.

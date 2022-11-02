@@ -36,6 +36,29 @@ pub fn run_native_app(app_creator: AppCreator) {
         #[cfg(target_os = "macos")]
         fullsize_content: FULLSIZE_CONTENT,
 
+        // When running wgpu on native debug builds, we want some extra control over how
+        // and when a poisoned surface gets recreated.
+        #[cfg(feature = "wgpu")]
+        wgpu_options: egui_wgpu::WgpuConfiguration {
+            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+            on_surface_error: std::sync::Arc::new(|err| {
+                // On windows, this error also occurs when the app is minimized.
+                // Silently return here to prevent spamming the console with:
+                // "The underlying surface has changed, and therefore the swap chain
+                //  must be updated"
+                if err == wgpu::SurfaceError::Outdated && !cfg!(target_os = "windows"){
+                    // We haven't been able to present anything to the swapchain for
+                    // a while, because the pipeline is poisoned.
+                    // Recreate a sane surface to restart the cycle and see if the
+                    // user has fixed the issue.
+                    egui_wgpu::SurfaceErrorAction::RecreateSurface
+                } else {
+                    egui_wgpu::SurfaceErrorAction::SkipFrame
+                }
+            }),
+            ..Default::default()
+        },
+
         ..Default::default()
     };
 

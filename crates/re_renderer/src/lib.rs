@@ -34,3 +34,6 @@ pub use self::file_server::FileServer;
 
 #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
 mod workspace_shaders;
+
+#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+mod error_tracker;

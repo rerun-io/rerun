@@ -672,7 +672,7 @@ fn log_rect(
 fn log_rects(
     obj_path: &str,
     rect_format: &str,
-    rects: numpy::PyReadonlyArray2<'_, f32>,
+    rects: numpy::PyReadonlyArrayDyn<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
     timeless: bool,
@@ -683,6 +683,7 @@ fn log_rects(
     let rect_format = RectFormat::parse(rect_format)?;
 
     let n = match rects.shape() {
+        [0] => 0,
         [n, 4] => *n,
         shape => {
             return Err(PyTypeError::new_err(format!(

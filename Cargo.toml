@@ -24,12 +24,12 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-10-28 - panel toggle animation
-eframe = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
-egui = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f7a15a34f9bd17f39ae75c488b722873465c8d86" }
+# 2022-10-31 - configurable wgpu backend
+eframe = { git = "https://github.com/emilk/egui", rev = "76d0cf50349d1e5e70b86a3e9678fe6b8ad3e0d7" }
+egui = { git = "https://github.com/emilk/egui", rev = "76d0cf50349d1e5e70b86a3e9678fe6b8ad3e0d7" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "76d0cf50349d1e5e70b86a3e9678fe6b8ad3e0d7" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "76d0cf50349d1e5e70b86a3e9678fe6b8ad3e0d7" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "76d0cf50349d1e5e70b86a3e9678fe6b8ad3e0d7" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
 # egui_extras = { path = "../../egui/crates/egui_extras" }
@@ -41,3 +41,4 @@ gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e4701
 
 # 2022-10-12 - Eq for DepthBiasState and DepthStencilState
 wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "aed3b1ae59ee097901b852d934493c7ec167d344" }
+wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "aed3b1ae59ee097901b852d934493c7ec167d344" }

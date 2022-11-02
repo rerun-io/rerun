@@ -13,6 +13,8 @@
 // TODO(cmc): crash the build if someone is trying to create a non-hermetic artifact (e.g. one
 // of the embedded shaders refer to stuff outside the repository).
 
+// TODO(cmc): this should only run for release builds
+
 use std::{path::Path, process::Command};
 use walkdir::{DirEntry, WalkDir};
 

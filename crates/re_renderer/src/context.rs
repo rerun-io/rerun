@@ -6,6 +6,8 @@ use crate::{
 };
 use crate::{FileResolver, FileServer, FileSystem, RecommendedFileResolver};
 
+// ---
+
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
@@ -14,6 +16,8 @@ pub struct RenderContext {
     pub(crate) resource_pools: WgpuResourcePools,
     pub(crate) meshes: MeshManager,
     pub(crate) resolver: RecommendedFileResolver,
+    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+    pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
 
     // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
@@ -66,6 +70,19 @@ impl RenderContext {
         let mut resource_pools = WgpuResourcePools::default();
         let global_bindings = GlobalBindings::new(&mut resource_pools, device);
 
+        // In debug builds, make sure to catch all errors, never crash, and try to
+        // always let the user find a way to return a poisoned pipeline back into a
+        // sane state.
+        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+        let err_tracker = {
+            let err_tracker = std::sync::Arc::new(crate::error_tracker::ErrorTracker::default());
+            device.on_uncaptured_error({
+                let err_tracker = std::sync::Arc::clone(&err_tracker);
+                move |err| err_tracker.handle_error(err)
+            });
+            err_tracker
+        };
+
         RenderContext {
             shared_renderer_data: SharedRendererData {
                 config,
@@ -81,11 +98,20 @@ impl RenderContext {
 
             resolver: crate::new_recommended_file_resolver(),
 
+            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+            err_tracker,
+
             frame_index: 0,
         }
     }
 
     pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
+        // Tick the error tracker so that it knows when to reset!
+        // Note that we're ticking on frame_maintenance rather than raw frames, which
+        // makes a world of difference when we're in a poisoned state.
+        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+        self.err_tracker.tick();
+
         // Clear the resolver cache before we start reloading shaders!
         self.resolver.clear();
 
