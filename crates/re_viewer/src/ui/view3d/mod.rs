@@ -504,6 +504,7 @@ fn paint_view(
                                 queue,
                                 &TargetConfiguration {
                                     resolution_in_pixel,
+                                    origin_in_pixel: [0, 0],
 
                                     view_from_world: eye.world_from_view.inverse(),
                                     fov_y: eye.fov_y,
@@ -526,6 +527,10 @@ fn paint_view(
                                     .unwrap(),
                             );
                         }
+
+                        // TODO(cmc): we want an independent command encoder here, so that a
+                        // broken view doesn't poison everything else in turn.
+                        // Need to change how `CallbackFn` works for that.
 
                         view_builder.draw(ctx, encoder).unwrap(); // TODO(andreas): Graceful error handling
                     })
