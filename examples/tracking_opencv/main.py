@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Example applying simple object detection and tracking on a video."""
-import io
+import json
 import os
 from pathlib import Path
 from typing import Final
@@ -11,8 +11,13 @@ from PIL import Image
 import torch
 import rerun_sdk as rerun
 
-DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
-CACHE_DIR: Final = Path(os.path.dirname(__file__)) / "cache"
+EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
+DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
+CACHE_DIR: Final = EXAMPLE_DIR / "cache"
+
+# Comes from https://github.com/cocodataset/panopticapi/blob/master/panoptic_coco_categories.json
+# License: https://github.com/cocodataset/panopticapi/blob/master/license.txt
+COCO_CATEGORIES_PATH = EXAMPLE_DIR / "panoptic_coco_categories.json"
 
 DOWNSCALE_FACTOR = 2
 
@@ -25,6 +30,12 @@ rerun.connect()
 
 feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50-panoptic")
 model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
+
+with open(COCO_CATEGORIES_PATH) as f:
+    categories = json.load(f)
+id2Lable = {cat["id"]: cat["name"] for cat in categories}
+id2IsThing = {cat["id"]: cat["isthing"] for cat in categories}
+id2Color = {cat["id"]: cat["color"] for cat in categories}
 
 car_id = model.config.label2id["car"]
 
@@ -59,24 +70,26 @@ while cap.isOpened():
 
         outputs = model(**inputs)
 
-        # model predicts COCO classes, bounding boxes, and masks
-        logits = outputs.logits.detach().cpu().numpy()
-        bboxes = outputs.pred_boxes.detach().cpu().numpy()
-        masks = outputs.pred_masks.detach().cpu().numpy()
-
         # use the `post_process_panoptic` method of `DetrFeatureExtractor` to convert to COCO format
-        processed_sizes = torch.as_tensor(inputs["pixel_values"].shape[-2:]).unsqueeze(0)
+        processed_sizes = torch.as_tensor(tuple(reversed(small_size))).unsqueeze(0)
         result = feature_extractor.post_process_segmentation(outputs, processed_sizes)[0]
 
         scores = result["scores"].detach().cpu().numpy()
-        bboxes = result["labels"].detach().cpu().numpy()
         masks = result["masks"].detach().cpu().numpy()
+        labels = result["labels"].detach().cpu().numpy()
+        str_labels = [id2Lable[l] for l in labels]
+        colors = [id2Color[l] for l in labels]
+        isThing = [id2IsThing[l] for l in labels]
 
         # retrieve the ids corresponding to each mask
         boxes = masks_to_boxes(masks)
 
         rerun.log_rects(
-            "image/nn_preprocessed/detections", boxes, rect_format=rerun.RectFormat.XYXY, labels=["?", "?", "?"]
+            "image/nn_preprocessed/detections",
+            boxes,
+            rect_format=rerun.RectFormat.XYXY,
+            labels=str_labels,
+            colors=np.array(colors),
         )
 
         num_cars = 0
