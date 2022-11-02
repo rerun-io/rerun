@@ -5,10 +5,7 @@ mod space_camera;
 #[cfg(feature = "glow")]
 mod glow_rendering;
 
-#[cfg(feature = "glow")]
 mod mesh_cache;
-
-#[cfg(feature = "glow")]
 pub use mesh_cache::CpuMeshCache;
 
 use eye::*;
@@ -474,8 +471,10 @@ fn paint_view(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
+        use re_renderer::mesh::mesh_vertices::MeshVertexData;
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
+        use re_renderer::{mesh::MeshData, mesh_manager::MeshManager};
 
         let view_builder_prepare = ViewBuilder::new_shared();
         let view_builder_draw = view_builder_prepare.clone();
@@ -488,6 +487,46 @@ fn paint_view(
         let point_cloud_points = scene.point_cloud_points();
         let line_strips = scene.line_strips();
 
+        let meshdata = scene
+            .meshes
+            .iter()
+            .filter_map(|mesh| {
+                if mesh.cpu_mesh.raw_mesh.is_none() {
+                    return None;
+                }
+                let raw_mesh = mesh.cpu_mesh.raw_mesh.as_ref().unwrap();
+
+                Some(MeshData {
+                    label: "temp mesh".into(),
+                    indices: raw_mesh.indices.iter().flatten().cloned().collect(),
+                    vertex_positions: raw_mesh
+                        .positions
+                        .iter()
+                        .map(|p| glam::Vec3::from(*p))
+                        .collect(),
+                    // TODO(andreas): Calculate normals
+                    vertex_data: std::iter::repeat(MeshVertexData {
+                        normal: glam::Vec3::ZERO,
+                        texcoord: glam::Vec2::ZERO,
+                    })
+                    .take(raw_mesh.positions.len())
+                    .collect(),
+                })
+            })
+            .collect::<Vec<_>>();
+        let instance_transforms = scene
+            .meshes
+            .iter()
+            .filter_map(|mesh| {
+                if mesh.cpu_mesh.raw_mesh.is_none() {
+                    return None;
+                }
+                Some(macaw::Conformal3::from_affine3a_lossy(
+                    &mesh.world_from_mesh,
+                ))
+            })
+            .collect::<Vec<_>>();
+
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(
@@ -495,6 +534,24 @@ fn paint_view(
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
+
+                        // TODO(andreas): This is the worst possible way to deal with this
+                        // [ ] Don't create a new mesh for every instance
+                        // [ ] Don't recreate permanent meshes
+                        let mesh_instances = meshdata
+                            .iter()
+                            .zip(instance_transforms.iter())
+                            .map(|(mesh_data, transform)| {
+                                let mesh_handle =
+                                    MeshManager::new_frame_mesh(ctx, device, queue, mesh_data)
+                                        .unwrap();
+                                MeshInstance {
+                                    mesh: mesh_handle,
+                                    transformation: *transform,
+                                }
+                            })
+                            .collect::<Vec<_>>();
+
                         let view_builder = view_builder_lock
                             .as_mut()
                             .unwrap()
@@ -514,6 +571,12 @@ fn paint_view(
                             )
                             .unwrap()
                             .queue_draw(&GenericSkyboxDrawable::new(ctx, device));
+
+                        if !mesh_instances.is_empty() {
+                            view_builder.queue_draw(
+                                &MeshDrawable::new(ctx, device, queue, &mesh_instances).unwrap(),
+                            );
+                        }
 
                         if !line_strips.is_empty() {
                             view_builder.queue_draw(

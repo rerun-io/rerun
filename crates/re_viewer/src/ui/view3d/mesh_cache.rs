@@ -1,5 +1,6 @@
 use super::scene::MeshSourceData;
-use crate::mesh_loader::{CpuMesh, GpuMesh};
+use crate::mesh_loader::CpuMesh;
+#[cfg(feature = "glow")]
 use egui::util::hash;
 use re_log_types::MeshFormat;
 use std::sync::Arc;
@@ -42,6 +43,7 @@ impl CpuMeshCache {
     }
 
     /// Returns a cached cylinder mesh built around the x-axis in the range [0..1] and with radius 1. The default material is used.
+    #[cfg(feature = "glow")]
     pub fn cylinder(&mut self) -> (u64, Arc<CpuMesh>) {
         crate::profile_function!();
         let mesh_id = hash("CYLINDER_MESH");
@@ -58,6 +60,7 @@ impl CpuMeshCache {
     }
 
     /// Returns a cached cone mesh built around the x-axis in the range [0..1] and with radius 1 at -1.0. The default material is used.
+    #[cfg(feature = "glow")]
     pub fn cone(&mut self) -> (u64, Arc<CpuMesh>) {
         crate::profile_function!();
         let mesh_id = hash("CONE_MESH");
@@ -76,9 +79,11 @@ impl CpuMeshCache {
 
 // ----------------------------------------------------------------------------
 
+#[cfg(feature = "glow")]
 #[derive(Default)]
-pub struct GpuMeshCache(nohash_hasher::IntMap<u64, Option<GpuMesh>>);
+pub struct GpuMeshCache(nohash_hasher::IntMap<u64, Option<crate::misc::mesh_loader::GpuMesh>>);
 
+#[cfg(feature = "glow")]
 impl GpuMeshCache {
     pub fn load(&mut self, three_d: &three_d::Context, mesh_id: u64, cpu_mesh: &CpuMesh) {
         crate::profile_function!();
@@ -95,7 +100,7 @@ impl GpuMeshCache {
         }
     }
 
-    pub fn get(&self, mesh_id: u64) -> Option<&GpuMesh> {
+    pub fn get(&self, mesh_id: u64) -> Option<&crate::misc::mesh_loader::GpuMesh> {
         self.0.get(&mesh_id)?.as_ref()
     }
 }
