@@ -30,7 +30,7 @@ impl std::ops::Deref for BindGroupHandleStrong {
     type Target = BindGroupHandle;
 
     fn deref(&self) -> &Self::Target {
-        &*self.handle
+        &self.handle
     }
 }
 
