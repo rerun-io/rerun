@@ -114,11 +114,11 @@ impl CpuMesh {
         }
         #[cfg(not(feature = "glow"))]
         {
-            let root_transform = macaw::Conformal3::from_affine3a_lossy(
+            let transform = macaw::Conformal3::from_affine3a_lossy(
                 &glam::Affine3A::from_cols_array_2d(transform),
             );
             for instance in &mut slf.model_import.instances {
-                instance.transform = instance.transform * root_transform;
+                instance.transform = transform * instance.transform;
             }
             slf.bbox = slf.model_import.calculate_bounding_box();
         }
