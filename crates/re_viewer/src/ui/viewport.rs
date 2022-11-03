@@ -19,7 +19,7 @@ use re_log_types::ObjectType;
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
-use super::SpaceView;
+use super::{space_view::Scene, SpaceView};
 
 // ----------------------------------------------------------------------------
 
@@ -482,6 +482,20 @@ fn space_view_ui(
             }
         }
         let sticky_objects = filter_objects(&sticky_objects);
+
+        // TOOD: we'll do this in steps.
+        // Step 1: keep Objects, and build a Scene from that.
+        // Step 2: drop Objects entirely.
+        //
+        // Let's start with text entries.
+
+        let mut scene = Scene::default();
+        scene.load_objects(ctx, &time_objects);
+        scene.load_objects(ctx, &sticky_objects);
+
+        if let Some(response) = space_view.scene_ui(ctx, ui, spaces_info, space_info, &scene) {
+            return response;
+        }
 
         space_view.objects_ui(
             ctx,

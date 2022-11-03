@@ -1,7 +1,9 @@
 use crate::ViewerContext;
 use egui::{Color32, RichText};
-use re_data_store::{InstanceProps, Objects, TextEntry};
+use re_data_store::{InstanceProps, Objects};
 use re_log_types::*;
+
+use super::space_view::{SceneText, TextEntry};
 
 // -----------------------------------------------------------------------------
 
@@ -20,11 +22,9 @@ impl TextEntryState {
         &mut self,
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
-        objects: &Objects<'_>,
+        scene: &SceneText,
     ) -> egui::Response {
         crate::profile_function!();
-
-        let text_entries = collect_text_entries(ctx, objects);
 
         let time = ctx
             .rec_cfg
@@ -40,20 +40,22 @@ impl TextEntryState {
         // - Otherwise, let the user scroll around freely!
         let time_cursor_moved = self.latest_time != time;
         let scroll_to_row = time_cursor_moved.then(|| {
-            crate::profile_scope!("binsearch");
-            let index = text_entries.partition_point(|msg| msg.0.time < time);
+            crate::profile_scope!("TextEntryState - search scroll time");
+            let index = scene
+                .text_entries
+                .partition_point(|entry| entry.time < time);
             usize::min(index, index.saturating_sub(1))
         });
 
         self.latest_time = time;
 
         ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-            ui.label(format!("{} text entries", objects.text_entry.len()));
+            ui.label(format!("{} text entries", scene.text_entries.len()));
             ui.separator();
 
             egui::ScrollArea::horizontal().show(ui, |ui| {
                 crate::profile_scope!("render table");
-                show_table(ctx, ui, &text_entries, scroll_to_row);
+                show_table(ctx, ui, &scene.text_entries, scroll_to_row);
             })
         })
         .response
@@ -62,64 +64,23 @@ impl TextEntryState {
 
 // -----------------------------------------------------------------------------
 
-fn collect_text_entries<'s>(
-    _ctx: &mut ViewerContext<'_>,
-    objects: &'s Objects<'_>,
-) -> Vec<(&'s InstanceProps<'s>, &'s TextEntry<'s>)> {
-    crate::profile_function!();
+fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
+    let msg = ctx.log_db.get_log_msg(&entry.msg_id).or_else(|| {
+        re_log::warn_once!("Missing LogMsg for {:?}", entry.obj_path.obj_type_path());
+        None
+    })?;
 
-    let mut text_entries = {
-        crate::profile_scope!("collect");
-
-        objects.text_entry.iter().collect::<Vec<_>>()
+    let data_msg = if let LogMsg::DataMsg(data_msg) = msg {
+        data_msg
+    } else {
+        re_log::warn_once!(
+            "LogMsg must be a DataMsg ({:?})",
+            entry.obj_path.obj_type_path()
+        );
+        return None;
     };
 
-    {
-        crate::profile_scope!("sort");
-
-        text_entries.sort_by(|a, b| {
-            a.0.time
-                .cmp(&b.0.time)
-                .then_with(|| a.0.obj_path.cmp(b.0.obj_path))
-        });
-    }
-
-    text_entries
-}
-
-struct CompleteTextEntry<'s> {
-    time_point: TimePoint,
-    props: &'s InstanceProps<'s>,
-    text_entry: &'s TextEntry<'s>,
-}
-
-impl<'s> CompleteTextEntry<'s> {
-    fn try_from_props(
-        ctx: &ViewerContext<'_>,
-        props: &'s InstanceProps<'s>,
-        text_entry: &'s TextEntry<'s>,
-    ) -> Option<Self> {
-        let msg = ctx.log_db.get_log_msg(props.msg_id).or_else(|| {
-            re_log::warn_once!("Missing LogMsg for {:?}", props.obj_path.obj_type_path());
-            None
-        })?;
-
-        let data_msg = if let LogMsg::DataMsg(data_msg) = msg {
-            data_msg
-        } else {
-            re_log::warn_once!(
-                "LogMsg must be a DataMsg ({:?})",
-                props.obj_path.obj_type_path()
-            );
-            return None;
-        };
-
-        Some(CompleteTextEntry {
-            time_point: data_msg.time_point.clone(),
-            props,
-            text_entry,
-        })
-    }
+    Some(data_msg.time_point.clone())
 }
 
 /// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
@@ -128,7 +89,7 @@ impl<'s> CompleteTextEntry<'s> {
 fn show_table(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    text_entries: &[(&InstanceProps<'_>, &TextEntry<'_>)],
+    text_entries: &[TextEntry],
     scroll_to_row: Option<usize>,
 ) {
     use egui_extras::Size;
@@ -174,29 +135,22 @@ fn show_table(
         })
         .body(|body| {
             body.rows(ROW_HEIGHT, text_entries.len(), |index, mut row| {
-                let (props, text_entry) = text_entries[index];
+                let text_entry = &text_entries[index];
 
                 // NOTE: `try_from_props` is where we actually fetch data from the underlying
                 // store, which is a costly operation.
                 // Doing this here guarantees that it only happens for visible rows.
-                let text_entry =
-                    if let Some(te) = CompleteTextEntry::try_from_props(ctx, props, text_entry) {
-                        te
-                    } else {
-                        row.col(|ui| {
-                            ui.colored_label(
-                                Color32::RED,
-                                "<failed to load TextEntry from data store>",
-                            );
-                        });
-                        return;
-                    };
-
-                let CompleteTextEntry {
-                    time_point,
-                    props,
-                    text_entry,
-                } = text_entry;
+                let time_point = if let Some(time_point) = get_time_point(ctx, text_entry) {
+                    time_point
+                } else {
+                    row.col(|ui| {
+                        ui.colored_label(
+                            Color32::RED,
+                            "<failed to load TextEntry from data store>",
+                        );
+                    });
+                    return;
+                };
 
                 // time(s)
                 for timeline in ctx.log_db.time_points.0.keys() {
@@ -209,13 +163,13 @@ fn show_table(
 
                 // path
                 row.col(|ui| {
-                    ctx.obj_path_button(ui, props.obj_path);
+                    ctx.obj_path_button(ui, &text_entry.obj_path);
                 });
 
                 // level
                 row.col(|ui| {
-                    if let Some(lvl) = text_entry.level {
-                        ui.label(level_to_rich_text(ui, lvl));
+                    if let Some(lvl) = &text_entry.level {
+                        ui.label(level_to_rich_text(ui, &lvl));
                     } else {
                         ui.label("-");
                     }
@@ -223,11 +177,11 @@ fn show_table(
 
                 // body
                 row.col(|ui| {
-                    if let Some(c) = props.color {
+                    if let Some(c) = text_entry.color {
                         let color = Color32::from_rgba_unmultiplied(c[0], c[1], c[2], c[3]);
-                        ui.colored_label(color, text_entry.body);
+                        ui.colored_label(color, &text_entry.body);
                     } else {
-                        ui.label(text_entry.body);
+                        ui.label(&text_entry.body);
                     }
                 });
             });
