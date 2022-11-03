@@ -17,8 +17,12 @@ let POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 let CAP_END_TRIANGLE: u32 = 1u;
 
 struct VertexOut {
-    @location(0) color: Vec4,
     @builtin(position) position: Vec4,
+    @location(0) color: Vec4,
+    @location(1) position_world: Vec3,
+    // World position of the line
+    @location(2) position_world_line: Vec3,
+    @location(3) line_radius: f32,
 };
 
 struct LineStripData {
@@ -117,13 +121,17 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Output, transform to projection space and done.
     var out: VertexOut;
     out.position = frame.projection_from_world * Vec4(pos, 1.0);
+    out.position_world = pos;
+    out.position_world_line = pos_data_current.pos;
     out.color = strip_data.color;
+    out.line_radius = strip_data.radius;
 
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    // TODO(andreas): Shading, rounded caps, etc.
-    return in.color;
+    // TODO(andreas): Rounded caps, proper shading/lighting, etc.
+    let shading = 1.2 - length(in.position_world - in.position_world_line) / in.line_radius;
+    return in.color * shading ;
 }
