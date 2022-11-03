@@ -1,8 +1,10 @@
 use anyhow::Context;
+use macaw::Conformal3;
 
+use super::{ImportMeshInstance, ModelImportData};
 use crate::mesh::{mesh_vertices::MeshVertexData, MeshData};
 
-pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<Vec<MeshData>> {
+pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
     let (models, _materials) = tobj::load_obj_buf(
         &mut std::io::Cursor::new(buffer),
         &tobj::LoadOptions {
@@ -14,10 +16,10 @@ pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<Vec<MeshData>> {
     )
     .context("failed loading obj")?;
 
-    Ok(models
+    let meshes = models
         .iter()
-        .map(|mesh| {
-            let mesh = &mesh.mesh;
+        .map(|model| {
+            let mesh = &model.mesh;
             let vertex_positions = mesh
                 .positions
                 .chunks(3)
@@ -34,11 +36,20 @@ pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<Vec<MeshData>> {
                 .collect();
 
             MeshData {
-                label: "rerun logo".into(),
+                label: model.name.clone().into(),
                 indices: mesh.indices.clone(),
                 vertex_positions,
                 vertex_data,
             }
         })
-        .collect())
+        .collect::<Vec<_>>();
+
+    let instances = (0..meshes.len())
+        .map(|mesh_idx| ImportMeshInstance {
+            mesh_idx,
+            transform: Conformal3::IDENTITY,
+        })
+        .collect();
+
+    Ok(ModelImportData { meshes, instances })
 }

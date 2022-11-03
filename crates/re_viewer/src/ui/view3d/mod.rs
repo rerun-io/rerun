@@ -471,6 +471,7 @@ fn paint_view(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
+        use re_renderer::importer::ImportMeshInstance;
         use re_renderer::mesh_manager::MeshManager;
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
@@ -488,22 +489,21 @@ fn paint_view(
 
         // TODO(andreas): Right now we can't borrow the scene into a context where we have a device.
         //                  Once we can do that, this awful clone is no longer needed as we can acquire gpu data directly
-        let meshdata = scene
-            .meshes
-            .iter()
-            .map(|mesh| mesh.cpu_mesh.mesh_data.clone())
-            .flatten()
-            .collect::<Vec<_>>();
-        let instance_transforms = scene
-            .meshes
-            .iter()
-            .flat_map(|mesh| {
-                std::iter::repeat(macaw::Conformal3::from_affine3a_lossy(
-                    &mesh.world_from_mesh,
-                ))
-                .take(mesh.cpu_mesh.mesh_data.len())
-            })
-            .collect::<Vec<_>>();
+        let mut mesh_base_index = 0;
+        let mut meshes = Vec::new();
+        let mut instances = Vec::new();
+        for mesh in &scene.meshes {
+            let base_transform = macaw::Conformal3::from_affine3a_lossy(&mesh.world_from_mesh);
+            instances.extend(mesh.cpu_mesh.model_import.instances.iter().map(|instance| {
+                ImportMeshInstance {
+                    mesh_idx: instance.mesh_idx + mesh_base_index,
+                    transform: instance.transform * base_transform,
+                }
+            }));
+            meshes.extend(mesh.cpu_mesh.model_import.meshes.clone());
+
+            mesh_base_index += mesh.cpu_mesh.model_import.meshes.len();
+        }
 
         egui::PaintCallback {
             rect,
@@ -513,20 +513,17 @@ fn paint_view(
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
 
-                        // TODO(andreas): This is the worst possible way to deal with this
-                        // [ ] Don't create a new mesh for every instance
-                        // [ ] Don't recreate permanent meshes
-                        let mesh_instances = meshdata
+                        let meshes = meshes
                             .iter()
-                            .zip(instance_transforms.iter())
-                            .map(|(mesh_data, transform)| {
-                                let mesh_handle =
-                                    MeshManager::new_frame_mesh(ctx, device, queue, mesh_data)
-                                        .unwrap();
-                                MeshInstance {
-                                    mesh: mesh_handle,
-                                    transformation: *transform,
-                                }
+                            .map(|data| {
+                                MeshManager::new_frame_mesh(ctx, device, queue, data).unwrap()
+                            })
+                            .collect::<Vec<_>>();
+                        let mesh_instances = instances
+                            .iter()
+                            .map(|instance| MeshInstance {
+                                mesh: meshes[instance.mesh_idx],
+                                transform: instance.transform,
                             })
                             .collect::<Vec<_>>();
 

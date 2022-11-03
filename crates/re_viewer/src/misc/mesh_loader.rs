@@ -11,7 +11,7 @@ pub struct CpuMesh {
     materials: Vec<three_d::CpuMaterial>,
 
     #[cfg(feature = "wgpu")]
-    pub mesh_data: Vec<re_renderer::mesh::MeshData>,
+    pub model_import: re_renderer::importer::ModelImportData,
 
     bbox: macaw::BoundingBox,
 }
@@ -67,28 +67,31 @@ impl CpuMesh {
                 materials,
                 bbox,
                 #[cfg(feature = "wgpu")]
-                mesh_data: Vec::new(),
+                model_import: Default::default(),
             });
         }
         #[cfg(not(feature = "glow"))]
         {
-            let mesh_data = match format {
-                MeshFormat::Glb => anyhow::bail!("not supported"),
-                MeshFormat::Gltf => anyhow::bail!("not supported"),
+            let model_import = match format {
+                MeshFormat::Glb => re_renderer::importer::gltf::load_gltf_from_buffer(bytes),
+                MeshFormat::Gltf => re_renderer::importer::gltf::load_gltf_from_buffer(bytes),
                 MeshFormat::Obj => re_renderer::importer::obj::load_obj_from_buffer(bytes),
             }?;
-            let bbox = macaw::BoundingBox::from_points(
-                mesh_data
-                    .iter()
-                    .flat_map(|m| m.vertex_positions.iter())
-                    .cloned(),
-            );
+
+            let bbox = macaw::BoundingBox::from_points(model_import.instances.iter().flat_map(
+                |instance| {
+                    model_import.meshes[instance.mesh_idx]
+                        .vertex_positions
+                        .iter()
+                        .map(|p| instance.transform.transform_point3(*p))
+                },
+            ));
 
             Ok(Self {
                 name,
                 bbox,
                 #[cfg(feature = "wgpu")]
-                mesh_data,
+                model_import,
             })
         }
     }
@@ -167,21 +170,29 @@ impl CpuMesh {
 
             // TODO: Normals
             #[cfg(feature = "wgpu")]
-            mesh_data: vec![re_renderer::mesh::MeshData {
-                label,
-                indices: raw_mesh.indices.iter().flatten().cloned().collect(),
-                vertex_positions: raw_mesh
-                    .positions
-                    .iter()
-                    .map(|p| glam::Vec3::from(*p))
+            model_import: re_renderer::importer::ModelImportData {
+                instances: vec![re_renderer::importer::ImportMeshInstance {
+                    mesh_idx: 0,
+                    transform: macaw::Conformal3::IDENTITY,
+                }],
+                meshes: vec![re_renderer::mesh::MeshData {
+                    label,
+                    indices: raw_mesh.indices.iter().flatten().cloned().collect(),
+                    vertex_positions: raw_mesh
+                        .positions
+                        .iter()
+                        .map(|p| glam::Vec3::from(*p))
+                        .collect(),
+                    // TODO(andreas): Calculate normals
+                    vertex_data: std::iter::repeat(
+                        re_renderer::mesh::mesh_vertices::MeshVertexData {
+                            normal: glam::Vec3::ZERO,
+                            texcoord: glam::Vec2::ZERO,
+                        },
+                    )
                     .collect(),
-                // TODO(andreas): Calculate normals
-                vertex_data: std::iter::repeat(re_renderer::mesh::mesh_vertices::MeshVertexData {
-                    normal: glam::Vec3::ZERO,
-                    texcoord: glam::Vec2::ZERO,
-                })
-                .collect(),
-            }],
+                }],
+            },
         }
     }
 
@@ -200,7 +211,7 @@ impl CpuMesh {
             materials: vec![material],
             bbox,
             #[cfg(feature = "wgpu")]
-            mesh_data: Vec::new(),
+            model_import: Default::default(),
         }
     }
 
@@ -220,7 +231,7 @@ impl CpuMesh {
             materials: vec![material],
             bbox,
             #[cfg(feature = "wgpu")]
-            mesh_data: Vec::new(),
+            model_import: Default::default(),
         }
     }
 

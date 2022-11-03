@@ -3075,6 +3075,7 @@ dependencies = [
  "crossbeam",
  "glam",
  "glob",
+ "gltf",
  "half 2.1.0",
  "instant",
  "itertools",
