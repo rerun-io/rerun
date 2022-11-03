@@ -133,7 +133,7 @@ impl ViewportBlueprint {
         let space_view = self.space_views.get_mut(space_view_id).unwrap();
 
         let space_path = &space_view.space_path;
-        let collapsing_header_id = ui.make_persistent_id(&space_view_id);
+        let collapsing_header_id = ui.make_persistent_id(space_view_id);
         let default_open = true;
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),

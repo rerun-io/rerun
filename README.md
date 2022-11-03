@@ -11,13 +11,13 @@ We don't have any pre-built binaries yet, so you need to build Rerun from source
 * Install the Rust toolchain: <https://rustup.rs/>
 * `git clone git@github.com:rerun-io/rerun.git && cd rerun`
 * Run `./scripts/setup.sh`.
-* Make sure `cargo --version` prints `1.64.0` once you are done
+* Make sure `cargo --version` prints `1.65.0` once you are done
 
 ### Apple-silicon Macs
 If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ``` sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.64
+rustup set default-host aarch64-apple-darwin && rustup install 1.65
 ```
 
 ## Installing the Rerun Viewer

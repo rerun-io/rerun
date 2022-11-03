@@ -29,7 +29,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.64.0
+          toolchain: 1.65.0
           override: true
           components: rustfmt, clippy
 
@@ -109,7 +109,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.64.0
+          toolchain: 1.65.0
           target: wasm32-unknown-unknown
           override: true
 
@@ -140,7 +140,7 @@ jobs:
 
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
-          rust-version: "1.64.0"
+          rust-version: "1.65.0"
           # NOTE(cmc): run_wasm relies on the wasm-bindgen infrastructure of crates, which uses
           # much older versions of common crates than we do.
           # This is not really an issue for two reasons:
@@ -158,7 +158,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.64.0
+          toolchain: 1.65.0
           override: true
           components: rustfmt
 

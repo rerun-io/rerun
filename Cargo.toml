@@ -4,7 +4,7 @@ members = ["crates/*", "rerun_py", "run_wasm"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.65"
 license = "MIT OR Apache-2.0"
 homepage = "http://rerun.io"
 readme = "README.md"
