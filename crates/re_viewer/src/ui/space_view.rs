@@ -7,7 +7,7 @@ use re_log_types::{MsgId, Tensor, Transform};
 
 use crate::misc::{space_info::*, ViewerContext};
 
-use super::view3d::{scene::Size, SpaceCamera};
+use super::view3d::{scene::Scene as Scene3d, scene::Size, SpaceCamera};
 
 // ----------------------------------------------------------------------------
 
@@ -58,23 +58,21 @@ impl SpaceView {
         space_info: &SpaceInfo,
         time_objects: &Objects<'_>,
         sticky_objects: &Objects<'_>,
-        scene: &Scene,
+        scene: Scene,
     ) -> egui::Response {
         let has_2d = !scene.two_d.is_empty() && (scene.tensor.is_empty() || time_objects.len() > 1);
         let has_3d = !scene.three_d.is_empty();
         let has_text = !scene.text.is_empty();
         let has_tensor = !scene.tensor.is_empty();
         let categories = [
-            (has_2d).then_some(ViewCategory::TwoD),
-            (has_3d).then_some(ViewCategory::ThreeD),
-            (has_text).then_some(ViewCategory::Text),
-            (has_tensor).then_some(ViewCategory::Tensor),
+            has_2d.then_some(ViewCategory::TwoD),
+            has_3d.then_some(ViewCategory::ThreeD),
+            has_text.then_some(ViewCategory::Text),
+            has_tensor.then_some(ViewCategory::Tensor),
         ]
         .iter()
         .filter_map(|cat| *cat)
         .collect::<Vec<_>>();
-
-        dbg!(&scene.tensor.tensors);
 
         match categories.len() {
             0 => ui.label("(empty)"),
@@ -89,14 +87,14 @@ impl SpaceView {
                         &self.space_path,
                         spaces_info,
                         space_info,
-                        time_objects,
+                        scene.three_d,
                     )
                 } else if has_tensor {
                     self.view_state.ui_tensor(ui, &scene.tensor)
                 } else if has_text {
                     self.view_state.ui_text(ctx, ui, &scene.text)
                 } else {
-                    unimplemented!()
+                    ui.label("???")
                 }
             }
             _ => {
@@ -138,7 +136,7 @@ impl SpaceView {
                                 &self.space_path,
                                 spaces_info,
                                 space_info,
-                                time_objects,
+                                scene.three_d,
                             );
                         }
                     }
@@ -176,6 +174,7 @@ impl ViewState {
         crate::view2d::view_2d(ctx, ui, &mut self.state_2d, Some(space), objects)
     }
 
+    // Will take() the `scene`!
     fn ui_3d(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -183,14 +182,13 @@ impl ViewState {
         space: &ObjPath,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        objects: &Objects<'_>,
+        scene: Scene3d,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
             let space_cameras = &space_cameras(spaces_info, space_info);
             let coordinates = space_info.coordinates;
             let space_specs = crate::view3d::SpaceSpecs::from_view_coordinates(coordinates);
-            let scene = crate::view3d::scene::Scene::from_objects(ctx, objects);
             crate::view3d::view_3d(
                 ctx,
                 ui,
@@ -331,69 +329,6 @@ impl Scene2d {
     }
 }
 
-// --- 3D ---
-
-// TODO: prob want to make some changes to these sub-types though.
-
-pub struct Point {
-    pub instance_id: InstanceIdHash,
-    pub pos: [f32; 3],
-    pub radius: Size,
-    pub color: [u8; 4],
-}
-
-pub struct LineSegments {
-    pub instance_id: InstanceIdHash,
-    pub segments: Vec<[[f32; 3]; 2]>,
-    pub radius: Size,
-    pub color: [u8; 4],
-}
-
-#[cfg(feature = "glow")]
-pub enum MeshSourceData {
-    Mesh3D(re_log_types::Mesh3D),
-    /// e.g. the camera mesh
-    StaticGlb(&'static [u8]),
-}
-
-pub struct MeshSource {
-    pub instance_id: InstanceIdHash,
-    pub mesh_id: u64,
-    pub world_from_mesh: glam::Affine3A,
-    // pub cpu_mesh: Arc<CpuMesh>,
-    pub tint: Option<[u8; 4]>,
-}
-
-pub struct Label {
-    pub(crate) text: String,
-    /// Origin of the label
-    pub(crate) origin: Vec3,
-}
-
-#[derive(Default)]
-pub struct Scene3d {
-    pub points: Vec<Point>,
-    pub line_segments: Vec<LineSegments>,
-    pub meshes: Vec<MeshSource>,
-    pub labels: Vec<Label>,
-}
-
-impl Scene3d {
-    // TODO: this is temporary while we transition out of Objects
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        objects: &re_data_store::Objects<'_>,
-    ) {
-    }
-}
-
-impl Scene3d {
-    pub fn is_empty(&self) -> bool {
-        true
-    }
-}
-
 // --- Text logs ---
 
 pub struct TextEntry {
@@ -493,7 +428,7 @@ impl SceneTensor {
         ctx: &mut ViewerContext<'_>,
         objects: &re_data_store::Objects<'_>,
     ) {
-        if let Some(tensor) = dbg!(multidim_tensor(objects)) {
+        if let Some(tensor) = multidim_tensor(objects) {
             self.tensors.push(tensor.clone() /* shallow */);
         }
     }

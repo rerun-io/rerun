@@ -488,7 +488,6 @@ fn space_view_ui(
         // Let's start with text entries.
 
         let mut scene = Scene::default();
-        dbg!(time_objects.image.len());
         scene.load_objects(ctx, &time_objects);
         scene.load_objects(ctx, &sticky_objects);
 
@@ -499,7 +498,7 @@ fn space_view_ui(
             space_info,
             &time_objects,
             &sticky_objects,
-            &scene,
+            scene,
         )
     } else {
         unknown_space_label(ui, &space_view.space_path)

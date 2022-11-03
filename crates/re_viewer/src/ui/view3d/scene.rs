@@ -133,10 +133,11 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub(crate) fn from_objects(
+    pub(crate) fn load_objects(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         objects: &re_data_store::Objects<'_>,
-    ) -> Self {
+    ) {
         crate::profile_function!();
 
         // hack because three-d handles colors wrong. TODO(emilk): fix three-d
@@ -160,20 +161,18 @@ impl Scene {
             [r, g, b, a]
         };
 
-        let mut scene = Scene::default();
-
         {
             crate::profile_scope!("point3d");
-            scene.points.reserve(objects.point3d.len());
-            for (props, obj) in objects.point3d.iter() {
-                let re_data_store::Point3D { pos, radius } = *obj;
-                scene.points.push(Point {
-                    instance_id: InstanceIdHash::from_props(props),
-                    pos: *pos,
-                    radius: radius.map_or(Size::AUTO, Size::new_scene),
-                    color: object_color(ctx, props),
-                });
-            }
+            self.points
+                .extend(objects.point3d.iter().map(|(props, obj)| {
+                    let re_data_store::Point3D { pos, radius } = *obj;
+                    Point {
+                        instance_id: InstanceIdHash::from_props(props),
+                        pos: *pos,
+                        radius: radius.map_or(Size::AUTO, Size::new_scene),
+                        color: object_color(ctx, props),
+                    }
+                }));
         }
 
         {
@@ -186,7 +185,7 @@ impl Scene {
                 } = obj;
                 let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
                 let color = object_color(ctx, props);
-                scene.add_box(
+                self.add_box(
                     InstanceIdHash::from_props(props),
                     color,
                     line_radius,
@@ -198,70 +197,73 @@ impl Scene {
 
         {
             crate::profile_scope!("path3d");
-            for (props, obj) in objects.path3d.iter() {
-                let re_data_store::Path3D {
-                    points,
-                    stroke_width,
-                } = obj;
+            self.line_segments
+                .extend(objects.path3d.iter().map(|(props, obj)| {
+                    let re_data_store::Path3D {
+                        points,
+                        stroke_width,
+                    } = obj;
 
-                let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                let color = object_color(ctx, props);
+                    let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                    let color = object_color(ctx, props);
 
-                let segments = points
-                    .iter()
-                    .tuple_windows()
-                    .map(|(a, b)| [*a, *b])
-                    .collect();
+                    let segments = points
+                        .iter()
+                        .tuple_windows()
+                        .map(|(a, b)| [*a, *b])
+                        .collect();
 
-                scene.line_segments.push(LineSegments {
-                    instance_id: InstanceIdHash::from_props(props),
-                    segments,
-                    radius,
-                    color,
-                });
-            }
+                    LineSegments {
+                        instance_id: InstanceIdHash::from_props(props),
+                        segments,
+                        radius,
+                        color,
+                    }
+                }));
         }
 
         {
             crate::profile_scope!("line_segments3d");
-            for (props, obj) in objects.line_segments3d.iter() {
-                let re_data_store::LineSegments3D {
-                    points,
-                    stroke_width,
-                } = *obj;
+            self.line_segments
+                .extend(objects.line_segments3d.iter().map(|(props, obj)| {
+                    let re_data_store::LineSegments3D {
+                        points,
+                        stroke_width,
+                    } = *obj;
 
-                let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                let color = object_color(ctx, props);
+                    let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                    let color = object_color(ctx, props);
 
-                scene.line_segments.push(LineSegments {
-                    instance_id: InstanceIdHash::from_props(props),
-                    segments: bytemuck::allocation::pod_collect_to_vec(points),
-                    radius,
-                    color,
-                });
-            }
+                    LineSegments {
+                        instance_id: InstanceIdHash::from_props(props),
+                        segments: bytemuck::allocation::pod_collect_to_vec(points),
+                        radius,
+                        color,
+                    }
+                }));
         }
 
         {
             crate::profile_scope!("mesh3d");
-            for (props, obj) in objects.mesh3d.iter() {
-                let re_data_store::Mesh3D { mesh } = *obj;
-                let mesh_id = egui::util::hash(props.msg_id);
-                if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
-                    mesh_id,
-                    &props.obj_path.to_string(),
-                    &MeshSourceData::Mesh3D(mesh.clone()),
-                ) {
-                    // TODO(emilk): props.color
-                    scene.meshes.push(MeshSource {
-                        instance_id: InstanceIdHash::from_props(props),
-                        mesh_id,
-                        world_from_mesh: Default::default(),
-                        cpu_mesh,
-                        tint: None,
-                    });
-                }
-            }
+            self.meshes
+                .extend(objects.mesh3d.iter().filter_map(|(props, obj)| {
+                    let re_data_store::Mesh3D { mesh } = *obj;
+                    let mesh_id = hash(props.msg_id);
+                    ctx.cache
+                        .cpu_mesh
+                        .load(
+                            mesh_id,
+                            &props.obj_path.to_string(),
+                            &MeshSourceData::Mesh3D(mesh.clone()),
+                        )
+                        .map(|cpu_mesh| MeshSource {
+                            instance_id: InstanceIdHash::from_props(props),
+                            mesh_id,
+                            world_from_mesh: Default::default(),
+                            cpu_mesh,
+                            tint: None,
+                        })
+                }));
         }
 
         #[cfg(feature = "glow")]
@@ -276,11 +278,9 @@ impl Scene {
                 let width = width_scale.unwrap_or(1.0);
                 let color = object_color(ctx, props);
                 let instance_id = InstanceIdHash::from_props(props);
-                scene.add_arrow(ctx, instance_id, color, Some(width), *label, arrow);
+                self.add_arrow(ctx, instance_id, color, Some(width), *label, arrow);
             }
         }
-
-        scene
     }
 
     pub(super) fn add_cameras(
@@ -654,6 +654,13 @@ impl Scene {
             radius: line_radius,
             color,
         });
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.points.is_empty()
+            && self.line_segments.is_empty()
+            && self.meshes.is_empty()
+            && self.labels.is_empty()
     }
 
     #[cfg(feature = "wgpu")]
