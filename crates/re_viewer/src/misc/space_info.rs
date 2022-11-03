@@ -123,10 +123,10 @@ impl SpacesInfo {
         let spaceless_objects = if let Some(timeline_store) = timeline_store {
             timeline_store
                 .iter()
-                .map(|(path, _)| path.clone())
-                .filter(|path| {
+                .filter(|(path, _)| {
                     obj_db.types.get(path.obj_type_path()) == Some(&ObjectType::ClassDescription)
                 })
+                .map(|(path, _)| path.clone())
                 .collect::<IntSet<ObjPath>>()
         } else {
             IntSet::<ObjPath>::default()
