@@ -265,7 +265,6 @@ impl Scene {
         }
 
         #[cfg(feature = "glow")]
-        // TODO:
         {
             crate::profile_scope!("arrow3d");
             for (props, obj) in objects.arrow3d.iter() {
@@ -537,7 +536,6 @@ impl Scene {
     }
 
     #[cfg(feature = "glow")]
-    // TODO:
     fn add_arrow(
         &mut self,
         ctx: &mut ViewerContext<'_>,

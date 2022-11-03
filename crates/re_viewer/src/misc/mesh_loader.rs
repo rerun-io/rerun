@@ -169,7 +169,6 @@ impl CpuMesh {
             materials: vec![material],
             bbox,
 
-            // TODO: Normals
             #[cfg(feature = "wgpu")]
             model_import: re_renderer::importer::ModelImportData {
                 instances: vec![re_renderer::importer::ImportMeshInstance {
