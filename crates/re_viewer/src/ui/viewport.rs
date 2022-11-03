@@ -267,14 +267,17 @@ impl ViewportBlueprint {
 
 /// Is this space worthy of its on space view by default?
 fn should_have_default_view(obj_db: &ObjDb, space_info: &SpaceInfo) -> bool {
-    if space_info.objects.len() == 1 {
-        // Only one object in this view…
-        let obj = space_info.objects.iter().next().unwrap();
-        if obj_db.types.get(obj.obj_type_path()).is_none() {
-            return false; // It doesn't have a type, so it is probably just the `_transform`, so nothing to show.
-        }
-    }
-    true
+    // As long as some object in the space needs a default view, return true
+
+    // Make sure there is least one object type that is NOT:
+    // - None: probably a transform
+    // - ClassDescription: doesn't have a view yet
+    space_info.objects.iter().any(|obj| {
+        !matches!(
+            obj_db.types.get(obj.obj_type_path()),
+            None | Some(ObjectType::ClassDescription)
+        )
+    })
 }
 
 fn show_obj_tree(

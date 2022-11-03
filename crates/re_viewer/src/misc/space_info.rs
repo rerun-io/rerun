@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntSet;
 
 use re_data_store::{log_db::ObjDb, FieldName, ObjPath, ObjectTree, TimelineStore};
-use re_log_types::{Transform, ViewCoordinates};
+use re_log_types::{ObjectType, Transform, ViewCoordinates};
 
 use super::TimeControl;
 
@@ -118,8 +118,23 @@ impl SpacesInfo {
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
+        // The ClassDescription objects apply to all spaces, collect every
+        // object path with this type.
+        let spaceless_objects = if let Some(timeline_store) = timeline_store {
+            timeline_store
+                .iter()
+                .filter(|(path, _)| {
+                    obj_db.types.get(path.obj_type_path()) == Some(&ObjectType::ClassDescription)
+                })
+                .map(|(path, _)| path.clone())
+                .collect::<IntSet<ObjPath>>()
+        } else {
+            IntSet::<ObjPath>::default()
+        };
+
         for (obj_path, space_info) in &mut spaces_info.spaces {
             space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
+            space_info.objects.extend(spaceless_objects.clone());
         }
 
         spaces_info
