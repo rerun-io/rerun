@@ -88,7 +88,7 @@ fn gather_instances_recursive(
     transform: &macaw::Conformal3,
     gltf_mesh_idx_to_local_idx: &HashMap<usize, usize>,
 ) {
-    let transform = match node.transform() {
+    let node_transform = match node.transform() {
         gltf::scene::Transform::Matrix { matrix } => macaw::Conformal3::from_affine3a_lossy(
             &glam::Affine3A::from_mat4(glam::Mat4::from_cols_array_2d(&matrix)),
         ),
@@ -101,7 +101,8 @@ fn gather_instances_recursive(
             glam::Quat::from_array(rotation),
             glam::Vec3::from(translation),
         ),
-    } * *transform;
+    };
+    let transform = transform * node_transform;
 
     for child in node.children() {
         gather_instances_recursive(instances, &child, &transform, gltf_mesh_idx_to_local_idx);

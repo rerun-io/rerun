@@ -61,14 +61,14 @@ impl CpuMesh {
 
             let bbox = bbox(&meshes);
 
-            return Ok(Self {
+            Ok(Self {
                 name,
                 meshes,
                 materials,
                 bbox,
                 #[cfg(feature = "wgpu")]
                 model_import: Default::default(),
-            });
+            })
         }
         #[cfg(not(feature = "glow"))]
         {
@@ -77,15 +77,7 @@ impl CpuMesh {
                 MeshFormat::Gltf => re_renderer::importer::gltf::load_gltf_from_buffer(bytes),
                 MeshFormat::Obj => re_renderer::importer::obj::load_obj_from_buffer(bytes),
             }?;
-
-            let bbox = macaw::BoundingBox::from_points(model_import.instances.iter().flat_map(
-                |instance| {
-                    model_import.meshes[instance.mesh_idx]
-                        .vertex_positions
-                        .iter()
-                        .map(|p| instance.transform.transform_point3(*p))
-                },
-            ));
+            let bbox = model_import.calculate_bounding_box();
 
             Ok(Self {
                 name,
@@ -105,8 +97,6 @@ impl CpuMesh {
         } = encoded_mesh;
 
         let mut slf = Self::load_raw(name, *format, bytes)?;
-
-        // TODO:
         #[cfg(feature = "glow")]
         {
             let [c0, c1, c2, c3] = *transform;
@@ -116,10 +106,21 @@ impl CpuMesh {
                 three_d::Vec3::from(c2).extend(0.0),
                 three_d::Vec3::from(c3).extend(1.0),
             );
+
             for mesh in &mut slf.meshes {
                 mesh.transform(&root_transform)
                     .context("Bad object transform")?;
             }
+        }
+        #[cfg(not(feature = "glow"))]
+        {
+            let root_transform = macaw::Conformal3::from_affine3a_lossy(
+                &glam::Affine3A::from_cols_array_2d(transform),
+            );
+            for instance in &mut slf.model_import.instances {
+                instance.transform = instance.transform * root_transform;
+            }
+            slf.bbox = slf.model_import.calculate_bounding_box();
         }
 
         Ok(slf)
@@ -190,6 +191,7 @@ impl CpuMesh {
                             texcoord: glam::Vec2::ZERO,
                         },
                     )
+                    .take(raw_mesh.positions.len())
                     .collect(),
                 }],
             },

@@ -112,7 +112,7 @@ pub enum MeshSourceData {
 pub struct MeshSource {
     pub instance_id: InstanceIdHash,
     pub mesh_id: u64,
-    // TODO(andreas): Make this Conformal3 once glow is gone
+    // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
     pub tint: Option<[u8; 4]>,

@@ -204,7 +204,7 @@ impl Renderer for MeshRenderer {
                 render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
-                    cull_mode: Some(wgpu::Face::Back),
+                    cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
                     ..Default::default()
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {

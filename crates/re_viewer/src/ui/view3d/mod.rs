@@ -497,7 +497,7 @@ fn paint_view(
             instances.extend(mesh.cpu_mesh.model_import.instances.iter().map(|instance| {
                 ImportMeshInstance {
                     mesh_idx: instance.mesh_idx + mesh_base_index,
-                    transform: instance.transform * base_transform,
+                    transform: base_transform * instance.transform,
                 }
             }));
             meshes.extend(mesh.cpu_mesh.model_import.meshes.clone());
