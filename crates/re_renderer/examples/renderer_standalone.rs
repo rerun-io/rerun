@@ -21,7 +21,7 @@ use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
     mesh::{mesh_vertices::MeshVertexData, MeshData},
     mesh_manager::{MeshHandle, MeshManager},
-    renderer::*,
+    renderer::{lines::LineStripFlags, *},
     view_builder::{TargetConfiguration, ViewBuilder},
     *,
 };
@@ -157,8 +157,9 @@ fn build_lines(
                 points: lorenz_points,
                 radius: 0.05,
                 color: [255, 191, 0, 255],
+                flags: LineStripFlags::empty(),
             },
-            // Yellow Zig-Zag
+            // Green Zig-Zag
             LineStrip {
                 points: vec![
                     glam::vec3(0.0, -1.0, 0.0),
@@ -168,6 +169,7 @@ fn build_lines(
                 ],
                 radius: 0.1,
                 color: [50, 255, 50, 255],
+                flags: LineStripFlags::CAP_END_TRIANGLE,
             },
             // A blue spiral
             LineStrip {
@@ -182,6 +184,7 @@ fn build_lines(
                     .collect(),
                 radius: 0.1,
                 color: [50, 50, 255, 255],
+                flags: LineStripFlags::CAP_END_TRIANGLE,
             },
         ],
     )

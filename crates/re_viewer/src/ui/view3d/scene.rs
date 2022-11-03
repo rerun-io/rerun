@@ -681,6 +681,7 @@ impl Scene {
                 points: Vec::new(),
                 radius: segments.radius.0,
                 color: segments.color,
+                flags: LineStripFlags::empty(),
             };
             for [a, b] in &segments.segments {
                 let a = glam::Vec3::from(*a);
@@ -696,6 +697,7 @@ impl Scene {
                                 points: vec![a, b],
                                 radius: segments.radius.0,
                                 color: segments.color,
+                                flags: LineStripFlags::empty(),
                             },
                         ));
                     }

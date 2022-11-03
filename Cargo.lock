@@ -3069,6 +3069,7 @@ dependencies = [
  "ahash 0.8.0",
  "anyhow",
  "async-executor",
+ "bitflags",
  "bytemuck",
  "clean-path",
  "console_error_panic_hook",
