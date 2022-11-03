@@ -539,10 +539,6 @@ fn paint_view(
                             );
                         }
 
-                        // TODO(cmc): we want an independent command encoder here, so that a
-                        // broken view doesn't poison everything else in turn.
-                        // Need to change how `CallbackFn` works for that.
-
                         let mut encoder =
                             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                                 label: "view_encoder".into(), // TODO(cmc): view name in here!
