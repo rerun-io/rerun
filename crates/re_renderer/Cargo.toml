@@ -20,7 +20,9 @@ glam = { version = "0.20", features = [
   "bytemuck",
 ] } # can't upgrade until macaw gets a new version using glam 0.21
 half = { version = "2.1", features = ["bytemuck"] }
-macaw = "0.17"
+itertools = "0.10"
+macaw = "0.17.2"
+memoffset = "0.7"
 ordered-float = "3.2"
 parking_lot = "0.12"
 re_error = { path = "../re_error" }
@@ -55,8 +57,10 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 pollster = "0.2"
 rand = "0.8"
+tobj = "3.2"
 tracing-subscriber = "0.3"
 winit = "0.27"
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

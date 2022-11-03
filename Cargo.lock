@@ -776,7 +776,7 @@ dependencies = [
  "autocfg",
  "cfg-if",
  "crossbeam-utils",
- "memoffset",
+ "memoffset 0.6.5",
  "once_cell",
  "scopeguard",
 ]
@@ -1124,7 +1124,7 @@ dependencies = [
  "egui",
  "egui-winit",
  "glow",
- "memoffset",
+ "memoffset 0.6.5",
  "puffin",
  "tracing",
  "wasm-bindgen",
@@ -2190,9 +2190,9 @@ dependencies = [
 
 [[package]]
 name = "macaw"
-version = "0.17.0"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7781d94ea559f76030086786c74fdf28d768535269653382f39824562fd02e73"
+checksum = "ef7e08781990d20e6b33eb49a24f42ae7949dc934dd1bcd08fdcb886074dc623"
 dependencies = [
  "glam",
  "num-traits",
@@ -2243,6 +2243,15 @@ name = "memoffset"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
+name = "memoffset"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
 dependencies = [
  "autocfg",
 ]
@@ -2402,7 +2411,7 @@ dependencies = [
  "bitflags",
  "cfg-if",
  "libc",
- "memoffset",
+ "memoffset 0.6.5",
 ]
 
 [[package]]
@@ -2852,7 +2861,7 @@ dependencies = [
  "cfg-if",
  "indoc",
  "libc",
- "memoffset",
+ "memoffset 0.6.5",
  "parking_lot",
  "pyo3-build-config",
  "pyo3-ffi",
@@ -3068,8 +3077,10 @@ dependencies = [
  "glob",
  "half 2.1.0",
  "instant",
+ "itertools",
  "log",
  "macaw",
+ "memoffset 0.7.1",
  "notify",
  "ordered-float",
  "parking_lot",
@@ -3083,6 +3094,7 @@ dependencies = [
  "smallvec",
  "static_assertions",
  "thiserror",
+ "tobj",
  "tracing-subscriber",
  "tracing-wasm",
  "type-map",
@@ -3093,6 +3105,7 @@ dependencies = [
  "wgpu",
  "wgpu-core",
  "winit",
+ "zip",
 ]
 
 [[package]]
@@ -3919,6 +3932,15 @@ name = "tinyvec_macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
+
+[[package]]
+name = "tobj"
+version = "3.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "deacee3abcc4fd8ff3f0f7c08d4583ab51753ed1d5a3acacd6d5773f640c27d6"
+dependencies = [
+ "ahash 0.7.6",
+]
 
 [[package]]
 name = "tokio"
@@ -5016,6 +5038,18 @@ dependencies = [
  "proc-macro2",
  "syn",
  "synstructure",
+]
+
+[[package]]
+name = "zip"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf225bcf73bb52cbb496e70475c7bd7a3f769df699c0020f6c7bd9a96dcf0b8d"
+dependencies = [
+ "byteorder",
+ "crc32fast",
+ "crossbeam-utils",
+ "flate2",
 ]
 
 [[package]]

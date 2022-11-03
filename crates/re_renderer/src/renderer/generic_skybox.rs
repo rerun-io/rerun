@@ -1,3 +1,5 @@
+use smallvec::smallvec;
+
 use crate::{
     context::SharedRendererData,
     include_file,
@@ -78,8 +80,8 @@ impl Renderer for GenericSkybox {
                         source: include_file!("../../shader/generic_skybox.wgsl"),
                     },
                 ),
-                vertex_buffers: vec![],
-                render_targets: vec![Some(ViewBuilder::FORMAT_HDR.into())],
+                vertex_buffers: smallvec![],
+                render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: ViewBuilder::FORMAT_DEPTH,

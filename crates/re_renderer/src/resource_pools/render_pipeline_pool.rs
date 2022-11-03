@@ -1,14 +1,15 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::Context;
+use smallvec::SmallVec;
 
 use crate::debug_label::DebugLabel;
 
 use super::{pipeline_layout_pool::*, resource::*, shader_module_pool::*, static_resource_pool::*};
 
-slotmap::new_key_type! { pub(crate) struct RenderPipelineHandle; }
+slotmap::new_key_type! { pub struct RenderPipelineHandle; }
 
-pub(crate) struct RenderPipeline {
+pub struct RenderPipeline {
     last_frame_used: AtomicU64,
     pub(crate) pipeline: wgpu::RenderPipeline,
 }
@@ -19,9 +20,32 @@ impl UsageTrackedResource for RenderPipeline {
     }
 }
 
+/// A copy of [`wgpu::VertexBufferLayout`] with a [`smallvec`] for the attributes.
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub struct VertexBufferLayout {
+    /// The stride, in bytes, between elements of this buffer.
+    pub array_stride: wgpu::BufferAddress,
+
+    /// How often this vertex buffer is "stepped" forward.
+    pub step_mode: wgpu::VertexStepMode,
+
+    /// The list of attributes which comprise a single vertex.
+    pub attributes: SmallVec<[wgpu::VertexAttribute; 8]>,
+}
+
+impl VertexBufferLayout {
+    fn to_wgpu_desc(&self) -> wgpu::VertexBufferLayout<'_> {
+        wgpu::VertexBufferLayout {
+            array_stride: self.array_stride,
+            step_mode: self.step_mode,
+            attributes: &self.attributes,
+        }
+    }
+}
+
 /// Renderpipeline descriptor, can be converted into [`wgpu::RenderPipeline`] (which isn't hashable or comparable)
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub(crate) struct RenderPipelineDesc {
+pub struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
 
@@ -33,11 +57,10 @@ pub(crate) struct RenderPipelineDesc {
     pub fragment_handle: ShaderModuleHandle,
 
     /// The format of any vertex buffers used with this pipeline.
-    // TODO(andreas) use SmallVec or simliar, limited to <?>
-    pub vertex_buffers: Vec<wgpu::VertexBufferLayout<'static>>,
+    pub vertex_buffers: SmallVec<[VertexBufferLayout; 4]>,
 
-    // TODO(andreas) use SmallVec or simliar, limited to <?>
-    pub render_targets: Vec<Option<wgpu::ColorTargetState>>,
+    /// The color state of the render targets.
+    pub render_targets: SmallVec<[Option<wgpu::ColorTargetState>; 4]>,
 
     /// The properties of the pipeline at the primitive assembly and rasterization level.
     pub primitive: wgpu::PrimitiveState,
@@ -66,6 +89,12 @@ impl RenderPipelineDesc {
             .get(self.fragment_handle)
             .context("referenced fragment shader not found")?;
 
+        let buffers = self
+            .vertex_buffers
+            .iter()
+            .map(|b| b.to_wgpu_desc())
+            .collect::<Vec<_>>();
+
         Ok(
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: self.label.get(),
@@ -73,7 +102,7 @@ impl RenderPipelineDesc {
                 vertex: wgpu::VertexState {
                     module: &vertex_shader_module.shader_module,
                     entry_point: &self.vertex_entrypoint,
-                    buffers: &self.vertex_buffers,
+                    buffers: &buffers,
                 },
                 fragment: wgpu::FragmentState {
                     module: &fragment_shader_module.shader_module,
@@ -91,7 +120,7 @@ impl RenderPipelineDesc {
 }
 
 #[derive(Default)]
-pub(crate) struct RenderPipelinePool {
+pub struct RenderPipelinePool {
     pool: StaticResourcePool<RenderPipelineHandle, RenderPipelineDesc, RenderPipeline>,
 }
 

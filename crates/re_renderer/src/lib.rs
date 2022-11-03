@@ -12,6 +12,10 @@ pub use context::RenderContext;
 
 mod debug_label;
 mod global_bindings;
+
+pub mod mesh;
+pub mod mesh_manager;
+
 mod resource_pools;
 mod wgpu_buffer_types;
 

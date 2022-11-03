@@ -2,16 +2,16 @@ use crate::debug_label::DebugLabel;
 
 use super::{bind_group_layout_pool::*, resource::*, static_resource_pool::*};
 
-slotmap::new_key_type! { pub(crate) struct PipelineLayoutHandle; }
+slotmap::new_key_type! { pub struct PipelineLayoutHandle; }
 
-pub(crate) struct PipelineLayout {
-    pub(crate) layout: wgpu::PipelineLayout,
+pub struct PipelineLayout {
+    pub layout: wgpu::PipelineLayout,
 }
 
 impl Resource for PipelineLayout {}
 
 #[derive(Clone, Hash, PartialEq, Eq)]
-pub(crate) struct PipelineLayoutDesc {
+pub struct PipelineLayoutDesc {
     /// Debug label of the pipeline layout. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
     // TODO(andreas) use SmallVec or similar, limited to 4
@@ -19,7 +19,7 @@ pub(crate) struct PipelineLayoutDesc {
 }
 
 #[derive(Default)]
-pub(crate) struct PipelineLayoutPool {
+pub struct PipelineLayoutPool {
     pool: StaticResourcePool<PipelineLayoutHandle, PipelineLayoutDesc, PipelineLayout>,
 }
 
