@@ -3,7 +3,7 @@ use glam::Vec3;
 use re_data_store::{
     InstanceIdHash, ObjPath, ObjectTree, ObjectTreeProperties, Objects, TimeQuery, Timeline,
 };
-use re_log_types::{MsgId, Transform};
+use re_log_types::{MsgId, Tensor, Transform};
 
 use crate::misc::{space_info::*, ViewerContext};
 
@@ -56,27 +56,47 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
+        time_objects: &Objects<'_>,
+        sticky_objects: &Objects<'_>,
         scene: &Scene,
-    ) -> Option<egui::Response> {
-        let has_2d = !scene.two_d.is_empty();
+    ) -> egui::Response {
+        let has_2d = !scene.two_d.is_empty() && (scene.tensor.is_empty() || time_objects.len() > 1);
         let has_3d = !scene.three_d.is_empty();
         let has_text = !scene.text.is_empty();
+        let has_tensor = !scene.tensor.is_empty();
         let categories = [
             (has_2d).then_some(ViewCategory::TwoD),
             (has_3d).then_some(ViewCategory::ThreeD),
             (has_text).then_some(ViewCategory::Text),
+            (has_tensor).then_some(ViewCategory::Tensor),
         ]
         .iter()
         .filter_map(|cat| *cat)
         .collect::<Vec<_>>();
 
+        dbg!(&scene.tensor.tensors);
+
         match categories.len() {
-            0 => None,
+            0 => ui.label("(empty)"),
             1 => {
-                if has_text {
-                    self.view_state.ui_text(ctx, ui, &scene.text).into()
+                if has_2d {
+                    self.view_state
+                        .ui_2d(ctx, ui, &self.space_path, time_objects)
+                } else if has_3d {
+                    self.view_state.ui_3d(
+                        ctx,
+                        ui,
+                        &self.space_path,
+                        spaces_info,
+                        space_info,
+                        time_objects,
+                    )
+                } else if has_tensor {
+                    self.view_state.ui_tensor(ui, &scene.tensor)
+                } else if has_text {
+                    self.view_state.ui_text(ctx, ui, &scene.text)
                 } else {
-                    None
+                    unimplemented!()
                 }
             }
             _ => {
@@ -104,85 +124,9 @@ impl SpaceView {
                         ViewCategory::Text => {
                             self.view_state.ui_text(ctx, ui, &scene.text);
                         }
-                        _ => {}
-                    }
-                })
-                .response
-                .into()
-            }
-        }
-    }
-
-    pub fn objects_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
-        space_info: &SpaceInfo,
-        time_objects: &Objects<'_>,
-        sticky_objects: &Objects<'_>,
-    ) -> egui::Response {
-        crate::profile_function!();
-
-        let multidim_tensor = multidim_tensor(time_objects);
-        let has_2d =
-            time_objects.has_any_2d() && (multidim_tensor.is_none() || time_objects.len() > 1);
-        let has_3d = time_objects.has_any_3d();
-
-        let mut categories = vec![];
-        if has_2d {
-            categories.push(ViewCategory::TwoD);
-        }
-        if has_3d {
-            categories.push(ViewCategory::ThreeD);
-        }
-        if multidim_tensor.is_some() {
-            categories.push(ViewCategory::Tensor);
-        }
-
-        match categories.len() {
-            0 => ui.label("(empty)"),
-            1 => {
-                if has_2d {
-                    self.view_state
-                        .ui_2d(ctx, ui, &self.space_path, time_objects)
-                } else if has_3d {
-                    self.view_state.ui_3d(
-                        ctx,
-                        ui,
-                        &self.space_path,
-                        spaces_info,
-                        space_info,
-                        time_objects,
-                    )
-                } else if let Some(multidim_tensor) = multidim_tensor {
-                    self.view_state.ui_tensor(ui, multidim_tensor)
-                } else {
-                    panic!("nope, deprecated!"); // TODO
-                }
-            }
-            _ => {
-                // Show tabs to let user select which category to view
-                ui.vertical(|ui| {
-                    if !categories.contains(&self.selected_category) {
-                        self.selected_category = categories[0];
-                    }
-
-                    ui.horizontal(|ui| {
-                        for category in categories {
-                            let text = match category {
-                                ViewCategory::TwoD => "2D",
-                                ViewCategory::ThreeD => "3D",
-                                ViewCategory::Tensor => "Tensor",
-                                ViewCategory::Text => "Text",
-                            };
-                            ui.selectable_value(&mut self.selected_category, category, text);
-                            // TODO(emilk): make it look like tabs
+                        ViewCategory::Tensor => {
+                            self.view_state.ui_tensor(ui, &scene.tensor);
                         }
-                    });
-                    ui.separator();
-
-                    match self.selected_category {
                         ViewCategory::TwoD => {
                             self.view_state
                                 .ui_2d(ctx, ui, &self.space_path, time_objects);
@@ -197,15 +141,10 @@ impl SpaceView {
                                 time_objects,
                             );
                         }
-                        ViewCategory::Tensor => {
-                            self.view_state.ui_tensor(ui, multidim_tensor.unwrap());
-                        }
-                        ViewCategory::Text => {
-                            panic!("nope, deprecated!"); // TODO
-                        }
                     }
                 })
                 .response
+                .into()
             }
         }
     }
@@ -265,7 +204,8 @@ impl ViewState {
         .response
     }
 
-    fn ui_tensor(&mut self, ui: &mut egui::Ui, tensor: &re_log_types::Tensor) -> egui::Response {
+    fn ui_tensor(&mut self, ui: &mut egui::Ui, scene: &SceneTensor) -> egui::Response {
+        let tensor = &scene.tensors[0];
         let state_tensor = self
             .state_tensor
             .get_or_insert_with(|| crate::ui::view_tensor::TensorViewState::create(tensor));
@@ -335,25 +275,6 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
     space_cameras
 }
 
-fn multidim_tensor<'s>(objects: &Objects<'s>) -> Option<&'s re_log_types::Tensor> {
-    // We have a special tensor viewer that (currently) only works
-    // when we only have a single tensor (and no bounding boxes etc).
-    // It is also not as great for images as the normal 2d view (at least not yet).
-    // This is a hacky-way of detecting this special case.
-    // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
-    // so we can stack bounding boxes etc on top of it.
-    if objects.image.len() == 1 {
-        let image = objects.image.first().unwrap().1;
-        let tensor = image.tensor;
-
-        // Ignore tensors that likely represent images.
-        if tensor.num_dim() > 3 || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4 {
-            return Some(tensor);
-        }
-    }
-    None
-}
-
 // ----------------------------------------------------------------------------
 
 #[derive(Debug)]
@@ -367,8 +288,8 @@ pub struct SceneQuery {
 pub struct Scene {
     pub two_d: Scene2d,
     pub three_d: Scene3d,
-    // pub tensors: Vec<Tensor>,
     pub text: SceneText,
+    pub tensor: SceneTensor,
 }
 
 impl Scene {
@@ -381,6 +302,7 @@ impl Scene {
         self.two_d.load_objects(ctx, objects);
         self.three_d.load_objects(ctx, objects);
         self.text.load_objects(ctx, objects);
+        self.tensor.load_objects(ctx, objects);
     }
 }
 
@@ -535,5 +457,50 @@ impl SceneText {
 impl SceneText {
     pub fn is_empty(&self) -> bool {
         self.text_entries.is_empty()
+    }
+}
+
+// --- Tensors ---
+
+fn multidim_tensor<'s>(objects: &Objects<'s>) -> Option<&'s re_log_types::Tensor> {
+    // We have a special tensor viewer that (currently) only works
+    // when we only have a single tensor (and no bounding boxes etc).
+    // It is also not as great for images as the normal 2d view (at least not yet).
+    // This is a hacky-way of detecting this special case.
+    // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
+    // so we can stack bounding boxes etc on top of it.
+    if objects.image.len() == 1 {
+        let image = objects.image.first().unwrap().1;
+        let tensor = image.tensor;
+
+        // Ignore tensors that likely represent images.
+        if tensor.num_dim() > 3 || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4 {
+            return Some(tensor);
+        }
+    }
+    None
+}
+
+#[derive(Default)]
+pub struct SceneTensor {
+    pub tensors: Vec<Tensor>,
+}
+
+impl SceneTensor {
+    // TODO: this is temporary while we transition out of Objects
+    pub(crate) fn load_objects(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        objects: &re_data_store::Objects<'_>,
+    ) {
+        if let Some(tensor) = dbg!(multidim_tensor(objects)) {
+            self.tensors.push(tensor.clone() /* shallow */);
+        }
+    }
+}
+
+impl SceneTensor {
+    pub fn is_empty(&self) -> bool {
+        self.tensors.is_empty()
     }
 }

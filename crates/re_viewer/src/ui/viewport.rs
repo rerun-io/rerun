@@ -419,8 +419,6 @@ fn space_view_ui(
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
 ) -> egui::Response {
-    // TODO: that's where we build our scene.
-
     if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
         let obj_tree_properties = &space_view.obj_tree_properties;
 
@@ -483,27 +481,25 @@ fn space_view_ui(
         }
         let sticky_objects = filter_objects(&sticky_objects);
 
-        // TOOD: we'll do this in steps.
+        // TODO: we'll do this in steps.
         // Step 1: keep Objects, and build a Scene from that.
         // Step 2: drop Objects entirely.
         //
         // Let's start with text entries.
 
         let mut scene = Scene::default();
+        dbg!(time_objects.image.len());
         scene.load_objects(ctx, &time_objects);
         scene.load_objects(ctx, &sticky_objects);
 
-        if let Some(response) = space_view.scene_ui(ctx, ui, spaces_info, space_info, &scene) {
-            return response;
-        }
-
-        space_view.objects_ui(
+        space_view.scene_ui(
             ctx,
             ui,
             spaces_info,
             space_info,
             &time_objects,
             &sticky_objects,
+            &scene,
         )
     } else {
         unknown_space_label(ui, &space_view.space_path)
