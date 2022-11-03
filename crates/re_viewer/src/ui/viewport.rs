@@ -419,6 +419,8 @@ fn space_view_ui(
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
 ) -> egui::Response {
+    // TODO: that's where we build our scene.
+
     if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
         let obj_tree_properties = &space_view.obj_tree_properties;
 
