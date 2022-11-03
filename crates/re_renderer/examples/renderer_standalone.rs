@@ -95,7 +95,7 @@ fn draw_views(
             let ((x, y), (width, height)) = splits[$n];
             target_cfg.resolution_in_pixel = [width as u32, height as u32];
             target_cfg.origin_in_pixel = [x as u32, y as u32];
-            draw_view2(re_ctx, device, queue, &target_cfg, stringify!($name), &skybox, &$name)
+            draw_view(re_ctx, device, queue, &target_cfg, stringify!($name), &skybox, &$name)
         }};
     }
 
@@ -142,7 +142,7 @@ fn draw_views(
         .chain(std::iter::once(composite_cmd_encoder.finish()))
 }
 
-fn draw_view2<'a, D: 'static + Drawable + Sync + Send + Clone>(
+fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
     re_ctx: &'a mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,

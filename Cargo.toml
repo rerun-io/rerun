@@ -24,17 +24,18 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-02 - configurable texture filters
-eframe = { git = "https://github.com/emilk/egui", rev = "34e6e12f002e7b477a8e8af6032097b00b96deea" }
-egui = { git = "https://github.com/emilk/egui", rev = "34e6e12f002e7b477a8e8af6032097b00b96deea" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "34e6e12f002e7b477a8e8af6032097b00b96deea" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "34e6e12f002e7b477a8e8af6032097b00b96deea" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "34e6e12f002e7b477a8e8af6032097b00b96deea" }
-# eframe = { path = "../../egui/crates/eframe" }
-# egui = { path = "../../egui/crates/egui" }
-# egui_extras = { path = "../../egui/crates/egui_extras" }
-# egui_glow = { path = "../../egui/crates/egui_glow" }
-# egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
+# 2022-11-02 - user-defined command buffers
+eframe = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
+egui = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
+
+# eframe = { path = "../egui/crates/eframe" }
+# egui = { path = "../egui/crates/egui" }
+# egui_extras = { path = "../egui/crates/egui_extras" }
+# egui_glow = { path = "../egui/crates/egui_glow" }
+# egui-wgpu = { path = "../egui/crates/egui-wgpu" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }

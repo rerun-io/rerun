@@ -259,16 +259,14 @@ impl ViewBuilder {
             .setup
             .context("ViewBuilder::setup_view wasn't called yet")?;
 
-        if setup.origin_in_pixel[0] + setup.origin_in_pixel[1] != 0 {
-            pass.set_viewport(
-                setup.origin_in_pixel[0] as f32,
-                setup.origin_in_pixel[1] as f32,
-                setup.resolution_in_pixel[0] as f32,
-                setup.resolution_in_pixel[1] as f32,
-                0.0,
-                1.0,
-            );
-        }
+        pass.set_viewport(
+            setup.origin_in_pixel[0] as f32,
+            setup.origin_in_pixel[1] as f32,
+            setup.resolution_in_pixel[0] as f32,
+            setup.resolution_in_pixel[1] as f32,
+            0.0,
+            1.0,
+        );
 
         pass.set_bind_group(
             0,
