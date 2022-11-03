@@ -40,24 +40,15 @@ impl SpacesInfo {
     pub fn new(obj_db: &ObjDb, time_ctrl: &TimeControl) -> Self {
         crate::profile_function!();
 
-        // Group the pieces of non-changing context we need while recursing
-        // to avoid exceeding the argument-count linting messages
-        struct RecurseCtx<'a> {
-            obj_db: &'a ObjDb,
-            timeline_store: Option<&'a TimelineStore<i64>>,
-            query_time: Option<i64>,
-        }
-
         fn add_children(
-            ctx: &RecurseCtx<'_>,
+            timeline_store: Option<&TimelineStore<i64>>,
+            query_time: Option<i64>,
             spaces_info: &mut SpacesInfo,
             parent_space_path: &ObjPath,
             parent_space_info: &mut SpaceInfo,
             tree: &ObjectTree,
-            spaceless_objects: &mut IntSet<ObjPath>,
         ) {
-            if let Some(transform) = query_transform(ctx.timeline_store, &tree.path, ctx.query_time)
-            {
+            if let Some(transform) = query_transform(timeline_store, &tree.path, query_time) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space_info
                     .child_spaces
@@ -71,12 +62,12 @@ impl SpacesInfo {
 
                 for child_tree in tree.children.values() {
                     add_children(
-                        ctx,
+                        timeline_store,
+                        query_time,
                         spaces_info,
                         &tree.path,
                         &mut child_space_info,
                         child_tree,
-                        spaceless_objects,
                     );
                 }
                 spaces_info
@@ -88,24 +79,15 @@ impl SpacesInfo {
 
                 for child_tree in tree.children.values() {
                     add_children(
-                        ctx,
+                        timeline_store,
+                        query_time,
                         spaces_info,
                         parent_space_path,
                         parent_space_info,
                         child_tree,
-                        spaceless_objects,
                     );
                 }
             }
-
-            // We want every SpaceView to have access to `ClassDescription`
-            // If this path is actually a class description object, store it in spaceless_objects
-            // so we can later append them to the objects for all spaces.
-            if ctx.obj_db.types.get(tree.path.obj_type_path())
-                == Some(&ObjectType::ClassDescription)
-            {
-                spaceless_objects.insert(tree.path.clone());
-            };
         }
 
         let timeline = time_ctrl.timeline();
@@ -113,16 +95,6 @@ impl SpacesInfo {
         let timeline_store = obj_db.store.get(timeline);
 
         let mut spaces_info = Self::default();
-
-        // Add_children can insert paths to spaceless objects which will then
-        // be added to all spaces when we are done with the traversal.
-        let mut spaceless_objects = IntSet::<ObjPath>::default();
-
-        let ctx = RecurseCtx {
-            obj_db,
-            timeline_store,
-            query_time,
-        };
 
         for tree in obj_db.tree.children.values() {
             // Each root object is its own space (or should be)
@@ -136,16 +108,29 @@ impl SpacesInfo {
 
             let mut space_info = SpaceInfo::default();
             add_children(
-                &ctx,
+                timeline_store,
+                query_time,
                 &mut spaces_info,
                 &tree.path,
                 &mut space_info,
                 tree,
-                &mut spaceless_objects,
             );
-
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
+
+        // The ClassDescription objects apply to all spaces, collect every
+        // object path with this type.
+        let spaceless_objects = if let Some(timeline_store) = timeline_store {
+            timeline_store
+                .iter()
+                .map(|(path, _)| path.clone())
+                .filter(|path| {
+                    obj_db.types.get(path.obj_type_path()) == Some(&ObjectType::ClassDescription)
+                })
+                .collect::<IntSet<ObjPath>>()
+        } else {
+            IntSet::<ObjPath>::default()
+        };
 
         for (obj_path, space_info) in &mut spaces_info.spaces {
             space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
