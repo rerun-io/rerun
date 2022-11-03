@@ -23,7 +23,7 @@ struct VertexOut {
 
 struct LineStripData {
     color: Vec4,
-    thickness: f32,
+    radius: f32,
     stippling: f32,
     flags: u32,
 }
@@ -34,9 +34,9 @@ fn read_strip_data(idx: i32) -> LineStripData {
 
     var data: LineStripData;
     data.color = linear_from_srgba(unpack4x8unorm_workaround(raw_data.x));
-    // raw_data.y packs { thickness: float16, flags: u8, stippling: u8 }
+    // raw_data.y packs { radius: float16, flags: u8, stippling: u8 }
     // See `gpu_data::LineStripInfo` in `lines.rs`
-    data.thickness = unpack2x16float(raw_data.y).y;
+    data.radius = unpack2x16float(raw_data.y).y;
     data.flags = ((raw_data.y >> 8u) & 0xFFu);
     data.stippling = f32((raw_data.y >> 16u) & 0xFFu) * (1.0 / 255.0);
     return data;
@@ -96,11 +96,11 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
         if is_at_quad_end {
             // The pointy end.
-            pos_data_current.pos = pos_data_quad_begin.pos + quad_dir * (strip_data.thickness * 4.0);
-            strip_data.thickness = 0.0;
+            pos_data_current.pos = pos_data_quad_begin.pos + quad_dir * (strip_data.radius * 4.0);
+            strip_data.radius = 0.0;
         } else {
             // Thick start of the triangle cap.
-            strip_data.thickness *= 2.0;
+            strip_data.radius *= 2.0;
         }
     } else if is_trailing_quad {
         quad_dir = Vec3(0.0, 0.0, 0.0);
@@ -112,7 +112,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
     let to_camera = normalize(frame.camera_position - pos_data_current.pos);
     let dir_up = normalize(cross(to_camera, quad_dir));
-    let pos = pos_data_current.pos + (strip_data.thickness * top_bottom) * dir_up;
+    let pos = pos_data_current.pos + (strip_data.radius * top_bottom) * dir_up;
 
     // Output, transform to projection space and done.
     var out: VertexOut;

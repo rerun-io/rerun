@@ -53,7 +53,7 @@
 //!          /     //      /
 //!         o      X      o
 //! ```
-//! If we want to keep the line along its skeleton with constant thickness, the top right corner
+//! If we want to keep the line along its skeleton with constant radius, the top right corner
 //! would move further and further outward as we decrease the angle of the joint. Eventually it reaches infinity!
 //! (i.e. not great to fix it up with discard in the fragment shader either)
 //!
@@ -139,7 +139,7 @@ mod gpu_data {
         pub srgb_color: [u8; 4], // alpha unused right now
         pub stippling: u8,
         pub flags: LineStripFlags,
-        pub thickness: half::f16,
+        pub radius: half::f16,
     }
     static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
 }
@@ -165,6 +165,14 @@ bitflags! {
     pub struct LineStripFlags : u8 {
         /// Puts a equilateral triangle at the end of the line strip.
         const CAP_END_TRIANGLE = 0b0000_0001;
+    }
+}
+
+impl LineStripFlags {
+    pub fn get_triangle_cap_tip_length(line_radius: f32) -> f32 {
+        // hardcoded in lines.wgsl
+        // Alternatively we could declare the entire last segment to be a tip, making the line length configurable!
+        line_radius * 4.0
     }
 }
 
@@ -312,7 +320,7 @@ impl LineDrawable {
         line_strip_info_staging.extend(line_strips.iter().map(|line_strip| {
             gpu_data::LineStripInfo {
                 srgb_color: line_strip.color,
-                thickness: half::f16::from_f32(line_strip.radius),
+                radius: half::f16::from_f32(line_strip.radius),
                 stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
                 flags: line_strip.flags,
             }
