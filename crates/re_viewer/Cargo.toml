@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = ["puffin", "wgpu"]
+default = ["puffin", "glow"]
 
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = [

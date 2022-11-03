@@ -49,7 +49,7 @@ fn import_mesh(mesh: &gltf::Mesh<'_>, buffers: &[gltf::buffer::Data]) -> anyhow:
         }
         if let Some(primitive_normals) = reader.read_normals() {
             // TODO(andreas): Texcoord (optional)
-            // TODO(andreas): Generaet normals if not present
+            // TODO(andreas): Generate normals if not present
             vertex_data.extend(primitive_normals.map(|p| MeshVertexData {
                 normal: glam::Vec3::from(p),
                 texcoord: glam::Vec2::ZERO,

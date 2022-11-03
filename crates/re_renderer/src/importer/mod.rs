@@ -10,8 +10,8 @@ pub struct ModelImportData {
     pub instances: Vec<ImportMeshInstance>,
 }
 
-// TODO(andreas) better formalize this - what is the exact relation to MeshRenderer instance
 pub struct ImportMeshInstance {
+    /// Index into [`ModelImportData::meshes`]
     pub mesh_idx: usize,
     pub transform: macaw::Conformal3,
 }
