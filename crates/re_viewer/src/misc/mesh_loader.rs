@@ -114,11 +114,15 @@ impl CpuMesh {
         }
         #[cfg(not(feature = "glow"))]
         {
-            let transform = macaw::Conformal3::from_affine3a_lossy(
-                &glam::Affine3A::from_cols_array_2d(transform),
+            let (scale, rotation, translation) =
+                glam::Affine3A::from_cols_array_2d(transform).to_scale_rotation_translation();
+            let transform = macaw::Conformal3::from_scale_rotation_translation(
+                re_renderer::importer::to_uniform_scale(scale),
+                rotation,
+                translation,
             );
             for instance in &mut slf.model_import.instances {
-                instance.transform = transform * instance.transform;
+                instance.world_from_mesh = transform * instance.world_from_mesh;
             }
             slf.bbox = slf.model_import.calculate_bounding_box();
         }
@@ -173,7 +177,7 @@ impl CpuMesh {
             model_import: re_renderer::importer::ModelImportData {
                 instances: vec![re_renderer::importer::ImportMeshInstance {
                     mesh_idx: 0,
-                    transform: macaw::Conformal3::IDENTITY,
+                    world_from_mesh: Default::default(),
                 }],
                 meshes: vec![re_renderer::mesh::MeshData {
                     label,

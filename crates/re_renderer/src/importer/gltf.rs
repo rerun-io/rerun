@@ -3,7 +3,7 @@ use anyhow::Context;
 
 use crate::mesh::{mesh_vertices::MeshVertexData, MeshData};
 
-use super::{ImportMeshInstance, ModelImportData};
+use super::{to_uniform_scale, ImportMeshInstance, ModelImportData};
 
 /// Loads both gltf and glb.
 pub fn load_gltf_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
@@ -45,7 +45,7 @@ fn import_mesh(mesh: &gltf::Mesh<'_>, buffers: &[gltf::buffer::Data]) -> anyhow:
         if let Some(primitive_positions) = reader.read_positions() {
             vertex_positions.extend(primitive_positions.map(glam::Vec3::from));
         } else {
-            anyhow::bail!("Gltf primitives muset have positions");
+            anyhow::bail!("Gltf primitives must have positions");
         }
         if let Some(primitive_normals) = reader.read_normals() {
             // TODO(andreas): Texcoord (optional)
@@ -88,20 +88,28 @@ fn gather_instances_recursive(
     transform: &macaw::Conformal3,
     gltf_mesh_idx_to_local_idx: &HashMap<usize, usize>,
 ) {
-    let node_transform = match node.transform() {
-        gltf::scene::Transform::Matrix { matrix } => macaw::Conformal3::from_affine3a_lossy(
-            &glam::Affine3A::from_mat4(glam::Mat4::from_cols_array_2d(&matrix)),
-        ),
+    let (scale, rotation, translation) = match node.transform() {
+        gltf::scene::Transform::Matrix { matrix } => {
+            let matrix = glam::Mat4::from_cols_array_2d(&matrix);
+            // gltf specifies there that matrices must be described by rotation, scale & translation only.
+            matrix.to_scale_rotation_translation()
+        }
         gltf::scene::Transform::Decomposed {
             translation,
             rotation,
             scale,
-        } => macaw::Conformal3::from_scale_rotation_translation(
-            (scale[0] + scale[1] + scale[2]) / 3.0,
+        } => (
+            glam::Vec3::from(scale),
             glam::Quat::from_array(rotation),
             glam::Vec3::from(translation),
         ),
     };
+
+    let node_transform = macaw::Conformal3::from_scale_rotation_translation(
+        to_uniform_scale(scale),
+        rotation,
+        translation,
+    );
     let transform = transform * node_transform;
 
     for child in node.children() {
@@ -112,7 +120,7 @@ fn gather_instances_recursive(
         if let Some(mesh_idx) = gltf_mesh_idx_to_local_idx.get(&mesh.index()) {
             instances.push(ImportMeshInstance {
                 mesh_idx: *mesh_idx,
-                transform,
+                world_from_mesh: transform,
             });
         }
     }

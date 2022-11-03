@@ -1,4 +1,5 @@
 use anyhow::Context;
+use itertools::Itertools;
 use macaw::Conformal3;
 
 use super::{ImportMeshInstance, ModelImportData};
@@ -22,12 +23,12 @@ pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
             let mesh = &model.mesh;
             let vertex_positions = mesh
                 .positions
-                .chunks(3)
+                .chunks_exact(3)
                 .map(|p| glam::vec3(p[0], p[1], p[2]))
                 .collect();
             let vertex_data = mesh
                 .normals
-                .chunks(3)
+                .chunks_exact(3)
                 .zip(mesh.texcoords.chunks(2))
                 .map(|(n, t)| MeshVertexData {
                     normal: glam::vec3(n[0], n[1], n[2]),
@@ -42,12 +43,12 @@ pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
                 vertex_data,
             }
         })
-        .collect::<Vec<_>>();
+        .collect_vec();
 
     let instances = (0..meshes.len())
         .map(|mesh_idx| ImportMeshInstance {
             mesh_idx,
-            transform: Conformal3::IDENTITY,
+            world_from_mesh: Conformal3::IDENTITY,
         })
         .collect();
 

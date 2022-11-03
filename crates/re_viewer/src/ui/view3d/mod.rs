@@ -471,6 +471,7 @@ fn paint_view(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
+        use itertools::Itertools;
         use re_renderer::importer::ImportMeshInstance;
         use re_renderer::mesh_manager::MeshManager;
         use re_renderer::renderer::*;
@@ -493,11 +494,17 @@ fn paint_view(
         let mut meshes = Vec::new();
         let mut instances = Vec::new();
         for mesh in &scene.meshes {
-            let base_transform = macaw::Conformal3::from_affine3a_lossy(&mesh.world_from_mesh);
+            let (scale, rotation, translation) =
+                mesh.world_from_mesh.to_scale_rotation_translation();
+            let base_transform = macaw::Conformal3::from_scale_rotation_translation(
+                re_renderer::importer::to_uniform_scale(scale),
+                rotation,
+                translation,
+            );
             instances.extend(mesh.cpu_mesh.model_import.instances.iter().map(|instance| {
                 ImportMeshInstance {
                     mesh_idx: instance.mesh_idx + mesh_base_index,
-                    transform: base_transform * instance.transform,
+                    world_from_mesh: base_transform * instance.world_from_mesh,
                 }
             }));
             meshes.extend(mesh.cpu_mesh.model_import.meshes.clone());
@@ -518,14 +525,14 @@ fn paint_view(
                             .map(|data| {
                                 MeshManager::new_frame_mesh(ctx, device, queue, data).unwrap()
                             })
-                            .collect::<Vec<_>>();
+                            .collect_vec();
                         let mesh_instances = instances
                             .iter()
                             .map(|instance| MeshInstance {
                                 mesh: meshes[instance.mesh_idx],
-                                transform: instance.transform,
+                                world_from_mesh: instance.world_from_mesh,
                             })
-                            .collect::<Vec<_>>();
+                            .collect_vec();
 
                         let view_builder = view_builder_lock
                             .as_mut()

@@ -256,7 +256,7 @@ impl Scene {
                     scene.meshes.push(MeshSource {
                         instance_id: InstanceIdHash::from_props(props),
                         mesh_id,
-                        world_from_mesh: macaw::Affine3A::IDENTITY,
+                        world_from_mesh: Default::default(),
                         cpu_mesh,
                         tint: None,
                     });

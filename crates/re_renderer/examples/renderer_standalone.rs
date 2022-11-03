@@ -15,6 +15,7 @@ use std::{f32::consts::TAU, io::Read};
 use anyhow::Context as _;
 use glam::Vec3;
 use instant::Instant;
+use itertools::Itertools;
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
@@ -99,14 +100,14 @@ fn build_meshes(
         .flat_map(|(i, p)| {
             mesh_handles.iter().map(move |mesh| MeshInstance {
                 mesh: *mesh,
-                transform: macaw::Conformal3::from_scale_rotation_translation(
+                world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
                     0.025 + (i % 10) as f32 * 0.01,
                     glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
                     *p,
                 ),
             })
         })
-        .collect::<Vec<_>>();
+        .collect_vec();
     MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap()
 }
 
@@ -444,7 +445,7 @@ impl AppState {
                 radius: rnd.gen_range(0.005..0.025),
                 srgb_color: [rnd.gen(), rnd.gen(), rnd.gen(), 255],
             })
-            .collect::<Vec<_>>();
+            .collect_vec();
 
         let meshes = {
             let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));

@@ -1,3 +1,5 @@
+use macaw::Vec3Ext;
+
 #[cfg(feature = "import-obj")]
 pub mod obj;
 
@@ -13,7 +15,8 @@ pub struct ModelImportData {
 pub struct ImportMeshInstance {
     /// Index into [`ModelImportData::meshes`]
     pub mesh_idx: usize,
-    pub transform: macaw::Conformal3,
+    /// Transforms the mesh into world coordinates.
+    pub world_from_mesh: macaw::Conformal3,
 }
 
 impl ModelImportData {
@@ -22,7 +25,17 @@ impl ModelImportData {
             self.meshes[instance.mesh_idx]
                 .vertex_positions
                 .iter()
-                .map(|p| instance.transform.transform_point3(*p))
+                .map(|p| instance.world_from_mesh.transform_point3(*p))
         }))
+    }
+}
+
+pub fn to_uniform_scale(scale: glam::Vec3) -> f32 {
+    if scale.has_equal_components(0.0) {
+        scale.x
+    } else {
+        let uniform_scale = (scale.x * scale.y * scale.z).cbrt();
+        re_log::warn!("mesh has non-uniform scale ({:?}). This is currently not supported. Using geometric mean {}", scale,uniform_scale);
+        uniform_scale
     }
 }

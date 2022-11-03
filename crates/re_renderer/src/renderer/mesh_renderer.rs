@@ -81,7 +81,7 @@ impl Drawable for MeshDrawable {
 
 pub struct MeshInstance {
     pub mesh: MeshHandle,
-    pub transform: macaw::Conformal3,
+    pub world_from_mesh: macaw::Conformal3,
 }
 
 impl MeshDrawable {
@@ -136,8 +136,8 @@ impl MeshDrawable {
             ) {
                 count += 1;
                 gpu_instance.translation_and_scale =
-                    instance.transform.translation_and_scale().into();
-                gpu_instance.rotation = instance.transform.rotation().into();
+                    instance.world_from_mesh.translation_and_scale().into();
+                gpu_instance.rotation = instance.world_from_mesh.rotation().into();
             }
 
             batches.push(MeshBatch {

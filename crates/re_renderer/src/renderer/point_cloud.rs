@@ -16,6 +16,7 @@
 use std::num::NonZeroU32;
 
 use bytemuck::Zeroable;
+use itertools::Itertools;
 use smallvec::smallvec;
 
 use crate::{
@@ -150,12 +151,12 @@ impl PointCloudDrawable {
                 radius: point.radius,
             })
             .chain(std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_points_zeroed))
-            .collect::<Vec<_>>();
+            .collect_vec();
         let color_staging = points
             .iter()
             .map(|point| point.srgb_color)
             .chain(std::iter::repeat([0, 0, 0, 0]).take(num_points_zeroed))
-            .collect::<Vec<_>>();
+            .collect_vec();
 
         // Upload data from staging buffers to gpu.
         let size = wgpu::Extent3d {
