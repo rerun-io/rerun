@@ -1,5 +1,3 @@
-use std::num::NonZeroU64;
-
 use crate::{
     resource_pools::{
         bind_group_layout_pool::*,
@@ -52,11 +50,10 @@ impl GlobalBindings {
                             ty: wgpu::BindingType::Buffer {
                                 ty: wgpu::BufferBindingType::Uniform,
                                 has_dynamic_offset: false,
-                                min_binding_size: NonZeroU64::new(std::mem::size_of::<
-                                    FrameUniformBuffer,
-                                >(
-                                )
-                                    as _),
+                                min_binding_size: (std::mem::size_of::<FrameUniformBuffer>()
+                                    as u64)
+                                    .try_into()
+                                    .ok(),
                             },
                             count: None,
                         },

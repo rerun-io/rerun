@@ -10,7 +10,7 @@
 //! cargo run-wasm --example renderer_standalone
 //! ```
 
-use std::f32::consts::TAU;
+use std::{f32::consts::TAU, io::Read};
 
 use anyhow::Context as _;
 use glam::Vec3;
@@ -19,6 +19,8 @@ use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
+    mesh::{mesh_vertices::MeshVertexData, MeshData},
+    mesh_manager::{MeshHandle, MeshManager},
     renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
     *,
@@ -71,7 +73,7 @@ fn draw_views(
         seconds_since_startup.sin(),
         0.5,
         seconds_since_startup.cos(),
-    ) * 15.0;
+    ) * 10.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
     let mut target_cfg = TargetConfiguration {
         resolution_in_pixel: resolution,
@@ -86,8 +88,9 @@ fn draw_views(
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
+    let meshes = build_meshes(re_ctx, device, queue, &state.meshes, seconds_since_startup);
 
-    let splits = split_resolution(resolution, 1, 3).collect::<Vec<_>>();
+    let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
     #[rustfmt::skip]
     macro_rules! draw {
@@ -102,7 +105,8 @@ fn draw_views(
     let view_builders = [
         draw!(triangle @ split #0),
         draw!(lines @ split #1),
-        draw!(point_cloud @ split #2),
+        draw!(meshes @ split #2),
+        draw!(point_cloud @ split #3),
     ];
 
     let mut composite_cmd_encoder =
@@ -168,6 +172,58 @@ fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
     (view_builder, encoder)
 }
 
+fn build_meshes(
+    re_ctx: &mut RenderContext,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    mesh_handles: &[MeshHandle],
+    seconds_since_startup: f32,
+) -> MeshDrawable {
+    let mesh_instances = lorenz_points(10.0)
+        .iter()
+        .enumerate()
+        .flat_map(|(i, p)| {
+            mesh_handles.iter().map(move |mesh| MeshInstance {
+                mesh: *mesh,
+                transformation: macaw::Conformal3::from_scale_rotation_translation(
+                    0.025 + (i % 10) as f32 * 0.01,
+                    glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
+                    *p,
+                ),
+            })
+        })
+        .collect::<Vec<_>>();
+    MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap()
+}
+
+fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
+    // Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
+    fn lorenz_integrate(cur: glam::Vec3, dt: f32) -> glam::Vec3 {
+        let sigma: f32 = 10.0;
+        let rho: f32 = 28.0;
+        let beta: f32 = 8.0 / 3.0;
+
+        cur + glam::vec3(
+            sigma * (cur.y - cur.x),
+            cur.x * (rho - cur.z) - cur.y,
+            cur.x * cur.y - beta * cur.z,
+        ) * dt
+    }
+
+    // slow buildup and reset
+    let num_points = (((seconds_since_startup * 0.05).fract() * 10000.0) as u32).max(1);
+
+    let mut latest_point = glam::vec3(-0.1, 0.001, 0.0);
+    std::iter::repeat_with(move || {
+        latest_point = lorenz_integrate(latest_point, 0.005);
+        latest_point
+    })
+    // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
+    .map(|p| (p + glam::vec3(-5.0, 0.0, -23.0)) * 0.6)
+    .take(num_points as _)
+    .collect()
+}
+
 fn build_lines(
     re_ctx: &mut RenderContext,
     device: &wgpu::Device,
@@ -175,34 +231,7 @@ fn build_lines(
     seconds_since_startup: f32,
 ) -> LineDrawable {
     // Calculate some points that look nice for an animated line.
-    let lorenz_points = {
-        // Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
-        fn lorenz_integrate(cur: glam::Vec3, dt: f32) -> glam::Vec3 {
-            let sigma: f32 = 10.0;
-            let rho: f32 = 28.0;
-            let beta: f32 = 8.0 / 3.0;
-
-            cur + glam::vec3(
-                sigma * (cur.y - cur.x),
-                cur.x * (rho - cur.z) - cur.y,
-                cur.x * cur.y - beta * cur.z,
-            ) * dt
-        }
-
-        // slow buildup and reset
-        let num_points = (((seconds_since_startup * 0.05).fract() * 10000.0) as u32).max(1);
-
-        let mut latest_point = glam::vec3(-0.1, 0.001, 0.0);
-        std::iter::repeat_with(move || {
-            latest_point = lorenz_integrate(latest_point, 0.005);
-            latest_point
-        })
-        // lorenz system is sensitive to start conditions (.. that's the whole point), so transform after the fact
-        .map(|p| (p + glam::vec3(-5.0, 0.0, -23.0)) * 0.6)
-        .take(num_points as _)
-        .collect::<Vec<_>>()
-    };
-
+    let lorenz_points = lorenz_points(seconds_since_startup);
     LineDrawable::new(
         re_ctx,
         device,
@@ -309,7 +338,7 @@ impl Application {
         };
         surface.configure(&device, &surface_config);
 
-        let re_ctx = RenderContext::new(
+        let mut re_ctx = RenderContext::new(
             &device,
             &queue,
             RenderContextConfig {
@@ -317,6 +346,9 @@ impl Application {
                 hardware_tier,
             },
         );
+
+        let state = AppState::new(&mut re_ctx, &device, &queue);
+
         Ok(Self {
             event_loop,
             window,
@@ -325,7 +357,7 @@ impl Application {
             surface,
             surface_config,
             re_ctx,
-            state: AppState::new(),
+            state,
         })
     }
 
@@ -452,12 +484,15 @@ impl Time {
 struct AppState {
     time: Time,
 
+    /// Lazily loaded mesh.
+    meshes: Vec<MeshHandle>,
+
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,
 }
 
 impl AppState {
-    fn new() -> Self {
+    fn new(re_ctx: &mut RenderContext, device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -2.0_f32..2.0_f32;
         let random_points = (0..500000)
@@ -472,11 +507,63 @@ impl AppState {
             })
             .collect::<Vec<_>>();
 
+        let meshes = {
+            let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
+            let mut zip = zip::ZipArchive::new(reader).unwrap();
+            let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
+            let mut obj_data = Vec::new();
+            zipped_obj.read_to_end(&mut obj_data).unwrap();
+            let (models, _materials) = tobj::load_obj_buf(
+                &mut std::io::Cursor::new(&obj_data),
+                &tobj::LoadOptions {
+                    single_index: true,
+                    triangulate: true,
+                    ..Default::default()
+                },
+                |_material_path| Err(tobj::LoadError::MaterialParseError),
+            )
+            .expect("failed loading obj");
+            models
+                .iter()
+                .map(|mesh| {
+                    let mesh = &mesh.mesh;
+                    let vertex_positions = mesh
+                        .positions
+                        .chunks(3)
+                        .map(|p| glam::vec3(p[0], p[1], p[2]))
+                        .collect();
+                    let vertex_data = mesh
+                        .normals
+                        .chunks(3)
+                        .zip(mesh.texcoords.chunks(2))
+                        .map(|(n, t)| MeshVertexData {
+                            normal: glam::vec3(n[0], n[1], n[2]),
+                            texcoord: glam::vec2(t[0], t[1]),
+                        })
+                        .collect();
+
+                    MeshManager::new_long_lived_mesh(
+                        re_ctx,
+                        device,
+                        queue,
+                        &MeshData {
+                            label: "rerun logo".into(),
+                            indices: mesh.indices.clone(),
+                            vertex_positions,
+                            vertex_data,
+                        },
+                    )
+                    .unwrap()
+                })
+                .collect()
+        };
+
         Self {
             time: Time {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
             },
+            meshes,
             random_points,
         }
     }
@@ -493,6 +580,9 @@ fn main() {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
+        if std::env::var("RUST_LOG").is_err() {
+            std::env::set_var("RUST_LOG", "info,wgpu_core=off");
+        }
         tracing_subscriber::fmt::init();
 
         // Set size to a common physical resolution as a comparable start-up default.

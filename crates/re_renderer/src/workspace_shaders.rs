@@ -30,8 +30,23 @@ pub fn init() {
     }
 
     {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/instanced_mesh.wgsl");
+        fs.create_file(
+            &virtpath,
+            include_str!("../shader/instanced_mesh.wgsl").into(),
+        )
+        .unwrap();
+    }
+
+    {
         let virtpath = ::std::path::Path::new("crates/re_renderer/shader/lines.wgsl");
         fs.create_file(&virtpath, include_str!("../shader/lines.wgsl").into())
+            .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/mesh_vertex.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/mesh_vertex.wgsl").into())
             .unwrap();
     }
 
@@ -76,6 +91,15 @@ pub fn init() {
         fs.create_file(
             &virtpath,
             include_str!("../shader/utils/encoding.wgsl").into(),
+        )
+        .unwrap();
+    }
+
+    {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/utils/quaternion.wgsl");
+        fs.create_file(
+            &virtpath,
+            include_str!("../shader/utils/quaternion.wgsl").into(),
         )
         .unwrap();
     }
