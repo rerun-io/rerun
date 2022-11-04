@@ -1,7 +1,5 @@
 use super::scene::MeshSourceData;
 use crate::mesh_loader::CpuMesh;
-#[cfg(feature = "glow")]
-use egui::util::hash;
 use re_log_types::MeshFormat;
 use std::sync::Arc;
 
@@ -46,7 +44,7 @@ impl CpuMeshCache {
     #[cfg(feature = "glow")]
     pub fn cylinder(&mut self) -> (u64, Arc<CpuMesh>) {
         crate::profile_function!();
-        let mesh_id = hash("CYLINDER_MESH");
+        let mesh_id = egui::util::hash("CYLINDER_MESH");
         let mesh = self
             .0
             .entry(mesh_id)
@@ -63,7 +61,7 @@ impl CpuMeshCache {
     #[cfg(feature = "glow")]
     pub fn cone(&mut self) -> (u64, Arc<CpuMesh>) {
         crate::profile_function!();
-        let mesh_id = hash("CONE_MESH");
+        let mesh_id = egui::util::hash("CONE_MESH");
         let mesh = self
             .0
             .entry(mesh_id)

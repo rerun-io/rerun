@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use anyhow::Context;
+use anyhow::Context as _;
 
 use crate::mesh::{mesh_vertices::MeshVertexData, MeshData};
 
@@ -64,7 +64,7 @@ fn import_mesh(mesh: &gltf::Mesh<'_>, buffers: &[gltf::buffer::Data]) -> anyhow:
         }
 
         if vertex_positions.len() != vertex_data.len() {
-            anyhow::bail!("Gltf primitives must have indices");
+            anyhow::bail!("Number of positions was not equal number of other vertex data.");
         }
 
         // TODO(andreas): Material
