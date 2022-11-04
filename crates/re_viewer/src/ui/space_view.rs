@@ -7,6 +7,7 @@ use re_log_types::{MsgId, Tensor, Transform};
 
 use crate::misc::{space_info::*, ViewerContext};
 
+use super::view2d::Scene2d;
 use super::view3d::{scene::Scene as Scene3d, scene::Size, SpaceCamera};
 use super::views::{
     view_tensor, view_text_entry, SceneTensor, SceneText, TensorViewState, ViewTextEntryState,
@@ -30,7 +31,7 @@ enum ViewCategory {
 pub(crate) struct SpaceView {
     pub name: String,
     pub space_path: ObjPath,
-    view_state: ViewState,
+    pub view_state: ViewState,
 
     /// In case we are a mix of 2d/3d/tensor/text, we show what?
     selected_category: ViewCategory,
@@ -82,7 +83,7 @@ impl SpaceView {
             1 => {
                 if has_2d {
                     self.view_state
-                        .ui_2d(ctx, ui, &self.space_path, time_objects)
+                        .ui_2d(ctx, ui, &self.space_path, &scene.two_d)
                 } else if has_3d {
                     self.view_state.ui_3d(
                         ctx,
@@ -130,7 +131,7 @@ impl SpaceView {
                         }
                         ViewCategory::TwoD => {
                             self.view_state
-                                .ui_2d(ctx, ui, &self.space_path, time_objects);
+                                .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
                         }
                         ViewCategory::ThreeD => {
                             self.view_state.ui_3d(
@@ -155,7 +156,7 @@ impl SpaceView {
 
 /// Camera position and similar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-struct ViewState {
+pub(crate) struct ViewState {
     state_2d: crate::view2d::State2D,
     state_3d: crate::view3d::State3D,
     state_tensor: Option<TensorViewState>,
@@ -168,9 +169,9 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
-        objects: &Objects<'_>,
+        scene: &Scene2d,
     ) -> egui::Response {
-        crate::view2d::view_2d(ctx, ui, &mut self.state_2d, Some(space), objects)
+        crate::view2d::view_2d(ctx, ui, &mut self.state_2d, Some(space), scene)
     }
 
     fn ui_3d(
@@ -288,41 +289,32 @@ pub struct Scene {
     pub tensor: SceneTensor,
 }
 
-impl Scene {
-    // TODO: this is temporary while we transition out of Objects
-    pub(crate) fn load_objects(
+impl ViewState {
+    // TODO: temporary
+    pub(crate) fn load_scene_from_objects(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        objects: &re_data_store::Objects<'_>,
+        time_objects: &re_data_store::Objects<'_>,
+        sticky_objects: &re_data_store::Objects<'_>,
+        scene: &mut Scene,
     ) {
-        self.two_d.load_objects(ctx, objects);
-        self.three_d.load_objects(ctx, objects);
-        self.text.load_objects(ctx, objects);
-        self.tensor.load_objects(ctx, objects);
-    }
-}
+        let Scene {
+            two_d,
+            three_d,
+            text,
+            tensor,
+        } = scene;
 
-impl Scene {}
+        two_d.load_objects(ctx, &self.state_2d, time_objects);
+        two_d.load_objects(ctx, &self.state_2d, sticky_objects);
 
-// --- 2D ---
+        three_d.load_objects(ctx, time_objects);
+        three_d.load_objects(ctx, sticky_objects);
 
-#[derive(Default)]
-pub struct Scene2d {
-    // TODO
-}
+        text.load_objects(ctx, time_objects);
+        text.load_objects(ctx, sticky_objects);
 
-impl Scene2d {
-    // TODO: this is temporary while we transition out of Objects
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        objects: &re_data_store::Objects<'_>,
-    ) {
-    }
-}
-
-impl Scene2d {
-    pub fn is_empty(&self) -> bool {
-        true
+        tensor.load_objects(ctx, time_objects);
+        tensor.load_objects(ctx, sticky_objects);
     }
 }

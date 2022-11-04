@@ -486,10 +486,13 @@ fn space_view_ui(
         // Step 2: drop Objects entirely.
         //
         // Let's start with text entries.
-
         let mut scene = Scene::default();
-        scene.load_objects(ctx, &time_objects);
-        scene.load_objects(ctx, &sticky_objects);
+        space_view.view_state.load_scene_from_objects(
+            ctx,
+            &time_objects,
+            &sticky_objects,
+            &mut scene,
+        );
 
         space_view.scene_ui(
             ctx,

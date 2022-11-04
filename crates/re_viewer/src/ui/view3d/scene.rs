@@ -656,11 +656,29 @@ impl Scene {
         });
     }
 
+    pub fn clear(&mut self) {
+        let Self {
+            points,
+            line_segments,
+            meshes,
+            labels,
+        } = self;
+
+        points.clear();
+        line_segments.clear();
+        meshes.clear();
+        labels.clear();
+    }
+
     pub fn is_empty(&self) -> bool {
-        self.points.is_empty()
-            && self.line_segments.is_empty()
-            && self.meshes.is_empty()
-            && self.labels.is_empty()
+        let Self {
+            points,
+            line_segments,
+            meshes,
+            labels,
+        } = self;
+
+        points.is_empty() && line_segments.is_empty() && meshes.is_empty() && labels.is_empty()
     }
 
     #[cfg(feature = "wgpu")]

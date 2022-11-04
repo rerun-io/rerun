@@ -3,9 +3,223 @@ use egui::{
     epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
     Shape, Stroke, TextFormat, TextStyle, Vec2,
 };
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
+use re_data_store::{ClassDescriptionMap, InstanceId, InstanceIdHash, ObjPath};
+use re_log_types::{MsgId, Tensor};
 
 use crate::{legend::find_legend, misc::HoveredSpace, Selection, ViewerContext};
+
+// --- Scene ---
+
+pub struct Image {
+    pub msg_id: MsgId,
+    pub instance_hash: InstanceIdHash,
+
+    pub tensor: Tensor,
+    /// If this is a depth map, how long is a meter?
+    ///
+    /// For instance, with a `u16` dtype one might have
+    /// `meter == 1000.0` for millimeter precision
+    /// up to a ~65m range.
+    pub meter: Option<f32>,
+    pub paint_props: ObjectPaintProperties,
+    // /// A thing that provides additional semantic context for your dtype.
+    // pub legend: Option<ClassDescriptionMap<'static>>,
+}
+
+pub struct BBox2D {
+    pub instance_hash: InstanceIdHash,
+
+    pub bbox: re_log_types::BBox2D,
+    pub stroke_width: Option<f32>,
+    pub label: Option<String>,
+    pub paint_props: ObjectPaintProperties,
+}
+
+pub struct LineSegments2D {
+    pub instance_hash: InstanceIdHash,
+
+    /// Connected pair-wise even-odd.
+    pub points: Vec<Pos2>,
+    pub stroke_width: Option<f32>,
+    pub paint_props: ObjectPaintProperties,
+}
+
+pub struct Point2D {
+    pub instance_hash: InstanceIdHash,
+
+    pub pos: Pos2,
+    pub radius: Option<f32>,
+    pub paint_props: ObjectPaintProperties,
+}
+
+/// A 2D scene, with everything needed to render it.
+pub struct Scene2d {
+    /// Estimated bounding box of all data. Accumulated.
+    pub bbox: Rect,
+
+    pub images: Vec<Image>,
+    pub bboxes: Vec<BBox2D>,
+    pub line_segments: Vec<LineSegments2D>,
+    pub points: Vec<Point2D>,
+}
+
+impl Default for Scene2d {
+    fn default() -> Self {
+        Self {
+            bbox: Rect::NOTHING,
+            images: Default::default(),
+            bboxes: Default::default(),
+            line_segments: Default::default(),
+            points: Default::default(),
+        }
+    }
+}
+
+impl Scene2d {
+    // TODO: this is temporary while we transition out of Objects
+    pub(crate) fn load_objects(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        state: &State2D,
+        objects: &re_data_store::Objects<'_>,
+    ) {
+        // TODO: that is most definitely an issue.. no? maybe not
+        // We introduce a 1-frame delay!
+        let hovered_instance_id_hash = state
+            .hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, InstanceId::hash);
+
+        self.bbox = self.bbox.union(crate::misc::calc_bbox_2d(objects));
+
+        self.images
+            .extend(objects.image.iter().filter_map(|(props, img)| {
+                let &re_data_store::Image {
+                    tensor,
+                    meter,
+                    legend,
+                } = img;
+                (tensor.shape.len() >= 2).then_some({
+                    // TODO: not sure how we handle that cleanly yet.
+                    // let legend = find_legend(legend, objects);
+
+                    Image {
+                        msg_id: props.msg_id.clone(),
+                        instance_hash: InstanceIdHash::from_props(props),
+                        tensor: tensor.clone(), // shallow
+                        meter: meter.clone(),
+                        // legend: legend.cloned(), // shallow
+                        paint_props: paint_properties(
+                            ctx,
+                            &hovered_instance_id_hash,
+                            props,
+                            DefaultColor::White,
+                            &None,
+                        ),
+                    }
+                })
+            }));
+
+        self.bboxes
+            .extend(objects.bbox2d.iter().map(|(props, bbox)| {
+                let &re_data_store::BBox2D {
+                    bbox,
+                    stroke_width,
+                    label,
+                } = bbox;
+                let paint_props = paint_properties(
+                    ctx,
+                    &hovered_instance_id_hash,
+                    props,
+                    DefaultColor::Random,
+                    &stroke_width,
+                );
+
+                BBox2D {
+                    instance_hash: InstanceIdHash::from_props(props),
+                    bbox: bbox.clone(),
+                    stroke_width,
+                    label: label.map(ToOwned::to_owned),
+                    paint_props,
+                }
+            }));
+
+        self.line_segments
+            .extend(objects.line_segments2d.iter().map(|(props, segments)| {
+                let &re_data_store::LineSegments2D {
+                    points,
+                    stroke_width,
+                } = segments;
+                let paint_props = paint_properties(
+                    ctx,
+                    &hovered_instance_id_hash,
+                    props,
+                    DefaultColor::Random,
+                    &stroke_width,
+                );
+
+                LineSegments2D {
+                    instance_hash: InstanceIdHash::from_props(props),
+                    points: points.into_iter().map(|p| Pos2::new(p[0], p[1])).collect(),
+                    stroke_width,
+                    paint_props,
+                }
+            }));
+
+        self.points
+            .extend(objects.point2d.iter().map(|(props, point)| {
+                let &re_data_store::Point2D { pos, radius } = point;
+                let paint_props = paint_properties(
+                    ctx,
+                    &hovered_instance_id_hash,
+                    props,
+                    DefaultColor::Random,
+                    &None,
+                );
+
+                Point2D {
+                    instance_hash: InstanceIdHash::from_props(props),
+                    pos: Pos2::new(pos[0], pos[1]),
+                    radius,
+                    paint_props,
+                }
+            }));
+    }
+}
+
+impl Scene2d {
+    pub fn clear(&mut self) {
+        let Self {
+            bbox,
+            images,
+            bboxes,
+            line_segments,
+            points,
+        } = self;
+
+        *bbox = Rect::NOTHING;
+        images.clear();
+        bboxes.clear();
+        line_segments.clear();
+        points.clear();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            bbox: _,
+            images,
+            bboxes,
+            line_segments,
+            points,
+        } = self;
+
+        images.is_empty() && bboxes.is_empty() && line_segments.is_empty() && points.is_empty()
+    }
+}
+
+// --- UI state & entrypoint ---
+
+// --- UI impl ---
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -216,7 +430,7 @@ pub(crate) fn view_2d(
     ui: &mut egui::Ui,
     state: &mut State2D,
     space: Option<&ObjPath>,
-    objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
+    scene: &Scene2d,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -242,7 +456,7 @@ pub(crate) fn view_2d(
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
-        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, objects)
+        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, scene)
     });
 
     // Update the scroll area based on the computed offset
@@ -259,12 +473,9 @@ fn view_2d_scrollable(
     ui: &mut egui::Ui,
     state: &mut State2D,
     space: Option<&ObjPath>,
-    objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
+    scene: &Scene2d,
 ) -> egui::Response {
-    state.scene_bbox_accum = state
-        .scene_bbox_accum
-        .union(crate::misc::calc_bbox_2d(objects));
-
+    state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bbox);
     let scene_bbox = state.scene_bbox_accum;
 
     let (mut response, painter) = ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
@@ -273,10 +484,10 @@ fn view_2d_scrollable(
     let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
     let space_from_ui = ui_from_space.inverse();
 
-    // ------------------------------------------------------------------------
     state.update(&response, space_from_ui, available_size);
 
     // ------------------------------------------------------------------------
+
     if let Some(instance_id) = &state.hovered_instance {
         if response.clicked() {
             ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
@@ -302,7 +513,7 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    let total_num_images = objects.image.len();
+    let total_num_images = scene.images.len();
 
     let hover_radius = 5.0; // TODO(emilk): from egui?
 
@@ -310,10 +521,10 @@ fn view_2d_scrollable(
     let mut closest_instance_id_hash = InstanceIdHash::NONE;
     let pointer_pos = response.hover_pos();
 
-    let mut check_hovering = |props: &re_data_store::InstanceProps<'_>, dist: f32| {
+    let mut check_hovering = |instance_hash, dist: f32| {
         if dist <= closest_dist {
             closest_dist = dist;
-            closest_instance_id_hash = InstanceIdHash::from_props(props);
+            closest_instance_id_hash = instance_hash;
         }
     };
 
@@ -324,30 +535,22 @@ fn view_2d_scrollable(
         .as_ref()
         .map_or(InstanceIdHash::NONE, InstanceId::hash);
 
-    for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
-        let re_data_store::Image {
+    for (image_idx, img) in scene.images.iter().enumerate() {
+        let Image {
+            msg_id,
+            instance_hash,
             tensor,
             meter,
-            legend,
-        } = obj;
-        let paint_props = paint_properties(
-            ctx,
-            &hovered_instance_id_hash,
-            props,
-            DefaultColor::White,
-            &None,
-        );
+            paint_props,
+        } = img;
 
-        if tensor.shape.len() < 2 {
-            continue; // not an image. don't know how to display this!
-        }
-
-        let legend = find_legend(*legend, objects);
+        // let legend = find_legend(*legend, objects); // TODO
 
         let tensor_view = ctx
             .cache
             .image
-            .get_view_with_legend(props.msg_id, tensor, &legend);
+            // .get_view_with_legend(msg_id, tensor, &legend);
+            .get_view_with_legend(msg_id, tensor, todo!());
 
         let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
 
@@ -373,18 +576,19 @@ fn view_2d_scrollable(
         if let Some(pointer_pos) = pointer_pos {
             let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
-            check_hovering(props, dist);
+            check_hovering(*instance_hash, dist);
 
-            if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
-                response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
-                    ui,
-                    response,
-                    &tensor_view,
-                    rect_in_ui,
-                    pointer_pos,
-                    *meter,
-                );
-            }
+            // TODO
+            // if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
+            //     response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
+            //         ui,
+            //         response,
+            //         &tensor_view,
+            //         rect_in_ui,
+            //         pointer_pos,
+            //         *meter,
+            //     );
+            // }
 
             if let Some(meter) = *meter {
                 let pos_in_image = space_from_ui.transform_pos(pointer_pos);
@@ -399,19 +603,14 @@ fn view_2d_scrollable(
         }
     }
 
-    for (props, obj) in objects.bbox2d.iter() {
-        let re_data_store::BBox2D {
+    for bbox in scene.bboxes.iter() {
+        let BBox2D {
+            instance_hash,
             bbox,
-            stroke_width,
+            stroke_width: _,
             label,
-        } = obj;
-        let paint_props = paint_properties(
-            ctx,
-            &hovered_instance_id_hash,
-            props,
-            DefaultColor::Random,
-            stroke_width,
-        );
+            paint_props,
+        } = bbox;
 
         let rect_in_ui =
             ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
@@ -470,21 +669,16 @@ fn view_2d_scrollable(
             }
         }
 
-        check_hovering(props, hover_dist);
+        check_hovering(*instance_hash, hover_dist);
     }
 
-    for (props, obj) in objects.line_segments2d.iter() {
-        let re_data_store::LineSegments2D {
+    for segments in scene.line_segments.iter() {
+        let LineSegments2D {
+            instance_hash,
             points,
-            stroke_width,
-        } = obj;
-        let paint_props = paint_properties(
-            ctx,
-            &hovered_instance_id_hash,
-            props,
-            DefaultColor::Random,
-            stroke_width,
-        );
+            stroke_width: _,
+            paint_props,
+        } = segments;
 
         let mut min_dist_sq = f32::INFINITY;
 
@@ -501,23 +695,21 @@ fn view_2d_scrollable(
             }
         }
 
-        check_hovering(props, min_dist_sq.sqrt());
+        check_hovering(*instance_hash, min_dist_sq.sqrt());
     }
 
-    for (props, obj) in objects.point2d.iter() {
-        let re_data_store::Point2D { pos, radius } = obj;
-        let paint_props = paint_properties(
-            ctx,
-            &hovered_instance_id_hash,
-            props,
-            DefaultColor::Random,
-            &None,
-        );
+    for point in scene.points.iter() {
+        let Point2D {
+            instance_hash,
+            pos,
+            radius,
+            paint_props,
+        } = point;
 
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
 
-        let pos_in_ui = ui_from_space.transform_pos(pos2(pos[0], pos[1]));
+        let pos_in_ui = ui_from_space.transform_pos(*pos);
         shapes.push(Shape::circle_filled(
             pos_in_ui,
             radius + 1.0,
@@ -530,7 +722,7 @@ fn view_2d_scrollable(
         ));
 
         if let Some(pointer_pos) = pointer_pos {
-            check_hovering(props, pos_in_ui.distance(pointer_pos));
+            check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));
         }
     }
 
@@ -633,10 +825,10 @@ fn show_projections_from_3d_space(
 
 // ------------------------------------------------------------------------
 
-struct ObjectPaintProperties {
-    is_hovered: bool,
-    bg_stroke: Stroke,
-    fg_stroke: Stroke,
+pub struct ObjectPaintProperties {
+    pub is_hovered: bool,
+    pub bg_stroke: Stroke,
+    pub fg_stroke: Stroke,
 }
 
 impl ObjectPaintProperties {
