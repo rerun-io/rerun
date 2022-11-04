@@ -97,7 +97,7 @@ impl MeshManager {
                 })?;
 
                 let resource_gpu = GpuMesh::new(&mut ctx.resource_pools, device, queue, resource);
-                slotmap_gpu.insert(key, resource_gpu.clone()).unwrap();
+                slotmap_gpu.insert(key, resource_gpu.clone());
                 resource_gpu
             }
         })

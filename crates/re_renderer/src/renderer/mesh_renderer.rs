@@ -99,25 +99,24 @@ impl MeshDrawable {
         );
 
         // Group by mesh to facilitate instancing.
-        // Need to iterate twice because of resource pool borrowing.
-        let instance_groups = instances.iter().group_by(|instance| instance.mesh);
 
         // TODO(andreas): Use a temp allocator
-        let instance_buffer = {
-            let instance_buffer_size =
-                (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
-            let instance_buffer = ctx
-                .resource_pools
-                .buffers
-                .alloc(
-                    device,
-                    &BufferDesc {
-                        label: "MeshDrawable instance buffer".into(),
-                        size: instance_buffer_size,
-                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                    },
-                )
-                .clone();
+        let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
+        let instance_buffer = ctx
+            .resource_pools
+            .buffers
+            .alloc(
+                device,
+                &BufferDesc {
+                    label: "MeshDrawable instance buffer".into(),
+                    size: instance_buffer_size,
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                },
+            )
+            .clone();
+
+        let mut mesh_runs = Vec::new();
+        {
             let mut instance_buffer_staging = queue.write_buffer_with(
                 &ctx.resource_pools
                     .buffers
@@ -131,7 +130,8 @@ impl MeshDrawable {
                 bytemuck::cast_slice_mut(&mut instance_buffer_staging);
 
             let mut num_processed_instances = 0;
-            for (_, instances) in &instance_groups {
+            // Need to iterate twice because of resource pool borrowing.
+            for (mesh, instances) in &instances.iter().group_by(|instance| instance.mesh) {
                 let mut count = 0;
                 for (instance, gpu_instance) in instances.zip(
                     instance_buffer_staging
@@ -144,25 +144,18 @@ impl MeshDrawable {
                     gpu_instance.rotation = instance.world_from_mesh.rotation().into();
                 }
                 num_processed_instances += count;
+                mesh_runs.push((mesh, count as u32));
             }
             assert_eq!(num_processed_instances, instances.len());
-
-            instance_buffer
-        };
+        }
 
         // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
         // Also, it helps failing early if something is wrong with a mesh!
-        let batches = {
-            let mut batches = Vec::new();
-            for (mesh_handle, instances) in &instance_groups {
-                let mesh = MeshManager::to_gpu(ctx, device, queue, mesh_handle)?;
-                batches.push(MeshBatch {
-                    mesh,
-                    count: instances.count() as u32,
-                });
-            }
-            batches
-        };
+        let mut batches = Vec::with_capacity(mesh_runs.len());
+        for (mesh_handle, count) in mesh_runs.into_iter() {
+            let mesh = MeshManager::to_gpu(ctx, device, queue, mesh_handle)?;
+            batches.push(MeshBatch { mesh, count });
+        }
 
         Ok(MeshDrawable {
             batches,
