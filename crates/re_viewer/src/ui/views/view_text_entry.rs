@@ -73,11 +73,11 @@ impl SceneText {
     }
 }
 
-// --- UI state ---
+// --- UI state & entrypoint ---
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct TextEntryState {
+pub struct ViewTextEntryState {
     /// Keeps track of the latest time selection made by the user.
     ///
     /// We need this because we want the user to be able to manually scroll the
@@ -86,9 +86,9 @@ pub struct TextEntryState {
 }
 
 pub(crate) fn view_text_entry(
-    ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    state: &mut TextEntryState,
+    ui: &mut egui::Ui,
+    state: &mut ViewTextEntryState,
     scene: &SceneText,
 ) -> egui::Response {
     crate::profile_function!();

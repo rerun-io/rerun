@@ -8,7 +8,9 @@ use re_log_types::{MsgId, Tensor, Transform};
 use crate::misc::{space_info::*, ViewerContext};
 
 use super::view3d::{scene::Scene as Scene3d, scene::Size, SpaceCamera};
-use super::views::SceneText;
+use super::views::{
+    view_tensor, view_text_entry, SceneTensor, SceneText, TensorViewState, ViewTextEntryState,
+};
 
 // ----------------------------------------------------------------------------
 
@@ -154,14 +156,10 @@ impl SpaceView {
 /// Camera position and similar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 struct ViewState {
-    // per space
     state_2d: crate::view2d::State2D,
-
     state_3d: crate::view3d::State3D,
-
-    state_tensor: Option<crate::view_tensor::TensorViewState>,
-
-    state_text_entry: super::views::TextEntryState,
+    state_tensor: Option<TensorViewState>,
+    state_text_entry: ViewTextEntryState,
 }
 
 impl ViewState {
@@ -206,9 +204,9 @@ impl ViewState {
         let tensor = &scene.tensors[0];
         let state_tensor = self
             .state_tensor
-            .get_or_insert_with(|| crate::ui::view_tensor::TensorViewState::create(tensor));
+            .get_or_insert_with(|| TensorViewState::create(tensor));
         ui.vertical(|ui| {
-            crate::view_tensor::view_tensor(ui, state_tensor, tensor);
+            view_tensor(ui, state_tensor, tensor);
         })
         .response
     }
@@ -219,7 +217,7 @@ impl ViewState {
         ui: &mut egui::Ui,
         scene: &SceneText,
     ) -> egui::Response {
-        super::views::view_text_entry::view_text_entry(ui, ctx, &mut self.state_text_entry, scene)
+        view_text_entry(ctx, ui, &mut self.state_text_entry, scene)
     }
 }
 
@@ -326,50 +324,5 @@ impl Scene2d {
 impl Scene2d {
     pub fn is_empty(&self) -> bool {
         true
-    }
-}
-
-// --- Tensors ---
-
-fn multidim_tensor<'s>(objects: &Objects<'s>) -> Option<&'s re_log_types::Tensor> {
-    // We have a special tensor viewer that (currently) only works
-    // when we only have a single tensor (and no bounding boxes etc).
-    // It is also not as great for images as the normal 2d view (at least not yet).
-    // This is a hacky-way of detecting this special case.
-    // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
-    // so we can stack bounding boxes etc on top of it.
-    if objects.image.len() == 1 {
-        let image = objects.image.first().unwrap().1;
-        let tensor = image.tensor;
-
-        // Ignore tensors that likely represent images.
-        if tensor.num_dim() > 3 || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4 {
-            return Some(tensor);
-        }
-    }
-    None
-}
-
-#[derive(Default)]
-pub struct SceneTensor {
-    pub tensors: Vec<Tensor>,
-}
-
-impl SceneTensor {
-    // TODO: this is temporary while we transition out of Objects
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        objects: &re_data_store::Objects<'_>,
-    ) {
-        if let Some(tensor) = multidim_tensor(objects) {
-            self.tensors.push(tensor.clone() /* shallow */);
-        }
-    }
-}
-
-impl SceneTensor {
-    pub fn is_empty(&self) -> bool {
-        self.tensors.is_empty()
     }
 }
