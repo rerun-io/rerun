@@ -482,8 +482,19 @@ fn paint_view(
 
         let target_identifier = egui::util::hash(ui.id());
 
-        let resolution_in_pixel = rect.size() * ui.ctx().pixels_per_point();
-        let resolution_in_pixel = [resolution_in_pixel.x as _, resolution_in_pixel.y as _];
+        let (resolution_in_pixel, origin_in_pixel) = {
+            let ppp = ui.ctx().pixels_per_point();
+            let min = (rect.min.to_vec2() * ppp).round();
+            let max = (rect.max.to_vec2() * ppp).round();
+
+            let resolution = max - min;
+            let origin = min;
+
+            (
+                [resolution.x as u32, resolution.y as u32],
+                [origin.x as u32, origin.y as u32],
+            )
+        };
 
         let point_cloud_points = scene.point_cloud_points();
         let line_strips = scene.line_strips();
@@ -516,7 +527,7 @@ fn paint_view(
             rect,
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
-                    .prepare(move |device, queue, encoder, paint_callback_resources| {
+                    .prepare(move |device, queue, _, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
 
@@ -543,6 +554,7 @@ fn paint_view(
                                 queue,
                                 &TargetConfiguration {
                                     resolution_in_pixel,
+                                    origin_in_pixel,
 
                                     view_from_world: eye.world_from_view.inverse(),
                                     fov_y: eye.fov_y,
@@ -572,7 +584,14 @@ fn paint_view(
                             );
                         }
 
-                        view_builder.draw(ctx, encoder).unwrap(); // TODO(andreas): Graceful error handling
+                        let mut encoder =
+                            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                label: "view_encoder".into(), // TODO(cmc): view name in here!
+                            });
+
+                        view_builder.draw(ctx, &mut encoder).unwrap(); // TODO(andreas): Graceful error handling
+
+                        vec![encoder.finish()]
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
                         let ctx = paint_callback_resources.get().unwrap();

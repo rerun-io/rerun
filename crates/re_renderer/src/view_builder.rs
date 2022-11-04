@@ -35,6 +35,9 @@ struct ViewTargetSetup {
     bind_group_0: BindGroupHandleStrong,
     hdr_render_target: TextureHandleStrong,
     depth_buffer: TextureHandleStrong,
+
+    resolution_in_pixel: [u32; 2],
+    origin_in_pixel: [u32; 2],
 }
 
 /// [`ViewBuilder`] that can be shared between threads.
@@ -43,9 +46,11 @@ struct ViewTargetSetup {
 pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
 
 /// Basic configuration for a target view.
+#[derive(Debug, Clone)]
 pub struct TargetConfiguration {
     pub resolution_in_pixel: [u32; 2],
-
+    pub origin_in_pixel: [u32; 2],
+    // TODO(cmc): other viewport stuff? scissor too? blend constant? stencil ref?
     pub view_from_world: macaw::IsoTransform,
 
     pub fov_y: f32,
@@ -154,6 +159,8 @@ impl ViewBuilder {
             bind_group_0,
             hdr_render_target,
             depth_buffer,
+            resolution_in_pixel: config.resolution_in_pixel,
+            origin_in_pixel: config.origin_in_pixel,
         });
 
         Ok(self)
@@ -251,6 +258,15 @@ impl ViewBuilder {
         let setup = self
             .setup
             .context("ViewBuilder::setup_view wasn't called yet")?;
+
+        pass.set_viewport(
+            setup.origin_in_pixel[0] as f32,
+            setup.origin_in_pixel[1] as f32,
+            setup.resolution_in_pixel[0] as f32,
+            setup.resolution_in_pixel[1] as f32,
+            0.0,
+            1.0,
+        );
 
         pass.set_bind_group(
             0,
