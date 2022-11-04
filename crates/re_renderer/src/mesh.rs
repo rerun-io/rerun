@@ -81,13 +81,23 @@ pub mod mesh_vertices {
 pub struct Mesh {
     pub label: DebugLabel,
 
-    // TODO(andreas): Materials
     pub indices: Vec<u32>, // TODO(andreas): different index formats?
     pub vertex_positions: Vec<glam::Vec3>,
     pub vertex_data: Vec<mesh_vertices::MeshVertexData>,
+
+    pub materials: Vec<Material>,
 }
 
 #[derive(Clone)]
+pub struct Material {
+    /// Index range within the owning [`MeshData`] that should be rendered with this material.
+    pub index_range: Range<u32>,
+
+    /// Texture for the base color (also known as albedo).
+    /// (not optional, use a dummy texture if none is required!)
+    pub base_color_texture: TextureHandleManaged,
+}
+
 pub(crate) struct GpuMesh {
     // It would be desirable to put both vertex and index buffer into the same buffer, BUT
     // WebGL doesn't allow us to do so! (see https://github.com/gfx-rs/wgpu/pull/3157)

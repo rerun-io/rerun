@@ -18,6 +18,7 @@ mod global_bindings;
 
 pub mod mesh;
 pub mod mesh_manager;
+pub mod texture_store;
 
 mod resource_pools;
 mod wgpu_buffer_types;
