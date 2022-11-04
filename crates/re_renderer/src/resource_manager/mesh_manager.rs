@@ -2,7 +2,6 @@ use slotmap::{Key, SecondaryMap, SlotMap};
 
 use crate::{
     mesh::{GpuMesh, Mesh},
-    resource_pools::WgpuResourcePools,
     RenderContext,
 };
 
@@ -12,6 +11,7 @@ slotmap::new_key_type! { pub struct MeshHandleInner; }
 
 pub type MeshHandle = ResourceHandle<MeshHandleInner>;
 
+#[derive(Default)]
 pub struct MeshManager {
     long_lived_meshes: SlotMap<MeshHandleInner, Mesh>,
     long_lived_meshes_gpu: SecondaryMap<MeshHandleInner, GpuMesh>,
@@ -20,18 +20,6 @@ pub struct MeshManager {
     frame_meshes_gpu: SecondaryMap<MeshHandleInner, GpuMesh>,
 
     frame_index: u64,
-}
-
-impl Default for MeshManager {
-    fn default() -> Self {
-        Self {
-            long_lived_meshes: Default::default(),
-            long_lived_meshes_gpu: Default::default(),
-            frame_meshes: Default::default(),
-            frame_meshes_gpu: Default::default(),
-            frame_index: Default::default(),
-        }
-    }
 }
 
 impl MeshManager {
@@ -86,22 +74,21 @@ impl MeshManager {
             }
         };
 
-        Ok(match slotmap_gpu.get(key) {
-            Some(gpu_resource) => gpu_resource.clone(),
-            None => {
-                let resource = slotmap.get(key).ok_or_else(|| {
-                    if key.is_null() {
-                        ResourceManagerError::NullHandle
-                    } else {
-                        ResourceManagerError::ResourceNotAvailable
-                    }
-                })?;
+        Ok(if let Some(gpu_resource) = slotmap_gpu.get(key) {
+            gpu_resource.clone()
+        } else {
+            let resource = slotmap.get(key).ok_or_else(|| {
+                if key.is_null() {
+                    ResourceManagerError::NullHandle
+                } else {
+                    ResourceManagerError::ResourceNotAvailable
+                }
+            })?;
 
-                // TODO(andreas): Should we throw out the cpu data now, at least for long lived meshes?
-                let resource_gpu = GpuMesh::new(&mut ctx.resource_pools, device, queue, resource);
-                slotmap_gpu.insert(key, resource_gpu.clone());
-                resource_gpu
-            }
+            // TODO(andreas): Should we throw out the cpu data now, at least for long lived meshes?
+            let resource_gpu = GpuMesh::new(&mut ctx.resource_pools, device, queue, resource);
+            slotmap_gpu.insert(key, resource_gpu.clone());
+            resource_gpu
         })
     }
 

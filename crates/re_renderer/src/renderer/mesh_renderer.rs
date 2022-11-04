@@ -102,18 +102,14 @@ impl MeshDrawable {
 
         // TODO(andreas): Use a temp allocator
         let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
-        let instance_buffer = ctx
-            .resource_pools
-            .buffers
-            .alloc(
-                device,
-                &BufferDesc {
-                    label: "MeshDrawable instance buffer".into(),
-                    size: instance_buffer_size,
-                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                },
-            )
-            .clone();
+        let instance_buffer = ctx.resource_pools.buffers.alloc(
+            device,
+            &BufferDesc {
+                label: "MeshDrawable instance buffer".into(),
+                size: instance_buffer_size,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            },
+        );
 
         let mut mesh_runs = Vec::new();
         {
@@ -152,7 +148,7 @@ impl MeshDrawable {
         // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
         // Also, it helps failing early if something is wrong with a mesh!
         let mut batches = Vec::with_capacity(mesh_runs.len());
-        for (mesh_handle, count) in mesh_runs.into_iter() {
+        for (mesh_handle, count) in mesh_runs {
             let mesh = MeshManager::to_gpu(ctx, device, queue, mesh_handle)?;
             batches.push(MeshBatch { mesh, count });
         }

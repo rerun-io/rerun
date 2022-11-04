@@ -21,7 +21,6 @@ use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
     renderer::*,
-    resource_manager::mesh_manager::MeshHandle,
     view_builder::{TargetConfiguration, ViewBuilder},
     DebugLabel, *,
 };
@@ -360,7 +359,7 @@ impl Application {
             },
         );
 
-        let state = AppState::new(&mut re_ctx, &device, &queue);
+        let state = AppState::new(&mut re_ctx);
 
         Ok(Self {
             event_loop,
@@ -505,7 +504,7 @@ struct AppState {
 }
 
 impl AppState {
-    fn new(re_ctx: &mut RenderContext, device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+    fn new(re_ctx: &mut RenderContext) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -2.0_f32..2.0_f32;
         let random_points = (0..500000)

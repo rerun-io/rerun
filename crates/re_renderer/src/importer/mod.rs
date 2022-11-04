@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use macaw::Vec3Ext;
 
-use crate::{renderer::MeshInstance, resource_manager::mesh_manager::MeshHandle, RenderContext};
+use crate::{renderer::MeshInstance, RenderContext};
 
 #[cfg(feature = "import-obj")]
 pub mod obj;
