@@ -98,10 +98,9 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
 
 pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::DesignTokens {
     #[cfg(feature = "wgpu")]
-    {
+    if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::{config::RenderContextConfig, RenderContext};
 
-        let render_state = cc.wgpu_render_state.as_ref().unwrap();
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
 
         // TODO(andreas): Query used surface format from eframe/renderer.
