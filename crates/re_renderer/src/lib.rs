@@ -12,6 +12,8 @@ mod context;
 pub use context::RenderContext;
 
 mod debug_label;
+pub use self::debug_label::DebugLabel;
+
 mod global_bindings;
 
 pub mod mesh;
