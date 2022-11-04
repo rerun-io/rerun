@@ -41,7 +41,10 @@ impl ModelImportData {
 
         let mesh_handles = meshes
             .into_iter()
-            .map(|mesh| ctx.meshes.store_resource(mesh, ResourceLifeTime::LongLived))
+            .map(|mesh| {
+                ctx.mesh_manager
+                    .store_resource(mesh, ResourceLifeTime::LongLived)
+            })
             .collect_vec();
         instances
             .into_iter()

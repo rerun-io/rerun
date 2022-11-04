@@ -31,9 +31,10 @@ impl MeshManager {
         queue: &wgpu::Queue,
         handle: MeshHandle,
     ) -> Result<GpuMesh, ResourceManagerError> {
-        ctx.meshes
+        ctx.mesh_manager
             .manager
             .get_or_create_gpu_resource(handle, |resource, _lifetime| {
+                // TODO(andreas): Use stack allocators for short lived meshes!
                 GpuMesh::new(&mut ctx.resource_pools, device, queue, resource)
             })
     }

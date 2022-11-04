@@ -540,7 +540,7 @@ fn paint_view(
                         let meshes = meshes
                             .iter()
                             .map(|data| {
-                                ctx.meshes
+                                ctx.mesh_manager
                                     .store_resource(data.clone(), ResourceLifeTime::SingleFrame)
                             })
                             .collect_vec();

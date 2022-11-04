@@ -1,6 +1,7 @@
 use type_map::concurrent::{self, TypeMap};
 
 use crate::resource_managers::mesh_manager::MeshManager;
+use crate::resource_managers::texture_manager::TextureManager2D;
 use crate::{
     config::RenderContextConfig, global_bindings::GlobalBindings, renderer::Renderer,
     resource_pools::WgpuResourcePools,
@@ -19,7 +20,8 @@ pub struct RenderContext {
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
 
-    pub meshes: MeshManager,
+    pub mesh_manager: MeshManager,
+    pub texture_manager_2d: TextureManager2D,
 
     // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
@@ -112,7 +114,8 @@ impl RenderContext {
             },
             resource_pools,
 
-            meshes: MeshManager::default(),
+            mesh_manager: MeshManager::default(),
+            texture_manager_2d: TextureManager2D::default(),
 
             resolver: crate::new_recommended_file_resolver(),
 
@@ -141,7 +144,9 @@ impl RenderContext {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
 
-        self.meshes.frame_maintenance(self.frame_index);
+        self.mesh_manager.frame_maintenance(self.frame_index);
+        self.texture_manager_2d.frame_maintenance(self.frame_index);
+
         {
             let WgpuResourcePools {
                 bind_group_layouts: _,

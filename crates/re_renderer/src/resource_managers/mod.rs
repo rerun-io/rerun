@@ -8,7 +8,7 @@
 //! low level gpu resources and their efficient allocation.
 
 pub mod mesh_manager;
-//pub mod texture_manager; // TODO: WIP
+pub mod texture_manager;
 
 mod resource_manager;
 pub use resource_manager::{ResourceHandle, ResourceLifeTime, ResourceManagerError};
