@@ -4,6 +4,7 @@
 //! Used in `re_runner` to display the contents of any view contents other than pure UI.
 
 pub mod config;
+pub mod importer;
 pub mod renderer;
 pub mod view_builder;
 

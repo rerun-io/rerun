@@ -77,6 +77,7 @@ pub mod mesh_vertices {
     }
 }
 
+#[derive(Clone)]
 pub struct MeshData {
     pub label: DebugLabel,
 

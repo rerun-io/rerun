@@ -211,7 +211,6 @@ pub(crate) struct Caches {
     pub image: crate::misc::ImageCache,
 
     /// For displaying meshes efficiently in immediate mode.
-    #[cfg(feature = "glow")]
     pub cpu_mesh: crate::ui::view3d::CpuMeshCache,
 
     /// Auto-generated colors.

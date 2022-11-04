@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-#[cfg(feature = "glow")]
 use egui::util::hash;
 use egui::NumExt as _;
 use glam::{vec3, Vec3};
@@ -8,25 +7,11 @@ use itertools::Itertools as _;
 
 use re_data_store::InstanceIdHash;
 
-use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
-
-#[cfg(feature = "glow")]
 use crate::misc::mesh_loader::CpuMesh;
+use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
 #[cfg(feature = "wgpu")]
 use re_renderer::renderer::*;
-
-// TODO(andreas): Dummy for disabling glow. Need a three-d independent mesh obv.
-#[cfg(not(feature = "glow"))]
-pub struct CpuMesh {
-    bbox: macaw::BoundingBox,
-}
-#[cfg(not(feature = "glow"))]
-impl CpuMesh {
-    pub fn bbox(&self) -> &macaw::BoundingBox {
-        &self.bbox
-    }
-}
 
 use super::{eye::Eye, SpaceCamera};
 
@@ -118,7 +103,6 @@ pub struct LineSegments {
     pub color: [u8; 4],
 }
 
-#[cfg(feature = "glow")]
 pub enum MeshSourceData {
     Mesh3D(re_log_types::Mesh3D),
     /// e.g. the camera mesh
@@ -128,7 +112,8 @@ pub enum MeshSourceData {
 pub struct MeshSource {
     pub instance_id: InstanceIdHash,
     pub mesh_id: u64,
-    pub world_from_mesh: glam::Affine3A,
+    // TODO(andreas): Make this Conformal3 once glow is gone?
+    pub world_from_mesh: macaw::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
     pub tint: Option<[u8; 4]>,
 }
@@ -257,12 +242,11 @@ impl Scene {
             }
         }
 
-        #[cfg(feature = "glow")]
         {
             crate::profile_scope!("mesh3d");
             for (props, obj) in objects.mesh3d.iter() {
                 let re_data_store::Mesh3D { mesh } = *obj;
-                let mesh_id = hash(props.msg_id);
+                let mesh_id = egui::util::hash(props.msg_id);
                 if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
                     mesh_id,
                     &props.obj_path.to_string(),
@@ -272,7 +256,7 @@ impl Scene {
                     scene.meshes.push(MeshSource {
                         instance_id: InstanceIdHash::from_props(props),
                         mesh_id,
-                        world_from_mesh: glam::Affine3A::IDENTITY,
+                        world_from_mesh: Default::default(),
                         cpu_mesh,
                         tint: None,
                     });
@@ -332,7 +316,6 @@ impl Scene {
             let scale_based_on_distance = dist_to_eye * point_size_at_one_meter * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
             let scale = scale_based_on_scene_size.min(scale_based_on_distance);
 
-            #[cfg(feature = "glow")]
             if ctx.options.show_camera_mesh_in_3d {
                 if let Some(world_from_rub_view) = camera.world_from_rub_view() {
                     // The camera mesh file is 1m long in RUB (X=Right, Y=Up, Z=Back).
@@ -574,7 +557,7 @@ impl Scene {
         let width_scale = width_scale.unwrap_or(1.0);
         let tip_length = 2.0 * width_scale;
 
-        let cylinder_transform = glam::Affine3A::from_scale_rotation_translation(
+        let cylinder_transform = macaw::Affine3A::from_scale_rotation_translation(
             vec3(
                 vector.length() - tip_length,
                 0.5 * width_scale,

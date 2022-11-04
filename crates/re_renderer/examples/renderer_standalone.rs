@@ -15,11 +15,11 @@ use std::{f32::consts::TAU, io::Read};
 use anyhow::Context as _;
 use glam::Vec3;
 use instant::Instant;
+use itertools::Itertools;
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
-    mesh::{mesh_vertices::MeshVertexData, MeshData},
     mesh_manager::{MeshHandle, MeshManager},
     renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
@@ -100,14 +100,14 @@ fn build_meshes(
         .flat_map(|(i, p)| {
             mesh_handles.iter().map(move |mesh| MeshInstance {
                 mesh: *mesh,
-                transformation: macaw::Conformal3::from_scale_rotation_translation(
+                world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
                     0.025 + (i % 10) as f32 * 0.01,
                     glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
                     *p,
                 ),
             })
         })
-        .collect::<Vec<_>>();
+        .collect_vec();
     MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap()
 }
 
@@ -445,7 +445,7 @@ impl AppState {
                 radius: rnd.gen_range(0.005..0.025),
                 srgb_color: [rnd.gen(), rnd.gen(), rnd.gen(), 255],
             })
-            .collect::<Vec<_>>();
+            .collect_vec();
 
         let meshes = {
             let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
@@ -453,47 +453,12 @@ impl AppState {
             let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
             let mut obj_data = Vec::new();
             zipped_obj.read_to_end(&mut obj_data).unwrap();
-            let (models, _materials) = tobj::load_obj_buf(
-                &mut std::io::Cursor::new(&obj_data),
-                &tobj::LoadOptions {
-                    single_index: true,
-                    triangulate: true,
-                    ..Default::default()
-                },
-                |_material_path| Err(tobj::LoadError::MaterialParseError),
-            )
-            .expect("failed loading obj");
-            models
+            importer::obj::load_obj_from_buffer(&obj_data)
+                .unwrap()
+                .meshes
                 .iter()
-                .map(|mesh| {
-                    let mesh = &mesh.mesh;
-                    let vertex_positions = mesh
-                        .positions
-                        .chunks(3)
-                        .map(|p| glam::vec3(p[0], p[1], p[2]))
-                        .collect();
-                    let vertex_data = mesh
-                        .normals
-                        .chunks(3)
-                        .zip(mesh.texcoords.chunks(2))
-                        .map(|(n, t)| MeshVertexData {
-                            normal: glam::vec3(n[0], n[1], n[2]),
-                            texcoord: glam::vec2(t[0], t[1]),
-                        })
-                        .collect();
-
-                    MeshManager::new_long_lived_mesh(
-                        re_ctx,
-                        device,
-                        queue,
-                        &MeshData {
-                            label: "rerun logo".into(),
-                            indices: mesh.indices.clone(),
-                            vertex_positions,
-                            vertex_data,
-                        },
-                    )
-                    .unwrap()
+                .map(|mesh_data| {
+                    MeshManager::new_long_lived_mesh(re_ctx, device, queue, mesh_data).unwrap()
                 })
                 .collect()
         };

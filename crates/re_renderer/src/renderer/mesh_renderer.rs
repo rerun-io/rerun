@@ -81,7 +81,7 @@ impl Drawable for MeshDrawable {
 
 pub struct MeshInstance {
     pub mesh: MeshHandle,
-    pub transformation: macaw::Conformal3,
+    pub world_from_mesh: macaw::Conformal3,
 }
 
 impl MeshDrawable {
@@ -136,8 +136,8 @@ impl MeshDrawable {
             ) {
                 count += 1;
                 gpu_instance.translation_and_scale =
-                    instance.transformation.translation_and_scale().into();
-                gpu_instance.rotation = instance.transformation.rotation().into();
+                    instance.world_from_mesh.translation_and_scale().into();
+                gpu_instance.rotation = instance.world_from_mesh.rotation().into();
             }
 
             batches.push(MeshBatch {
@@ -204,7 +204,7 @@ impl Renderer for MeshRenderer {
                 render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
-                    cull_mode: Some(wgpu::Face::Back),
+                    cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
                     ..Default::default()
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {

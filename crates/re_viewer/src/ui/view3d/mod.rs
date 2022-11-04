@@ -5,10 +5,7 @@ mod space_camera;
 #[cfg(feature = "glow")]
 mod glow_rendering;
 
-#[cfg(feature = "glow")]
 mod mesh_cache;
-
-#[cfg(feature = "glow")]
 pub use mesh_cache::CpuMeshCache;
 
 use eye::*;
@@ -474,6 +471,9 @@ fn paint_view(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
+        use itertools::Itertools;
+        use re_renderer::importer::ImportMeshInstance;
+        use re_renderer::mesh_manager::MeshManager;
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
@@ -488,6 +488,30 @@ fn paint_view(
         let point_cloud_points = scene.point_cloud_points();
         let line_strips = scene.line_strips();
 
+        // TODO(andreas): Right now we can't borrow the scene into a context where we have a device.
+        //                  Once we can do that, this awful clone is no longer needed as we can acquire gpu data directly
+        let mut mesh_base_index = 0;
+        let mut meshes = Vec::new();
+        let mut instances = Vec::new();
+        for mesh in &scene.meshes {
+            let (scale, rotation, translation) =
+                mesh.world_from_mesh.to_scale_rotation_translation();
+            let base_transform = macaw::Conformal3::from_scale_rotation_translation(
+                re_renderer::importer::to_uniform_scale(scale),
+                rotation,
+                translation,
+            );
+            instances.extend(mesh.cpu_mesh.model_import.instances.iter().map(|instance| {
+                ImportMeshInstance {
+                    mesh_idx: instance.mesh_idx + mesh_base_index,
+                    world_from_mesh: base_transform * instance.world_from_mesh,
+                }
+            }));
+            meshes.extend(mesh.cpu_mesh.model_import.meshes.clone());
+
+            mesh_base_index += mesh.cpu_mesh.model_import.meshes.len();
+        }
+
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(
@@ -495,6 +519,21 @@ fn paint_view(
                     .prepare(move |device, queue, encoder, paint_callback_resources| {
                         let ctx = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
+
+                        let meshes = meshes
+                            .iter()
+                            .map(|data| {
+                                MeshManager::new_frame_mesh(ctx, device, queue, data).unwrap()
+                            })
+                            .collect_vec();
+                        let mesh_instances = instances
+                            .iter()
+                            .map(|instance| MeshInstance {
+                                mesh: meshes[instance.mesh_idx],
+                                world_from_mesh: instance.world_from_mesh,
+                            })
+                            .collect_vec();
+
                         let view_builder = view_builder_lock
                             .as_mut()
                             .unwrap()
@@ -514,6 +553,12 @@ fn paint_view(
                             )
                             .unwrap()
                             .queue_draw(&GenericSkyboxDrawable::new(ctx, device));
+
+                        if !mesh_instances.is_empty() {
+                            view_builder.queue_draw(
+                                &MeshDrawable::new(ctx, device, queue, &mesh_instances).unwrap(),
+                            );
+                        }
 
                         if !line_strips.is_empty() {
                             view_builder.queue_draw(
