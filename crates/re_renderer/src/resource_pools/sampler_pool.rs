@@ -9,7 +9,7 @@ pub(crate) struct GpuSampler {
     pub(crate) sampler: wgpu::Sampler,
 }
 
-impl GpuResource for GpuSampler {}
+impl Resource for GpuSampler {}
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct SamplerDesc {

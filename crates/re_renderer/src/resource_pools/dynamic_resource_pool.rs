@@ -23,7 +23,7 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
     /// Every [`DynamicResourcePool::frame_maintenance`] we check if the pool is now the only owner of the handle
     /// and if so mark it as deallocated.
     /// Being a [`SecondaryMap`] allows us to upgrade "weak" handles to strong handles,
-    /// something required by [`super::BindGroupPool`]
+    /// something required by [`super::GpuBindGroupPool`]
     alive_handles: SecondaryMap<Handle, Arc<Handle>>,
 
     /// Any resource that has been deallocated last frame.
@@ -49,7 +49,7 @@ impl<Handle, Desc, Res> DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
     Desc: Clone + Eq + Hash + Debug,
-    Res: GpuResource,
+    Res: Resource,
 {
     pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
         // First check if we can reclaim a resource we have around from a previous frame.
@@ -146,7 +146,7 @@ mod tests {
     use slotmap::Key;
 
     use super::DynamicResourcePool;
-    use crate::resource_pools::resource::{GpuResource, PoolError};
+    use crate::resource_pools::resource::{PoolError, Resource};
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
 
@@ -164,7 +164,7 @@ mod tests {
         }
     }
 
-    impl GpuResource for ConcreteResource {
+    impl Resource for ConcreteResource {
         fn on_handle_resolve(&self, _current_frame_index: u64) {}
     }
 

@@ -8,7 +8,7 @@ pub struct GpuPipelineLayout {
     pub layout: wgpu::PipelineLayout,
 }
 
-impl GpuResource for GpuPipelineLayout {}
+impl Resource for GpuPipelineLayout {}
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct PipelineLayoutDesc {

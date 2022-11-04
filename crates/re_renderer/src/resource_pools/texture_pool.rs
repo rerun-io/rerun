@@ -93,7 +93,7 @@ impl TexturePool {
         self.pool.get_resource(**handle)
     }
 
-    /// Internal method to retrieve a resource with a weak handle (used by [`super::BindGroupPool`]).
+    /// Internal method to retrieve a resource with a weak handle (used by [`super::GpuBindGroupPool`]).
     pub(super) fn get_resource_weak(
         &self,
         handle: GpuTextureHandle,
@@ -101,7 +101,7 @@ impl TexturePool {
         self.pool.get_resource(handle)
     }
 
-    /// Internal method to retrieve a strong handle from a weak handle (used by [`super::BindGroupPool`])
+    /// Internal method to retrieve a strong handle from a weak handle (used by [`super::GpuBindGroupPool`])
     /// without inrementing the ref-count (note the returned reference!).
     pub(super) fn get_strong_handle(&self, handle: GpuTextureHandle) -> &GpuTextureHandleStrong {
         self.pool.get_strong_handle(handle)

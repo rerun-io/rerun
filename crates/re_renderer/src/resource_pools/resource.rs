@@ -10,8 +10,8 @@ pub enum PoolError {
 }
 
 /// A resource that can be owned & lifetime tracked by a resource pool.
-pub(crate) trait GpuResource {
-    /// Called every time a resource handle was resolved to its [`GpuResource`] object.
+pub(crate) trait Resource {
+    /// Called every time a resource handle was resolved to its [`Resource`] object.
     fn on_handle_resolve(&self, _current_frame_index: u64) {}
 }
 
@@ -21,7 +21,7 @@ pub(crate) trait UsageTrackedResource {
     fn last_frame_used(&self) -> &AtomicU64;
 }
 
-impl<T: UsageTrackedResource> GpuResource for T {
+impl<T: UsageTrackedResource> Resource for T {
     fn on_handle_resolve(&self, current_frame_index: u64) {
         self.last_frame_used()
             .fetch_max(current_frame_index, Ordering::Release);

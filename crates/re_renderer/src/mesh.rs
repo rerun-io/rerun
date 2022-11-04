@@ -109,8 +109,6 @@ pub(crate) struct GpuMesh {
 pub(crate) struct GpuMaterial {
     /// Index range within the owning [`Mesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
-    // Bind group, following the layout as defined by [`crate::renderer::MeshRenderer`]
-    //pub bind_group: BindGroupHandleStrong,
 }
 
 impl GpuMesh {

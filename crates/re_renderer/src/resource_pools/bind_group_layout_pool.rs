@@ -8,7 +8,7 @@ pub struct GpuBindGroupLayout {
     pub layout: wgpu::BindGroupLayout,
 }
 
-impl GpuResource for GpuBindGroupLayout {}
+impl Resource for GpuBindGroupLayout {}
 
 #[derive(Clone, Hash, PartialEq, Eq, Default)]
 pub struct BindGroupLayoutDesc {
