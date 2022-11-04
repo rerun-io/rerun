@@ -15,7 +15,6 @@ pub struct CpuMesh {
     #[cfg(feature = "wgpu")]
     pub model_import: re_renderer::importer::ModelImportData,
 
-    #[cfg(feature = "wgpu")]
     bbox: macaw::BoundingBox,
 }
 
