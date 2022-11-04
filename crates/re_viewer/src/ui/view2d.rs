@@ -1,8 +1,9 @@
 use eframe::{emath::RectTransform, epaint::text::TextWrapping};
-use egui::*;
-
-use re_data_store::{InstanceId, InstanceIdHash};
-use re_log_types::*;
+use egui::{
+    epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
+    Shape, Stroke, TextFormat, TextStyle, Vec2,
+};
+use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 
 use crate::{legend::find_legend, misc::HoveredSpace, Selection, ViewerContext};
 
@@ -280,10 +281,14 @@ fn view_2d_scrollable(
         if response.clicked() {
             ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
         }
-        egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
-            ctx.instance_id_button(ui, instance_id);
-            crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
-        });
+        egui::containers::popup::show_tooltip_at_pointer(
+            ui.ctx(),
+            egui::Id::new("2d_tooltip"),
+            |ui| {
+                ctx.instance_id_button(ui, instance_id);
+                crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
+            },
+        );
     }
 
     // ------------------------------------------------------------------------
@@ -432,8 +437,8 @@ fn view_2d_scrollable(
             let wrap_width = (rect_in_ui.width() - 4.0).at_least(60.0);
             let font_id = TextStyle::Body.resolve(ui.style());
             let galley = ui.fonts().layout_job({
-                text::LayoutJob {
-                    sections: vec![text::LayoutSection {
+                egui::text::LayoutJob {
+                    sections: vec![egui::text::LayoutSection {
                         leading_space: 0.0,
                         byte_range: 0..label.len(),
                         format: TextFormat::simple(font_id, paint_props.fg_stroke.color),
