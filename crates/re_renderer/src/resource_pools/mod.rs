@@ -3,7 +3,7 @@
 //! They facilitate easy creation and avoidance of unnecessary gpu allocations.
 //!
 //!
-//! This is in contrast to the [`crate::resource_manager`] which are concerned with
+//! This is in contrast to the [`crate::resource_managers`] which are concerned with
 //! higher level resources that arise from processing user provided data.
 
 pub(crate) mod bind_group_layout_pool;

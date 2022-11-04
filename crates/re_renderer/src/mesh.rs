@@ -89,7 +89,7 @@ pub struct Mesh {
 
 #[derive(Clone)]
 pub struct Material {
-    /// Index range within the owning [`MeshData`] that should be rendered with this material.
+    /// Index range within the owning [`Mesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
 }
 
