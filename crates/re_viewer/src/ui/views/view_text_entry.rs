@@ -1,15 +1,83 @@
 use crate::ViewerContext;
 use egui::{Color32, RichText};
-use re_data_store::{InstanceProps, Objects};
-use re_log_types::*;
+use re_data_store::ObjPath;
+use re_log_types::{LogMsg, MsgId, TimePoint};
 
-use super::space_view::{SceneText, TextEntry};
+// TODO: deal with the proliferation of pub(crate) specifiers in another PR.
 
-// -----------------------------------------------------------------------------
+// --- Scene ---
+
+/// A single text entry as part of a whole text scene.
+pub struct TextEntry {
+    // props
+    pub msg_id: MsgId,
+    pub obj_path: ObjPath,
+    pub time: i64,
+    pub color: Option<[u8; 4]>,
+
+    // text entry
+    pub level: Option<String>,
+    pub body: String,
+}
+
+/// A text scene, with everything needed to render it.
+#[derive(Default)]
+pub struct SceneText {
+    pub text_entries: Vec<TextEntry>,
+}
+
+impl SceneText {
+    // TODO: this is temporary while we transition out of Objects
+    pub(crate) fn load_objects(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        objects: &re_data_store::Objects<'_>,
+    ) {
+        let mut text_entries = {
+            crate::profile_scope!("SceneText - collect text entries");
+            objects.text_entry.iter().collect::<Vec<_>>()
+        };
+
+        {
+            crate::profile_scope!("SceneText - sort text entries");
+            text_entries.sort_by(|a, b| {
+                a.0.time
+                    .cmp(&b.0.time)
+                    .then_with(|| a.0.obj_path.cmp(b.0.obj_path))
+            });
+        }
+
+        // TODO: obviously cloning all these strings is not ideal... there are two
+        // situations to account for here.
+        // We could avoid these by modifying how we store all of this in the existing
+        // datastore, but then again we are about to rewrite the datastore so...?
+        // We will need to make sure that we don't need these copies once we switch to
+        // Arrow though!
+        self.text_entries
+            .extend(text_entries.into_iter().map(|(props, entry)| TextEntry {
+                // props
+                msg_id: props.msg_id.clone(),
+                obj_path: props.obj_path.clone(), // shallow
+                time: props.time,
+                color: props.color,
+                // text entry
+                level: entry.level.map(ToOwned::to_owned),
+                body: entry.body.to_owned(),
+            }));
+    }
+}
+
+impl SceneText {
+    pub fn is_empty(&self) -> bool {
+        self.text_entries.is_empty()
+    }
+}
+
+// --- UI state ---
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct TextEntryState {
+pub struct TextEntryState {
     /// Keeps track of the latest time selection made by the user.
     ///
     /// We need this because we want the user to be able to manually scroll the
@@ -17,52 +85,52 @@ pub(crate) struct TextEntryState {
     latest_time: i64,
 }
 
-impl TextEntryState {
-    pub fn show(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &mut ViewerContext<'_>,
-        scene: &SceneText,
-    ) -> egui::Response {
-        crate::profile_function!();
+pub(crate) fn view_text_entry(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    state: &mut TextEntryState,
+    scene: &SceneText,
+) -> egui::Response {
+    crate::profile_function!();
 
-        let time = ctx
-            .rec_cfg
-            .time_ctrl
-            .time_query()
-            .map_or(self.latest_time, |q| match q {
-                re_data_store::TimeQuery::LatestAt(time) => time,
-                re_data_store::TimeQuery::Range(range) => *range.start(),
-            });
-
-        // Did the time cursor move since last time?
-        // - If it did, time to autoscroll approriately.
-        // - Otherwise, let the user scroll around freely!
-        let time_cursor_moved = self.latest_time != time;
-        let scroll_to_row = time_cursor_moved.then(|| {
-            crate::profile_scope!("TextEntryState - search scroll time");
-            let index = scene
-                .text_entries
-                .partition_point(|entry| entry.time < time);
-            usize::min(index, index.saturating_sub(1))
+    let time = ctx
+        .rec_cfg
+        .time_ctrl
+        .time_query()
+        .map_or(state.latest_time, |q| match q {
+            re_data_store::TimeQuery::LatestAt(time) => time,
+            re_data_store::TimeQuery::Range(range) => *range.start(),
         });
 
-        self.latest_time = time;
+    // Did the time cursor move since last time?
+    // - If it did, time to autoscroll approriately.
+    // - Otherwise, let the user scroll around freely!
+    let time_cursor_moved = state.latest_time != time;
+    let scroll_to_row = time_cursor_moved.then(|| {
+        crate::profile_scope!("TextEntryState - search scroll time");
+        let index = scene
+            .text_entries
+            .partition_point(|entry| entry.time < time);
+        usize::min(index, index.saturating_sub(1))
+    });
 
-        ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-            ui.label(format!("{} text entries", scene.text_entries.len()));
-            ui.separator();
+    state.latest_time = time;
 
-            egui::ScrollArea::horizontal().show(ui, |ui| {
-                crate::profile_scope!("render table");
-                show_table(ctx, ui, &scene.text_entries, scroll_to_row);
-            })
+    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+        ui.label(format!("{} text entries", scene.text_entries.len()));
+        ui.separator();
+
+        egui::ScrollArea::horizontal().show(ui, |ui| {
+            crate::profile_scope!("render table");
+            show_table(ctx, ui, &scene.text_entries, scroll_to_row);
         })
-        .response
-    }
+    })
+    .response
 }
 
-// -----------------------------------------------------------------------------
+// --- UI impl ---
+
+// TODO: let-else everywhere
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
     let msg = ctx.log_db.get_log_msg(&entry.msg_id).or_else(|| {

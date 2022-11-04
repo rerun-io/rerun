@@ -1,9 +1,5 @@
-#[cfg(not(target_arch = "wasm32"))]
-pub mod clipboard;
 pub(crate) mod color_map;
 pub(crate) mod mesh_loader;
-#[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
-pub(crate) mod profiler;
 pub(crate) mod space_info;
 pub(crate) mod tensor_image_cache;
 pub(crate) mod time_axis;
@@ -19,9 +15,11 @@ pub(crate) use time_range::{TimeRange, TimeRangeF};
 pub(crate) use time_real::TimeReal;
 pub(crate) use viewer_context::*;
 
-// ----------------------------------------------------------------------------
+#[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+pub(crate) mod profiler;
 
-use egui::emath;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod clipboard;
 
 // ----------------------------------------------------------------------------
 
@@ -58,6 +56,8 @@ pub fn random_rgb(seed: u64) -> [u8; 3] {
 }
 
 // ----------------------------------------------------------------------------
+
+use egui::emath;
 
 pub fn calc_bbox_2d(objects: &re_data_store::Objects<'_>) -> emath::Rect {
     crate::profile_function!();

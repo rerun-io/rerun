@@ -8,6 +8,7 @@ use re_log_types::{MsgId, Tensor, Transform};
 use crate::misc::{space_info::*, ViewerContext};
 
 use super::view3d::{scene::Scene as Scene3d, scene::Size, SpaceCamera};
+use super::views::SceneText;
 
 // ----------------------------------------------------------------------------
 
@@ -94,7 +95,7 @@ impl SpaceView {
                 } else if has_text {
                     self.view_state.ui_text(ctx, ui, &scene.text)
                 } else {
-                    ui.label("???")
+                    ui.label("???") // TODO
                 }
             }
             _ => {
@@ -160,7 +161,7 @@ struct ViewState {
 
     state_tensor: Option<crate::view_tensor::TensorViewState>,
 
-    state_text_entry: crate::text_entry_view::TextEntryState,
+    state_text_entry: super::views::TextEntryState,
 }
 
 impl ViewState {
@@ -174,7 +175,6 @@ impl ViewState {
         crate::view2d::view_2d(ctx, ui, &mut self.state_2d, Some(space), objects)
     }
 
-    // Will take() the `scene`!
     fn ui_3d(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -219,7 +219,7 @@ impl ViewState {
         ui: &mut egui::Ui,
         scene: &SceneText,
     ) -> egui::Response {
-        self.state_text_entry.show(ui, ctx, scene)
+        super::views::view_text_entry::view_text_entry(ui, ctx, &mut self.state_text_entry, scene)
     }
 }
 
@@ -326,72 +326,6 @@ impl Scene2d {
 impl Scene2d {
     pub fn is_empty(&self) -> bool {
         true
-    }
-}
-
-// --- Text logs ---
-
-pub struct TextEntry {
-    // props
-    pub msg_id: MsgId,
-    pub obj_path: ObjPath,
-    pub time: i64,
-    pub color: Option<[u8; 4]>,
-
-    // text entry
-    pub level: Option<String>,
-    pub body: String,
-}
-
-#[derive(Default)]
-pub struct SceneText {
-    pub text_entries: Vec<TextEntry>,
-}
-
-impl SceneText {
-    // TODO: this is temporary while we transition out of Objects
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        objects: &re_data_store::Objects<'_>,
-    ) {
-        let mut text_entries = {
-            crate::profile_scope!("SceneText - collect text entries");
-            objects.text_entry.iter().collect::<Vec<_>>()
-        };
-
-        {
-            crate::profile_scope!("SceneText - sort text entries");
-            text_entries.sort_by(|a, b| {
-                a.0.time
-                    .cmp(&b.0.time)
-                    .then_with(|| a.0.obj_path.cmp(b.0.obj_path))
-            });
-        }
-
-        // TODO: obviously cloning all these strings is not ideal... there are two
-        // situations to account for here.
-        // We could avoid these by modifying how we store all of this in the existing
-        // datastore, but then again we are about to rewrite the datastore so...?
-        // We will need to make sure that we don't need these copies once we switch to
-        // Arrow though!
-        self.text_entries
-            .extend(text_entries.into_iter().map(|(props, entry)| TextEntry {
-                // props
-                msg_id: props.msg_id.clone(),
-                obj_path: props.obj_path.clone(), // shallow
-                time: props.time,
-                color: props.color,
-                // text entry
-                level: entry.level.map(ToOwned::to_owned),
-                body: entry.body.to_owned(),
-            }));
-    }
-}
-
-impl SceneText {
-    pub fn is_empty(&self) -> bool {
-        self.text_entries.is_empty()
     }
 }
 
