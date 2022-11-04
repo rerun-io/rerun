@@ -14,6 +14,7 @@ let LINESTRIP_TEXTURE_SIZE: i32 = 512;
 let POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 
 // Flags
+// See lines.wgsl#LineStripFlags
 let CAP_END_TRIANGLE: u32 = 1u;
 
 struct VertexOut {
@@ -107,7 +108,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
             strip_data.radius *= 2.0;
         }
     } else if is_trailing_quad {
-        quad_dir = Vec3(0.0, 0.0, 0.0);
+        quad_dir = ZERO;
     } else {
         quad_dir = pos_data_quad_begin.pos - pos_data_quad_end.pos;
         quad_dir = normalize(quad_dir);
