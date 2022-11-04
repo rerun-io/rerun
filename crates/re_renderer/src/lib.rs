@@ -6,6 +6,7 @@
 pub mod config;
 pub mod importer;
 pub mod renderer;
+pub mod resource_manager;
 pub mod view_builder;
 
 mod context;
@@ -17,8 +18,6 @@ pub use self::debug_label::DebugLabel;
 mod global_bindings;
 
 pub mod mesh;
-pub mod mesh_manager;
-pub mod texture_store;
 
 mod resource_pools;
 mod wgpu_buffer_types;

@@ -473,7 +473,6 @@ fn paint_view(
     let _callback = {
         use itertools::Itertools;
         use re_renderer::importer::ImportMeshInstance;
-        use re_renderer::mesh_manager::MeshManager;
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 

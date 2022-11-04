@@ -20,8 +20,8 @@ use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
-    mesh_manager::{GpuMeshHandle, MeshManager},
     renderer::*,
+    resource_manager::mesh_manager::MeshHandle,
     view_builder::{TargetConfiguration, ViewBuilder},
     DebugLabel, *,
 };
@@ -88,7 +88,7 @@ fn draw_views(
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
-    let meshes = build_meshes(re_ctx, device, queue, &state.meshes, seconds_since_startup);
+    let meshes = build_mesh_instances(re_ctx, device, queue, &state.meshes, seconds_since_startup);
 
     let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
@@ -174,11 +174,11 @@ fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
     (view_builder, encoder.finish())
 }
 
-fn build_meshes(
+fn build_mesh_instances(
     re_ctx: &mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    mesh_handles: &[GpuMeshHandle],
+    mesh_handles: &[MeshHandle],
     seconds_since_startup: f32,
 ) -> MeshDrawable {
     let mesh_instances = lorenz_points(10.0)
@@ -490,7 +490,7 @@ struct AppState {
     time: Time,
 
     /// Lazily loaded mesh.
-    meshes: Vec<GpuMeshHandle>,
+    meshes: Vec<MeshHandle>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,
@@ -521,10 +521,8 @@ impl AppState {
             importer::obj::load_obj_from_buffer(&obj_data)
                 .unwrap()
                 .meshes
-                .iter()
-                .map(|mesh_data| {
-                    MeshManager::new_long_lived_mesh(re_ctx, device, queue, mesh_data).unwrap()
-                })
+                .into_iter()
+                .map(|mesh| re_ctx.meshes.new_long_lived_mesh(mesh))
                 .collect()
         };
 

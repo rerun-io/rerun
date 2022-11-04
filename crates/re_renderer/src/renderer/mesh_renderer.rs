@@ -9,7 +9,7 @@ use smallvec::smallvec;
 use crate::{
     include_file,
     mesh::{mesh_vertices, GpuMesh},
-    mesh_manager::GpuMeshHandle,
+    resource_manager::mesh_manager::{MeshHandle, MeshManager},
     resource_pools::{
         buffer_pool::{BufferDesc, GpuBufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
@@ -80,7 +80,7 @@ impl Drawable for MeshDrawable {
 }
 
 pub struct MeshInstance {
-    pub mesh: GpuMeshHandle,
+    pub mesh: MeshHandle,
     pub world_from_mesh: macaw::Conformal3,
 }
 
@@ -98,55 +98,71 @@ impl MeshDrawable {
             &mut ctx.resolver,
         );
 
-        // TODO(andreas): Use a temp allocator
-        let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
-        let instance_buffer = ctx.resource_pools.buffers.alloc(
-            device,
-            &BufferDesc {
-                label: "MeshDrawable instance buffer".into(),
-                size: instance_buffer_size,
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            },
-        );
-        let mut instance_buffer_staging = queue.write_buffer_with(
-            &ctx.resource_pools
-                .buffers
-                .get_resource(&instance_buffer)
-                .unwrap()
-                .buffer,
-            0,
-            instance_buffer_size.try_into().unwrap(),
-        );
-        let instance_buffer_staging: &mut [GpuInstanceData] =
-            bytemuck::cast_slice_mut(&mut instance_buffer_staging);
-
         // Group by mesh to facilitate instancing.
+        // Need to iterate twice because of resource pool borrowing.
+        let instance_groups = instances.iter().group_by(|instance| instance.mesh);
+
+        // TODO(andreas): Use a temp allocator
+        let instance_buffer = {
+            let instance_buffer_size =
+                (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
+            let instance_buffer = ctx
+                .resource_pools
+                .buffers
+                .alloc(
+                    device,
+                    &BufferDesc {
+                        label: "MeshDrawable instance buffer".into(),
+                        size: instance_buffer_size,
+                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    },
+                )
+                .clone();
+            let mut instance_buffer_staging = queue.write_buffer_with(
+                &ctx.resource_pools
+                    .buffers
+                    .get_resource(&instance_buffer)
+                    .unwrap()
+                    .buffer,
+                0,
+                instance_buffer_size.try_into().unwrap(),
+            );
+            let instance_buffer_staging: &mut [GpuInstanceData] =
+                bytemuck::cast_slice_mut(&mut instance_buffer_staging);
+
+            let mut num_processed_instances = 0;
+            for (_, instances) in &instance_groups {
+                let mut count = 0;
+                for (instance, gpu_instance) in instances.zip(
+                    instance_buffer_staging
+                        .iter_mut()
+                        .skip(num_processed_instances),
+                ) {
+                    count += 1;
+                    gpu_instance.translation_and_scale =
+                        instance.world_from_mesh.translation_and_scale().into();
+                    gpu_instance.rotation = instance.world_from_mesh.rotation().into();
+                }
+                num_processed_instances += count;
+            }
+            assert_eq!(num_processed_instances, instances.len());
+
+            instance_buffer
+        };
+
         // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
         // Also, it helps failing early if something is wrong with a mesh!
-        let mut batches = Vec::new();
-        let mut num_processed_instances = 0;
-        for (mesh_handle, instances) in &instances.iter().group_by(|instance| instance.mesh) {
-            let mesh = ctx.meshes.get_mesh(mesh_handle)?;
-
-            let mut count = 0;
-            for (instance, gpu_instance) in instances.zip(
-                instance_buffer_staging
-                    .iter_mut()
-                    .skip(num_processed_instances),
-            ) {
-                count += 1;
-                gpu_instance.translation_and_scale =
-                    instance.world_from_mesh.translation_and_scale().into();
-                gpu_instance.rotation = instance.world_from_mesh.rotation().into();
+        let batches = {
+            let mut batches = Vec::new();
+            for (mesh_handle, instances) in &instance_groups {
+                let mesh = MeshManager::to_gpu(ctx, device, queue, mesh_handle)?;
+                batches.push(MeshBatch {
+                    mesh,
+                    count: instances.count() as u32,
+                });
             }
-
-            batches.push(MeshBatch {
-                mesh: mesh.clone(),
-                count,
-            });
-            num_processed_instances += count as usize;
-        }
-        assert_eq!(num_processed_instances, instances.len());
+            batches
+        };
 
         Ok(MeshDrawable {
             batches,

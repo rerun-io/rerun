@@ -84,20 +84,16 @@ pub struct Mesh {
     pub indices: Vec<u32>, // TODO(andreas): different index formats?
     pub vertex_positions: Vec<glam::Vec3>,
     pub vertex_data: Vec<mesh_vertices::MeshVertexData>,
-
-    pub materials: Vec<Material>,
+    //pub materials: Vec<Material>,
 }
 
 #[derive(Clone)]
 pub struct Material {
     /// Index range within the owning [`MeshData`] that should be rendered with this material.
     pub index_range: Range<u32>,
-
-    /// Texture for the base color (also known as albedo).
-    /// (not optional, use a dummy texture if none is required!)
-    pub base_color_texture: TextureHandleManaged,
 }
 
+#[derive(Clone)]
 pub(crate) struct GpuMesh {
     // It would be desirable to put both vertex and index buffer into the same buffer, BUT
     // WebGL doesn't allow us to do so! (see https://github.com/gfx-rs/wgpu/pull/3157)
@@ -127,8 +123,8 @@ impl GpuMesh {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         data: &Mesh,
-    ) -> anyhow::Result<Self> {
-        anyhow::ensure!(data.vertex_positions.len() == data.vertex_data.len());
+    ) -> Self {
+        assert!(data.vertex_positions.len() == data.vertex_data.len());
         re_log::trace!(
             "uploading new mesh named {:?} with {} vertices and {} triangles",
             data.label.get(),
@@ -189,7 +185,7 @@ impl GpuMesh {
             index_buffer
         };
 
-        Ok(GpuMesh {
+        GpuMesh {
             index_buffer,
             vertex_buffer_combined,
             vertex_buffer_positions_range: 0..vertex_buffer_positions_size,
@@ -200,6 +196,6 @@ impl GpuMesh {
             materials: smallvec![GpuMaterial {
                 index_range: 0..data.indices.len() as u32,
             }],
-        })
+        }
     }
 }

@@ -1,4 +1,10 @@
-// Low level resource pools for wgpu resources
+//! Resource pools are concerned with handling low level gpu resources efficiently.
+//!
+//! They facilitate easy creation and avoidance of unnecessary gpu allocations.
+//!
+//!
+//! This is in contrast to the [`crate::resource_manager`] which are concerned with
+//! higher level resources that arise from processing user provided data.
 
 pub(crate) mod bind_group_layout_pool;
 pub(crate) mod bind_group_pool;

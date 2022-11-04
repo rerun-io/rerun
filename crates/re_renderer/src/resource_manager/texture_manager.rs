@@ -19,14 +19,13 @@ enum TextureStoreEntry {
 }
 
 
-
 /// Simple texture manager facilitating texture data reuse and lazy upload of texture data.
-struct TextureStore {
-    long_lived_meshes: SlotMap<DefaultKey, GpuMesh>,
-    frame_meshes: SlotMap<DefaultKey, GpuMesh>,
+struct TextureManager {
+    long_lived: SlotMap<DefaultKey, GpuMesh>,
+    frame: SlotMap<DefaultKey, GpuMesh>,
 }
 
-impl TextureStore {
+impl TextureManager {
     pub fn create_texture_single_pixel_texture(&mut self, color_srgba: [u8; 4]) -> TextureStoreHandle {
         self.create_texture(Texture {
             dimension: wgpu::TextureDimension::D2,
@@ -40,12 +39,12 @@ impl TextureStore {
         })
     }
 
-    pub fn create_texture(&mut self, texture: Texture) -> TextureStoreHandle {
+    pub fn new_long_lived_texture(&mut self, texture: Texture) -> TextureStoreHandle {
         self.gpu_textures.insert(TextureStoreEntry::CpuData(texture))
     }
 
 
-    pub(crate) gpu_texture(&mut self, handle: TextureHandleManaged,
+    pub(crate) gpu_data(&mut self, handle: TextureHandleManaged,
         device: &wgpu::Device, queue: &wgpu::Queue,
         texture_pool: &mut TexturePool) -> GpuTextureHandleStrong {
 

@@ -1,8 +1,9 @@
 use type_map::concurrent::{self, TypeMap};
 
+use crate::resource_manager::mesh_manager::MeshManager;
 use crate::{
-    config::RenderContextConfig, global_bindings::GlobalBindings, mesh_manager::MeshManager,
-    renderer::Renderer, resource_pools::WgpuResourcePools,
+    config::RenderContextConfig, global_bindings::GlobalBindings, renderer::Renderer,
+    resource_pools::WgpuResourcePools,
 };
 use crate::{FileResolver, FileServer, FileSystem, RecommendedFileResolver};
 
@@ -14,10 +15,11 @@ pub struct RenderContext {
     pub(crate) shared_renderer_data: SharedRendererData,
     pub(crate) renderers: Renderers,
     pub(crate) resource_pools: WgpuResourcePools,
-    pub(crate) meshes: MeshManager,
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
+
+    pub meshes: MeshManager,
 
     // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
