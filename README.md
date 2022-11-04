@@ -24,7 +24,7 @@ rustup set default-host aarch64-apple-darwin && rustup install 1.65
 After running the setup above, you can build and install the Rerun Viewer with:
 
 ```sh
-cargo install --path ./crates/rerun/ --all-features
+cargo install --path ./crates/rerun/
 ```
 
 You should now be able to run `rerun --help` in any terminal.
