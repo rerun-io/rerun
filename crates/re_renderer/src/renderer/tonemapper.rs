@@ -19,7 +19,7 @@ pub struct Tonemapper {
 
 #[derive(Clone)]
 pub struct TonemapperDrawable {
-    /// [`BindGroup`] pointing at the current HDR source and
+    /// [`GpuBindGroup`] pointing at the current HDR source and
     /// a uniform buffer for describing a tonemapper configuration.
     hdr_target_bind_group: GpuBindGroupHandleStrong,
 }
