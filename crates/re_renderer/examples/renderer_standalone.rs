@@ -382,7 +382,7 @@ impl Application {
                     // (wgpu has a swap chain with a limited amount of buffers, the exact count is dependent on `present_mode` and backend!).
                     // It's important to keep in mind that depending on the `present_mode`, the GPU might be waiting on the screen in turn.
                     let current_time = Instant::now();
-                    let time_passed = Instant::now() - self.state.time.last_draw_time;
+                    let time_passed = current_time - self.state.time.last_draw_time;
                     self.state.time.last_draw_time = current_time;
 
                     // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
@@ -420,7 +420,7 @@ struct Time {
 
 impl Time {
     fn seconds_since_startup(&self) -> f32 {
-        (Instant::now() - self.start_time).as_secs_f32()
+        self.start_time.elapsed().as_secs_f32()
     }
 }
 

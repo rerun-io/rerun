@@ -267,10 +267,10 @@ impl Geometry for InstancedSperesGeom {
                     crate::profile_scope!("rendering");
                     material.use_uniforms(program, camera, lights);
                     program.use_uniform("viewProjection", camera.projection() * camera.view());
-                    program.use_uniform("modelMatrix", &self.transformation);
+                    program.use_uniform("modelMatrix", self.transformation);
                     program.use_uniform_if_required(
                         "normalMatrix",
-                        &self.transformation.invert().unwrap().transpose(),
+                        self.transformation.invert().unwrap().transpose(),
                     );
 
                     for attribute_name in

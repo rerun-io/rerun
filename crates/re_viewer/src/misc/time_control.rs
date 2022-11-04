@@ -153,9 +153,7 @@ impl TimeControl {
             return;
         }
 
-        let full_range = if let Some(full_range) = self.full_range(time_points) {
-            full_range
-        } else {
+        let Some(full_range) = self.full_range(time_points) else {
             return;
         };
 

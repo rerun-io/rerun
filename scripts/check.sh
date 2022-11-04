@@ -8,11 +8,6 @@ set -x
 
 export RUSTFLAGS="--deny warnings"
 
-# We need this Allow because of our code conforms to the lint `unsafe_op_in_unsafe_fn`,
-# but we can remove this Allow when we update to Rust 1.65 in November 2022.
-# See https://github.com/rust-lang/rust/issues/71668 and https://github.com/rust-lang/rust/pull/100081
-export RUSTFLAGS="$RUSTFLAGS --allow unused_unsafe"
-
 # https://github.com/ericseppanen/cargo-cranky/issues/8
 export RUSTDOCFLAGS="--deny warnings --deny rustdoc::missing_crate_level_docs"
 

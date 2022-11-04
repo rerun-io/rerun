@@ -18,25 +18,24 @@ use wgpu_core::error::ContextError;
 ///
 /// E.g. to `dbg!()` the downcasted value on a wgpu error:
 /// ```ignore
-/// try_downcast!(|inner| { dbg!(inner); } => my_error)
+/// try_downcast!(my_error => |inner| { dbg!(inner); })
 /// ```
 macro_rules! try_downcast {
-        ($do:expr => $value:expr => [$ty:ty, $($tail:ty $(,),*)*]) => {
-            try_downcast!($do => $value => $ty);
-            try_downcast!($do => $value => [$($tail),*]);
+        ($value:expr => |$binding:pat_param| $do:expr => [$ty:ty, $($tail:ty $(,)*),*]) => {
+            try_downcast!($value => |$binding| $do => $ty);
+            try_downcast!($value => |$binding| $do => [$($tail),*]);
         };
-        ($do:expr => $value:expr => [$ty:ty $(,),*]) => {
-            try_downcast!($do => $value => $ty);
+        ($value:expr => |$binding:pat_param| $do:expr => [$ty:ty $(,)*]) => {
+            try_downcast!($value => |$binding| $do => $ty);
         };
-        ($do:expr => $value:expr => $ty:ty) => {
-            if let Some(inner) = ($value).downcast_ref::<$ty>() {
-                #[allow(clippy::redundant_closure_call)]
-                break Some(($do)(inner));
+        ($value:expr => |$binding:pat_param| $do:expr => $ty:ty) => {
+            if let Some($binding) = ($value).downcast_ref::<$ty>() {
+                break Some({ $do });
             }
         };
-        ($do:expr => $value:expr) => {
+        ($value:expr => |$binding:pat_param| $do:expr) => {
             loop {
-                try_downcast![$do => $value => [
+                try_downcast![$value => |$binding| $do => [
                     wgpu_core::command::ClearError,
                     wgpu_core::command::CommandEncoderError,
                     wgpu_core::command::ComputePassError,
@@ -185,7 +184,7 @@ impl std::hash::Hash for WrappedContextError {
 
         // try to downcast into something that implements `DedupableError`, and
         // then call `DedupableError::hash`.
-        if try_downcast!(|inner| DedupableError::hash(inner, state) => self.0.cause).is_none() {
+        if try_downcast!(self.0.cause => |inner| DedupableError::hash(inner, state)).is_none() {
             re_log::warn!(cause=?self.0.cause, "unknown error cause");
         }
     }
@@ -199,7 +198,7 @@ impl PartialEq for WrappedContextError {
         // try to downcast into something that implements `DedupableError`, and
         // then call `DedupableError::eq`.
         if let Some(finer_eq) =
-            try_downcast!(|inner| DedupableError::eq(inner, &*rhs.0.cause) => self.0.cause)
+            try_downcast!(self.0.cause => |inner| DedupableError::eq(inner, &*rhs.0.cause))
         {
             is_eq |= finer_eq;
         } else {
