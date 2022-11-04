@@ -11,7 +11,7 @@ pub enum PoolError {
 
 /// A resource that can be owned & lifetime tracked by a resource pool.
 pub(crate) trait GpuResource {
-    /// Called every time a resource handle was resolved to its [`Resource`] object.
+    /// Called every time a resource handle was resolved to its [`GpuResource`] object.
     fn on_handle_resolve(&self, _current_frame_index: u64) {}
 }
 

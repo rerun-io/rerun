@@ -81,14 +81,14 @@ pub(crate) struct BindGroupDesc {
 /// Resource pool for bind groups.
 ///
 /// Requirements regarding ownership & resource lifetime:
-/// * owned [`BindGroup`] should keep buffer/texture alive
+/// * owned [`GpuBindGroup`] should keep buffer/texture alive
 ///   (user should not need to hold strong buffer/texture handles manually)
-/// * [`BindGroupPool`] should *try* to re-use previously created bind groups if they happen to match
+/// * [`GpuBindGroupPool`] should *try* to re-use previously created bind groups if they happen to match
 /// * musn't prevent buffer/texture re-use on next frame
-///   i.e. a internally cached [`BindGroupPool`]s without owner shouldn't keep textures/buffers alive
+///   i.e. a internally cached [`GpuBindGroupPool`]s without owner shouldn't keep textures/buffers alive
 ///
 /// We satisfy these by retrieving the strong buffer/texture handles and make them part of the [`BindGroupHandleStrong`].
-/// Internally, the [`BindGroupPool`] does *not* hold any strong reference of any resource,
+/// Internally, the [`GpuBindGroupPool`] does *not* hold any strong reference of any resource,
 /// i.e. it does not interfere with the buffer/texture pools at all.
 /// The question whether a bind groups happen to be re-usable becomes again a simple question of matching
 /// bind group descs which itself does not contain any strong references either.
