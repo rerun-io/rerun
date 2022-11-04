@@ -101,6 +101,8 @@ pub struct LineSegments {
     pub segments: Vec<[[f32; 3]; 2]>,
     pub radius: Size,
     pub color: [u8; 4],
+    #[cfg(feature = "wgpu")]
+    pub flags: re_renderer::renderer::LineStripFlags,
 }
 
 pub enum MeshSourceData {
@@ -218,6 +220,8 @@ impl Scene {
                     segments,
                     radius,
                     color,
+                    #[cfg(feature = "wgpu")]
+                    flags: Default::default(),
                 });
             }
         }
@@ -238,6 +242,8 @@ impl Scene {
                     segments: bytemuck::allocation::pod_collect_to_vec(points),
                     radius,
                     color,
+                    #[cfg(feature = "wgpu")]
+                    flags: Default::default(),
                 });
             }
         }
@@ -264,7 +270,6 @@ impl Scene {
             }
         }
 
-        #[cfg(feature = "glow")]
         {
             crate::profile_scope!("arrow3d");
             for (props, obj) in objects.arrow3d.iter() {
@@ -358,6 +363,8 @@ impl Scene {
                         segments: vec![[cam_origin.into(), axis_end.into()]],
                         radius,
                         color,
+                        #[cfg(feature = "wgpu")]
+                        flags: Default::default(),
                     });
                 }
             }
@@ -530,15 +537,16 @@ impl Scene {
             segments,
             radius: line_radius,
             color,
+            #[cfg(feature = "wgpu")]
+            flags: Default::default(),
         });
 
         Some(())
     }
 
-    #[cfg(feature = "glow")]
     fn add_arrow(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         instance_id: InstanceIdHash,
         color: [u8; 4],
         width_scale: Option<f32>,
@@ -547,48 +555,66 @@ impl Scene {
     ) {
         let re_log_types::Arrow3D { origin, vector } = arrow;
 
-        let (cylinder_id, cylinder_mesh) = ctx.cache.cpu_mesh.cylinder();
-        let (cone_id, cone_mesh) = ctx.cache.cpu_mesh.cone();
-
+        let width_scale = width_scale.unwrap_or(1.0);
         let vector = Vec3::from_slice(vector);
-        let rotation = glam::Quat::from_rotation_arc(Vec3::X, vector.normalize());
         let origin = Vec3::from_slice(origin);
 
-        let width_scale = width_scale.unwrap_or(1.0);
-        let tip_length = 2.0 * width_scale;
+        #[cfg(feature = "glow")]
+        {
+            let (cylinder_id, cylinder_mesh) = _ctx.cache.cpu_mesh.cylinder();
+            let (cone_id, cone_mesh) = _ctx.cache.cpu_mesh.cone();
 
-        let cylinder_transform = macaw::Affine3A::from_scale_rotation_translation(
-            vec3(
-                vector.length() - tip_length,
-                0.5 * width_scale,
-                0.5 * width_scale,
-            ),
-            rotation,
-            origin,
-        );
+            let rotation = glam::Quat::from_rotation_arc(Vec3::X, vector.normalize());
 
-        self.meshes.push(MeshSource {
-            instance_id,
-            mesh_id: cylinder_id,
-            world_from_mesh: cylinder_transform,
-            cpu_mesh: cylinder_mesh,
-            tint: Some(color),
-        });
+            let tip_length = 2.0 * width_scale;
 
-        // The cone has it's origin at the base, so we translate it by [-1,0,0] so the tip lines up with vector.
-        let cone_transform = glam::Affine3A::from_scale_rotation_translation(
-            vec3(tip_length, 1.0 * width_scale, 1.0 * width_scale),
-            rotation,
-            origin + vector,
-        ) * glam::Affine3A::from_translation(-Vec3::X);
+            let cylinder_transform = macaw::Affine3A::from_scale_rotation_translation(
+                vec3(
+                    vector.length() - tip_length,
+                    0.5 * width_scale,
+                    0.5 * width_scale,
+                ),
+                rotation,
+                origin,
+            );
 
-        self.meshes.push(MeshSource {
-            instance_id,
-            mesh_id: cone_id,
-            world_from_mesh: cone_transform,
-            cpu_mesh: cone_mesh,
-            tint: Some(color),
-        });
+            self.meshes.push(MeshSource {
+                instance_id,
+                mesh_id: cylinder_id,
+                world_from_mesh: cylinder_transform,
+                cpu_mesh: cylinder_mesh,
+                tint: Some(color),
+            });
+
+            // The cone has it's origin at the base, so we translate it by [-1,0,0] so the tip lines up with vector.
+            let cone_transform = glam::Affine3A::from_scale_rotation_translation(
+                vec3(tip_length, 1.0 * width_scale, 1.0 * width_scale),
+                rotation,
+                origin + vector,
+            ) * glam::Affine3A::from_translation(-Vec3::X);
+
+            self.meshes.push(MeshSource {
+                instance_id,
+                mesh_id: cone_id,
+                world_from_mesh: cone_transform,
+                cpu_mesh: cone_mesh,
+                tint: Some(color),
+            });
+        }
+        #[cfg(not(feature = "glow"))]
+        {
+            let radius = width_scale * 0.5;
+            let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius);
+            let vector_len = vector.length();
+            let end = origin + vector * ((vector_len - tip_length) / vector_len);
+            self.line_segments.push(LineSegments {
+                instance_id,
+                segments: vec![[origin.to_array(), end.to_array()]],
+                radius: Size::new_scene(radius),
+                color,
+                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
+            })
+        }
     }
 
     fn add_box(
@@ -653,6 +679,8 @@ impl Scene {
             segments,
             radius: line_radius,
             color,
+            #[cfg(feature = "wgpu")]
+            flags: Default::default(),
         });
     }
 
@@ -664,6 +692,7 @@ impl Scene {
                 points: Vec::new(),
                 radius: segments.radius.0,
                 color: segments.color,
+                flags: segments.flags,
             };
             for [a, b] in &segments.segments {
                 let a = glam::Vec3::from(*a);
@@ -679,6 +708,7 @@ impl Scene {
                                 points: vec![a, b],
                                 radius: segments.radius.0,
                                 color: segments.color,
+                                flags: segments.flags,
                             },
                         ));
                     }
