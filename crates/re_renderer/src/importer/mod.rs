@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use macaw::Vec3Ext;
 
-use crate::{renderer::MeshInstance, RenderContext};
+use crate::{renderer::MeshInstance, resource_managers::ResourceLifeTime, RenderContext};
 
 #[cfg(feature = "import-obj")]
 pub mod obj;
@@ -41,7 +41,7 @@ impl ModelImportData {
 
         let mesh_handles = meshes
             .into_iter()
-            .map(|mesh| ctx.meshes.new_long_lived_mesh(mesh))
+            .map(|mesh| ctx.meshes.store_resource(mesh, ResourceLifeTime::LongLived))
             .collect_vec();
         instances
             .into_iter()

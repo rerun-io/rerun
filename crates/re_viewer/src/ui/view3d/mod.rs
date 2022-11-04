@@ -474,6 +474,7 @@ fn paint_view(
         use itertools::Itertools;
         use re_renderer::importer::ImportMeshInstance;
         use re_renderer::renderer::*;
+        use re_renderer::resource_managers::ResourceLifeTime;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
         use re_renderer::RenderContext;
 
@@ -538,7 +539,10 @@ fn paint_view(
                         // TODO(andreas) obv. not everything is a shortlived mesh!
                         let meshes = meshes
                             .iter()
-                            .map(|data| ctx.meshes.new_frame_mesh(data.clone()))
+                            .map(|data| {
+                                ctx.meshes
+                                    .store_resource(data.clone(), ResourceLifeTime::SingleFrame)
+                            })
                             .collect_vec();
                         let mesh_instances = instances
                             .iter()

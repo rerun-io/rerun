@@ -1,6 +1,6 @@
 use type_map::concurrent::{self, TypeMap};
 
-use crate::resource_manager::mesh_manager::MeshManager;
+use crate::resource_managers::mesh_manager::MeshManager;
 use crate::{
     config::RenderContextConfig, global_bindings::GlobalBindings, renderer::Renderer,
     resource_pools::WgpuResourcePools,

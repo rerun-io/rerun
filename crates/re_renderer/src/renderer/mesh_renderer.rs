@@ -9,7 +9,7 @@ use smallvec::smallvec;
 use crate::{
     include_file,
     mesh::{mesh_vertices, GpuMesh},
-    resource_manager::mesh_manager::{MeshHandle, MeshManager},
+    resource_managers::mesh_manager::{MeshHandle, MeshManager},
     resource_pools::{
         buffer_pool::{BufferDesc, GpuBufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
@@ -149,7 +149,7 @@ impl MeshDrawable {
         // Also, it helps failing early if something is wrong with a mesh!
         let mut batches = Vec::with_capacity(mesh_runs.len());
         for (mesh_handle, count) in mesh_runs {
-            let mesh = MeshManager::to_gpu(ctx, device, queue, mesh_handle)?;
+            let mesh = MeshManager::get_or_create_gpu_resource(ctx, device, queue, mesh_handle)?;
             batches.push(MeshBatch { mesh, count });
         }
 

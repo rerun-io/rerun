@@ -6,7 +6,7 @@
 pub mod config;
 pub mod importer;
 pub mod renderer;
-pub mod resource_manager;
+pub mod resource_managers;
 pub mod view_builder;
 
 mod context;
