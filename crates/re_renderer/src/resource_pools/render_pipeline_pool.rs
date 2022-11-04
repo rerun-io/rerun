@@ -7,14 +7,14 @@ use crate::debug_label::DebugLabel;
 
 use super::{pipeline_layout_pool::*, resource::*, shader_module_pool::*, static_resource_pool::*};
 
-slotmap::new_key_type! { pub struct RenderPipelineHandle; }
+slotmap::new_key_type! { pub struct GpuRenderPipelineHandle; }
 
-pub struct RenderPipeline {
+pub struct GpuRenderPipeline {
     last_frame_used: AtomicU64,
     pub(crate) pipeline: wgpu::RenderPipeline,
 }
 
-impl UsageTrackedResource for RenderPipeline {
+impl UsageTrackedResource for GpuRenderPipeline {
     fn last_frame_used(&self) -> &AtomicU64 {
         &self.last_frame_used
     }
@@ -49,12 +49,12 @@ pub struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
 
-    pub pipeline_layout: PipelineLayoutHandle,
+    pub pipeline_layout: GpuPipelineLayoutHandle,
 
     pub vertex_entrypoint: String,
-    pub vertex_handle: ShaderModuleHandle,
+    pub vertex_handle: GpuShaderModuleHandle,
     pub fragment_entrypoint: String,
-    pub fragment_handle: ShaderModuleHandle,
+    pub fragment_handle: GpuShaderModuleHandle,
 
     /// The format of any vertex buffers used with this pipeline.
     pub vertex_buffers: SmallVec<[VertexBufferLayout; 4]>,
@@ -75,8 +75,8 @@ impl RenderPipelineDesc {
     fn create_render_pipeline(
         &self,
         device: &wgpu::Device,
-        pipeline_layouts: &PipelineLayoutPool,
-        shader_modules: &ShaderModulePool,
+        pipeline_layouts: &GpuPipelineLayoutPool,
+        shader_modules: &GpuShaderModulePool,
     ) -> anyhow::Result<wgpu::RenderPipeline> {
         let pipeline_layout = pipeline_layouts
             .get_resource(self.pipeline_layout)
@@ -120,20 +120,20 @@ impl RenderPipelineDesc {
 }
 
 #[derive(Default)]
-pub struct RenderPipelinePool {
-    pool: StaticResourcePool<RenderPipelineHandle, RenderPipelineDesc, RenderPipeline>,
+pub struct GpuRenderPipelinePool {
+    pool: StaticResourcePool<GpuRenderPipelineHandle, RenderPipelineDesc, GpuRenderPipeline>,
 }
 
-impl RenderPipelinePool {
+impl GpuRenderPipelinePool {
     pub fn get_or_create(
         &mut self,
         device: &wgpu::Device,
         desc: &RenderPipelineDesc,
-        pipeline_layout_pool: &PipelineLayoutPool,
-        shader_module_pool: &ShaderModulePool,
-    ) -> RenderPipelineHandle {
+        pipeline_layout_pool: &GpuPipelineLayoutPool,
+        shader_module_pool: &GpuShaderModulePool,
+    ) -> GpuRenderPipelineHandle {
         self.pool.get_or_create(desc, |desc| {
-            RenderPipeline {
+            GpuRenderPipeline {
                 last_frame_used: AtomicU64::new(0),
                 pipeline: desc
                     // TODO(cmc): certainly not unwrapping here
@@ -147,8 +147,8 @@ impl RenderPipelinePool {
         &mut self,
         device: &wgpu::Device,
         frame_index: u64,
-        shader_modules: &mut ShaderModulePool,
-        pipeline_layouts: &mut PipelineLayoutPool,
+        shader_modules: &mut GpuShaderModulePool,
+        pipeline_layouts: &mut GpuPipelineLayoutPool,
     ) {
         // Make sure the shader modules we rely on don't get GC'd!
         for desc in self.pool.resource_descs() {
@@ -212,7 +212,10 @@ impl RenderPipelinePool {
         }
     }
 
-    pub fn get_resource(&self, handle: RenderPipelineHandle) -> Result<&RenderPipeline, PoolError> {
+    pub fn get_resource(
+        &self,
+        handle: GpuRenderPipelineHandle,
+    ) -> Result<&GpuRenderPipeline, PoolError> {
         self.pool.get_resource(handle)
     }
 }

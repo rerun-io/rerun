@@ -8,12 +8,12 @@ use smallvec::smallvec;
 
 use crate::{
     include_file,
-    mesh::{mesh_vertices, Mesh},
-    mesh_manager::MeshHandle,
+    mesh::{mesh_vertices, GpuMesh},
+    mesh_manager::GpuMeshHandle,
     resource_pools::{
-        buffer_pool::{BufferDesc, BufferHandleStrong},
+        buffer_pool::{BufferDesc, GpuBufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::{RenderPipelineDesc, RenderPipelineHandle, VertexBufferLayout},
+        render_pipeline_pool::{GpuRenderPipelineHandle, RenderPipelineDesc, VertexBufferLayout},
         shader_module_pool::ShaderModuleDesc,
     },
     view_builder::ViewBuilder,
@@ -62,7 +62,7 @@ impl GpuInstanceData {
 
 #[derive(Clone)]
 struct MeshBatch {
-    mesh: Mesh,
+    mesh: GpuMesh,
     count: u32,
 }
 
@@ -71,7 +71,7 @@ pub struct MeshDrawable {
     // There is a single instance buffer for all instances of all meshes.
     // This means we only ever need to bind the instance buffer once and then change the
     // instance range on every instanced draw call!
-    instance_buffer: BufferHandleStrong,
+    instance_buffer: GpuBufferHandleStrong,
     batches: Vec<MeshBatch>,
 }
 
@@ -80,8 +80,8 @@ impl Drawable for MeshDrawable {
 }
 
 pub struct MeshInstance {
-    pub mesh: MeshHandle,
-    pub transformation: macaw::Conformal3,
+    pub mesh: GpuMeshHandle,
+    pub world_from_mesh: macaw::Conformal3,
 }
 
 impl MeshDrawable {
@@ -136,8 +136,8 @@ impl MeshDrawable {
             ) {
                 count += 1;
                 gpu_instance.translation_and_scale =
-                    instance.transformation.translation_and_scale().into();
-                gpu_instance.rotation = instance.transformation.rotation().into();
+                    instance.world_from_mesh.translation_and_scale().into();
+                gpu_instance.rotation = instance.world_from_mesh.rotation().into();
             }
 
             batches.push(MeshBatch {
@@ -156,7 +156,7 @@ impl MeshDrawable {
 }
 
 pub struct MeshRenderer {
-    render_pipeline: RenderPipelineHandle,
+    render_pipeline: GpuRenderPipelineHandle,
 }
 
 impl Renderer for MeshRenderer {
@@ -204,7 +204,7 @@ impl Renderer for MeshRenderer {
                 render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
-                    cull_mode: Some(wgpu::Face::Back),
+                    cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
                     ..Default::default()
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {

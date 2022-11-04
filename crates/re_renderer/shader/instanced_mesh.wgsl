@@ -11,7 +11,7 @@ struct VertexOut {
 
 @vertex
 fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
-    let world_position = quat_rotate_vec3(in_instance.rotation, in_vertex.position) * in_instance.position_and_scale.w +
+    let world_position = quat_rotate_vec3(in_instance.rotation, in_vertex.position * in_instance.position_and_scale.w) +
                          in_instance.position_and_scale.xyz;
 
     var out: VertexOut;

@@ -32,3 +32,31 @@ impl From<&str> for DebugLabel {
         }
     }
 }
+
+impl From<String> for DebugLabel {
+    fn from(str: String) -> Self {
+        #[cfg(not(debug_assertions))]
+        {
+            _ = str;
+        }
+
+        Self {
+            #[cfg(debug_assertions)]
+            label: str,
+        }
+    }
+}
+
+impl From<Option<&str>> for DebugLabel {
+    fn from(str: Option<&str>) -> Self {
+        #[cfg(not(debug_assertions))]
+        {
+            _ = str;
+        }
+
+        Self {
+            #[cfg(debug_assertions)]
+            label: str.unwrap_or("").to_owned(),
+        }
+    }
+}

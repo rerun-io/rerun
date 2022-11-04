@@ -15,15 +15,15 @@ use std::{f32::consts::TAU, io::Read};
 use anyhow::Context as _;
 use glam::Vec3;
 use instant::Instant;
+use itertools::Itertools;
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
-    mesh::{mesh_vertices::MeshVertexData, MeshData},
-    mesh_manager::{MeshHandle, MeshManager},
-    renderer::{lines::LineStripFlags, *},
+    mesh_manager::{GpuMeshHandle, MeshManager},
+    renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
-    *,
+    DebugLabel, *,
 };
 use winit::{
     event::{Event, WindowEvent},
@@ -40,17 +40,33 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     app.run();
 }
 
-/// Uses a [`re_renderer::ViewBuilder`] to draw an example scene.
-fn draw_view(
+fn split_resolution(
+    resolution: [u32; 2],
+    nb_rows: usize,
+    nb_cols: usize,
+) -> impl Iterator<Item = ((f32, f32), (f32, f32))> {
+    let total_width = resolution[0] as f32;
+    let total_height = resolution[1] as f32;
+    let width = total_width / nb_cols as f32;
+    let height = total_height / nb_rows as f32;
+    (0..nb_rows)
+        .flat_map(move |row| (0..nb_cols).map(move |col| (row, col)))
+        .map(move |(row, col)| {
+            // very quick'n'dirty (uneven) borders
+            let y = f32::clamp(row as f32 * height + 2.0, 2.0, total_height - 2.0);
+            let x = f32::clamp(col as f32 * width + 2.0, 2.0, total_width - 2.0);
+            ((x, y), (width - 4.0, height - 4.0))
+        })
+}
+
+fn draw_views(
     state: &AppState,
     re_ctx: &mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    backbuffer_view: &wgpu::TextureView,
     resolution: [u32; 2],
-) -> ViewBuilder {
-    let mut view_builder = ViewBuilder::default();
-
+) -> impl Iterator<Item = wgpu::CommandBuffer> {
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
     let seconds_since_startup = state.time.seconds_since_startup();
     let pos = Vec3::new(
@@ -59,8 +75,9 @@ fn draw_view(
         seconds_since_startup.cos(),
     ) * 10.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
-    let target_cfg = TargetConfiguration {
+    let mut target_cfg = TargetConfiguration {
         resolution_in_pixel: resolution,
+        origin_in_pixel: [0, 0],
         view_from_world,
         fov_y: 70.0 * TAU / 360.0,
         near_plane_distance: 0.01,
@@ -73,25 +90,95 @@ fn draw_view(
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
     let meshes = build_meshes(re_ctx, device, queue, &state.meshes, seconds_since_startup);
 
-    view_builder
-        .setup_view(re_ctx, device, queue, &target_cfg)
-        .unwrap()
-        .queue_draw(&triangle)
-        .queue_draw(&skybox)
-        .queue_draw(&point_cloud)
-        .queue_draw(&lines)
-        .queue_draw(&meshes)
-        .draw(re_ctx, encoder)
-        .unwrap();
+    let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
+
+    // Using a macro here because `Drawable` isn't object safe and a closure cannot be
+    // generic over its input type.
+    #[rustfmt::skip]
+    macro_rules! draw {
+        ($name:ident @ split #$n:expr) => {{
+            let ((x, y), (width, height)) = splits[$n];
+            target_cfg.resolution_in_pixel = [width as u32, height as u32];
+            target_cfg.origin_in_pixel = [x as u32, y as u32];
+            draw_view(re_ctx, device, queue, &target_cfg,
+                      &stringify!($name).into(), &skybox, &$name)
+        }};
+    }
+
+    let view_builders = [
+        draw!(triangle @ split #0),
+        draw!(lines @ split #1),
+        draw!(meshes @ split #2),
+        draw!(point_cloud @ split #3),
+    ];
+
+    let mut composite_cmd_encoder =
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: "composite_encoder".into(),
+        });
+
+    let view_cmd_buffers = {
+        let mut composite_pass =
+            composite_cmd_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: backbuffer_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            });
+
+        view_builders
+            .into_iter()
+            .map(|(vb, cmd_buf)| {
+                vb.composite(re_ctx, &mut composite_pass)
+                    .expect("Failed to composite view main surface");
+                cmd_buf
+            })
+            .collect::<Vec<_>>() // So we don't hold a reference to the render pass!
+
+        // drop the pass so we can finish() the main encoder!
+    };
+
+    view_cmd_buffers
+        .into_iter()
+        .chain(std::iter::once(composite_cmd_encoder.finish()))
+}
+
+fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
+    re_ctx: &'a mut RenderContext,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    target_cfg: &TargetConfiguration,
+    label: &DebugLabel,
+    skybox: &GenericSkyboxDrawable,
+    drawable: &D,
+) -> (ViewBuilder, wgpu::CommandBuffer) {
+    let mut view_builder = ViewBuilder::default();
+
+    let mut encoder =
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: label.get() });
 
     view_builder
+        .setup_view(re_ctx, device, queue, target_cfg)
+        .unwrap()
+        .queue_draw(skybox)
+        .queue_draw(drawable)
+        .draw(re_ctx, &mut encoder)
+        .unwrap();
+
+    (view_builder, encoder.finish())
 }
 
 fn build_meshes(
     re_ctx: &mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    mesh_handles: &[MeshHandle],
+    mesh_handles: &[GpuMeshHandle],
     seconds_since_startup: f32,
 ) -> MeshDrawable {
     let mesh_instances = lorenz_points(10.0)
@@ -100,14 +187,14 @@ fn build_meshes(
         .flat_map(|(i, p)| {
             mesh_handles.iter().map(move |mesh| MeshInstance {
                 mesh: *mesh,
-                transformation: macaw::Conformal3::from_scale_rotation_translation(
+                world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
                     0.025 + (i % 10) as f32 * 0.01,
                     glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
                     *p,
                 ),
             })
         })
-        .collect::<Vec<_>>();
+        .collect_vec();
     MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap()
 }
 
@@ -337,41 +424,16 @@ impl Application {
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let mut encoder =
-                        self.device
-                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: "composite_encoder".into(),
-                            });
-
-                    let view_builder = draw_view(
+                    let cmd_buffers = draw_views(
                         &self.state,
                         &mut self.re_ctx,
                         &self.device,
                         &self.queue,
-                        &mut encoder,
+                        &view,
                         [self.surface_config.width, self.surface_config.height],
                     );
 
-                    {
-                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: None,
-                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                view: &view,
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
-                                    store: true,
-                                },
-                            })],
-                            depth_stencil_attachment: None,
-                        });
-
-                        view_builder
-                            .composite(&self.re_ctx, &mut pass)
-                            .expect("Failed to composite view main surface");
-                    }
-
-                    self.queue.submit(Some(encoder.finish()));
+                    self.queue.submit(cmd_buffers);
                     frame.present();
 
                     self.re_ctx.frame_maintenance(&self.device);
@@ -428,7 +490,7 @@ struct AppState {
     time: Time,
 
     /// Lazily loaded mesh.
-    meshes: Vec<MeshHandle>,
+    meshes: Vec<GpuMeshHandle>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,
@@ -448,7 +510,7 @@ impl AppState {
                 radius: rnd.gen_range(0.005..0.025),
                 srgb_color: [rnd.gen(), rnd.gen(), rnd.gen(), 255],
             })
-            .collect::<Vec<_>>();
+            .collect_vec();
 
         let meshes = {
             let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
@@ -456,47 +518,12 @@ impl AppState {
             let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
             let mut obj_data = Vec::new();
             zipped_obj.read_to_end(&mut obj_data).unwrap();
-            let (models, _materials) = tobj::load_obj_buf(
-                &mut std::io::Cursor::new(&obj_data),
-                &tobj::LoadOptions {
-                    single_index: true,
-                    triangulate: true,
-                    ..Default::default()
-                },
-                |_material_path| Err(tobj::LoadError::MaterialParseError),
-            )
-            .expect("failed loading obj");
-            models
+            importer::obj::load_obj_from_buffer(&obj_data)
+                .unwrap()
+                .meshes
                 .iter()
-                .map(|mesh| {
-                    let mesh = &mesh.mesh;
-                    let vertex_positions = mesh
-                        .positions
-                        .chunks(3)
-                        .map(|p| glam::vec3(p[0], p[1], p[2]))
-                        .collect();
-                    let vertex_data = mesh
-                        .normals
-                        .chunks(3)
-                        .zip(mesh.texcoords.chunks(2))
-                        .map(|(n, t)| MeshVertexData {
-                            normal: glam::vec3(n[0], n[1], n[2]),
-                            texcoord: glam::vec2(t[0], t[1]),
-                        })
-                        .collect();
-
-                    MeshManager::new_long_lived_mesh(
-                        re_ctx,
-                        device,
-                        queue,
-                        &MeshData {
-                            label: "rerun logo".into(),
-                            indices: mesh.indices.clone(),
-                            vertex_positions,
-                            vertex_data,
-                        },
-                    )
-                    .unwrap()
+                .map(|mesh_data| {
+                    MeshManager::new_long_lived_mesh(re_ctx, device, queue, mesh_data).unwrap()
                 })
                 .collect()
         };

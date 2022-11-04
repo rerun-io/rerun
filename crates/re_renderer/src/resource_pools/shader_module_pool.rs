@@ -10,9 +10,9 @@ use super::{resource::*, static_resource_pool::StaticResourcePool};
 
 // ---
 
-slotmap::new_key_type! { pub struct ShaderModuleHandle; }
+slotmap::new_key_type! { pub struct GpuShaderModuleHandle; }
 
-pub struct ShaderModule {
+pub struct GpuShaderModule {
     last_frame_used: AtomicU64,
     pub last_frame_modified: AtomicU64, // TODO(cmc): need associated slotmaps
     pub shader_module: wgpu::ShaderModule,
@@ -64,7 +64,7 @@ impl ShaderModuleDesc {
     }
 }
 
-impl UsageTrackedResource for ShaderModule {
+impl UsageTrackedResource for GpuShaderModule {
     fn last_frame_used(&self) -> &AtomicU64 {
         &self.last_frame_used
     }
@@ -73,20 +73,20 @@ impl UsageTrackedResource for ShaderModule {
 // ---
 
 #[derive(Default)]
-pub struct ShaderModulePool {
-    pool: StaticResourcePool<ShaderModuleHandle, ShaderModuleDesc, ShaderModule>,
+pub struct GpuShaderModulePool {
+    pool: StaticResourcePool<GpuShaderModuleHandle, ShaderModuleDesc, GpuShaderModule>,
 }
 
-impl ShaderModulePool {
+impl GpuShaderModulePool {
     pub fn get_or_create<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
         desc: &ShaderModuleDesc,
-    ) -> ShaderModuleHandle {
+    ) -> GpuShaderModuleHandle {
         self.pool.get_or_create(desc, |desc| {
             let shader_module = desc.create_shader_module(device, resolver);
-            ShaderModule {
+            GpuShaderModule {
                 last_frame_used: AtomicU64::new(0),
                 last_frame_modified: AtomicU64::new(0),
                 shader_module,
@@ -149,11 +149,11 @@ impl ShaderModulePool {
         }
     }
 
-    pub fn get(&self, handle: ShaderModuleHandle) -> Result<&ShaderModule, PoolError> {
+    pub fn get(&self, handle: GpuShaderModuleHandle) -> Result<&GpuShaderModule, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    pub(super) fn register_resource_usage(&mut self, handle: ShaderModuleHandle) {
+    pub(super) fn register_resource_usage(&mut self, handle: GpuShaderModuleHandle) {
         let _ = self.get(handle);
     }
 }

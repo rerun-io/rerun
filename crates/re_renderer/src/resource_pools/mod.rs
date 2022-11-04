@@ -14,10 +14,10 @@ mod resource;
 mod static_resource_pool;
 
 use self::{
-    bind_group_layout_pool::BindGroupLayoutPool, bind_group_pool::BindGroupPool,
-    buffer_pool::BufferPool, pipeline_layout_pool::PipelineLayoutPool,
-    render_pipeline_pool::RenderPipelinePool, sampler_pool::SamplerPool,
-    shader_module_pool::ShaderModulePool, texture_pool::TexturePool,
+    bind_group_layout_pool::GpuBindGroupLayoutPool, bind_group_pool::GpuBindGroupPool,
+    buffer_pool::GpuBufferPool, pipeline_layout_pool::GpuPipelineLayoutPool,
+    render_pipeline_pool::GpuRenderPipelinePool, sampler_pool::GpuSamplerPool,
+    shader_module_pool::GpuShaderModulePool, texture_pool::TexturePool,
 };
 
 /// Collection of all wgpu resource pools.
@@ -28,14 +28,14 @@ use self::{
 /// for details check their respective allocation/creation functions!
 #[derive(Default)]
 pub struct WgpuResourcePools {
-    pub(crate) bind_group_layouts: BindGroupLayoutPool,
-    pub(crate) pipeline_layouts: PipelineLayoutPool,
-    pub(crate) render_pipelines: RenderPipelinePool,
-    pub(crate) samplers: SamplerPool,
-    pub(crate) shader_modules: ShaderModulePool,
+    pub(crate) bind_group_layouts: GpuBindGroupLayoutPool,
+    pub(crate) pipeline_layouts: GpuPipelineLayoutPool,
+    pub(crate) render_pipelines: GpuRenderPipelinePool,
+    pub(crate) samplers: GpuSamplerPool,
+    pub(crate) shader_modules: GpuShaderModulePool,
 
-    pub(crate) bind_groups: BindGroupPool,
+    pub(crate) bind_groups: GpuBindGroupPool,
 
-    pub(crate) buffers: BufferPool,
+    pub(crate) buffers: GpuBufferPool,
     pub(crate) textures: TexturePool,
 }

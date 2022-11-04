@@ -7,9 +7,13 @@ license.workspace = true
 publish = false
 
 [features]
-default = []
+default = ["import-obj", "import-gltf"]
+
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = ["dep:puffin"]
+
+import-obj = ["dep:tobj"]
+import-gltf = ["dep:gltf"]
 
 [dependencies]
 ahash = "0.8"
@@ -35,6 +39,10 @@ thiserror = "1.0"
 type-map = "0.5"
 unindent = "0.1"
 
+# optional
+gltf = { version = "1.0", optional = true }
+tobj = { version = "3.2", optional = true }
+
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossbeam = "0.8"
@@ -58,7 +66,6 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 pollster = "0.2"
 rand = "0.8"
-tobj = "3.2"
 tracing-subscriber = "0.3"
 winit = "0.27"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }

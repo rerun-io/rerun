@@ -23,7 +23,7 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
     /// Every [`DynamicResourcePool::frame_maintenance`] we check if the pool is now the only owner of the handle
     /// and if so mark it as deallocated.
     /// Being a [`SecondaryMap`] allows us to upgrade "weak" handles to strong handles,
-    /// something required by [`super::BindGroupPool`]
+    /// something required by [`super::GpuBindGroupPool`]
     alive_handles: SecondaryMap<Handle, Arc<Handle>>,
 
     /// Any resource that has been deallocated last frame.
