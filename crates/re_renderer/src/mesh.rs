@@ -78,7 +78,7 @@ pub mod mesh_vertices {
 }
 
 #[derive(Clone)]
-pub struct MeshData {
+pub struct Mesh {
     pub label: DebugLabel,
 
     // TODO(andreas): Materials
@@ -88,7 +88,7 @@ pub struct MeshData {
 }
 
 #[derive(Clone)]
-pub(crate) struct Mesh {
+pub(crate) struct GpuMesh {
     // It would be desirable to put both vertex and index buffer into the same buffer, BUT
     // WebGL doesn't allow us to do so! (see https://github.com/gfx-rs/wgpu/pull/3157)
     pub index_buffer: BufferHandleStrong,
@@ -102,23 +102,23 @@ pub(crate) struct Mesh {
     pub index_buffer_range: Range<u64>,
 
     /// Every mesh has at least one material.
-    pub materials: SmallVec<[Material; 1]>,
+    pub materials: SmallVec<[GpuMaterial; 1]>,
 }
 
 #[derive(Clone)]
-pub(crate) struct Material {
-    /// Range of indices in parent mesh that this material covers.
+pub(crate) struct GpuMaterial {
+    /// Index range within the owning [`Mesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
-    // TODO(andreas): Material properties etc.
-    //bind_group: BindGroupHandleStrong,
+    // Bind group, following the layout as defined by [`crate::renderer::MeshRenderer`]
+    //pub bind_group: BindGroupHandleStrong,
 }
 
-impl Mesh {
+impl GpuMesh {
     pub fn new(
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        data: &MeshData,
+        data: &Mesh,
     ) -> anyhow::Result<Self> {
         anyhow::ensure!(data.vertex_positions.len() == data.vertex_data.len());
         re_log::trace!(
@@ -181,7 +181,7 @@ impl Mesh {
             index_buffer
         };
 
-        Ok(Mesh {
+        Ok(GpuMesh {
             index_buffer,
             vertex_buffer_combined,
             vertex_buffer_positions_range: 0..vertex_buffer_positions_size,
@@ -189,7 +189,7 @@ impl Mesh {
             index_buffer_range: 0..index_buffer_size,
 
             // TODO(andreas): Actual material support
-            materials: smallvec![Material {
+            materials: smallvec![GpuMaterial {
                 index_range: 0..data.indices.len() as u32,
             }],
         })

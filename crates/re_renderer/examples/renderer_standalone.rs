@@ -20,7 +20,7 @@ use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
-    mesh_manager::{MeshHandle, MeshManager},
+    mesh_manager::{GpuMeshHandle, MeshManager},
     renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
     *,
@@ -91,7 +91,7 @@ fn build_meshes(
     re_ctx: &mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    mesh_handles: &[MeshHandle],
+    mesh_handles: &[GpuMeshHandle],
     seconds_since_startup: f32,
 ) -> MeshDrawable {
     let mesh_instances = lorenz_points(10.0)
@@ -425,7 +425,7 @@ struct AppState {
     time: Time,
 
     /// Lazily loaded mesh.
-    meshes: Vec<MeshHandle>,
+    meshes: Vec<GpuMeshHandle>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,

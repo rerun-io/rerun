@@ -8,8 +8,8 @@ use smallvec::smallvec;
 
 use crate::{
     include_file,
-    mesh::{mesh_vertices, Mesh},
-    mesh_manager::MeshHandle,
+    mesh::{mesh_vertices, GpuMesh},
+    mesh_manager::GpuMeshHandle,
     resource_pools::{
         buffer_pool::{BufferDesc, BufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
@@ -62,7 +62,7 @@ impl GpuInstanceData {
 
 #[derive(Clone)]
 struct MeshBatch {
-    mesh: Mesh,
+    mesh: GpuMesh,
     count: u32,
 }
 
@@ -80,7 +80,7 @@ impl Drawable for MeshDrawable {
 }
 
 pub struct MeshInstance {
-    pub mesh: MeshHandle,
+    pub mesh: GpuMeshHandle,
     pub world_from_mesh: macaw::Conformal3,
 }
 

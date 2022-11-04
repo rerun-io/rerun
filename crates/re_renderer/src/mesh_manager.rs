@@ -1,13 +1,13 @@
 use slotmap::{DefaultKey, Key, SlotMap};
 
 use crate::{
-    mesh::{Mesh, MeshData},
+    mesh::{GpuMesh, Mesh},
     RenderContext,
 };
 
 /// Handle to a mesh that is stored in the [`MeshManager`]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum MeshHandle {
+pub enum GpuMeshHandle {
     /// Mesh handle that is valid until user explicitly removes the mesh from [`MeshManager`].
     LongLived(DefaultKey),
 
@@ -22,8 +22,8 @@ pub enum MeshHandle {
 
 #[derive(Default)]
 pub struct MeshManager {
-    long_lived_meshes: SlotMap<DefaultKey, Mesh>,
-    frame_meshes: SlotMap<DefaultKey, Mesh>,
+    long_lived_meshes: SlotMap<DefaultKey, GpuMesh>,
+    frame_meshes: SlotMap<DefaultKey, GpuMesh>,
     frame_index: u64,
 }
 
@@ -51,15 +51,15 @@ impl MeshManager {
         ctx: &mut RenderContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        data: &MeshData,
-    ) -> anyhow::Result<MeshHandle> {
-        let key = ctx.meshes.long_lived_meshes.insert(Mesh::new(
+        data: &Mesh,
+    ) -> anyhow::Result<GpuMeshHandle> {
+        let key = ctx.meshes.long_lived_meshes.insert(GpuMesh::new(
             &mut ctx.resource_pools,
             device,
             queue,
             data,
         )?);
-        Ok(MeshHandle::LongLived(key))
+        Ok(GpuMeshHandle::LongLived(key))
     }
 
     /// Creates a mesh that lives for the duration of the frame
@@ -69,25 +69,25 @@ impl MeshManager {
         ctx: &mut RenderContext,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        data: &MeshData,
-    ) -> anyhow::Result<MeshHandle> {
-        let key = ctx.meshes.frame_meshes.insert(Mesh::new(
+        data: &Mesh,
+    ) -> anyhow::Result<GpuMeshHandle> {
+        let key = ctx.meshes.frame_meshes.insert(GpuMesh::new(
             &mut ctx.resource_pools,
             device,
             queue,
             data,
         )?);
-        Ok(MeshHandle::Frame {
+        Ok(GpuMeshHandle::Frame {
             key,
             valid_frame_index: ctx.meshes.frame_index,
         })
     }
 
     /// Retrieve a mesh.
-    pub(crate) fn get_mesh(&self, handle: MeshHandle) -> Result<&Mesh, MeshManagerError> {
+    pub(crate) fn get_mesh(&self, handle: GpuMeshHandle) -> Result<&GpuMesh, MeshManagerError> {
         let (slotmap, key) = match handle {
-            MeshHandle::LongLived(key) => (&self.long_lived_meshes, key),
-            MeshHandle::Frame {
+            GpuMeshHandle::LongLived(key) => (&self.long_lived_meshes, key),
+            GpuMeshHandle::Frame {
                 key,
                 valid_frame_index,
             } => {
