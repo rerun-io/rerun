@@ -17,7 +17,7 @@ use super::*;
 /// Is not actually a skybox, but a fullscreen effect.
 /// Should be rendered *last* to reduce amount of overdraw!
 pub struct GenericSkybox {
-    render_pipeline: RenderPipelineHandle,
+    render_pipeline: GpuRenderPipelineHandle,
 }
 
 #[derive(Clone)]

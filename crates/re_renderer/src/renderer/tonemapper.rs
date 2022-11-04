@@ -3,7 +3,7 @@ use crate::{
     include_file,
     resource_pools::{
         bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, shader_module_pool::*, texture_pool::TextureHandleStrong,
+        render_pipeline_pool::*, shader_module_pool::*, texture_pool::GpuTextureHandleStrong,
         WgpuResourcePools,
     },
 };
@@ -13,15 +13,15 @@ use super::*;
 use smallvec::smallvec;
 
 pub struct Tonemapper {
-    render_pipeline: RenderPipelineHandle,
-    bind_group_layout: BindGroupLayoutHandle,
+    render_pipeline: GpuRenderPipelineHandle,
+    bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 #[derive(Clone)]
 pub struct TonemapperDrawable {
     /// [`BindGroup`] pointing at the current HDR source and
     /// a uniform buffer for describing a tonemapper configuration.
-    hdr_target_bind_group: BindGroupHandleStrong,
+    hdr_target_bind_group: GpuBindGroupHandleStrong,
 }
 
 impl Drawable for TonemapperDrawable {
@@ -32,7 +32,7 @@ impl TonemapperDrawable {
     pub fn new(
         ctx: &mut RenderContext,
         device: &wgpu::Device,
-        hdr_target: &TextureHandleStrong,
+        hdr_target: &GpuTextureHandleStrong,
     ) -> Self {
         let pools = &mut ctx.resource_pools;
         let tonemapper = ctx.renderers.get_or_create::<_, Tonemapper>(

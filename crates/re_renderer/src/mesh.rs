@@ -5,7 +5,7 @@ use smallvec::{smallvec, SmallVec};
 use crate::{
     debug_label::DebugLabel,
     resource_pools::{
-        buffer_pool::{BufferDesc, BufferHandleStrong},
+        buffer_pool::{BufferDesc, GpuBufferHandleStrong},
         WgpuResourcePools,
     },
 };
@@ -91,11 +91,11 @@ pub struct Mesh {
 pub(crate) struct GpuMesh {
     // It would be desirable to put both vertex and index buffer into the same buffer, BUT
     // WebGL doesn't allow us to do so! (see https://github.com/gfx-rs/wgpu/pull/3157)
-    pub index_buffer: BufferHandleStrong,
+    pub index_buffer: GpuBufferHandleStrong,
 
     /// Buffer for all vertex data, subdivided in several sections for different vertex buffer bindings.
     /// See [`mesh_vertices`]
-    pub vertex_buffer_combined: BufferHandleStrong,
+    pub vertex_buffer_combined: GpuBufferHandleStrong,
     pub vertex_buffer_positions_range: Range<u64>,
     pub vertex_buffer_data_range: Range<u64>,
 

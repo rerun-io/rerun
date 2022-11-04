@@ -5,42 +5,42 @@ use smallvec::SmallVec;
 use crate::debug_label::DebugLabel;
 
 use super::{
-    bind_group_layout_pool::{BindGroupLayoutHandle, BindGroupLayoutPool},
-    buffer_pool::{BufferHandle, BufferHandleStrong, BufferPool},
+    bind_group_layout_pool::{GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool},
+    buffer_pool::{GpuBufferHandle, GpuBufferHandleStrong, GpuBufferPool},
     dynamic_resource_pool::DynamicResourcePool,
     resource::*,
-    sampler_pool::{SamplerHandle, SamplerPool},
-    texture_pool::{TextureHandle, TextureHandleStrong, TexturePool},
+    sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
+    texture_pool::{GpuTextureHandle, GpuTextureHandleStrong, TexturePool},
 };
 
-slotmap::new_key_type! { pub struct BindGroupHandle; }
+slotmap::new_key_type! { pub struct GpuBindGroupHandle; }
 
 /// A reference counter baked bind group handle.
 ///
 /// Once all strong handles are dropped, the bind group will be marked for reclamation in the following frame.
 /// Tracks use of dependent resources as well.
 #[derive(Clone)]
-pub struct BindGroupHandleStrong {
-    handle: Arc<BindGroupHandle>,
-    _owned_buffers: SmallVec<[BufferHandleStrong; 4]>,
-    _owned_textures: SmallVec<[TextureHandleStrong; 4]>,
+pub struct GpuBindGroupHandleStrong {
+    handle: Arc<GpuBindGroupHandle>,
+    _owned_buffers: SmallVec<[GpuBufferHandleStrong; 4]>,
+    _owned_textures: SmallVec<[GpuTextureHandleStrong; 4]>,
 }
 
-impl std::ops::Deref for BindGroupHandleStrong {
-    type Target = BindGroupHandle;
+impl std::ops::Deref for GpuBindGroupHandleStrong {
+    type Target = GpuBindGroupHandle;
 
     fn deref(&self) -> &Self::Target {
         &self.handle
     }
 }
 
-pub(crate) struct BindGroup {
+pub(crate) struct GpuBindGroup {
     last_frame_used: AtomicU64,
     pub(crate) bind_group: wgpu::BindGroup,
 }
 
 // [`BindGroup`] is relatively lightweight, but since buffers and textures are recreated a lot, we might pile them up, so let's keep track!
-impl UsageTrackedResource for BindGroup {
+impl UsageTrackedResource for GpuBindGroup {
     fn last_frame_used(&self) -> &AtomicU64 {
         &self.last_frame_used
     }
@@ -53,9 +53,9 @@ impl UsageTrackedResource for BindGroup {
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) enum BindGroupEntry {
-    DefaultTextureView(TextureHandle), // TODO(andreas) what about non-default views?
+    DefaultTextureView(GpuTextureHandle), // TODO(andreas) what about non-default views?
     Buffer {
-        handle: BufferHandle,
+        handle: GpuBufferHandle,
 
         /// Base offset of the buffer. For bindings with `dynamic == true`, this offset
         /// will be added to the dynamic offset provided in [`wgpu::RenderPass::set_bind_group`].
@@ -67,7 +67,7 @@ pub(crate) enum BindGroupEntry {
         /// Size of the binding, or `None` for using the rest of the buffer.
         size: Option<wgpu::BufferSize>,
     },
-    Sampler(SamplerHandle),
+    Sampler(GpuSamplerHandle),
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -75,7 +75,7 @@ pub(crate) struct BindGroupDesc {
     /// Debug label of the bind group. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
     pub entries: SmallVec<[BindGroupEntry; 4]>,
-    pub layout: BindGroupLayoutHandle,
+    pub layout: GpuBindGroupLayoutHandle,
 }
 
 /// Resource pool for bind groups.
@@ -93,16 +93,16 @@ pub(crate) struct BindGroupDesc {
 /// The question whether a bind groups happen to be re-usable becomes again a simple question of matching
 /// bind group descs which itself does not contain any strong references either.
 #[derive(Default)]
-pub(crate) struct BindGroupPool {
+pub(crate) struct GpuBindGroupPool {
     // Use a DynamicResourcePool because it gives out reference counted handles
     // which makes interacting with buffer/textures easier.
     //
     // On the flipside if someone requests the exact same bind group again as before,
     // they'll get a new one which is unnecessary. But this is *very* unlikely to ever happen.
-    pool: DynamicResourcePool<BindGroupHandle, BindGroupDesc, BindGroup>,
+    pool: DynamicResourcePool<GpuBindGroupHandle, BindGroupDesc, GpuBindGroup>,
 }
 
-impl BindGroupPool {
+impl GpuBindGroupPool {
     /// Returns a ref counted handle to a currently unused bind-group.
     /// Once ownership to the handle is given up, the bind group may be reclaimed in future frames.
     /// The handle also keeps alive any dependent resources.
@@ -110,11 +110,11 @@ impl BindGroupPool {
         &mut self,
         device: &wgpu::Device,
         desc: &BindGroupDesc,
-        bind_group_layout: &BindGroupLayoutPool,
+        bind_group_layout: &GpuBindGroupLayoutPool,
         textures: &TexturePool,
-        buffers: &BufferPool,
-        samplers: &SamplerPool,
-    ) -> BindGroupHandleStrong {
+        buffers: &GpuBufferPool,
+        samplers: &GpuSamplerPool,
+    ) -> GpuBindGroupHandleStrong {
         let handle = self.pool.alloc(desc, |desc| {
             // TODO(andreas): error handling
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -148,7 +148,7 @@ impl BindGroupPool {
                     .collect::<Vec<_>>(),
                 layout: &bind_group_layout.get_resource(desc.layout).unwrap().layout,
             });
-            BindGroup {
+            GpuBindGroup {
                 bind_group,
                 last_frame_used: AtomicU64::new(0),
             }
@@ -180,7 +180,7 @@ impl BindGroupPool {
             })
             .collect();
 
-        BindGroupHandleStrong {
+        GpuBindGroupHandleStrong {
             handle,
             _owned_buffers: owned_buffers,
             _owned_textures: owned_textures,
@@ -191,15 +191,18 @@ impl BindGroupPool {
         &mut self,
         frame_index: u64,
         _textures: &mut TexturePool,
-        _buffers: &mut BufferPool,
-        _samplers: &mut SamplerPool,
+        _buffers: &mut GpuBufferPool,
+        _samplers: &mut GpuSamplerPool,
     ) {
         self.pool.frame_maintenance(frame_index);
         // TODO(andreas): Update usage counter on dependent resources.
     }
 
     /// Takes a strong handle to ensure the user is still holding on to the bind group (and thus dependent resources).
-    pub fn get_resource(&self, handle: &BindGroupHandleStrong) -> Result<&BindGroup, PoolError> {
+    pub fn get_resource(
+        &self,
+        handle: &GpuBindGroupHandleStrong,
+    ) -> Result<&GpuBindGroup, PoolError> {
         self.pool.get_resource(*handle.handle)
     }
 }

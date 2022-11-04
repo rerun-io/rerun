@@ -29,7 +29,7 @@ impl<Handle, Desc, Res> StaticResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
     Desc: Clone + Eq + Hash,
-    Res: Resource,
+    Res: GpuResource,
 {
     pub fn get_or_create<F: FnOnce(&Desc) -> Res>(
         &mut self,
@@ -88,7 +88,7 @@ mod tests {
     use slotmap::Key;
 
     use super::StaticResourcePool;
-    use crate::resource_pools::resource::{PoolError, Resource};
+    use crate::resource_pools::resource::{GpuResource, PoolError};
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
 
@@ -98,7 +98,7 @@ mod tests {
     #[derive(PartialEq, Eq, Debug)]
     pub struct ConcreteResource(u32);
 
-    impl Resource for ConcreteResource {
+    impl GpuResource for ConcreteResource {
         fn on_handle_resolve(&self, _current_frame_index: u64) {}
     }
 

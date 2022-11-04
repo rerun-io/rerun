@@ -4,20 +4,20 @@ use crate::debug_label::DebugLabel;
 
 use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
 
-slotmap::new_key_type! { pub struct TextureHandle; }
+slotmap::new_key_type! { pub struct GpuTextureHandle; }
 
 /// A reference counter baked texture handle.
 /// Once all strong handles are dropped, the texture will be marked for reclamation in the following frame.
-pub type TextureHandleStrong = std::sync::Arc<TextureHandle>;
+pub type GpuTextureHandleStrong = std::sync::Arc<GpuTextureHandle>;
 
-pub(crate) struct Texture {
+pub(crate) struct GpuTexture {
     last_frame_used: AtomicU64,
     pub(crate) texture: wgpu::Texture,
     pub(crate) default_view: wgpu::TextureView,
     // TODO(andreas) what about custom views
 }
 
-impl UsageTrackedResource for Texture {
+impl UsageTrackedResource for GpuTexture {
     fn last_frame_used(&self) -> &AtomicU64 {
         &self.last_frame_used
     }
@@ -65,17 +65,17 @@ impl TextureDesc {
 
 #[derive(Default)]
 pub(crate) struct TexturePool {
-    pool: DynamicResourcePool<TextureHandle, TextureDesc, Texture>,
+    pool: DynamicResourcePool<GpuTextureHandle, TextureDesc, GpuTexture>,
 }
 
 impl TexturePool {
     /// Returns a ref counted handle to a currently unused texture.
     /// Once ownership to the handle is given up, the texture may be reclaimed in future frames.
-    pub fn alloc(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> TextureHandleStrong {
+    pub fn alloc(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> GpuTextureHandleStrong {
         self.pool.alloc(desc, |desc| {
             let texture = device.create_texture(&desc.to_wgpu_desc());
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            Texture {
+            GpuTexture {
                 last_frame_used: AtomicU64::new(0),
                 texture,
                 default_view: view,
@@ -89,18 +89,21 @@ impl TexturePool {
     }
 
     /// Takes strong texture handle to ensure the user is still holding on to the texture.
-    pub fn get_resource(&self, handle: &TextureHandleStrong) -> Result<&Texture, PoolError> {
+    pub fn get_resource(&self, handle: &GpuTextureHandleStrong) -> Result<&GpuTexture, PoolError> {
         self.pool.get_resource(**handle)
     }
 
     /// Internal method to retrieve a resource with a weak handle (used by [`super::BindGroupPool`]).
-    pub(super) fn get_resource_weak(&self, handle: TextureHandle) -> Result<&Texture, PoolError> {
+    pub(super) fn get_resource_weak(
+        &self,
+        handle: GpuTextureHandle,
+    ) -> Result<&GpuTexture, PoolError> {
         self.pool.get_resource(handle)
     }
 
     /// Internal method to retrieve a strong handle from a weak handle (used by [`super::BindGroupPool`])
     /// without inrementing the ref-count (note the returned reference!).
-    pub(super) fn get_strong_handle(&self, handle: TextureHandle) -> &TextureHandleStrong {
+    pub(super) fn get_strong_handle(&self, handle: GpuTextureHandle) -> &GpuTextureHandleStrong {
         self.pool.get_strong_handle(handle)
     }
 }

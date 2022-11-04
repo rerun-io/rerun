@@ -2,13 +2,13 @@ use crate::debug_label::DebugLabel;
 
 use super::{resource::*, static_resource_pool::*};
 
-slotmap::new_key_type! { pub struct BindGroupLayoutHandle; }
+slotmap::new_key_type! { pub struct GpuBindGroupLayoutHandle; }
 
-pub struct BindGroupLayout {
+pub struct GpuBindGroupLayout {
     pub layout: wgpu::BindGroupLayout,
 }
 
-impl Resource for BindGroupLayout {}
+impl GpuResource for GpuBindGroupLayout {}
 
 #[derive(Clone, Hash, PartialEq, Eq, Default)]
 pub struct BindGroupLayoutDesc {
@@ -18,30 +18,30 @@ pub struct BindGroupLayoutDesc {
 }
 
 #[derive(Default)]
-pub struct BindGroupLayoutPool {
-    pool: StaticResourcePool<BindGroupLayoutHandle, BindGroupLayoutDesc, BindGroupLayout>,
+pub struct GpuBindGroupLayoutPool {
+    pool: StaticResourcePool<GpuBindGroupLayoutHandle, BindGroupLayoutDesc, GpuBindGroupLayout>,
 }
 
-impl BindGroupLayoutPool {
+impl GpuBindGroupLayoutPool {
     pub fn get_or_create(
         &mut self,
         device: &wgpu::Device,
         desc: &BindGroupLayoutDesc,
-    ) -> BindGroupLayoutHandle {
+    ) -> GpuBindGroupLayoutHandle {
         self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
             let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: desc.label.get(),
                 entries: &desc.entries,
             });
-            BindGroupLayout { layout }
+            GpuBindGroupLayout { layout }
         })
     }
 
     pub fn get_resource(
         &self,
-        handle: BindGroupLayoutHandle,
-    ) -> Result<&BindGroupLayout, PoolError> {
+        handle: GpuBindGroupLayoutHandle,
+    ) -> Result<&GpuBindGroupLayout, PoolError> {
         self.pool.get_resource(handle)
     }
 }

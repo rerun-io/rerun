@@ -2,8 +2,8 @@ use crate::{
     resource_pools::{
         bind_group_layout_pool::*,
         bind_group_pool::*,
-        buffer_pool::BufferHandleStrong,
-        sampler_pool::{SamplerDesc, SamplerHandle},
+        buffer_pool::GpuBufferHandleStrong,
+        sampler_pool::{GpuSamplerHandle, SamplerDesc},
         WgpuResourcePools,
     },
     wgpu_buffer_types,
@@ -30,8 +30,8 @@ pub(crate) struct FrameUniformBuffer {
 }
 
 pub(crate) struct GlobalBindings {
-    pub(crate) layout: BindGroupLayoutHandle,
-    nearest_neighbor_sampler: SamplerHandle,
+    pub(crate) layout: GpuBindGroupLayoutHandle,
+    nearest_neighbor_sampler: GpuSamplerHandle,
 }
 
 impl GlobalBindings {
@@ -82,8 +82,8 @@ impl GlobalBindings {
         &self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        frame_uniform_buffer: &BufferHandleStrong,
-    ) -> BindGroupHandleStrong {
+        frame_uniform_buffer: &GpuBufferHandleStrong,
+    ) -> GpuBindGroupHandleStrong {
         pools.bind_groups.alloc(
             device,
             &BindGroupDesc {

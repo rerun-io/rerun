@@ -3,13 +3,13 @@ use std::{hash::Hash, num::NonZeroU8};
 use super::{resource::*, static_resource_pool::*};
 use crate::debug_label::DebugLabel;
 
-slotmap::new_key_type! { pub(crate) struct SamplerHandle; }
+slotmap::new_key_type! { pub(crate) struct GpuSamplerHandle; }
 
-pub(crate) struct Sampler {
+pub(crate) struct GpuSampler {
     pub(crate) sampler: wgpu::Sampler,
 }
 
-impl Resource for Sampler {}
+impl GpuResource for GpuSampler {}
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct SamplerDesc {
@@ -45,12 +45,12 @@ pub(crate) struct SamplerDesc {
 }
 
 #[derive(Default)]
-pub(crate) struct SamplerPool {
-    pool: StaticResourcePool<SamplerHandle, SamplerDesc, Sampler>,
+pub(crate) struct GpuSamplerPool {
+    pool: StaticResourcePool<GpuSamplerHandle, SamplerDesc, GpuSampler>,
 }
 
-impl SamplerPool {
-    pub fn get_or_create(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> SamplerHandle {
+impl GpuSamplerPool {
+    pub fn get_or_create(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> GpuSamplerHandle {
         self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
             let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -69,11 +69,11 @@ impl SamplerPool {
                 compare: None,
                 border_color: None,
             });
-            Sampler { sampler }
+            GpuSampler { sampler }
         })
     }
 
-    pub fn get_resource(&self, handle: SamplerHandle) -> Result<&Sampler, PoolError> {
+    pub fn get_resource(&self, handle: GpuSamplerHandle) -> Result<&GpuSampler, PoolError> {
         self.pool.get_resource(handle)
     }
 }

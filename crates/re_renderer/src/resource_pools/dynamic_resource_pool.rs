@@ -49,7 +49,7 @@ impl<Handle, Desc, Res> DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
     Desc: Clone + Eq + Hash + Debug,
-    Res: Resource,
+    Res: GpuResource,
 {
     pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
         // First check if we can reclaim a resource we have around from a previous frame.
@@ -146,7 +146,7 @@ mod tests {
     use slotmap::Key;
 
     use super::DynamicResourcePool;
-    use crate::resource_pools::resource::{PoolError, Resource};
+    use crate::resource_pools::resource::{GpuResource, PoolError};
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
 
@@ -164,7 +164,7 @@ mod tests {
         }
     }
 
-    impl Resource for ConcreteResource {
+    impl GpuResource for ConcreteResource {
         fn on_handle_resolve(&self, _current_frame_index: u64) {}
     }
 
