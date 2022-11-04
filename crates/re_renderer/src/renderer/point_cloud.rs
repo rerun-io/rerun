@@ -23,8 +23,8 @@ use crate::{
     include_file,
     renderer::utils::next_multiple_of,
     resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, BindGroupLayoutHandle},
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, BindGroupHandleStrong},
+        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
+        bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::*,
         shader_module_pool::ShaderModuleDesc,
@@ -51,7 +51,7 @@ mod gpu_data {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct PointCloudDrawable {
-    bind_group: BindGroupHandleStrong,
+    bind_group: GpuBindGroupHandleStrong,
     num_quads: u32,
 }
 
@@ -229,8 +229,8 @@ impl PointCloudDrawable {
 }
 
 pub struct PointCloudRenderer {
-    render_pipeline: RenderPipelineHandle,
-    bind_group_layout: BindGroupLayoutHandle,
+    render_pipeline: GpuRenderPipelineHandle,
+    bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for PointCloudRenderer {

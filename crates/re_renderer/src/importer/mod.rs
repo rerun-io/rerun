@@ -8,7 +8,7 @@ pub mod gltf;
 
 #[derive(Default)]
 pub struct ModelImportData {
-    pub meshes: Vec<crate::mesh::MeshData>,
+    pub meshes: Vec<crate::mesh::Mesh>,
     pub instances: Vec<ImportMeshInstance>,
 }
 

@@ -3,7 +3,7 @@ use itertools::Itertools;
 use macaw::Conformal3;
 
 use super::{ImportMeshInstance, ModelImportData};
-use crate::mesh::{mesh_vertices::MeshVertexData, MeshData};
+use crate::mesh::{mesh_vertices::MeshVertexData, Mesh};
 
 pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
     let (models, _materials) = tobj::load_obj_buf(
@@ -36,7 +36,7 @@ pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
                 })
                 .collect();
 
-            MeshData {
+            Mesh {
                 label: model.name.clone().into(),
                 indices: mesh.indices.clone(),
                 vertex_positions,

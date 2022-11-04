@@ -12,7 +12,7 @@ use crate::{
 use super::*;
 
 pub struct TestTriangle {
-    render_pipeline: RenderPipelineHandle,
+    render_pipeline: GpuRenderPipelineHandle,
 }
 
 #[derive(Clone)]

@@ -7,7 +7,7 @@ use crate::{
     global_bindings::FrameUniformBuffer,
     renderer::{tonemapper::*, Drawable, Renderer},
     resource_pools::{
-        bind_group_pool::BindGroupHandleStrong, buffer_pool::BufferDesc, texture_pool::*,
+        bind_group_pool::GpuBindGroupHandleStrong, buffer_pool::BufferDesc, texture_pool::*,
     },
 };
 
@@ -32,9 +32,9 @@ pub struct ViewBuilder {
 struct ViewTargetSetup {
     tonemapping_drawable: TonemapperDrawable,
 
-    bind_group_0: BindGroupHandleStrong,
-    hdr_render_target: TextureHandleStrong,
-    depth_buffer: TextureHandleStrong,
+    bind_group_0: GpuBindGroupHandleStrong,
+    hdr_render_target: GpuTextureHandleStrong,
+    depth_buffer: GpuTextureHandleStrong,
 
     resolution_in_pixel: [u32; 2],
     origin_in_pixel: [u32; 2],

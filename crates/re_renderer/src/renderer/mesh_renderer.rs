@@ -8,12 +8,12 @@ use smallvec::smallvec;
 
 use crate::{
     include_file,
-    mesh::{mesh_vertices, Mesh},
-    mesh_manager::MeshHandle,
+    mesh::{mesh_vertices, GpuMesh},
+    mesh_manager::GpuMeshHandle,
     resource_pools::{
-        buffer_pool::{BufferDesc, BufferHandleStrong},
+        buffer_pool::{BufferDesc, GpuBufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::{RenderPipelineDesc, RenderPipelineHandle, VertexBufferLayout},
+        render_pipeline_pool::{GpuRenderPipelineHandle, RenderPipelineDesc, VertexBufferLayout},
         shader_module_pool::ShaderModuleDesc,
     },
     view_builder::ViewBuilder,
@@ -62,7 +62,7 @@ impl GpuInstanceData {
 
 #[derive(Clone)]
 struct MeshBatch {
-    mesh: Mesh,
+    mesh: GpuMesh,
     count: u32,
 }
 
@@ -71,7 +71,7 @@ pub struct MeshDrawable {
     // There is a single instance buffer for all instances of all meshes.
     // This means we only ever need to bind the instance buffer once and then change the
     // instance range on every instanced draw call!
-    instance_buffer: BufferHandleStrong,
+    instance_buffer: GpuBufferHandleStrong,
     batches: Vec<MeshBatch>,
 }
 
@@ -80,7 +80,7 @@ impl Drawable for MeshDrawable {
 }
 
 pub struct MeshInstance {
-    pub mesh: MeshHandle,
+    pub mesh: GpuMeshHandle,
     pub world_from_mesh: macaw::Conformal3,
 }
 
@@ -156,7 +156,7 @@ impl MeshDrawable {
 }
 
 pub struct MeshRenderer {
-    render_pipeline: RenderPipelineHandle,
+    render_pipeline: GpuRenderPipelineHandle,
 }
 
 impl Renderer for MeshRenderer {

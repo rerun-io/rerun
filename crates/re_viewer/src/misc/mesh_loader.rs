@@ -27,7 +27,9 @@ impl CpuMesh {
     pub fn load(name: String, mesh: &Mesh3D) -> anyhow::Result<Self> {
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
+            // Mesh from user logging some triangles.
             Mesh3D::Encoded(encoded_mesh) => Self::load_encoded_mesh(name, encoded_mesh),
+            // Mesh from some file format. File passed in bytes.
             Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh)),
         }
     }
@@ -179,7 +181,7 @@ impl CpuMesh {
                     mesh_idx: 0,
                     world_from_mesh: Default::default(),
                 }],
-                meshes: vec![re_renderer::mesh::MeshData {
+                meshes: vec![re_renderer::mesh::Mesh {
                     label,
                     indices: raw_mesh.indices.iter().flatten().cloned().collect(),
                     vertex_positions: raw_mesh

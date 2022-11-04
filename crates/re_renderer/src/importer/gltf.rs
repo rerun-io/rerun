@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use anyhow::Context as _;
 
-use crate::mesh::{mesh_vertices::MeshVertexData, MeshData};
+use crate::mesh::{mesh_vertices::MeshVertexData, Mesh};
 
 use super::{to_uniform_scale, ImportMeshInstance, ModelImportData};
 
@@ -34,7 +34,7 @@ pub fn load_gltf_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
     Ok(ModelImportData { meshes, instances })
 }
 
-fn import_mesh(mesh: &gltf::Mesh<'_>, buffers: &[gltf::buffer::Data]) -> anyhow::Result<MeshData> {
+fn import_mesh(mesh: &gltf::Mesh<'_>, buffers: &[gltf::buffer::Data]) -> anyhow::Result<Mesh> {
     let mut indices = Vec::new();
     let mut vertex_positions = Vec::new();
     let mut vertex_data = Vec::new();
@@ -74,7 +74,7 @@ fn import_mesh(mesh: &gltf::Mesh<'_>, buffers: &[gltf::buffer::Data]) -> anyhow:
         anyhow::bail!("empty mesh");
     }
 
-    Ok(MeshData {
+    Ok(Mesh {
         label: mesh.name().into(),
         indices,
         vertex_positions,
