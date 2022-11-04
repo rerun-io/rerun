@@ -88,7 +88,13 @@ fn draw_views(
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
-    let meshes = build_mesh_instances(re_ctx, device, queue, &state.meshes, seconds_since_startup);
+    let meshes = build_mesh_instances(
+        re_ctx,
+        device,
+        queue,
+        &state.model_mesh_instances,
+        seconds_since_startup,
+    );
 
     let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
@@ -178,21 +184,23 @@ fn build_mesh_instances(
     re_ctx: &mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    mesh_handles: &[MeshHandle],
+    model_mesh_instances: &[MeshInstance],
     seconds_since_startup: f32,
 ) -> MeshDrawable {
     let mesh_instances = lorenz_points(10.0)
         .iter()
         .enumerate()
         .flat_map(|(i, p)| {
-            mesh_handles.iter().map(move |mesh| MeshInstance {
-                mesh: *mesh,
-                world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
-                    0.025 + (i % 10) as f32 * 0.01,
-                    glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
-                    *p,
-                ),
-            })
+            model_mesh_instances
+                .iter()
+                .map(move |model_mesh_instances| MeshInstance {
+                    mesh: model_mesh_instances.mesh,
+                    world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
+                        0.025 + (i % 10) as f32 * 0.01,
+                        glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
+                        *p,
+                    ) * model_mesh_instances.world_from_mesh,
+                })
         })
         .collect_vec();
     MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap()
@@ -490,7 +498,7 @@ struct AppState {
     time: Time,
 
     /// Lazily loaded mesh.
-    meshes: Vec<MeshHandle>,
+    model_mesh_instances: Vec<MeshInstance>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,
@@ -512,7 +520,7 @@ impl AppState {
             })
             .collect_vec();
 
-        let meshes = {
+        let model_mesh_instances = {
             let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
             let mut zip = zip::ZipArchive::new(reader).unwrap();
             let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
@@ -520,10 +528,7 @@ impl AppState {
             zipped_obj.read_to_end(&mut obj_data).unwrap();
             importer::obj::load_obj_from_buffer(&obj_data)
                 .unwrap()
-                .meshes
-                .into_iter()
-                .map(|mesh| re_ctx.meshes.new_long_lived_mesh(mesh))
-                .collect()
+                .push_to_mesh_manager(re_ctx)
         };
 
         Self {
@@ -531,7 +536,7 @@ impl AppState {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
             },
-            meshes,
+            model_mesh_instances,
             random_points,
         }
     }

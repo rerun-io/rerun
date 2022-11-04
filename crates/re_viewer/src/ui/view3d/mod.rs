@@ -475,6 +475,7 @@ fn paint_view(
         use re_renderer::importer::ImportMeshInstance;
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
+        use re_renderer::RenderContext;
 
         let view_builder_prepare = ViewBuilder::new_shared();
         let view_builder_draw = view_builder_prepare.clone();
@@ -526,15 +527,18 @@ fn paint_view(
             rect,
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
+                    // TODO(andreas): The only thing that should happen inside this callback is
+                    // passing a previously created commandbuffer out!
                     .prepare(move |device, queue, _, paint_callback_resources| {
-                        let ctx = paint_callback_resources.get_mut().unwrap();
+                        let ctx: &mut RenderContext = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
 
+                        // TODO(andreas) can't consumes `meshes` since it's a mut so another clone here
+                        // This goes away once we move out the logic from this callback
+                        // TODO(andreas) obv. not everything is a shortlived mesh!
                         let meshes = meshes
                             .iter()
-                            .map(|data| {
-                                MeshManager::new_frame_mesh(ctx, device, queue, data).unwrap()
-                            })
+                            .map(|data| ctx.meshes.new_frame_mesh(data.clone()))
                             .collect_vec();
                         let mesh_instances = instances
                             .iter()

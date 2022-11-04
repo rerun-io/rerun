@@ -1,4 +1,7 @@
+use itertools::Itertools as _;
 use macaw::Vec3Ext;
+
+use crate::{renderer::MeshInstance, resource_manager::mesh_manager::MeshHandle, RenderContext};
 
 #[cfg(feature = "import-obj")]
 pub mod obj;
@@ -27,6 +30,26 @@ impl ModelImportData {
                 .iter()
                 .map(|p| instance.world_from_mesh.transform_point3(*p))
         }))
+    }
+
+    /// Consumes the model import data and pushes all meshes to the mesh manager.
+    ///
+    /// Resolves all instance mesh indices to these new mesh handles and returns them.
+    /// TODO(andreas) do we need a short-lived version of this? Unlikely as that frame-lived data typically doesn't arrive as mesh!
+    pub fn push_to_mesh_manager(self, ctx: &mut RenderContext) -> Vec<MeshInstance> {
+        let Self { meshes, instances } = self;
+
+        let mesh_handles = meshes
+            .into_iter()
+            .map(|mesh| ctx.meshes.new_long_lived_mesh(mesh))
+            .collect_vec();
+        instances
+            .into_iter()
+            .map(|import_instance| MeshInstance {
+                mesh: mesh_handles[import_instance.mesh_idx],
+                world_from_mesh: import_instance.world_from_mesh,
+            })
+            .collect()
     }
 }
 

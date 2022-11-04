@@ -38,6 +38,7 @@ impl MeshManager {
     /// Creates a new, long lived mesh.
     ///
     /// For short lived meshes use [`Self::new_frame_mesh`] as it has more efficient resource usage for this scenario.
+    /// TODO(andreas): Should be able to destroy long lived meshes
     pub fn new_long_lived_mesh(&mut self, resource: Mesh) -> MeshHandle {
         MeshHandle::LongLived(self.long_lived_meshes.insert(resource))
     }
@@ -96,6 +97,7 @@ impl MeshManager {
                     }
                 })?;
 
+                // TODO(andreas): Should we throw out the cpu data now, at least for long lived meshes?
                 let resource_gpu = GpuMesh::new(&mut ctx.resource_pools, device, queue, resource);
                 slotmap_gpu.insert(key, resource_gpu.clone());
                 resource_gpu
