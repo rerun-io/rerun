@@ -25,11 +25,11 @@ debug = true
 
 [patch.crates-io]
 # 2022-11-02 - user-defined command buffers
-eframe = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
-egui = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "6e62eddc54b9de1588abf9a938ce03d3971da56d" }
+eframe = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
+egui = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
 
 # eframe = { path = "../egui/crates/eframe" }
 # egui = { path = "../egui/crates/egui" }

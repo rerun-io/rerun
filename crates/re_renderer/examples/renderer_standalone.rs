@@ -23,7 +23,7 @@ use re_renderer::{
     mesh_manager::{MeshHandle, MeshManager},
     renderer::*,
     view_builder::{TargetConfiguration, ViewBuilder},
-    *,
+    DebugLabel, *,
 };
 use winit::{
     event::{Event, WindowEvent},
@@ -64,7 +64,7 @@ fn draw_views(
     re_ctx: &mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    view: &wgpu::TextureView,
+    backbuffer_view: &wgpu::TextureView,
     resolution: [u32; 2],
 ) -> impl Iterator<Item = wgpu::CommandBuffer> {
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
@@ -92,13 +92,16 @@ fn draw_views(
 
     let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
+    // Using a macro here because `Drawable` isn't object safe and a closure cannot be
+    // generic over its input type.
     #[rustfmt::skip]
     macro_rules! draw {
         ($name:ident @ split #$n:expr) => {{
             let ((x, y), (width, height)) = splits[$n];
             target_cfg.resolution_in_pixel = [width as u32, height as u32];
             target_cfg.origin_in_pixel = [x as u32, y as u32];
-            draw_view(re_ctx, device, queue, &target_cfg, stringify!($name), &skybox, &$name)
+            draw_view(re_ctx, device, queue, &target_cfg,
+                      &stringify!($name).into(), &skybox, &$name)
         }};
     }
 
@@ -119,7 +122,7 @@ fn draw_views(
             composite_cmd_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
+                    view: backbuffer_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
@@ -131,10 +134,10 @@ fn draw_views(
 
         view_builders
             .into_iter()
-            .map(|(vb, encoder)| {
+            .map(|(vb, cmd_buf)| {
                 vb.composite(re_ctx, &mut composite_pass)
                     .expect("Failed to composite view main surface");
-                encoder.finish()
+                cmd_buf
             })
             .collect::<Vec<_>>() // So we don't hold a reference to the render pass!
 
@@ -151,15 +154,14 @@ fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     target_cfg: &TargetConfiguration,
-    name: &'static str,
+    label: &DebugLabel,
     skybox: &GenericSkyboxDrawable,
     drawable: &D,
-) -> (ViewBuilder, wgpu::CommandEncoder) {
+) -> (ViewBuilder, wgpu::CommandBuffer) {
     let mut view_builder = ViewBuilder::default();
 
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: format!("view_{name}_encoder").as_str().into(),
-    });
+    let mut encoder =
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: label.get() });
 
     view_builder
         .setup_view(re_ctx, device, queue, target_cfg)
@@ -169,7 +171,7 @@ fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
         .draw(re_ctx, &mut encoder)
         .unwrap();
 
-    (view_builder, encoder)
+    (view_builder, encoder.finish())
 }
 
 fn build_meshes(
