@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Example applying simple object detection and tracking on a video."""
+from dataclasses import dataclass
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Final
+from typing import Any, Final, List, Sequence
 
 import cv2 as cv
 import numpy as np
+import numpy.typing as npt
 from PIL import Image
 import rerun_sdk as rerun
 
@@ -25,6 +27,159 @@ DETECTION_SCORE_THRESHOLD = 0.8
 os.environ["TRANSFORMERS_CACHE"] = str(CACHE_DIR.absolute())
 from transformers import DetrFeatureExtractor, DetrForSegmentation
 from transformers.models.detr.feature_extraction_detr import rgb_to_id, masks_to_boxes
+
+
+@dataclass
+class Detection:
+    """Information about a detected object."""
+
+    label_id: int
+    label_str: str
+
+    bbox_xywh: List[float]
+    image_width: int
+    image_height: int
+
+    def scaled_to_fit(self, target_image: npt.NDArray[Any]) -> "Detection":
+        """Rescales detection to fit to target image."""
+        target_height, target_width = target_image.shape[:2]
+        width_scale = target_width / self.image_width
+        height_scale = target_height / self.image_height
+        target_bbox = [
+            self.bbox_xywh[0] * width_scale,
+            self.bbox_xywh[1] * height_scale,
+            self.bbox_xywh[2] * width_scale,
+            self.bbox_xywh[3] * height_scale,
+        ]
+        return Detection(self.label_id, self.label_str, target_bbox, target_width, target_height)
+
+
+class Tracker:
+    next_tracking_id = 0
+
+    def __init__(self, tracking_id: int, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
+        self.tracking_id = tracking_id
+        self.tracked = detection.scaled_to_fit(target_image=bgr)
+
+        self.tracker = cv.TrackerCSRT_create()
+        bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
+        self.tracker.init(bgr, bbox_xywh_rounded)
+        self.log_tracked()
+
+    @classmethod
+    def track_new(cls, detection: Detection, bgr: npt.NDArray[np.uint8]) -> "Tracker":
+        new_tracker = cls(cls.next_tracking_id, detection, bgr)
+        cls.next_tracking_id += 1
+        logging.info(
+            "Tracking newly detected %s with tracking id #%d", new_tracker.tracked.label_str, new_tracker.tracking_id
+        )
+        return new_tracker
+
+    def update(self, bgr: npt.NDArray[np.uint8]) -> None:
+        success, bbox_xywh = self.tracker.update(bgr)
+
+        if success:
+            self.tracked.bbox_xywh = bbox_xywh
+        else:
+            logging.info("Tracker update failed for tracker with id #%d", self.tracking_id)
+            self.tracker = None
+
+        self.log_tracked()
+
+    def log_tracked(self) -> None:
+        if self.is_tracking:
+            rerun.log_rect(
+                f"image/tracked/{self.tracking_id}",
+                self.tracked.bbox_xywh,
+                rect_format=rerun.RectFormat.XYWH,
+                label=self.tracked.label_str,
+            )
+        else:
+            rerun.set_visible(
+                f"image/tracked/{self.tracking_id}", False
+            )  # TODO(Niko): Log this path as None instead once sdk can handle nullable rects
+
+    def update_with_detection(self, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
+        self.tracked = detection.scaled_to_fit(target_image=bgr)
+        self.tracker = cv.TrackerCSRT_create()
+        bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
+        self.tracker.init(bgr, bbox_xywh_rounded)
+        self.log_tracked()
+
+    @property
+    def is_tracking(self) -> bool:
+        return self.tracker is not None
+
+    def match_score(self, other: Detection) -> float:
+        if self.tracked.label_id != other.label_id:
+            return 0.0
+        if not self.is_tracking:
+            return 0.0
+
+        tracked_bbox = self.tracked.bbox_xywh
+        other_bbox = other.bbox_xywh
+
+        # Calcualte Intersection over Union (IoU)
+        tracked_area = tracked_bbox[2] * tracked_bbox[3]
+        other_area = other_bbox[2] * other_bbox[3]  # TODO: Need to rescale detections to match this
+
+        rerun.log_rect(
+            f"match/{self.tracking_id}/{other.label_str}/tracked", rect=tracked_bbox, rect_format=rerun.RectFormat.XYWH
+        )
+        rerun.log_rect(
+            f"match/{self.tracking_id}/{other.label_str}/other", rect=other_bbox, rect_format=rerun.RectFormat.XYWH
+        )
+
+        overlap_width = max(
+            0.0,
+            min(tracked_bbox[0] + tracked_bbox[2], other_bbox[0] + other_bbox[2]) - max(tracked_bbox[0], other_bbox[0]),
+        )
+        overlap_height = max(
+            0.0,
+            min(tracked_bbox[1] + tracked_bbox[3], other_bbox[1] + other_bbox[3]) - max(tracked_bbox[1], other_bbox[1]),
+        )
+        intersection_area = overlap_width * overlap_height
+        union_area = tracked_area + other_area - intersection_area
+
+        return intersection_area / union_area
+
+
+def update_trackers_with_detections(
+    trackers: List[Tracker], detections: Sequence[Detection], bgr: npt.NDArray[np.uint8]
+) -> List[Tracker]:
+    """Tries to match detections to existing trackers and updates the trackers if they match.
+    Any detections that don't match existing trackers will generate new trackers.
+    Returns the new set of trackers.
+    """
+    non_updated_trackers = [tracker for tracker in trackers]  # shallow copy
+    updated_trackers = []  # type: List[Tracker]
+
+    logging.debug("Updating %d trackers with %d new detections", len(trackers), len(detections))
+    for detection in detections:
+        top_match_score = 0.0
+        if trackers:
+            scores = [tracker.match_score(detection) for tracker in non_updated_trackers]
+            best_match_idx = np.argmax(scores)
+            top_match_score = scores[best_match_idx]
+        if top_match_score > 0.0:
+            best_tracker = non_updated_trackers.pop(best_match_idx)
+            best_tracker.update_with_detection(detection, bgr)
+            updated_trackers.append(best_tracker)
+        else:
+            updated_trackers.append(Tracker.track_new(detection, bgr))
+
+    logging.debug("Updateing %d trackers without matching detections")
+    for tracker in non_updated_trackers:
+        tracker.update(bgr)
+        if tracker.is_tracking:
+            updated_trackers.append(tracker)
+
+    logging.info("Tracking %d objects after updating with %d new detections", len(updated_trackers), len(detections))
+
+    return updated_trackers
+
+
+# --- Actual scripts
 
 logging.getLogger().addHandler(rerun.LoggingHandler("logs"))
 logging.getLogger().setLevel(-1)
@@ -54,7 +209,7 @@ logging.info("Loading input video: %s", str(video_path))
 cap = cv.VideoCapture(video_path)
 frame_idx = 0
 
-tracker = None
+trackers = []  # type: List[Tracker]
 while cap.isOpened():
     ret, bgr = cap.read()
     rerun.set_time_sequence("frame", frame_idx)
@@ -66,7 +221,7 @@ while cap.isOpened():
     rgb = cv.cvtColor(bgr, cv.COLOR_BGR2RGB)
     rerun.log_image("image", rgb)
 
-    if tracker is None or frame_idx % 40 == 0:
+    if not trackers or frame_idx % 40 == 0:
         logging.info("Looking for things to track on frame %d", frame_idx)
 
         height, width, _ = rgb.shape
@@ -100,8 +255,6 @@ while cap.isOpened():
         colors = [id2Color[l] for l in labels]
         isThing = [id2IsThing[l] for l in labels]
 
-        # retrieve the ids corresponding to each mask
-
         rerun.log_rects(
             "image/downscaled/detections",
             boxes,
@@ -110,32 +263,27 @@ while cap.isOpened():
             colors=np.array(colors),
         )
 
-        car_boxes_small = []
-        for idx, label in enumerate(str_labels):
-            if label == "car":
-                car_boxes_small.append(boxes[idx, :])
-        logging.info("Found %d cars", len(car_boxes_small))
+        detections = []  # List[Detections]
+        for idx, (label_id, label_str, is_thing) in enumerate(zip(labels, str_labels, isThing)):
+            if is_thing:
+                x_min, y_min, x_max, y_max = boxes[idx, :]
+                bbox_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]
+                detections.append(
+                    Detection(
+                        label_id=label_id,
+                        label_str=label_str,
+                        bbox_xywh=bbox_xywh,
+                        image_width=small_size[0],
+                        image_height=small_size[1],
+                    )
+                )
 
-        if car_boxes_small:
-            top_car_bbox_small = car_boxes_small[0]
+        trackers = update_trackers_with_detections(trackers, detections, bgr)
 
-            x_min, y_min, x_max, y_max = top_car_bbox_small.tolist()
-            bbox_small_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]
-
-            bbox_xywh = [int(val * DOWNSCALE_FACTOR) for val in bbox_small_xywh]
-            logging.info("Inititlizing CSRT tracker")
-            tracker = cv.TrackerCSRT_create()
-            tracker.init(bgr, bbox_xywh)
-
-            rerun.log_rect("image/tracked", bbox_xywh, rect_format=rerun.RectFormat.XYWH, label="car")
     else:
         logging.info("Running tracking update step for frame %d", frame_idx)
-        success, bbox_xywh = tracker.update(bgr)
-
-        if success:
-            rerun.log_rect("image/tracked", bbox_xywh, rect_format=rerun.RectFormat.XYWH, label="car")
-        else:
-            logging.error("Tracking iteration failed for frame %d", frame_idx)
-            tracker = None
+        for tracker in trackers:
+            tracker.update(bgr)
+        trackers = [tracker for tracker in trackers if tracker.is_tracking]
 
     frame_idx += 1
