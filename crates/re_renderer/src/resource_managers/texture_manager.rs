@@ -7,12 +7,12 @@ use super::{
     resource_manager::ResourceManager, ResourceHandle, ResourceLifeTime, ResourceManagerError,
 };
 
-slotmap::new_key_type! { pub struct TextureHandleInner; }
+slotmap::new_key_type! { pub struct Texture2DHandleInner; }
 
-pub type TextureHandle = ResourceHandle<TextureHandleInner>;
+pub type Texture2DHandle = ResourceHandle<Texture2DHandleInner>;
 
 #[allow(dead_code)] // TODO(andreas): WIP
-pub struct Texture {
+pub struct Texture2D {
     label: DebugLabel,
     data: Box<[u8]>,
     format: wgpu::TextureFormat,
@@ -30,17 +30,17 @@ pub struct Texture {
 /// We might revisit this later and make this texture manager more general purpose.
 #[derive(Default)]
 pub struct TextureManager2D {
-    manager: ResourceManager<TextureHandleInner, Texture, GpuTextureHandleStrong>,
+    manager: ResourceManager<Texture2DHandleInner, Texture2D, GpuTextureHandleStrong>,
 }
 
 impl TextureManager2D {
     /// Takes ownership of a new mesh.
     pub fn store_resource(
         &mut self,
-        resource: Texture,
+        resource: Texture2D,
         lifetime: ResourceLifeTime,
-    ) -> TextureHandle {
-        self.manager.take_ownership(resource, lifetime)
+    ) -> Texture2DHandle {
+        self.manager.store_resource(resource, lifetime)
     }
 
     /// Retrieve gpu representation of a mesh.
@@ -51,7 +51,7 @@ impl TextureManager2D {
         ctx: &mut RenderContext,
         device: &wgpu::Device,
         _queue: &wgpu::Queue,
-        handle: TextureHandle,
+        handle: Texture2DHandle,
     ) -> Result<GpuTextureHandleStrong, ResourceManagerError> {
         ctx.texture_manager_2d
             .manager

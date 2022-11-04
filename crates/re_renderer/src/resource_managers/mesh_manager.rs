@@ -17,9 +17,9 @@ pub struct MeshManager {
 }
 
 impl MeshManager {
-    /// Takes ownership of a new mesh.
+    /// Takes ownership of a mesh.
     pub fn store_resource(&mut self, resource: Mesh, lifetime: ResourceLifeTime) -> MeshHandle {
-        self.manager.take_ownership(resource, lifetime)
+        self.manager.store_resource(resource, lifetime)
     }
 
     /// Retrieve gpu representation of a mesh.

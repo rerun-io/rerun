@@ -73,7 +73,7 @@ where
     GpuRes: Clone,
 {
     /// Creates a new resource.
-    pub fn take_ownership(
+    pub fn store_resource(
         &mut self,
         resource: Res,
         lifetime: ResourceLifeTime,
