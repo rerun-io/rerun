@@ -1,7 +1,6 @@
 use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 use std::{
     collections::{HashMap, HashSet},
-    ffi::OsString,
     process::Stdio,
 };
 
