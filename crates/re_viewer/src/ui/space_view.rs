@@ -8,7 +8,7 @@ use super::{view_2d, view_3d, view_tensor, view_text, Scene};
 // ----------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-enum ViewCategory {
+pub(crate) enum ViewCategory {
     TwoD,
     #[default]
     ThreeD,
@@ -26,7 +26,7 @@ pub(crate) struct SpaceView {
     pub view_state: ViewState,
 
     /// In case we are a mix of 2d/3d/tensor/text, we show what?
-    selected_category: ViewCategory,
+    pub selected_category: ViewCategory,
 
     pub obj_tree_properties: ObjectTreeProperties,
 }
@@ -75,6 +75,7 @@ impl SpaceView {
         match categories.len() {
             0 => ui.label("(empty)"),
             1 => {
+                self.selected_category = categories[0];
                 if has_2d {
                     self.view_state
                         .ui_2d(ctx, ui, &self.space_path, &scene.two_d)
@@ -179,16 +180,9 @@ impl ViewState {
             let state = &mut self.state_3d;
             let space_cameras = &space_cameras(spaces_info, space_info);
             let coordinates = space_info.coordinates;
-            let space_specs = view_3d::SpaceSpecs::from_view_coordinates(coordinates);
-            view_3d::view_3d(
-                ctx,
-                ui,
-                state,
-                Some(space),
-                &space_specs,
-                scene,
-                space_cameras,
-            );
+            state.space_specs = view_3d::SpaceSpecs::from_view_coordinates(coordinates);
+            view_3d::view_3d(ctx, ui, state, Some(space), scene, space_cameras);
+            crate::misc::help_hover_button(ui).on_hover_text(view_3d::HELP_TEXT);
         })
         .response
     }
