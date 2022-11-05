@@ -306,6 +306,5 @@ impl ViewState {
 
         two_d.load_objects(ctx, &self.state_2d, time_objects);
         three_d.load_objects(ctx, time_objects);
-        tensor.load_objects(ctx, time_objects);
     }
 }

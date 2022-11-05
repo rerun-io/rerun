@@ -3,11 +3,14 @@ use std::{collections::BTreeMap, fmt::Display};
 use eframe::emath::Align2;
 use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
 use ndarray::{Axis, Ix2};
-use re_data_store::Objects;
-use re_log_types::{Tensor, TensorDataType, TensorDimension};
+use re_data_store::{query::visit_type_data_1, FieldName, ObjectTreeProperties, Objects};
+use re_log_types::{IndexHash, MsgId, ObjectType, Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
-use crate::{misc::ViewerContext, ui::tensor_dimension_mapper::dimension_mapping_ui};
+use crate::{
+    misc::ViewerContext,
+    ui::{space_view::SceneQuery, tensor_dimension_mapper::dimension_mapping_ui},
+};
 
 // --- Scene ---
 
@@ -17,32 +20,70 @@ pub struct SceneTensor {
 }
 
 impl SceneTensor {
-    // TODO: this is temporary while we transition out of Objects
-    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, objects: &Objects<'_>) {
-        fn multidim_tensor<'s>(objects: &Objects<'s>) -> Option<&'s Tensor> {
-            // We have a special tensor viewer that (currently) only works
-            // when we only have a single tensor (and no bounding boxes etc).
-            // It is also not as great for images as the normal 2d view (at least not yet).
-            // This is a hacky-way of detecting this special case.
-            // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
-            // so we can stack bounding boxes etc on top of it.
-            if objects.image.len() == 1 {
-                let image = objects.image.first().unwrap().1;
-                let tensor = image.tensor;
+    pub(crate) fn load(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery,
+    ) {
+        let Some(timeline_store) = ctx.log_db.obj_db.store.get(&query.timeline) else {return};
 
-                // Ignore tensors that likely represent images.
-                if tensor.num_dim() > 3
-                    || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4
-                {
-                    return Some(tensor);
+        puffin::profile_function!();
+
+        // Load tensors
+        let tensors = query
+            .objects
+            .iter()
+            .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
+            .filter_map(|obj_path| {
+                let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
+                (obj_type == Some(&ObjectType::Image))
+                    .then(|| {
+                        timeline_store
+                            .get(obj_path)
+                            .map(|obj_store| (obj_store, obj_path))
+                    })
+                    .flatten()
+            })
+            .filter_map(|(obj_store, _obj_path)| {
+                let mut tensors = Vec::new();
+                visit_type_data_1(
+                    obj_store,
+                    &FieldName::from("tensor"),
+                    &query.time_query,
+                    ("_visible",),
+                    |_instance_index: Option<&IndexHash>,
+                     _time: i64,
+                     _msg_id: &MsgId,
+                     tensor: &re_log_types::Tensor,
+                     visible: Option<&bool>| {
+                        if *visible.unwrap_or(&true) {
+                            tensors.push(tensor.clone() /* shallow */);
+                        }
+                    },
+                );
+
+                // We have a special tensor viewer that (currently) only works
+                // when we only have a single tensor (and no bounding boxes etc).
+                // It is also not as great for images as the normal 2d view (at least not yet).
+                // This is a hacky-way of detecting this special case.
+                // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
+                // so we can stack bounding boxes etc on top of it.
+                if tensors.len() == 1 {
+                    let tensor = tensors.pop().unwrap();
+
+                    // Ignore tensors that likely represent images.
+                    if tensor.num_dim() > 3
+                        || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4
+                    {
+                        return Some(tensor);
+                    }
                 }
-            }
-            None
-        }
 
-        if let Some(tensor) = multidim_tensor(objects) {
-            self.tensors.push(tensor.clone() /* shallow */);
-        }
+                None
+            });
+
+        self.tensors.extend(tensors);
     }
 }
 

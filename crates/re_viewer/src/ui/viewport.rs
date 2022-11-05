@@ -471,6 +471,7 @@ fn space_view_ui(
             time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(), // TODO
         };
         scene.text.load(ctx, obj_tree_props, &query);
+        scene.tensor.load(ctx, obj_tree_props, &query);
 
         space_view.scene_ui(ctx, ui, spaces_info, space_info, &time_objects, scene)
     } else {
