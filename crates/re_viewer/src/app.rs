@@ -776,6 +776,11 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
         .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
         .collect_vec();
 
+    if log_dbs.is_empty() {
+        ui.weak("(empty)");
+        return;
+    }
+
     ui.style_mut().wrap = Some(false);
     for log_db in log_dbs {
         let info = if let Some(rec_info) = log_db.recording_info() {
