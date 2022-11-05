@@ -1,11 +1,19 @@
 use anyhow::Context;
-use itertools::Itertools;
 use macaw::Conformal3;
+use smallvec::smallvec;
 
-use super::{ImportMeshInstance, ModelImportData};
-use crate::mesh::{mesh_vertices::MeshVertexData, Mesh};
+use crate::{
+    mesh::{mesh_vertices::MeshVertexData, Material, Mesh},
+    renderer::MeshInstance,
+    resource_managers::{MeshManager, ResourceLifeTime, TextureManager2D},
+};
 
-pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
+pub fn load_obj_from_buffer(
+    buffer: &[u8],
+    lifetime: ResourceLifeTime,
+    mesh_manager: &mut MeshManager,
+    texture_manager: &mut TextureManager2D,
+) -> anyhow::Result<Vec<MeshInstance>> {
     let (models, _materials) = tobj::load_obj_buf(
         &mut std::io::Cursor::new(buffer),
         &tobj::LoadOptions {
@@ -17,10 +25,11 @@ pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
     )
     .context("failed loading obj")?;
 
-    let meshes = models
-        .iter()
+    // TODO(andreas) Merge all obj meshes into a single re_renderer mesh with multiple materials.
+    Ok(models
+        .into_iter()
         .map(|model| {
-            let mesh = &model.mesh;
+            let mesh = model.mesh;
             let vertex_positions = mesh
                 .positions
                 .chunks_exact(3)
@@ -36,21 +45,29 @@ pub fn load_obj_from_buffer(buffer: &[u8]) -> anyhow::Result<ModelImportData> {
                 })
                 .collect();
 
-            Mesh {
-                label: model.name.clone().into(),
-                indices: mesh.indices.clone(),
-                vertex_positions,
-                vertex_data,
+            let texture = texture_manager.placeholder_texture();
+
+            let num_indices = mesh.indices.len();
+
+            let mesh = mesh_manager.store_resource(
+                Mesh {
+                    label: model.name.clone().into(),
+                    indices: mesh.indices,
+                    vertex_positions,
+                    vertex_data,
+                    // TODO(andreas): proper material loading
+                    materials: smallvec![Material {
+                        label: "default material".into(),
+                        index_range: 0..num_indices as u32,
+                        albedo: texture,
+                    }],
+                },
+                lifetime,
+            );
+            MeshInstance {
+                mesh,
+                world_from_mesh: Conformal3::IDENTITY,
             }
         })
-        .collect_vec();
-
-    let instances = (0..meshes.len())
-        .map(|mesh_idx| ImportMeshInstance {
-            mesh_idx,
-            world_from_mesh: Conformal3::IDENTITY,
-        })
-        .collect();
-
-    Ok(ModelImportData { meshes, instances })
+        .collect())
 }

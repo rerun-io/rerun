@@ -4,7 +4,13 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
     debug_label::DebugLabel,
+    renderer::MeshRenderer,
+    resource_managers::{
+        texture_manager::{Texture2DHandle, TextureManager2D},
+        ResourceManagerError,
+    },
     resource_pools::{
+        bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
         buffer_pool::{BufferDesc, GpuBufferHandleStrong},
         WgpuResourcePools,
     },
@@ -84,13 +90,19 @@ pub struct Mesh {
     pub indices: Vec<u32>, // TODO(andreas): different index formats?
     pub vertex_positions: Vec<glam::Vec3>,
     pub vertex_data: Vec<mesh_vertices::MeshVertexData>,
-    //pub materials: Vec<Material>,
+    pub materials: SmallVec<[Material; 1]>,
 }
 
 #[derive(Clone)]
 pub struct Material {
+    pub label: DebugLabel,
+
     /// Index range within the owning [`Mesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
+
+    /// Base color texture, also known as albedo.
+    /// (not optional, needs to be at least a 1pix texture with a color!)
+    pub albedo: Texture2DHandle,
 }
 
 #[derive(Clone)]
@@ -115,15 +127,19 @@ pub(crate) struct GpuMesh {
 pub(crate) struct GpuMaterial {
     /// Index range within the owning [`Mesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
+
+    pub bind_group: GpuBindGroupHandleStrong,
 }
 
 impl GpuMesh {
     pub fn new(
         pools: &mut WgpuResourcePools,
+        texture_manager: &mut TextureManager2D,
+        mesh_renderer: &MeshRenderer,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         data: &Mesh,
-    ) -> Self {
+    ) -> Result<Self, ResourceManagerError> {
         assert!(data.vertex_positions.len() == data.vertex_data.len());
         re_log::trace!(
             "uploading new mesh named {:?} with {} vertices and {} triangles",
@@ -152,7 +168,7 @@ impl GpuMesh {
                 &pools
                     .buffers
                     .get_resource(&vertex_buffer_combined)
-                    .unwrap()
+                    .map_err(|e| ResourceManagerError::ResourcePoolError(e))?
                     .buffer,
                 0,
                 vertex_buffer_combined_size.try_into().unwrap(),
@@ -176,7 +192,11 @@ impl GpuMesh {
                 },
             );
             let mut staging_buffer = queue.write_buffer_with(
-                &pools.buffers.get_resource(&index_buffer).unwrap().buffer,
+                &pools
+                    .buffers
+                    .get_resource(&index_buffer)
+                    .map_err(|e| ResourceManagerError::ResourcePoolError(e))?
+                    .buffer,
                 0,
                 index_buffer_size.try_into().unwrap(),
             );
@@ -185,17 +205,40 @@ impl GpuMesh {
             index_buffer
         };
 
-        GpuMesh {
+        let mut materials = SmallVec::with_capacity(data.materials.len());
+        for material in &data.materials {
+            let texture = texture_manager.get_or_create_gpu_resource(
+                pools,
+                device,
+                queue,
+                material.albedo,
+            )?;
+            let bind_group = pools.bind_groups.alloc(
+                device,
+                &BindGroupDesc {
+                    label: material.label.clone(),
+                    entries: smallvec![BindGroupEntry::DefaultTextureView(*texture)],
+                    layout: mesh_renderer.bind_group_layout,
+                },
+                &pools.bind_group_layouts,
+                &pools.textures,
+                &pools.buffers,
+                &pools.samplers,
+            );
+
+            materials.push(GpuMaterial {
+                index_range: material.index_range.clone(),
+                bind_group,
+            });
+        }
+
+        Ok(GpuMesh {
             index_buffer,
             vertex_buffer_combined,
             vertex_buffer_positions_range: 0..vertex_buffer_positions_size,
             vertex_buffer_data_range: vertex_buffer_positions_size..vertex_buffer_combined_size,
             index_buffer_range: 0..index_buffer_size,
-
-            // TODO(andreas): Actual material support
-            materials: smallvec![GpuMaterial {
-                index_range: 0..data.indices.len() as u32,
-            }],
-        }
+            materials,
+        })
     }
 }

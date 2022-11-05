@@ -1,5 +1,6 @@
 use crate::{
     mesh::{GpuMesh, Mesh},
+    renderer::MeshRenderer,
     RenderContext,
 };
 
@@ -35,8 +36,20 @@ impl MeshManager {
             .manager
             .get_or_create_gpu_resource(handle, |resource, _lifetime| {
                 // TODO(andreas): Use stack allocators for short lived meshes!
-                GpuMesh::new(&mut ctx.resource_pools, device, queue, resource)
+                GpuMesh::new(
+                    &mut ctx.resource_pools,
+                    &mut ctx.texture_manager_2d,
+                    &ctx.renderers.get::<MeshRenderer>().unwrap(),
+                    device,
+                    queue,
+                    resource,
+                )
             })
+    }
+
+    /// Accesses a given resource under a read lock.
+    pub(crate) fn get(&self, handle: MeshHandle) -> Result<&Mesh, ResourceManagerError> {
+        self.manager.get(handle)
     }
 
     pub(crate) fn frame_maintenance(&mut self, frame_index: u64) {

@@ -21,6 +21,7 @@ use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
     renderer::*,
+    resource_managers::ResourceLifeTime,
     view_builder::{TargetConfiguration, ViewBuilder},
     DebugLabel, *,
 };
@@ -525,9 +526,13 @@ impl AppState {
             let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
             let mut obj_data = Vec::new();
             zipped_obj.read_to_end(&mut obj_data).unwrap();
-            importer::obj::load_obj_from_buffer(&obj_data)
-                .unwrap()
-                .push_to_mesh_manager(re_ctx)
+            importer::obj::load_obj_from_buffer(
+                &obj_data,
+                ResourceLifeTime::LongLived,
+                &mut re_ctx.mesh_manager,
+                &mut re_ctx.texture_manager_2d,
+            )
+            .unwrap()
         };
 
         Self {

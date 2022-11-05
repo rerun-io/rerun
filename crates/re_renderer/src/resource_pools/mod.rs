@@ -16,8 +16,10 @@ pub(crate) mod shader_module_pool;
 pub(crate) mod texture_pool;
 
 mod dynamic_resource_pool;
-mod resource;
 mod static_resource_pool;
+
+mod resource;
+pub(crate) use resource::PoolError;
 
 use self::{
     bind_group_layout_pool::GpuBindGroupLayoutPool, bind_group_pool::GpuBindGroupPool,

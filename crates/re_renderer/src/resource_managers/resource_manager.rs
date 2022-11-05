@@ -1,5 +1,7 @@
 use slotmap::{Key, SecondaryMap, SlotMap};
 
+use crate::resource_pools::PoolError;
+
 /// Handle to a resource that is stored in a
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ResourceHandle<InnerHandle: slotmap::Key> {
@@ -28,6 +30,9 @@ pub enum ResourceManagerError {
 
     #[error("The passed resource handle was null")]
     NullHandle,
+
+    #[error("Failed accessing resource pools")]
+    ResourcePoolError(PoolError),
 }
 
 #[derive(Clone, Copy)]
@@ -89,14 +94,55 @@ where
         }
     }
 
+    /// Accesses a given resource under a read lock.
+    pub(crate) fn get(
+        &self,
+        handle: ResourceHandle<InnerHandle>,
+    ) -> Result<&Res, ResourceManagerError> {
+        let (slotmap, key) = match handle {
+            ResourceHandle::LongLived(key) => (&self.long_lived_resources, key),
+            ResourceHandle::Frame {
+                key,
+                valid_frame_index,
+            } => {
+                self.check_frame_resource_lifetime(valid_frame_index)?;
+                (&self.single_frame_resources, key)
+            }
+        };
+
+        slotmap.get(key).ok_or_else(|| {
+            if key.is_null() {
+                ResourceManagerError::NullHandle
+            } else {
+                ResourceManagerError::ResourceNotAvailable
+            }
+        })
+    }
+
+    fn check_frame_resource_lifetime(
+        &self,
+        valid_frame_index: u64,
+    ) -> Result<(), ResourceManagerError> {
+        if valid_frame_index != self.frame_index {
+            return Err(ResourceManagerError::ExpiredResource {
+                current_frame_index: self.frame_index,
+                valid_frame_index,
+            });
+        } else {
+            Ok(())
+        }
+    }
+
     /// Retrieve gpu representation of a resource.
     ///
     /// Uploads to gpu if not already done.
-    pub(crate) fn get_or_create_gpu_resource<F: FnOnce(&Res, ResourceLifeTime) -> GpuRes>(
+    pub(crate) fn get_or_create_gpu_resource<
+        F: FnOnce(&Res, ResourceLifeTime) -> Result<GpuRes, ResourceManagerError>,
+    >(
         &mut self,
         handle: ResourceHandle<InnerHandle>,
         create_gpu_resource: F,
-    ) -> Result<GpuRes, ResourceManagerError> {
+    ) -> anyhow::Result<GpuRes, ResourceManagerError> {
         let (slotmap, slotmap_gpu, key, lifetime) = match handle {
             ResourceHandle::<InnerHandle>::LongLived(key) => (
                 &self.long_lived_resources,
@@ -108,12 +154,7 @@ where
                 key,
                 valid_frame_index,
             } => {
-                if valid_frame_index != self.frame_index {
-                    return Err(ResourceManagerError::ExpiredResource {
-                        current_frame_index: self.frame_index,
-                        valid_frame_index,
-                    });
-                }
+                self.check_frame_resource_lifetime(valid_frame_index)?;
                 (
                     &self.single_frame_resources,
                     &mut self.single_frame_resources_gpu,
@@ -135,7 +176,7 @@ where
             })?;
 
             // TODO(andreas): Should we throw out the cpu data now, at least for long lived Resources?
-            let resource_gpu = create_gpu_resource(resource, lifetime);
+            let resource_gpu = create_gpu_resource(resource, lifetime)?;
             slotmap_gpu.insert(key, resource_gpu.clone());
             resource_gpu
         })
@@ -143,6 +184,7 @@ where
 
     pub(crate) fn frame_maintenance(&mut self, frame_index: u64) {
         self.single_frame_resources.clear();
+        self.single_frame_resources_gpu.clear();
         self.frame_index = frame_index;
     }
 }

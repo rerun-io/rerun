@@ -3,6 +3,9 @@
 #import <./mesh_vertex.wgsl>
 #import <./utils/quaternion.wgsl>
 
+@group(1) @binding(0)
+var albedo_texture: texture_2d<f32>;
+
 struct VertexOut {
     @builtin(position) position: Vec4,
     @location(0) texcoord: Vec2,
@@ -24,10 +27,14 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
+    let albedo = textureSample(albedo_texture, trilinear_sampler, in.texcoord).rgb;
 
+    // Hardcoded lambert lighting. TODO(andreas): Some microfacet model.
     let light_dir = normalize(vec3(1.0, 2.0, 0.0)); // TODO(andreas): proper lighting
     let normal = normalize(in.normal_world_space);
     let shading = clamp(dot(normal, light_dir), 0.0, 1.0) + 0.2;
 
-    return Vec4(shading, shading, shading, 0.0);
+    let radiance = albedo * shading;
+
+    return Vec4(radiance, 0.0);
 }

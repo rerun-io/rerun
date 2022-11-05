@@ -32,6 +32,7 @@ pub(crate) struct FrameUniformBuffer {
 pub(crate) struct GlobalBindings {
     pub(crate) layout: GpuBindGroupLayoutHandle,
     nearest_neighbor_sampler: GpuSamplerHandle,
+    trilinear_sampler: GpuSamplerHandle,
 }
 
 impl GlobalBindings {
@@ -64,6 +65,13 @@ impl GlobalBindings {
                             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                             count: None,
                         },
+                        // Trilinear sampler.
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                            count: None,
+                        },
                     ],
                 },
             ),
@@ -71,6 +79,16 @@ impl GlobalBindings {
                 device,
                 &SamplerDesc {
                     label: "nearest".into(),
+                    ..Default::default()
+                },
+            ),
+            trilinear_sampler: pools.samplers.get_or_create(
+                device,
+                &SamplerDesc {
+                    label: "linear".into(),
+                    mag_filter: wgpu::FilterMode::Linear,
+                    min_filter: wgpu::FilterMode::Linear,
+                    mipmap_filter: wgpu::FilterMode::Linear,
                     ..Default::default()
                 },
             ),
@@ -95,6 +113,7 @@ impl GlobalBindings {
                         size: None,
                     },
                     BindGroupEntry::Sampler(self.nearest_neighbor_sampler),
+                    BindGroupEntry::Sampler(self.trilinear_sampler),
                 ],
                 layout: self.layout,
             },

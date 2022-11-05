@@ -1,12 +1,13 @@
 use type_map::concurrent::{self, TypeMap};
 
-use crate::resource_managers::mesh_manager::MeshManager;
-use crate::resource_managers::texture_manager::TextureManager2D;
 use crate::{
-    config::RenderContextConfig, global_bindings::GlobalBindings, renderer::Renderer,
+    config::RenderContextConfig,
+    global_bindings::GlobalBindings,
+    renderer::Renderer,
+    resource_managers::{MeshManager, TextureManager2D},
     resource_pools::WgpuResourcePools,
+    FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
-use crate::{FileResolver, FileServer, FileSystem, RecommendedFileResolver};
 
 // ---
 

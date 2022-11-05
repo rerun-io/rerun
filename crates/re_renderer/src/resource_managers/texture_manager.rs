@@ -1,6 +1,9 @@
 use crate::{
-    resource_pools::texture_pool::{GpuTextureHandleStrong, TextureDesc},
-    DebugLabel, RenderContext,
+    resource_pools::{
+        texture_pool::{GpuTextureHandleStrong, TextureDesc},
+        WgpuResourcePools,
+    },
+    DebugLabel,
 };
 
 use super::{
@@ -11,7 +14,6 @@ slotmap::new_key_type! { pub struct Texture2DHandleInner; }
 
 pub type Texture2DHandle = ResourceHandle<Texture2DHandleInner>;
 
-#[allow(dead_code)] // TODO(andreas): WIP
 pub struct Texture2D {
     label: DebugLabel,
     data: Box<[u8]>,
@@ -26,11 +28,31 @@ pub struct Texture2D {
 /// The scope is intentionally limited to particular kinds of textures that currently
 /// require this kind of handle abstraction/management.
 /// More complex textures types are typically handled within renderer which utilize the texture pool directly.
-/// This here in contrast deals with user provided texture data!
+/// This manager in contrast, deals with user provided texture data!
 /// We might revisit this later and make this texture manager more general purpose.
-#[derive(Default)]
 pub struct TextureManager2D {
     manager: ResourceManager<Texture2DHandleInner, Texture2D, GpuTextureHandleStrong>,
+    placeholder_texture: Texture2DHandle,
+}
+
+impl Default for TextureManager2D {
+    fn default() -> Self {
+        let mut manager = ResourceManager::default();
+        let placeholder_texture = manager.store_resource(
+            Texture2D {
+                label: "placeholder".into(),
+                data: Box::new([255, 255, 255, 255]),
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                width: 1,
+                height: 1,
+            },
+            ResourceLifeTime::LongLived,
+        );
+        Self {
+            manager,
+            placeholder_texture,
+        }
+    }
 }
 
 impl TextureManager2D {
@@ -43,20 +65,24 @@ impl TextureManager2D {
         self.manager.store_resource(resource, lifetime)
     }
 
+    /// Returns a single pixel white pixel.
+    pub fn placeholder_texture(&self) -> Texture2DHandle {
+        self.placeholder_texture
+    }
+
     /// Retrieve gpu representation of a mesh.
     ///
     /// Uploads to gpu if not already done.
-    #[allow(dead_code)] // TODO(andreas): WIP
     pub(crate) fn get_or_create_gpu_resource(
-        ctx: &mut RenderContext,
+        &mut self,
+        pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
         _queue: &wgpu::Queue,
         handle: Texture2DHandle,
     ) -> Result<GpuTextureHandleStrong, ResourceManagerError> {
-        ctx.texture_manager_2d
-            .manager
+        self.manager
             .get_or_create_gpu_resource(handle, |resource, _lifetime| {
-                ctx.resource_pools.textures.alloc(
+                Ok(pools.textures.alloc(
                     device,
                     &TextureDesc {
                         label: resource.label.clone(),
@@ -71,7 +97,7 @@ impl TextureManager2D {
                         format: resource.format,
                         usage: wgpu::TextureUsages::TEXTURE_BINDING,
                     },
-                )
+                ))
                 // TODO(andreas): gpu resource upload code!
                 // TODO(andreas): mipmap generation
             })

@@ -9,8 +9,9 @@ use smallvec::smallvec;
 use crate::{
     include_file,
     mesh::{mesh_vertices, GpuMesh},
-    resource_managers::mesh_manager::{MeshHandle, MeshManager},
+    resource_managers::{MeshHandle, MeshManager},
     resource_pools::{
+        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
         buffer_pool::{BufferDesc, GpuBufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::{GpuRenderPipelineHandle, RenderPipelineDesc, VertexBufferLayout},
@@ -162,6 +163,7 @@ impl MeshDrawable {
 
 pub struct MeshRenderer {
     render_pipeline: GpuRenderPipelineHandle,
+    pub bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for MeshRenderer {
@@ -173,11 +175,27 @@ impl Renderer for MeshRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
+        let bind_group_layout = pools.bind_group_layouts.get_or_create(
+            device,
+            &BindGroupLayoutDesc {
+                label: "mesh renderer".into(),
+                entries: vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                }],
+            },
+        );
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
                 label: "mesh renderer".into(),
-                entries: vec![shared_data.global_bindings.layout],
+                entries: vec![shared_data.global_bindings.layout, bind_group_layout],
             },
             &pools.bind_group_layouts,
         );
@@ -225,7 +243,10 @@ impl Renderer for MeshRenderer {
             &pools.shader_modules,
         );
 
-        MeshRenderer { render_pipeline }
+        MeshRenderer {
+            render_pipeline,
+            bind_group_layout,
+        }
     }
 
     fn draw<'a>(
@@ -266,16 +287,18 @@ impl Renderer for MeshRenderer {
                 wgpu::IndexFormat::Uint32,
             );
 
+            let instance_range = instance_start_index..(instance_start_index + mesh_batch.count);
+
             for material in &mesh_batch.mesh.materials {
                 debug_assert!(mesh_batch.count > 0);
-                let instance_end_index = instance_start_index + mesh_batch.count;
-                pass.draw_indexed(
-                    material.index_range.clone(),
-                    0,
-                    instance_start_index..instance_end_index,
-                );
-                instance_start_index = instance_end_index;
+
+                let bind_group = pools.bind_groups.get_resource(&material.bind_group)?;
+                pass.set_bind_group(1, &bind_group.bind_group, &[]);
+
+                pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
             }
+
+            instance_start_index = instance_range.end;
         }
 
         Ok(())
