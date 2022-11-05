@@ -189,20 +189,8 @@ impl App {
     pub fn promise_exists(&mut self, name: impl AsRef<str>) -> bool {
         self.pending_promises.contains_key(name.as_ref())
     }
-}
 
-impl eframe::App for App {
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, &self.state);
-    }
-
-    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.ctrl_c.load(std::sync::atomic::Ordering::SeqCst) {
-            frame.close();
-            return;
-        }
-
+    fn check_kb_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         if egui_ctx
             .input_mut()
             .consume_shortcut(&kb_shortcuts::RESET_VIEWER)
@@ -217,6 +205,29 @@ impl eframe::App for App {
         {
             self.state.profiler.start();
         }
+
+        if !frame.is_web() {
+            egui::gui_zoom::zoom_with_keyboard_shortcuts(
+                egui_ctx,
+                frame.info().native_pixels_per_point,
+            );
+        }
+    }
+}
+
+impl eframe::App for App {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, &self.state);
+    }
+
+    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.ctrl_c.load(std::sync::atomic::Ordering::SeqCst) {
+            frame.close();
+            return;
+        }
+
+        self.check_kb_shortcuts(egui_ctx, frame);
 
         self.state.cache.new_frame();
 
@@ -534,12 +545,24 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
             egui::menu::bar(ui, |ui| {
                 #[cfg(target_os = "macos")]
                 if crate::native::FULLSIZE_CONTENT {
+                    let gui_zoom = if let Some(native_pixels_per_point) =
+                        frame.info().native_pixels_per_point
+                    {
+                        native_pixels_per_point / ui.ctx().pixels_per_point()
+                    } else {
+                        1.0
+                    };
+
                     // We use up the same row as the native red/yellow/green close/minimize/maximize buttons.
                     // This means we need to make room for them:
-                    ui.add_space(64.0);
+                    let needed_space = egui::vec2(64.0, 24.0);
+
+                    // Even when zoomed out, we don't want to shrink too much:
+                    let needed_space = needed_space.max(needed_space * gui_zoom);
 
                     // …and match their height:
-                    ui.set_min_size(egui::vec2(ui.available_width(), 24.0));
+                    ui.add_space(needed_space.x);
+                    ui.set_min_size(egui::vec2(ui.available_width(), needed_space.y));
                 }
 
                 ui.menu_button("File", |ui| {
@@ -739,8 +762,14 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     }
 }
 
-fn view_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
+fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     ui.set_min_width(180.0);
+
+    // On the web the browser controls the zoom
+    if !frame.is_web() {
+        egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
+        ui.separator();
+    }
 
     if ui
         .add(

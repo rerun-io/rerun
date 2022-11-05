@@ -24,18 +24,18 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-02 - user-defined command buffers
-eframe = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
-egui = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
+# 2022-11-05 - helpers for zooming the UI
+eframe = { git = "https://github.com/emilk/egui", rev = "a0b3f1126b158d41db91c3418695f12133bc1329" }
+egui = { git = "https://github.com/emilk/egui", rev = "a0b3f1126b158d41db91c3418695f12133bc1329" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "a0b3f1126b158d41db91c3418695f12133bc1329" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "a0b3f1126b158d41db91c3418695f12133bc1329" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "a0b3f1126b158d41db91c3418695f12133bc1329" }
 
-# eframe = { path = "../egui/crates/eframe" }
-# egui = { path = "../egui/crates/egui" }
-# egui_extras = { path = "../egui/crates/egui_extras" }
-# egui_glow = { path = "../egui/crates/egui_glow" }
-# egui-wgpu = { path = "../egui/crates/egui-wgpu" }
+# eframe = { path = "../../egui/crates/eframe" }
+# egui = { path = "../../egui/crates/egui" }
+# egui_extras = { path = "../../egui/crates/egui_extras" }
+# egui_glow = { path = "../../egui/crates/egui_glow" }
+# egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }
