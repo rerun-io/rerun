@@ -51,7 +51,7 @@ pub fn load_obj_from_buffer(
 
             let mesh = mesh_manager.store_resource(
                 Mesh {
-                    label: model.name.clone().into(),
+                    label: model.name.into(),
                     indices: mesh.indices,
                     vertex_positions,
                     vertex_data,

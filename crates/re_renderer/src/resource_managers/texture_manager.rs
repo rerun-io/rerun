@@ -1,3 +1,5 @@
+use std::num::NonZeroU32;
+
 use crate::{
     resource_pools::{
         texture_pool::{GpuTextureHandleStrong, TextureDesc},
@@ -77,28 +79,59 @@ impl TextureManager2D {
         &mut self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        _queue: &wgpu::Queue,
+        queue: &wgpu::Queue,
         handle: Texture2DHandle,
     ) -> Result<GpuTextureHandleStrong, ResourceManagerError> {
         self.manager
             .get_or_create_gpu_resource(handle, |resource, _lifetime| {
-                Ok(pools.textures.alloc(
+                let size = wgpu::Extent3d {
+                    width: resource.width,
+                    height: resource.height,
+                    depth_or_array_layers: 1,
+                };
+                let texture_handle = pools.textures.alloc(
                     device,
                     &TextureDesc {
                         label: resource.label.clone(),
-                        size: wgpu::Extent3d {
-                            width: resource.width,
-                            height: resource.height,
-                            depth_or_array_layers: 1,
-                        },
+                        size,
                         mip_level_count: 1, // TODO(andreas)
                         sample_count: 1,
                         dimension: wgpu::TextureDimension::D2,
                         format: resource.format,
-                        usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                     },
-                ))
-                // TODO(andreas): gpu resource upload code!
+                );
+
+                let texture = pools
+                    .textures
+                    .get_resource(&texture_handle)
+                    .map_err(|e| ResourceManagerError::ResourcePoolError(e))?;
+
+                let format_info = resource.format.describe();
+                let width_blocks = resource.width / format_info.block_dimensions.0 as u32;
+                let bytes_per_row = width_blocks * format_info.block_size as u32;
+
+                // TODO(andreas): temp allocator for staging data?
+                // We don't do any further validation of the buffer here as wgpu does so extensively.
+                queue.write_texture(
+                    wgpu::ImageCopyTexture {
+                        texture: &texture.texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    &resource.data,
+                    wgpu::ImageDataLayout {
+                        offset: 0,
+                        bytes_per_row: Some(
+                            NonZeroU32::new(bytes_per_row).expect("invalid bytes per row"),
+                        ),
+                        rows_per_image: None,
+                    },
+                    size,
+                );
+
+                Ok(texture_handle)
                 // TODO(andreas): mipmap generation
             })
     }
