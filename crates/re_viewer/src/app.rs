@@ -554,15 +554,17 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                     };
 
                     // We use up the same row as the native red/yellow/green close/minimize/maximize buttons.
-                    // This means we need to make room for them:
-                    let needed_space = egui::vec2(64.0, 24.0);
+                    // This means we need to make room for them.
+                    let size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
-                    // Even when zoomed out, we don't want to shrink too much:
-                    let needed_space = needed_space.max(needed_space * gui_zoom);
+                    // Always use the same width measured in native GUI coordinates:
+                    ui.add_space(gui_zoom * size_in_native_scale.x);
 
-                    // …and match their height:
-                    ui.add_space(needed_space.x);
-                    ui.set_min_size(egui::vec2(ui.available_width(), needed_space.y));
+                    // Use more vertical space when zoomed in…
+                    let bar_height = size_in_native_scale.y;
+                    // …but never shrink below the native button height when zoomed out.
+                    let bar_height = bar_height.max(gui_zoom * size_in_native_scale.y);
+                    ui.set_min_size(egui::vec2(ui.available_width(), bar_height));
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
