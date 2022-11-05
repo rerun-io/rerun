@@ -19,7 +19,10 @@ use re_log_types::ObjectType;
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
-use super::{space_view::Scene, SpaceView};
+use super::{
+    space_view::{Scene, SceneQuery},
+    SpaceView,
+};
 
 // ----------------------------------------------------------------------------
 
@@ -420,7 +423,7 @@ fn space_view_ui(
     space_view: &mut SpaceView,
 ) -> egui::Response {
     if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-        let obj_tree_properties = &space_view.obj_tree_properties;
+        let obj_tree_props = &space_view.obj_tree_properties;
 
         // Get the latest objects for the currently selected time:
         let mut time_objects = Objects::default();
@@ -430,7 +433,7 @@ fn space_view_ui(
             if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
                 if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
                     for obj_path in &space_info.objects {
-                        if obj_tree_properties.projected.get(obj_path).visible {
+                        if obj_tree_props.projected.get(obj_path).visible {
                             if let Some(obj_store) = timeline_store.get(obj_path) {
                                 if let Some(obj_type) =
                                     ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
@@ -460,7 +463,7 @@ fn space_view_ui(
             let timeline = ctx.rec_cfg.time_ctrl.timeline();
             if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
                 for obj_path in &space_info.objects {
-                    if obj_tree_properties.projected.get(obj_path).visible {
+                    if obj_tree_props.projected.get(obj_path).visible {
                         if let Some(obj_store) = timeline_store.get(obj_path) {
                             if let Some(obj_type) =
                                 ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
@@ -493,6 +496,13 @@ fn space_view_ui(
             &sticky_objects,
             &mut scene,
         );
+
+        let query = SceneQuery {
+            objects: &space_info.objects,
+            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+            time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(), // TODO
+        };
+        scene.text.load(ctx, obj_tree_props, &query);
 
         space_view.scene_ui(
             ctx,

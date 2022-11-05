@@ -1,5 +1,6 @@
 use ahash::HashSet;
 use glam::Vec3;
+use nohash_hasher::IntSet;
 use re_data_store::{
     InstanceIdHash, ObjPath, ObjectTree, ObjectTreeProperties, Objects, TimeQuery, Timeline,
 };
@@ -275,8 +276,8 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
 // ----------------------------------------------------------------------------
 
 #[derive(Debug)]
-pub struct SceneQuery {
-    pub objects: HashSet<ObjPath>,
+pub struct SceneQuery<'a> {
+    pub objects: &'a IntSet<ObjPath>,
     pub timeline: Timeline,
     pub time_query: TimeQuery<i64>,
 }
@@ -310,9 +311,6 @@ impl ViewState {
 
         three_d.load_objects(ctx, time_objects);
         three_d.load_objects(ctx, sticky_objects);
-
-        text.load_objects(ctx, time_objects);
-        text.load_objects(ctx, sticky_objects);
 
         tensor.load_objects(ctx, time_objects);
         tensor.load_objects(ctx, sticky_objects);

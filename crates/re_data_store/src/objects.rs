@@ -565,52 +565,6 @@ impl<'s> Arrow3D<'s> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct TextEntry<'s> {
-    pub body: &'s str,
-    pub level: Option<&'s str>,
-}
-
-impl<'s> TextEntry<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data_3(
-            obj_store,
-            &FieldName::from("body"),
-            time_query,
-            ("_visible", "level", "color"),
-            |instance_index: Option<&IndexHash>,
-             time: Time,
-             msg_id: &MsgId,
-             body: &String,
-             visible: Option<&bool>,
-             level: Option<&String>,
-             color: Option<&[u8; 4]>| {
-                out.text_entry.0.push(Object {
-                    props: InstanceProps {
-                        time: time.into(),
-                        msg_id,
-                        color: color.copied(),
-                        obj_path,
-                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
-                        visible: *visible.unwrap_or(&true),
-                    },
-                    data: TextEntry {
-                        body: body.as_str(),
-                        level: level.map(|s| s.as_str()),
-                    },
-                });
-            },
-        );
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ClassDescriptionMap<'s> {
     pub msg_id: &'s MsgId,
@@ -667,8 +621,6 @@ impl<'s> ClassDescription<'s> {
 pub struct Objects<'s> {
     pub class_description_map: BTreeMap<&'s ObjPath, ClassDescriptionMap<'s>>,
 
-    pub text_entry: ObjectVec<'s, TextEntry<'s>>,
-
     pub image: ObjectVec<'s, Image<'s>>,
     pub point2d: ObjectVec<'s, Point2D<'s>>,
     pub bbox2d: ObjectVec<'s, BBox2D<'s>>,
@@ -710,7 +662,6 @@ impl<'s> Objects<'s> {
     ) {
         let query_fn = match obj_type {
             ObjectType::ClassDescription => ClassDescription::query,
-            ObjectType::TextEntry => TextEntry::query,
             ObjectType::Image => Image::query,
             ObjectType::Point2D => Point2D::query,
             ObjectType::BBox2D => BBox2D::query,
@@ -721,6 +672,7 @@ impl<'s> Objects<'s> {
             ObjectType::LineSegments3D => LineSegments3D::query,
             ObjectType::Mesh3D => Mesh3D::query,
             ObjectType::Arrow3D => Arrow3D::query,
+            ObjectType::TextEntry => return, // TODO
         };
 
         query_fn(obj_path, obj_store, time_query, self);
@@ -731,8 +683,6 @@ impl<'s> Objects<'s> {
 
         Self {
             class_description_map: self.class_description_map.clone(), // SPECIAL - can't filter
-
-            text_entry: self.text_entry.filter(&keep),
 
             image: self.image.filter(&keep),
             point2d: self.point2d.filter(&keep),
@@ -751,7 +701,6 @@ impl<'s> Objects<'s> {
     pub fn is_empty(&self) -> bool {
         let Self {
             class_description_map,
-            text_entry,
             image,
             point2d,
             bbox2d,
@@ -765,7 +714,6 @@ impl<'s> Objects<'s> {
         } = self;
         class_description_map.is_empty()
             && image.is_empty()
-            && text_entry.is_empty()
             && point2d.is_empty()
             && bbox2d.is_empty()
             && line_segments2d.is_empty()
@@ -780,7 +728,6 @@ impl<'s> Objects<'s> {
     pub fn len(&self) -> usize {
         let Self {
             class_description_map,
-            text_entry,
             image,
             point2d,
             bbox2d,
@@ -794,7 +741,6 @@ impl<'s> Objects<'s> {
         } = self;
         class_description_map.len()
             + image.len()
-            + text_entry.len()
             + point2d.len()
             + bbox2d.len()
             + line_segments2d.len()
@@ -820,10 +766,6 @@ impl<'s> Objects<'s> {
             || !self.line_segments3d.is_empty()
             || !self.mesh3d.is_empty()
             || !self.arrow3d.is_empty()
-    }
-
-    pub fn has_any_text_entries(&self) -> bool {
-        !self.text_entry.is_empty()
     }
 }
 
