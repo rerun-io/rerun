@@ -651,7 +651,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                     ui.spinner();
                 });
                 ui.horizontal(|ui| {
-                    let _ = ui.button("Save time selection…");
+                    let _ = ui.button("Save Time Selection…");
                     ui.spinner();
                 });
             });
@@ -720,7 +720,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     #[cfg(not(target_arch = "wasm32"))]
     if ui
         .button("Load")
-        .on_hover_text("Load a Rerun data file (.rrd)")
+        .on_hover_text("Load a Rerun Data File (.rrd)")
         .clicked()
     {
         if let Some(path) = rfd::FileDialog::new()
@@ -744,7 +744,7 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
 
     if ui
         .add(
-            egui::Button::new("Reset viewer")
+            egui::Button::new("Reset Viewer")
                 .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::RESET_VIEWER)),
         )
         .on_hover_text("Reset the viewer to how it looked the first time you ran it")
@@ -757,7 +757,7 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
     if ui
         .add(
-            egui::Button::new("Profile viewer")
+            egui::Button::new("Profile Viewer")
                 .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SHOW_PROFILER)),
         )
         .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
