@@ -62,7 +62,6 @@ impl SpaceView {
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
         time_objects: &Objects<'_>,
-        sticky_objects: &Objects<'_>,
         scene: Scene,
     ) -> egui::Response {
         let has_2d = !scene.two_d.is_empty() && (scene.tensor.is_empty() || time_objects.len() > 1);
@@ -296,7 +295,6 @@ impl ViewState {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         time_objects: &re_data_store::Objects<'_>,
-        sticky_objects: &re_data_store::Objects<'_>,
         scene: &mut Scene,
     ) {
         let Scene {
@@ -307,12 +305,7 @@ impl ViewState {
         } = scene;
 
         two_d.load_objects(ctx, &self.state_2d, time_objects);
-        two_d.load_objects(ctx, &self.state_2d, sticky_objects);
-
         three_d.load_objects(ctx, time_objects);
-        three_d.load_objects(ctx, sticky_objects);
-
         tensor.load_objects(ctx, time_objects);
-        tensor.load_objects(ctx, sticky_objects);
     }
 }

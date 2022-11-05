@@ -455,47 +455,15 @@ fn space_view_ui(
         }
         let time_objects = filter_objects(&time_objects);
 
-        // Get the "sticky" objects (e.g. text logs)
-        // that don't care about the current time:
-        let mut sticky_objects = Objects::default();
-        {
-            crate::profile_scope!("sticky_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                for obj_path in &space_info.objects {
-                    if obj_tree_props.projected.get(obj_path).visible {
-                        if let Some(obj_store) = timeline_store.get(obj_path) {
-                            if let Some(obj_type) =
-                                ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                            {
-                                if is_sticky_type(obj_type) {
-                                    sticky_objects.query_object(
-                                        obj_store,
-                                        &TimeQuery::EVERYTHING,
-                                        obj_path,
-                                        obj_type,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        let sticky_objects = filter_objects(&sticky_objects);
-
         // TODO: we'll do this in steps.
         // Step 1: keep Objects, and build a Scene from that.
         // Step 2: drop Objects entirely.
         //
         // Let's start with text entries.
         let mut scene = Scene::default();
-        space_view.view_state.load_scene_from_objects(
-            ctx,
-            &time_objects,
-            &sticky_objects,
-            &mut scene,
-        );
+        space_view
+            .view_state
+            .load_scene_from_objects(ctx, &time_objects, &mut scene);
 
         let query = SceneQuery {
             objects: &space_info.objects,
@@ -504,15 +472,7 @@ fn space_view_ui(
         };
         scene.text.load(ctx, obj_tree_props, &query);
 
-        space_view.scene_ui(
-            ctx,
-            ui,
-            spaces_info,
-            space_info,
-            &time_objects,
-            &sticky_objects,
-            scene,
-        )
+        space_view.scene_ui(ctx, ui, spaces_info, space_info, &time_objects, scene)
     } else {
         unknown_space_label(ui, &space_view.space_path)
     }

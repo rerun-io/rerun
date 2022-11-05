@@ -3,7 +3,7 @@ use egui::{Color32, RichText};
 use re_data_store::{
     query::visit_type_data_3, FieldName, ObjPath, ObjectTreeProperties, TimeQuery,
 };
-use re_log_types::{IndexHash, LogMsg, MsgId, ObjectType, Time, TimePoint};
+use re_log_types::{IndexHash, LogMsg, MsgId, ObjectType, TimePoint};
 
 // TODO: deal with the proliferation of pub(crate) specifiers in another PR.
 
