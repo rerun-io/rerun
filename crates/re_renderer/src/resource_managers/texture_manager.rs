@@ -140,7 +140,7 @@ impl TextureManager2D {
                 let texture = pools
                     .textures
                     .get_resource(&texture_handle)
-                    .map_err(|e| ResourceManagerError::ResourcePoolError(e))?;
+                    .map_err(ResourceManagerError::ResourcePoolError)?;
 
                 // Pad rows if necessary.
                 let mut bytes_per_row = resource.bytes_per_row();
@@ -175,7 +175,7 @@ impl TextureManager2D {
                         origin: wgpu::Origin3d::ZERO,
                         aspect: wgpu::TextureAspect::All,
                     },
-                    &upload_data,
+                    upload_data,
                     wgpu::ImageDataLayout {
                         offset: 0,
                         bytes_per_row: Some(

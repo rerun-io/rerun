@@ -32,8 +32,8 @@ impl CpuMesh {
     pub fn load(
         name: String,
         mesh: &Mesh3D,
-        #[cfg(feature = "wgpu")] mesh_manager: &mut MeshManager,
-        #[cfg(feature = "wgpu")] texture_manager: &mut TextureManager2D,
+        #[cfg(feature = "wgpu")] _mesh_manager: &mut MeshManager,
+        #[cfg(feature = "wgpu")] _texture_manager: &mut TextureManager2D,
     ) -> anyhow::Result<Self> {
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
@@ -42,18 +42,18 @@ impl CpuMesh {
                 name,
                 encoded_mesh,
                 #[cfg(feature = "wgpu")]
-                mesh_manager,
+                _mesh_manager,
                 #[cfg(feature = "wgpu")]
-                texture_manager,
+                _texture_manager,
             ),
             // Mesh from some file format. File passed in bytes.
             Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(
                 name,
                 raw_mesh,
                 #[cfg(feature = "wgpu")]
-                mesh_manager,
+                _mesh_manager,
                 #[cfg(feature = "wgpu")]
-                texture_manager,
+                _texture_manager,
             )),
         }
     }
@@ -63,8 +63,8 @@ impl CpuMesh {
         format: MeshFormat,
         bytes: &[u8],
 
-        #[cfg(feature = "wgpu")] mesh_manager: &mut MeshManager,
-        #[cfg(feature = "wgpu")] texture_manager: &mut TextureManager2D,
+        #[cfg(feature = "wgpu")] _mesh_manager: &mut MeshManager,
+        #[cfg(feature = "wgpu")] _texture_manager: &mut TextureManager2D,
     ) -> anyhow::Result<Self> {
         crate::profile_function!();
 
@@ -109,23 +109,24 @@ impl CpuMesh {
                 MeshFormat::Glb => re_renderer::importer::gltf::load_gltf_from_buffer(
                     bytes,
                     ResourceLifeTime::LongLived,
-                    mesh_manager,
-                    texture_manager,
+                    _mesh_manager,
+                    _texture_manager,
                 ),
                 MeshFormat::Gltf => re_renderer::importer::gltf::load_gltf_from_buffer(
                     bytes,
                     ResourceLifeTime::LongLived,
-                    mesh_manager,
-                    texture_manager,
+                    _mesh_manager,
+                    _texture_manager,
                 ),
                 MeshFormat::Obj => re_renderer::importer::obj::load_obj_from_buffer(
                     bytes,
                     ResourceLifeTime::LongLived,
-                    mesh_manager,
-                    texture_manager,
+                    _mesh_manager,
+                    _texture_manager,
                 ),
             }?;
-            let bbox = re_renderer::importer::calculate_bounding_box(mesh_manager, &mesh_instances);
+            let bbox =
+                re_renderer::importer::calculate_bounding_box(_mesh_manager, &mesh_instances);
 
             Ok(Self {
                 name,
@@ -140,8 +141,8 @@ impl CpuMesh {
         name: String,
         encoded_mesh: &EncodedMesh3D,
 
-        #[cfg(feature = "wgpu")] mesh_manager: &mut MeshManager,
-        #[cfg(feature = "wgpu")] texture_manager: &mut TextureManager2D,
+        #[cfg(feature = "wgpu")] _mesh_manager: &mut MeshManager,
+        #[cfg(feature = "wgpu")] _texture_manager: &mut TextureManager2D,
     ) -> anyhow::Result<Self> {
         crate::profile_function!();
         let EncodedMesh3D {
@@ -155,9 +156,9 @@ impl CpuMesh {
             *format,
             bytes,
             #[cfg(feature = "wgpu")]
-            mesh_manager,
+            _mesh_manager,
             #[cfg(feature = "wgpu")]
-            texture_manager,
+            _texture_manager,
         )?;
         #[cfg(feature = "glow")]
         {
@@ -187,7 +188,7 @@ impl CpuMesh {
                 instance.world_from_mesh = transform * instance.world_from_mesh;
             }
             slf.bbox =
-                re_renderer::importer::calculate_bounding_box(mesh_manager, &slf.mesh_instances);
+                re_renderer::importer::calculate_bounding_box(_mesh_manager, &slf.mesh_instances);
         }
 
         Ok(slf)
@@ -197,8 +198,8 @@ impl CpuMesh {
         name: String,
         raw_mesh: &RawMesh3D,
 
-        #[cfg(feature = "wgpu")] mesh_manager: &mut MeshManager,
-        #[cfg(feature = "wgpu")] texture_manager: &mut TextureManager2D,
+        #[cfg(feature = "wgpu")] _mesh_manager: &mut MeshManager,
+        #[cfg(feature = "wgpu")] _texture_manager: &mut TextureManager2D,
     ) -> Self {
         crate::profile_function!();
         #[cfg(feature = "glow")]
@@ -233,7 +234,7 @@ impl CpuMesh {
 
         #[cfg(feature = "wgpu")]
         let mesh_instances = vec![re_renderer::renderer::MeshInstance {
-            mesh: mesh_manager.store_resource(
+            mesh: _mesh_manager.store_resource(
                 re_renderer::mesh::Mesh {
                     label: name.clone().into(),
                     indices: raw_mesh.indices.iter().flatten().cloned().collect(),
@@ -254,7 +255,7 @@ impl CpuMesh {
                     materials: smallvec::smallvec![re_renderer::mesh::Material {
                         label: name.clone().into(),
                         index_range: 0..raw_mesh.indices.len() as _,
-                        albedo: texture_manager.placeholder_texture(),
+                        albedo: _texture_manager.placeholder_texture(),
                     }],
                 },
                 ResourceLifeTime::LongLived,

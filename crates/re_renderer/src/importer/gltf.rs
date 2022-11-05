@@ -1,6 +1,5 @@
 use ahash::{HashMap, HashMapExt};
 use anyhow::Context as _;
-use gltf::mesh::util::tex_coords;
 use smallvec::SmallVec;
 
 use crate::{
@@ -226,7 +225,7 @@ fn gather_instances_recursive(
     if let Some(mesh) = node.mesh() {
         if let Some(mesh) = meshes.get(&mesh.index()) {
             instances.push(MeshInstance {
-                mesh: mesh.clone(),
+                mesh: *mesh,
                 world_from_mesh: transform,
             });
         }

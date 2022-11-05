@@ -39,7 +39,7 @@ impl MeshManager {
                 GpuMesh::new(
                     &mut ctx.resource_pools,
                     &mut ctx.texture_manager_2d,
-                    &ctx.renderers.get::<MeshRenderer>().unwrap(),
+                    ctx.renderers.get::<MeshRenderer>().unwrap(),
                     device,
                     queue,
                     resource,

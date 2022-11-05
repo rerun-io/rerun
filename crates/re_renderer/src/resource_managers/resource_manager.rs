@@ -124,10 +124,10 @@ where
         valid_frame_index: u64,
     ) -> Result<(), ResourceManagerError> {
         if valid_frame_index != self.frame_index {
-            return Err(ResourceManagerError::ExpiredResource {
+            Err(ResourceManagerError::ExpiredResource {
                 current_frame_index: self.frame_index,
                 valid_frame_index,
-            });
+            })
         } else {
             Ok(())
         }

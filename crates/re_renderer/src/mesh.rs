@@ -168,7 +168,7 @@ impl GpuMesh {
                 &pools
                     .buffers
                     .get_resource(&vertex_buffer_combined)
-                    .map_err(|e| ResourceManagerError::ResourcePoolError(e))?
+                    .map_err(ResourceManagerError::ResourcePoolError)?
                     .buffer,
                 0,
                 vertex_buffer_combined_size.try_into().unwrap(),
@@ -195,7 +195,7 @@ impl GpuMesh {
                 &pools
                     .buffers
                     .get_resource(&index_buffer)
-                    .map_err(|e| ResourceManagerError::ResourcePoolError(e))?
+                    .map_err(ResourceManagerError::ResourcePoolError)?
                     .buffer,
                 0,
                 index_buffer_size.try_into().unwrap(),
