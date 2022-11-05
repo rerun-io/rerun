@@ -565,6 +565,7 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                     ui.set_min_size(egui::vec2(ui.available_width(), needed_space.y));
                 }
 
+                #[cfg(not(target_arch = "wasm32"))]
                 ui.menu_button("File", |ui| {
                     file_menu(ui, app, frame);
                 });
@@ -662,7 +663,8 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     }
 }
 
-fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
+#[cfg(not(target_arch = "wasm32"))]
+fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -758,7 +760,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
 
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Quit").clicked() {
-        _frame.close();
+        frame.close();
     }
 }
 
