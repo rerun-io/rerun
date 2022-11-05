@@ -17,12 +17,34 @@ slotmap::new_key_type! { pub struct Texture2DHandleInner; }
 pub type Texture2DHandle = ResourceHandle<Texture2DHandleInner>;
 
 pub struct Texture2D {
-    label: DebugLabel,
-    data: Box<[u8]>,
-    format: wgpu::TextureFormat,
-    width: u32,
-    height: u32,
+    pub label: DebugLabel,
+    /// Data padded according to wgpu rules and ready for upload.
+    /// Does not contain any mipmapping.
+    pub data: Vec<u8>,
+    pub format: wgpu::TextureFormat,
+    pub width: u32,
+    pub height: u32,
     //generate_mip_maps: bool, // TODO(andreas): generate mipmaps!
+}
+
+impl Texture2D {
+    pub fn convert_rgb8_to_rgba8(rgb_pixels: &[u8]) -> Vec<u8> {
+        rgb_pixels
+            .chunks_exact(3)
+            .flat_map(|color| [color[0], color[1], color[2], 255])
+            .collect()
+    }
+
+    fn bytes_per_row(&self) -> u32 {
+        let format_info = self.format.describe();
+        let width_blocks = self.width / format_info.block_dimensions.0 as u32;
+        width_blocks * format_info.block_size as u32
+    }
+
+    fn needs_row_alignment(&self) -> bool {
+        self.data.len() as u32 > wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
+            && self.data.len() as u32 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT != 0
+    }
 }
 
 /// Texture manager for 2D textures as typically used by meshes.
@@ -43,7 +65,7 @@ impl Default for TextureManager2D {
         let placeholder_texture = manager.store_resource(
             Texture2D {
                 label: "placeholder".into(),
-                data: Box::new([255, 255, 255, 255]),
+                data: vec![255, 255, 255, 255],
                 format: wgpu::TextureFormat::Rgba8UnormSrgb,
                 width: 1,
                 height: 1,
@@ -64,6 +86,19 @@ impl TextureManager2D {
         resource: Texture2D,
         lifetime: ResourceLifeTime,
     ) -> Texture2DHandle {
+        if !resource.width.is_power_of_two() || !resource.width.is_power_of_two() {
+            re_log::warn!("Texture {:?} has the non-power-of-two (NPOT) resolution of {}x{}.
+            NPOT textures are slower and on WebGL can't handle  mipmapping, UV wrapping and UV tiling",
+                resource.label,
+                resource.width,
+                resource.height);
+        }
+        // TODO(andreas): Should it be possible to do this from the outside? Probably have some "pre-aligned" flag on the texture.
+        if resource.needs_row_alignment() {
+            re_log::warn!("Texture {:?} byte rows are not aligned to {}. Will do manual alignment before gpu upload.",
+                    resource.label, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+        }
+
         self.manager.store_resource(resource, lifetime)
     }
 
@@ -107,9 +142,29 @@ impl TextureManager2D {
                     .get_resource(&texture_handle)
                     .map_err(|e| ResourceManagerError::ResourcePoolError(e))?;
 
-                let format_info = resource.format.describe();
-                let width_blocks = resource.width / format_info.block_dimensions.0 as u32;
-                let bytes_per_row = width_blocks * format_info.block_size as u32;
+                // Pad rows if necessary.
+                let mut bytes_per_row = resource.bytes_per_row();
+                let padded_rows: Vec<u8>;
+                let upload_data = if resource.needs_row_alignment() {
+                    let num_padding_bytes = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
+                        - (bytes_per_row % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+
+                    padded_rows = resource
+                        .data
+                        .chunks_exact(bytes_per_row as usize)
+                        .flat_map(|unpadded_row| {
+                            unpadded_row
+                                .iter()
+                                .cloned()
+                                .chain(std::iter::repeat(255).take(num_padding_bytes as usize))
+                        })
+                        .collect();
+
+                    bytes_per_row += num_padding_bytes;
+                    &padded_rows
+                } else {
+                    &resource.data
+                };
 
                 // TODO(andreas): temp allocator for staging data?
                 // We don't do any further validation of the buffer here as wgpu does so extensively.
@@ -120,7 +175,7 @@ impl TextureManager2D {
                         origin: wgpu::Origin3d::ZERO,
                         aspect: wgpu::TextureAspect::All,
                     },
-                    &resource.data,
+                    &upload_data,
                     wgpu::ImageDataLayout {
                         offset: 0,
                         bytes_per_row: Some(

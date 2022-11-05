@@ -3222,7 +3222,6 @@ dependencies = [
  "rfd",
  "serde",
  "serde_json",
- "smallvec",
  "three-d",
  "three-d-asset",
  "tracing-wasm",
