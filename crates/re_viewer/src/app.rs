@@ -546,6 +546,10 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                     file_menu(ui, app, frame);
                 });
 
+                ui.menu_button("View", |ui| {
+                    view_menu(ui, app, frame);
+                });
+
                 ui.menu_button("Recordings", |ui| {
                     recordings_menu(ui, app);
                 });
@@ -729,37 +733,37 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
         }
     }
 
-    ui.menu_button("Advanced", |ui| {
-        ui.set_min_width(180.0);
-
-        if ui
-            .add(
-                egui::Button::new("Reset viewer")
-                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::RESET_VIEWER)),
-            )
-            .on_hover_text("Reset the viewer to how it looked the first time you ran it")
-            .clicked()
-        {
-            app.reset(ui.ctx());
-            ui.close_menu();
-        }
-
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
-        if ui
-            .add(
-                egui::Button::new("Profile viewer")
-                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SHOW_PROFILER)),
-            )
-            .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
-            .clicked()
-        {
-            app.state.profiler.start();
-        }
-    });
-
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Quit").clicked() {
         _frame.close();
+    }
+}
+
+fn view_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
+    ui.set_min_width(180.0);
+
+    if ui
+        .add(
+            egui::Button::new("Reset viewer")
+                .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::RESET_VIEWER)),
+        )
+        .on_hover_text("Reset the viewer to how it looked the first time you ran it")
+        .clicked()
+    {
+        app.reset(ui.ctx());
+        ui.close_menu();
+    }
+
+    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+    if ui
+        .add(
+            egui::Button::new("Profile viewer")
+                .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SHOW_PROFILER)),
+        )
+        .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
+        .clicked()
+    {
+        app.state.profiler.start();
     }
 }
 
