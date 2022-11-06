@@ -3,94 +3,14 @@ use std::{collections::BTreeMap, fmt::Display};
 use eframe::emath::Align2;
 use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
 use ndarray::{Axis, Ix2};
-use re_data_store::{query::visit_type_data_1, FieldName, ObjectTreeProperties};
-use re_log_types::{IndexHash, MsgId, ObjectType, Tensor, TensorDataType, TensorDimension};
+use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
-use crate::{
-    misc::ViewerContext,
-    ui::{space_view::SceneQuery, tensor_dimension_mapper::dimension_mapping_ui},
-};
+use crate::ui::tensor_dimension_mapper::dimension_mapping_ui;
 
 // TODO: prob move the dimension mapping stuff over here
 
-// --- Scene ---
-
-#[derive(Default)]
-pub struct SceneTensor {
-    pub tensors: Vec<Tensor>,
-}
-
-impl SceneTensor {
-    pub(crate) fn load(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
-        puffin::profile_function!();
-
-        {
-            puffin::profile_scope!("SceneTensor - load tensors");
-            let tensors = query
-                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
-                .filter_map(|(_obj_type, _obj_path, obj_store)| {
-                    let mut tensors = Vec::new();
-                    visit_type_data_1(
-                        obj_store,
-                        &FieldName::from("tensor"),
-                        &query.time_query,
-                        ("_visible",),
-                        |_instance_index: Option<&IndexHash>,
-                         _time: i64,
-                         _msg_id: &MsgId,
-                         tensor: &re_log_types::Tensor,
-                         visible: Option<&bool>| {
-                            if *visible.unwrap_or(&true) {
-                                tensors.push(tensor.clone() /* shallow */);
-                            }
-                        },
-                    );
-
-                    // We have a special tensor viewer that (currently) only works
-                    // when we only have a single tensor (and no bounding boxes etc).
-                    // It is also not as great for images as the normal 2d view (at least not yet).
-                    // This is a hacky-way of detecting this special case.
-                    // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
-                    // so we can stack bounding boxes etc on top of it.
-                    if tensors.len() == 1 {
-                        let tensor = tensors.pop().unwrap();
-
-                        // Ignore tensors that likely represent images.
-                        if tensor.num_dim() > 3
-                            || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4
-                        {
-                            return Some(tensor);
-                        }
-                    }
-
-                    None
-                });
-            self.tensors.extend(tensors);
-        }
-    }
-}
-
-impl SceneTensor {
-    pub fn clear(&mut self) {
-        let Self { tensors } = self;
-
-        tensors.clear();
-    }
-
-    pub fn is_empty(&self) -> bool {
-        let Self { tensors } = self;
-
-        tensors.is_empty()
-    }
-}
-
-// --- UI state & entrypoint ---
+// ---
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct TensorViewState {
@@ -204,8 +124,6 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor
         },
     }
 }
-
-// --- UI impl ---
 
 // ----------------------------------------------------------------------------
 

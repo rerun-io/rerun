@@ -15,7 +15,9 @@ pub(crate) use space_view::SpaceView;
 pub(crate) use viewport::{Blueprint, SpaceViewId};
 
 mod tensor_dimension_mapper;
-mod views;
+
+mod view_tensor;
+mod view_text_entry;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Preview {

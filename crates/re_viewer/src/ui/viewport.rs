@@ -457,9 +457,6 @@ fn space_view_ui(
 
         // TODO: keep the scene around to avoid reallocating vectors all the time.
         let mut scene = Scene::default();
-        space_view
-            .view_state
-            .load_scene_from_objects(ctx, &time_objects, &mut scene);
 
         let query = SceneQuery {
             objects: &space_info.objects,
@@ -474,6 +471,10 @@ fn space_view_ui(
         scene.text.load(ctx, obj_tree_props, &query);
         scene.tensor.clear();
         scene.tensor.load(ctx, obj_tree_props, &query);
+
+        space_view
+            .view_state
+            .load_scene_from_objects(ctx, &time_objects, &mut scene);
 
         space_view.scene_ui(ctx, ui, spaces_info, space_info, &time_objects, scene)
     } else {
