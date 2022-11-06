@@ -402,9 +402,9 @@ pub(crate) fn view_3d(
 
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
-            scene.points.push(Point {
-                instance_id: InstanceIdHash::NONE,
-                pos: orbit_eye.orbit_center.to_array(),
+            scene.points.push(Point3D {
+                instance_id_hash: InstanceIdHash::NONE,
+                pos: orbit_eye.orbit_center,
                 radius: Size::new_scene(orbit_eye.orbit_radius * 0.01),
                 color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
             });
@@ -662,8 +662,8 @@ fn show_projections_from_2d_space(
 
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
-                        scene.points.push(Point {
-                            instance_id: InstanceIdHash::NONE,
+                        scene.points.push(Point3D {
+                            instance_id_hash: InstanceIdHash::NONE,
                             pos: pos.into(),
                             radius: radius * 3.0,
                             color: [255; 4],

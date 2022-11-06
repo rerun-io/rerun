@@ -30,60 +30,61 @@ impl SceneTensor {
 
         puffin::profile_function!();
 
-        // Load tensors
-        let tensors = query
-            .objects
-            .iter()
-            .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
-            .filter_map(|obj_path| {
-                let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
-                (obj_type == Some(&ObjectType::Image))
-                    .then(|| {
-                        timeline_store
-                            .get(obj_path)
-                            .map(|obj_store| (obj_store, obj_path))
-                    })
-                    .flatten()
-            })
-            .filter_map(|(obj_store, _obj_path)| {
-                let mut tensors = Vec::new();
-                visit_type_data_1(
-                    obj_store,
-                    &FieldName::from("tensor"),
-                    &query.time_query,
-                    ("_visible",),
-                    |_instance_index: Option<&IndexHash>,
-                     _time: i64,
-                     _msg_id: &MsgId,
-                     tensor: &re_log_types::Tensor,
-                     visible: Option<&bool>| {
-                        if *visible.unwrap_or(&true) {
-                            tensors.push(tensor.clone() /* shallow */);
+        {
+            puffin::profile_scope!("SceneTensor - load tensors");
+            let tensors = query
+                .objects
+                .iter()
+                .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
+                .filter_map(|obj_path| {
+                    let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
+                    (obj_type == Some(&ObjectType::Image))
+                        .then(|| {
+                            timeline_store
+                                .get(obj_path)
+                                .map(|obj_store| (obj_store, obj_path))
+                        })
+                        .flatten()
+                })
+                .filter_map(|(obj_store, _obj_path)| {
+                    let mut tensors = Vec::new();
+                    visit_type_data_1(
+                        obj_store,
+                        &FieldName::from("tensor"),
+                        &query.time_query,
+                        ("_visible",),
+                        |_instance_index: Option<&IndexHash>,
+                         _time: i64,
+                         _msg_id: &MsgId,
+                         tensor: &re_log_types::Tensor,
+                         visible: Option<&bool>| {
+                            if *visible.unwrap_or(&true) {
+                                tensors.push(tensor.clone() /* shallow */);
+                            }
+                        },
+                    );
+
+                    // We have a special tensor viewer that (currently) only works
+                    // when we only have a single tensor (and no bounding boxes etc).
+                    // It is also not as great for images as the normal 2d view (at least not yet).
+                    // This is a hacky-way of detecting this special case.
+                    // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
+                    // so we can stack bounding boxes etc on top of it.
+                    if tensors.len() == 1 {
+                        let tensor = tensors.pop().unwrap();
+
+                        // Ignore tensors that likely represent images.
+                        if tensor.num_dim() > 3
+                            || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4
+                        {
+                            return Some(tensor);
                         }
-                    },
-                );
-
-                // We have a special tensor viewer that (currently) only works
-                // when we only have a single tensor (and no bounding boxes etc).
-                // It is also not as great for images as the normal 2d view (at least not yet).
-                // This is a hacky-way of detecting this special case.
-                // TODO(emilk): integrate the tensor viewer into the 2D viewer instead,
-                // so we can stack bounding boxes etc on top of it.
-                if tensors.len() == 1 {
-                    let tensor = tensors.pop().unwrap();
-
-                    // Ignore tensors that likely represent images.
-                    if tensor.num_dim() > 3
-                        || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4
-                    {
-                        return Some(tensor);
                     }
-                }
 
-                None
-            });
-
-        self.tensors.extend(tensors);
+                    None
+                });
+            self.tensors.extend(tensors);
+        }
     }
 }
 

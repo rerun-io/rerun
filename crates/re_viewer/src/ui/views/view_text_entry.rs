@@ -39,57 +39,58 @@ impl SceneText {
 
         puffin::profile_function!();
 
-        // Load text entries
-        let text_entries = query
-            .objects
-            .iter()
-            .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
-            .filter_map(|obj_path| {
-                let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
-                (obj_type == Some(&ObjectType::TextEntry))
-                    .then(|| {
-                        timeline_store
-                            .get(obj_path)
-                            .map(|obj_store| (obj_store, obj_path))
-                    })
-                    .flatten()
-            })
-            .flat_map(|(obj_store, obj_path)| {
-                let mut batch = Vec::new();
-                // TODO: obviously cloning all these strings is not ideal... there are two
-                // situations to account for here.
-                // We could avoid these by modifying how we store all of this in the existing
-                // datastore, but then again we are about to rewrite the datastore so...?
-                // We will need to make sure that we don't need these copies once we switch to
-                // Arrow though!
-                visit_type_data_3(
-                    obj_store,
-                    &FieldName::from("body"),
-                    &TimeQuery::EVERYTHING, // always sticky!
-                    ("_visible", "level", "color"),
-                    |_instance_index: Option<&IndexHash>,
-                     time: i64,
-                     msg_id: &MsgId,
-                     body: &String,
-                     visible: Option<&bool>,
-                     level: Option<&String>,
-                     color: Option<&[u8; 4]>| {
-                        if *visible.unwrap_or(&true) {
-                            batch.push(TextEntry {
-                                msg_id: msg_id.clone(),
-                                obj_path: obj_path.clone(),
-                                time,
-                                color: color.copied(),
-                                level: level.map(ToOwned::to_owned),
-                                body: body.to_owned(),
-                            });
-                        }
-                    },
-                );
-                batch
-            });
-
-        self.text_entries.extend(text_entries);
+        {
+            puffin::profile_scope!("SceneText - load text entries");
+            let text_entries = query
+                .objects
+                .iter()
+                .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
+                .filter_map(|obj_path| {
+                    let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
+                    (obj_type == Some(&ObjectType::TextEntry))
+                        .then(|| {
+                            timeline_store
+                                .get(obj_path)
+                                .map(|obj_store| (obj_store, obj_path))
+                        })
+                        .flatten()
+                })
+                .flat_map(|(obj_store, obj_path)| {
+                    let mut batch = Vec::new();
+                    // TODO: obviously cloning all these strings is not ideal... there are two
+                    // situations to account for here.
+                    // We could avoid these by modifying how we store all of this in the existing
+                    // datastore, but then again we are about to rewrite the datastore so...?
+                    // We will need to make sure that we don't need these copies once we switch to
+                    // Arrow though!
+                    visit_type_data_3(
+                        obj_store,
+                        &FieldName::from("body"),
+                        &TimeQuery::EVERYTHING, // always sticky!
+                        ("_visible", "level", "color"),
+                        |_instance_index: Option<&IndexHash>,
+                         time: i64,
+                         msg_id: &MsgId,
+                         body: &String,
+                         visible: Option<&bool>,
+                         level: Option<&String>,
+                         color: Option<&[u8; 4]>| {
+                            if *visible.unwrap_or(&true) {
+                                batch.push(TextEntry {
+                                    msg_id: msg_id.clone(),
+                                    obj_path: obj_path.clone(),
+                                    time,
+                                    color: color.copied(),
+                                    level: level.map(ToOwned::to_owned),
+                                    body: body.to_owned(),
+                                });
+                            }
+                        },
+                    );
+                    batch
+                });
+            self.text_entries.extend(text_entries);
+        }
     }
 }
 

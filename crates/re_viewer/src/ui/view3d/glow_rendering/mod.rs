@@ -247,7 +247,7 @@ fn default_material() -> three_d::PhysicalMaterial {
     }
 }
 
-fn allocate_points(points: &[Point]) -> sphere_renderer::SphereInstances {
+fn allocate_points(points: &[Point3D]) -> sphere_renderer::SphereInstances {
     crate::profile_function!();
     use three_d::*;
 

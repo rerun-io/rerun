@@ -186,52 +186,6 @@ impl<'s> Point2D<'s> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Point3D<'s> {
-    pub pos: &'s [f32; 3],
-    pub radius: Option<f32>,
-}
-
-impl<'s> Point3D<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data_3(
-            obj_store,
-            &FieldName::from("pos"),
-            time_query,
-            ("_visible", "color", "radius"),
-            |instance_index: Option<&IndexHash>,
-             time: Time,
-             msg_id: &MsgId,
-             pos: &[f32; 3],
-             visible: Option<&bool>,
-             color: Option<&[u8; 4]>,
-             radius: Option<&f32>| {
-                out.point3d.0.push(Object {
-                    props: InstanceProps {
-                        time: time.into(),
-                        msg_id,
-                        color: color.copied(),
-                        obj_path,
-                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
-                        visible: *visible.unwrap_or(&true),
-                    },
-                    data: Point3D {
-                        pos,
-                        radius: radius.copied(),
-                    },
-                });
-            },
-        );
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
 pub struct BBox2D<'s> {
     pub bbox: &'s re_log_types::BBox2D,
     pub stroke_width: Option<f32>,
@@ -626,7 +580,6 @@ pub struct Objects<'s> {
     pub bbox2d: ObjectVec<'s, BBox2D<'s>>,
     pub line_segments2d: ObjectVec<'s, LineSegments2D<'s>>,
 
-    pub point3d: ObjectVec<'s, Point3D<'s>>,
     pub box3d: ObjectVec<'s, Box3D<'s>>,
     pub path3d: ObjectVec<'s, Path3D<'s>>,
     pub line_segments3d: ObjectVec<'s, LineSegments3D<'s>>,
@@ -666,7 +619,7 @@ impl<'s> Objects<'s> {
             ObjectType::Point2D => Point2D::query,
             ObjectType::BBox2D => BBox2D::query,
             ObjectType::LineSegments2D => LineSegments2D::query,
-            ObjectType::Point3D => Point3D::query,
+            ObjectType::Point3D => return,
             ObjectType::Box3D => Box3D::query,
             ObjectType::Path3D => Path3D::query,
             ObjectType::LineSegments3D => LineSegments3D::query,
@@ -689,7 +642,6 @@ impl<'s> Objects<'s> {
             bbox2d: self.bbox2d.filter(&keep),
             line_segments2d: self.line_segments2d.filter(&keep),
 
-            point3d: self.point3d.filter(&keep),
             box3d: self.box3d.filter(&keep),
             path3d: self.path3d.filter(&keep),
             line_segments3d: self.line_segments3d.filter(&keep),
@@ -705,7 +657,6 @@ impl<'s> Objects<'s> {
             point2d,
             bbox2d,
             line_segments2d,
-            point3d,
             box3d,
             path3d,
             line_segments3d,
@@ -717,7 +668,6 @@ impl<'s> Objects<'s> {
             && point2d.is_empty()
             && bbox2d.is_empty()
             && line_segments2d.is_empty()
-            && point3d.is_empty()
             && box3d.is_empty()
             && path3d.is_empty()
             && line_segments3d.is_empty()
@@ -732,7 +682,6 @@ impl<'s> Objects<'s> {
             point2d,
             bbox2d,
             line_segments2d,
-            point3d,
             box3d,
             path3d,
             line_segments3d,
@@ -744,7 +693,6 @@ impl<'s> Objects<'s> {
             + point2d.len()
             + bbox2d.len()
             + line_segments2d.len()
-            + point3d.len()
             + box3d.len()
             + path3d.len()
             + line_segments3d.len()
@@ -760,8 +708,7 @@ impl<'s> Objects<'s> {
     }
 
     pub fn has_any_3d(&self) -> bool {
-        !self.point3d.is_empty()
-            || !self.box3d.is_empty()
+        !self.box3d.is_empty()
             || !self.path3d.is_empty()
             || !self.line_segments3d.is_empty()
             || !self.mesh3d.is_empty()

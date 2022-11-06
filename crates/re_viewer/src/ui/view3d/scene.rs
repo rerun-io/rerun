@@ -5,9 +5,12 @@ use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
-use re_data_store::InstanceIdHash;
+use re_data_store::query::visit_type_data_3;
+use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectTreeProperties};
+use re_log_types::{IndexHash, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
+use crate::ui::space_view::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
 #[cfg(feature = "wgpu")]
@@ -89,11 +92,11 @@ impl std::ops::MulAssign<f32> for Size {
 
 // ----------------------------------------------------------------------------
 
-pub struct Point {
-    pub instance_id: InstanceIdHash,
-    pub pos: [f32; 3],
-    pub radius: Size,
-    pub color: [u8; 4],
+pub struct Point3D {
+    pub instance_id_hash: InstanceIdHash,
+    pub pos: Vec3,      // TODO: pos in what? in world space?
+    pub radius: Size,   // TODO: not sure what we want for this though?
+    pub color: [u8; 4], // TODO: Color32? srgb or not?
 }
 
 pub struct LineSegments {
@@ -126,13 +129,104 @@ pub struct Label {
 
 #[derive(Default)]
 pub struct Scene {
-    pub points: Vec<Point>,
+    pub points: Vec<Point3D>,
     pub line_segments: Vec<LineSegments>,
     pub meshes: Vec<MeshSource>,
     pub labels: Vec<Label>,
 }
 
 impl Scene {
+    pub(crate) fn load(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery,
+    ) {
+        let Some(timeline_store) = ctx.log_db.obj_db.store.get(&query.timeline) else {return};
+
+        puffin::profile_function!();
+
+        // hack because three-d handles colors wrong. TODO(emilk): fix three-d
+        let gamma_lut = (0..=255)
+            .map(|c| ((c as f32 / 255.0).powf(2.2) * 255.0).round() as u8)
+            .collect_vec();
+        let gamma_lut = &gamma_lut[0..256]; // saves us bounds checks later.
+
+        // TODO: dont like how this looks
+        let object_color =
+            |ctx: &mut ViewerContext<'_>, color: Option<&[u8; 4]>, obj_path: &ObjPath| {
+                let [r, g, b, a] = if let Some(color) = color.copied() {
+                    color
+                } else {
+                    let [r, g, b] = ctx.random_color(obj_path);
+                    [r, g, b, 255]
+                };
+
+                let r = gamma_lut[r as usize];
+                let g = gamma_lut[g as usize];
+                let b = gamma_lut[b as usize];
+                [r, g, b, a]
+            };
+
+        // TODO: gotta abstract away the store fetch, most likely in LogDb
+
+        // Load points
+        let points = query
+            .objects
+            .iter()
+            .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
+            .filter_map(|obj_path| {
+                let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
+                (obj_type == Some(&ObjectType::Point3D))
+                    .then(|| {
+                        timeline_store
+                            .get(obj_path)
+                            .map(|obj_store| (obj_store, obj_path))
+                    })
+                    .flatten()
+            })
+            .flat_map(|(obj_store, obj_path)| {
+                let mut batch = Vec::new();
+                // TODO: obviously cloning all these strings is not ideal... there are two
+                // situations to account for here.
+                // We could avoid these by modifying how we store all of this in the existing
+                // datastore, but then again we are about to rewrite the datastore so...?
+                // We will need to make sure that we don't need these copies once we switch to
+                // Arrow though!
+                visit_type_data_3(
+                    obj_store,
+                    &FieldName::from("pos"),
+                    &query.time_query,
+                    ("_visible", "color", "radius"),
+                    |instance_index: Option<&IndexHash>,
+                     time: i64,
+                     msg_id: &MsgId,
+                     pos: &[f32; 3],
+                     visible: Option<&bool>,
+                     color: Option<&[u8; 4]>,
+                     radius: Option<&f32>| {
+                        if *visible.unwrap_or(&true) {
+                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                            let instance_id_hash = InstanceIdHash {
+                                obj_path_hash: *obj_path.hash(),
+                                instance_index_hash: instance_index,
+                            };
+
+                            batch.push(Point3D {
+                                instance_id_hash,
+                                pos: Vec3::from_slice(pos),
+                                radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
+                                color: object_color(ctx, color, obj_path),
+                            });
+                        }
+                    },
+                );
+                batch
+            });
+
+        self.points.extend(points);
+    }
+
     pub(crate) fn load_objects(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -151,7 +245,7 @@ impl Scene {
             let [r, g, b, a] = if let Some(color) = props.color {
                 color
             } else {
-                let [r, g, b] = ctx.random_color(props);
+                let [r, g, b] = ctx.random_color(&props.obj_path);
                 [r, g, b, 255]
             };
 
@@ -160,20 +254,6 @@ impl Scene {
             let b = gamma_lut[b as usize];
             [r, g, b, a]
         };
-
-        {
-            crate::profile_scope!("point3d");
-            self.points
-                .extend(objects.point3d.iter().map(|(props, obj)| {
-                    let re_data_store::Point3D { pos, radius } = *obj;
-                    Point {
-                        instance_id: InstanceIdHash::from_props(props),
-                        pos: *pos,
-                        radius: radius.map_or(Size::AUTO, Size::new_scene),
-                        color: object_color(ctx, props),
-                    }
-                }));
-        }
 
         {
             crate::profile_scope!("box3d");
@@ -423,7 +503,7 @@ impl Scene {
                     point.radius =
                         Size::new_scene(dist_to_eye * size_in_points * point_size_at_one_meter);
                 }
-                if point.instance_id == hovered_instance_id_hash {
+                if point.instance_id_hash == hovered_instance_id_hash {
                     point.radius *= hover_size_boost;
                     point.color = HOVER_COLOR;
                 }
@@ -768,7 +848,7 @@ impl Scene {
         {
             crate::profile_scope!("points");
             for point in points {
-                if point.instance_id.is_some() {
+                if point.instance_id_hash.is_some() {
                     // TODO(emilk): take point radius into account
                     let pos_in_ui = ui_from_world.project_point3(point.pos.into());
                     if pos_in_ui.z < 0.0 {
@@ -780,7 +860,7 @@ impl Scene {
                         if t < closest_z || dist_sq < closest_side_dist_sq {
                             closest_z = t;
                             closest_side_dist_sq = dist_sq;
-                            closest_instance_id = Some(point.instance_id);
+                            closest_instance_id = Some(point.instance_id_hash);
                         }
                     }
                 }

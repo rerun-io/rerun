@@ -470,6 +470,7 @@ fn space_view_ui(
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(), // TODO
         };
+        scene.three_d.load(ctx, obj_tree_props, &query);
         scene.text.load(ctx, obj_tree_props, &query);
         scene.tensor.load(ctx, obj_tree_props, &query);
 

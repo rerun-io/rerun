@@ -859,7 +859,7 @@ fn paint_properties(
         || match default_color {
             DefaultColor::White => Color32::WHITE,
             DefaultColor::Random => {
-                let [r, g, b] = ctx.random_color(props);
+                let [r, g, b] = ctx.random_color(&props.obj_path);
                 Color32::from_rgb(r, g, b)
             }
         },
