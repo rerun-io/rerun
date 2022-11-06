@@ -186,7 +186,7 @@ fn import_mesh(
 
             images[texture.source().index()]
         } else {
-            texture_manager.placeholder_texture()
+            texture_manager.white_texture()
         };
 
         materials.push(Material {

@@ -56,13 +56,13 @@ impl Texture2D {
 /// We might revisit this later and make this texture manager more general purpose.
 pub struct TextureManager2D {
     manager: ResourceManager<Texture2DHandleInner, Texture2D, GpuTextureHandleStrong>,
-    placeholder_texture: Texture2DHandle,
+    white_texture: Texture2DHandle,
 }
 
 impl Default for TextureManager2D {
     fn default() -> Self {
         let mut manager = ResourceManager::default();
-        let placeholder_texture = manager.store_resource(
+        let white_texture = manager.store_resource(
             Texture2D {
                 label: "placeholder".into(),
                 data: vec![255, 255, 255, 255],
@@ -74,7 +74,7 @@ impl Default for TextureManager2D {
         );
         Self {
             manager,
-            placeholder_texture,
+            white_texture,
         }
     }
 }
@@ -87,11 +87,13 @@ impl TextureManager2D {
         lifetime: ResourceLifeTime,
     ) -> Texture2DHandle {
         if !resource.width.is_power_of_two() || !resource.width.is_power_of_two() {
-            re_log::warn!("Texture {:?} has the non-power-of-two (NPOT) resolution of {}x{}.
-            NPOT textures are slower and on WebGL can't handle  mipmapping, UV wrapping and UV tiling",
+            re_log::warn!(
+                "Texture {:?} has the non-power-of-two (NPOT) resolution of {}x{}.
+ NPOT textures are slower and on WebGL can't handle  mipmapping, UV wrapping and UV tiling",
                 resource.label,
                 resource.width,
-                resource.height);
+                resource.height
+            );
         }
         // TODO(andreas): Should it be possible to do this from the outside? Probably have some "pre-aligned" flag on the texture.
         if resource.needs_row_alignment() {
@@ -103,8 +105,8 @@ impl TextureManager2D {
     }
 
     /// Returns a single pixel white pixel.
-    pub fn placeholder_texture(&self) -> Texture2DHandle {
-        self.placeholder_texture
+    pub fn white_texture(&self) -> Texture2DHandle {
+        self.white_texture
     }
 
     /// Retrieve gpu representation of a mesh.

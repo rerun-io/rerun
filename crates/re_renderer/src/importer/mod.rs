@@ -4,7 +4,6 @@ pub mod obj;
 #[cfg(feature = "import-gltf")]
 pub mod gltf;
 
-use itertools::Itertools as _;
 use macaw::Vec3Ext as _;
 
 use crate::{renderer::MeshInstance, resource_managers::MeshManager};
@@ -28,6 +27,5 @@ pub fn calculate_bounding_box(
         mesh.vertex_positions
             .iter()
             .map(|p| i.world_from_mesh.transform_point3(*p))
-            .collect_vec()
     }))
 }

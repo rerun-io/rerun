@@ -45,7 +45,7 @@ pub fn load_obj_from_buffer(
                 })
                 .collect();
 
-            let texture = texture_manager.placeholder_texture();
+            let texture = texture_manager.white_texture();
 
             let num_indices = mesh.indices.len();
 

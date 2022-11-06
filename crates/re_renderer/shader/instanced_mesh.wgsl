@@ -36,5 +36,5 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     let radiance = albedo * shading;
 
-    return Vec4(radiance, 0.0);
+    return Vec4(radiance, 1.0);
 }

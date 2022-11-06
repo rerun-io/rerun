@@ -43,6 +43,7 @@ impl GlobalBindings {
                 &BindGroupLayoutDesc {
                     label: "global bind group layout".into(),
 
+                    // Needs to be kept in sync with `global_bindings.wgsl` / `create_bind_group`
                     entries: vec![
                         // The global per-frame uniform buffer.
                         wgpu::BindGroupLayoutEntry {
@@ -104,6 +105,7 @@ impl GlobalBindings {
     ) -> GpuBindGroupHandleStrong {
         pools.bind_groups.alloc(
             device,
+            // Needs to be kept in sync with `global_bindings.wgsl` / `self.layout`
             &BindGroupDesc {
                 label: "global bind group".into(),
                 entries: smallvec![
