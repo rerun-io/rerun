@@ -40,7 +40,7 @@ impl SceneText {
         {
             puffin::profile_scope!("SceneText - load text entries");
             let text_entries = query
-                .iter_object_stores(ctx, obj_tree_props, ObjectType::TextEntry)
+                .iter_object_stores(ctx, obj_tree_props, &[ObjectType::TextEntry])
                 .flat_map(|(_obj_type, obj_path, obj_store)| {
                     let mut batch = Vec::new();
                     // TODO: obviously cloning all these strings is not ideal... there are two

@@ -287,24 +287,26 @@ impl<'s> SceneQuery<'s> {
         &'a self,
         ctx: &'a ViewerContext<'_>,
         obj_tree_props: &'a ObjectTreeProperties,
-        obj_type: ObjectType,
+        obj_types: &'a [ObjectType],
     ) -> impl Iterator<Item = (ObjectType, &ObjPath, &ObjStore<i64>)> + 'a {
         ctx.log_db
             .obj_db
             .store
             .get(&self.timeline)
             .into_iter()
-            .flat_map(move |timeline_store| {
+            .flat_map(|timeline_store| {
                 self.objects
                     .iter()
                     .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
-                    .filter_map(move |obj_path| {
-                        let actual_obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
-                        (actual_obj_type == Some(&obj_type))
-                            .then(|| {
-                                timeline_store
-                                    .get(obj_path)
-                                    .map(|obj_store| (obj_type, obj_path, obj_store))
+                    .filter_map(|obj_path| {
+                        let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
+                        obj_type
+                            .and_then(|obj_type| {
+                                obj_types.contains(&obj_type).then(|| {
+                                    timeline_store
+                                        .get(obj_path)
+                                        .map(|obj_store| (*obj_type, obj_path, obj_store))
+                                })
                             })
                             .flatten()
                     })

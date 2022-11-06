@@ -115,7 +115,7 @@ pub enum MeshSourceData {
 }
 
 pub struct MeshSource {
-    pub instance_id: InstanceIdHash,
+    pub instance_id_hash: InstanceIdHash,
     pub mesh_id: u64,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
@@ -171,7 +171,7 @@ impl Scene {
         {
             puffin::profile_scope!("Scene3D - load points");
             let points = query
-                .iter_object_stores(ctx, obj_tree_props, ObjectType::Point3D)
+                .iter_object_stores(ctx, obj_tree_props, &[ObjectType::Point3D])
                 .flat_map(|(_obj_type, obj_path, obj_store)| {
                     let mut batch = Vec::new();
                     visit_type_data_3(
@@ -209,7 +209,7 @@ impl Scene {
         {
             puffin::profile_scope!("Scene3D - load boxes");
             for (_obj_type, obj_path, obj_store) in
-                query.iter_object_stores(ctx, obj_tree_props, ObjectType::Box3D)
+                query.iter_object_stores(ctx, obj_tree_props, &[ObjectType::Box3D])
             {
                 visit_type_data_4(
                     obj_store,
@@ -244,10 +244,16 @@ impl Scene {
         }
 
         {
-            puffin::profile_scope!("Scene3D - load paths");
+            // TODO: sooo.. what's the difference between a 3D path and a 3D line-segments?
+            puffin::profile_scope!("Scene3D - load paths & segments");
+
             let segments = query
-                .iter_object_stores(ctx, obj_tree_props, ObjectType::Point3D)
-                .flat_map(|(_obj_type, obj_path, obj_store)| {
+                .iter_object_stores(
+                    ctx,
+                    obj_tree_props,
+                    &[ObjectType::Path3D, ObjectType::LineSegments3D],
+                )
+                .flat_map(|(obj_type, obj_path, obj_store)| {
                     let mut batch = Vec::new();
                     visit_type_data_3(
                         obj_store,
@@ -261,32 +267,40 @@ impl Scene {
                          visible: Option<&bool>,
                          color: Option<&[u8; 4]>,
                          stroke_width: Option<&f32>| {
-if !*visible.unwrap_or(&true) { return; }
-let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
+                            if !*visible.unwrap_or(&true) {
+                                return;
+                            }
 
-                                let instance_index =
-                                    instance_index.copied().unwrap_or(IndexHash::NONE);
-                                let instance_id_hash =
-                                    InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                            let what = match obj_type {
+                                ObjectType::Path3D => "Path3D::points",
+                                ObjectType::LineSegments3D => "LineSegments3D::points",
+                                _ => return,
+                            };
+                            let Some(points) = points.as_vec_of_vec3(what)
+                                else { return };
 
-                                let radius =
-                                    stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                                let color = object_color(ctx, color, obj_path);
+                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                            let instance_id_hash =
+                                InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                                let segments = points
-                                    .iter()
-                                    .tuple_windows()
-                                    .map(|(a, b)| (Vec3::from_slice(a), Vec3::from_slice(b)))
-                                    .collect();
+                            let radius =
+                                stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                            let color = object_color(ctx, color, obj_path);
 
-                                batch.push(LineSegments3D {
-                                    instance_id_hash,
-                                    segments,
-                                    radius,
-                                    color,
-                                    #[cfg(feature = "wgpu")]
-                                    flags: Default::default(),
-                                });
+                            let segments = points
+                                .iter()
+                                .tuple_windows()
+                                .map(|(a, b)| (Vec3::from_slice(a), Vec3::from_slice(b)))
+                                .collect();
+
+                            batch.push(LineSegments3D {
+                                instance_id_hash,
+                                segments,
+                                radius,
+                                color,
+                                #[cfg(feature = "wgpu")]
+                                flags: Default::default(),
+                            });
                         },
                     );
                     batch
@@ -323,32 +337,6 @@ let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
             [r, g, b, a]
         };
 
-        // {
-        //     crate::profile_scope!("line_segments3d");
-        //     self.line_segments
-        //         .extend(objects.line_segments3d.iter().map(|(props, obj)| {
-        //             let re_data_store::LineSegments3D {
-        //                 points,
-        //                 stroke_width,
-        //             } = *obj;
-
-        //             let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-        //             let color = object_color(ctx, props);
-
-        //             LineSegments3D {
-        //                 instance_id_hash: InstanceIdHash::from_path_and_index(
-        //                     &props.obj_path,
-        //                     props.instance_index,
-        //                 ),
-        //                 segments: bytemuck::allocation::pod_collect_to_vec(points),
-        //                 radius,
-        //                 color,
-        //                 #[cfg(feature = "wgpu")]
-        //                 flags: Default::default(),
-        //             }
-        //         }));
-        // }
-
         {
             crate::profile_scope!("mesh3d");
             self.meshes
@@ -363,7 +351,7 @@ let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
                             &MeshSourceData::Mesh3D(mesh.clone()),
                         )
                         .map(|cpu_mesh| MeshSource {
-                            instance_id: InstanceIdHash::from_path_and_index(
+                            instance_id_hash: InstanceIdHash::from_path_and_index(
                                 &props.obj_path,
                                 props.instance_index,
                             ),
@@ -441,7 +429,7 @@ let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
                         &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
                     ) {
                         self.meshes.push(MeshSource {
-                            instance_id,
+                            instance_id_hash: instance_id,
                             mesh_id,
                             world_from_mesh,
                             cpu_mesh,
@@ -581,7 +569,7 @@ let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
         {
             crate::profile_scope!("meshes");
             for mesh in meshes {
-                if mesh.instance_id == hovered_instance_id_hash {
+                if mesh.instance_id_hash == hovered_instance_id_hash {
                     mesh.tint = Some(HOVER_COLOR);
                 }
             }
@@ -682,7 +670,7 @@ let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
             );
 
             self.meshes.push(MeshSource {
-                instance_id: instance_id_hash,
+                instance_id_hash,
                 mesh_id: cylinder_id,
                 world_from_mesh: cylinder_transform,
                 cpu_mesh: cylinder_mesh,
@@ -697,7 +685,7 @@ let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
             ) * glam::Affine3A::from_translation(-Vec3::X);
 
             self.meshes.push(MeshSource {
-                instance_id: instance_id_hash,
+                instance_id_hash,
                 mesh_id: cone_id,
                 world_from_mesh: cone_transform,
                 cpu_mesh: cone_mesh,
@@ -946,7 +934,7 @@ let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
         {
             crate::profile_scope!("meshes");
             for mesh in meshes {
-                if mesh.instance_id.is_some() {
+                if mesh.instance_id_hash.is_some() {
                     let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
                     let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.cpu_mesh.bbox());
 
@@ -955,7 +943,7 @@ let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
                         if t < closest_z || dist_sq < closest_side_dist_sq {
                             closest_z = t; // TODO(emilk): I think this is wrong
                             closest_side_dist_sq = dist_sq;
-                            closest_instance_id = Some(mesh.instance_id);
+                            closest_instance_id = Some(mesh.instance_id_hash);
                         }
                     }
                 }
