@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use egui::util::hash;
 use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
-use re_data_store::query::{visit_type_data_3, visit_type_data_4};
+use re_data_store::query::{visit_type_data_2, visit_type_data_3, visit_type_data_4};
 use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectTreeProperties};
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
+use crate::misc::Caches;
 use crate::ui::space_view::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
@@ -153,25 +153,27 @@ impl Scene {
         let gamma_lut = &gamma_lut[0..256]; // saves us bounds checks later.
 
         // TODO: dont like how this looks
-        let object_color =
-            |ctx: &ViewerContext<'_>, color: Option<&[u8; 4]>, obj_path: &ObjPath| {
-                let [r, g, b, a] = if let Some(color) = color.copied() {
-                    color
-                } else {
-                    let [r, g, b] = ctx.random_color(obj_path);
-                    [r, g, b, 255]
-                };
-
-                let r = gamma_lut[r as usize];
-                let g = gamma_lut[g as usize];
-                let b = gamma_lut[b as usize];
-                [r, g, b, a]
+        let object_color = |caches: &mut Caches, color: Option<&[u8; 4]>, obj_path: &ObjPath| {
+            let [r, g, b, a] = if let Some(color) = color.copied() {
+                color
+            } else {
+                let [r, g, b] = caches.random_color(obj_path);
+                [r, g, b, 255]
             };
+
+            let r = gamma_lut[r as usize];
+            let g = gamma_lut[g as usize];
+            let b = gamma_lut[b as usize];
+            [r, g, b, a]
+        };
+
+        let log_db = &ctx.log_db;
+        let caches = &mut ctx.cache;
 
         {
             puffin::profile_scope!("Scene3D - load points");
             let points = query
-                .iter_object_stores(ctx, obj_tree_props, &[ObjectType::Point3D])
+                .iter_object_stores(log_db, obj_tree_props, &[ObjectType::Point3D])
                 .flat_map(|(_obj_type, obj_path, obj_store)| {
                     let mut batch = Vec::new();
                     visit_type_data_3(
@@ -196,7 +198,7 @@ impl Scene {
                                     instance_id_hash,
                                     pos: Vec3::from_slice(pos),
                                     radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
-                                    color: object_color(ctx, color, obj_path),
+                                    color: object_color(caches, color, obj_path),
                                 });
                             }
                         },
@@ -209,7 +211,7 @@ impl Scene {
         {
             puffin::profile_scope!("Scene3D - load boxes");
             for (_obj_type, obj_path, obj_store) in
-                query.iter_object_stores(ctx, obj_tree_props, &[ObjectType::Box3D])
+                query.iter_object_stores(log_db, obj_tree_props, &[ObjectType::Box3D])
             {
                 visit_type_data_4(
                     obj_store,
@@ -228,7 +230,7 @@ impl Scene {
                             let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                             let line_radius =
                                 stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                            let color = object_color(ctx, color, obj_path);
+                            let color = object_color(caches, color, obj_path);
 
                             self.add_box(
                                 InstanceIdHash::from_path_and_index(obj_path, instance_index),
@@ -249,7 +251,7 @@ impl Scene {
 
             let segments = query
                 .iter_object_stores(
-                    ctx,
+                    log_db,
                     obj_tree_props,
                     &[ObjectType::Path3D, ObjectType::LineSegments3D],
                 )
@@ -285,7 +287,7 @@ impl Scene {
 
                             let radius =
                                 stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                            let color = object_color(ctx, color, obj_path);
+                            let color = object_color(caches, color, obj_path);
 
                             let segments = points
                                 .iter()
@@ -306,6 +308,55 @@ impl Scene {
                     batch
                 });
             self.line_segments.extend(segments);
+        }
+
+        {
+            puffin::profile_scope!("Scene3D - load meshes");
+            let meshes = query
+                .iter_object_stores(log_db, obj_tree_props, &[ObjectType::Mesh3D])
+                .flat_map(|(_obj_type, obj_path, obj_store)| {
+                    let mut batch = Vec::new();
+                    visit_type_data_2(
+                        obj_store,
+                        &FieldName::from("mesh"),
+                        &query.time_query,
+                        ("_visible", "color"),
+                        |instance_index: Option<&IndexHash>,
+                         _time: i64,
+                         msg_id: &MsgId,
+                         mesh: &re_log_types::Mesh3D,
+                         visible: Option<&bool>,
+                         _color: Option<&[u8; 4]>| {
+                            if !*visible.unwrap_or(&true) {
+                                return;
+                            }
+
+                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                            let mesh_id = egui::util::hash(msg_id);
+                            let Some(mesh) = caches
+                                .cpu_mesh
+                                .load(
+                                    mesh_id,
+                                    &obj_path.to_string(),
+                                    &MeshSourceData::Mesh3D(mesh.clone()),
+                                )
+                                .map(|cpu_mesh| MeshSource {
+                                    instance_id_hash: InstanceIdHash::from_path_and_index(
+                                        obj_path,
+                                        instance_index,
+                                    ),
+                                    mesh_id,
+                                    world_from_mesh: Default::default(),
+                                    cpu_mesh,
+                                    tint: None,
+                                }) else { return };
+
+                            batch.push(mesh);
+                        },
+                    );
+                    batch
+                });
+            self.meshes.extend(meshes);
         }
     }
 
@@ -336,32 +387,6 @@ impl Scene {
             let b = gamma_lut[b as usize];
             [r, g, b, a]
         };
-
-        {
-            crate::profile_scope!("mesh3d");
-            self.meshes
-                .extend(objects.mesh3d.iter().filter_map(|(props, obj)| {
-                    let re_data_store::Mesh3D { mesh } = *obj;
-                    let mesh_id = hash(props.msg_id);
-                    ctx.cache
-                        .cpu_mesh
-                        .load(
-                            mesh_id,
-                            &props.obj_path.to_string(),
-                            &MeshSourceData::Mesh3D(mesh.clone()),
-                        )
-                        .map(|cpu_mesh| MeshSource {
-                            instance_id_hash: InstanceIdHash::from_path_and_index(
-                                &props.obj_path,
-                                props.instance_index,
-                            ),
-                            mesh_id,
-                            world_from_mesh: Default::default(),
-                            cpu_mesh,
-                            tint: None,
-                        })
-                }));
-        }
 
         {
             crate::profile_scope!("arrow3d");
@@ -420,7 +445,7 @@ impl Scene {
 
                     let scale = Vec3::splat(scale);
 
-                    let mesh_id = hash("camera_mesh");
+                    let mesh_id = egui::util::hash("camera_mesh");
                     let world_from_mesh = world_from_rub_view * glam::Affine3A::from_scale(scale);
 
                     if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(

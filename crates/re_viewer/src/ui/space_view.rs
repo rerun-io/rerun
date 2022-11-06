@@ -2,7 +2,7 @@ use ahash::HashSet;
 use glam::Vec3;
 use nohash_hasher::IntSet;
 use re_data_store::{
-    InstanceIdHash, ObjPath, ObjStore, ObjectTree, ObjectTreeProperties, Objects, TimeQuery,
+    InstanceIdHash, LogDb, ObjPath, ObjStore, ObjectTree, ObjectTreeProperties, Objects, TimeQuery,
     Timeline,
 };
 use re_log_types::{MsgId, ObjectType, Tensor, Transform};
@@ -285,11 +285,11 @@ impl<'s> SceneQuery<'s> {
     // TODO: doc
     pub(crate) fn iter_object_stores<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'_>,
+        log_db: &'a LogDb,
         obj_tree_props: &'a ObjectTreeProperties,
         obj_types: &'a [ObjectType],
     ) -> impl Iterator<Item = (ObjectType, &ObjPath, &ObjStore<i64>)> + 'a {
-        ctx.log_db
+        log_db
             .obj_db
             .store
             .get(&self.timeline)
@@ -299,7 +299,7 @@ impl<'s> SceneQuery<'s> {
                     .iter()
                     .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
                     .filter_map(|obj_path| {
-                        let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
+                        let obj_type = log_db.obj_db.types.get(obj_path.obj_type_path());
                         obj_type
                             .and_then(|obj_type| {
                                 obj_types.contains(&obj_type).then(|| {

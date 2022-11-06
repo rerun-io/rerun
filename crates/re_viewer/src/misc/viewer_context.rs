@@ -137,21 +137,8 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    pub fn random_color(&self, obj_path: &ObjPath) -> [u8; 3] {
-        // TODO(emilk): ignore "temporary" indices when calculating the hash.
-        let hash = obj_path.hash64();
-
-        if let Some(color) = self.cache.object_colors.read().get(&hash).copied() {
-            return color;
-        }
-
-        let mut object_colors = self.cache.object_colors.write();
-
-        let color = *object_colors
-            .entry(hash)
-            .or_insert_with(|| crate::misc::random_rgb(hash));
-
-        color
+    pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
+        self.cache.random_color(obj_path)
     }
 }
 
@@ -220,7 +207,7 @@ pub(crate) struct Caches {
     pub cpu_mesh: crate::ui::view3d::CpuMeshCache,
 
     /// Auto-generated colors.
-    object_colors: RwLock<nohash_hasher::IntMap<u64, [u8; 3]>>,
+    object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,
 }
 
 impl Caches {
@@ -228,6 +215,19 @@ impl Caches {
     pub fn new_frame(&mut self) {
         let max_image_cache_use = 1_000_000_000;
         self.image.new_frame(max_image_cache_use);
+    }
+
+    // TODO: explain why this is here rather than on context
+    pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
+        // TODO(emilk): ignore "temporary" indices when calculating the hash.
+        let hash = obj_path.hash64();
+
+        let color = *self
+            .object_colors
+            .entry(hash)
+            .or_insert_with(|| crate::misc::random_rgb(hash));
+
+        color
     }
 }
 
