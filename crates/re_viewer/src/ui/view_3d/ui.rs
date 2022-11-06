@@ -44,7 +44,9 @@ pub(crate) struct View3DState {
 
     /// Filled in at the start of each frame
     #[serde(skip)]
-    pub space_specs: SpaceSpecs,
+    pub(crate) space_specs: SpaceSpecs,
+    #[serde(skip)]
+    space_camera: Vec<SpaceCamera>,
 }
 
 impl Default for View3DState {
@@ -59,6 +61,7 @@ impl Default for View3DState {
             show_axes: false,
             last_eye_interact_time: f64::NEG_INFINITY,
             space_specs: Default::default(),
+            space_camera: Default::default(),
         }
     }
 }
@@ -71,7 +74,7 @@ impl View3DState {
         response: &egui::Response,
     ) -> &mut OrbitEye {
         if response.double_clicked() {
-            // Reset camera
+            // Reset eye
             if tracking_camera.is_some() {
                 ctx.rec_cfg.selection = Selection::None;
             }
@@ -218,7 +221,7 @@ pub(crate) fn show_settings_ui(
     }
 
     if ui
-        .button("Reset camera")
+        .button("Reset virtual camera")
         .on_hover_text("You can also double-click the 3D view")
         .clicked()
     {
@@ -227,13 +230,17 @@ pub(crate) fn show_settings_ui(
         // TODO(emilk): reset tracking camera too
     }
 
-    // TODO(emilk): only show if there is a camera om scene.
-    ui.toggle_value(&mut ctx.options.show_camera_mesh_in_3d, "Show camera mesh");
-
-    ui.toggle_value(&mut state.spin, "Spin Camera")
+    ui.checkbox(&mut state.spin, "Spin virtual camera")
         .on_hover_text("Spin view");
-    ui.toggle_value(&mut state.show_axes, "Show Axes")
+    ui.checkbox(&mut state.show_axes, "show origin axes")
         .on_hover_text("Show X-Y-Z axes");
+
+    if !state.space_camera.is_empty() {
+        ui.checkbox(
+            &mut ctx.options.show_camera_mesh_in_3d,
+            "Show camera meshes",
+        );
+    }
 }
 
 #[derive(Clone, Default)]
@@ -323,6 +330,7 @@ pub(crate) fn view_3d(
     crate::profile_function!();
 
     state.scene_bbox = state.scene_bbox.union(scene.calc_bbox());
+    state.space_camera = space_cameras.to_vec();
 
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 

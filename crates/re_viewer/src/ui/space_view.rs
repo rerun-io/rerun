@@ -81,7 +81,9 @@ impl SpaceView {
 
         match categories.len() {
             0 => {
-                ui.label("(empty)");
+                ui.centered_and_justified(|ui| {
+                    ui.label("(empty)");
+                });
             }
             1 => {
                 self.selected_category = categories[0];
