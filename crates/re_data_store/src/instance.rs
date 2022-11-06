@@ -72,10 +72,10 @@ impl InstanceIdHash {
     };
 
     #[inline]
-    pub fn from_props(props: &InstanceProps<'_>) -> Self {
+    pub fn from_path_and_index(obj_path: &ObjPath, instance_index: IndexHash) -> Self {
         Self {
-            obj_path_hash: *props.obj_path.hash(),
-            instance_index_hash: props.instance_index,
+            obj_path_hash: *obj_path.hash(),
+            instance_index_hash: instance_index,
         }
     }
 

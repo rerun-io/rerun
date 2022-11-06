@@ -170,7 +170,9 @@ impl Scene {
 
         // TODO: gotta abstract away the store fetch, most likely in LogDb
 
-        // Load points
+        {
+            puffin::profile_scope!("Scene3D - load points");
+        }
         let points = query
             .objects
             .iter()
@@ -266,7 +268,7 @@ impl Scene {
                 let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
                 let color = object_color(ctx, props);
                 self.add_box(
-                    InstanceIdHash::from_props(props),
+                    InstanceIdHash::from_path_and_index(&props.obj_path, props.instance_index),
                     color,
                     line_radius,
                     *label,
@@ -294,7 +296,10 @@ impl Scene {
                         .collect();
 
                     LineSegments {
-                        instance_id: InstanceIdHash::from_props(props),
+                        instance_id: InstanceIdHash::from_path_and_index(
+                            &props.obj_path,
+                            props.instance_index,
+                        ),
                         segments,
                         radius,
                         color,
@@ -315,7 +320,10 @@ impl Scene {
                     let color = object_color(ctx, props);
 
                     LineSegments {
-                        instance_id: InstanceIdHash::from_props(props),
+                        instance_id: InstanceIdHash::from_path_and_index(
+                            &props.obj_path,
+                            props.instance_index,
+                        ),
                         segments: bytemuck::allocation::pod_collect_to_vec(points),
                         radius,
                         color,
@@ -337,7 +345,10 @@ impl Scene {
                             &MeshSourceData::Mesh3D(mesh.clone()),
                         )
                         .map(|cpu_mesh| MeshSource {
-                            instance_id: InstanceIdHash::from_props(props),
+                            instance_id: InstanceIdHash::from_path_and_index(
+                                &props.obj_path,
+                                props.instance_index,
+                            ),
                             mesh_id,
                             world_from_mesh: Default::default(),
                             cpu_mesh,
@@ -357,7 +368,8 @@ impl Scene {
                 } = obj;
                 let width = width_scale.unwrap_or(1.0);
                 let color = object_color(ctx, props);
-                let instance_id = InstanceIdHash::from_props(props);
+                let instance_id =
+                    InstanceIdHash::from_path_and_index(&props.obj_path, props.instance_index);
                 self.add_arrow(ctx, instance_id, color, Some(width), *label, arrow);
             }
         }

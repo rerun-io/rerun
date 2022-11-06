@@ -105,7 +105,10 @@ impl Scene2d {
 
                     Image {
                         msg_id: props.msg_id.clone(),
-                        instance_hash: InstanceIdHash::from_props(props),
+                        instance_hash: InstanceIdHash::from_path_and_index(
+                            &props.obj_path,
+                            props.instance_index,
+                        ),
                         tensor: tensor.clone(), // shallow
                         meter: meter.clone(),
                         // legend: legend.cloned(), // shallow
@@ -136,7 +139,10 @@ impl Scene2d {
                 );
 
                 BBox2D {
-                    instance_hash: InstanceIdHash::from_props(props),
+                    instance_hash: InstanceIdHash::from_path_and_index(
+                        &props.obj_path,
+                        props.instance_index,
+                    ),
                     bbox: bbox.clone(),
                     stroke_width,
                     label: label.map(ToOwned::to_owned),
@@ -159,7 +165,10 @@ impl Scene2d {
                 );
 
                 LineSegments2D {
-                    instance_hash: InstanceIdHash::from_props(props),
+                    instance_hash: InstanceIdHash::from_path_and_index(
+                        &props.obj_path,
+                        props.instance_index,
+                    ),
                     points: points.into_iter().map(|p| Pos2::new(p[0], p[1])).collect(),
                     stroke_width,
                     paint_props,
@@ -178,7 +187,10 @@ impl Scene2d {
                 );
 
                 Point2D {
-                    instance_hash: InstanceIdHash::from_props(props),
+                    instance_hash: InstanceIdHash::from_path_and_index(
+                        &props.obj_path,
+                        props.instance_index,
+                    ),
                     pos: Pos2::new(pos[0], pos[1]),
                     radius,
                     paint_props,
@@ -865,7 +877,8 @@ fn paint_properties(
         },
         to_egui_color,
     );
-    let is_hovered = &InstanceIdHash::from_props(props) == hovered;
+    let is_hovered =
+        &InstanceIdHash::from_path_and_index(&props.obj_path, props.instance_index) == hovered;
     let fg_color = if is_hovered { Color32::WHITE } else { color };
     let stroke_width = stroke_width.unwrap_or(1.5);
     let stoke_width = if is_hovered {
