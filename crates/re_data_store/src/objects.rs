@@ -261,7 +261,7 @@ impl<'s> Path3D<'s> {
              visible: Option<&bool>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
-                if let Some(points) = as_vec_of_vec3("Path3D::points", points) {
+                if let Some(points) = points.as_vec_of_vec3("Path3D::points") {
                     out.path3d.0.push(Object {
                         props: InstanceProps {
                             time: time.into(),
@@ -310,7 +310,7 @@ impl<'s> LineSegments2D<'s> {
              visible: Option<&bool>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
-                if let Some(points) = as_vec_of_vec2("LineSegments2D::points", points) {
+                if let Some(points) = points.as_vec_of_vec2("LineSegments2D::points") {
                     out.line_segments2d.0.push(Object {
                         props: InstanceProps {
                             time: time.into(),
@@ -359,7 +359,7 @@ impl<'s> LineSegments3D<'s> {
              visible: Option<&bool>,
              color: Option<&[u8; 4]>,
              stroke_width: Option<&f32>| {
-                if let Some(points) = as_vec_of_vec3("LineSegments3D::points", points) {
+                if let Some(points) = points.as_vec_of_vec3("LineSegments3D::points") {
                     out.line_segments3d.0.push(Object {
                         props: InstanceProps {
                             time: time.into(),
@@ -659,27 +659,3 @@ impl<'s> Objects<'s> {
 }
 
 // ----------------------------------------------------------------------------
-
-fn as_vec_of_vec2<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32; 2]>> {
-    if let DataVec::Vec2(vec) = data_vec {
-        Some(vec)
-    } else {
-        re_log::warn_once!(
-            "Expected {what} to be Vec<Vec2>, got Vec<{:?}>",
-            data_vec.element_data_type()
-        );
-        None
-    }
-}
-
-fn as_vec_of_vec3<'s>(what: &str, data_vec: &'s DataVec) -> Option<&'s Vec<[f32; 3]>> {
-    if let DataVec::Vec3(vec) = data_vec {
-        Some(vec)
-    } else {
-        re_log::warn_once!(
-            "Expected {what} to be Vec<Vec3>, got Vec<{:?}>",
-            data_vec.element_data_type()
-        );
-        None
-    }
-}

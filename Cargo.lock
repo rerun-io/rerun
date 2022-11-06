@@ -3053,6 +3053,7 @@ dependencies = [
  "macaw",
  "nohash-hasher",
  "puffin",
+ "re_log",
  "re_string_interner",
  "rmp-serde",
  "ruzstd",

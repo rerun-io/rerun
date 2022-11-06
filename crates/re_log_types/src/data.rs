@@ -397,6 +397,30 @@ impl DataVec {
             Self::ViewCoordinates(vec) => vec.last().cloned().map(Data::ViewCoordinates),
         }
     }
+
+    pub fn as_vec_of_vec2(&self, what: &str) -> Option<&Vec<[f32; 2]>> {
+        if let DataVec::Vec2(vec) = self {
+            Some(vec)
+        } else {
+            re_log::warn_once!(
+                "Expected {what} to be Vec<Vec2>, got Vec<{:?}>",
+                self.element_data_type()
+            );
+            None
+        }
+    }
+
+    pub fn as_vec_of_vec3(&self, what: &str) -> Option<&Vec<[f32; 3]>> {
+        if let DataVec::Vec3(vec) = self {
+            Some(vec)
+        } else {
+            re_log::warn_once!(
+                "Expected {what} to be Vec<Vec3>, got Vec<{:?}>",
+                self.element_data_type()
+            );
+            None
+        }
+    }
 }
 
 impl std::fmt::Debug for DataVec {
