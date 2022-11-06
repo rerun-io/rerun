@@ -658,6 +658,8 @@ fn show_projections_from_2d_space(
                         segments: vec![[origin.into(), end.into()]],
                         radius,
                         color: [255; 4],
+                        #[cfg(feature = "wgpu")]
+                        flags: Default::default(),
                     });
 
                     if let Some(pos) = hit_pos {

@@ -53,7 +53,7 @@
 //!          /     //      /
 //!         o      X      o
 //! ```
-//! If we want to keep the line along its skeleton with constant thickness, the top right corner
+//! If we want to keep the line along its skeleton with constant radius, the top right corner
 //! would move further and further outward as we decrease the angle of the joint. Eventually it reaches infinity!
 //! (i.e. not great to fix it up with discard in the fragment shader either)
 //!
@@ -81,6 +81,12 @@
 //!
 //! TODO(andreas): Implement (3). Right now we don't implement line caps at all.
 //!
+//!
+//! Arrow Heads
+//! -----------------------------------------------
+//! Yet another place where our triangle *strip* comes in handy is that we can take triangles from superfluous quads to form pointy arrows.
+//! Again, we keep all the geometry calculating logic in the vertex shader.
+//!
 //! Things we might try in the future
 //! ----------------------------------
 //! * more line properties
@@ -91,6 +97,7 @@
 
 use std::num::NonZeroU32;
 
+use bitflags::bitflags;
 use bytemuck::Zeroable;
 use smallvec::smallvec;
 
@@ -113,6 +120,8 @@ use super::*;
 mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
+    use super::LineStripFlags;
+
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct PositionData {
@@ -129,8 +138,8 @@ mod gpu_data {
     pub struct LineStripInfo {
         pub srgb_color: [u8; 4], // alpha unused right now
         pub stippling: u8,
-        pub unused: u8,
-        pub thickness: half::f16,
+        pub flags: LineStripFlags,
+        pub radius: half::f16,
     }
     static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
 }
@@ -147,6 +156,26 @@ impl Drawable for LineDrawable {
     type Renderer = LineRenderer;
 }
 
+bitflags! {
+    /// Property flags for a line strip
+    ///
+    /// Needs to be kept in sync with `lines.wgsl`
+    #[repr(C)]
+    #[derive(Default, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct LineStripFlags : u8 {
+        /// Puts a equilateral triangle at the end of the line strip.
+        const CAP_END_TRIANGLE = 0b0000_0001;
+    }
+}
+
+impl LineStripFlags {
+    pub fn get_triangle_cap_tip_length(line_radius: f32) -> f32 {
+        // hardcoded in lines.wgsl
+        // Alternatively we could declare the entire last segment to be a tip, making the line length configurable!
+        line_radius * 4.0
+    }
+}
+
 /// Description of series of connected line segments that share a radius and a color.
 #[derive(Clone)]
 pub struct LineStrip {
@@ -159,6 +188,9 @@ pub struct LineStrip {
 
     /// srgb color. Alpha unused right now
     pub color: [u8; 4],
+
+    /// Additional properties for the linestrip.
+    pub flags: LineStripFlags,
     // Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
     // TODO(andreas): unsupported right now.
     //pub stippling: f32,
@@ -218,9 +250,18 @@ impl LineDrawable {
                 POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE
             );
 
-        // No index buffer, so after each strip we have a quad that is discarded.
+        // No index buffer, so after each strip we have a quad that is discarded or turned into an arrow cap.
         // This means from a geometry perspective there is only ONE strip, i.e. 2 less quads than there are half-PositionDatas!
-        let num_quads = num_positions - 1;
+        let num_quads = if line_strips
+            .last()
+            .unwrap()
+            .flags
+            .contains(LineStripFlags::CAP_END_TRIANGLE)
+        {
+            num_positions
+        } else {
+            num_positions - 1
+        };
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawable!
@@ -279,9 +320,9 @@ impl LineDrawable {
         line_strip_info_staging.extend(line_strips.iter().map(|line_strip| {
             gpu_data::LineStripInfo {
                 srgb_color: line_strip.color,
-                thickness: half::f16::from_f32(line_strip.radius),
+                radius: half::f16::from_f32(line_strip.radius),
                 stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
-                unused: 0,
+                flags: line_strip.flags,
             }
         }));
         line_strip_info_staging.extend(std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(

@@ -285,6 +285,7 @@ fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances 
             segments,
             radius,
             color,
+            ..
         } = line_segments;
         let radius = radius
             .scene()
