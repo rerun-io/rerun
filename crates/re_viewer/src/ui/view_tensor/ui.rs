@@ -505,7 +505,10 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor)
         for &dim_idx in &state.dimension_mapping.selectors {
             let dim = &tensor.shape[dim_idx];
             if dim.size > 1 {
-                let selector_value = state.selector_values.entry(dim_idx).or_default();
+                let selector_value = state
+                    .selector_values
+                    .entry(dim_idx)
+                    .or_insert_with(|| dim.size / 2); // start in the middle
 
                 ui.add(
                     egui::Slider::new(selector_value, 0..=dim.size - 1)
