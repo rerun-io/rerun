@@ -549,7 +549,7 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
     // This means we need to make room for them.
     let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
-    let bar_height = if crate::native::FULLSIZE_CONTENT {
+    let bar_height = if crate::FULLSIZE_CONTENT {
         // Use more vertical space when zoomed in…
         let bar_height = native_buttons_size_in_native_scale.y;
 
@@ -566,8 +566,7 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
             egui::menu::bar(ui, |ui| {
                 ui.set_height(bar_height);
 
-                #[cfg(target_os = "macos")]
-                if crate::native::FULLSIZE_CONTENT {
+                if crate::FULLSIZE_CONTENT {
                     // Always use the same width measured in native GUI coordinates:
                     ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
