@@ -160,11 +160,13 @@ fn import_mesh(
             let texture = &texture.texture();
 
             let sampler = &texture.sampler();
-            if (sampler.min_filter() != Some(gltf::texture::MinFilter::LinearMipmapLinear)
-                && sampler.min_filter().is_none())
-                || (sampler.mag_filter() != Some(gltf::texture::MagFilter::Linear)
-                    && sampler.mag_filter().is_none())
-            {
+            if !matches!(
+                sampler.min_filter(),
+                None | Some(gltf::texture::MinFilter::LinearMipmapLinear)
+            ) || !matches!(
+                sampler.mag_filter(),
+                None | Some(gltf::texture::MagFilter::Linear)
+            ) {
                 re_log::warn!(
                     "Textures on meshes are always sampled with a trilinear filter.
  Texture {:?} had {:?} for min and {:?} for mag filtering, these settings will be ignored",
