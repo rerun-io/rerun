@@ -293,10 +293,7 @@ fn allocate_line_segments(line_segments: &[LineSegments3D]) -> three_d::Instance
 
         for &(start, end) in segments {
             rotations.push(three_d::Quat::from(mint::Quaternion::from(
-                glam::Quat::from_rotation_arc(
-                    glam::Vec3::X,
-                    (glam::Vec3::from(end) - glam::Vec3::from(start)).normalize(),
-                ),
+                glam::Quat::from_rotation_arc(glam::Vec3::X, (end - start).normalize()),
             )));
 
             translations.push(vec3(start.x, start.y, start.z));

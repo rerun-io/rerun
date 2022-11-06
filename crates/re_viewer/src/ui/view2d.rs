@@ -3,10 +3,10 @@ use egui::{
     epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
     Shape, Stroke, TextFormat, TextStyle, Vec2,
 };
-use re_data_store::{ClassDescriptionMap, InstanceId, InstanceIdHash, ObjPath};
+use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_log_types::{MsgId, Tensor};
 
-use crate::{legend::find_legend, misc::HoveredSpace, Selection, ViewerContext};
+use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
 // --- Scene ---
 
@@ -102,15 +102,16 @@ impl Scene2d {
                 (tensor.shape.len() >= 2).then_some({
                     // TODO: not sure how we handle that cleanly yet.
                     // let legend = find_legend(legend, objects);
+                    _ = legend;
 
                     Image {
-                        msg_id: props.msg_id.clone(),
+                        msg_id: *props.msg_id,
                         instance_hash: InstanceIdHash::from_path_and_index(
-                            &props.obj_path,
+                            props.obj_path,
                             props.instance_index,
                         ),
                         tensor: tensor.clone(), // shallow
-                        meter: meter.clone(),
+                        meter,
                         // legend: legend.cloned(), // shallow
                         paint_props: paint_properties(
                             ctx,
@@ -140,7 +141,7 @@ impl Scene2d {
 
                 BBox2D {
                     instance_hash: InstanceIdHash::from_path_and_index(
-                        &props.obj_path,
+                        props.obj_path,
                         props.instance_index,
                     ),
                     bbox: bbox.clone(),
@@ -166,10 +167,10 @@ impl Scene2d {
 
                 LineSegments2D {
                     instance_hash: InstanceIdHash::from_path_and_index(
-                        &props.obj_path,
+                        props.obj_path,
                         props.instance_index,
                     ),
-                    points: points.into_iter().map(|p| Pos2::new(p[0], p[1])).collect(),
+                    points: points.iter().map(|p| Pos2::new(p[0], p[1])).collect(),
                     stroke_width,
                     paint_props,
                 }
@@ -188,7 +189,7 @@ impl Scene2d {
 
                 Point2D {
                     instance_hash: InstanceIdHash::from_path_and_index(
-                        &props.obj_path,
+                        props.obj_path,
                         props.instance_index,
                     ),
                     pos: Pos2::new(pos[0], pos[1]),
@@ -490,7 +491,7 @@ fn view_2d_scrollable(
     state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bbox);
     let scene_bbox = state.scene_bbox_accum;
 
-    let (mut response, painter) = ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
+    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
     // Create our transforms
     let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
@@ -556,13 +557,13 @@ fn view_2d_scrollable(
             paint_props,
         } = img;
 
-        // let legend = find_legend(*legend, objects); // TODO
+        // let legend = super::legend::find_legend(*legend, objects); // TODO
+        let legend = None;
 
         let tensor_view = ctx
             .cache
             .image
-            // .get_view_with_legend(msg_id, tensor, &legend);
-            .get_view_with_legend(msg_id, tensor, &super::legend::Legend::None);
+            .get_view_with_legend(msg_id, tensor, &legend); // TODO
 
         let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
 
@@ -591,6 +592,7 @@ fn view_2d_scrollable(
             check_hovering(*instance_hash, dist);
 
             // TODO
+            _ = hovered_instance_id_hash;
             // if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
             //     response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
             //         ui,
@@ -615,7 +617,7 @@ fn view_2d_scrollable(
         }
     }
 
-    for bbox in scene.bboxes.iter() {
+    for bbox in &scene.bboxes {
         let BBox2D {
             instance_hash,
             bbox,
@@ -654,7 +656,7 @@ fn view_2d_scrollable(
                         byte_range: 0..label.len(),
                         format: TextFormat::simple(font_id, paint_props.fg_stroke.color),
                     }],
-                    text: (*label).to_owned(),
+                    text: (*label).clone(),
                     wrap: TextWrapping {
                         max_width: wrap_width,
                         ..Default::default()
@@ -684,7 +686,7 @@ fn view_2d_scrollable(
         check_hovering(*instance_hash, hover_dist);
     }
 
-    for segments in scene.line_segments.iter() {
+    for segments in &scene.line_segments {
         let LineSegments2D {
             instance_hash,
             points,
@@ -710,7 +712,7 @@ fn view_2d_scrollable(
         check_hovering(*instance_hash, min_dist_sq.sqrt());
     }
 
-    for point in scene.points.iter() {
+    for point in &scene.points {
         let Point2D {
             instance_hash,
             pos,
@@ -871,14 +873,14 @@ fn paint_properties(
         || match default_color {
             DefaultColor::White => Color32::WHITE,
             DefaultColor::Random => {
-                let [r, g, b] = ctx.random_color(&props.obj_path);
+                let [r, g, b] = ctx.random_color(props.obj_path);
                 Color32::from_rgb(r, g, b)
             }
         },
         to_egui_color,
     );
     let is_hovered =
-        &InstanceIdHash::from_path_and_index(&props.obj_path, props.instance_index) == hovered;
+        &InstanceIdHash::from_path_and_index(props.obj_path, props.instance_index) == hovered;
     let fg_color = if is_hovered { Color32::WHITE } else { color };
     let stroke_width = stroke_width.unwrap_or(1.5);
     let stoke_width = if is_hovered {

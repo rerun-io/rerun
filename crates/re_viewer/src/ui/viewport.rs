@@ -13,7 +13,7 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_store::{
-    log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, Objects, TimeQuery,
+    log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, Objects,
 };
 use re_log_types::ObjectType;
 
@@ -455,11 +455,7 @@ fn space_view_ui(
         }
         let time_objects = filter_objects(&time_objects);
 
-        // TODO: we'll do this in steps.
-        // Step 1: keep Objects, and build a Scene from that.
-        // Step 2: drop Objects entirely.
-        //
-        // Let's start with text entries.
+        // TODO: keep the scene around to avoid reallocating vectors all the time.
         let mut scene = Scene::default();
         space_view
             .view_state
@@ -470,8 +466,13 @@ fn space_view_ui(
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(), // TODO
         };
+        scene.two_d.clear();
+        // scene.two_d.load(ctx, obj_tree_props, &query);
+        scene.three_d.clear();
         scene.three_d.load(ctx, obj_tree_props, &query);
+        scene.text.clear();
         scene.text.load(ctx, obj_tree_props, &query);
+        scene.tensor.clear();
         scene.tensor.load(ctx, obj_tree_props, &query);
 
         space_view.scene_ui(ctx, ui, spaces_info, space_info, &time_objects, scene)

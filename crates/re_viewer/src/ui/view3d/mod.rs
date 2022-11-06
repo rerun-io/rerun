@@ -666,7 +666,7 @@ fn show_projections_from_2d_space(
                         // Show where the ray hits the depth map:
                         scene.points.push(Point3D {
                             instance_id_hash: InstanceIdHash::NONE,
-                            pos: pos.into(),
+                            pos,
                             radius: radius * 3.0,
                             color: [255; 4],
                         });
@@ -685,34 +685,34 @@ fn project_onto_other_spaces(
     response: &egui::Response,
     orbit_eye: OrbitEye,
 ) {
-    if let Some(pos_in_ui) = response.hover_pos() {
-        let ray_in_world = {
-            let eye = orbit_eye.to_eye();
-            let world_from_ui = eye.world_from_ui(&response.rect);
-            let ray_origin = eye.pos_in_world();
-            let ray_dir = world_from_ui.project_point3(glam::vec3(pos_in_ui.x, pos_in_ui.y, 1.0))
-                - ray_origin;
-            Ray3::from_origin_dir(ray_origin, ray_dir.normalize())
-        };
+    let Some(pos_in_ui) = response.hover_pos() else { return };
 
-        let mut target_spaces = vec![];
-        for cam in space_cameras {
-            if let Some(target_space) = cam.target_space.clone() {
-                let ray_in_2d = cam
-                    .image_from_world()
-                    .map(|image_from_world| (image_from_world * ray_in_world).normalize());
+    let ray_in_world = {
+        let eye = orbit_eye.to_eye();
+        let world_from_ui = eye.world_from_ui(&response.rect);
+        let ray_origin = eye.pos_in_world();
+        let ray_dir =
+            world_from_ui.project_point3(glam::vec3(pos_in_ui.x, pos_in_ui.y, 1.0)) - ray_origin;
+        Ray3::from_origin_dir(ray_origin, ray_dir.normalize())
+    };
 
-                let point_in_2d = state
-                    .hovered_point
-                    .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
+    let mut target_spaces = vec![];
+    for cam in space_cameras {
+        if let Some(target_space) = cam.target_space.clone() {
+            let ray_in_2d = cam
+                .image_from_world()
+                .map(|image_from_world| (image_from_world * ray_in_world).normalize());
 
-                target_spaces.push((target_space, ray_in_2d, point_in_2d));
-            }
+            let point_in_2d = state
+                .hovered_point
+                .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
+
+            target_spaces.push((target_space, ray_in_2d, point_in_2d));
         }
-        ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
-            space_3d: space.cloned(),
-            target_spaces,
-        }
+    }
+    ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
+        space_3d: space.cloned(),
+        target_spaces,
     }
 }
 

@@ -33,14 +33,14 @@ impl SceneText {
         &mut self,
         ctx: &ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery,
+        query: &SceneQuery<'_>,
     ) {
         puffin::profile_function!();
 
         {
             puffin::profile_scope!("SceneText - load text entries");
             let text_entries = query
-                .iter_object_stores(&ctx.log_db, obj_tree_props, &[ObjectType::TextEntry])
+                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::TextEntry])
                 .flat_map(|(_obj_type, obj_path, obj_store)| {
                     let mut batch = Vec::new();
                     // TODO: obviously cloning all these strings is not ideal... there are two
@@ -63,12 +63,12 @@ impl SceneText {
                          color: Option<&[u8; 4]>| {
                             if *visible.unwrap_or(&true) {
                                 batch.push(TextEntry {
-                                    msg_id: msg_id.clone(),
+                                    msg_id: *msg_id,
                                     obj_path: obj_path.clone(),
                                     time,
                                     color: color.copied(),
                                     level: level.map(ToOwned::to_owned),
-                                    body: body.to_owned(),
+                                    body: body.clone(),
                                 });
                             }
                         },
@@ -258,7 +258,7 @@ fn show_table(
                 // level
                 row.col(|ui| {
                     if let Some(lvl) = &text_entry.level {
-                        ui.label(level_to_rich_text(ui, &lvl));
+                        ui.label(level_to_rich_text(ui, lvl));
                     } else {
                         ui.label("-");
                     }

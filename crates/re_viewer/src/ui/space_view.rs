@@ -1,16 +1,13 @@
-use ahash::HashSet;
-use glam::Vec3;
 use nohash_hasher::IntSet;
 use re_data_store::{
-    InstanceIdHash, LogDb, ObjPath, ObjStore, ObjectTree, ObjectTreeProperties, Objects, TimeQuery,
-    Timeline,
+    LogDb, ObjPath, ObjStore, ObjectTree, ObjectTreeProperties, Objects, TimeQuery, Timeline,
 };
-use re_log_types::{MsgId, ObjectType, Tensor, Transform};
+use re_log_types::{ObjectType, Transform};
 
 use crate::misc::{space_info::*, ViewerContext};
 
 use super::view2d::Scene2d;
-use super::view3d::{scene::Scene as Scene3d, scene::Size, SpaceCamera};
+use super::view3d::{scene::Scene as Scene3d, SpaceCamera};
 use super::views::{
     view_tensor, view_text_entry, SceneTensor, SceneText, TensorViewState, ViewTextEntryState,
 };
@@ -105,7 +102,7 @@ impl SpaceView {
             _ => {
                 // Show tabs to let user select which category to view
                 ui.vertical(|ui| {
-                    if !categories.contains(&mut self.selected_category) {
+                    if !categories.contains(&self.selected_category) {
                         self.selected_category = categories[0];
                     }
 
@@ -147,7 +144,6 @@ impl SpaceView {
                     }
                 })
                 .response
-                .into()
             }
         }
     }
@@ -302,7 +298,7 @@ impl<'s> SceneQuery<'s> {
                         let obj_type = log_db.obj_db.types.get(obj_path.obj_type_path());
                         obj_type
                             .and_then(|obj_type| {
-                                obj_types.contains(&obj_type).then(|| {
+                                obj_types.contains(obj_type).then(|| {
                                     timeline_store
                                         .get(obj_path)
                                         .map(|obj_store| (*obj_type, obj_path, obj_store))
@@ -330,13 +326,6 @@ impl ViewState {
         time_objects: &re_data_store::Objects<'_>,
         scene: &mut Scene,
     ) {
-        let Scene {
-            two_d,
-            three_d,
-            text,
-            tensor,
-        } = scene;
-
-        two_d.load_objects(ctx, &self.state_2d, time_objects);
+        scene.two_d.load_objects(ctx, &self.state_2d, time_objects);
     }
 }

@@ -14,7 +14,7 @@ use crate::ui::space_view::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
 #[cfg(feature = "wgpu")]
-use re_renderer::renderer::*;
+use re_renderer::renderer::*; // TODO
 
 use super::{eye::Eye, SpaceCamera};
 
@@ -142,7 +142,7 @@ impl Scene {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery,
+        query: &SceneQuery<'_>,
     ) {
         puffin::profile_function!();
 
@@ -168,7 +168,7 @@ impl Scene {
         };
 
         let log_db = &ctx.log_db;
-        let caches = &mut ctx.cache;
+        let caches = &mut *ctx.cache;
 
         {
             puffin::profile_scope!("Scene3D - load points");
@@ -536,9 +536,7 @@ impl Scene {
                     point.radius = default_point_radius;
                 }
                 if let Some(size_in_points) = point.radius.ui() {
-                    let dist_to_eye = eye_camera_plane
-                        .distance(Vec3::from(point.pos))
-                        .at_least(0.0);
+                    let dist_to_eye = eye_camera_plane.distance(point.pos).at_least(0.0);
                     point.radius =
                         Size::new_scene(dist_to_eye * size_in_points * point_size_at_one_meter);
                 }
@@ -616,21 +614,13 @@ impl Scene {
         // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
 
         let corners = [
-            world_from_image
-                .transform_point3(d * vec3(0.0, 0.0, 1.0))
-                .into(),
-            world_from_image
-                .transform_point3(d * vec3(0.0, h, 1.0))
-                .into(),
-            world_from_image
-                .transform_point3(d * vec3(w, h, 1.0))
-                .into(),
-            world_from_image
-                .transform_point3(d * vec3(w, 0.0, 1.0))
-                .into(),
+            world_from_image.transform_point3(d * vec3(0.0, 0.0, 1.0)),
+            world_from_image.transform_point3(d * vec3(0.0, h, 1.0)),
+            world_from_image.transform_point3(d * vec3(w, h, 1.0)),
+            world_from_image.transform_point3(d * vec3(w, 0.0, 1.0)),
         ];
 
-        let center = camera.position().into();
+        let center = camera.position();
 
         let segments = vec![
             (center, corners[0]),     // frustum corners
@@ -906,7 +896,7 @@ impl Scene {
             for point in points {
                 if point.instance_id_hash.is_some() {
                     // TODO(emilk): take point radius into account
-                    let pos_in_ui = ui_from_world.project_point3(point.pos.into());
+                    let pos_in_ui = ui_from_world.project_point3(point.pos);
                     if pos_in_ui.z < 0.0 {
                         continue; // TODO(emilk): don't we expect negative Z!? RHS etc
                     }
@@ -995,7 +985,7 @@ impl Scene {
         } = self;
 
         for point in points {
-            bbox.extend(point.pos.into());
+            bbox.extend(point.pos);
         }
 
         for line_segments in line_segments {

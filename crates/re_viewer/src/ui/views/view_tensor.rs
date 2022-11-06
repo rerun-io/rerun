@@ -26,14 +26,14 @@ impl SceneTensor {
         &mut self,
         ctx: &ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery,
+        query: &SceneQuery<'_>,
     ) {
         puffin::profile_function!();
 
         {
             puffin::profile_scope!("SceneTensor - load tensors");
             let tensors = query
-                .iter_object_stores(&ctx.log_db, obj_tree_props, &[ObjectType::Image])
+                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
                 .filter_map(|(_obj_type, _obj_path, obj_store)| {
                     let mut tensors = Vec::new();
                     visit_type_data_1(
