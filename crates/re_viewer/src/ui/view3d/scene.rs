@@ -5,7 +5,7 @@ use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
-use re_data_store::query::visit_type_data_3;
+use re_data_store::query::{visit_type_data_3, visit_type_data_4};
 use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectTreeProperties};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
@@ -205,6 +205,43 @@ impl Scene {
                 });
             self.points.extend(points);
         }
+
+        {
+            puffin::profile_scope!("Scene3D - load boxes");
+            for (_obj_type, obj_path, obj_store) in
+                query.iter_object_stores(ctx, obj_tree_props, ObjectType::Box3D)
+            {
+                visit_type_data_4(
+                    obj_store,
+                    &FieldName::from("obb"),
+                    &query.time_query,
+                    ("_visible", "color", "stroke_width", "label"),
+                    |instance_index: Option<&IndexHash>,
+                     _time: i64,
+                     _msg_id: &MsgId,
+                     obb: &re_log_types::Box3,
+                     visible: Option<&bool>,
+                     color: Option<&[u8; 4]>,
+                     stroke_width: Option<&f32>,
+                     label: Option<&String>| {
+                        if *visible.unwrap_or(&true) {
+                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                            let line_radius =
+                                stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                            let color = object_color(ctx, color, obj_path);
+
+                            self.add_box(
+                                InstanceIdHash::from_path_and_index(obj_path, instance_index),
+                                color,
+                                line_radius,
+                                label.map(|s| s.as_str()),
+                                obb,
+                            );
+                        }
+                    },
+                );
+            }
+        }
     }
 
     pub(crate) fn load_objects(
@@ -234,26 +271,6 @@ impl Scene {
             let b = gamma_lut[b as usize];
             [r, g, b, a]
         };
-
-        {
-            crate::profile_scope!("box3d");
-            for (props, obj) in objects.box3d.iter() {
-                let re_data_store::Box3D {
-                    obb,
-                    stroke_width,
-                    label,
-                } = obj;
-                let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                let color = object_color(ctx, props);
-                self.add_box(
-                    InstanceIdHash::from_path_and_index(&props.obj_path, props.instance_index),
-                    color,
-                    line_radius,
-                    *label,
-                    obb,
-                );
-            }
-        }
 
         {
             crate::profile_scope!("path3d");
