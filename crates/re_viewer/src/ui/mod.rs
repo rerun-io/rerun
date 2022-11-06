@@ -8,7 +8,6 @@ pub(crate) mod selection_panel;
 pub(crate) mod space_view;
 pub(crate) mod time_panel;
 pub(crate) mod view2d;
-pub(crate) mod view3d;
 pub(crate) mod viewport;
 
 pub(crate) use space_view::SpaceView;
@@ -16,6 +15,7 @@ pub(crate) use viewport::{Blueprint, SpaceViewId};
 
 mod tensor_dimension_mapper;
 
+pub(crate) mod view_3d;
 mod view_tensor;
 mod view_text_entry;
 

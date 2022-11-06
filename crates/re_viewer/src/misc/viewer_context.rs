@@ -203,7 +203,7 @@ pub(crate) struct Caches {
     pub image: crate::misc::ImageCache,
 
     /// For displaying meshes efficiently in immediate mode.
-    pub cpu_mesh: crate::ui::view3d::CpuMeshCache,
+    pub cpu_mesh: crate::ui::view_3d::CpuMeshCache,
 
     /// Auto-generated colors.
     object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,

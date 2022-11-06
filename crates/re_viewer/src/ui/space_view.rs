@@ -6,7 +6,7 @@ use re_log_types::{ObjectType, Transform};
 
 use crate::misc::{space_info::*, ViewerContext};
 
-use super::{view2d, view3d, view_tensor, view_text_entry};
+use super::{view2d, view_3d, view_tensor, view_text_entry};
 
 // ----------------------------------------------------------------------------
 
@@ -151,7 +151,7 @@ impl SpaceView {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
     state_2d: view2d::State2D,
-    state_3d: view3d::State3D,
+    state_3d: view_3d::State3D,
     state_tensor: Option<view_tensor::TensorViewState>,
     state_text_entry: view_text_entry::ViewTextEntryState,
 }
@@ -174,14 +174,14 @@ impl ViewState {
         space: &ObjPath,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        scene: view3d::scene::Scene,
+        scene: view_3d::scene::Scene,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
             let space_cameras = &space_cameras(spaces_info, space_info);
             let coordinates = space_info.coordinates;
-            let space_specs = view3d::SpaceSpecs::from_view_coordinates(coordinates);
-            view3d::view_3d(
+            let space_specs = view_3d::SpaceSpecs::from_view_coordinates(coordinates);
+            view_3d::view_3d(
                 ctx,
                 ui,
                 state,
@@ -217,7 +217,7 @@ impl ViewState {
 
 /// Look for camera transform and pinhole in the transform hierarchy
 /// and return them as cameras.
-fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<view3d::SpaceCamera> {
+fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<view_3d::SpaceCamera> {
     crate::profile_function!();
 
     let mut space_cameras = vec![];
@@ -236,7 +236,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<view3d
             if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
                 for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
                     if let Transform::Pinhole(pinhole) = grand_child_transform {
-                        space_cameras.push(view3d::SpaceCamera {
+                        space_cameras.push(view_3d::SpaceCamera {
                             camera_obj_path: child_path.clone(),
                             instance_index_hash: re_log_types::IndexHash::NONE,
                             camera_view_coordinates: view_space,
@@ -250,7 +250,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<view3d
             }
 
             if !found_any_pinhole {
-                space_cameras.push(view3d::SpaceCamera {
+                space_cameras.push(view_3d::SpaceCamera {
                     camera_obj_path: child_path.clone(),
                     instance_index_hash: re_log_types::IndexHash::NONE,
                     camera_view_coordinates: view_space,
@@ -309,7 +309,7 @@ impl<'s> SceneQuery<'s> {
 #[derive(Default)]
 pub struct Scene {
     pub two_d: view2d::Scene2d,
-    pub three_d: view3d::scene::Scene,
+    pub three_d: view_3d::scene::Scene,
     pub text: view_text_entry::SceneText,
     pub tensor: view_tensor::SceneTensor,
 }
