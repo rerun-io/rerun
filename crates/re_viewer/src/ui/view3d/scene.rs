@@ -99,9 +99,9 @@ pub struct Point3D {
     pub color: [u8; 4], // TODO: Color32? srgb or not?
 }
 
-pub struct LineSegments {
-    pub instance_id: InstanceIdHash,
-    pub segments: Vec<[[f32; 3]; 2]>,
+pub struct LineSegments3D {
+    pub instance_id_hash: InstanceIdHash,
+    pub segments: Vec<(Vec3, Vec3)>,
     pub radius: Size,
     pub color: [u8; 4],
     #[cfg(feature = "wgpu")]
@@ -132,7 +132,7 @@ pub struct Label {
 #[derive(Default)]
 pub struct Scene {
     pub points: Vec<Point3D>,
-    pub line_segments: Vec<LineSegments>,
+    pub line_segments: Vec<LineSegments3D>,
     pub meshes: Vec<MeshSource>,
     pub labels: Vec<Label>,
 }
@@ -244,40 +244,54 @@ impl Scene {
         }
 
         {
-            // puffin::profile_scope!("Scene3D - load paths");
-            // for (_obj_type, obj_path, obj_store) in
-            //     query.iter_object_stores(ctx, obj_tree_props, ObjectType::Box3D)
-            // {
-            //     visit_type_data_4(
-            //         obj_store,
-            //         &FieldName::from("points"),
-            //         &query.time_query,
-            //         ("_visible", "color", "stroke_width"),
-            //         |instance_index: Option<&IndexHash>,
-            //          _time: i64,
-            //          _msg_id: &MsgId,
-            //          obb: &re_log_types::Box3,
-            //          points: &DataVec,
-            //          visible: Option<&bool>,
-            //          color: Option<&[u8; 4]>,
-            //          stroke_width: Option<&f32>| {
-            //             if *visible.unwrap_or(&true) {
-            //                 let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-            //                 let line_radius =
-            //                     stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-            //                 let color = object_color(ctx, color, obj_path);
+            puffin::profile_scope!("Scene3D - load paths");
+            let segments = query
+                .iter_object_stores(ctx, obj_tree_props, ObjectType::Point3D)
+                .flat_map(|(_obj_type, obj_path, obj_store)| {
+                    let mut batch = Vec::new();
+                    visit_type_data_3(
+                        obj_store,
+                        &FieldName::from("points"),
+                        &query.time_query,
+                        ("_visible", "color", "stroke_width"),
+                        |instance_index: Option<&IndexHash>,
+                         _time: i64,
+                         _msg_id: &MsgId,
+                         points: &DataVec,
+                         visible: Option<&bool>,
+                         color: Option<&[u8; 4]>,
+                         stroke_width: Option<&f32>| {
+if !*visible.unwrap_or(&true) { return; }
+let Some(points) = points.as_vec_of_vec3("Path3D::points") else { return };
 
-            //                 self.add_box(
-            //                     InstanceIdHash::from_path_and_index(obj_path, instance_index),
-            //                     color,
-            //                     line_radius,
-            //                     label.map(|s| s.as_str()),
-            //                     obb,
-            //                 );
-            //             }
-            //         },
-            //     );
-            // }
+                                let instance_index =
+                                    instance_index.copied().unwrap_or(IndexHash::NONE);
+                                let instance_id_hash =
+                                    InstanceIdHash::from_path_and_index(obj_path, instance_index);
+
+                                let radius =
+                                    stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                                let color = object_color(ctx, color, obj_path);
+
+                                let segments = points
+                                    .iter()
+                                    .tuple_windows()
+                                    .map(|(a, b)| (Vec3::from_slice(a), Vec3::from_slice(b)))
+                                    .collect();
+
+                                batch.push(LineSegments3D {
+                                    instance_id_hash,
+                                    segments,
+                                    radius,
+                                    color,
+                                    #[cfg(feature = "wgpu")]
+                                    flags: Default::default(),
+                                });
+                        },
+                    );
+                    batch
+                });
+            self.line_segments.extend(segments);
         }
     }
 
@@ -309,63 +323,31 @@ impl Scene {
             [r, g, b, a]
         };
 
-        {
-            crate::profile_scope!("path3d");
-            self.line_segments
-                .extend(objects.path3d.iter().map(|(props, obj)| {
-                    let re_data_store::Path3D {
-                        points,
-                        stroke_width,
-                    } = obj;
+        // {
+        //     crate::profile_scope!("line_segments3d");
+        //     self.line_segments
+        //         .extend(objects.line_segments3d.iter().map(|(props, obj)| {
+        //             let re_data_store::LineSegments3D {
+        //                 points,
+        //                 stroke_width,
+        //             } = *obj;
 
-                    let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                    let color = object_color(ctx, props);
+        //             let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+        //             let color = object_color(ctx, props);
 
-                    let segments = points
-                        .iter()
-                        .tuple_windows()
-                        .map(|(a, b)| [*a, *b])
-                        .collect();
-
-                    LineSegments {
-                        instance_id: InstanceIdHash::from_path_and_index(
-                            &props.obj_path,
-                            props.instance_index,
-                        ),
-                        segments,
-                        radius,
-                        color,
-                        #[cfg(feature = "wgpu")]
-                        flags: Default::default(),
-                    }
-                }));
-        }
-
-        {
-            crate::profile_scope!("line_segments3d");
-            self.line_segments
-                .extend(objects.line_segments3d.iter().map(|(props, obj)| {
-                    let re_data_store::LineSegments3D {
-                        points,
-                        stroke_width,
-                    } = *obj;
-
-                    let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                    let color = object_color(ctx, props);
-
-                    LineSegments {
-                        instance_id: InstanceIdHash::from_path_and_index(
-                            &props.obj_path,
-                            props.instance_index,
-                        ),
-                        segments: bytemuck::allocation::pod_collect_to_vec(points),
-                        radius,
-                        color,
-                        #[cfg(feature = "wgpu")]
-                        flags: Default::default(),
-                    }
-                }));
-        }
+        //             LineSegments3D {
+        //                 instance_id_hash: InstanceIdHash::from_path_and_index(
+        //                     &props.obj_path,
+        //                     props.instance_index,
+        //                 ),
+        //                 segments: bytemuck::allocation::pod_collect_to_vec(points),
+        //                 radius,
+        //                 color,
+        //                 #[cfg(feature = "wgpu")]
+        //                 flags: Default::default(),
+        //             }
+        //         }));
+        // }
 
         {
             crate::profile_scope!("mesh3d");
@@ -480,9 +462,9 @@ impl Scene {
                     let axis_end = world_from_cam.transform_point3(scale * *dir);
                     let color = axis_color(axis_index);
 
-                    self.line_segments.push(LineSegments {
-                        instance_id,
-                        segments: vec![[cam_origin.into(), axis_end.into()]],
+                    self.line_segments.push(LineSegments3D {
+                        instance_id_hash: instance_id,
+                        segments: vec![(cam_origin, axis_end)],
                         radius,
                         color,
                         #[cfg(feature = "wgpu")]
@@ -569,17 +551,16 @@ impl Scene {
                     let dist_to_eye = if true {
                         // This works much better when one line segment is very close to the camera
                         let mut closest = f32::INFINITY;
-                        for segment in &line_segment.segments {
-                            for &endpoint in segment {
-                                closest = closest.min(eye_camera_plane.distance(endpoint.into()));
-                            }
+                        for &(start, end) in &line_segment.segments {
+                            closest = closest.min(eye_camera_plane.distance(start));
+                            closest = closest.min(eye_camera_plane.distance(end));
                         }
                         closest
                     } else {
                         let mut centroid = glam::DVec3::ZERO;
-                        for segment in &line_segment.segments {
-                            centroid += glam::Vec3::from(segment[0]).as_dvec3();
-                            centroid += glam::Vec3::from(segment[1]).as_dvec3();
+                        for (start, end) in &line_segment.segments {
+                            centroid += start.as_dvec3();
+                            centroid += end.as_dvec3();
                         }
                         let centroid =
                             centroid.as_vec3() / (2.0 * line_segment.segments.len() as f32);
@@ -590,7 +571,7 @@ impl Scene {
                     line_segment.radius =
                         Size::new_scene(dist_to_eye * size_in_points * point_size_at_one_meter);
                 }
-                if line_segment.instance_id == hovered_instance_id_hash {
+                if line_segment.instance_id_hash == hovered_instance_id_hash {
                     line_segment.radius *= hover_size_boost;
                     line_segment.color = HOVER_COLOR;
                 }
@@ -644,18 +625,18 @@ impl Scene {
         let center = camera.position().into();
 
         let segments = vec![
-            [center, corners[0]],     // frustum corners
-            [center, corners[1]],     // frustum corners
-            [center, corners[2]],     // frustum corners
-            [center, corners[3]],     // frustum corners
-            [corners[0], corners[1]], // `d` distance plane sides
-            [corners[1], corners[2]], // `d` distance plane sides
-            [corners[2], corners[3]], // `d` distance plane sides
-            [corners[3], corners[0]], // `d` distance plane sides
+            (center, corners[0]),     // frustum corners
+            (center, corners[1]),     // frustum corners
+            (center, corners[2]),     // frustum corners
+            (center, corners[3]),     // frustum corners
+            (corners[0], corners[1]), // `d` distance plane sides
+            (corners[1], corners[2]), // `d` distance plane sides
+            (corners[2], corners[3]), // `d` distance plane sides
+            (corners[3], corners[0]), // `d` distance plane sides
         ];
 
-        self.line_segments.push(LineSegments {
-            instance_id,
+        self.line_segments.push(LineSegments3D {
+            instance_id_hash: instance_id,
             segments,
             radius: line_radius,
             color,
@@ -669,7 +650,7 @@ impl Scene {
     fn add_arrow(
         &mut self,
         _ctx: &mut ViewerContext<'_>,
-        instance_id: InstanceIdHash,
+        instance_id_hash: InstanceIdHash,
         color: [u8; 4],
         width_scale: Option<f32>,
         _label: Option<&str>,
@@ -701,7 +682,7 @@ impl Scene {
             );
 
             self.meshes.push(MeshSource {
-                instance_id,
+                instance_id: instance_id_hash,
                 mesh_id: cylinder_id,
                 world_from_mesh: cylinder_transform,
                 cpu_mesh: cylinder_mesh,
@@ -716,7 +697,7 @@ impl Scene {
             ) * glam::Affine3A::from_translation(-Vec3::X);
 
             self.meshes.push(MeshSource {
-                instance_id,
+                instance_id: instance_id_hash,
                 mesh_id: cone_id,
                 world_from_mesh: cone_transform,
                 cpu_mesh: cone_mesh,
@@ -729,9 +710,9 @@ impl Scene {
             let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius);
             let vector_len = vector.length();
             let end = origin + vector * ((vector_len - tip_length) / vector_len);
-            self.line_segments.push(LineSegments {
-                instance_id,
-                segments: vec![[origin.to_array(), end.to_array()]],
+            self.line_segments.push(LineSegments3D {
+                instance_id_hash,
+                segments: vec![(origin, end)],
                 radius: Size::new_scene(radius),
                 color,
                 flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
@@ -759,34 +740,32 @@ impl Scene {
             glam::Affine3A::from_scale_rotation_translation(half_size, rotation, translation);
 
         let corners = [
-            transform
-                .transform_point3(vec3(-0.5, -0.5, -0.5))
-                .to_array(),
-            transform.transform_point3(vec3(-0.5, -0.5, 0.5)).to_array(),
-            transform.transform_point3(vec3(-0.5, 0.5, -0.5)).to_array(),
-            transform.transform_point3(vec3(-0.5, 0.5, 0.5)).to_array(),
-            transform.transform_point3(vec3(0.5, -0.5, -0.5)).to_array(),
-            transform.transform_point3(vec3(0.5, -0.5, 0.5)).to_array(),
-            transform.transform_point3(vec3(0.5, 0.5, -0.5)).to_array(),
-            transform.transform_point3(vec3(0.5, 0.5, 0.5)).to_array(),
+            transform.transform_point3(vec3(-0.5, -0.5, -0.5)),
+            transform.transform_point3(vec3(-0.5, -0.5, 0.5)),
+            transform.transform_point3(vec3(-0.5, 0.5, -0.5)),
+            transform.transform_point3(vec3(-0.5, 0.5, 0.5)),
+            transform.transform_point3(vec3(0.5, -0.5, -0.5)),
+            transform.transform_point3(vec3(0.5, -0.5, 0.5)),
+            transform.transform_point3(vec3(0.5, 0.5, -0.5)),
+            transform.transform_point3(vec3(0.5, 0.5, 0.5)),
         ];
 
         let segments = vec![
             // bottom:
-            [corners[0b000], corners[0b001]],
-            [corners[0b000], corners[0b010]],
-            [corners[0b011], corners[0b001]],
-            [corners[0b011], corners[0b010]],
+            (corners[0b000], corners[0b001]),
+            (corners[0b000], corners[0b010]),
+            (corners[0b011], corners[0b001]),
+            (corners[0b011], corners[0b010]),
             // top:
-            [corners[0b100], corners[0b101]],
-            [corners[0b100], corners[0b110]],
-            [corners[0b111], corners[0b101]],
-            [corners[0b111], corners[0b110]],
+            (corners[0b100], corners[0b101]),
+            (corners[0b100], corners[0b110]),
+            (corners[0b111], corners[0b101]),
+            (corners[0b111], corners[0b110]),
             // sides:
-            [corners[0b000], corners[0b100]],
-            [corners[0b001], corners[0b101]],
-            [corners[0b010], corners[0b110]],
-            [corners[0b011], corners[0b111]],
+            (corners[0b000], corners[0b100]),
+            (corners[0b001], corners[0b101]),
+            (corners[0b010], corners[0b110]),
+            (corners[0b011], corners[0b111]),
         ];
 
         if let Some(label) = label {
@@ -796,8 +775,8 @@ impl Scene {
             });
         }
 
-        self.line_segments.push(LineSegments {
-            instance_id,
+        self.line_segments.push(LineSegments3D {
+            instance_id_hash: instance_id,
             segments,
             radius: line_radius,
             color,
@@ -841,18 +820,15 @@ impl Scene {
                 color: segments.color,
                 flags: segments.flags,
             };
-            for [a, b] in &segments.segments {
-                let a = glam::Vec3::from(*a);
-                let b = glam::Vec3::from(*b);
-
+            for &(start, end) in &segments.segments {
                 if let Some(prev) = current_strip.points.last() {
-                    if *prev == a {
-                        current_strip.points.push(b);
+                    if *prev == start {
+                        current_strip.points.push(end);
                     } else {
                         line_strips.push(std::mem::replace(
                             &mut current_strip,
                             LineStrip {
-                                points: vec![a, b],
+                                points: vec![start, end],
                                 radius: segments.radius.0,
                                 color: segments.color,
                                 flags: segments.flags,
@@ -860,8 +836,8 @@ impl Scene {
                         ));
                     }
                 } else {
-                    current_strip.points.push(a);
-                    current_strip.points.push(b);
+                    current_strip.points.push(start);
+                    current_strip.points.push(end);
                 }
             }
 
@@ -877,7 +853,7 @@ impl Scene {
         self.points
             .iter()
             .map(|point| PointCloudPoint {
-                position: glam::Vec3::from(point.pos),
+                position: point.pos,
                 radius: point.radius.0,
                 srgb_color: point.color,
             })
@@ -942,13 +918,13 @@ impl Scene {
         {
             crate::profile_scope!("line_segments");
             for line_segments in line_segments {
-                if line_segments.instance_id.is_some() {
+                if line_segments.instance_id_hash.is_some() {
                     // TODO(emilk): take line segment radius into account
                     use egui::pos2;
 
-                    for [a, b] in &line_segments.segments {
-                        let a = ui_from_world.project_point3((*a).into());
-                        let b = ui_from_world.project_point3((*b).into());
+                    for &(start, end) in &line_segments.segments {
+                        let a = ui_from_world.project_point3(start);
+                        let b = ui_from_world.project_point3(end);
                         let dist_sq = line_segment_distance_sq_to_point_2d(
                             [pos2(a.x, a.y), pos2(b.x, b.y)],
                             pointer_in_ui,
@@ -959,7 +935,7 @@ impl Scene {
                             if t < closest_z || dist_sq < closest_side_dist_sq {
                                 closest_z = t;
                                 closest_side_dist_sq = dist_sq;
-                                closest_instance_id = Some(line_segments.instance_id);
+                                closest_instance_id = Some(line_segments.instance_id_hash);
                             }
                         }
                     }
@@ -1015,10 +991,9 @@ impl Scene {
         }
 
         for line_segments in line_segments {
-            for line_segment in &line_segments.segments {
-                for &endpoint in line_segment {
-                    bbox.extend(endpoint.into());
-                }
+            for &(start, end) in &line_segments.segments {
+                bbox.extend(start);
+                bbox.extend(end);
             }
         }
 

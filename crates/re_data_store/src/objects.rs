@@ -235,54 +235,6 @@ impl<'s> BBox2D<'s> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Path3D<'s> {
-    pub points: &'s Vec<[f32; 3]>,
-    pub stroke_width: Option<f32>,
-}
-
-impl<'s> Path3D<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data_3(
-            obj_store,
-            &FieldName::from("points"),
-            time_query,
-            ("_visible", "color", "stroke_width"),
-            |instance_index: Option<&IndexHash>,
-             time: Time,
-             msg_id: &MsgId,
-             points: &DataVec,
-             visible: Option<&bool>,
-             color: Option<&[u8; 4]>,
-             stroke_width: Option<&f32>| {
-                if let Some(points) = points.as_vec_of_vec3("Path3D::points") {
-                    out.path3d.0.push(Object {
-                        props: InstanceProps {
-                            time: time.into(),
-                            msg_id,
-                            color: color.copied(),
-                            obj_path,
-                            instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
-                            visible: *visible.unwrap_or(&true),
-                        },
-                        data: Path3D {
-                            points,
-                            stroke_width: stroke_width.copied(),
-                        },
-                    });
-                }
-            },
-        );
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
 pub struct LineSegments2D<'s> {
     /// Connected pair-wise even-odd.
     pub points: &'s Vec<[f32; 2]>,
@@ -531,7 +483,6 @@ pub struct Objects<'s> {
     pub bbox2d: ObjectVec<'s, BBox2D<'s>>,
     pub line_segments2d: ObjectVec<'s, LineSegments2D<'s>>,
 
-    pub path3d: ObjectVec<'s, Path3D<'s>>,
     pub line_segments3d: ObjectVec<'s, LineSegments3D<'s>>,
     pub mesh3d: ObjectVec<'s, Mesh3D<'s>>,
     pub arrow3d: ObjectVec<'s, Arrow3D<'s>>,
@@ -569,11 +520,13 @@ impl<'s> Objects<'s> {
             ObjectType::Point2D => Point2D::query,
             ObjectType::BBox2D => BBox2D::query,
             ObjectType::LineSegments2D => LineSegments2D::query,
-            ObjectType::Path3D => Path3D::query,
             ObjectType::LineSegments3D => LineSegments3D::query,
             ObjectType::Mesh3D => Mesh3D::query,
             ObjectType::Arrow3D => Arrow3D::query,
-            ObjectType::Point3D | ObjectType::TextEntry | ObjectType::Box3D => return, // TODO
+            ObjectType::Point3D
+            | ObjectType::TextEntry
+            | ObjectType::Box3D
+            | ObjectType::Path3D => return, // TODO
         };
 
         query_fn(obj_path, obj_store, time_query, self);
@@ -590,7 +543,6 @@ impl<'s> Objects<'s> {
             bbox2d: self.bbox2d.filter(&keep),
             line_segments2d: self.line_segments2d.filter(&keep),
 
-            path3d: self.path3d.filter(&keep),
             line_segments3d: self.line_segments3d.filter(&keep),
             mesh3d: self.mesh3d.filter(&keep),
             arrow3d: self.arrow3d.filter(&keep),
@@ -604,7 +556,6 @@ impl<'s> Objects<'s> {
             point2d,
             bbox2d,
             line_segments2d,
-            path3d,
             line_segments3d,
             mesh3d,
             arrow3d,
@@ -614,7 +565,6 @@ impl<'s> Objects<'s> {
             && point2d.is_empty()
             && bbox2d.is_empty()
             && line_segments2d.is_empty()
-            && path3d.is_empty()
             && line_segments3d.is_empty()
             && mesh3d.is_empty()
             && arrow3d.is_empty()
@@ -627,7 +577,6 @@ impl<'s> Objects<'s> {
             point2d,
             bbox2d,
             line_segments2d,
-            path3d,
             line_segments3d,
             mesh3d,
             arrow3d,
@@ -637,7 +586,6 @@ impl<'s> Objects<'s> {
             + point2d.len()
             + bbox2d.len()
             + line_segments2d.len()
-            + path3d.len()
             + line_segments3d.len()
             + mesh3d.len()
             + arrow3d.len()
@@ -651,10 +599,7 @@ impl<'s> Objects<'s> {
     }
 
     pub fn has_any_3d(&self) -> bool {
-        !self.path3d.is_empty()
-            || !self.line_segments3d.is_empty()
-            || !self.mesh3d.is_empty()
-            || !self.arrow3d.is_empty()
+        !self.line_segments3d.is_empty() || !self.mesh3d.is_empty() || !self.arrow3d.is_empty()
     }
 }
 

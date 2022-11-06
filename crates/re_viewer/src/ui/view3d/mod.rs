@@ -653,9 +653,9 @@ fn show_projections_from_2d_space(
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
                     let radius = Size::new_ui(1.5);
-                    scene.line_segments.push(LineSegments {
-                        instance_id: InstanceIdHash::NONE,
-                        segments: vec![[origin.into(), end.into()]],
+                    scene.line_segments.push(LineSegments3D {
+                        instance_id_hash: InstanceIdHash::NONE,
+                        segments: vec![(origin, end)],
                         radius,
                         color: [255; 4],
                         #[cfg(feature = "wgpu")]

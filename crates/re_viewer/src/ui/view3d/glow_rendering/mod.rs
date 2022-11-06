@@ -270,7 +270,7 @@ fn allocate_points(points: &[Point3D]) -> sphere_renderer::SphereInstances {
     }
 }
 
-fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances {
+fn allocate_line_segments(line_segments: &[LineSegments3D]) -> three_d::Instances {
     crate::profile_function!();
     use three_d::*;
 
@@ -280,8 +280,8 @@ fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances 
     let mut colors = vec![];
 
     for line_segments in line_segments {
-        let LineSegments {
-            instance_id: _,
+        let LineSegments3D {
+            instance_id_hash: _,
             segments,
             radius,
             color,
@@ -291,18 +291,16 @@ fn allocate_line_segments(line_segments: &[LineSegments]) -> three_d::Instances 
             .scene()
             .expect("size should have been translated to scene-coordinates");
 
-        for &[p0, p1] in segments {
+        for &(start, end) in segments {
             rotations.push(three_d::Quat::from(mint::Quaternion::from(
                 glam::Quat::from_rotation_arc(
                     glam::Vec3::X,
-                    (glam::Vec3::from(p1) - glam::Vec3::from(p0)).normalize(),
+                    (glam::Vec3::from(end) - glam::Vec3::from(start)).normalize(),
                 ),
             )));
 
-            let p0 = vec3(p0[0], p0[1], p0[2]);
-            let p1 = vec3(p1[0], p1[1], p1[2]);
-            translations.push(p0);
-            scales.push(vec3((p0 - p1).magnitude(), radius, radius));
+            translations.push(vec3(start.x, start.y, start.z));
+            scales.push(vec3((start - end).length(), radius, radius));
             colors.push(color_to_three_d(*color));
         }
     }
