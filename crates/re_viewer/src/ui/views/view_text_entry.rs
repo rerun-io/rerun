@@ -35,8 +35,6 @@ impl SceneText {
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery,
     ) {
-        let Some(timeline_store) = ctx.log_db.obj_db.store.get(&query.timeline) else {return};
-
         puffin::profile_function!();
 
         {

@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fmt::Display};
 use eframe::emath::Align2;
 use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
 use ndarray::{Axis, Ix2};
-use re_data_store::{query::visit_type_data_1, FieldName, ObjectTreeProperties, Objects};
+use re_data_store::{query::visit_type_data_1, FieldName, ObjectTreeProperties};
 use re_log_types::{IndexHash, MsgId, ObjectType, Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
@@ -11,6 +11,8 @@ use crate::{
     misc::ViewerContext,
     ui::{space_view::SceneQuery, tensor_dimension_mapper::dimension_mapping_ui},
 };
+
+// TODO: prob move the dimension mapping stuff over here
 
 // --- Scene ---
 
@@ -26,8 +28,6 @@ impl SceneTensor {
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery,
     ) {
-        let Some(timeline_store) = ctx.log_db.obj_db.store.get(&query.timeline) else {return};
-
         puffin::profile_function!();
 
         {

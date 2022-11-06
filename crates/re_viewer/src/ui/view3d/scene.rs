@@ -166,8 +166,6 @@ impl Scene {
                 [r, g, b, a]
             };
 
-        // TODO: gotta abstract away the store fetch, most likely in LogDb
-
         {
             puffin::profile_scope!("Scene3D - load points");
             let points = query
