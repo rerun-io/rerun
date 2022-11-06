@@ -1,5 +1,6 @@
 use ahash::{HashMap, HashMapExt};
 use anyhow::Context as _;
+use gltf::texture::WrappingMode;
 use smallvec::SmallVec;
 
 use crate::{
@@ -22,11 +23,10 @@ pub fn load_gltf_from_buffer(
 ) -> anyhow::Result<Vec<MeshInstance>> {
     let (doc, buffers, images) = gltf::import_slice(buffer)?;
 
-    let mut textures = HashMap::with_capacity(doc.textures().len());
-    for ref texture in doc.textures() {
-        let image = &images[texture.source().index()];
+    let mut images_as_textures = Vec::with_capacity(images.len());
+    for image in images {
         let (format, data) = if let Some(format) = map_format(image.format) {
-            (format, image.pixels.clone()) // TODO(andreas): any way to avoid this clone?
+            (format, image.pixels)
         } else {
             // RGB8 is not supported by wgpu, need to pad out data.
             if image.format == gltf::image::Format::R8G8B8 {
@@ -36,32 +36,25 @@ pub fn load_gltf_from_buffer(
                     Texture2D::convert_rgb8_to_rgba8(&image.pixels),
                 )
             } else {
-                anyhow::bail!(
-                    "Unsupported texture format {:?} by texture {:?}",
-                    image.format,
-                    texture.name()
-                );
+                anyhow::bail!("Unsupported texture format {:?}", image.format);
             }
         };
 
-        textures.insert(
-            texture.index(),
-            texture_manager.store_resource(
-                Texture2D {
-                    label: texture.name().into(),
-                    data,
-                    format,
-                    width: image.width,
-                    height: image.height,
-                },
-                lifetime,
-            ),
-        );
+        images_as_textures.push(texture_manager.store_resource(
+            Texture2D {
+                label: "gltf image".into(),
+                data,
+                format,
+                width: image.width,
+                height: image.height,
+            },
+            lifetime,
+        ));
     }
 
     let mut meshes = HashMap::with_capacity(doc.meshes().len());
     for ref mesh in doc.meshes() {
-        let re_mesh = import_mesh(mesh, &buffers, &textures, texture_manager)
+        let re_mesh = import_mesh(mesh, &buffers, &images_as_textures, texture_manager)
             .with_context(|| format!("mesh {} (name {:?})", mesh.index(), mesh.name()))?;
         meshes.insert(mesh.index(), mesh_manager.store_resource(re_mesh, lifetime));
     }
@@ -105,7 +98,7 @@ fn map_format(format: gltf::image::Format) -> Option<wgpu::TextureFormat> {
 fn import_mesh(
     mesh: &gltf::Mesh<'_>,
     buffers: &[gltf::buffer::Data],
-    textures: &HashMap<usize, Texture2DHandle>,
+    images: &[Texture2DHandle],
     texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
     let mut indices = Vec::new();
@@ -164,7 +157,34 @@ fn import_mesh(
                 texture.tex_coord() == 0,
                 "Only a single set of texture coordinates is supported"
             );
-            textures[&texture.texture().index()]
+            let texture = &texture.texture();
+
+            let sampler = &texture.sampler();
+            if (sampler.min_filter() != Some(gltf::texture::MinFilter::LinearMipmapLinear)
+                && sampler.min_filter().is_none())
+                || (sampler.mag_filter() != Some(gltf::texture::MagFilter::Linear)
+                    && sampler.mag_filter().is_none())
+            {
+                re_log::warn!(
+                    "Textures on meshes are always sampled with a trilinear filter.
+ Texture {:?} had {:?} for min and {:?} for mag filtering, these settings will be ignored",
+                    texture.name(),
+                    sampler.min_filter(),
+                    sampler.mag_filter()
+                );
+            }
+            if sampler.wrap_s() != WrappingMode::Repeat || sampler.wrap_t() != WrappingMode::Repeat
+            {
+                re_log::warn!(
+                    "Textures on meshes are always sampled repeating address mode.
+ exture {:?} had {:?} for s wrapping and {:?} for t wrapping, these settings will be ignored",
+                    texture.name(),
+                    sampler.wrap_s(),
+                    sampler.wrap_t()
+                );
+            }
+
+            images[texture.source().index()]
         } else {
             texture_manager.placeholder_texture()
         };
