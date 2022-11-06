@@ -17,6 +17,18 @@ impl DesignTokens {
             ..Default::default()
         }
     }
+
+    #[allow(clippy::unused_self)]
+    pub fn hovering_frame(&self, style: &egui::Style) -> egui::Frame {
+        egui::Frame {
+            inner_margin: egui::style::Margin::same(2.0),
+            outer_margin: egui::style::Margin::same(4.0),
+            rounding: 4.0.into(),
+            fill: style.visuals.window_fill(),
+            stroke: style.visuals.window_stroke(),
+            ..Default::default()
+        }
+    }
 }
 
 pub(crate) fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {

@@ -3,6 +3,8 @@ use macaw::Ray3;
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
+use crate::ui::SpaceViewId;
+
 /// Common things needed by many parts of the viewer.
 pub(crate) struct ViewerContext<'a> {
     /// Global options for the whole viewer.
@@ -114,6 +116,20 @@ impl<'a> ViewerContext<'a> {
         let response = ui.selectable_label(self.rec_cfg.selection.is_data_path(data_path), text);
         if response.clicked() {
             self.rec_cfg.selection = Selection::DataPath(data_path.clone());
+        }
+        response
+    }
+
+    pub fn space_view_button_to(
+        &mut self,
+        ui: &mut egui::Ui,
+        text: impl Into<egui::WidgetText>,
+        space_view_id: SpaceViewId,
+    ) -> egui::Response {
+        let is_selected = self.rec_cfg.selection == Selection::SpaceView(space_view_id);
+        let response = ui.selectable_label(is_selected, text);
+        if response.clicked() {
+            self.rec_cfg.selection = Selection::SpaceView(space_view_id);
         }
         response
     }

@@ -55,7 +55,7 @@ impl SpaceView {
         // NOTE: mutable because the glow-based 3D view `take()`s the scene because reasons.
         // TODO(cmc): remove this while removing glow.
         scene: &mut Scene,
-    ) -> egui::Response {
+    ) {
         crate::profile_function!();
 
         let has_2d = !scene.two_d.is_empty() && scene.tensor.is_empty();
@@ -71,15 +71,26 @@ impl SpaceView {
         .iter()
         .filter_map(|cat| *cat)
         .collect::<Vec<_>>();
+        // Extra headroom required for the hovering controls at the top of the space view.
+        let extra_headroom = {
+            let frame = ctx.design_tokens.hovering_frame(ui.style());
+            frame.total_margin().sum().y
+                + ui.spacing().interact_size.y
+                + ui.spacing().item_spacing.y
+        };
 
         match categories.len() {
-            0 => ui.label("(empty)"),
+            0 => {
+                ui.label("(empty)");
+            }
             1 => {
                 self.selected_category = categories[0];
                 if has_2d {
+                    _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
                     self.view_state
-                        .ui_2d(ctx, ui, &self.space_path, &scene.two_d)
+                        .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
                 } else if has_3d {
+                    _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
                     self.view_state.ui_3d(
                         ctx,
                         ui,
@@ -87,59 +98,59 @@ impl SpaceView {
                         spaces_info,
                         space_info,
                         &mut scene.three_d,
-                    )
+                    );
                 } else if has_tensor {
-                    self.view_state.ui_tensor(ui, &scene.tensor)
+                    ui.add_space(extra_headroom);
+                    self.view_state.ui_tensor(ui, &scene.tensor);
                 } else {
                     assert!(has_text);
-                    self.view_state.ui_text(ctx, ui, &scene.text)
+                    ui.add_space(extra_headroom);
+                    self.view_state.ui_text(ctx, ui, &scene.text);
                 }
             }
             _ => {
                 // Show tabs to let user select which category to view
-                ui.vertical(|ui| {
-                    if !categories.contains(&self.selected_category) {
-                        self.selected_category = categories[0];
-                    }
+                ui.add_space(extra_headroom);
+                if !categories.contains(&self.selected_category) {
+                    self.selected_category = categories[0];
+                }
 
-                    ui.horizontal(|ui| {
-                        for category in categories {
-                            let text = match category {
-                                ViewCategory::TwoD => "2D",
-                                ViewCategory::ThreeD => "3D",
-                                ViewCategory::Tensor => "Tensor",
-                                ViewCategory::Text => "Text",
-                            };
-                            ui.selectable_value(&mut self.selected_category, category, text);
-                            // TODO(emilk): make it look like tabs
-                        }
-                    });
-                    ui.separator();
-
-                    match self.selected_category {
-                        ViewCategory::Text => {
-                            self.view_state.ui_text(ctx, ui, &scene.text);
-                        }
-                        ViewCategory::Tensor => {
-                            self.view_state.ui_tensor(ui, &scene.tensor);
-                        }
-                        ViewCategory::TwoD => {
-                            self.view_state
-                                .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
-                        }
-                        ViewCategory::ThreeD => {
-                            self.view_state.ui_3d(
-                                ctx,
-                                ui,
-                                &self.space_path,
-                                spaces_info,
-                                space_info,
-                                &mut scene.three_d,
-                            );
-                        }
+                ui.horizontal(|ui| {
+                    for category in categories {
+                        let text = match category {
+                            ViewCategory::TwoD => "2D",
+                            ViewCategory::ThreeD => "3D",
+                            ViewCategory::Tensor => "Tensor",
+                            ViewCategory::Text => "Text",
+                        };
+                        ui.selectable_value(&mut self.selected_category, category, text);
+                        // TODO(emilk): make it look like tabs
                     }
-                })
-                .response
+                });
+                ui.separator();
+
+                match self.selected_category {
+                    ViewCategory::Text => {
+                        self.view_state.ui_text(ctx, ui, &scene.text);
+                    }
+                    ViewCategory::Tensor => {
+                        self.view_state.ui_tensor(ui, &scene.tensor);
+                    }
+                    ViewCategory::TwoD => {
+                        self.view_state
+                            .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
+                    }
+                    ViewCategory::ThreeD => {
+                        self.view_state.ui_3d(
+                            ctx,
+                            ui,
+                            &self.space_path,
+                            spaces_info,
+                            space_info,
+                            &mut scene.three_d,
+                        );
+                    }
+                }
             }
         }
     }
@@ -164,7 +175,23 @@ impl ViewState {
         space: &ObjPath,
         scene: &view_2d::Scene2D,
     ) -> egui::Response {
-        view_2d::view_2d(ctx, ui, &mut self.state_2d, Some(space), scene)
+        let response = ui
+            .scope(|ui| {
+                view_2d::view_2d(ctx, ui, &mut self.state_2d, Some(space), scene);
+            })
+            .response;
+
+        // Show help-text on top of space:
+        {
+            let mut ui = ui.child_ui(response.rect, egui::Layout::right_to_left(egui::Align::TOP));
+            ctx.design_tokens
+                .hovering_frame(ui.style())
+                .show(&mut ui, |ui| {
+                    crate::misc::help_hover_button(ui).on_hover_text(view_2d::HELP_TEXT);
+                });
+        }
+
+        response
     }
 
     fn ui_3d(
@@ -181,8 +208,24 @@ impl ViewState {
             let space_cameras = &space_cameras(spaces_info, space_info);
             let coordinates = space_info.coordinates;
             state.space_specs = view_3d::SpaceSpecs::from_view_coordinates(coordinates);
-            view_3d::view_3d(ctx, ui, state, Some(space), scene, space_cameras);
-            crate::misc::help_hover_button(ui).on_hover_text(view_3d::HELP_TEXT);
+            let response = ui
+                .scope(|ui| {
+                    view_3d::view_3d(ctx, ui, state, Some(space), scene, space_cameras);
+                })
+                .response;
+
+            // Show help-text on top of space:
+            {
+                let mut ui =
+                    ui.child_ui(response.rect, egui::Layout::right_to_left(egui::Align::TOP));
+                ctx.design_tokens
+                    .hovering_frame(ui.style())
+                    .show(&mut ui, |ui| {
+                        crate::misc::help_hover_button(ui).on_hover_text(view_3d::HELP_TEXT);
+                    });
+            }
+
+            response
         })
         .response
     }

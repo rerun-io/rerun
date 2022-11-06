@@ -141,9 +141,10 @@ impl ViewportBlueprint {
         .show_header(ui, |ui| {
             ui.label("🗖"); // icon indicating this is a space-view
 
-            let is_selected = ctx.rec_cfg.selection == Selection::SpaceView(*space_view_id);
-            if ui.selectable_label(is_selected, &space_view.name).clicked() {
-                ctx.rec_cfg.selection = Selection::SpaceView(*space_view_id);
+            if ctx
+                .space_view_button_to(ui, space_view.name.clone(), *space_view_id)
+                .clicked()
+            {
                 if let Some(tree) = self.trees.get_mut(&self.visible) {
                     focus_tab(tree, space_view_id);
                 }
@@ -206,6 +207,7 @@ impl ViewportBlueprint {
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpacesInfo,
+        selection_panel_expanded: &mut bool,
     ) {
         // Lazily create a layout tree based on which SpaceViews are currently visible:
         let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
@@ -222,16 +224,26 @@ impl ViewportBlueprint {
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
 
-            ui.strong(&space_view.name);
+            let response = ui
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .response;
 
-            space_view_ui(ctx, ui, spaces_info, space_view);
+            let frame = ctx.design_tokens.hovering_frame(ui.style());
+            hovering_panel(ui, frame, response.rect, |ui| {
+                space_view_options_link(ctx, selection_panel_expanded, space_view_id, ui, "⛭");
+            });
         } else if let Some(space_view_id) = self.maximized {
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
 
-            ui.horizontal(|ui| {
+            let response = ui
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .response;
+
+            let frame = ctx.design_tokens.hovering_frame(ui.style());
+            hovering_panel(ui, frame, response.rect, |ui| {
                 if ui
                     .button("⬅")
                     .on_hover_text("Restore - show all spaces")
@@ -239,10 +251,8 @@ impl ViewportBlueprint {
                 {
                     self.maximized = None;
                 }
-                ui.strong(&space_view.name);
+                space_view_options_link(ctx, selection_panel_expanded, space_view_id, ui, "⛭");
             });
-
-            space_view_ui(ctx, ui, spaces_info, space_view);
         } else {
             let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
             dock_style.separator_width = 2.0;
@@ -254,6 +264,7 @@ impl ViewportBlueprint {
                 spaces_info,
                 space_views: &mut self.space_views,
                 maximized: &mut self.maximized,
+                selection_panel_expanded,
             };
 
             egui_dock::DockArea::new(tree)
@@ -380,6 +391,7 @@ struct TabViewer<'a, 'b> {
     spaces_info: &'a SpacesInfo,
     space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
     maximized: &'a mut Option<SpaceViewId>,
+    selection_panel_expanded: &'a mut bool,
 }
 
 impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
@@ -388,17 +400,33 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     fn ui(&mut self, ui: &mut egui::Ui, space_view_id: &mut Self::Tab) {
         crate::profile_function!();
 
-        ui.horizontal_top(|ui| {
-            if ui.button("🗖").on_hover_text("Maximize space").clicked() {
+        let space_view = self
+            .space_views
+            .get_mut(space_view_id)
+            .expect("Should have been populated beforehand");
+
+        let response = ui
+            .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view))
+            .response;
+
+        // Show buttons for maximize and space view options:
+        let frame = self.ctx.design_tokens.hovering_frame(ui.style());
+        hovering_panel(ui, frame, response.rect, |ui| {
+            if ui
+                .button("🗖")
+                .on_hover_text("Maximize Space View")
+                .clicked()
+            {
                 *self.maximized = Some(*space_view_id);
             }
 
-            let space_view = self
-                .space_views
-                .get_mut(space_view_id)
-                .expect("Should have been populated beforehand");
-
-            space_view_ui(self.ctx, ui, self.spaces_info, space_view);
+            space_view_options_link(
+                self.ctx,
+                self.selection_panel_expanded,
+                *space_view_id,
+                ui,
+                "⛭",
+            );
         });
     }
 
@@ -411,17 +439,55 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     }
 }
 
+fn space_view_options_link(
+    ctx: &mut ViewerContext<'_>,
+    selection_panel_expanded: &mut bool,
+    space_view_id: SpaceViewId,
+    ui: &mut egui::Ui,
+    text: &str,
+) {
+    let is_selected =
+        ctx.rec_cfg.selection == Selection::SpaceView(space_view_id) && *selection_panel_expanded;
+    if ui
+        .selectable_label(is_selected, text)
+        .on_hover_text("Space View options")
+        .clicked()
+    {
+        if is_selected {
+            ctx.rec_cfg.selection = Selection::None;
+            *selection_panel_expanded = false;
+        } else {
+            ctx.rec_cfg.selection = Selection::SpaceView(space_view_id);
+            *selection_panel_expanded = true;
+        }
+    }
+}
+
+fn hovering_panel(
+    ui: &mut egui::Ui,
+    frame: egui::Frame,
+    rect: egui::Rect,
+    add_contents: impl FnOnce(&mut egui::Ui),
+) {
+    let mut ui = ui.child_ui(rect, egui::Layout::top_down(egui::Align::LEFT));
+    ui.horizontal(|ui| {
+        frame.show(ui, add_contents);
+    });
+}
+
 fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
-) -> egui::Response {
+) {
     let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
-        return unknown_space_label(ui, &space_view.space_path);
+        unknown_space_label(ui, &space_view.space_path);
+        return
     };
     let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
-        return invalid_space_label(ui, &space_view.space_path);
+        invalid_space_label(ui, &space_view.space_path);
+        return
     };
 
     crate::profile_function!();
@@ -444,7 +510,7 @@ fn space_view_ui(
         scene.tensor.load_objects(ctx, obj_tree_props, &query);
     }
 
-    space_view.scene_ui(ctx, ui, spaces_info, space_info, &mut scene)
+    space_view.scene_ui(ctx, ui, spaces_info, space_info, &mut scene);
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
@@ -503,7 +569,12 @@ impl Blueprint {
         egui::CentralPanel::default()
             .frame(viewport_frame)
             .show_inside(ui, |ui| {
-                self.viewport.viewport_ui(ui, ctx, &spaces_info);
+                self.viewport.viewport_ui(
+                    ui,
+                    ctx,
+                    &spaces_info,
+                    &mut self.selection_panel_expanded,
+                );
             });
     }
 
