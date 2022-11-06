@@ -283,55 +283,6 @@ impl<'s> LineSegments2D<'s> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Arrow3D<'s> {
-    pub arrow: &'s re_log_types::Arrow3D,
-    pub label: Option<&'s str>,
-    pub width_scale: Option<f32>,
-}
-
-impl<'s> Arrow3D<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data_4(
-            obj_store,
-            &FieldName::from("arrow3d"),
-            time_query,
-            ("_visible", "color", "width_scale", "label"),
-            |instance_index: Option<&IndexHash>,
-             time: Time,
-             msg_id: &MsgId,
-             arrow: &re_log_types::Arrow3D,
-             visible: Option<&bool>,
-             color: Option<&[u8; 4]>,
-             width_scale: Option<&f32>,
-             label: Option<&String>| {
-                out.arrow3d.0.push(Object {
-                    props: InstanceProps {
-                        time: time.into(),
-                        msg_id,
-                        color: color.copied(),
-                        obj_path,
-                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
-                        visible: *visible.unwrap_or(&true),
-                    },
-                    data: Arrow3D {
-                        arrow,
-                        label: label.map(|s| s.as_str()),
-                        width_scale: width_scale.cloned(),
-                    },
-                });
-            },
-        );
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ClassDescriptionMap<'s> {
     pub msg_id: &'s MsgId,
@@ -392,8 +343,6 @@ pub struct Objects<'s> {
     pub point2d: ObjectVec<'s, Point2D<'s>>,
     pub bbox2d: ObjectVec<'s, BBox2D<'s>>,
     pub line_segments2d: ObjectVec<'s, LineSegments2D<'s>>,
-
-    pub arrow3d: ObjectVec<'s, Arrow3D<'s>>,
 }
 
 impl<'s> Objects<'s> {
@@ -428,13 +377,13 @@ impl<'s> Objects<'s> {
             ObjectType::Point2D => Point2D::query,
             ObjectType::BBox2D => BBox2D::query,
             ObjectType::LineSegments2D => LineSegments2D::query,
-            ObjectType::Arrow3D => Arrow3D::query,
             ObjectType::Point3D
             | ObjectType::TextEntry
             | ObjectType::Box3D
             | ObjectType::Path3D
             | ObjectType::LineSegments3D
-            | ObjectType::Mesh3D => return, // TODO
+            | ObjectType::Mesh3D
+            | ObjectType::Arrow3D => return, // TODO
         };
 
         query_fn(obj_path, obj_store, time_query, self);
@@ -450,8 +399,6 @@ impl<'s> Objects<'s> {
             point2d: self.point2d.filter(&keep),
             bbox2d: self.bbox2d.filter(&keep),
             line_segments2d: self.line_segments2d.filter(&keep),
-
-            arrow3d: self.arrow3d.filter(&keep),
         }
     }
 
@@ -462,14 +409,12 @@ impl<'s> Objects<'s> {
             point2d,
             bbox2d,
             line_segments2d,
-            arrow3d,
         } = self;
         class_description_map.is_empty()
             && image.is_empty()
             && point2d.is_empty()
             && bbox2d.is_empty()
             && line_segments2d.is_empty()
-            && arrow3d.is_empty()
     }
 
     pub fn len(&self) -> usize {
@@ -479,14 +424,12 @@ impl<'s> Objects<'s> {
             point2d,
             bbox2d,
             line_segments2d,
-            arrow3d,
         } = self;
         class_description_map.len()
             + image.len()
             + point2d.len()
             + bbox2d.len()
             + line_segments2d.len()
-            + arrow3d.len()
     }
 
     pub fn has_any_2d(&self) -> bool {
@@ -497,6 +440,6 @@ impl<'s> Objects<'s> {
     }
 
     pub fn has_any_3d(&self) -> bool {
-        !self.arrow3d.is_empty()
+        false
     }
 }

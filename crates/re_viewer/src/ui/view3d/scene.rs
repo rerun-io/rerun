@@ -358,49 +358,44 @@ impl Scene {
                 });
             self.meshes.extend(meshes);
         }
-    }
-
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        objects: &re_data_store::Objects<'_>,
-    ) {
-        crate::profile_function!();
-
-        // hack because three-d handles colors wrong. TODO(emilk): fix three-d
-        let gamma_lut = (0..=255)
-            .map(|c| ((c as f32 / 255.0).powf(2.2) * 255.0).round() as u8)
-            .collect_vec();
-        let gamma_lut = &gamma_lut[0..256]; // saves us bounds checks later.
-
-        let object_color = |ctx: &mut ViewerContext<'_>,
-                            props: &re_data_store::InstanceProps<'_>| {
-            let [r, g, b, a] = if let Some(color) = props.color {
-                color
-            } else {
-                let [r, g, b] = ctx.random_color(&props.obj_path);
-                [r, g, b, 255]
-            };
-
-            let r = gamma_lut[r as usize];
-            let g = gamma_lut[g as usize];
-            let b = gamma_lut[b as usize];
-            [r, g, b, a]
-        };
-
         {
-            crate::profile_scope!("arrow3d");
-            for (props, obj) in objects.arrow3d.iter() {
-                let re_data_store::Arrow3D {
-                    arrow,
-                    label,
-                    width_scale,
-                } = obj;
-                let width = width_scale.unwrap_or(1.0);
-                let color = object_color(ctx, props);
-                let instance_id =
-                    InstanceIdHash::from_path_and_index(&props.obj_path, props.instance_index);
-                self.add_arrow(ctx, instance_id, color, Some(width), *label, arrow);
+            puffin::profile_scope!("Scene3D - load arrows");
+            for (_obj_type, obj_path, obj_store) in
+                query.iter_object_stores(log_db, obj_tree_props, &[ObjectType::Arrow3D])
+            {
+                visit_type_data_4(
+                    obj_store,
+                    &FieldName::from("arrow3d"),
+                    &query.time_query,
+                    ("_visible", "color", "width_scale", "label"),
+                    |instance_index: Option<&IndexHash>,
+                     _time: i64,
+                     _msg_id: &MsgId,
+                     arrow: &re_log_types::Arrow3D,
+                     visible: Option<&bool>,
+                     color: Option<&[u8; 4]>,
+                     width_scale: Option<&f32>,
+                     label: Option<&String>| {
+                        if !*visible.unwrap_or(&true) {
+                            return;
+                        }
+
+                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                        let instance_id_hash =
+                            InstanceIdHash::from_path_and_index(obj_path, instance_index);
+
+                        let width = width_scale.copied().unwrap_or(1.0);
+                        let color = object_color(caches, color, obj_path);
+                        self.add_arrow(
+                            caches,
+                            instance_id_hash,
+                            color,
+                            Some(width),
+                            label.map(|s| s.as_str()),
+                            arrow,
+                        );
+                    },
+                );
             }
         }
     }
@@ -662,7 +657,7 @@ impl Scene {
 
     fn add_arrow(
         &mut self,
-        _ctx: &mut ViewerContext<'_>,
+        _caches: &mut Caches,
         instance_id_hash: InstanceIdHash,
         color: [u8; 4],
         width_scale: Option<f32>,
@@ -677,8 +672,8 @@ impl Scene {
 
         #[cfg(feature = "glow")]
         {
-            let (cylinder_id, cylinder_mesh) = _ctx.cache.cpu_mesh.cylinder();
-            let (cone_id, cone_mesh) = _ctx.cache.cpu_mesh.cone();
+            let (cylinder_id, cylinder_mesh) = _caches.cpu_mesh.cylinder();
+            let (cone_id, cone_mesh) = _caches.cpu_mesh.cone();
 
             let rotation = glam::Quat::from_rotation_arc(Vec3::X, vector.normalize());
 
