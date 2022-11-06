@@ -13,8 +13,6 @@ pub(crate) mod viewport;
 pub(crate) use space_view::SpaceView;
 pub(crate) use viewport::{Blueprint, SpaceViewId};
 
-mod tensor_dimension_mapper;
-
 pub(crate) mod view_3d;
 mod view_tensor;
 mod view_text_entry;

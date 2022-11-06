@@ -6,7 +6,7 @@ use ndarray::{Axis, Ix2};
 use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
-use crate::ui::tensor_dimension_mapper::dimension_mapping_ui;
+use super::dimension_mapping_ui;
 
 // TODO: prob move the dimension mapping stuff over here
 
