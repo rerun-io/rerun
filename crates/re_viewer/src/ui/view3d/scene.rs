@@ -142,8 +142,6 @@ impl Scene {
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery,
     ) {
-        let Some(timeline_store) = ctx.log_db.obj_db.store.get(&query.timeline) else {return};
-
         puffin::profile_function!();
 
         // hack because three-d handles colors wrong. TODO(emilk): fix three-d
@@ -154,7 +152,7 @@ impl Scene {
 
         // TODO: dont like how this looks
         let object_color =
-            |ctx: &mut ViewerContext<'_>, color: Option<&[u8; 4]>, obj_path: &ObjPath| {
+            |ctx: &ViewerContext<'_>, color: Option<&[u8; 4]>, obj_path: &ObjPath| {
                 let [r, g, b, a] = if let Some(color) = color.copied() {
                     color
                 } else {
@@ -172,61 +170,41 @@ impl Scene {
 
         {
             puffin::profile_scope!("Scene3D - load points");
+            let points = query
+                .iter_object_stores(ctx, obj_tree_props, ObjectType::Point3D)
+                .flat_map(|(_obj_type, obj_path, obj_store)| {
+                    let mut batch = Vec::new();
+                    visit_type_data_3(
+                        obj_store,
+                        &FieldName::from("pos"),
+                        &query.time_query,
+                        ("_visible", "color", "radius"),
+                        |instance_index: Option<&IndexHash>,
+                         _time: i64,
+                         _msg_id: &MsgId,
+                         pos: &[f32; 3],
+                         visible: Option<&bool>,
+                         color: Option<&[u8; 4]>,
+                         radius: Option<&f32>| {
+                            if *visible.unwrap_or(&true) {
+                                let instance_index =
+                                    instance_index.copied().unwrap_or(IndexHash::NONE);
+                                let instance_id_hash =
+                                    InstanceIdHash::from_path_and_index(obj_path, instance_index);
+
+                                batch.push(Point3D {
+                                    instance_id_hash,
+                                    pos: Vec3::from_slice(pos),
+                                    radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
+                                    color: object_color(ctx, color, obj_path),
+                                });
+                            }
+                        },
+                    );
+                    batch
+                });
+            self.points.extend(points);
         }
-        let points = query
-            .objects
-            .iter()
-            .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
-            .filter_map(|obj_path| {
-                let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
-                (obj_type == Some(&ObjectType::Point3D))
-                    .then(|| {
-                        timeline_store
-                            .get(obj_path)
-                            .map(|obj_store| (obj_store, obj_path))
-                    })
-                    .flatten()
-            })
-            .flat_map(|(obj_store, obj_path)| {
-                let mut batch = Vec::new();
-                // TODO: obviously cloning all these strings is not ideal... there are two
-                // situations to account for here.
-                // We could avoid these by modifying how we store all of this in the existing
-                // datastore, but then again we are about to rewrite the datastore so...?
-                // We will need to make sure that we don't need these copies once we switch to
-                // Arrow though!
-                visit_type_data_3(
-                    obj_store,
-                    &FieldName::from("pos"),
-                    &query.time_query,
-                    ("_visible", "color", "radius"),
-                    |instance_index: Option<&IndexHash>,
-                     time: i64,
-                     msg_id: &MsgId,
-                     pos: &[f32; 3],
-                     visible: Option<&bool>,
-                     color: Option<&[u8; 4]>,
-                     radius: Option<&f32>| {
-                        if *visible.unwrap_or(&true) {
-                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                            let instance_id_hash = InstanceIdHash {
-                                obj_path_hash: *obj_path.hash(),
-                                instance_index_hash: instance_index,
-                            };
-
-                            batch.push(Point3D {
-                                instance_id_hash,
-                                pos: Vec3::from_slice(pos),
-                                radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
-                                color: object_color(ctx, color, obj_path),
-                            });
-                        }
-                    },
-                );
-                batch
-            });
-
-        self.points.extend(points);
     }
 
     pub(crate) fn load_objects(

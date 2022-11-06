@@ -33,20 +33,8 @@ impl SceneTensor {
         {
             puffin::profile_scope!("SceneTensor - load tensors");
             let tensors = query
-                .objects
-                .iter()
-                .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
-                .filter_map(|obj_path| {
-                    let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
-                    (obj_type == Some(&ObjectType::Image))
-                        .then(|| {
-                            timeline_store
-                                .get(obj_path)
-                                .map(|obj_store| (obj_store, obj_path))
-                        })
-                        .flatten()
-                })
-                .filter_map(|(obj_store, _obj_path)| {
+                .iter_object_stores(ctx, obj_tree_props, ObjectType::Image)
+                .filter_map(|(_obj_type, _obj_path, obj_store)| {
                     let mut tensors = Vec::new();
                     visit_type_data_1(
                         obj_store,

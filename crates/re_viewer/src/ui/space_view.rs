@@ -2,9 +2,10 @@ use ahash::HashSet;
 use glam::Vec3;
 use nohash_hasher::IntSet;
 use re_data_store::{
-    InstanceIdHash, ObjPath, ObjectTree, ObjectTreeProperties, Objects, TimeQuery, Timeline,
+    InstanceIdHash, ObjPath, ObjStore, ObjectTree, ObjectTreeProperties, Objects, TimeQuery,
+    Timeline,
 };
-use re_log_types::{MsgId, Tensor, Transform};
+use re_log_types::{MsgId, ObjectType, Tensor, Transform};
 
 use crate::misc::{space_info::*, ViewerContext};
 
@@ -275,10 +276,40 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
 // ----------------------------------------------------------------------------
 
 #[derive(Debug)]
-pub struct SceneQuery<'a> {
-    pub objects: &'a IntSet<ObjPath>,
+pub struct SceneQuery<'s> {
+    pub objects: &'s IntSet<ObjPath>,
     pub timeline: Timeline,
     pub time_query: TimeQuery<i64>,
+}
+impl<'s> SceneQuery<'s> {
+    // TODO: doc
+    pub(crate) fn iter_object_stores<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'_>,
+        obj_tree_props: &'a ObjectTreeProperties,
+        obj_type: ObjectType,
+    ) -> impl Iterator<Item = (ObjectType, &ObjPath, &ObjStore<i64>)> + 'a {
+        ctx.log_db
+            .obj_db
+            .store
+            .get(&self.timeline)
+            .into_iter()
+            .flat_map(move |timeline_store| {
+                self.objects
+                    .iter()
+                    .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
+                    .filter_map(move |obj_path| {
+                        let actual_obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
+                        (actual_obj_type == Some(&obj_type))
+                            .then(|| {
+                                timeline_store
+                                    .get(obj_path)
+                                    .map(|obj_store| (obj_type, obj_path, obj_store))
+                            })
+                            .flatten()
+                    })
+            })
+    }
 }
 
 #[derive(Default)]

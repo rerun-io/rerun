@@ -42,20 +42,8 @@ impl SceneText {
         {
             puffin::profile_scope!("SceneText - load text entries");
             let text_entries = query
-                .objects
-                .iter()
-                .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
-                .filter_map(|obj_path| {
-                    let obj_type = ctx.log_db.obj_db.types.get(obj_path.obj_type_path());
-                    (obj_type == Some(&ObjectType::TextEntry))
-                        .then(|| {
-                            timeline_store
-                                .get(obj_path)
-                                .map(|obj_store| (obj_store, obj_path))
-                        })
-                        .flatten()
-                })
-                .flat_map(|(obj_store, obj_path)| {
+                .iter_object_stores(ctx, obj_tree_props, ObjectType::TextEntry)
+                .flat_map(|(_obj_type, obj_path, obj_store)| {
                     let mut batch = Vec::new();
                     // TODO: obviously cloning all these strings is not ideal... there are two
                     // situations to account for here.

@@ -1,3 +1,4 @@
+use egui::mutex::RwLock;
 use macaw::Ray3;
 
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
@@ -136,15 +137,20 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
+    pub fn random_color(&self, obj_path: &ObjPath) -> [u8; 3] {
         // TODO(emilk): ignore "temporary" indices when calculating the hash.
         let hash = obj_path.hash64();
 
-        let color = *self
-            .cache
-            .object_colors
+        if let Some(color) = self.cache.object_colors.read().get(&hash).copied() {
+            return color;
+        }
+
+        let mut object_colors = self.cache.object_colors.write();
+
+        let color = *object_colors
             .entry(hash)
             .or_insert_with(|| crate::misc::random_rgb(hash));
+
         color
     }
 }
@@ -214,7 +220,7 @@ pub(crate) struct Caches {
     pub cpu_mesh: crate::ui::view3d::CpuMeshCache,
 
     /// Auto-generated colors.
-    object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,
+    object_colors: RwLock<nohash_hasher::IntMap<u64, [u8; 3]>>,
 }
 
 impl Caches {
