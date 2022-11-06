@@ -18,8 +18,8 @@ pub type Texture2DHandle = ResourceHandle<Texture2DHandleInner>;
 
 pub struct Texture2D {
     pub label: DebugLabel,
-    /// Data padded according to wgpu rules and ready for upload.
-    /// Does not contain any mipmapping.
+    /// Data for the highest mipmap level.
+    /// Must be padded according to wgpu rules and ready for upload.
     pub data: Vec<u8>,
     pub format: wgpu::TextureFormat,
     pub width: u32,
@@ -35,6 +35,30 @@ impl Texture2D {
             .collect()
     }
 
+    /// Ensures that the data has correct row padding.
+    pub fn pad_rows_if_necessary(&mut self) {
+        if !self.needs_row_alignment() {
+            return;
+        }
+
+        let bytes_per_row = self.bytes_per_row();
+
+        let num_padding_bytes = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
+            - (bytes_per_row % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+
+        self.data = self
+            .data
+            .chunks_exact(bytes_per_row as usize)
+            .flat_map(|unpadded_row| {
+                unpadded_row
+                    .iter()
+                    .cloned()
+                    .chain(std::iter::repeat(255).take(num_padding_bytes as usize))
+            })
+            .collect();
+    }
+
+    /// Bytes per row the texture should (!) have.
     fn bytes_per_row(&self) -> u32 {
         let format_info = self.format.describe();
         let width_blocks = self.width / format_info.block_dimensions.0 as u32;
@@ -83,7 +107,7 @@ impl TextureManager2D {
     /// Takes ownership of a new mesh.
     pub fn store_resource(
         &mut self,
-        resource: Texture2D,
+        mut resource: Texture2D,
         lifetime: ResourceLifeTime,
     ) -> Texture2DHandle {
         if !resource.width.is_power_of_two() || !resource.width.is_power_of_two() {
@@ -95,10 +119,13 @@ impl TextureManager2D {
                 resource.height
             );
         }
-        // TODO(andreas): Should it be possible to do this from the outside? Probably have some "pre-aligned" flag on the texture.
         if resource.needs_row_alignment() {
-            re_log::warn!("Texture {:?} byte rows are not aligned to {}. Will do manual alignment before gpu upload.",
-                    resource.label, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+            re_log::warn!(
+                "Texture {:?} byte rows are not aligned to {}. Adding padding now.",
+                resource.label,
+                wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
+            );
+            resource.pad_rows_if_necessary();
         }
 
         self.manager.store_resource(resource, lifetime)
@@ -145,28 +172,7 @@ impl TextureManager2D {
                     .map_err(ResourceManagerError::ResourcePoolError)?;
 
                 // Pad rows if necessary.
-                let mut bytes_per_row = resource.bytes_per_row();
-                let padded_rows: Vec<u8>;
-                let upload_data = if resource.needs_row_alignment() {
-                    let num_padding_bytes = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
-                        - (bytes_per_row % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-
-                    padded_rows = resource
-                        .data
-                        .chunks_exact(bytes_per_row as usize)
-                        .flat_map(|unpadded_row| {
-                            unpadded_row
-                                .iter()
-                                .cloned()
-                                .chain(std::iter::repeat(255).take(num_padding_bytes as usize))
-                        })
-                        .collect();
-
-                    bytes_per_row += num_padding_bytes;
-                    &padded_rows
-                } else {
-                    &resource.data
-                };
+                let bytes_per_row = resource.bytes_per_row();
 
                 // TODO(andreas): temp allocator for staging data?
                 // We don't do any further validation of the buffer here as wgpu does so extensively.
@@ -177,7 +183,7 @@ impl TextureManager2D {
                         origin: wgpu::Origin3d::ZERO,
                         aspect: wgpu::TextureAspect::All,
                     },
-                    upload_data,
+                    &resource.data,
                     wgpu::ImageDataLayout {
                         offset: 0,
                         bytes_per_row: Some(

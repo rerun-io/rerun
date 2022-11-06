@@ -40,16 +40,16 @@ pub fn load_gltf_from_buffer(
             }
         };
 
-        images_as_textures.push(texture_manager.store_resource(
-            Texture2D {
-                label: "gltf image".into(),
-                data,
-                format,
-                width: image.width,
-                height: image.height,
-            },
-            lifetime,
-        ));
+        let mut texture = Texture2D {
+            label: "gltf image".into(),
+            data,
+            format,
+            width: image.width,
+            height: image.height,
+        };
+        texture.pad_rows_if_necessary();
+
+        images_as_textures.push(texture_manager.store_resource(texture, lifetime));
     }
 
     let mut meshes = HashMap::with_capacity(doc.meshes().len());
