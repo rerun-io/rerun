@@ -539,32 +539,37 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
         }
     };
 
+    let gui_zoom = if let Some(native_pixels_per_point) = frame.info().native_pixels_per_point {
+        native_pixels_per_point / egui_ctx.pixels_per_point()
+    } else {
+        1.0
+    };
+
+    // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
+    // This means we need to make room for them.
+    let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
+
+    let bar_height = if crate::native::FULLSIZE_CONTENT {
+        // Use more vertical space when zoomed in…
+        let bar_height = native_buttons_size_in_native_scale.y;
+
+        // …but never shrink below the native button height when zoomed out.
+        bar_height.max(gui_zoom * native_buttons_size_in_native_scale.y)
+    } else {
+        egui_ctx.style().spacing.interact_size.y
+    };
+
     egui::TopBottomPanel::top("top_bar")
         .frame(panel_frame)
+        .exact_height(bar_height)
         .show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
+                ui.set_height(bar_height);
+
                 #[cfg(target_os = "macos")]
                 if crate::native::FULLSIZE_CONTENT {
-                    let gui_zoom = if let Some(native_pixels_per_point) =
-                        frame.info().native_pixels_per_point
-                    {
-                        native_pixels_per_point / ui.ctx().pixels_per_point()
-                    } else {
-                        1.0
-                    };
-
-                    // We use up the same row as the native red/yellow/green close/minimize/maximize buttons.
-                    // This means we need to make room for them.
-                    let size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
-
                     // Always use the same width measured in native GUI coordinates:
-                    ui.add_space(gui_zoom * size_in_native_scale.x);
-
-                    // Use more vertical space when zoomed in…
-                    let bar_height = size_in_native_scale.y;
-                    // …but never shrink below the native button height when zoomed out.
-                    let bar_height = bar_height.max(gui_zoom * size_in_native_scale.y);
-                    ui.set_min_size(egui::vec2(ui.available_width(), bar_height));
+                    ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
