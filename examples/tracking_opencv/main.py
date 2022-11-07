@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import json
 import logging
 import os
-from pathlib import Path, PosixPath
+from pathlib import Path
 from typing import Any, Final, List, Sequence
 
 import cv2 as cv
