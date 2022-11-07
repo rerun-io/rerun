@@ -5,20 +5,23 @@ from dataclasses import dataclass
 import json
 import logging
 import os
-from pathlib import Path
+from pathlib import Path, PosixPath
 from typing import Any, Final, List, Sequence
 
 import cv2 as cv
 import numpy as np
 import numpy.typing as npt
 from PIL import Image
+import requests
 import rerun_sdk as rerun
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
-DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
+DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "tracking_sequences"
+DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/tracking_sequences"
 CACHE_DIR: Final = EXAMPLE_DIR / "cache"
 
-# Comes from https://github.com/cocodataset/panopticapi/blob/master/panoptic_coco_categories.json
+# panoptic_coco_categories.json comes from:
+# https://github.com/cocodataset/panopticapi/blob/master/panoptic_coco_categories.json
 # License: https://github.com/cocodataset/panopticapi/blob/master/license.txt
 COCO_CATEGORIES_PATH = EXAMPLE_DIR / "panoptic_coco_categories.json"
 
@@ -192,7 +195,7 @@ def update_trackers_with_detections(
         else:
             updated_trackers.append(Tracker.create_new_tracker(detection, bgr))
 
-    logging.debug("Updating %d trackers without matching detections")
+    logging.debug("Updating %d trackers without matching detections", len(non_updated_trackers))
     for tracker in non_updated_trackers:
         tracker.set_not_detected_in_frame()
         tracker.update(bgr)
@@ -296,12 +299,42 @@ def track_objects(video_path: str) -> None:
             trackers = update_trackers_with_detections(trackers, detections, bgr)
 
         else:
-            logging.info("Running tracking update step for frame %d", frame_idx)
+            logging.debug("Running tracking update step for frame %d", frame_idx)
             for tracker in trackers:
                 tracker.update(bgr)
             trackers = [tracker for tracker in trackers if tracker.is_tracking]
 
         frame_idx += 1
+
+
+def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
+    video_file_name = f"{video_name}.mp4"
+    destination_path = dataset_dir / video_file_name
+    if destination_path.exists():
+        logging.info("%s already exists. No need to download", destination_path)
+        return str(destination_path)
+
+    source_path = f"{DATASET_URL_BASE}/{video_file_name}"
+
+    logging.info("Downloading video from %s to %s", source_path, destination_path)
+    os.makedirs(dataset_dir.absolute(), exist_ok=True)
+    with requests.get(source_path, stream=True) as req:
+        req.raise_for_status()
+        with open(destination_path, "wb") as f:
+            for chunk in req.iter_content(chunk_size=8192):
+                f.write(chunk)
+    return str(destination_path)
+
+
+def setup_looging() -> None:
+    logger = logging.getLogger()
+    rerun_handler = rerun.LoggingHandler("logs")
+    rerun_handler.setLevel(-1)
+    logger.addHandler(rerun_handler)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(1)
+    logger.addHandler(stream_handler)
+    logger.setLevel(-1)
 
 
 if __name__ == "__main__":
@@ -310,14 +343,22 @@ if __name__ == "__main__":
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
-
     parser.add_argument(
-        "--dir",
-        type=Path,
-        default="examples/objectron/dataset/chair/batch-13/44",
-        help="Directories to log (e.g. `dataset/bike/batch-8/16/`)",
+        "--video",
+        type=str,
+        default="horses",
+        choices=["horses, driving", "boats"],
+        help="The example video to run on.",
     )
+    parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
+    parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
+
     args = parser.parse_args()
+    setup_looging()
+
+    video_path = args.video_path  # type: str
+    if not video_path:
+        video_path = get_downloaded_path(args.dataset_dir, args.video)
 
     if args.connect:
         # Send logging data to separate `rerun` process.
@@ -325,11 +366,6 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    rerun_handler = rerun.LoggingHandler("logs")
-    rerun_handler.setLevel(-1)
-    logging.getLogger().addHandler(rerun_handler)
-
-    video_path = str(DATASET_DIR / "pexels-christopher-schultz-5928100.mp4")
     track_objects(video_path)
 
     if args.save is not None:
