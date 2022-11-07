@@ -4,8 +4,6 @@ use re_log_types::{LogMsg, TimePoint};
 
 use super::{SceneText, TextEntry};
 
-// TODO: deal with the proliferation of pub(crate) specifiers in another PR.
-
 // ---
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
@@ -63,17 +61,15 @@ pub(crate) fn view_text_entry(
 
 // --- UI impl ---
 
-// TODO: let-else everywhere
+// TODO(cmc): let-else everywhere
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
-    let msg = ctx.log_db.get_log_msg(&entry.msg_id).or_else(|| {
+    let Some(msg) = ctx.log_db.get_log_msg(&entry.msg_id) else {
         re_log::warn_once!("Missing LogMsg for {:?}", entry.obj_path.obj_type_path());
-        None
-    })?;
+        return None;
+    };
 
-    let data_msg = if let LogMsg::DataMsg(data_msg) = msg {
-        data_msg
-    } else {
+    let LogMsg::DataMsg(data_msg) = msg else {
         re_log::warn_once!(
             "LogMsg must be a DataMsg ({:?})",
             entry.obj_path.obj_type_path()

@@ -6,6 +6,14 @@ use super::{view_2d, view_3d, view_tensor, view_text_entry};
 
 // ---
 
+#[derive(Default)]
+pub struct Scene {
+    pub two_d: view_2d::Scene2D,
+    pub three_d: view_3d::Scene3D,
+    pub text: view_text_entry::SceneText,
+    pub tensor: view_tensor::SceneTensor,
+}
+
 #[derive(Debug)]
 pub struct SceneQuery<'s> {
     pub obj_paths: &'s IntSet<ObjPath>,
@@ -52,12 +60,4 @@ impl<'s> SceneQuery<'s> {
                     })
             })
     }
-}
-
-#[derive(Default)]
-pub struct Scene {
-    pub two_d: view_2d::Scene2D,
-    pub three_d: view_3d::Scene3D,
-    pub text: view_text_entry::SceneText,
-    pub tensor: view_tensor::SceneTensor,
 }

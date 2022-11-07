@@ -40,12 +40,13 @@ impl SceneText {
                 .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::TextEntry])
                 .flat_map(|(_obj_type, obj_path, obj_store)| {
                     let mut batch = Vec::new();
-                    // TODO: obviously cloning all these strings is not ideal... there are two
-                    // situations to account for here.
-                    // We could avoid these by modifying how we store all of this in the existing
-                    // datastore, but then again we are about to rewrite the datastore so...?
-                    // We will need to make sure that we don't need these copies once we switch to
-                    // Arrow though!
+                    // TODO(cmc): We're cloning full strings here, which is very much a bad idea.
+                    // We need to change the internal storage so that we store ref-counted strings
+                    // rather than plain strings.
+                    //
+                    // On the other hand:
+                    // - A) We're about to change our storage engine.
+                    // - B) Nobody is logging gazillon of text logs into Rerun yet.
                     visit_type_data_3(
                         obj_store,
                         &FieldName::from("body"),

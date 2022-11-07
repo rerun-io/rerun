@@ -219,7 +219,6 @@ impl Caches {
         self.image.new_frame(max_image_cache_use);
     }
 
-    // TODO: explain why this is here rather than on context
     pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
         // TODO(emilk): ignore "temporary" indices when calculating the hash.
         let hash = obj_path.hash64();

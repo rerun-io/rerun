@@ -52,11 +52,9 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        scene: Scene,
+        scene: &mut Scene,
     ) -> egui::Response {
         let has_2d = !scene.two_d.is_empty() && scene.tensor.is_empty();
-        // TODO: are we good even without the len clause?
-        // let has_2d = !scene.two_d.is_empty() && (scene.tensor.is_empty() || time_objects.len() > 1);
         let has_3d = !scene.three_d.is_empty();
         let has_text = !scene.text.is_empty();
         let has_tensor = !scene.tensor.is_empty();
@@ -83,7 +81,7 @@ impl SpaceView {
                         &self.space_path,
                         spaces_info,
                         space_info,
-                        scene.three_d,
+                        &mut scene.three_d,
                     )
                 } else if has_tensor {
                     self.view_state.ui_tensor(ui, &scene.tensor)
@@ -132,7 +130,7 @@ impl SpaceView {
                                 &self.space_path,
                                 spaces_info,
                                 space_info,
-                                scene.three_d,
+                                &mut scene.three_d,
                             );
                         }
                     }
@@ -172,7 +170,7 @@ impl ViewState {
         space: &ObjPath,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        scene: view_3d::Scene3D,
+        scene: &mut view_3d::Scene3D,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;

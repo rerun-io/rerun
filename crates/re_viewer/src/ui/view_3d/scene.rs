@@ -94,9 +94,9 @@ impl std::ops::MulAssign<f32> for Size {
 
 pub struct Point3D {
     pub instance_id_hash: InstanceIdHash,
-    pub pos: Vec3,      // TODO: pos in what? in world space?
-    pub radius: Size,   // TODO: not sure what we want for this though?
-    pub color: [u8; 4], // TODO: Color32? srgb or not?
+    pub pos: Vec3,
+    pub radius: Size,
+    pub color: [u8; 4],
 }
 
 pub struct LineSegments3D {
@@ -152,7 +152,6 @@ impl Scene3D {
             .collect_vec();
         let gamma_lut = &gamma_lut[0..256]; // saves us bounds checks later.
 
-        // TODO: dont like how this looks
         let object_color = |caches: &mut Caches, color: Option<&[u8; 4]>, obj_path: &ObjPath| {
             let [r, g, b, a] = if let Some(color) = color.copied() {
                 color
@@ -246,7 +245,6 @@ impl Scene3D {
         }
 
         {
-            // TODO: sooo.. what's the difference between a 3D path and a 3D line-segments?
             puffin::profile_scope!("Scene3D - load paths & segments");
 
             let segments = query
@@ -801,7 +799,7 @@ impl Scene3D {
         points.is_empty() && line_segments.is_empty() && meshes.is_empty() && labels.is_empty()
     }
 
-    // TODO: maybe we just store that from the beginning once glow is gone?
+    // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     #[cfg(feature = "wgpu")]
     pub fn line_strips(&self) -> Vec<LineStrip> {
         let mut line_strips = Vec::with_capacity(self.line_segments.len());
@@ -840,7 +838,7 @@ impl Scene3D {
         line_strips
     }
 
-    // TODO: maybe we just store that from the beginning once glow is gone?
+    // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     #[cfg(feature = "wgpu")]
     pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
         self.points

@@ -250,7 +250,6 @@ fn show_settings_ui(
     });
 }
 
-// TODO: prob doesn't belong here
 #[derive(Default)]
 pub(crate) struct SpaceSpecs {
     up: Option<glam::Vec3>,
@@ -321,7 +320,7 @@ pub(crate) fn view_3d(
     state: &mut ThreeDViewState,
     space: Option<&ObjPath>,
     space_specs: &SpaceSpecs,
-    mut scene: Scene3D, // TODO: that's... huh?
+    scene: &mut Scene3D,
     space_cameras: &[SpaceCamera],
 ) -> egui::Response {
     crate::profile_function!();
@@ -385,7 +384,7 @@ pub(crate) fn view_3d(
     }
 
     project_onto_other_spaces(ctx, space_cameras, state, space, &response, orbit_eye);
-    show_projections_from_2d_space(ctx, space_cameras, state, &mut scene);
+    show_projections_from_2d_space(ctx, space_cameras, state, scene);
 
     {
         let orbit_center_alpha = egui::remap_clamp(
@@ -419,7 +418,7 @@ fn paint_view(
     ui: &mut egui::Ui,
     eye: Eye,
     rect: egui::Rect,
-    scene: Scene3D, // TODO: huh?
+    scene: &mut Scene3D,
     _state: &mut ThreeDViewState,
     response: egui::Response,
 ) -> egui::Response {
@@ -585,6 +584,7 @@ fn paint_view(
     let callback = {
         let dark_mode = ui.visuals().dark_mode;
         let show_axes = _state.show_axes;
+        let scene = std::mem::take(scene);
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
