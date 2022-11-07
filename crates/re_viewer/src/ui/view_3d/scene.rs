@@ -790,20 +790,6 @@ impl Scene3D {
         });
     }
 
-    pub fn clear(&mut self) {
-        let Self {
-            points,
-            line_segments,
-            meshes,
-            labels,
-        } = self;
-
-        points.clear();
-        line_segments.clear();
-        meshes.clear();
-        labels.clear();
-    }
-
     pub fn is_empty(&self) -> bool {
         let Self {
             points,

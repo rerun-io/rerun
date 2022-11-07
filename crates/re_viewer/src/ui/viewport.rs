@@ -426,24 +426,21 @@ fn space_view_ui(
 
     let obj_tree_props = &space_view.obj_tree_properties;
 
-    // TODO: keep the scene around to avoid reallocating vectors all the time.
     let mut scene = Scene::default();
+    {
+        let query = SceneQuery {
+            obj_paths: &space_info.objects,
+            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+            time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(),
+        };
 
-    let query = SceneQuery {
-        obj_paths: &space_info.objects,
-        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-        time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(), // TODO
-    };
-    scene.two_d.clear();
-    scene
-        .two_d
-        .load(ctx, obj_tree_props, &space_view.view_state.state_2d, &query);
-    scene.three_d.clear();
-    scene.three_d.load(ctx, obj_tree_props, &query);
-    scene.text.clear();
-    scene.text.load(ctx, obj_tree_props, &query);
-    scene.tensor.clear();
-    scene.tensor.load(ctx, obj_tree_props, &query);
+        scene
+            .two_d
+            .load(ctx, obj_tree_props, &space_view.view_state.state_2d, &query);
+        scene.three_d.load(ctx, obj_tree_props, &query);
+        scene.text.load(ctx, obj_tree_props, &query);
+        scene.tensor.load(ctx, obj_tree_props, &query);
+    }
 
     space_view.scene_ui(ctx, ui, spaces_info, space_info, scene)
 }

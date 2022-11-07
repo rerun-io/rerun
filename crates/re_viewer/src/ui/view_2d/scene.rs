@@ -383,24 +383,6 @@ impl Scene2D {
 }
 
 impl Scene2D {
-    pub fn clear(&mut self) {
-        let Self {
-            bbox,
-            legends,
-            images,
-            boxes: bboxes,
-            line_segments,
-            points,
-        } = self;
-
-        *bbox = Rect::NOTHING;
-        legends.0.clear();
-        images.clear();
-        bboxes.clear();
-        line_segments.clear();
-        points.clear();
-    }
-
     pub fn is_empty(&self) -> bool {
         let Self {
             bbox: _,

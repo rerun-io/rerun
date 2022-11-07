@@ -66,12 +66,6 @@ impl SceneTensor {
 }
 
 impl SceneTensor {
-    pub fn clear(&mut self) {
-        let Self { tensors } = self;
-
-        tensors.clear();
-    }
-
     pub fn is_empty(&self) -> bool {
         let Self { tensors } = self;
 

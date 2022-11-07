@@ -78,12 +78,6 @@ impl SceneText {
 }
 
 impl SceneText {
-    pub fn clear(&mut self) {
-        let Self { text_entries } = self;
-
-        text_entries.clear();
-    }
-
     pub fn is_empty(&self) -> bool {
         let Self { text_entries } = self;
 
