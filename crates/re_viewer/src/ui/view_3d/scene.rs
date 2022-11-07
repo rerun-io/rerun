@@ -123,21 +123,21 @@ pub struct MeshSource {
     pub tint: Option<[u8; 4]>,
 }
 
-pub struct Label {
+pub struct Label3D {
     pub(crate) text: String,
     /// Origin of the label
     pub(crate) origin: Vec3,
 }
 
 #[derive(Default)]
-pub struct Scene {
+pub struct Scene3D {
     pub points: Vec<Point3D>,
     pub line_segments: Vec<LineSegments3D>,
     pub meshes: Vec<MeshSource>,
-    pub labels: Vec<Label>,
+    pub labels: Vec<Label3D>,
 }
 
-impl Scene {
+impl Scene3D {
     pub(crate) fn load(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -767,7 +767,7 @@ impl Scene {
         ];
 
         if let Some(label) = label {
-            self.labels.push(Label {
+            self.labels.push(Label3D {
                 text: (*label).to_owned(),
                 origin: translation,
             });
@@ -808,6 +808,7 @@ impl Scene {
         points.is_empty() && line_segments.is_empty() && meshes.is_empty() && labels.is_empty()
     }
 
+    // TODO: maybe we just store that from the beginning once glow is gone?
     #[cfg(feature = "wgpu")]
     pub fn line_strips(&self) -> Vec<LineStrip> {
         let mut line_strips = Vec::with_capacity(self.line_segments.len());
@@ -846,6 +847,7 @@ impl Scene {
         line_strips
     }
 
+    // TODO: maybe we just store that from the beginning once glow is gone?
     #[cfg(feature = "wgpu")]
     pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
         self.points

@@ -8,8 +8,6 @@ use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 use super::dimension_mapping_ui;
 
-// TODO: prob move the dimension mapping stuff over here
-
 // ---
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]

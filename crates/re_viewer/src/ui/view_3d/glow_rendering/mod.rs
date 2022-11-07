@@ -85,10 +85,10 @@ impl GpuScene {
         }
     }
 
-    pub fn set(&mut self, three_d: &three_d::Context, scene: &Scene) {
+    pub fn set(&mut self, three_d: &three_d::Context, scene: &Scene3D) {
         crate::profile_function!();
 
-        let Scene {
+        let Scene3D {
             points,
             line_segments,
             meshes,
@@ -315,7 +315,7 @@ pub fn paint_with_three_d(
     rendering: &mut RenderingContext,
     eye: &Eye,
     info: &egui::PaintCallbackInfo,
-    scene: &Scene,
+    scene: &Scene3D,
     dark_mode: bool,
     show_axes: bool, // TODO(emilk): less bool arguments
     painter: &egui_glow::Painter,

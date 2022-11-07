@@ -151,7 +151,7 @@ impl SpaceView {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
     state_2d: view2d::State2D,
-    state_3d: view_3d::State3D,
+    state_3d: view_3d::ThreeDViewState,
     state_tensor: Option<view_tensor::TensorViewState>,
     state_text_entry: view_text_entry::ViewTextEntryState,
 }
@@ -174,7 +174,7 @@ impl ViewState {
         space: &ObjPath,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        scene: view_3d::scene::Scene,
+        scene: view_3d::Scene3D,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
@@ -309,7 +309,7 @@ impl<'s> SceneQuery<'s> {
 #[derive(Default)]
 pub struct Scene {
     pub two_d: view2d::Scene2d,
-    pub three_d: view_3d::scene::Scene,
+    pub three_d: view_3d::Scene3D,
     pub text: view_text_entry::SceneText,
     pub tensor: view_tensor::SceneTensor,
 }
