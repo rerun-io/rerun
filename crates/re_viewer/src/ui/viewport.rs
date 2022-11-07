@@ -258,6 +258,7 @@ impl ViewportBlueprint {
             dock_style.separator_width = 2.0;
             dock_style.show_close_buttons = false;
             dock_style.tab_include_scrollarea = false;
+            dock_style.expand_tabs = true;
 
             let mut tab_viewer = TabViewer {
                 ctx,
@@ -436,6 +437,10 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(tab)
             .expect("Should have been populated beforehand");
         space_view.name.clone().into()
+    }
+
+    fn inner_margin(&self) -> egui::style::Margin {
+        egui::style::Margin::same(0.0)
     }
 }
 
