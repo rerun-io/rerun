@@ -5,7 +5,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use re_data_store::*;
+use re_data_store::{query::visit_type_data_3, *};
 use re_log_types::*;
 
 #[cfg(not(debug_assertions))]
@@ -25,18 +25,42 @@ fn timeline() -> Timeline {
     Timeline::new("frame", TimeType::Sequence)
 }
 
-fn do_query<'s>(obj_types: &IntMap<ObjTypePath, ObjectType>, data_store: &'s DataStore) -> ! {
+#[allow(dead_code)]
+#[derive(Clone, Copy)]
+struct Point {
+    pos: [f32; 3],
+    color: Option<[u8; 4]>,
+}
+
+fn do_query(obj_types: &IntMap<ObjTypePath, ObjectType>, data_store: &DataStore) -> Vec<Point> {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_store = data_store.get(&timeline()).unwrap();
 
-    _ = time_query;
-    _ = timeline_store;
+    let mut points = Vec::new();
 
-    // objects.query(timeline_store, &time_query, obj_types);
-    // assert_eq!(objects.point3d.len(), NUM_POINTS as usize);
-    // objects
+    for (obj_path, obj_store) in timeline_store.iter() {
+        let _ = obj_types.get(obj_path.obj_type_path()).unwrap();
+        visit_type_data_3(
+            obj_store,
+            &FieldName::from("pos"),
+            &time_query,
+            ("_visible", "color", "radius"),
+            |_instance_index: Option<&IndexHash>,
+             _time: i64,
+             _msg_id: &MsgId,
+             pos: &[f32; 3],
+             _visible: Option<&bool>,
+             color: Option<&[u8; 4]>,
+             _radius: Option<&f32>| {
+                points.push(Point {
+                    pos: *pos,
+                    color: color.cloned(),
+                });
+            },
+        );
+    }
 
-    todo!()
+    points
 }
 
 fn mono_data_messages() -> Vec<DataMsg> {

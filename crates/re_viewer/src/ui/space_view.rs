@@ -270,7 +270,7 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<view_3
 
 #[derive(Debug)]
 pub struct SceneQuery<'s> {
-    pub objects: &'s IntSet<ObjPath>,
+    pub obj_paths: &'s IntSet<ObjPath>,
     pub timeline: Timeline,
     pub time_query: TimeQuery<i64>,
 }
@@ -288,7 +288,7 @@ impl<'s> SceneQuery<'s> {
             .get(&self.timeline)
             .into_iter()
             .flat_map(|timeline_store| {
-                self.objects
+                self.obj_paths
                     .iter()
                     .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
                     .filter_map(|obj_path| {

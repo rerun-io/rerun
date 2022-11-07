@@ -179,7 +179,7 @@ impl Scene2D {
                                 ),
                                 tensor: tensor.clone(), // shallow
                                 meter: meter.copied(),
-                                legend: legends.find(obj_path),
+                                legend: legends.find(legend),
                                 paint_props: paint_properties(
                                     ctx,
                                     &hovered_instance_id_hash,
@@ -746,10 +746,7 @@ fn view_2d_scrollable(
             legend,
         } = img;
 
-        let tensor_view = ctx
-            .cache
-            .image
-            .get_view_with_legend(msg_id, tensor, &legend); // TODO
+        let tensor_view = ctx.cache.image.get_view_with_legend(msg_id, tensor, legend); // TODO
 
         let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
 

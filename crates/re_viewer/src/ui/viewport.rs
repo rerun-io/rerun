@@ -430,7 +430,7 @@ fn space_view_ui(
     let mut scene = Scene::default();
 
     let query = SceneQuery {
-        objects: &space_info.objects,
+        obj_paths: &space_info.objects,
         timeline: *ctx.rec_cfg.time_ctrl.timeline(),
         time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(), // TODO
     };
