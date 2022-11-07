@@ -128,55 +128,6 @@ impl<'s> Point2D<'s> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct BBox2D<'s> {
-    pub bbox: &'s re_log_types::BBox2D,
-    pub stroke_width: Option<f32>,
-    pub label: Option<&'s str>,
-}
-
-impl<'s> BBox2D<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data_4(
-            obj_store,
-            &FieldName::from("bbox"),
-            time_query,
-            ("_visible", "color", "stroke_width", "label"),
-            |instance_index: Option<&IndexHash>,
-             time: Time,
-             msg_id: &MsgId,
-             bbox: &re_log_types::BBox2D,
-             visible: Option<&bool>,
-             color: Option<&[u8; 4]>,
-             stroke_width: Option<&f32>,
-             label: Option<&String>| {
-                out.bbox2d.0.push(Object {
-                    props: InstanceProps {
-                        time: time.into(),
-                        msg_id,
-                        color: color.copied(),
-                        obj_path,
-                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
-                        visible: *visible.unwrap_or(&true),
-                    },
-                    data: BBox2D {
-                        bbox,
-                        stroke_width: stroke_width.copied(),
-                        label: label.map(|s| s.as_str()),
-                    },
-                });
-            },
-        );
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
 pub struct LineSegments2D<'s> {
     /// Connected pair-wise even-odd.
     pub points: &'s Vec<[f32; 2]>,
@@ -282,7 +233,6 @@ pub struct Objects<'s> {
     pub class_description_map: BTreeMap<&'s ObjPath, ClassDescriptionMap<'s>>,
 
     pub point2d: ObjectVec<'s, Point2D<'s>>,
-    pub bbox2d: ObjectVec<'s, BBox2D<'s>>,
     pub line_segments2d: ObjectVec<'s, LineSegments2D<'s>>,
 }
 
@@ -315,7 +265,6 @@ impl<'s> Objects<'s> {
         let query_fn = match obj_type {
             ObjectType::ClassDescription => ClassDescription::query,
             ObjectType::Point2D => Point2D::query,
-            ObjectType::BBox2D => BBox2D::query,
             ObjectType::LineSegments2D => LineSegments2D::query,
             ObjectType::Point3D
             | ObjectType::TextEntry
@@ -324,7 +273,8 @@ impl<'s> Objects<'s> {
             | ObjectType::LineSegments3D
             | ObjectType::Mesh3D
             | ObjectType::Arrow3D
-            | ObjectType::Image => return, // TODO
+            | ObjectType::Image
+            | ObjectType::BBox2D => return, // TODO
         };
 
         query_fn(obj_path, obj_store, time_query, self);
@@ -337,7 +287,6 @@ impl<'s> Objects<'s> {
             class_description_map: self.class_description_map.clone(), // SPECIAL - can't filter
 
             point2d: self.point2d.filter(&keep),
-            bbox2d: self.bbox2d.filter(&keep),
             line_segments2d: self.line_segments2d.filter(&keep),
         }
     }
@@ -346,27 +295,22 @@ impl<'s> Objects<'s> {
         let Self {
             class_description_map,
             point2d,
-            bbox2d,
             line_segments2d,
         } = self;
-        class_description_map.is_empty()
-            && point2d.is_empty()
-            && bbox2d.is_empty()
-            && line_segments2d.is_empty()
+        class_description_map.is_empty() && point2d.is_empty() && line_segments2d.is_empty()
     }
 
     pub fn len(&self) -> usize {
         let Self {
             class_description_map,
             point2d,
-            bbox2d,
             line_segments2d,
         } = self;
-        class_description_map.len() + point2d.len() + bbox2d.len() + line_segments2d.len()
+        class_description_map.len() + point2d.len() + line_segments2d.len()
     }
 
     pub fn has_any_2d(&self) -> bool {
-        !self.point2d.is_empty() || !self.bbox2d.is_empty() || !self.line_segments2d.is_empty()
+        !self.point2d.is_empty() || !self.line_segments2d.is_empty()
     }
 
     pub fn has_any_3d(&self) -> bool {

@@ -100,7 +100,7 @@ impl Scene2D {
             .map_or(InstanceIdHash::NONE, InstanceId::hash);
 
         {
-            puffin::profile_scope!("Scene2D - load tensors");
+            puffin::profile_scope!("Scene2D - load images");
             let images = query
                 .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
                 .flat_map(|(_obj_type, obj_path, obj_store)| {
@@ -163,6 +163,66 @@ impl Scene2D {
                 self.bbox.extend_with(emath::pos2(w as _, h as _));
             }
         }
+
+        {
+            puffin::profile_scope!("Scene2D - load boxes");
+            let boxes = query
+                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::BBox2D])
+                .flat_map(|(_obj_type, obj_path, obj_store)| {
+                    let mut batch = Vec::new();
+                    visit_type_data_4(
+                        obj_store,
+                        &FieldName::from("bbox"),
+                        &query.time_query,
+                        ("_visible", "color", "stroke_width", "label"),
+                        |instance_index: Option<&IndexHash>,
+                         _time: i64,
+                         _msg_id: &MsgId,
+                         bbox: &re_log_types::BBox2D,
+                         visible: Option<&bool>,
+                         color: Option<&[u8; 4]>,
+                         stroke_width: Option<&f32>,
+                         label: Option<&String>| {
+                            let visible = *visible.unwrap_or(&true);
+                            if !visible {
+                                return;
+                            }
+
+                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                            let stroke_width = stroke_width.copied();
+
+                            // TODO: we gotta have something to replace the ol' InstanceProps
+                            let paint_props = paint_properties(
+                                ctx,
+                                &hovered_instance_id_hash,
+                                obj_path,
+                                instance_index,
+                                color.copied(),
+                                DefaultColor::Random,
+                                &stroke_width,
+                            );
+
+                            batch.push(Box2D {
+                                instance_hash: InstanceIdHash::from_path_and_index(
+                                    obj_path,
+                                    instance_index,
+                                ),
+                                bbox: bbox.clone(),
+                                stroke_width,
+                                label: label.map(ToOwned::to_owned),
+                                paint_props,
+                            });
+                        },
+                    );
+                    batch
+                });
+            self.boxes.extend(boxes);
+
+            for bbox in &self.boxes {
+                self.bbox.extend_with(bbox.bbox.min.into());
+                self.bbox.extend_with(bbox.bbox.max.into());
+            }
+        }
     }
 
     // TODO: this is temporary while we transition out of Objects
@@ -180,35 +240,6 @@ impl Scene2D {
             .map_or(InstanceIdHash::NONE, InstanceId::hash);
 
         self.bbox = self.bbox.union(crate::misc::calc_bbox_2d(objects));
-
-        self.boxes
-            .extend(objects.bbox2d.iter().map(|(props, bbox)| {
-                let &re_data_store::BBox2D {
-                    bbox,
-                    stroke_width,
-                    label,
-                } = bbox;
-                let paint_props = paint_properties(
-                    ctx,
-                    &hovered_instance_id_hash,
-                    props.obj_path,
-                    props.instance_index,
-                    props.color,
-                    DefaultColor::Random,
-                    &stroke_width,
-                );
-
-                Box2D {
-                    instance_hash: InstanceIdHash::from_path_and_index(
-                        props.obj_path,
-                        props.instance_index,
-                    ),
-                    bbox: bbox.clone(),
-                    stroke_width,
-                    label: label.map(ToOwned::to_owned),
-                    paint_props,
-                }
-            }));
 
         self.line_segments
             .extend(objects.line_segments2d.iter().map(|(props, segments)| {

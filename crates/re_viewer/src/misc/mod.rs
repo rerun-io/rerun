@@ -72,11 +72,6 @@ pub fn calc_bbox_2d(objects: &re_data_store::Objects<'_>) -> emath::Rect {
         bbox.extend_with(obj.pos.into());
     }
 
-    for (_, obj) in objects.bbox2d.iter() {
-        bbox.extend_with(obj.bbox.min.into());
-        bbox.extend_with(obj.bbox.max.into());
-    }
-
     for (_, obj) in objects.line_segments2d.iter() {
         for point in obj.points {
             bbox.extend_with(point.into());
