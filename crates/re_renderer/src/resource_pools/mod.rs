@@ -25,7 +25,7 @@ use self::{
     bind_group_layout_pool::GpuBindGroupLayoutPool, bind_group_pool::GpuBindGroupPool,
     buffer_pool::GpuBufferPool, pipeline_layout_pool::GpuPipelineLayoutPool,
     render_pipeline_pool::GpuRenderPipelinePool, sampler_pool::GpuSamplerPool,
-    shader_module_pool::GpuShaderModulePool, texture_pool::TexturePool,
+    shader_module_pool::GpuShaderModulePool, texture_pool::GpuTexturePool,
 };
 
 /// Collection of all wgpu resource pools.
@@ -45,5 +45,5 @@ pub struct WgpuResourcePools {
     pub(crate) bind_groups: GpuBindGroupPool,
 
     pub(crate) buffers: GpuBufferPool,
-    pub(crate) textures: TexturePool,
+    pub(crate) textures: GpuTexturePool,
 }
