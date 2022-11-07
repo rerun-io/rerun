@@ -895,10 +895,6 @@ fn save_database_to_file(
 fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
     crate::profile_function!();
 
-    #[cfg(target_arch = "wasm32")]
-    let decoder = re_log_types::encoding::Decoder::new(&mut read)?;
-
-    #[cfg(not(target_arch = "wasm32"))]
     let decoder = re_log_types::encoding::Decoder::new(read)?;
 
     let mut log_db = LogDb::default();

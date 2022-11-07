@@ -112,8 +112,8 @@ arboard = { version = "3.2", default-features = false, features = [
   "image-data",
 ] }
 ctrlc = { version = "3.0", features = ["termination"] }
-puffin = { version = "0.13", optional = true }
-puffin_http = { version = "0.10", optional = true }
+puffin = { version = "0.14", optional = true }
+puffin_http = { version = "0.11", optional = true }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
