@@ -98,15 +98,15 @@ impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
 
 #[cfg(feature = "load")]
 #[cfg(target_arch = "wasm32")]
-pub struct Decoder<'r> {
-    zdecoder: ruzstd::StreamingDecoder<'r>,
+pub struct Decoder<R: std::io::Read> {
+    zdecoder: ruzstd::StreamingDecoder<R>,
     buffer: Vec<u8>,
 }
 
 #[cfg(feature = "load")]
 #[cfg(target_arch = "wasm32")]
-impl<'r> Decoder<'r> {
-    pub fn new(read: &'r mut dyn std::io::Read) -> anyhow::Result<Self> {
+impl<R: std::io::Read> Decoder<R> {
+    pub fn new(mut read: R) -> anyhow::Result<Self> {
         crate::profile_function!();
         use anyhow::Context as _;
 
@@ -127,7 +127,7 @@ impl<'r> Decoder<'r> {
 
 #[cfg(feature = "load")]
 #[cfg(target_arch = "wasm32")]
-impl<'r> Iterator for Decoder<'r> {
+impl<R: std::io::Read> Iterator for Decoder<R> {
     type Item = anyhow::Result<LogMsg>;
     fn next(&mut self) -> Option<Self::Item> {
         crate::profile_function!();

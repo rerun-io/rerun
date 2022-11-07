@@ -189,20 +189,8 @@ impl App {
     pub fn promise_exists(&mut self, name: impl AsRef<str>) -> bool {
         self.pending_promises.contains_key(name.as_ref())
     }
-}
 
-impl eframe::App for App {
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, &self.state);
-    }
-
-    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.ctrl_c.load(std::sync::atomic::Ordering::SeqCst) {
-            frame.close();
-            return;
-        }
-
+    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         if egui_ctx
             .input_mut()
             .consume_shortcut(&kb_shortcuts::RESET_VIEWER)
@@ -217,6 +205,29 @@ impl eframe::App for App {
         {
             self.state.profiler.start();
         }
+
+        if !frame.is_web() {
+            egui::gui_zoom::zoom_with_keyboard_shortcuts(
+                egui_ctx,
+                frame.info().native_pixels_per_point,
+            );
+        }
+    }
+}
+
+impl eframe::App for App {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, &self.state);
+    }
+
+    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.ctrl_c.load(std::sync::atomic::Ordering::Relaxed) {
+            frame.close();
+            return;
+        }
+
+        self.check_keyboard_shortcuts(egui_ctx, frame);
 
         self.state.cache.new_frame();
 
@@ -315,9 +326,9 @@ impl eframe::App for App {
         self.toasts.show(egui_ctx);
 
         #[cfg(feature = "wgpu")]
-        {
+        if let Some(render_state) = frame.wgpu_render_state() {
             // TODO(andreas): the re_renderer should always know/hold on to queue and device.
-            render_ctx.frame_maintenance(&frame.wgpu_render_state().unwrap().device);
+            render_ctx.frame_maintenance(&render_state.device);
         }
     }
 }
@@ -549,22 +560,45 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
         }
     };
 
+    let gui_zoom = if let Some(native_pixels_per_point) = frame.info().native_pixels_per_point {
+        native_pixels_per_point / egui_ctx.pixels_per_point()
+    } else {
+        1.0
+    };
+
+    // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
+    // This means we need to make room for them.
+    let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
+
+    let bar_height = if crate::FULLSIZE_CONTENT {
+        // Use more vertical space when zoomed in…
+        let bar_height = native_buttons_size_in_native_scale.y;
+
+        // …but never shrink below the native button height when zoomed out.
+        bar_height.max(gui_zoom * native_buttons_size_in_native_scale.y)
+    } else {
+        egui_ctx.style().spacing.interact_size.y
+    };
+
     egui::TopBottomPanel::top("top_bar")
         .frame(panel_frame)
+        .exact_height(bar_height)
         .show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                #[cfg(target_os = "macos")]
-                if crate::native::FULLSIZE_CONTENT {
-                    // We use up the same row as the native red/yellow/green close/minimize/maximize buttons.
-                    // This means we need to make room for them:
-                    ui.add_space(64.0);
+                ui.set_height(bar_height);
 
-                    // …and match their height:
-                    ui.set_min_size(egui::vec2(ui.available_width(), 24.0));
+                if crate::FULLSIZE_CONTENT {
+                    // Always use the same width measured in native GUI coordinates:
+                    ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
 
+                #[cfg(not(target_arch = "wasm32"))]
                 ui.menu_button("File", |ui| {
                     file_menu(ui, app, frame);
+                });
+
+                ui.menu_button("View", |ui| {
+                    view_menu(ui, app, frame);
                 });
 
                 ui.menu_button("Recordings", |ui| {
@@ -656,7 +690,8 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     }
 }
 
-fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
+#[cfg(not(target_arch = "wasm32"))]
+fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -668,7 +703,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
                     ui.spinner();
                 });
                 ui.horizontal(|ui| {
-                    let _ = ui.button("Save time selection…");
+                    let _ = ui.button("Save Time Selection…");
                     ui.spinner();
                 });
             });
@@ -737,7 +772,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
     #[cfg(not(target_arch = "wasm32"))]
     if ui
         .button("Load")
-        .on_hover_text("Load a Rerun data file (.rrd)")
+        .on_hover_text("Load a Rerun Data File (.rrd)")
         .clicked()
     {
         if let Some(path) = rfd::FileDialog::new()
@@ -750,37 +785,43 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, _frame: &mut eframe::Frame) {
         }
     }
 
-    ui.menu_button("Advanced", |ui| {
-        ui.set_min_width(180.0);
-
-        if ui
-            .add(
-                egui::Button::new("Reset viewer")
-                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::RESET_VIEWER)),
-            )
-            .on_hover_text("Reset the viewer to how it looked the first time you ran it")
-            .clicked()
-        {
-            app.reset(ui.ctx());
-            ui.close_menu();
-        }
-
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
-        if ui
-            .add(
-                egui::Button::new("Profile viewer")
-                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SHOW_PROFILER)),
-            )
-            .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
-            .clicked()
-        {
-            app.state.profiler.start();
-        }
-    });
-
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Quit").clicked() {
-        _frame.close();
+        frame.close();
+    }
+}
+
+fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
+    ui.set_min_width(180.0);
+
+    // On the web the browser controls the zoom
+    if !frame.is_web() {
+        egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
+        ui.separator();
+    }
+
+    if ui
+        .add(
+            egui::Button::new("Reset Viewer")
+                .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::RESET_VIEWER)),
+        )
+        .on_hover_text("Reset the viewer to how it looked the first time you ran it")
+        .clicked()
+    {
+        app.reset(ui.ctx());
+        ui.close_menu();
+    }
+
+    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+    if ui
+        .add(
+            egui::Button::new("Profile Viewer")
+                .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SHOW_PROFILER)),
+        )
+        .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
+        .clicked()
+    {
+        app.state.profiler.start();
     }
 }
 
@@ -792,6 +833,11 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
         .values()
         .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
         .collect_vec();
+
+    if log_dbs.is_empty() {
+        ui.weak("(empty)");
+        return;
+    }
 
     ui.style_mut().wrap = Some(false);
     for log_db in log_dbs {
@@ -871,10 +917,6 @@ fn save_database_to_file(
 fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
     crate::profile_function!();
 
-    #[cfg(target_arch = "wasm32")]
-    let decoder = re_log_types::encoding::Decoder::new(&mut read)?;
-
-    #[cfg(not(target_arch = "wasm32"))]
     let decoder = re_log_types::encoding::Decoder::new(read)?;
 
     let mut log_db = LogDb::default();

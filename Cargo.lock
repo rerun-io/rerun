@@ -37,9 +37,9 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57e6e951cfbb2db8de1828d49073a113a29fd7117b1596caa781a258c7e38d72"
+checksum = "464b3811b747f8f7ebc8849c9c728c39f6ac98a055edad93baf9eb330e3f8f9d"
 dependencies = [
  "cfg-if",
  "getrandom",
@@ -83,9 +83,9 @@ dependencies = [
 
 [[package]]
 name = "arboard"
-version = "3.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79e8af4eff708b72e371acd4625ad3d01a88c946b9e8d6868cb5bb6e4d0d923c"
+checksum = "d6041616acea41d67c4a984709ddab1587fd0b10efe5cc563fee954d2f011854"
 dependencies = [
  "clipboard-win",
  "core-graphics",
@@ -1021,7 +1021,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=fcb00723bc7e57ca7571d408b0f9019db8478592#fcb00723bc7e57ca7571d408b0f9019db8478592"
+source = "git+https://github.com/emilk/egui?rev=8c76b8caff32e47e4419338e6e0cdf52353cbf2c#8c76b8caff32e47e4419338e6e0cdf52353cbf2c"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1029,7 +1029,6 @@ dependencies = [
  "egui-wgpu",
  "egui-winit",
  "egui_glow",
- "getrandom",
  "glow",
  "glutin",
  "js-sys",
@@ -1048,9 +1047,9 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=fcb00723bc7e57ca7571d408b0f9019db8478592#fcb00723bc7e57ca7571d408b0f9019db8478592"
+source = "git+https://github.com/emilk/egui?rev=8c76b8caff32e47e4419338e6e0cdf52353cbf2c#8c76b8caff32e47e4419338e6e0cdf52353cbf2c"
 dependencies = [
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "epaint",
  "nohash-hasher",
  "ron",
@@ -1070,7 +1069,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=fcb00723bc7e57ca7571d408b0f9019db8478592#fcb00723bc7e57ca7571d408b0f9019db8478592"
+source = "git+https://github.com/emilk/egui?rev=8c76b8caff32e47e4419338e6e0cdf52353cbf2c#8c76b8caff32e47e4419338e6e0cdf52353cbf2c"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1084,7 +1083,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=fcb00723bc7e57ca7571d408b0f9019db8478592#fcb00723bc7e57ca7571d408b0f9019db8478592"
+source = "git+https://github.com/emilk/egui?rev=8c76b8caff32e47e4419338e6e0cdf52353cbf2c#8c76b8caff32e47e4419338e6e0cdf52353cbf2c"
 dependencies = [
  "arboard",
  "egui",
@@ -1109,7 +1108,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=fcb00723bc7e57ca7571d408b0f9019db8478592#fcb00723bc7e57ca7571d408b0f9019db8478592"
+source = "git+https://github.com/emilk/egui?rev=8c76b8caff32e47e4419338e6e0cdf52353cbf2c#8c76b8caff32e47e4419338e6e0cdf52353cbf2c"
 dependencies = [
  "egui",
  "tracing",
@@ -1118,7 +1117,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=fcb00723bc7e57ca7571d408b0f9019db8478592#fcb00723bc7e57ca7571d408b0f9019db8478592"
+source = "git+https://github.com/emilk/egui?rev=8c76b8caff32e47e4419338e6e0cdf52353cbf2c#8c76b8caff32e47e4419338e6e0cdf52353cbf2c"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1140,7 +1139,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=fcb00723bc7e57ca7571d408b0f9019db8478592#fcb00723bc7e57ca7571d408b0f9019db8478592"
+source = "git+https://github.com/emilk/egui?rev=8c76b8caff32e47e4419338e6e0cdf52353cbf2c#8c76b8caff32e47e4419338e6e0cdf52353cbf2c"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1149,10 +1148,10 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=fcb00723bc7e57ca7571d408b0f9019db8478592#fcb00723bc7e57ca7571d408b0f9019db8478592"
+source = "git+https://github.com/emilk/egui?rev=8c76b8caff32e47e4419338e6e0cdf52353cbf2c#8c76b8caff32e47e4419338e6e0cdf52353cbf2c"
 dependencies = [
  "ab_glyph",
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "atomic_refcell",
  "bytemuck",
  "emath",
@@ -2826,9 +2825,9 @@ checksum = "2f61dcf0b917cd75d4521d7343d1ffff3d1583054133c9b5cbea3375c703c40d"
 
 [[package]]
 name = "puffin"
-version = "0.13.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78cc1dc2f2e3e4787201dd9404c9b097967fd74b9013ba41e62448b617cb7ac2"
+checksum = "796a1b7d7d0ec984dde24615178cbd14dc697ea4cdcddfd1fee9a5f87135f9e8"
 dependencies = [
  "anyhow",
  "bincode",
@@ -2842,9 +2841,9 @@ dependencies = [
 
 [[package]]
 name = "puffin_http"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "784f1952bda562ec8b76651f0c879b61eb02eaf20fe9acd2a8ca69b4898b13fd"
+checksum = "77dae1a51a8887f161ae17809ec4159bb3fbc8be60d12947039fa063cf211f1b"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
@@ -3009,7 +3008,7 @@ dependencies = [
 name = "re_data_store"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "criterion",
  "document-features",
  "itertools",
@@ -3043,7 +3042,7 @@ dependencies = [
 name = "re_log_types"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "anyhow",
  "bytemuck",
  "chrono",
@@ -3066,7 +3065,7 @@ dependencies = [
 name = "re_renderer"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "anyhow",
  "async-executor",
  "bitflags",
@@ -3158,7 +3157,7 @@ dependencies = [
 name = "re_string_interner"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "nohash-hasher",
  "once_cell",
  "parking_lot",
@@ -3169,7 +3168,7 @@ dependencies = [
 name = "re_tensor_ops"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "bytemuck",
  "ndarray",
  "re_log_types",
@@ -3181,7 +3180,7 @@ dependencies = [
 name = "re_viewer"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "anyhow",
  "arboard",
  "bytemuck",
@@ -3461,11 +3460,12 @@ dependencies = [
 
 [[package]]
 name = "ruzstd"
-version = "0.2.4"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cada0ef59efa6a5f4dc5e491f93d9f31e3fc7758df421ff1de8a706338e1100"
+checksum = "ffae8df4aa221781b715c27bbed0fac16b6f1e2643efb7af8a24dfc78d444493"
 dependencies = [
  "byteorder",
+ "thiserror",
  "twox-hash",
 ]
 
@@ -5057,18 +5057,18 @@ dependencies = [
 
 [[package]]
 name = "zstd"
-version = "0.10.2+zstd.1.5.2"
+version = "0.11.2+zstd.1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f4a6bd64f22b5e3e94b4e238669ff9f10815c27a5180108b849d24174a83847"
+checksum = "20cc960326ece64f010d2d2107537f26dc589a6573a316bd5b1dba685fa5fde4"
 dependencies = [
  "zstd-safe",
 ]
 
 [[package]]
 name = "zstd-safe"
-version = "4.1.6+zstd.1.5.2"
+version = "5.0.2+zstd.1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94b61c51bb270702d6167b8ce67340d2754b088d0c091b06e593aa772c3ee9bb"
+checksum = "1d2a5585e04f9eea4b2a3d1eca508c4dee9592a89ef6f450c11719da0726f4db"
 dependencies = [
  "libc",
  "zstd-sys",
@@ -5076,9 +5076,9 @@ dependencies = [
 
 [[package]]
 name = "zstd-sys"
-version = "1.6.3+zstd.1.5.2"
+version = "2.0.1+zstd.1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc49afa5c8d634e75761feda8c592051e7eeb4683ba827211eb0d731d3402ea8"
+checksum = "9fd07cbbc53846d9145dbffdf6dd09a7a0aa52be46741825f5c97bdd4f73f12b"
 dependencies = [
  "cc",
  "libc",

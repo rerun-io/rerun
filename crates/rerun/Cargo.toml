@@ -34,13 +34,13 @@ re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 anyhow = "1.0"
 document-features = "0.2"
-puffin = { version = "0.13" }
+puffin = "0.14"
 
 # Optional dependencies:
 re_sdk_comms = { path = "../re_sdk_comms", optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
 
-puffin_http = { version = "0.10", optional = true }
+puffin_http = { version = "0.11", optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
