@@ -257,6 +257,10 @@ impl Scene {
                     mesh_id,
                     &props.obj_path.to_string(),
                     &MeshSourceData::Mesh3D(mesh.clone()),
+                    #[cfg(feature = "wgpu")]
+                    &mut ctx.render_ctx.mesh_manager,
+                    #[cfg(feature = "wgpu")]
+                    &mut ctx.render_ctx.texture_manager_2d,
                 ) {
                     // TODO(emilk): props.color
                     scene.meshes.push(MeshSource {
@@ -335,6 +339,10 @@ impl Scene {
                         mesh_id,
                         "camera_mesh",
                         &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                        #[cfg(feature = "wgpu")]
+                        &mut ctx.render_ctx.mesh_manager,
+                        #[cfg(feature = "wgpu")]
+                        &mut ctx.render_ctx.texture_manager_2d,
                     ) {
                         self.meshes.push(MeshSource {
                             instance_id,

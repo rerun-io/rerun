@@ -86,6 +86,7 @@ rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+smallvec = "1.10"
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"

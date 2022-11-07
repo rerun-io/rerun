@@ -9,8 +9,9 @@ use smallvec::smallvec;
 use crate::{
     include_file,
     mesh::{mesh_vertices, GpuMesh},
-    mesh_manager::GpuMeshHandle,
+    resource_managers::{MeshHandle, MeshManager},
     resource_pools::{
+        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
         buffer_pool::{BufferDesc, GpuBufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::{GpuRenderPipelineHandle, RenderPipelineDesc, VertexBufferLayout},
@@ -80,7 +81,7 @@ impl Drawable for MeshDrawable {
 }
 
 pub struct MeshInstance {
-    pub mesh: GpuMeshHandle,
+    pub mesh: MeshHandle,
     pub world_from_mesh: macaw::Conformal3,
 }
 
@@ -98,6 +99,8 @@ impl MeshDrawable {
             &mut ctx.resolver,
         );
 
+        // Group by mesh to facilitate instancing.
+
         // TODO(andreas): Use a temp allocator
         let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
         let instance_buffer = ctx.resource_pools.buffers.alloc(
@@ -108,48 +111,52 @@ impl MeshDrawable {
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             },
         );
-        let mut instance_buffer_staging = queue.write_buffer_with(
-            &ctx.resource_pools
-                .buffers
-                .get_resource(&instance_buffer)
-                .unwrap()
-                .buffer,
-            0,
-            instance_buffer_size.try_into().unwrap(),
-        );
-        let instance_buffer_staging: &mut [GpuInstanceData] =
-            bytemuck::cast_slice_mut(&mut instance_buffer_staging);
 
-        // Group by mesh to facilitate instancing.
+        let mut mesh_runs = Vec::new();
+        {
+            let mut instance_buffer_staging = queue.write_buffer_with(
+                &ctx.resource_pools
+                    .buffers
+                    .get_resource(&instance_buffer)
+                    .unwrap()
+                    .buffer,
+                0,
+                instance_buffer_size.try_into().unwrap(),
+            );
+            let instance_buffer_staging: &mut [GpuInstanceData] =
+                bytemuck::cast_slice_mut(&mut instance_buffer_staging);
+
+            let mut num_processed_instances = 0;
+            for (mesh, instances) in &instances.iter().group_by(|instance| instance.mesh) {
+                let mut count = 0;
+                for (instance, gpu_instance) in instances.zip(
+                    instance_buffer_staging
+                        .iter_mut()
+                        .skip(num_processed_instances),
+                ) {
+                    count += 1;
+                    gpu_instance.translation_and_scale =
+                        instance.world_from_mesh.translation_and_scale().into();
+                    gpu_instance.rotation = instance.world_from_mesh.rotation().into();
+                }
+                num_processed_instances += count;
+                mesh_runs.push((mesh, count as u32));
+            }
+            assert_eq!(num_processed_instances, instances.len());
+        }
+
         // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
         // Also, it helps failing early if something is wrong with a mesh!
-        let mut batches = Vec::new();
-        let mut num_processed_instances = 0;
-        for (mesh_handle, instances) in &instances.iter().group_by(|instance| instance.mesh) {
-            let mesh = ctx.meshes.get_mesh(mesh_handle)?;
-
-            let mut count = 0;
-            for (instance, gpu_instance) in instances.zip(
-                instance_buffer_staging
-                    .iter_mut()
-                    .skip(num_processed_instances),
-            ) {
-                count += 1;
-                gpu_instance.translation_and_scale =
-                    instance.world_from_mesh.translation_and_scale().into();
-                gpu_instance.rotation = instance.world_from_mesh.rotation().into();
-            }
-
-            batches.push(MeshBatch {
-                mesh: mesh.clone(),
-                count,
-            });
-            num_processed_instances += count as usize;
-        }
-        assert_eq!(num_processed_instances, instances.len());
+        let batches: Result<Vec<_>, _> = mesh_runs
+            .into_iter()
+            .map(|(mesh_handle, count)| {
+                MeshManager::get_or_create_gpu_resource(ctx, device, queue, mesh_handle)
+                    .map(|mesh| MeshBatch { mesh, count })
+            })
+            .collect();
 
         Ok(MeshDrawable {
-            batches,
+            batches: batches?,
             instance_buffer,
         })
     }
@@ -157,6 +164,7 @@ impl MeshDrawable {
 
 pub struct MeshRenderer {
     render_pipeline: GpuRenderPipelineHandle,
+    pub bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for MeshRenderer {
@@ -168,11 +176,27 @@ impl Renderer for MeshRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
+        let bind_group_layout = pools.bind_group_layouts.get_or_create(
+            device,
+            &BindGroupLayoutDesc {
+                label: "mesh renderer".into(),
+                entries: vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                }],
+            },
+        );
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
                 label: "mesh renderer".into(),
-                entries: vec![shared_data.global_bindings.layout],
+                entries: vec![shared_data.global_bindings.layout, bind_group_layout],
             },
             &pools.bind_group_layouts,
         );
@@ -220,7 +244,10 @@ impl Renderer for MeshRenderer {
             &pools.shader_modules,
         );
 
-        MeshRenderer { render_pipeline }
+        MeshRenderer {
+            render_pipeline,
+            bind_group_layout,
+        }
     }
 
     fn draw<'a>(
@@ -261,16 +288,18 @@ impl Renderer for MeshRenderer {
                 wgpu::IndexFormat::Uint32,
             );
 
+            let instance_range = instance_start_index..(instance_start_index + mesh_batch.count);
+
             for material in &mesh_batch.mesh.materials {
                 debug_assert!(mesh_batch.count > 0);
-                let instance_end_index = instance_start_index + mesh_batch.count;
-                pass.draw_indexed(
-                    material.index_range.clone(),
-                    0,
-                    instance_start_index..instance_end_index,
-                );
-                instance_start_index = instance_end_index;
+
+                let bind_group = pools.bind_groups.get_resource(&material.bind_group)?;
+                pass.set_bind_group(1, &bind_group.bind_group, &[]);
+
+                pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
             }
+
+            instance_start_index = instance_range.end;
         }
 
         Ok(())

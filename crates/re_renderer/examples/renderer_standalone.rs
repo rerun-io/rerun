@@ -20,8 +20,8 @@ use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
-    mesh_manager::{GpuMeshHandle, MeshManager},
     renderer::*,
+    resource_managers::ResourceLifeTime,
     view_builder::{TargetConfiguration, ViewBuilder},
     DebugLabel, *,
 };
@@ -88,7 +88,13 @@ fn draw_views(
     let skybox = GenericSkyboxDrawable::new(re_ctx, device);
     let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
     let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
-    let meshes = build_meshes(re_ctx, device, queue, &state.meshes, seconds_since_startup);
+    let meshes = build_mesh_instances(
+        re_ctx,
+        device,
+        queue,
+        &state.model_mesh_instances,
+        seconds_since_startup,
+    );
 
     let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
@@ -174,25 +180,27 @@ fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
     (view_builder, encoder.finish())
 }
 
-fn build_meshes(
+fn build_mesh_instances(
     re_ctx: &mut RenderContext,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    mesh_handles: &[GpuMeshHandle],
+    model_mesh_instances: &[MeshInstance],
     seconds_since_startup: f32,
 ) -> MeshDrawable {
     let mesh_instances = lorenz_points(10.0)
         .iter()
         .enumerate()
         .flat_map(|(i, p)| {
-            mesh_handles.iter().map(move |mesh| MeshInstance {
-                mesh: *mesh,
-                world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
-                    0.025 + (i % 10) as f32 * 0.01,
-                    glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
-                    *p,
-                ),
-            })
+            model_mesh_instances
+                .iter()
+                .map(move |model_mesh_instances| MeshInstance {
+                    mesh: model_mesh_instances.mesh,
+                    world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
+                        0.025 + (i % 10) as f32 * 0.01,
+                        glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
+                        *p,
+                    ) * model_mesh_instances.world_from_mesh,
+                })
         })
         .collect_vec();
     MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap()
@@ -352,7 +360,7 @@ impl Application {
             },
         );
 
-        let state = AppState::new(&mut re_ctx, &device, &queue);
+        let state = AppState::new(&mut re_ctx);
 
         Ok(Self {
             event_loop,
@@ -490,14 +498,14 @@ struct AppState {
     time: Time,
 
     /// Lazily loaded mesh.
-    meshes: Vec<GpuMeshHandle>,
+    model_mesh_instances: Vec<MeshInstance>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,
 }
 
 impl AppState {
-    fn new(re_ctx: &mut RenderContext, device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+    fn new(re_ctx: &mut RenderContext) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -2.0_f32..2.0_f32;
         let random_points = (0..500000)
@@ -512,20 +520,19 @@ impl AppState {
             })
             .collect_vec();
 
-        let meshes = {
+        let model_mesh_instances = {
             let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
             let mut zip = zip::ZipArchive::new(reader).unwrap();
             let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
             let mut obj_data = Vec::new();
             zipped_obj.read_to_end(&mut obj_data).unwrap();
-            importer::obj::load_obj_from_buffer(&obj_data)
-                .unwrap()
-                .meshes
-                .iter()
-                .map(|mesh_data| {
-                    MeshManager::new_long_lived_mesh(re_ctx, device, queue, mesh_data).unwrap()
-                })
-                .collect()
+            importer::obj::load_obj_from_buffer(
+                &obj_data,
+                ResourceLifeTime::LongLived,
+                &mut re_ctx.mesh_manager,
+                &mut re_ctx.texture_manager_2d,
+            )
+            .unwrap()
         };
 
         Self {
@@ -533,7 +540,7 @@ impl AppState {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
             },
-            meshes,
+            model_mesh_instances,
             random_points,
         }
     }

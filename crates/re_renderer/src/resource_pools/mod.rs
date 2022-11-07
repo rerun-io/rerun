@@ -1,4 +1,10 @@
-// Low level resource pools for wgpu resources
+//! Resource pools are concerned with handling low level gpu resources efficiently.
+//!
+//! They facilitate easy creation and avoidance of unnecessary gpu allocations.
+//!
+//!
+//! This is in contrast to the [`crate::resource_managers`] which are concerned with
+//! higher level resources that arise from processing user provided data.
 
 pub(crate) mod bind_group_layout_pool;
 pub(crate) mod bind_group_pool;
@@ -10,14 +16,16 @@ pub(crate) mod shader_module_pool;
 pub(crate) mod texture_pool;
 
 mod dynamic_resource_pool;
-mod resource;
 mod static_resource_pool;
+
+mod resource;
+pub(crate) use resource::PoolError;
 
 use self::{
     bind_group_layout_pool::GpuBindGroupLayoutPool, bind_group_pool::GpuBindGroupPool,
     buffer_pool::GpuBufferPool, pipeline_layout_pool::GpuPipelineLayoutPool,
     render_pipeline_pool::GpuRenderPipelinePool, sampler_pool::GpuSamplerPool,
-    shader_module_pool::GpuShaderModulePool, texture_pool::TexturePool,
+    shader_module_pool::GpuShaderModulePool, texture_pool::GpuTexturePool,
 };
 
 /// Collection of all wgpu resource pools.
@@ -37,5 +45,5 @@ pub struct WgpuResourcePools {
     pub(crate) bind_groups: GpuBindGroupPool,
 
     pub(crate) buffers: GpuBufferPool,
-    pub(crate) textures: TexturePool,
+    pub(crate) textures: GpuTexturePool,
 }

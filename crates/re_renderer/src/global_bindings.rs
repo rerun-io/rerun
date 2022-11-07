@@ -32,6 +32,7 @@ pub(crate) struct FrameUniformBuffer {
 pub(crate) struct GlobalBindings {
     pub(crate) layout: GpuBindGroupLayoutHandle,
     nearest_neighbor_sampler: GpuSamplerHandle,
+    trilinear_sampler: GpuSamplerHandle,
 }
 
 impl GlobalBindings {
@@ -42,6 +43,7 @@ impl GlobalBindings {
                 &BindGroupLayoutDesc {
                     label: "global bind group layout".into(),
 
+                    // Needs to be kept in sync with `global_bindings.wgsl` / `create_bind_group`
                     entries: vec![
                         // The global per-frame uniform buffer.
                         wgpu::BindGroupLayoutEntry {
@@ -64,6 +66,13 @@ impl GlobalBindings {
                             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                             count: None,
                         },
+                        // Trilinear sampler.
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                            count: None,
+                        },
                     ],
                 },
             ),
@@ -71,6 +80,22 @@ impl GlobalBindings {
                 device,
                 &SamplerDesc {
                     label: "nearest".into(),
+                    address_mode_u: wgpu::AddressMode::Repeat,
+                    address_mode_v: wgpu::AddressMode::Repeat,
+                    address_mode_w: wgpu::AddressMode::Repeat,
+                    ..Default::default()
+                },
+            ),
+            trilinear_sampler: pools.samplers.get_or_create(
+                device,
+                &SamplerDesc {
+                    label: "linear".into(),
+                    mag_filter: wgpu::FilterMode::Linear,
+                    min_filter: wgpu::FilterMode::Linear,
+                    mipmap_filter: wgpu::FilterMode::Linear,
+                    address_mode_u: wgpu::AddressMode::Repeat,
+                    address_mode_v: wgpu::AddressMode::Repeat,
+                    address_mode_w: wgpu::AddressMode::Repeat,
                     ..Default::default()
                 },
             ),
@@ -86,6 +111,7 @@ impl GlobalBindings {
     ) -> GpuBindGroupHandleStrong {
         pools.bind_groups.alloc(
             device,
+            // Needs to be kept in sync with `global_bindings.wgsl` / `self.layout`
             &BindGroupDesc {
                 label: "global bind group".into(),
                 entries: smallvec![
@@ -95,6 +121,7 @@ impl GlobalBindings {
                         size: None,
                     },
                     BindGroupEntry::Sampler(self.nearest_neighbor_sampler),
+                    BindGroupEntry::Sampler(self.trilinear_sampler),
                 ],
                 layout: self.layout,
             },
