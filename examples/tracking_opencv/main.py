@@ -6,7 +6,7 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, List, Sequence
+from typing import Any, Dict, Final, List, Sequence
 
 import cv2 as cv
 import numpy as np
@@ -66,7 +66,82 @@ class Detection:
         return Detection(self.label_id, self.label_str, self.label_color, target_bbox, target_width, target_height)
 
 
+class Detector:
+    """Detects objects to track."""
+
+    def __init__(self, coco_categories: List[Dict[str, Any]]) -> None:
+        logging.info("Initializing neural net for detection and segmentation.")
+        self.feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50-panoptic")
+        self.model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
+
+        self.id2Lable = {cat["id"]: cat["name"] for cat in coco_categories}  # type: Dict[int, str]
+        self.id2IsThing = {cat["id"]: cat["isthing"] for cat in coco_categories}  # type: Dict[int, bool]
+        self.id2Color = {cat["id"]: cat["color"] for cat in coco_categories}  # type: Dict[int, List[int]]
+
+    def detect_objects_to_track(self, rgb: npt.NDArray[np.uint8], frame_idx: int) -> List[Detection]:
+        logging.info("Looking for things to track on frame %d", frame_idx)
+
+        logging.debug("Preprocess image for detection network")
+        pil_im_smal = Image.fromarray(rgb)
+        inputs = self.feature_extractor(images=pil_im_smal, return_tensors="pt")
+        _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
+        scaled_size = (scaled_width, scaled_height)
+        rgb_scaled = cv.resize(rgb, scaled_size)
+        rerun.log_image("image/scaled", rgb_scaled)
+        rerun.log_unknown_transform("image/scaled")  # Note: Haven't implemented 2D transforms yet.
+
+        logging.debug("Pass image to detection network")
+        outputs = self.model(**inputs)
+
+        logging.debug("Extracting detections and segmentations from network output")
+        processed_sizes = [(scaled_height, scaled_width)]
+        segmentation_mask = self.feature_extractor.post_process_semantic_segmentation(outputs, processed_sizes)[0]
+        detections = self.feature_extractor.post_process_object_detection(
+            outputs, threshold=0.8, target_sizes=processed_sizes
+        )[0]
+
+        mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
+        rerun.log_segmentation_image("image/scaled/segmentation", mask, class_descriptions="coco_categories")
+
+        boxes = detections["boxes"].detach().cpu().numpy()
+        labels = detections["labels"].detach().cpu().numpy()
+        str_labels = [self.id2Lable[l] for l in labels]
+        colors = [self.id2Color[l] for l in labels]
+        isThing = [self.id2IsThing[l] for l in labels]
+
+        rerun.log_rects(
+            "image/scaled/detections",
+            boxes,
+            rect_format=rerun.RectFormat.XYXY,
+            labels=str_labels,
+            colors=np.array(colors),
+        )
+
+        objects_to_track = []  # type: List[Detection]
+        for idx, (label_id, label_str, label_color, is_thing) in enumerate(zip(labels, str_labels, colors, isThing)):
+            if is_thing:
+                x_min, y_min, x_max, y_max = boxes[idx, :]
+                bbox_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]
+                objects_to_track.append(
+                    Detection(
+                        label_id=label_id,
+                        label_str=label_str,
+                        label_color=label_color,
+                        bbox_xywh=bbox_xywh,
+                        image_width=scaled_width,
+                        image_height=scaled_height,
+                    )
+                )
+
+        return objects_to_track
+
+
 class Tracker:
+    """Each instance takes care of tracking a single object.
+
+    The factory class method `create_new_tracker` is used to give unique tracking id's per instance.
+    """
+
     next_tracking_id = 0
     MAX_TIMES_UNDETECTED = 2
 
@@ -141,6 +216,7 @@ class Tracker:
         return self.tracker is not None
 
     def match_score(self, other: Detection) -> float:
+        """Returns bbox IoU if classes match, otherwise 0"""
         if self.tracked.label_id != other.label_id:
             return 0.0
         if not self.is_tracking:
@@ -208,10 +284,6 @@ def update_trackers_with_detections(
 
 
 def track_objects(video_path: str) -> None:
-    logging.info("Initializing neural net for detection and segmentation.")
-    feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50-panoptic")
-    model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
-
     with open(COCO_CATEGORIES_PATH) as f:
         coco_categories = json.load(f)
     class_descriptions = [
@@ -219,9 +291,7 @@ def track_objects(video_path: str) -> None:
     ]
     rerun.log_class_descriptions("coco_categories", class_descriptions, timeless=True)
 
-    id2Lable = {cat["id"]: cat["name"] for cat in coco_categories}
-    id2IsThing = {cat["id"]: cat["isthing"] for cat in coco_categories}
-    id2Color = {cat["id"]: cat["color"] for cat in coco_categories}
+    detector = Detector(coco_categories=coco_categories)
 
     logging.info("Loading input video: %s", str(video_path))
     cap = cv.VideoCapture(video_path)
@@ -240,62 +310,7 @@ def track_objects(video_path: str) -> None:
         rerun.log_image("image", rgb)
 
         if not trackers or frame_idx % 40 == 0:
-            logging.info("Looking for things to track on frame %d", frame_idx)
-
-            logging.debug("Preprocess image for detection network")
-            pil_im_smal = Image.fromarray(rgb)
-            inputs = feature_extractor(images=pil_im_smal, return_tensors="pt")
-            _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
-            scaled_size = (scaled_width, scaled_height)
-            rgb_scaled = cv.resize(rgb, scaled_size)
-            rerun.log_image("image/scaled", rgb_scaled)
-            rerun.log_unknown_transform("image/scaled")  # Note: Haven't implemented 2D transforms yet.
-
-            logging.debug("Pass image to detection network")
-            outputs = model(**inputs)
-
-            logging.debug("Extracting detections and segmentations from network output")
-            processed_sizes = [(scaled_height, scaled_width)]
-            segmentation_mask = feature_extractor.post_process_semantic_segmentation(outputs, processed_sizes)[0]
-            detections = feature_extractor.post_process_object_detection(
-                outputs, threshold=0.8, target_sizes=processed_sizes
-            )[0]
-
-            mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
-            rerun.log_segmentation_image("image/scaled/segmentation", mask, class_descriptions="coco_categories")
-
-            boxes = detections["boxes"].detach().cpu().numpy()
-            labels = detections["labels"].detach().cpu().numpy()
-            str_labels = [id2Lable[l] for l in labels]
-            colors = [id2Color[l] for l in labels]
-            isThing = [id2IsThing[l] for l in labels]
-
-            rerun.log_rects(
-                "image/scaled/detections",
-                boxes,
-                rect_format=rerun.RectFormat.XYXY,
-                labels=str_labels,
-                colors=np.array(colors),
-            )
-
-            detections = []  # List[Detections]
-            for idx, (label_id, label_str, label_color, is_thing) in enumerate(
-                zip(labels, str_labels, colors, isThing)
-            ):
-                if is_thing:
-                    x_min, y_min, x_max, y_max = boxes[idx, :]
-                    bbox_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]
-                    detections.append(
-                        Detection(
-                            label_id=label_id,
-                            label_str=label_str,
-                            label_color=label_color,
-                            bbox_xywh=bbox_xywh,
-                            image_width=scaled_width,
-                            image_height=scaled_height,
-                        )
-                    )
-
+            detections = detector.detect_objects_to_track(rgb=rgb, frame_idx=frame_idx)
             trackers = update_trackers_with_detections(trackers, detections, bgr)
 
         else:
