@@ -1,7 +1,7 @@
 use re_data_store::{query::visit_type_data_1, FieldName, ObjectTreeProperties};
 use re_log_types::{IndexHash, MsgId, ObjectType, Tensor};
 
-use crate::{misc::ViewerContext, ui::space_view::SceneQuery};
+use crate::{misc::ViewerContext, ui::SceneQuery};
 
 // ---
 

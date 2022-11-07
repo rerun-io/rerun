@@ -17,10 +17,7 @@ use re_log_types::ObjectType;
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
-use super::{
-    space_view::{Scene, SceneQuery},
-    SpaceView,
-};
+use super::{Scene, SceneQuery, SpaceView};
 
 // ----------------------------------------------------------------------------
 

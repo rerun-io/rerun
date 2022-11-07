@@ -1,4 +1,4 @@
-use crate::{ui::space_view::SceneQuery, ViewerContext};
+use crate::{ui::SceneQuery, ViewerContext};
 use re_data_store::{
     query::visit_type_data_3, FieldName, ObjPath, ObjectTreeProperties, TimeQuery,
 };

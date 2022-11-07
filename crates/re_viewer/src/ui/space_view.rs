@@ -1,12 +1,9 @@
-use nohash_hasher::IntSet;
-use re_data_store::{
-    LogDb, ObjPath, ObjStore, ObjectTree, ObjectTreeProperties, TimeQuery, Timeline,
-};
-use re_log_types::{ObjectType, Transform};
+use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties};
+use re_log_types::Transform;
 
 use crate::misc::{space_info::*, ViewerContext};
 
-use super::{view_2d, view_3d, view_tensor, view_text_entry};
+use super::{view_2d, view_3d, view_tensor, view_text_entry, Scene};
 
 // ----------------------------------------------------------------------------
 
@@ -264,53 +261,4 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<view_3
     }
 
     space_cameras
-}
-
-// ----------------------------------------------------------------------------
-
-#[derive(Debug)]
-pub struct SceneQuery<'s> {
-    pub obj_paths: &'s IntSet<ObjPath>,
-    pub timeline: Timeline,
-    pub time_query: TimeQuery<i64>,
-}
-impl<'s> SceneQuery<'s> {
-    // TODO: doc
-    pub(crate) fn iter_object_stores<'a>(
-        &'a self,
-        log_db: &'a LogDb,
-        obj_tree_props: &'a ObjectTreeProperties,
-        obj_types: &'a [ObjectType],
-    ) -> impl Iterator<Item = (ObjectType, &ObjPath, &ObjStore<i64>)> + 'a {
-        log_db
-            .obj_db
-            .store
-            .get(&self.timeline)
-            .into_iter()
-            .flat_map(|timeline_store| {
-                self.obj_paths
-                    .iter()
-                    .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
-                    .filter_map(|obj_path| {
-                        let obj_type = log_db.obj_db.types.get(obj_path.obj_type_path());
-                        obj_type
-                            .and_then(|obj_type| {
-                                obj_types.contains(obj_type).then(|| {
-                                    timeline_store
-                                        .get(obj_path)
-                                        .map(|obj_store| (*obj_type, obj_path, obj_store))
-                                })
-                            })
-                            .flatten()
-                    })
-            })
-    }
-}
-
-#[derive(Default)]
-pub struct Scene {
-    pub two_d: view_2d::Scene2D,
-    pub three_d: view_3d::Scene3D,
-    pub text: view_text_entry::SceneText,
-    pub tensor: view_tensor::SceneTensor,
 }
