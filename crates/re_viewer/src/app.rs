@@ -190,7 +190,7 @@ impl App {
         self.pending_promises.contains_key(name.as_ref())
     }
 
-    fn check_kb_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         if egui_ctx
             .input_mut()
             .consume_shortcut(&kb_shortcuts::RESET_VIEWER)
@@ -227,7 +227,7 @@ impl eframe::App for App {
             return;
         }
 
-        self.check_kb_shortcuts(egui_ctx, frame);
+        self.check_keyboard_shortcuts(egui_ctx, frame);
 
         self.state.cache.new_frame();
 
