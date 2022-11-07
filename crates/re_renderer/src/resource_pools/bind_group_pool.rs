@@ -10,7 +10,7 @@ use super::{
     dynamic_resource_pool::DynamicResourcePool,
     resource::*,
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
-    texture_pool::{GpuTextureHandle, GpuTextureHandleStrong, TexturePool},
+    texture_pool::{GpuTextureHandle, GpuTextureHandleStrong, GpuTexturePool},
 };
 
 slotmap::new_key_type! { pub struct GpuBindGroupHandle; }
@@ -111,7 +111,7 @@ impl GpuBindGroupPool {
         device: &wgpu::Device,
         desc: &BindGroupDesc,
         bind_group_layout: &GpuBindGroupLayoutPool,
-        textures: &TexturePool,
+        textures: &GpuTexturePool,
         buffers: &GpuBufferPool,
         samplers: &GpuSamplerPool,
     ) -> GpuBindGroupHandleStrong {
@@ -190,7 +190,7 @@ impl GpuBindGroupPool {
     pub fn frame_maintenance(
         &mut self,
         frame_index: u64,
-        _textures: &mut TexturePool,
+        _textures: &mut GpuTexturePool,
         _buffers: &mut GpuBufferPool,
         _samplers: &mut GpuSamplerPool,
     ) {

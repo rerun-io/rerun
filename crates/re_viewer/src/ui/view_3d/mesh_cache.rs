@@ -3,6 +3,9 @@ use crate::mesh_loader::CpuMesh;
 use re_log_types::MeshFormat;
 use std::sync::Arc;
 
+#[cfg(feature = "wgpu")]
+use re_renderer::resource_managers::{MeshManager, TextureManager2D};
+
 // ----------------------------------------------------------------------------
 
 #[derive(Default)]
@@ -14,6 +17,8 @@ impl CpuMeshCache {
         mesh_id: u64,
         name: &str,
         mesh_data: &MeshSourceData,
+        #[cfg(feature = "wgpu")] mesh_manager: &mut MeshManager,
+        #[cfg(feature = "wgpu")] texture_manager: &mut TextureManager2D,
     ) -> Option<Arc<CpuMesh>> {
         crate::profile_function!();
 
@@ -23,10 +28,23 @@ impl CpuMeshCache {
                 re_log::debug!("Loading CPU mesh {name:?}…");
 
                 let result = match mesh_data {
-                    MeshSourceData::Mesh3D(mesh3d) => CpuMesh::load(name.to_owned(), mesh3d),
-                    MeshSourceData::StaticGlb(glb_bytes) => {
-                        CpuMesh::load_raw(name.to_owned(), MeshFormat::Glb, glb_bytes)
-                    }
+                    MeshSourceData::Mesh3D(mesh3d) => CpuMesh::load(
+                        name.to_owned(),
+                        mesh3d,
+                        #[cfg(feature = "wgpu")]
+                        mesh_manager,
+                        #[cfg(feature = "wgpu")]
+                        texture_manager,
+                    ),
+                    MeshSourceData::StaticGlb(glb_bytes) => CpuMesh::load_raw(
+                        name.to_owned(),
+                        MeshFormat::Glb,
+                        glb_bytes,
+                        #[cfg(feature = "wgpu")]
+                        mesh_manager,
+                        #[cfg(feature = "wgpu")]
+                        texture_manager,
+                    ),
                 };
 
                 match result {

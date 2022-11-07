@@ -27,6 +27,7 @@
         "objectron",
         "Skybox",
         "smallvec",
+        "texcoords",
         "Tonemapper",
         "tonemapping",
         "Wgsl"

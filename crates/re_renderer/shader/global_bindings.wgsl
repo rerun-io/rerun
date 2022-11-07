@@ -11,3 +11,6 @@ var<uniform> frame: FrameUniformBuffer;
 
 @group(0) @binding(1)
 var nearest_sampler: sampler;
+
+@group(0) @binding(2)
+var trilinear_sampler: sampler;

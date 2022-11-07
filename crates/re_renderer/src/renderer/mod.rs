@@ -1,15 +1,20 @@
 pub mod generic_skybox;
-pub mod lines;
-mod mesh_renderer;
-pub mod point_cloud;
-pub mod test_triangle;
-pub mod tonemapper;
-
 pub use generic_skybox::GenericSkyboxDrawable;
+
+pub mod lines;
 pub use lines::{LineDrawable, LineStrip, LineStripFlags};
-pub use mesh_renderer::{MeshDrawable, MeshInstance};
+
+pub mod point_cloud;
 pub use point_cloud::{PointCloudDrawable, PointCloudPoint};
+
+pub mod test_triangle;
 pub use test_triangle::TestTriangleDrawable;
+
+mod mesh_renderer;
+pub(crate) use mesh_renderer::MeshRenderer;
+pub use mesh_renderer::{MeshDrawable, MeshInstance};
+
+pub mod tonemapper;
 
 mod utils;
 

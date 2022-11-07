@@ -465,11 +465,9 @@ fn paint_view(
 
     #[cfg(feature = "wgpu")]
     let _callback = {
-        use itertools::Itertools;
-        use re_renderer::importer::ImportMeshInstance;
-        use re_renderer::mesh_manager::MeshManager;
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
+        use re_renderer::RenderContext;
 
         let view_builder_prepare = ViewBuilder::new_shared();
         let view_builder_draw = view_builder_prepare.clone();
@@ -495,9 +493,8 @@ fn paint_view(
 
         // TODO(andreas): Right now we can't borrow the scene into a context where we have a device.
         //                  Once we can do that, this awful clone is no longer needed as we can acquire gpu data directly
-        let mut mesh_base_index = 0;
-        let mut meshes = Vec::new();
-        let mut instances = Vec::new();
+        // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
+        let mut mesh_instances = Vec::new();
         for mesh in &scene.meshes {
             let (scale, rotation, translation) =
                 mesh.world_from_mesh.to_scale_rotation_translation();
@@ -506,38 +503,23 @@ fn paint_view(
                 rotation,
                 translation,
             );
-            instances.extend(mesh.cpu_mesh.model_import.instances.iter().map(|instance| {
-                ImportMeshInstance {
-                    mesh_idx: instance.mesh_idx + mesh_base_index,
+            mesh_instances.extend(mesh.cpu_mesh.mesh_instances.iter().map(|instance| {
+                MeshInstance {
+                    mesh: instance.mesh,
                     world_from_mesh: base_transform * instance.world_from_mesh,
                 }
             }));
-            meshes.extend(mesh.cpu_mesh.model_import.meshes.clone());
-
-            mesh_base_index += mesh.cpu_mesh.model_import.meshes.len();
         }
 
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(
                 egui_wgpu::CallbackFn::new()
+                    // TODO(andreas): The only thing that should happen inside this callback is
+                    // passing a previously created commandbuffer out!
                     .prepare(move |device, queue, _, paint_callback_resources| {
-                        let ctx = paint_callback_resources.get_mut().unwrap();
+                        let ctx: &mut RenderContext = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
-
-                        let meshes = meshes
-                            .iter()
-                            .map(|data| {
-                                MeshManager::new_frame_mesh(ctx, device, queue, data).unwrap()
-                            })
-                            .collect_vec();
-                        let mesh_instances = instances
-                            .iter()
-                            .map(|instance| MeshInstance {
-                                mesh: meshes[instance.mesh_idx],
-                                world_from_mesh: instance.world_from_mesh,
-                            })
-                            .collect_vec();
 
                         let view_builder = view_builder_lock
                             .as_mut()

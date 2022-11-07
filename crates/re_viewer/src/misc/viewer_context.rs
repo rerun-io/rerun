@@ -20,6 +20,9 @@ pub(crate) struct ViewerContext<'a> {
 
     /// The look and feel of the UI
     pub design_tokens: &'a crate::design_tokens::DesignTokens,
+
+    #[cfg(feature = "wgpu")]
+    pub render_ctx: &'a mut re_renderer::RenderContext,
 }
 
 impl<'a> ViewerContext<'a> {

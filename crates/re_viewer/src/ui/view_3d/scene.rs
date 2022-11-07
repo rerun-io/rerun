@@ -333,13 +333,15 @@ impl Scene3D {
 
                             let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                             let mesh_id = egui::util::hash(msg_id);
-                            let Some(mesh) = caches
-                                .cpu_mesh
-                                .load(
-                                    mesh_id,
-                                    &obj_path.to_string(),
-                                    &MeshSourceData::Mesh3D(mesh.clone()),
-                                )
+                            let Some(mesh) = caches.cpu_mesh.load(
+                    mesh_id,
+                    &obj_path.to_string(),
+                    &MeshSourceData::Mesh3D(mesh.clone()),
+                    #[cfg(feature = "wgpu")]
+                    &mut ctx.render_ctx.mesh_manager,
+                    #[cfg(feature = "wgpu")]
+                    &mut ctx.render_ctx.texture_manager_2d,
+                )
                                 .map(|cpu_mesh| MeshSource {
                                     instance_id_hash: InstanceIdHash::from_path_and_index(
                                         obj_path,
@@ -358,6 +360,7 @@ impl Scene3D {
                 });
             self.meshes.extend(meshes);
         }
+
         {
             puffin::profile_scope!("Scene3D - load arrows");
             for (_obj_type, obj_path, obj_store) in
@@ -447,6 +450,10 @@ impl Scene3D {
                         mesh_id,
                         "camera_mesh",
                         &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                        #[cfg(feature = "wgpu")]
+                        &mut ctx.render_ctx.mesh_manager,
+                        #[cfg(feature = "wgpu")]
+                        &mut ctx.render_ctx.texture_manager_2d,
                     ) {
                         self.meshes.push(MeshSource {
                             instance_id_hash: instance_id,

@@ -1,14 +1,11 @@
 #import <./types.wgsl>
 #import <./utils/srgb.wgsl>
+#import <./global_bindings.wgsl>
 
 struct VertexOutput {
     @builtin(position) position: Vec4,
     @location(0) texcoord: Vec2,
 };
-
-// TODO(andreas): Move global bindings to shared include
-@group(0) @binding(1)
-var nearest_sampler: sampler;
 
 @group(1) @binding(0)
 var hdr_texture: texture_2d<f32>;
