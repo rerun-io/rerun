@@ -112,8 +112,8 @@ impl TextureManager2D {
     ) -> Texture2DHandle {
         if !resource.width.is_power_of_two() || !resource.width.is_power_of_two() {
             re_log::warn!(
-                "Texture {:?} has the non-power-of-two (NPOT) resolution of {}x{}.
- NPOT textures are slower and on WebGL can't handle mipmapping, UV wrapping and UV tiling",
+                "Texture {:?} has the non-power-of-two (NPOT) resolution of {}x{}. \
+                NPOT textures are slower and on WebGL can't handle mipmapping, UV wrapping and UV tiling",
                 resource.label,
                 resource.width,
                 resource.height
