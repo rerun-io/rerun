@@ -401,10 +401,10 @@ impl Scene {
         let hover_size_boost = 1.5;
         const HOVER_COLOR: [u8; 4] = [255, 200, 200, 255];
 
-        let viewport_area = viewport_size.x * viewport_size.y;
+        let viewport_area = (viewport_size.x * viewport_size.y).at_least(1.0);
 
         // Size of a ui point (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
+        let point_size_at_one_meter = eye.fov_y / viewport_size.y.at_least(1.0);
 
         let eye_camera_plane =
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
