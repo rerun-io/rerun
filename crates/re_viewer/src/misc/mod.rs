@@ -68,10 +68,6 @@ pub fn calc_bbox_2d(objects: &re_data_store::Objects<'_>) -> emath::Rect {
 
     let mut bbox = emath::Rect::NOTHING;
 
-    for (_, obj) in objects.point2d.iter() {
-        bbox.extend_with(obj.pos.into());
-    }
-
     for (_, obj) in objects.line_segments2d.iter() {
         for point in obj.points {
             bbox.extend_with(point.into());

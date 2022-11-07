@@ -7,7 +7,8 @@ use egui::{
     Shape, Stroke, TextFormat, TextStyle, Vec2,
 };
 use re_data_store::{
-    query::visit_type_data_4, FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectTreeProperties,
+    query::{visit_type_data_3, visit_type_data_4},
+    FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectTreeProperties,
 };
 use re_log_types::{IndexHash, MsgId, ObjectType, Tensor};
 
@@ -223,6 +224,62 @@ impl Scene2D {
                 self.bbox.extend_with(bbox.bbox.max.into());
             }
         }
+
+        {
+            puffin::profile_scope!("Scene2D - load points");
+            let points = query
+                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Point2D])
+                .flat_map(|(_obj_type, obj_path, obj_store)| {
+                    let mut batch = Vec::new();
+                    visit_type_data_3(
+                        obj_store,
+                        &FieldName::from("pos"),
+                        &query.time_query,
+                        ("_visible", "color", "radius"),
+                        |instance_index: Option<&IndexHash>,
+                         _time: i64,
+                         _msg_id: &MsgId,
+                         pos: &[f32; 2],
+                         visible: Option<&bool>,
+                         color: Option<&[u8; 4]>,
+                         radius: Option<&f32>| {
+                            let visible = *visible.unwrap_or(&true);
+                            if !visible {
+                                return;
+                            }
+
+                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+
+                            // TODO: we gotta have something to replace the ol' InstanceProps
+                            let paint_props = paint_properties(
+                                ctx,
+                                &hovered_instance_id_hash,
+                                obj_path,
+                                instance_index,
+                                color.copied(),
+                                DefaultColor::Random,
+                                &None,
+                            );
+
+                            batch.push(Point2D {
+                                instance_hash: InstanceIdHash::from_path_and_index(
+                                    obj_path,
+                                    instance_index,
+                                ),
+                                pos: Pos2::new(pos[0], pos[1]),
+                                radius: radius.copied(),
+                                paint_props,
+                            });
+                        },
+                    );
+                    batch
+                });
+            self.points.extend(points);
+
+            for point in &self.points {
+                self.bbox.extend_with(point.pos);
+            }
+        }
     }
 
     // TODO: this is temporary while we transition out of Objects
@@ -264,30 +321,6 @@ impl Scene2D {
                     ),
                     points: points.iter().map(|p| Pos2::new(p[0], p[1])).collect(),
                     stroke_width,
-                    paint_props,
-                }
-            }));
-
-        self.points
-            .extend(objects.point2d.iter().map(|(props, point)| {
-                let &re_data_store::Point2D { pos, radius } = point;
-                let paint_props = paint_properties(
-                    ctx,
-                    &hovered_instance_id_hash,
-                    props.obj_path,
-                    props.instance_index,
-                    props.color,
-                    DefaultColor::Random,
-                    &None,
-                );
-
-                Point2D {
-                    instance_hash: InstanceIdHash::from_path_and_index(
-                        props.obj_path,
-                        props.instance_index,
-                    ),
-                    pos: Pos2::new(pos[0], pos[1]),
-                    radius,
                     paint_props,
                 }
             }));

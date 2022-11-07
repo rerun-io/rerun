@@ -82,52 +82,6 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Point2D<'s> {
-    pub pos: &'s [f32; 2],
-    pub radius: Option<f32>,
-}
-
-impl<'s> Point2D<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data_3(
-            obj_store,
-            &FieldName::from("pos"),
-            time_query,
-            ("_visible", "color", "radius"),
-            |instance_index: Option<&IndexHash>,
-             time: Time,
-             msg_id: &MsgId,
-             pos: &[f32; 2],
-             visible: Option<&bool>,
-             color: Option<&[u8; 4]>,
-             radius: Option<&f32>| {
-                out.point2d.0.push(Object {
-                    props: InstanceProps {
-                        time: time.into(),
-                        msg_id,
-                        color: color.copied(),
-                        obj_path,
-                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
-                        visible: *visible.unwrap_or(&true),
-                    },
-                    data: Point2D {
-                        pos,
-                        radius: radius.copied(),
-                    },
-                });
-            },
-        );
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
 pub struct LineSegments2D<'s> {
     /// Connected pair-wise even-odd.
     pub points: &'s Vec<[f32; 2]>,
@@ -232,7 +186,6 @@ impl<'s> ClassDescription<'s> {
 pub struct Objects<'s> {
     pub class_description_map: BTreeMap<&'s ObjPath, ClassDescriptionMap<'s>>,
 
-    pub point2d: ObjectVec<'s, Point2D<'s>>,
     pub line_segments2d: ObjectVec<'s, LineSegments2D<'s>>,
 }
 
@@ -264,7 +217,6 @@ impl<'s> Objects<'s> {
     ) {
         let query_fn = match obj_type {
             ObjectType::ClassDescription => ClassDescription::query,
-            ObjectType::Point2D => Point2D::query,
             ObjectType::LineSegments2D => LineSegments2D::query,
             ObjectType::Point3D
             | ObjectType::TextEntry
@@ -274,7 +226,8 @@ impl<'s> Objects<'s> {
             | ObjectType::Mesh3D
             | ObjectType::Arrow3D
             | ObjectType::Image
-            | ObjectType::BBox2D => return, // TODO
+            | ObjectType::BBox2D
+            | ObjectType::Point2D => return, // TODO
         };
 
         query_fn(obj_path, obj_store, time_query, self);
@@ -286,7 +239,6 @@ impl<'s> Objects<'s> {
         Self {
             class_description_map: self.class_description_map.clone(), // SPECIAL - can't filter
 
-            point2d: self.point2d.filter(&keep),
             line_segments2d: self.line_segments2d.filter(&keep),
         }
     }
@@ -294,23 +246,21 @@ impl<'s> Objects<'s> {
     pub fn is_empty(&self) -> bool {
         let Self {
             class_description_map,
-            point2d,
             line_segments2d,
         } = self;
-        class_description_map.is_empty() && point2d.is_empty() && line_segments2d.is_empty()
+        class_description_map.is_empty() && line_segments2d.is_empty()
     }
 
     pub fn len(&self) -> usize {
         let Self {
             class_description_map,
-            point2d,
             line_segments2d,
         } = self;
-        class_description_map.len() + point2d.len() + line_segments2d.len()
+        class_description_map.len() + line_segments2d.len()
     }
 
     pub fn has_any_2d(&self) -> bool {
-        !self.point2d.is_empty() || !self.line_segments2d.is_empty()
+        !self.line_segments2d.is_empty()
     }
 
     pub fn has_any_3d(&self) -> bool {
