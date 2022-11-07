@@ -10,6 +10,10 @@ mod time_real;
 mod viewer_context;
 
 use tensor_image_cache::ImageCache;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use clipboard::Clipboard;
+
 pub(crate) use time_control::{TimeControl, TimeView};
 pub(crate) use time_range::{TimeRange, TimeRangeF};
 pub(crate) use time_real::TimeReal;

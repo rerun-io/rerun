@@ -24,12 +24,12 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-02 - user-defined command buffers
-eframe = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
-egui = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "fcb00723bc7e57ca7571d408b0f9019db8478592" }
+# 2022-11-07 - update ahash and arboard
+eframe = { git = "https://github.com/emilk/egui", rev = "940b896cbba39eb04757b975f81d9b80e7e198ed" }
+egui = { git = "https://github.com/emilk/egui", rev = "940b896cbba39eb04757b975f81d9b80e7e198ed" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "940b896cbba39eb04757b975f81d9b80e7e198ed" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "940b896cbba39eb04757b975f81d9b80e7e198ed" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "940b896cbba39eb04757b975f81d9b80e7e198ed" }
 
 # eframe = { path = "../egui/crates/eframe" }
 # egui = { path = "../egui/crates/egui" }
