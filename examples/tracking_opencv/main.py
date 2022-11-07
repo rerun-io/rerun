@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Example applying simple object detection and tracking on a video."""
 import argparse
-from dataclasses import dataclass
 import json
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, List, Sequence
 
 import cv2 as cv
 import numpy as np
 import numpy.typing as npt
-from PIL import Image
 import requests
 import rerun_sdk as rerun
+from PIL import Image
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "tracking_sequences"
@@ -30,7 +30,7 @@ DETECTION_SCORE_THRESHOLD = 0.8
 
 os.environ["TRANSFORMERS_CACHE"] = str(CACHE_DIR.absolute())
 from transformers import DetrFeatureExtractor, DetrForSegmentation
-from transformers.models.detr.feature_extraction_detr import rgb_to_id, masks_to_boxes
+from transformers.models.detr.feature_extraction_detr import masks_to_boxes, rgb_to_id
 
 
 @dataclass
