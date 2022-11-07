@@ -68,14 +68,6 @@ pub fn calc_bbox_2d(objects: &re_data_store::Objects<'_>) -> emath::Rect {
 
     let mut bbox = emath::Rect::NOTHING;
 
-    for (_, obj) in objects.image.iter() {
-        if obj.tensor.shape.len() >= 2 {
-            let [h, w] = [obj.tensor.shape[0].size, obj.tensor.shape[1].size];
-            bbox.extend_with(emath::Pos2::ZERO);
-            bbox.extend_with(emath::pos2(w as _, h as _));
-        }
-    }
-
     for (_, obj) in objects.point2d.iter() {
         bbox.extend_with(obj.pos.into());
     }

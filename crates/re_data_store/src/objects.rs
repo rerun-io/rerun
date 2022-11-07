@@ -82,64 +82,6 @@ impl<'s, T: Clone + Copy + std::fmt::Debug> ObjectVec<'s, T> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Image<'s> {
-    pub tensor: &'s re_log_types::Tensor,
-
-    /// If this is a depth map, how long is a meter?
-    ///
-    /// For instance, with a `u16` dtype one might have
-    /// `meter == 1000.0` for millimeter precision
-    /// up to a ~65m range.
-    pub meter: Option<f32>,
-
-    /// A thing that provides additional semantic context for your dtype
-    /// Currrently must point to a SegmentationMap
-    pub legend: Option<&'s ObjPath>,
-}
-
-impl<'s> Image<'s> {
-    fn query<Time: 'static + Copy + Ord + Into<i64>>(
-        obj_path: &'s ObjPath,
-        obj_store: &'s ObjStore<Time>,
-        time_query: &TimeQuery<Time>,
-        out: &mut Objects<'s>,
-    ) {
-        crate::profile_function!();
-
-        visit_type_data_4(
-            obj_store,
-            &FieldName::from("tensor"),
-            time_query,
-            ("_visible", "color", "meter", "legend"),
-            |instance_index: Option<&IndexHash>,
-             time: Time,
-             msg_id: &MsgId,
-             tensor: &re_log_types::Tensor,
-             visible: Option<&bool>,
-             color: Option<&[u8; 4]>,
-             meter: Option<&f32>,
-             legend: Option<&ObjPath>| {
-                out.image.0.push(Object {
-                    props: InstanceProps {
-                        time: time.into(),
-                        msg_id,
-                        color: color.copied(),
-                        obj_path,
-                        instance_index: instance_index.copied().unwrap_or(IndexHash::NONE),
-                        visible: *visible.unwrap_or(&true),
-                    },
-                    data: Image {
-                        tensor,
-                        meter: meter.copied(),
-                        legend,
-                    },
-                });
-            },
-        );
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
 pub struct Point2D<'s> {
     pub pos: &'s [f32; 2],
     pub radius: Option<f32>,
@@ -339,7 +281,6 @@ impl<'s> ClassDescription<'s> {
 pub struct Objects<'s> {
     pub class_description_map: BTreeMap<&'s ObjPath, ClassDescriptionMap<'s>>,
 
-    pub image: ObjectVec<'s, Image<'s>>,
     pub point2d: ObjectVec<'s, Point2D<'s>>,
     pub bbox2d: ObjectVec<'s, BBox2D<'s>>,
     pub line_segments2d: ObjectVec<'s, LineSegments2D<'s>>,
@@ -373,7 +314,6 @@ impl<'s> Objects<'s> {
     ) {
         let query_fn = match obj_type {
             ObjectType::ClassDescription => ClassDescription::query,
-            ObjectType::Image => Image::query,
             ObjectType::Point2D => Point2D::query,
             ObjectType::BBox2D => BBox2D::query,
             ObjectType::LineSegments2D => LineSegments2D::query,
@@ -383,7 +323,8 @@ impl<'s> Objects<'s> {
             | ObjectType::Path3D
             | ObjectType::LineSegments3D
             | ObjectType::Mesh3D
-            | ObjectType::Arrow3D => return, // TODO
+            | ObjectType::Arrow3D
+            | ObjectType::Image => return, // TODO
         };
 
         query_fn(obj_path, obj_store, time_query, self);
@@ -395,7 +336,6 @@ impl<'s> Objects<'s> {
         Self {
             class_description_map: self.class_description_map.clone(), // SPECIAL - can't filter
 
-            image: self.image.filter(&keep),
             point2d: self.point2d.filter(&keep),
             bbox2d: self.bbox2d.filter(&keep),
             line_segments2d: self.line_segments2d.filter(&keep),
@@ -405,13 +345,11 @@ impl<'s> Objects<'s> {
     pub fn is_empty(&self) -> bool {
         let Self {
             class_description_map,
-            image,
             point2d,
             bbox2d,
             line_segments2d,
         } = self;
         class_description_map.is_empty()
-            && image.is_empty()
             && point2d.is_empty()
             && bbox2d.is_empty()
             && line_segments2d.is_empty()
@@ -420,23 +358,15 @@ impl<'s> Objects<'s> {
     pub fn len(&self) -> usize {
         let Self {
             class_description_map,
-            image,
             point2d,
             bbox2d,
             line_segments2d,
         } = self;
-        class_description_map.len()
-            + image.len()
-            + point2d.len()
-            + bbox2d.len()
-            + line_segments2d.len()
+        class_description_map.len() + point2d.len() + bbox2d.len() + line_segments2d.len()
     }
 
     pub fn has_any_2d(&self) -> bool {
-        !self.image.is_empty()
-            || !self.point2d.is_empty()
-            || !self.bbox2d.is_empty()
-            || !self.line_segments2d.is_empty()
+        !self.point2d.is_empty() || !self.bbox2d.is_empty() || !self.line_segments2d.is_empty()
     }
 
     pub fn has_any_3d(&self) -> bool {

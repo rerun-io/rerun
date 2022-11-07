@@ -464,7 +464,9 @@ fn space_view_ui(
             time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(), // TODO
         };
         scene.two_d.clear();
-        // scene.two_d.load(ctx, obj_tree_props, &query);
+        scene
+            .two_d
+            .load(ctx, obj_tree_props, &space_view.view_state.state_2d, &query);
         scene.three_d.clear();
         scene.three_d.load(ctx, obj_tree_props, &query);
         scene.text.clear();

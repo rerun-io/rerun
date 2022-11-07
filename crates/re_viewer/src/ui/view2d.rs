@@ -1,12 +1,19 @@
-use eframe::{emath::RectTransform, epaint::text::TextWrapping};
+use eframe::{
+    emath::{self, RectTransform},
+    epaint::text::TextWrapping,
+};
 use egui::{
     epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
     Shape, Stroke, TextFormat, TextStyle, Vec2,
 };
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
-use re_log_types::{MsgId, Tensor};
+use re_data_store::{
+    query::visit_type_data_4, FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectTreeProperties,
+};
+use re_log_types::{IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
+
+use super::space_view::SceneQuery;
 
 // --- Scene ---
 
@@ -26,7 +33,7 @@ pub struct Image {
     // pub legend: Option<ClassDescriptionMap<'static>>,
 }
 
-pub struct BBox2D {
+pub struct Box2D {
     pub instance_hash: InstanceIdHash,
 
     pub bbox: re_log_types::BBox2D,
@@ -53,29 +60,111 @@ pub struct Point2D {
 }
 
 /// A 2D scene, with everything needed to render it.
-pub struct Scene2d {
+pub struct Scene2D {
     /// Estimated bounding box of all data. Accumulated.
     pub bbox: Rect,
 
     pub images: Vec<Image>,
-    pub bboxes: Vec<BBox2D>,
+    pub boxes: Vec<Box2D>,
     pub line_segments: Vec<LineSegments2D>,
     pub points: Vec<Point2D>,
 }
 
-impl Default for Scene2d {
+impl Default for Scene2D {
     fn default() -> Self {
         Self {
             bbox: Rect::NOTHING,
             images: Default::default(),
-            bboxes: Default::default(),
+            boxes: Default::default(),
             line_segments: Default::default(),
             points: Default::default(),
         }
     }
 }
 
-impl Scene2d {
+impl Scene2D {
+    pub(crate) fn load(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        state: &State2D, // TODO: messy
+        query: &SceneQuery<'_>,
+    ) {
+        puffin::profile_function!();
+
+        // TODO: that is most definitely an issue.. no? maybe not
+        // We introduce a 1-frame delay!
+        let hovered_instance_id_hash = state
+            .hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, InstanceId::hash);
+
+        {
+            puffin::profile_scope!("Scene2D - load tensors");
+            let images = query
+                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
+                .flat_map(|(_obj_type, obj_path, obj_store)| {
+                    let mut batch = Vec::new();
+                    visit_type_data_4(
+                        obj_store,
+                        &FieldName::from("tensor"),
+                        &query.time_query,
+                        ("_visible", "color", "meter", "legend"),
+                        |instance_index: Option<&IndexHash>,
+                         _time: i64,
+                         msg_id: &MsgId,
+                         tensor: &re_log_types::Tensor,
+                         visible: Option<&bool>,
+                         color: Option<&[u8; 4]>,
+                         meter: Option<&f32>,
+                         legend: Option<&ObjPath>| {
+                            let visible = *visible.unwrap_or(&true);
+                            let two_dimensions_min = tensor.shape.len() >= 2;
+                            if !visible || !two_dimensions_min {
+                                return;
+                            }
+
+                            // TODO: not sure how we handle that cleanly yet.
+                            // let legend = find_legend(legend, objects);
+                            _ = legend;
+
+                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+
+                            let image = Image {
+                                msg_id: *msg_id,
+                                instance_hash: InstanceIdHash::from_path_and_index(
+                                    obj_path,
+                                    instance_index,
+                                ),
+                                tensor: tensor.clone(), // shallow
+                                meter: meter.copied(),
+                                // legend: legend.cloned(), // shallow
+                                paint_props: paint_properties(
+                                    ctx,
+                                    &hovered_instance_id_hash,
+                                    obj_path,
+                                    instance_index,
+                                    color.copied(),
+                                    DefaultColor::White,
+                                    &None,
+                                ),
+                            };
+
+                            batch.push(image);
+                        },
+                    );
+                    batch
+                });
+            self.images.extend(images);
+
+            for image in &self.images {
+                let [h, w] = [image.tensor.shape[0].size, image.tensor.shape[1].size];
+                self.bbox.extend_with(emath::Pos2::ZERO);
+                self.bbox.extend_with(emath::pos2(w as _, h as _));
+            }
+        }
+    }
+
     // TODO: this is temporary while we transition out of Objects
     pub(crate) fn load_objects(
         &mut self,
@@ -92,39 +181,7 @@ impl Scene2d {
 
         self.bbox = self.bbox.union(crate::misc::calc_bbox_2d(objects));
 
-        self.images
-            .extend(objects.image.iter().filter_map(|(props, img)| {
-                let &re_data_store::Image {
-                    tensor,
-                    meter,
-                    legend,
-                } = img;
-                (tensor.shape.len() >= 2).then_some({
-                    // TODO: not sure how we handle that cleanly yet.
-                    // let legend = find_legend(legend, objects);
-                    _ = legend;
-
-                    Image {
-                        msg_id: *props.msg_id,
-                        instance_hash: InstanceIdHash::from_path_and_index(
-                            props.obj_path,
-                            props.instance_index,
-                        ),
-                        tensor: tensor.clone(), // shallow
-                        meter,
-                        // legend: legend.cloned(), // shallow
-                        paint_props: paint_properties(
-                            ctx,
-                            &hovered_instance_id_hash,
-                            props,
-                            DefaultColor::White,
-                            &None,
-                        ),
-                    }
-                })
-            }));
-
-        self.bboxes
+        self.boxes
             .extend(objects.bbox2d.iter().map(|(props, bbox)| {
                 let &re_data_store::BBox2D {
                     bbox,
@@ -134,12 +191,14 @@ impl Scene2d {
                 let paint_props = paint_properties(
                     ctx,
                     &hovered_instance_id_hash,
-                    props,
+                    props.obj_path,
+                    props.instance_index,
+                    props.color,
                     DefaultColor::Random,
                     &stroke_width,
                 );
 
-                BBox2D {
+                Box2D {
                     instance_hash: InstanceIdHash::from_path_and_index(
                         props.obj_path,
                         props.instance_index,
@@ -160,7 +219,9 @@ impl Scene2d {
                 let paint_props = paint_properties(
                     ctx,
                     &hovered_instance_id_hash,
-                    props,
+                    props.obj_path,
+                    props.instance_index,
+                    props.color,
                     DefaultColor::Random,
                     &stroke_width,
                 );
@@ -182,7 +243,9 @@ impl Scene2d {
                 let paint_props = paint_properties(
                     ctx,
                     &hovered_instance_id_hash,
-                    props,
+                    props.obj_path,
+                    props.instance_index,
+                    props.color,
                     DefaultColor::Random,
                     &None,
                 );
@@ -200,12 +263,12 @@ impl Scene2d {
     }
 }
 
-impl Scene2d {
+impl Scene2D {
     pub fn clear(&mut self) {
         let Self {
             bbox,
             images,
-            bboxes,
+            boxes: bboxes,
             line_segments,
             points,
         } = self;
@@ -221,7 +284,7 @@ impl Scene2d {
         let Self {
             bbox: _,
             images,
-            bboxes,
+            boxes: bboxes,
             line_segments,
             points,
         } = self;
@@ -443,7 +506,7 @@ pub(crate) fn view_2d(
     ui: &mut egui::Ui,
     state: &mut State2D,
     space: Option<&ObjPath>,
-    scene: &Scene2d,
+    scene: &Scene2D,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -486,7 +549,7 @@ fn view_2d_scrollable(
     ui: &mut egui::Ui,
     state: &mut State2D,
     space: Option<&ObjPath>,
-    scene: &Scene2d,
+    scene: &Scene2D,
 ) -> egui::Response {
     state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bbox);
     let scene_bbox = state.scene_bbox_accum;
@@ -617,8 +680,8 @@ fn view_2d_scrollable(
         }
     }
 
-    for bbox in &scene.bboxes {
-        let BBox2D {
+    for bbox in &scene.boxes {
+        let Box2D {
             instance_hash,
             bbox,
             stroke_width: _,
@@ -864,23 +927,24 @@ enum DefaultColor {
 fn paint_properties(
     ctx: &mut ViewerContext<'_>,
     hovered: &InstanceIdHash,
-    props: &re_data_store::InstanceProps<'_>,
+    obj_path: &ObjPath,
+    instance_index: IndexHash,
+    color: Option<[u8; 4]>,
     default_color: DefaultColor,
     stroke_width: &Option<f32>,
 ) -> ObjectPaintProperties {
     let bg_color = Color32::from_black_alpha(196);
-    let color = props.color.map_or_else(
+    let color = color.map_or_else(
         || match default_color {
             DefaultColor::White => Color32::WHITE,
             DefaultColor::Random => {
-                let [r, g, b] = ctx.random_color(props.obj_path);
+                let [r, g, b] = ctx.random_color(obj_path);
                 Color32::from_rgb(r, g, b)
             }
         },
         to_egui_color,
     );
-    let is_hovered =
-        &InstanceIdHash::from_path_and_index(props.obj_path, props.instance_index) == hovered;
+    let is_hovered = &InstanceIdHash::from_path_and_index(obj_path, instance_index) == hovered;
     let fg_color = if is_hovered { Color32::WHITE } else { color };
     let stroke_width = stroke_width.unwrap_or(1.5);
     let stoke_width = if is_hovered {
