@@ -308,8 +308,7 @@ impl eframe::App for App {
         self.toasts.show(egui_ctx);
 
         #[cfg(feature = "wgpu")]
-        {
-            let render_state = frame.wgpu_render_state().unwrap();
+        if let Some(render_state) = frame.wgpu_render_state() {
             let paint_callback_resources =
                 &mut render_state.renderer.write().paint_callback_resources;
             paint_callback_resources
