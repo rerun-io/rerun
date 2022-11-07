@@ -33,7 +33,8 @@ struct ViewTargetSetup {
     tonemapping_drawable: TonemapperDrawable,
 
     bind_group_0: GpuBindGroupHandleStrong,
-    hdr_render_target: GpuTextureHandleStrong,
+    hdr_render_target_msaa: GpuTextureHandleStrong,
+    hdr_render_target_resolved: GpuTextureHandleStrong,
     depth_buffer: GpuTextureHandleStrong,
 
     resolution_in_pixel: [u32; 2],
@@ -62,8 +63,14 @@ pub struct TargetConfiguration {
 }
 
 impl ViewBuilder {
-    pub const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-    pub const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+    pub const MAIN_TARGET_COLOR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+    pub const MAIN_TARGET_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+    pub const MAIN_TARGET_SAMPLE_COUNT: u32 = 4;
+    pub const MAIN_TARGET_DEFAULT_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
+        count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
+        mask: !0,
+        alpha_to_coverage_enabled: false,
+    };
 
     pub fn new_shared() -> SharedViewBuilder {
         Arc::new(RwLock::new(Some(ViewBuilder::default())))
@@ -77,27 +84,45 @@ impl ViewBuilder {
         config: &TargetConfiguration,
     ) -> anyhow::Result<&mut Self> {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
-        // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
-        let hdr_render_target = ctx.resource_pools.textures.alloc(
+        let hdr_render_target_desc = TextureDesc {
+            label: "hdr rendertarget msaa".into(),
+            size: wgpu::Extent3d {
+                width: config.resolution_in_pixel[0],
+                height: config.resolution_in_pixel[1],
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: Self::MAIN_TARGET_SAMPLE_COUNT,
+            dimension: wgpu::TextureDimension::D2,
+            format: Self::MAIN_TARGET_COLOR,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        };
+        let hdr_render_target_msaa = ctx
+            .resource_pools
+            .textures
+            .alloc(device, &hdr_render_target_desc);
+        // Like hdr_render_target, but with MSAA resolved.
+        let hdr_render_target_resolved = ctx.resource_pools.textures.alloc(
             device,
-            &render_target_2d_desc(
-                Self::FORMAT_HDR,
-                config.resolution_in_pixel[0],
-                config.resolution_in_pixel[1],
-                1,
-            ),
+            &TextureDesc {
+                label: "hdr rendertarget resolved".into(),
+                sample_count: 1,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                ..hdr_render_target_desc
+            },
         );
         let depth_buffer = ctx.resource_pools.textures.alloc(
             device,
-            &render_target_2d_desc(
-                Self::FORMAT_DEPTH,
-                config.resolution_in_pixel[0],
-                config.resolution_in_pixel[1],
-                1,
-            ),
+            &TextureDesc {
+                label: "depth buffer".into(),
+                format: Self::MAIN_TARGET_DEPTH,
+                ..hdr_render_target_desc
+            },
         );
 
-        let tonemapping_drawable = TonemapperDrawable::new(ctx, device, &hdr_render_target);
+        let tonemapping_drawable =
+            TonemapperDrawable::new(ctx, device, &hdr_render_target_resolved);
 
         // Setup frame uniform buffer
         let frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
@@ -157,7 +182,8 @@ impl ViewBuilder {
         self.setup = Some(ViewTargetSetup {
             tonemapping_drawable,
             bind_group_0,
-            hdr_render_target,
+            hdr_render_target_msaa,
+            hdr_render_target_resolved,
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
             origin_in_pixel: config.origin_in_pixel,
@@ -197,11 +223,16 @@ impl ViewBuilder {
             .as_ref()
             .context("ViewBuilder::setup_view wasn't called yet")?;
 
-        let color = ctx
+        let color_msaa = ctx
             .resource_pools
             .textures
-            .get_resource(&setup.hdr_render_target)
-            .context("hdr render target")?;
+            .get_resource(&setup.hdr_render_target_msaa)
+            .context("hdr render target msaa")?;
+        let color_resolved = ctx
+            .resource_pools
+            .textures
+            .get_resource(&setup.hdr_render_target_resolved)
+            .context("hdr render target resolved")?;
         let depth = ctx
             .resource_pools
             .textures
@@ -211,8 +242,8 @@ impl ViewBuilder {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("frame builder hdr pass"), // TODO(andreas): It would be nice to specify this from the outside so we know which view we're rendering
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &color.default_view,
-                resolve_target: None,
+                view: &color_msaa.default_view,
+                resolve_target: Some(&color_resolved.default_view),
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     store: true,

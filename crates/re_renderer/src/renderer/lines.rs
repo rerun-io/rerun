@@ -473,19 +473,19 @@ impl Renderer for LineRenderer {
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
+                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     ..Default::default()
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: ViewBuilder::FORMAT_DEPTH,
+                    format: ViewBuilder::MAIN_TARGET_DEPTH,
                     depth_compare: wgpu::CompareFunction::Greater,
                     depth_write_enabled: true,
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
-                multisample: wgpu::MultisampleState::default(),
+                multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
