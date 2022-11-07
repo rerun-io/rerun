@@ -65,7 +65,16 @@ pub struct TargetConfiguration {
 impl ViewBuilder {
     pub const MAIN_TARGET_COLOR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
     pub const MAIN_TARGET_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+
+    /// Enable MSAA always. This makes our pipeline less variable as well, as we need MSAA resolve steps if we want any MSAA at all!
+    ///
+    /// 4 samples are the only thing `WebGPU` supports, and currently wgpu as well
+    /// ([tracking issue for more options on native](https://github.com/gfx-rs/wgpu/issues/2910))
     pub const MAIN_TARGET_SAMPLE_COUNT: u32 = 4;
+
+    /// Default multisample state that any [`wgpu::RenderPipeline`] drawing to the main target needs to use.
+    ///
+    /// In rare cases, pipelines may want to enable alpha to coverage and/or sample masks.
     pub const MAIN_TARGET_DEFAULT_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
         count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
         mask: !0,
