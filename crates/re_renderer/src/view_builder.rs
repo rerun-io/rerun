@@ -255,14 +255,18 @@ impl ViewBuilder {
                 resolve_target: Some(&color_resolved.default_view),
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                    store: true,
+                    // Don't care about the result, it's going to be resolved to the resolve target.
+                    // This can have be much better perf, especially on tiler gpus.
+                    store: false,
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &depth.default_view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(0.0), // 0.0 == far since we're using reverse-z
-                    store: false, // discards the depth buffer after use, can be faster
+                    // Don't care about depth results afterwards.
+                    // This can have be much better perf, especially on tiler gpus.
+                    store: false,
                 }),
                 stencil_ops: None,
             }),
