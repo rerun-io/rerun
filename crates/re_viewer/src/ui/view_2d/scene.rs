@@ -17,6 +17,7 @@ use super::{ClassDescription, ClassDescriptionMap, Legend, Legends, TwoDViewStat
 
 pub struct Image {
     pub msg_id: MsgId,
+    pub obj_path: ObjPath,
     pub instance_hash: InstanceIdHash,
 
     pub tensor: Tensor,
@@ -168,6 +169,7 @@ impl Scene2D {
 
                             let image = Image {
                                 msg_id: *msg_id,
+                                obj_path: obj_path.clone(),
                                 instance_hash: InstanceIdHash::from_path_and_index(
                                     obj_path,
                                     instance_index,
@@ -439,6 +441,7 @@ enum DefaultColor {
     Random,
 }
 
+// TODO: bruh
 fn paint_properties(
     ctx: &mut ViewerContext<'_>,
     hovered: &InstanceIdHash,

@@ -7,7 +7,7 @@ use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use super::{Box2D, Image, LineSegments2D, Point2D, Scene2D};
+use super::{show_zoomed_image_region_tooltip, Box2D, Image, LineSegments2D, Point2D, Scene2D};
 
 // ---
 
@@ -268,7 +268,7 @@ fn view_2d_scrollable(
     state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bbox);
     let scene_bbox = state.scene_bbox_accum;
 
-    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
+    let (mut response, painter) = ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
     // Create our transforms
     let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
@@ -328,6 +328,7 @@ fn view_2d_scrollable(
     for (image_idx, img) in scene.images.iter().enumerate() {
         let Image {
             msg_id,
+            obj_path,
             instance_hash,
             tensor,
             meter,
@@ -363,18 +364,18 @@ fn view_2d_scrollable(
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
             check_hovering(*instance_hash, dist);
 
-            // TODO
-            _ = hovered_instance_id_hash;
-            // if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
-            //     response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
-            //         ui,
-            //         response,
-            //         &tensor_view,
-            //         rect_in_ui,
-            //         pointer_pos,
-            //         *meter,
-            //     );
-            // }
+            if hovered_instance_id_hash.is_instance(obj_path, instance_hash.instance_index_hash)
+                && rect_in_ui.contains(pointer_pos)
+            {
+                response = show_zoomed_image_region_tooltip(
+                    ui,
+                    response,
+                    &tensor_view,
+                    rect_in_ui,
+                    pointer_pos,
+                    *meter,
+                );
+            }
 
             if let Some(meter) = *meter {
                 let pos_in_image = space_from_ui.transform_pos(pointer_pos);
