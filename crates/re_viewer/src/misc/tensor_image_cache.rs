@@ -1,12 +1,9 @@
 use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
-
 use image::DynamicImage;
-use re_log_types::*;
+use re_log_types::{MsgId, Tensor, TensorDataStore, TensorDataType};
 
-use crate::ui::{ColorMapping, Legend};
-
-// TODO: move to view2d?
+use crate::ui::view_2d::{ColorMapping, Legend};
 
 // ---
 

@@ -1,10 +1,9 @@
 use itertools::Itertools as _;
 use re_log_types::*;
 
-use crate::{
-    misc::{tensor_image_cache, ViewerContext},
-    ui::legend::LabelMapping,
-};
+use crate::misc::{tensor_image_cache, ViewerContext};
+
+use super::LabelMapping;
 
 pub(crate) fn show_tensor(
     ctx: &mut ViewerContext<'_>,

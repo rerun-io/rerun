@@ -442,7 +442,7 @@ struct AppState {
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
 
-    blueprints: HashMap<ApplicationId, crate::ui::viewport::Blueprint>,
+    blueprints: HashMap<ApplicationId, crate::ui::Blueprint>,
 
     panel_selection: PanelSelection,
     event_log_view: crate::event_log_view::EventLogView,

@@ -1,7 +1,7 @@
 use re_data_store::log_db::LogDb;
 use re_log_types::LogMsg;
 
-use crate::{data_ui::*, Blueprint, Preview, Selection, ViewerContext};
+use crate::{data_ui::*, ui::Blueprint, Preview, Selection, ViewerContext};
 
 use super::SpaceView;
 

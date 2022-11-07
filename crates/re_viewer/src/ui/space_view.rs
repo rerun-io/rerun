@@ -6,7 +6,7 @@ use re_log_types::{ObjectType, Transform};
 
 use crate::misc::{space_info::*, ViewerContext};
 
-use super::{view2d, view_3d, view_tensor, view_text_entry};
+use super::{view_2d, view_3d, view_tensor, view_text_entry};
 
 // ----------------------------------------------------------------------------
 
@@ -151,7 +151,7 @@ impl SpaceView {
 /// Camera position and similar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
-    pub state_2d: view2d::State2D, // TODO: huh...
+    pub state_2d: view_2d::State2D, // TODO: huh...
     state_3d: view_3d::ThreeDViewState,
     state_tensor: Option<view_tensor::TensorViewState>,
     state_text_entry: view_text_entry::ViewTextEntryState,
@@ -163,9 +163,9 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
-        scene: &view2d::Scene2D,
+        scene: &view_2d::Scene2D,
     ) -> egui::Response {
-        view2d::view_2d(ctx, ui, &mut self.state_2d, Some(space), scene)
+        view_2d::view_2d(ctx, ui, &mut self.state_2d, Some(space), scene)
     }
 
     fn ui_3d(
@@ -309,7 +309,7 @@ impl<'s> SceneQuery<'s> {
 
 #[derive(Default)]
 pub struct Scene {
-    pub two_d: view2d::Scene2D,
+    pub two_d: view_2d::Scene2D,
     pub three_d: view_3d::Scene3D,
     pub text: view_text_entry::SceneText,
     pub tensor: view_tensor::SceneTensor,

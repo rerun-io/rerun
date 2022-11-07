@@ -19,8 +19,6 @@ const NUM_FRAMES: i64 = 1;
 #[cfg(debug_assertions)]
 const NUM_POINTS: i64 = 1;
 
-// TODO: damn, what about all of this?
-
 fn timeline() -> Timeline {
     Timeline::new("frame", TimeType::Sequence)
 }

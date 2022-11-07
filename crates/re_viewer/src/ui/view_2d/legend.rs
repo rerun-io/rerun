@@ -7,7 +7,6 @@ use re_log_types::MsgId;
 
 // ---
 
-// TODO: move to legend.rs maybe
 #[derive(Clone, Debug)]
 pub struct ClassDescription {
     pub label: Option<Cow<'static, str>>,
@@ -37,6 +36,8 @@ impl Legends {
 }
 
 pub type Legend = Option<Arc<ClassDescriptionMap>>;
+
+// ---
 
 lazy_static! {
     static ref MISSING_MSGID: MsgId = MsgId::random();
