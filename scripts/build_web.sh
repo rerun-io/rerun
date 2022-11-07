@@ -18,7 +18,7 @@ while test $# -gt 0; do
     -h|--help)
       echo "build_web.sh [--release] [--open]"
       echo ""
-      echo "  --release: Compile for relase, and run wasm-opt."
+      echo "  --release: Compile for release, and run wasm-opt."
       echo "             NOTE: --release also removes debug symbols which are otherwise useful for in-browser profiling."
       echo ""
       echo "  --open:    Open the result in a browser"
