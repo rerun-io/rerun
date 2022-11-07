@@ -222,7 +222,7 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         #[cfg(not(target_arch = "wasm32"))]
-        if self.ctrl_c.load(std::sync::atomic::Ordering::SeqCst) {
+        if self.ctrl_c.load(std::sync::atomic::Ordering::Relaxed) {
             frame.close();
             return;
         }
