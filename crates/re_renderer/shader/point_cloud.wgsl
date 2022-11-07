@@ -64,8 +64,11 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // "unnecessary" overlaps. So instead, we change the size _and_ move the sphere closer (using math!)
     let radius_sq = point_data.radius * point_data.radius;
     let camera_offset = radius_sq * distance_to_camera_inv;
-    let modified_radius = point_data.radius * distance_to_camera_inv * sqrt(distance_to_camera_sq - radius_sq);
-    let pos = point_data.pos + pos_in_quad * modified_radius + camera_offset * quad_normal;
+    var modified_radius = point_data.radius * distance_to_camera_inv * sqrt(distance_to_camera_sq - radius_sq);
+    // We're computing a coverage mask int the fragment shader - make sure the quad doesn't cut off our antialiasing.
+    // It's fairly subtle but if we don't do this our spheres look slightly squarish
+    modified_radius += frame.pixel_world_size_from_camera_distance / distance_to_camera_inv;
+    let pos = point_data.pos + pos_in_quad * modified_radius * 1.0 + camera_offset * quad_normal;
     // normal billboard (spheres are cut off!):
     //      pos = point_data.pos + pos_in_quad * point_data.radius;
     // only enlarged billboard (works but requires z care even for non-overlapping spheres):
@@ -116,6 +119,6 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
 
     // TODO(andreas): Proper shading
-    let shading = min(1.0, 1.2 - distance(in.point_center, in.world_position) / in.radius); // quick and dirty coloring)
+    let shading = max(0.2, 1.2 - distance(in.point_center, in.world_position) / in.radius); // quick and dirty coloring)
     return vec4(in.color.rgb * shading, coverage);
 }
