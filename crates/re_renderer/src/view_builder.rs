@@ -262,6 +262,14 @@ impl ViewBuilder {
             .get_resource(&setup.depth_buffer)
             .context("depth buffer")?;
 
+        // TODO(andreas): Quality issue with too early MSAA resolve here:
+        // Applying MSAA resolve before tonemapping is problematic as it means we're doing msaa in linear.
+        // This is especially problematic at bright/dark edges where we may loose "smoothness"!
+        // For a nice illustration see https://therealmjp.github.io/posts/msaa-overview/
+        // We either would need to keep the MSAA target and tonemap it,
+        // apply a manual resolve where we inverse-tonemap non-fully-covered pixel before averaging.
+        // (an optimized variant of this is described here https://gpuopen.com/learn/optimized-reversible-tonemapper-for-resolve/)
+
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("frame builder hdr pass"), // TODO(andreas): It would be nice to specify this from the outside so we know which view we're rendering
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
