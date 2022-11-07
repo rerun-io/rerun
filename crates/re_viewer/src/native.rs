@@ -7,10 +7,6 @@ use crate::DesignTokens;
 #[cfg(not(any(feature = "glow", feature = "wgpu")))]
 compile_error!("You must enable either the 'glow' or 'wgpu' feature of re_viewer.");
 
-/// If true, we fill the entire window, except for the close/maximize/minimize buttons in the top-left.
-/// See <https://github.com/emilk/egui/pull/2049>
-pub const FULLSIZE_CONTENT: bool = cfg!(target_os = "macos");
-
 type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, DesignTokens) -> Box<dyn eframe::App>>;
 
@@ -34,7 +30,7 @@ pub fn run_native_app(app_creator: AppCreator) {
         default_theme: eframe::Theme::Dark,
 
         #[cfg(target_os = "macos")]
-        fullsize_content: FULLSIZE_CONTENT,
+        fullsize_content: crate::FULLSIZE_CONTENT,
 
         #[cfg(feature = "wgpu")]
         wgpu_options: crate::wgpu_options(),

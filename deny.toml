@@ -21,14 +21,13 @@ ignore = [
 multiple-versions = "deny"
 wildcards = "allow" # at least until https://github.com/EmbarkStudios/cargo-deny/issues/241 is fixed
 deny = [
-  { name = "openssl" },     # prefer rustls
-  { name = "openssl-sys" }, # prefer rustls
+  { name = "openssl" },     # We prefer rustls
+  { name = "openssl-sys" }, # We prefer rustls
 ]
 
 skip = [
-  { name = "ahash" },       # Old version via dark-light
-  { name = "miniz_oxide" }, # Old version from old png crate, because we are stuck on old version of image crate
-  { name = "nix" },         # Too many to protect against
+  { name = "ahash" }, # Old version via dark-light
+  { name = "nix" },   # Too many to protect against
 ]
 skip-tree = [
   { name = "criterion" }, # dev-dependency
