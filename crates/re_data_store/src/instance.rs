@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use re_log_types::{Index, IndexHash, ObjPath, ObjPathHash};
 
-use crate::{DataStore, InstanceProps};
+use crate::DataStore;
 
 // ----------------------------------------------------------------------------
 
@@ -27,12 +27,12 @@ impl InstanceId {
 
     /// Does this object match this instance id?
     #[inline]
-    pub fn is_instance(&self, props: &InstanceProps<'_>) -> bool {
-        &self.obj_path == props.obj_path
+    pub fn is_instance(&self, obj_path: &ObjPath, instance_index: IndexHash) -> bool {
+        &self.obj_path == obj_path
             && if let Some(index) = &self.instance_index {
-                index.hash() == props.instance_index
+                index.hash() == instance_index
             } else {
-                props.instance_index.is_none()
+                instance_index.is_none()
             }
     }
 
@@ -93,8 +93,7 @@ impl InstanceIdHash {
 
     /// Does this object match this instance id?
     #[inline]
-    pub fn is_instance(&self, props: &InstanceProps<'_>) -> bool {
-        &self.obj_path_hash == props.obj_path.hash()
-            && self.instance_index_hash == props.instance_index
+    pub fn is_instance(&self, obj_path: &ObjPath, instance_index: IndexHash) -> bool {
+        &self.obj_path_hash == obj_path.hash() && self.instance_index_hash == instance_index
     }
 }

@@ -151,7 +151,7 @@ impl SpaceView {
 /// Camera position and similar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
-    pub state_2d: view_2d::State2D, // TODO: huh...
+    pub state_2d: view_2d::TwoDViewState, // TODO: huh...
     state_3d: view_3d::ThreeDViewState,
     state_tensor: Option<view_tensor::TensorViewState>,
     state_text_entry: view_text_entry::ViewTextEntryState,

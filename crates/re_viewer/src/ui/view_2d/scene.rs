@@ -9,7 +9,7 @@ use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{ui::SceneQuery, ViewerContext};
 
-use super::{ClassDescription, ClassDescriptionMap, Legend, Legends, State2D};
+use super::{ClassDescription, ClassDescriptionMap, Legend, Legends, TwoDViewState};
 
 // ---
 
@@ -89,7 +89,7 @@ impl Scene2D {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
-        state: &State2D, // TODO: messy
+        state: &TwoDViewState, // TODO: messy
         query: &SceneQuery<'_>,
     ) {
         puffin::profile_function!();

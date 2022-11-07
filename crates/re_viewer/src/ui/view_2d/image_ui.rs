@@ -3,7 +3,7 @@ use re_log_types::*;
 
 use crate::misc::{tensor_image_cache, ViewerContext};
 
-use super::LabelMapping;
+use super::LabelMapping as _;
 
 pub(crate) fn show_tensor(
     ctx: &mut ViewerContext<'_>,

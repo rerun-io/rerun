@@ -4,8 +4,6 @@ use re_data_store::{
 };
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
-// TODO: deal with the proliferation of pub(crate) specifiers in another PR.
-
 // ---
 
 /// A single text entry as part of a whole text scene.

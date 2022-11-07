@@ -13,7 +13,7 @@ use super::{Box2D, Image, LineSegments2D, Point2D, Scene2D};
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct State2D {
+pub struct TwoDViewState {
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
     pub hovered_instance: Option<InstanceId>,
@@ -49,7 +49,7 @@ impl Default for ZoomState {
     }
 }
 
-impl Default for State2D {
+impl Default for TwoDViewState {
     fn default() -> Self {
         Self {
             hovered_instance: Default::default(),
@@ -59,7 +59,7 @@ impl Default for State2D {
     }
 }
 
-impl State2D {
+impl TwoDViewState {
     /// Determine the optimal sub-region and size based on the `ZoomState` and
     /// available size. This will generally be used to construct the painter and
     /// subsequent transforms
@@ -218,7 +218,7 @@ impl State2D {
 pub(crate) fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut State2D,
+    state: &mut TwoDViewState,
     space: Option<&ObjPath>,
     scene: &Scene2D,
 ) -> egui::Response {
@@ -261,7 +261,7 @@ fn view_2d_scrollable(
     available_size: Vec2,
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut State2D,
+    state: &mut TwoDViewState,
     space: Option<&ObjPath>,
     scene: &Scene2D,
 ) -> egui::Response {
