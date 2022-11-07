@@ -7,8 +7,7 @@ use crate::{
     mesh::{mesh_vertices::MeshVertexData, Material, Mesh},
     renderer::MeshInstance,
     resource_managers::{
-        texture_manager::Texture2D, MeshHandle, MeshManager, ResourceLifeTime, Texture2DHandle,
-        TextureManager2D,
+        MeshHandle, MeshManager, ResourceLifeTime, Texture2D, Texture2DHandle, TextureManager2D,
     },
 };
 

@@ -127,7 +127,6 @@ impl MeshDrawable {
                 bytemuck::cast_slice_mut(&mut instance_buffer_staging);
 
             let mut num_processed_instances = 0;
-            // Need to iterate twice because of resource pool borrowing.
             for (mesh, instances) in &instances.iter().group_by(|instance| instance.mesh) {
                 let mut count = 0;
                 for (instance, gpu_instance) in instances.zip(
@@ -148,14 +147,16 @@ impl MeshDrawable {
 
         // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
         // Also, it helps failing early if something is wrong with a mesh!
-        let mut batches = Vec::with_capacity(mesh_runs.len());
-        for (mesh_handle, count) in mesh_runs {
-            let mesh = MeshManager::get_or_create_gpu_resource(ctx, device, queue, mesh_handle)?;
-            batches.push(MeshBatch { mesh, count });
-        }
+        let batches: Result<Vec<_>, _> = mesh_runs
+            .into_iter()
+            .map(|(mesh_handle, count)| {
+                MeshManager::get_or_create_gpu_resource(ctx, device, queue, mesh_handle)
+                    .map(|mesh| MeshBatch { mesh, count })
+            })
+            .collect();
 
         Ok(MeshDrawable {
-            batches,
+            batches: batches?,
             instance_buffer,
         })
     }

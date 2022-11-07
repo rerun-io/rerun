@@ -47,7 +47,7 @@ impl MeshManager {
             })
     }
 
-    /// Accesses a given resource under a read lock.
+    /// Accesses a given resource.
     pub(crate) fn get(&self, handle: MeshHandle) -> Result<&Mesh, ResourceManagerError> {
         self.manager.get(handle)
     }

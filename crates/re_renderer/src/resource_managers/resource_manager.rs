@@ -2,7 +2,7 @@ use slotmap::{Key, SecondaryMap, SlotMap};
 
 use crate::resource_pools::PoolError;
 
-/// Handle to a resource that is stored in a
+/// Handle to a resource that is stored in a resource manager.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ResourceHandle<InnerHandle: slotmap::Key> {
     /// Handle that is valid until user explicitly removes the resource from respective resource manager.
@@ -25,8 +25,8 @@ pub enum ResourceManagerError {
         valid_frame_index: u64,
     },
 
-    #[error("The requested resource isn't available because the handle is no longer valid")]
-    ResourceNotAvailable,
+    #[error("The requested resource isn't available because the handle is no longer stored in the resource manager")]
+    ResourceNotFound,
 
     #[error("The passed resource handle was null")]
     NullHandle,
@@ -114,7 +114,7 @@ where
             if key.is_null() {
                 ResourceManagerError::NullHandle
             } else {
-                ResourceManagerError::ResourceNotAvailable
+                ResourceManagerError::ResourceNotFound
             }
         })
     }
@@ -136,13 +136,14 @@ where
     /// Retrieve gpu representation of a resource.
     ///
     /// Uploads to gpu if not already done.
-    pub(crate) fn get_or_create_gpu_resource<
-        F: FnOnce(&Res, ResourceLifeTime) -> Result<GpuRes, ResourceManagerError>,
-    >(
+    pub(crate) fn get_or_create_gpu_resource<F>(
         &mut self,
         handle: ResourceHandle<InnerHandle>,
         create_gpu_resource: F,
-    ) -> anyhow::Result<GpuRes, ResourceManagerError> {
+    ) -> anyhow::Result<GpuRes, ResourceManagerError>
+    where
+        F: FnOnce(&Res, ResourceLifeTime) -> anyhow::Result<GpuRes, ResourceManagerError>,
+    {
         let (slotmap, slotmap_gpu, key, lifetime) = match handle {
             ResourceHandle::<InnerHandle>::LongLived(key) => (
                 &self.long_lived_resources,
@@ -171,7 +172,7 @@ where
                 if key.is_null() {
                     ResourceManagerError::NullHandle
                 } else {
-                    ResourceManagerError::ResourceNotAvailable
+                    ResourceManagerError::ResourceNotFound
                 }
             })?;
 

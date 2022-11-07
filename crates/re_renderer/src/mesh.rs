@@ -5,10 +5,7 @@ use smallvec::{smallvec, SmallVec};
 use crate::{
     debug_label::DebugLabel,
     renderer::MeshRenderer,
-    resource_managers::{
-        texture_manager::{Texture2DHandle, TextureManager2D},
-        ResourceManagerError,
-    },
+    resource_managers::{ResourceManagerError, Texture2DHandle, TextureManager2D},
     resource_pools::{
         bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
         buffer_pool::{BufferDesc, GpuBufferHandleStrong},

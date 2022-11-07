@@ -171,9 +171,6 @@ impl TextureManager2D {
                     .get_resource(&texture_handle)
                     .map_err(ResourceManagerError::ResourcePoolError)?;
 
-                // Pad rows if necessary.
-                let bytes_per_row = resource.bytes_per_row();
-
                 // TODO(andreas): temp allocator for staging data?
                 // We don't do any further validation of the buffer here as wgpu does so extensively.
                 queue.write_texture(
@@ -187,7 +184,8 @@ impl TextureManager2D {
                     wgpu::ImageDataLayout {
                         offset: 0,
                         bytes_per_row: Some(
-                            NonZeroU32::new(bytes_per_row).expect("invalid bytes per row"),
+                            NonZeroU32::new(resource.bytes_per_row())
+                                .expect("invalid bytes per row"),
                         ),
                         rows_per_image: None,
                     },

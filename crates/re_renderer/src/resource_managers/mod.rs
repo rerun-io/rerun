@@ -10,8 +10,8 @@
 mod mesh_manager;
 pub use mesh_manager::{MeshHandle, MeshManager};
 
-pub mod texture_manager;
-pub use texture_manager::{Texture2DHandle, TextureManager2D};
+mod texture_manager;
+pub use texture_manager::{Texture2D, Texture2DHandle, TextureManager2D};
 
 mod resource_manager;
 pub use resource_manager::{ResourceHandle, ResourceLifeTime, ResourceManagerError};
