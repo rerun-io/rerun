@@ -166,6 +166,18 @@ impl ViewBuilder {
             .truncate()
             .normalize();
 
+        // Determine how wide a pixel is in world space at unit distance from the camera.
+        //
+        // derivation:
+        // tan(FOV / 2) = (screen_in_world / 2) / distance
+        // screen_in_world = tan(FOV / 2) * distance * 2
+        //
+        // want: pixels in world per distance, i.e (screen_in_world / resolution / distance)
+        // => (resolution / screen_in_world / distance) = tan(FOV / 2) * distance * 2 / resolution / distance =
+        //                                              = tan(FOV / 2) * 2.0 / resolution
+        let pixel_world_size_from_camera_distance =
+            (config.fov_y * 0.5).tan() * 2.0 / config.resolution_in_pixel[1] as f32;
+
         queue.write_buffer(
             &ctx.resource_pools
                 .buffers
@@ -179,6 +191,8 @@ impl ViewBuilder {
                 projection_from_world: projection_from_world.into(),
                 camera_position: camera_position.into(),
                 top_right_screen_corner_in_view: top_right_screen_corner_in_view.into(),
+                pixel_world_size_from_camera_distance,
+                _padding: 0.0,
             }),
         );
 

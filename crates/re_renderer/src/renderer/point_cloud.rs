@@ -313,7 +313,10 @@ impl Renderer for PointCloudRenderer {
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
-                multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE, // alpha to coverage?
+                multisample: wgpu::MultisampleState {
+                    alpha_to_coverage_enabled: true, // We discard pixels to do the round cutout.
+                    ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
+                },
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,

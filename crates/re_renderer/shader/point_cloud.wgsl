@@ -83,31 +83,39 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     return out;
 }
 
-// Return how far the closest intersection point is from ray_origin.
-// Returns -1.0 if no intersection happend
-fn sphere_intersect(sphere_pos: Vec3, radius_sq: f32, ray_origin: Vec3, ray_dir: Vec3) -> f32 {
-    let sphere_to_origin = ray_origin - sphere_pos;
+
+// Returns distance to sphere surface (x) and distance to of closest ray hit (y)
+// Via https://iquilezles.org/articles/spherefunctions/ with some adjustments - in particular the original returns negative thicknes.
+fn sphere_distance(ray_origin: Vec3, ray_dir: Vec3, sphere_origin: Vec3, sphere_radius: f32) -> Vec2 {
+    let sphere_radius_sq = sphere_radius * sphere_radius;
+    let sphere_to_origin = ray_origin - sphere_origin;
     let b = dot(sphere_to_origin, ray_dir);
-    let c = dot(sphere_to_origin, sphere_to_origin) - radius_sq;
-    let discriminant = b * b - c;
-    if (discriminant < 0.0) {
-        return -1.0;
-    }
-    return -b - sqrt(discriminant);
+    let c = dot(sphere_to_origin, sphere_to_origin) - sphere_radius_sq;
+    let h = b * b - c;
+    let d = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
+    return Vec2(d, -b - sqrt(max(h, 0.0)));
 }
 
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    // TODO(andreas): Pass around squared radius instead.
     let ray_dir = normalize(in.world_position - frame.camera_position);
-    if sphere_intersect(in.point_center, in.radius * in.radius, frame.camera_position, ray_dir) < 0.0 {
+
+    // Sphere intersection with anti-aliasing as described by Iq here
+    // https://www.shadertoy.com/view/MsSSWV
+    // (but rearranged and labled to it's easier to understand!)
+    let d = sphere_distance(frame.camera_position, ray_dir, in.point_center, in.radius);
+    let smallest_distance_to_sphere = d.x;
+    let closest_ray_dist = d.y;
+    let pixel_world_size = closest_ray_dist * frame.pixel_world_size_from_camera_distance;
+    if  smallest_distance_to_sphere > pixel_world_size {
         discard;
     }
+    let coverage = 1.0 - clamp(smallest_distance_to_sphere / pixel_world_size, 0.0, 1.0);
 
     // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
 
     // TODO(andreas): Proper shading
     let shading = min(1.0, 1.2 - distance(in.point_center, in.world_position) / in.radius); // quick and dirty coloring)
-    return in.color * shading;
+    return vec4(in.color.rgb * shading, coverage);
 }
