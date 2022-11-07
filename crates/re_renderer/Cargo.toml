@@ -47,7 +47,7 @@ tobj = { version = "3.2", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossbeam = "0.8"
 notify = "5.0"
-puffin = { version = "0.13", optional = true }
+puffin = { version = "0.14", optional = true }
 wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
 wgpu-core = "0.14"
 
