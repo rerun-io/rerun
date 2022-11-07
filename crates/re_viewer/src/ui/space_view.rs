@@ -160,6 +160,25 @@ impl SpaceView {
 
 // ----------------------------------------------------------------------------
 
+/// Show help-text on top of space
+fn show_help_button_overlay(
+    ui: &mut egui::Ui,
+    rect: egui::Rect,
+    ctx: &mut ViewerContext<'_>,
+    help_text: &str,
+) {
+    {
+        let mut ui = ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::TOP));
+        ctx.design_tokens
+            .hovering_frame(ui.style())
+            .show(&mut ui, |ui| {
+                crate::misc::help_hover_button(ui).on_hover_text(help_text);
+            });
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Camera position and similar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
@@ -183,15 +202,7 @@ impl ViewState {
             })
             .response;
 
-        // Show help-text on top of space:
-        {
-            let mut ui = ui.child_ui(response.rect, egui::Layout::right_to_left(egui::Align::TOP));
-            ctx.design_tokens
-                .hovering_frame(ui.style())
-                .show(&mut ui, |ui| {
-                    crate::misc::help_hover_button(ui).on_hover_text(view_2d::HELP_TEXT);
-                });
-        }
+        show_help_button_overlay(ui, response.rect, ctx, view_2d::HELP_TEXT);
 
         response
     }
@@ -216,18 +227,7 @@ impl ViewState {
                 })
                 .response;
 
-            // Show help-text on top of space:
-            {
-                let mut ui =
-                    ui.child_ui(response.rect, egui::Layout::right_to_left(egui::Align::TOP));
-                ctx.design_tokens
-                    .hovering_frame(ui.style())
-                    .show(&mut ui, |ui| {
-                        crate::misc::help_hover_button(ui).on_hover_text(view_3d::HELP_TEXT);
-                    });
-            }
-
-            response
+            show_help_button_overlay(ui, response.rect, ctx, super::view_3d::HELP_TEXT);
         })
         .response
     }
