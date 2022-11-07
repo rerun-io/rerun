@@ -25,16 +25,18 @@ fn timeline() -> Timeline {
     Timeline::new("frame", TimeType::Sequence)
 }
 
-fn do_query<'s>(
-    obj_types: &IntMap<ObjTypePath, ObjectType>,
-    data_store: &'s DataStore,
-) -> Objects<'s> {
+fn do_query<'s>(obj_types: &IntMap<ObjTypePath, ObjectType>, data_store: &'s DataStore) -> ! {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
-    let mut objects = Objects::default();
     let timeline_store = data_store.get(&timeline()).unwrap();
-    objects.query(timeline_store, &time_query, obj_types);
+
+    _ = time_query;
+    _ = timeline_store;
+
+    // objects.query(timeline_store, &time_query, obj_types);
     // assert_eq!(objects.point3d.len(), NUM_POINTS as usize);
-    objects
+    // objects
+
+    todo!()
 }
 
 fn mono_data_messages() -> Vec<DataMsg> {

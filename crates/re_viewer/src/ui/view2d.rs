@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use eframe::{
     emath::{self, RectTransform},
     epaint::text::TextWrapping,
@@ -7,16 +9,18 @@ use egui::{
     Shape, Stroke, TextFormat, TextStyle, Vec2,
 };
 use re_data_store::{
-    query::{visit_type_data_3, visit_type_data_4},
+    query::{visit_type_data_2, visit_type_data_3, visit_type_data_4},
     FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectTreeProperties,
 };
-use re_log_types::{IndexHash, MsgId, ObjectType, Tensor};
+use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use super::space_view::SceneQuery;
+use super::{space_view::SceneQuery, ClassDescription, ClassDescriptionMap, Legends};
 
-// --- Scene ---
+// ---
+
+// TODO: just turn all colors into Color32?
 
 pub struct Image {
     pub msg_id: MsgId,
@@ -64,6 +68,7 @@ pub struct Point2D {
 pub struct Scene2D {
     /// Estimated bounding box of all data. Accumulated.
     pub bbox: Rect,
+    pub legends: Legends,
 
     pub images: Vec<Image>,
     pub boxes: Vec<Box2D>,
@@ -75,6 +80,7 @@ impl Default for Scene2D {
     fn default() -> Self {
         Self {
             bbox: Rect::NOTHING,
+            legends: Default::default(),
             images: Default::default(),
             boxes: Default::default(),
             line_segments: Default::default(),
@@ -99,6 +105,44 @@ impl Scene2D {
             .hovered_instance
             .as_ref()
             .map_or(InstanceIdHash::NONE, InstanceId::hash);
+
+        let mut legends = Legends::default();
+        {
+            puffin::profile_scope!("Scene2D - load legends");
+            for (_obj_type, obj_path, obj_store) in query.iter_object_stores(
+                ctx.log_db,
+                obj_tree_props,
+                &[ObjectType::ClassDescription],
+            ) {
+                visit_type_data_2(
+                    obj_store,
+                    &FieldName::from("id"),
+                    &query.time_query,
+                    ("label", "color"),
+                    |_instance_index: Option<&IndexHash>,
+                     _time: i64,
+                     msg_id: &MsgId,
+                     id: &i32,
+                     label: Option<&String>,
+                     color: Option<&[u8; 4]>| {
+                        let cdm = legends.0.entry(obj_path.clone()).or_insert_with(|| {
+                            Arc::new(ClassDescriptionMap {
+                                msg_id: *msg_id,
+                                map: Default::default(),
+                            })
+                        });
+
+                        Arc::get_mut(cdm).unwrap().map.insert(
+                            *id,
+                            ClassDescription {
+                                label: label.map(|s| s.clone().into()),
+                                color: color.cloned(),
+                            },
+                        );
+                    },
+                );
+            }
+        }
 
         {
             puffin::profile_scope!("Scene2D - load images");
@@ -280,50 +324,68 @@ impl Scene2D {
                 self.bbox.extend_with(point.pos);
             }
         }
-    }
 
-    // TODO: this is temporary while we transition out of Objects
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        state: &State2D,
-        objects: &re_data_store::Objects<'_>,
-    ) {
-        // TODO: that is most definitely an issue.. no? maybe not
-        // We introduce a 1-frame delay!
-        let hovered_instance_id_hash = state
-            .hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, InstanceId::hash);
+        {
+            puffin::profile_scope!("Scene2D - load line segments");
+            let segments = query
+                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::LineSegments2D])
+                .flat_map(|(_obj_type, obj_path, obj_store)| {
+                    let mut batch = Vec::new();
+                    visit_type_data_3(
+                        obj_store,
+                        &FieldName::from("points"),
+                        &query.time_query,
+                        ("_visible", "color", "stroke_width"),
+                        |instance_index: Option<&IndexHash>,
+                         _time: i64,
+                         _msg_id: &MsgId,
+                         points: &DataVec,
+                         visible: Option<&bool>,
+                         color: Option<&[u8; 4]>,
+                         stroke_width: Option<&f32>| {
+                            let visible = *visible.unwrap_or(&true);
+                            if !visible {
+                                return;
+                            }
 
-        self.bbox = self.bbox.union(crate::misc::calc_bbox_2d(objects));
+                            let Some(points) = points.as_vec_of_vec2("LineSegments2D::points")
+                                else { return };
 
-        self.line_segments
-            .extend(objects.line_segments2d.iter().map(|(props, segments)| {
-                let &re_data_store::LineSegments2D {
-                    points,
-                    stroke_width,
-                } = segments;
-                let paint_props = paint_properties(
-                    ctx,
-                    &hovered_instance_id_hash,
-                    props.obj_path,
-                    props.instance_index,
-                    props.color,
-                    DefaultColor::Random,
-                    &stroke_width,
-                );
+                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                            let stroke_width = stroke_width.copied();
 
-                LineSegments2D {
-                    instance_hash: InstanceIdHash::from_path_and_index(
-                        props.obj_path,
-                        props.instance_index,
-                    ),
-                    points: points.iter().map(|p| Pos2::new(p[0], p[1])).collect(),
-                    stroke_width,
-                    paint_props,
+                            // TODO: we gotta have something to replace the ol' InstanceProps
+                            let paint_props = paint_properties(
+                                ctx,
+                                &hovered_instance_id_hash,
+                                obj_path,
+                                instance_index,
+                                color.copied(),
+                                DefaultColor::Random,
+                                &None,
+                            );
+
+                            batch.push(LineSegments2D {
+                                instance_hash: InstanceIdHash::from_path_and_index(
+                                    obj_path,
+                                    instance_index,
+                                ),
+                                points: points.iter().map(|p| Pos2::new(p[0], p[1])).collect(),
+                                stroke_width,
+                                paint_props,
+                            });
+                        },
+                    );
+                    batch
+                });
+            self.line_segments.extend(segments);
+
+            for segment in &self.line_segments {
+                for &point in &segment.points {
+                    self.bbox.extend_with(point);
                 }
-            }));
+            }
+        }
     }
 }
 
@@ -331,6 +393,7 @@ impl Scene2D {
     pub fn clear(&mut self) {
         let Self {
             bbox,
+            legends,
             images,
             boxes: bboxes,
             line_segments,
@@ -338,6 +401,7 @@ impl Scene2D {
         } = self;
 
         *bbox = Rect::NOTHING;
+        legends.0.clear();
         images.clear();
         bboxes.clear();
         line_segments.clear();
@@ -347,6 +411,7 @@ impl Scene2D {
     pub fn is_empty(&self) -> bool {
         let Self {
             bbox: _,
+            legends: _,
             images,
             boxes: bboxes,
             line_segments,

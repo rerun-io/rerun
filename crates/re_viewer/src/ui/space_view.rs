@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use re_data_store::{
-    LogDb, ObjPath, ObjStore, ObjectTree, ObjectTreeProperties, Objects, TimeQuery, Timeline,
+    LogDb, ObjPath, ObjStore, ObjectTree, ObjectTreeProperties, TimeQuery, Timeline,
 };
 use re_log_types::{ObjectType, Transform};
 
@@ -55,10 +55,11 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        time_objects: &Objects<'_>,
         scene: Scene,
     ) -> egui::Response {
-        let has_2d = !scene.two_d.is_empty() && (scene.tensor.is_empty() || time_objects.len() > 1);
+        let has_2d = !scene.two_d.is_empty() && scene.tensor.is_empty();
+        // TODO: are we good even without the len clause?
+        // let has_2d = !scene.two_d.is_empty() && (scene.tensor.is_empty() || time_objects.len() > 1);
         let has_3d = !scene.three_d.is_empty();
         let has_text = !scene.text.is_empty();
         let has_tensor = !scene.tensor.is_empty();
@@ -312,16 +313,4 @@ pub struct Scene {
     pub three_d: view_3d::Scene3D,
     pub text: view_text_entry::SceneText,
     pub tensor: view_tensor::SceneTensor,
-}
-
-impl ViewState {
-    // TODO: temporary
-    pub(crate) fn load_scene_from_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        time_objects: &re_data_store::Objects<'_>,
-        scene: &mut Scene,
-    ) {
-        scene.two_d.load_objects(ctx, &self.state_2d, time_objects);
-    }
 }

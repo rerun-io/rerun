@@ -58,21 +58,3 @@ pub fn random_rgb(seed: u64) -> [u8; 3] {
         }
     }
 }
-
-// ----------------------------------------------------------------------------
-
-use egui::emath;
-
-pub fn calc_bbox_2d(objects: &re_data_store::Objects<'_>) -> emath::Rect {
-    crate::profile_function!();
-
-    let mut bbox = emath::Rect::NOTHING;
-
-    for (_, obj) in objects.line_segments2d.iter() {
-        for point in obj.points {
-            bbox.extend_with(point.into());
-        }
-    }
-
-    bbox
-}

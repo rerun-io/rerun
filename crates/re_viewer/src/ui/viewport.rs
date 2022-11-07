@@ -12,9 +12,7 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{
-    log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, Objects,
-};
+use re_data_store::{log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties};
 use re_log_types::ObjectType;
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
@@ -422,75 +420,32 @@ fn space_view_ui(
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
 ) -> egui::Response {
-    if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-        let obj_tree_props = &space_view.obj_tree_properties;
+    let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
+        return unknown_space_label(ui, &space_view.space_path);
+    };
 
-        // Get the latest objects for the currently selected time:
-        let mut time_objects = Objects::default();
-        {
-            crate::profile_scope!("time_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
-                    for obj_path in &space_info.objects {
-                        if obj_tree_props.projected.get(obj_path).visible {
-                            if let Some(obj_store) = timeline_store.get(obj_path) {
-                                if let Some(obj_type) =
-                                    ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                                {
-                                    if !is_sticky_type(obj_type) {
-                                        time_objects.query_object(
-                                            obj_store,
-                                            &time_query,
-                                            obj_path,
-                                            obj_type,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        let time_objects = filter_objects(&time_objects);
+    let obj_tree_props = &space_view.obj_tree_properties;
 
-        // TODO: keep the scene around to avoid reallocating vectors all the time.
-        let mut scene = Scene::default();
+    // TODO: keep the scene around to avoid reallocating vectors all the time.
+    let mut scene = Scene::default();
 
-        let query = SceneQuery {
-            objects: &space_info.objects,
-            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-            time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(), // TODO
-        };
-        scene.two_d.clear();
-        scene
-            .two_d
-            .load(ctx, obj_tree_props, &space_view.view_state.state_2d, &query);
-        scene.three_d.clear();
-        scene.three_d.load(ctx, obj_tree_props, &query);
-        scene.text.clear();
-        scene.text.load(ctx, obj_tree_props, &query);
-        scene.tensor.clear();
-        scene.tensor.load(ctx, obj_tree_props, &query);
+    let query = SceneQuery {
+        objects: &space_info.objects,
+        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+        time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(), // TODO
+    };
+    scene.two_d.clear();
+    scene
+        .two_d
+        .load(ctx, obj_tree_props, &space_view.view_state.state_2d, &query);
+    scene.three_d.clear();
+    scene.three_d.load(ctx, obj_tree_props, &query);
+    scene.text.clear();
+    scene.text.load(ctx, obj_tree_props, &query);
+    scene.tensor.clear();
+    scene.tensor.load(ctx, obj_tree_props, &query);
 
-        space_view
-            .view_state
-            .load_scene_from_objects(ctx, &time_objects, &mut scene);
-
-        space_view.scene_ui(ctx, ui, spaces_info, space_info, &time_objects, scene)
-    } else {
-        unknown_space_label(ui, &space_view.space_path)
-    }
-}
-
-fn is_sticky_type(obj_type: &ObjectType) -> bool {
-    obj_type == &ObjectType::TextEntry
-}
-
-fn filter_objects<'s>(objects: &'_ Objects<'s>) -> Objects<'s> {
-    crate::profile_function!();
-    objects.filter(|props| props.visible)
+    space_view.scene_ui(ctx, ui, spaces_info, space_info, scene)
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
