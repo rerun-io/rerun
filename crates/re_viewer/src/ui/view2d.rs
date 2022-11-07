@@ -16,7 +16,7 @@ use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use super::{space_view::SceneQuery, ClassDescription, ClassDescriptionMap, Legends};
+use super::{space_view::SceneQuery, ClassDescription, ClassDescriptionMap, Legend, Legends};
 
 // ---
 
@@ -34,8 +34,8 @@ pub struct Image {
     /// up to a ~65m range.
     pub meter: Option<f32>,
     pub paint_props: ObjectPaintProperties,
-    // /// A thing that provides additional semantic context for your dtype.
-    // pub legend: Option<ClassDescriptionMap<'static>>,
+    /// A thing that provides additional semantic context for your dtype.
+    pub legend: Legend,
 }
 
 pub struct Box2D {
@@ -169,10 +169,6 @@ impl Scene2D {
                                 return;
                             }
 
-                            // TODO: not sure how we handle that cleanly yet.
-                            // let legend = find_legend(legend, objects);
-                            _ = legend;
-
                             let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
                             let image = Image {
@@ -183,7 +179,7 @@ impl Scene2D {
                                 ),
                                 tensor: tensor.clone(), // shallow
                                 meter: meter.copied(),
-                                // legend: legend.cloned(), // shallow
+                                legend: legends.find(obj_path),
                                 paint_props: paint_properties(
                                     ctx,
                                     &hovered_instance_id_hash,
@@ -747,10 +743,8 @@ fn view_2d_scrollable(
             tensor,
             meter,
             paint_props,
+            legend,
         } = img;
-
-        // let legend = super::legend::find_legend(*legend, objects); // TODO
-        let legend = None;
 
         let tensor_view = ctx
             .cache
