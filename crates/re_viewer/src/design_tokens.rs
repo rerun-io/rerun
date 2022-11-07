@@ -13,7 +13,6 @@ impl DesignTokens {
         egui::Frame {
             fill: egui_ctx.style().visuals.window_fill(),
             inner_margin: egui::style::Margin::same(4.0),
-            stroke: egui_ctx.style().visuals.window_stroke(),
             ..Default::default()
         }
     }
