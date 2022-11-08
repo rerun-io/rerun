@@ -1,5 +1,5 @@
 use crate::ViewerContext;
-use egui::plot::{Line, Plot, PlotPoints};
+use egui::plot::{Legend, Line, Plot, PlotPoints};
 use egui::Color32;
 use re_log_types::{LogMsg, TimePoint};
 
@@ -25,22 +25,26 @@ pub(crate) fn view_plot(
 ) -> egui::Response {
     crate::profile_function!();
 
-    let mut resp = ui.add_visible_ui(false, |_| {}).response; // dummy
-
     // TODO:
     // - x legend (using timeline name)
-    // - y legend (using obj_path)
 
-    for (obj_path, plot) in &scene.plots {
-        let points = plot.iter().map(|s| [s.time as _, s.value]).collect();
-        let points = PlotPoints::new(points);
-        let line = Line::new(points);
-        resp = resp.union(
-            Plot::new("my_plot")
-                .show(ui, |plot_ui| plot_ui.line(line))
-                .response,
-        );
-    }
+    let lines = scene
+        .plots
+        .iter()
+        .map(|(obj_path, plot)| {
+            let points = plot.iter().map(|s| [s.time as _, s.value]).collect();
+            let points = PlotPoints::new(points);
+            let line = Line::new(points).name(obj_path);
+            (obj_path, line)
+        })
+        .collect::<Vec<_>>();
 
-    resp
+    Plot::new("plot_view")
+        .legend(Legend::default())
+        .show(ui, move |plot_ui| {
+            for (obj_path, line) in lines {
+                plot_ui.line(line)
+            }
+        })
+        .response
 }
