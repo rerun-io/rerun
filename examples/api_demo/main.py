@@ -7,6 +7,7 @@ Example usage:
 """
 
 import argparse
+import logging
 import os
 from pathlib import Path
 from time import sleep
@@ -14,7 +15,7 @@ from typing import Any, Final
 
 import numpy as np
 import rerun_sdk as rerun
-from rerun_sdk import ClassDescription, RectFormat
+from rerun_sdk import ClassDescription, RectFormat, LogLevel, LoggingHandler
 
 
 def run_misc() -> None:
@@ -103,8 +104,22 @@ def run_rects() -> None:
     rerun.log_rects("rects_demo/rects", [])
 
 
+def run_text_logs() -> None:
+    rerun.log_text_entry("logs", "Text with explicitly set color", color=[255, 215, 0], timeless=True)
+    rerun.log_text_entry("logs", "this entry has loglevel TRACE", level=LogLevel.TRACE)
+
+    logging.getLogger().addHandler(LoggingHandler("logs/handler"))
+    logging.info("This log got added through a `LoggingHandler`")
+
+
 def main() -> None:
-    demos = {"misc": run_misc, "segmentation": run_segmentation, "set_visible": run_set_visible, "rects": run_rects}
+    demos = {
+        "misc": run_misc,
+        "segmentation": run_segmentation,
+        "set_visible": run_set_visible,
+        "rects": run_rects,
+        "text": run_text_logs,
+    }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
