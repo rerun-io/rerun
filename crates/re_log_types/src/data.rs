@@ -310,7 +310,7 @@ macro_rules! data_map(
 /// ```
 /// # use re_log_types::{DataType, data_type_map_none};
 /// # let data_type: DataType = DataType::F32;
-/// data_type_map_none!(data_type, |data_none: Option<f32>| { assert!(data_none.is_none()); });
+/// data_type_map_none!(data_type, |data_none| { assert!(data_none.is_none()); });
 /// ```
 #[macro_export]
 macro_rules! data_type_map_none(
