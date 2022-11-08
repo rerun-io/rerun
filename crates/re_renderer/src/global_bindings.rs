@@ -26,7 +26,10 @@ pub(crate) struct FrameUniformBuffer {
     pub camera_position: wgpu_buffer_types::Vec3,
 
     /// View space coordinates of the top right screen corner.
-    pub top_right_screen_corner_in_view: wgpu_buffer_types::Vec2Padded,
+    pub top_right_screen_corner_in_view: wgpu_buffer_types::Vec2,
+    /// Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
+    pub pixel_world_size_from_camera_distance: f32,
+    pub _padding: f32,
 }
 
 pub(crate) struct GlobalBindings {

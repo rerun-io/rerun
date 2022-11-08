@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     context::*,
     global_bindings::FrameUniformBuffer,
-    renderer::{tonemapper::*, Drawable, Renderer},
+    renderer::{compositor::*, Drawable, Renderer},
     resource_pools::{
         bind_group_pool::GpuBindGroupHandleStrong, buffer_pool::BufferDesc, texture_pool::*,
     },
@@ -30,10 +30,11 @@ pub struct ViewBuilder {
 }
 
 struct ViewTargetSetup {
-    tonemapping_drawable: TonemapperDrawable,
+    tonemapping_drawable: CompositorDrawable,
 
     bind_group_0: GpuBindGroupHandleStrong,
-    hdr_render_target: GpuTextureHandleStrong,
+    hdr_render_target_msaa: GpuTextureHandleStrong,
+    hdr_render_target_resolved: GpuTextureHandleStrong,
     depth_buffer: GpuTextureHandleStrong,
 
     resolution_in_pixel: [u32; 2],
@@ -62,8 +63,36 @@ pub struct TargetConfiguration {
 }
 
 impl ViewBuilder {
-    pub const FORMAT_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-    pub const FORMAT_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+    /// Color format used for the main target of the view builder.
+    ///
+    /// Eventually we'll want to make this an HDR format and apply tonemapping during composite.
+    /// However, note that it is easy to run into subtle MSAA quality issues then:
+    /// Applying MSAA resolve before tonemapping is problematic as it means we're doing msaa in linear.
+    /// This is especially problematic at bright/dark edges where we may loose "smoothness"!
+    /// For a nice illustration see [this blog post by MRP](https://therealmjp.github.io/posts/msaa-overview/)
+    /// We either would need to keep the MSAA target and tonemap it,
+    /// apply a manual resolve where we inverse-tonemap non-fully-covered pixel before averaging.
+    /// (an optimized variant of this is described [by AMD here](https://gpuopen.com/learn/optimized-reversible-tonemapper-for-resolve/))
+    /// In any case, this gets us onto a potentially much costlier rendering path, especially for tiling GPUs.
+    pub const MAIN_TARGET_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+
+    /// Depth format used for the main target of the view builder.
+    pub const MAIN_TARGET_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+
+    /// Enable MSAA always. This makes our pipeline less variable as well, as we need MSAA resolve steps if we want any MSAA at all!
+    ///
+    /// 4 samples are the only thing `WebGPU` supports, and currently wgpu as well
+    /// ([tracking issue for more options on native](https://github.com/gfx-rs/wgpu/issues/2910))
+    pub const MAIN_TARGET_SAMPLE_COUNT: u32 = 4;
+
+    /// Default multisample state that any [`wgpu::RenderPipeline`] drawing to the main target needs to use.
+    ///
+    /// In rare cases, pipelines may want to enable alpha to coverage and/or sample masks.
+    pub const MAIN_TARGET_DEFAULT_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
+        count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
+        mask: !0,
+        alpha_to_coverage_enabled: false,
+    };
 
     pub fn new_shared() -> SharedViewBuilder {
         Arc::new(RwLock::new(Some(ViewBuilder::default())))
@@ -77,27 +106,45 @@ impl ViewBuilder {
         config: &TargetConfiguration,
     ) -> anyhow::Result<&mut Self> {
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
-        // TODO(andreas): How should we treat multisampling. Once we start it we also need to deal with MSAA resolves
-        let hdr_render_target = ctx.resource_pools.textures.alloc(
+        let hdr_render_target_desc = TextureDesc {
+            label: "hdr rendertarget msaa".into(),
+            size: wgpu::Extent3d {
+                width: config.resolution_in_pixel[0],
+                height: config.resolution_in_pixel[1],
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: Self::MAIN_TARGET_SAMPLE_COUNT,
+            dimension: wgpu::TextureDimension::D2,
+            format: Self::MAIN_TARGET_COLOR_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        };
+        let hdr_render_target_msaa = ctx
+            .resource_pools
+            .textures
+            .alloc(device, &hdr_render_target_desc);
+        // Like hdr_render_target, but with MSAA resolved.
+        let hdr_render_target_resolved = ctx.resource_pools.textures.alloc(
             device,
-            &render_target_2d_desc(
-                Self::FORMAT_HDR,
-                config.resolution_in_pixel[0],
-                config.resolution_in_pixel[1],
-                1,
-            ),
+            &TextureDesc {
+                label: "hdr rendertarget resolved".into(),
+                sample_count: 1,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                ..hdr_render_target_desc
+            },
         );
         let depth_buffer = ctx.resource_pools.textures.alloc(
             device,
-            &render_target_2d_desc(
-                Self::FORMAT_DEPTH,
-                config.resolution_in_pixel[0],
-                config.resolution_in_pixel[1],
-                1,
-            ),
+            &TextureDesc {
+                label: "depth buffer".into(),
+                format: Self::MAIN_TARGET_DEPTH_FORMAT,
+                ..hdr_render_target_desc
+            },
         );
 
-        let tonemapping_drawable = TonemapperDrawable::new(ctx, device, &hdr_render_target);
+        let tonemapping_drawable =
+            CompositorDrawable::new(ctx, device, &hdr_render_target_resolved);
 
         // Setup frame uniform buffer
         let frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
@@ -132,6 +179,18 @@ impl ViewBuilder {
             .truncate()
             .normalize();
 
+        // Determine how wide a pixel is in world space at unit distance from the camera.
+        //
+        // derivation:
+        // tan(FOV / 2) = (screen_in_world / 2) / distance
+        // screen_in_world = tan(FOV / 2) * distance * 2
+        //
+        // want: pixels in world per distance, i.e (screen_in_world / resolution / distance)
+        // => (resolution / screen_in_world / distance) = tan(FOV / 2) * distance * 2 / resolution / distance =
+        //                                              = tan(FOV / 2) * 2.0 / resolution
+        let pixel_world_size_from_camera_distance =
+            (config.fov_y * 0.5).tan() * 2.0 / config.resolution_in_pixel[1] as f32;
+
         queue.write_buffer(
             &ctx.resource_pools
                 .buffers
@@ -145,6 +204,8 @@ impl ViewBuilder {
                 projection_from_world: projection_from_world.into(),
                 camera_position: camera_position.into(),
                 top_right_screen_corner_in_view: top_right_screen_corner_in_view.into(),
+                pixel_world_size_from_camera_distance,
+                _padding: 0.0,
             }),
         );
 
@@ -157,7 +218,8 @@ impl ViewBuilder {
         self.setup = Some(ViewTargetSetup {
             tonemapping_drawable,
             bind_group_0,
-            hdr_render_target,
+            hdr_render_target_msaa,
+            hdr_render_target_resolved,
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
             origin_in_pixel: config.origin_in_pixel,
@@ -197,11 +259,16 @@ impl ViewBuilder {
             .as_ref()
             .context("ViewBuilder::setup_view wasn't called yet")?;
 
-        let color = ctx
+        let color_msaa = ctx
             .resource_pools
             .textures
-            .get_resource(&setup.hdr_render_target)
-            .context("hdr render target")?;
+            .get_resource(&setup.hdr_render_target_msaa)
+            .context("hdr render target msaa")?;
+        let color_resolved = ctx
+            .resource_pools
+            .textures
+            .get_resource(&setup.hdr_render_target_resolved)
+            .context("hdr render target resolved")?;
         let depth = ctx
             .resource_pools
             .textures
@@ -211,18 +278,22 @@ impl ViewBuilder {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("frame builder hdr pass"), // TODO(andreas): It would be nice to specify this from the outside so we know which view we're rendering
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &color.default_view,
-                resolve_target: None,
+                view: &color_msaa.default_view,
+                resolve_target: Some(&color_resolved.default_view),
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                    store: true,
+                    // Don't care about the result, it's going to be resolved to the resolve target.
+                    // This can have be much better perf, especially on tiler gpus.
+                    store: false,
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &depth.default_view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(0.0), // 0.0 == far since we're using reverse-z
-                    store: false, // discards the depth buffer after use, can be faster
+                    // Don't care about depth results afterwards.
+                    // This can have be much better perf, especially on tiler gpus.
+                    store: false,
                 }),
                 stencil_ops: None,
             }),
@@ -280,10 +351,10 @@ impl ViewBuilder {
 
         let tonemapper = ctx
             .renderers
-            .get::<Tonemapper>()
-            .context("get tonemapper")?;
+            .get::<Compositor>()
+            .context("get compositor")?;
         tonemapper
             .draw(&ctx.resource_pools, pass, &setup.tonemapping_drawable)
-            .context("perform tonemapping")
+            .context("composite into main view")
     }
 }

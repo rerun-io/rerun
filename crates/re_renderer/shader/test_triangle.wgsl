@@ -22,7 +22,7 @@ var<private> v_colors: array<Vec4, 3> = array<Vec4, 3>(
 fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     var out: VertexOut;
 
-    out.position = frame.projection_from_world * Vec4(v_positions[v_idx], 0.0, 1.0);
+    out.position = frame.projection_from_world * Vec4(v_positions[v_idx] * 5.0, 0.0, 1.0);
     out.color = v_colors[v_idx];
 
     return out;

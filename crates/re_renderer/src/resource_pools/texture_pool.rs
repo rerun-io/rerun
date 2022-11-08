@@ -107,24 +107,3 @@ impl GpuTexturePool {
         self.pool.get_strong_handle(handle)
     }
 }
-
-pub(crate) fn render_target_2d_desc(
-    format: wgpu::TextureFormat,
-    width: u32,
-    height: u32,
-    sample_count: u32,
-) -> TextureDesc {
-    TextureDesc {
-        label: "rendertarget".into(),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-    }
-}
