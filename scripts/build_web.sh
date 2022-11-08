@@ -11,24 +11,23 @@ cd "$script_path/.."
 # We assume the user has already called it previously.
 
 OPEN=false
-OPTIMIZE=false
+RELEASE=false
 
 while test $# -gt 0; do
   case "$1" in
     -h|--help)
-      echo "build_web.sh [--optimize] [--open]"
+      echo "build_web.sh [--release] [--open]"
       echo ""
-      echo "  --optimize: Enable optimization step"
-      echo "              Runs wasm-opt."
-      echo "              NOTE: --optimize also removes debug symbols which are otherwise useful for in-browser profiling."
+      echo "  --release: Compile for release, and run wasm-opt."
+      echo "             NOTE: --release also removes debug symbols which are otherwise useful for in-browser profiling."
       echo ""
-      echo "  --open:     Open the result in a browser"
+      echo "  --open:    Open the result in a browser"
       exit 0
       ;;
 
-    -O|--optimize)
+    --release)
       shift
-      OPTIMIZE=true
+      RELEASE=true
       ;;
 
     --open)
@@ -69,8 +68,13 @@ TARGET=`cargo metadata --format-version=1 | jq --raw-output .target_directory`
 TARGET_WASM="${TARGET}_wasm"
 
 echo "Compiling rust to wasm in folder: ${TARGET_WASM}"
-BUILD=release
-cargo build --target-dir $TARGET_WASM -p ${CRATE_NAME} --release --lib --target wasm32-unknown-unknown
+if [[ "${RELEASE}" = true ]]; then
+  BUILD=release
+  cargo build --target-dir $TARGET_WASM -p ${CRATE_NAME} --release --lib --target wasm32-unknown-unknown
+else
+  BUILD=debug
+  cargo build --target-dir $TARGET_WASM -p ${CRATE_NAME} --lib --target wasm32-unknown-unknown
+fi
 
 # Get the output directoryß (in the workspace it is in another location)
 
@@ -79,7 +83,7 @@ TARGET_NAME="${CRATE_NAME_SNAKE_CASE}.wasm"
 wasm-bindgen "${TARGET_WASM}/wasm32-unknown-unknown/${BUILD}/${TARGET_NAME}" \
   --out-dir ${BUILD_DIR} --no-modules --no-typescript
 
-if [[ "${OPTIMIZE}" = true ]]; then
+if [[ "${RELEASE}" = true ]]; then
   echo "Optimizing wasm…"
   # to get wasm-opt:  apt/brew/dnf install binaryen
   wasm-opt ${BUILD_DIR}/${CRATE_NAME}_bg.wasm -O2 --fast-math -o ${BUILD_DIR}/${CRATE_NAME}_bg.wasm # add -g to get debug symbols
