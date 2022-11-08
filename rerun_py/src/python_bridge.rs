@@ -882,7 +882,7 @@ fn log_point(
 #[pyfunction]
 fn log_points(
     obj_path: &str,
-    positions: numpy::PyReadonlyArray2<'_, f32>,
+    positions: numpy::PyReadonlyArrayDyn<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     timeless: bool,
 ) -> PyResult<()> {
