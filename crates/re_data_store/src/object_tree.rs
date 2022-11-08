@@ -135,6 +135,7 @@ impl DataColumns {
                 DataType::Bool => ("bool", "s"),
                 DataType::I32 => ("integer", "s"),
                 DataType::F32 => ("float", "s"),
+                DataType::F64 => ("double", "s"),
                 DataType::Color => ("color", "s"),
                 DataType::String => ("string", "s"),
 

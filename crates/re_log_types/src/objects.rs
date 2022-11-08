@@ -10,6 +10,9 @@ pub enum ObjectType {
     /// A logging message.
     TextEntry,
 
+    /// A double-precision scalar.
+    Scalar,
+
     /// An image. Could be gray, RGB, a depth map, ….
     Image,
 
@@ -48,6 +51,7 @@ impl ObjectType {
             Self::ClassDescription => &["id", "label", "color"],
 
             Self::TextEntry => &["color", "body", "level"],
+            Self::Scalar => &["color"], // TODO: ???
 
             Self::Image => &["color", "tensor", "meter", "legend"],
             Self::Point2D => &["color", "pos", "radius"],
