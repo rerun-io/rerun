@@ -98,6 +98,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_text_entry, m)?)?;
+    m.add_function(wrap_pyfunction!(log_scalar, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
@@ -564,6 +565,36 @@ fn log_text_entry(
             LoggedData::Single(Data::String(lvl.to_owned())),
         );
     }
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
+    }
+
+    Ok(())
+}
+
+// ----------------------------------------------------------------------------
+
+/// Log a scalar.
+#[pyfunction]
+fn log_scalar(obj_path: &str, scalar: f64, color: Option<Vec<u8>>, timeless: bool) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Scalar);
+
+    let time_point = time(timeless);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "scalar"),
+        LoggedData::Single(Data::F64(scalar)),
+    );
 
     if let Some(color) = color {
         let color = convert_color(color)?;
