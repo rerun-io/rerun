@@ -95,7 +95,7 @@ impl Scene2D {
         query: &SceneQuery<'_>,
         state: &State2D,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // NOTE: 1 frame delay here!
         let hovered = state
@@ -116,7 +116,7 @@ impl Scene2D {
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::ClassDescription])
@@ -158,7 +158,7 @@ impl Scene2D {
         query: &SceneQuery<'_>,
         hovered: InstanceIdHash,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let images = query
             .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
@@ -228,7 +228,7 @@ impl Scene2D {
         query: &SceneQuery<'_>,
         hovered: InstanceIdHash,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let boxes = query
             .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::BBox2D])
@@ -295,7 +295,7 @@ impl Scene2D {
         query: &SceneQuery<'_>,
         hovered: InstanceIdHash,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let points = query
             .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Point2D])
@@ -358,7 +358,7 @@ impl Scene2D {
         query: &SceneQuery<'_>,
         hovered: InstanceIdHash,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let segments = query
             .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::LineSegments2D])

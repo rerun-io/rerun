@@ -32,10 +32,10 @@ impl SceneText {
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         {
-            puffin::profile_scope!("SceneText - load text entries");
+            crate::profile_scope!("SceneText - load text entries");
             let text_entries = query
                 .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::TextEntry])
                 .flat_map(|(_obj_type, obj_path, obj_store)| {

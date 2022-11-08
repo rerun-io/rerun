@@ -14,7 +14,7 @@ use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
 #[cfg(feature = "wgpu")]
-use re_renderer::renderer::*; // TODO
+use re_renderer::renderer::*;
 
 use super::{eye::Eye, SpaceCamera};
 
@@ -144,7 +144,7 @@ impl Scene3D {
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // hack because three-d handles colors wrong. TODO(emilk): fix three-d
         let gamma_lut = (0..=255)
@@ -170,7 +170,7 @@ impl Scene3D {
         let caches = &mut *ctx.cache;
 
         {
-            puffin::profile_scope!("Scene3D - load points");
+            crate::profile_scope!("Scene3D - load points");
             let points = query
                 .iter_object_stores(log_db, obj_tree_props, &[ObjectType::Point3D])
                 .flat_map(|(_obj_type, obj_path, obj_store)| {
@@ -208,7 +208,7 @@ impl Scene3D {
         }
 
         {
-            puffin::profile_scope!("Scene3D - load boxes");
+            crate::profile_scope!("Scene3D - load boxes");
             for (_obj_type, obj_path, obj_store) in
                 query.iter_object_stores(log_db, obj_tree_props, &[ObjectType::Box3D])
             {
@@ -245,7 +245,7 @@ impl Scene3D {
         }
 
         {
-            puffin::profile_scope!("Scene3D - load paths & segments");
+            crate::profile_scope!("Scene3D - load paths & segments");
 
             let segments = query
                 .iter_object_stores(
@@ -309,7 +309,7 @@ impl Scene3D {
         }
 
         {
-            puffin::profile_scope!("Scene3D - load meshes");
+            crate::profile_scope!("Scene3D - load meshes");
             let meshes = query
                 .iter_object_stores(log_db, obj_tree_props, &[ObjectType::Mesh3D])
                 .flat_map(|(_obj_type, obj_path, obj_store)| {
@@ -360,7 +360,7 @@ impl Scene3D {
         }
 
         {
-            puffin::profile_scope!("Scene3D - load arrows");
+            crate::profile_scope!("Scene3D - load arrows");
             for (_obj_type, obj_path, obj_store) in
                 query.iter_object_stores(log_db, obj_tree_props, &[ObjectType::Arrow3D])
             {

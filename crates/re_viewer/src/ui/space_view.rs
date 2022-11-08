@@ -85,10 +85,9 @@ impl SpaceView {
                     )
                 } else if has_tensor {
                     self.view_state.ui_tensor(ui, &scene.tensor)
-                } else if has_text {
-                    self.view_state.ui_text(ctx, ui, &scene.text)
                 } else {
-                    ui.label("???") // TODO
+                    assert!(has_text);
+                    self.view_state.ui_text(ctx, ui, &scene.text)
                 }
             }
             _ => {

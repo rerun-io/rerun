@@ -17,10 +17,10 @@ impl SceneTensor {
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         {
-            puffin::profile_scope!("SceneTensor - load tensors");
+            crate::profile_scope!("SceneTensor - load tensors");
             let tensors = query
                 .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
                 .filter_map(|(_obj_type, _obj_path, obj_store)| {
