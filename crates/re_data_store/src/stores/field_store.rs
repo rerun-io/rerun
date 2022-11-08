@@ -134,9 +134,10 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
                             }
                             BatchOrSplat::Batch(batch) => {
                                 if let Some(index) = instance_index {
-                                    let value = batch.get_index(index).expect("Batches should be self-consistent");
-                                    time_msgid_index.push((*time, *msg_id));
-                                    values.push(value.clone());
+                                    if let Some(value) = batch.get_index(index) {
+                                        time_msgid_index.push((*time, *msg_id));
+                                        values.push(value.clone());
+                                    }
                                 } else {
                                     for (_index_hash, _, value) in batch.iter() {
                                         time_msgid_index.push((*time, *msg_id));
