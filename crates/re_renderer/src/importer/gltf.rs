@@ -267,6 +267,7 @@ fn gather_instances_recursive(
             instances.push(MeshInstance {
                 mesh: *mesh,
                 world_from_mesh: transform,
+                tint_color_srgb: [255, 255, 255, 255],
             });
         }
     }
