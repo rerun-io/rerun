@@ -222,7 +222,9 @@ pub(crate) fn show_settings_ui(
 
     if ui
         .button("Reset virtual camera")
-        .on_hover_text("Resets camera position & orientation.\nYou can also double-click the 3D view")
+        .on_hover_text(
+            "Resets camera position & orientation.\nYou can also double-click the 3D view",
+        )
         .clicked()
     {
         state.orbit_eye = Some(default_eye(&state.scene_bbox, &state.space_specs));
