@@ -1021,6 +1021,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=51ff32797da027125e9ce2b9903251b61d1bb11b#51ff32797da027125e9ce2b9903251b61d1bb11b"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1046,6 +1047,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=51ff32797da027125e9ce2b9903251b61d1bb11b#51ff32797da027125e9ce2b9903251b61d1bb11b"
 dependencies = [
  "ahash 0.8.1",
  "epaint",
@@ -1067,6 +1069,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=51ff32797da027125e9ce2b9903251b61d1bb11b#51ff32797da027125e9ce2b9903251b61d1bb11b"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1080,6 +1083,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=51ff32797da027125e9ce2b9903251b61d1bb11b#51ff32797da027125e9ce2b9903251b61d1bb11b"
 dependencies = [
  "arboard",
  "egui",
@@ -1104,6 +1108,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=51ff32797da027125e9ce2b9903251b61d1bb11b#51ff32797da027125e9ce2b9903251b61d1bb11b"
 dependencies = [
  "egui",
  "tracing",
@@ -1112,6 +1117,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=51ff32797da027125e9ce2b9903251b61d1bb11b#51ff32797da027125e9ce2b9903251b61d1bb11b"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1133,6 +1139,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=51ff32797da027125e9ce2b9903251b61d1bb11b#51ff32797da027125e9ce2b9903251b61d1bb11b"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1141,6 +1148,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=51ff32797da027125e9ce2b9903251b61d1bb11b#51ff32797da027125e9ce2b9903251b61d1bb11b"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.1",
