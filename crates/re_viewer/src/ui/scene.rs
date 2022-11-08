@@ -6,6 +6,7 @@ use super::{view_2d, view_3d, view_tensor, view_text};
 
 // ---
 
+/// A fully self-contained scene, ready to be rendered as-is.
 #[derive(Default)]
 pub struct Scene {
     pub two_d: view_2d::Scene2D,

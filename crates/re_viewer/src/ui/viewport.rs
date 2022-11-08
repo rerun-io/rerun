@@ -421,7 +421,7 @@ fn space_view_ui(
         return unknown_space_label(ui, &space_view.space_path);
     };
     let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
-            return invalid_space_label(ui, &space_view.space_path);
+        return invalid_space_label(ui, &space_view.space_path);
     };
 
     let obj_tree_props = &space_view.obj_tree_properties;

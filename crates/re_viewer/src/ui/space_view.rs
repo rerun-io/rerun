@@ -52,6 +52,8 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
+        // NOTE: mutable because the glow-based 3D view `take()`s the scene because reasons.
+        // TODO(cmc): remove this while removing glow.
         scene: &mut Scene,
     ) -> egui::Response {
         let has_2d = !scene.two_d.is_empty() && scene.tensor.is_empty();

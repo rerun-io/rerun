@@ -59,9 +59,7 @@ pub(crate) fn view_text(
     .response
 }
 
-// --- UI impl ---
-
-// TODO(cmc): let-else everywhere
+// ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
     let Some(msg) = ctx.log_db.get_log_msg(&entry.msg_id) else {
