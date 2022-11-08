@@ -74,9 +74,9 @@ class Detector:
         self.feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50-panoptic")
         self.model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
 
-        self.id2Lable = {cat["id"]: cat["name"] for cat in coco_categories}  # type: Dict[int, str]
-        self.id2IsThing = {cat["id"]: cat["isthing"] for cat in coco_categories}  # type: Dict[int, bool]
-        self.id2Color = {cat["id"]: cat["color"] for cat in coco_categories}  # type: Dict[int, List[int]]
+        self.lable_from_id = {cat["id"]: cat["name"] for cat in coco_categories}  # type: Dict[int, str]
+        self.is_thing_from_id = {cat["id"]: cat["isthing"] for cat in coco_categories}  # type: Dict[int, bool]
+        self.color_from_id = {cat["id"]: cat["color"] for cat in coco_categories}  # type: Dict[int, List[int]]
 
     def detect_objects_to_track(self, rgb: npt.NDArray[np.uint8], frame_idx: int) -> List[Detection]:
         logging.info("Looking for things to track on frame %d", frame_idx)
@@ -105,17 +105,11 @@ class Detector:
 
         boxes = detections["boxes"].detach().cpu().numpy()
         labels = detections["labels"].detach().cpu().numpy()
-        str_labels = [self.id2Lable[l] for l in labels]
-        colors = [self.id2Color[l] for l in labels]
-        things = [self.id2IsThing[l] for l in labels]
+        str_labels = [self.lable_from_id[l] for l in labels]
+        colors = [self.color_from_id[l] for l in labels]
+        things = [self.is_thing_from_id[l] for l in labels]
 
-        rerun.log_rects(
-            "image/scaled/detections",
-            boxes,
-            rect_format=rerun.RectFormat.XYXY,
-            labels=str_labels,
-            colors=np.array(colors),
-        )
+        self.log_detections(boxes, str_labels, colors, things)
 
         objects_to_track = []  # type: List[Detection]
         for idx, (label_id, label_str, label_color, is_thing) in enumerate(zip(labels, str_labels, colors, things)):
@@ -134,6 +128,34 @@ class Detector:
                 )
 
         return objects_to_track
+
+    def log_detections(
+        self, boxes: npt.NDArray[np.float32], str_labels: List[str], colors: List[List[int]], things: List[int]
+    ) -> None:
+        things_np = np.array(things)
+        colors_np = np.array(colors)
+
+        thing_boxes = boxes[things_np == 1, :]
+        thing_labels = [label for label, is_thing in zip(str_labels, things) if is_thing == 1]
+        thing_colors = colors_np[things_np == 1, :]
+        rerun.log_rects(
+            "image/scaled/detections/things",
+            thing_boxes,
+            rect_format=rerun.RectFormat.XYXY,
+            labels=thing_labels,
+            colors=thing_colors,
+        )
+
+        background_boxes = boxes[things_np == 0, :]
+        background_labels = [label for label, is_thing in zip(str_labels, things) if is_thing == 0]
+        background_colors = colors_np[things_np == 0, :]
+        rerun.log_rects(
+            "image/scaled/detections/background",
+            background_boxes,
+            rect_format=rerun.RectFormat.XYXY,
+            labels=background_labels,
+            colors=background_colors,
+        )
 
 
 class Tracker:
