@@ -85,17 +85,19 @@ impl Default for Scene2D {
 
 impl Scene2D {
     /// Loads all objects into the scene according to the given query.
+    ///
+    /// In addition to the query, we also pass in the 2D state from last frame, so that we can
+    /// compute custom paint properties for hovered items.
     pub(crate) fn load_objects(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
-        state: &State2D, // TODO: messy
         query: &SceneQuery<'_>,
+        state: &State2D,
     ) {
         puffin::profile_function!();
 
-        // TODO: that is most definitely an issue.. no? maybe not
-        // We introduce a 1-frame delay!
+        // NOTE: 1 frame delay here!
         let hovered = state
             .hovered_instance
             .as_ref()
@@ -318,7 +320,6 @@ impl Scene2D {
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
-                        // TODO: we gotta have something to replace the ol' InstanceProps
                         let paint_props = paint_properties(
                             ctx,
                             &hovered,
@@ -386,7 +387,6 @@ impl Scene2D {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
-                        // TODO: we gotta have something to replace the ol' InstanceProps
                         let paint_props = paint_properties(
                             ctx,
                             &hovered,
@@ -438,8 +438,6 @@ impl Scene2D {
 
 // ---
 
-// TODO: still that props mess
-
 pub struct ObjectPaintProperties {
     pub is_hovered: bool,
     pub bg_stroke: Stroke,
@@ -462,7 +460,6 @@ enum DefaultColor {
     Random,
 }
 
-// TODO: bruh
 fn paint_properties(
     ctx: &mut ViewerContext<'_>,
     hovered: &InstanceIdHash,

@@ -420,6 +420,9 @@ fn space_view_ui(
     let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
         return unknown_space_label(ui, &space_view.space_path);
     };
+    let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
+            return invalid_space_label(ui, &space_view.space_path);
+    };
 
     let obj_tree_props = &space_view.obj_tree_properties;
 
@@ -428,12 +431,12 @@ fn space_view_ui(
         let query = SceneQuery {
             obj_paths: &space_info.objects,
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-            time_query: ctx.rec_cfg.time_ctrl.time_query().unwrap(),
+            time_query,
         };
 
         scene
             .two_d
-            .load_objects(ctx, obj_tree_props, &space_view.view_state.state_2d, &query);
+            .load_objects(ctx, obj_tree_props, &query, &space_view.view_state.state_2d);
         scene.three_d.load(ctx, obj_tree_props, &query);
         scene.text.load(ctx, obj_tree_props, &query);
         scene.tensor.load(ctx, obj_tree_props, &query);
@@ -446,6 +449,13 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Respons
     ui.colored_label(
         ui.visuals().warn_fg_color,
         format!("Unknown space {space_path}"),
+    )
+}
+
+fn invalid_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
+    ui.colored_label(
+        ui.visuals().warn_fg_color,
+        format!("Invalid space {space_path}: no time query"),
     )
 }
 
