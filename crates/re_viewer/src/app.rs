@@ -774,7 +774,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
 
     #[cfg(not(target_arch = "wasm32"))]
     if ui
-        .button("Load")
+        .button("Load…")
         .on_hover_text("Load a Rerun Data File (.rrd)")
         .clicked()
     {
