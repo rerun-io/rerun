@@ -1029,7 +1029,7 @@ dependencies = [
  "egui-wgpu",
  "egui-winit",
  "egui_glow",
- "glow",
+ "glow 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "glutin",
  "js-sys",
  "percent-encoding",
@@ -1122,7 +1122,7 @@ dependencies = [
  "bytemuck",
  "egui",
  "egui-winit",
- "glow",
+ "glow 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "memoffset 0.6.5",
  "puffin",
  "tracing",
@@ -1564,6 +1564,17 @@ name = "glow"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8bd5877156a19b8ac83a29b2306fe20537429d318f3ff0a1a2119f8d9c61919"
+dependencies = [
+ "js-sys",
+ "slotmap",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "glow"
+version = "0.11.2"
+source = "git+https://github.com/grovesNL/glow/?rev=c8a011fcd57a5c68cc917ed394baa484bdefc909#c8a011fcd57a5c68cc917ed394baa484bdefc909"
 dependencies = [
  "js-sys",
  "slotmap",
@@ -2314,7 +2325,7 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "0.10.0"
-source = "git+https://github.com/gfx-rs/naga?rev=c52d9102#c52d91023d43092323615fcc746162e478033f26"
+source = "git+https://github.com/gfx-rs/naga?rev=e7fc8e6#e7fc8e64f2f23397b149217ecce6e123c5aa5092"
 dependencies = [
  "bit-set",
  "bitflags",
@@ -3198,7 +3209,7 @@ dependencies = [
  "egui_glow",
  "fixed",
  "glam",
- "glow",
+ "glow 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "image",
  "instant",
  "itertools",
@@ -3842,7 +3853,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7a5a1017829335f6761bdbae2daf3021a88314a1f8d5f188c9b62ce62e2fd31"
 dependencies = [
  "cgmath",
- "glow",
+ "glow 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "instant",
  "thiserror",
  "three-d-asset",
@@ -4650,7 +4661,7 @@ checksum = "9193164d4de03a926d909d3bc7c30543cecb35400c02114792c2cae20d5e2dbb"
 [[package]]
 name = "wgpu"
 version = "0.14.0"
-source = "git+https://github.com/gfx-rs/wgpu.git#cf3ea638ee8b635b1a92b0f1812a8c193c48911e"
+source = "git+https://github.com/gfx-rs/wgpu.git#08b160c2932a44adedd9411bd882bc7ef41ea270"
 dependencies = [
  "arrayvec 0.7.2",
  "js-sys",
@@ -4671,7 +4682,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.14.0"
-source = "git+https://github.com/gfx-rs/wgpu.git#cf3ea638ee8b635b1a92b0f1812a8c193c48911e"
+source = "git+https://github.com/gfx-rs/wgpu.git#08b160c2932a44adedd9411bd882bc7ef41ea270"
 dependencies = [
  "arrayvec 0.7.2",
  "bit-vec",
@@ -4694,7 +4705,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.14.0"
-source = "git+https://github.com/gfx-rs/wgpu.git#cf3ea638ee8b635b1a92b0f1812a8c193c48911e"
+source = "git+https://github.com/gfx-rs/wgpu.git#08b160c2932a44adedd9411bd882bc7ef41ea270"
 dependencies = [
  "android_system_properties",
  "arrayvec 0.7.2",
@@ -4706,7 +4717,7 @@ dependencies = [
  "d3d12",
  "foreign-types 0.3.2",
  "fxhash",
- "glow",
+ "glow 0.11.2 (git+https://github.com/grovesNL/glow/?rev=c8a011fcd57a5c68cc917ed394baa484bdefc909)",
  "gpu-alloc",
  "gpu-descriptor",
  "js-sys",
@@ -4732,7 +4743,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.14.0"
-source = "git+https://github.com/gfx-rs/wgpu.git#cf3ea638ee8b635b1a92b0f1812a8c193c48911e"
+source = "git+https://github.com/gfx-rs/wgpu.git#08b160c2932a44adedd9411bd882bc7ef41ea270"
 dependencies = [
  "bitflags",
 ]

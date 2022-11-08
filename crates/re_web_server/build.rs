@@ -112,7 +112,7 @@ fn main() {
         let mut cmd = std::process::Command::new("../../scripts/build_web.sh");
 
         if std::env::var("PROFILE").unwrap() == "release" {
-            cmd.arg("--optimize");
+            cmd.arg("--release");
         }
 
         let output = cmd

@@ -133,6 +133,6 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // TODO(andreas): Rounded caps, proper shading/lighting, etc.
-    let shading = 1.2 - length(in.position_world - in.position_world_line) / in.line_radius;
-    return in.color * shading ;
+    let shading = max(0.2, 1.2 - length(in.position_world - in.position_world_line) / in.line_radius);
+    return in.color * shading;
 }

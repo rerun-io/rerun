@@ -81,10 +81,10 @@ impl Renderer for GenericSkybox {
                     },
                 ),
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(ViewBuilder::FORMAT_HDR.into())],
+                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: ViewBuilder::FORMAT_DEPTH,
+                    format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
                     // Pass depth test only if the fragment hasn't been written to.
                     // This allows us to draw the skybox last which is much more efficient than using it as a clear pass!
                     depth_compare: wgpu::CompareFunction::Equal,
@@ -92,7 +92,7 @@ impl Renderer for GenericSkybox {
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
-                multisample: wgpu::MultisampleState::default(),
+                multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,

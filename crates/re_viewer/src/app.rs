@@ -605,6 +605,11 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                     recordings_menu(ui, app);
                 });
 
+                #[cfg(debug_assertions)]
+                ui.menu_button("Debug", |ui| {
+                    debug_menu(ui);
+                });
+
                 ui.separator();
 
                 if !app.log_db().is_empty() {
@@ -858,6 +863,16 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
         }
     }
 }
+
+#[cfg(debug_assertions)]
+fn debug_menu(ui: &mut egui::Ui) {
+    #[allow(clippy::manual_assert)]
+    if ui.button("Panic").clicked() {
+        panic!("Intentional panic");
+    }
+}
+
+// ---
 
 /// Returns a closure that, when run, will save the contents of the current database
 /// to disk, at the specified `path`.
