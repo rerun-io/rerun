@@ -192,7 +192,9 @@ class Tracker:
         success, bbox_xywh = self.tracker.update(bgr)
 
         if success:
-            self.tracked.bbox_xywh = bbox_xywh
+            self.tracked.bbox_xywh = clip_bbox_to_image(
+                bbox_xywh=bbox_xywh, image_width=self.tracked.image_width, image_height=self.tracked.image_height
+            )
         else:
             logging.info("Tracker update failed for tracker with id #%d", self.tracking_id)
             self.tracker = None
@@ -267,6 +269,15 @@ def box_iou(first: List[float], second: List[float]) -> float:
     union_area = tracked_area + other_area - intersection_area
 
     return intersection_area / union_area
+
+
+def clip_bbox_to_image(bbox_xywh: List[float], image_width: int, image_height: int) -> List[float]:
+    x_min = max(0, bbox_xywh[0])
+    y_min = max(0, bbox_xywh[1])
+    x_max = min(image_width - 1, bbox_xywh[0] + bbox_xywh[2])
+    y_max = min(image_height - 1, bbox_xywh[1] + bbox_xywh[3])
+
+    return [x_min, y_min, x_max - x_min, y_max - y_min]
 
 
 def update_trackers_with_detections(
