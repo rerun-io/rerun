@@ -19,11 +19,6 @@ the DeepSDF paper ([1]), and visualize the results using the Rerun SDK.
     year = {2019}
 }
 
-Setup:
-```sh
-./examples/deep_sdf/download_dataset.py
-```
-
 Run:
 ```sh
 # assuming your virtual env is up
@@ -47,12 +42,10 @@ from rerun_sdk import LogLevel, MeshFormat
 from trimesh import Trimesh
 
 
-def announcement(body: str) -> None:
-    announcement.counter += 1  # type: ignore[attr-defined]
-    rerun.log_text_entry(f"ann/#{announcement.counter}", body, color=[255, 215, 0], timeless=True)  # type: ignore[attr-defined]
+from dataset.dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 
 
-announcement.counter = 0  # type: ignore[attr-defined]
+CACHE_DIR = Path(os.path.dirname(__file__)) / "cache"
 
 
 def log_timing_decorator(objpath: str, level: str):  # type: ignore[no-untyped-def]
@@ -114,6 +107,7 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
     # that `mesh_to_sdf` returns.
     bs1 = mesh.bounding_sphere
     bs2 = mesh_to_sdf.scale_to_unit_sphere(mesh).bounding_sphere
+    mesh_format = get_mesh_format(mesh)
 
     with open(path, mode="rb") as file:
         scale = bs2.scale / bs1.scale
@@ -147,7 +141,54 @@ def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
     rerun.log_tensor("tensor", voxvol, names=names)
 
 
-if __name__ == "__main__":
+@log_timing_decorator("global/log_mesh", LogLevel.DEBUG)  # type: ignore[misc]
+def compute_and_log_volumetric_sdf(mesh_path: Path, mesh: Trimesh, resolution: int) -> None:
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    basename = os.path.basename(mesh_path)
+    voxvol_path = f"{CACHE_DIR}/{basename}.voxvol.{resolution}.npy"
+    try:
+        with open(voxvol_path, "rb") as f:
+            voxvol = np.load(voxvol_path)
+            rerun.log_text_entry("global", "loading volumetric SDF from cache")
+    except:
+        voxvol = compute_voxel_sdf(mesh, resolution)
+
+    log_volumetric_sdf(voxvol)
+
+    with open(voxvol_path, "wb+") as f:
+        np.save(f, voxvol)
+        rerun.log_text_entry("global", "writing volumetric SDF to cache", level=LogLevel.DEBUG)
+
+
+@log_timing_decorator("global/log_mesh", LogLevel.DEBUG)  # type: ignore[misc]
+def compute_and_log_sample_sdf(mesh_path: Path, mesh: Trimesh, num_points: int) -> None:
+    basename = os.path.basename(mesh_path)
+    points_path = f"{CACHE_DIR}/{basename}.points.{num_points}.npy"
+    sdf_path = f"{CACHE_DIR}/{basename}.sdf.npy"
+
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    try:
+        with open(sdf_path, "rb") as f:
+            sdf = np.load(sdf_path)
+            rerun.log_text_entry("global", "loading sampled SDF from cache")
+        with open(points_path, "rb") as f:
+            points = np.load(points_path)
+            rerun.log_text_entry("global", "loading point cloud from cache")
+    except:
+        (points, sdf) = compute_sample_sdf(mesh, num_points)
+
+    log_mesh(mesh_path, mesh)
+    log_sampled_sdf(points, sdf)
+
+    with open(points_path, "wb+") as f:
+        np.save(f, points)
+        rerun.log_text_entry("global", "writing sampled SDF to cache", level=LogLevel.DEBUG)
+    with open(sdf_path, "wb+") as f:
+        np.save(f, sdf)
+        rerun.log_text_entry("global", "writing point cloud to cache", level=LogLevel.DEBUG)
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generates SDFs for arbitrary meshes and logs the results using the Rerun SDK."
     )
@@ -160,10 +201,16 @@ if __name__ == "__main__":
         "--points", type=int, default=250_000, help="Specifies the number of points for the point cloud"
     )
     parser.add_argument(
-        "--path",
+        "--mesh",
+        type=str,
+        choices=AVAILABLE_MESHES,
+        default=AVAILABLE_MESHES[0],
+        help="The name of the mesh to analyze",
+    )
+    parser.add_argument(
+        "--mesh_path",
         type=Path,
-        help="Mesh to log (e.g. `dataset/avocado.glb`)",
-        default="examples/deep_sdf/dataset/avocado.glb",
+        help="Path to a mesh to analyze. If set, overrides the `--mesh` argument.",
     )
     parser.add_argument(
         "--serve",
@@ -183,58 +230,14 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    cachedir = Path(os.path.dirname(__file__)).joinpath("cache")
-    os.makedirs(cachedir, exist_ok=True)
+    mesh_path = args.mesh_path
+    if mesh_path is None:
+        mesh_path = ensure_mesh_downloaded(args.mesh)
+    mesh = read_mesh(mesh_path)
 
-    now = timer()
+    compute_and_log_sample_sdf(mesh_path, mesh, args.points)
 
-    path = args.path
-    mesh = read_mesh(path)
-    mesh_format = get_mesh_format(mesh)
-
-    basename = os.path.basename(path)
-    points_path = f"{cachedir}/{basename}.points.{args.points}.npy"
-    sdf_path = f"{cachedir}/{basename}.sdf.npy"
-    voxvol_path = f"{cachedir}/{basename}.voxvol.{args.resolution}.npy"
-
-    try:
-        with open(sdf_path, "rb") as f:
-            sdf = np.load(sdf_path)
-            rerun.log_text_entry("global", "loading sampled SDF from cache")
-        with open(points_path, "rb") as f:
-            points = np.load(points_path)
-            rerun.log_text_entry("global", "loading point cloud from cache")
-    except:
-        (points, sdf) = compute_sample_sdf(mesh, args.points)
-
-    try:
-        with open(voxvol_path, "rb") as f:
-            voxvol = np.load(voxvol_path)
-            rerun.log_text_entry("global", "loading volumetric SDF from cache")
-    except:
-        voxvol = compute_voxel_sdf(mesh, args.resolution)
-
-    # TODO(cmc): really could use some structured logging here!
-    announcement(f"starting DeepSDF logger")
-    announcement(f"point cloud size: {args.points}")
-    announcement(f"voxel resolution: {args.resolution}")
-
-    log_mesh(path, mesh)
-    log_sampled_sdf(points, sdf)
-    log_volumetric_sdf(voxvol)
-
-    elapsed_ms = (timer() - now) * 1_000.0
-    announcement(f"SDFs computed and logged in {elapsed_ms:.1f}ms")
-
-    with open(points_path, "wb+") as f:
-        np.save(f, points)
-        rerun.log_text_entry("global", "writing sampled SDF to cache", level=LogLevel.DEBUG)
-    with open(sdf_path, "wb+") as f:
-        np.save(f, sdf)
-        rerun.log_text_entry("global", "writing point cloud to cache", level=LogLevel.DEBUG)
-    with open(voxvol_path, "wb+") as f:
-        np.save(f, voxvol)
-        rerun.log_text_entry("global", "writing volumetric SDF to cache", level=LogLevel.DEBUG)
+    compute_and_log_volumetric_sdf(mesh_path, mesh, args.resolution)
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
@@ -250,3 +253,7 @@ if __name__ == "__main__":
         pass
     elif not args.connect:
         rerun.show()
+
+
+if __name__ == "__main__":
+    main()
