@@ -16,7 +16,7 @@ pub(crate) mod time_panel;
 pub(crate) mod view_2d;
 pub(crate) mod view_3d;
 mod view_tensor;
-mod view_text_entry;
+mod view_text;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Preview {

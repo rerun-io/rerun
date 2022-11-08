@@ -5,6 +5,7 @@ use crate::{misc::ViewerContext, ui::SceneQuery};
 
 // ---
 
+/// A tensor scene, with everything needed to render it.
 #[derive(Default)]
 pub struct SceneTensor {
     pub tensors: Vec<Tensor>,

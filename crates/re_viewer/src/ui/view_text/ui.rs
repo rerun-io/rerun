@@ -8,7 +8,7 @@ use super::{SceneText, TextEntry};
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct ViewTextEntryState {
+pub struct ViewTextState {
     /// Keeps track of the latest time selection made by the user.
     ///
     /// We need this because we want the user to be able to manually scroll the
@@ -16,10 +16,10 @@ pub struct ViewTextEntryState {
     latest_time: i64,
 }
 
-pub(crate) fn view_text_entry(
+pub(crate) fn view_text(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut ViewTextEntryState,
+    state: &mut ViewTextState,
     scene: &SceneText,
 ) -> egui::Response {
     crate::profile_function!();

@@ -438,7 +438,7 @@ fn space_view_ui(
             .two_d
             .load_objects(ctx, obj_tree_props, &query, &space_view.view_state.state_2d);
         scene.three_d.load_objects(ctx, obj_tree_props, &query);
-        scene.text.load(ctx, obj_tree_props, &query);
+        scene.text.load_objects(ctx, obj_tree_props, &query);
         scene.tensor.load_objects(ctx, obj_tree_props, &query);
     }
 

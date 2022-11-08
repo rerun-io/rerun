@@ -3,7 +3,7 @@ use re_log_types::Transform;
 
 use crate::misc::{space_info::*, ViewerContext};
 
-use super::{view_2d, view_3d, view_tensor, view_text_entry, Scene};
+use super::{view_2d, view_3d, view_tensor, view_text, Scene};
 
 // ----------------------------------------------------------------------------
 
@@ -148,7 +148,7 @@ pub(crate) struct ViewState {
     pub state_2d: view_2d::View2DState,
     pub state_3d: view_3d::View3DState,
     pub state_tensor: Option<view_tensor::ViewTensorState>,
-    pub state_text_entry: view_text_entry::ViewTextEntryState,
+    pub state_text_entry: view_text::ViewTextState,
 }
 
 impl ViewState {
@@ -204,9 +204,9 @@ impl ViewState {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        scene: &view_text_entry::SceneText,
+        scene: &view_text::SceneText,
     ) -> egui::Response {
-        view_text_entry::view_text_entry(ctx, ui, &mut self.state_text_entry, scene)
+        view_text::view_text(ctx, ui, &mut self.state_text_entry, scene)
     }
 }
 
