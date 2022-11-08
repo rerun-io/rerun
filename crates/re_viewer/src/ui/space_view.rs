@@ -56,6 +56,8 @@ impl SpaceView {
         // TODO(cmc): remove this while removing glow.
         scene: &mut Scene,
     ) -> egui::Response {
+        crate::profile_function!();
+
         let has_2d = !scene.two_d.is_empty() && scene.tensor.is_empty();
         let has_3d = !scene.three_d.is_empty();
         let has_text = !scene.text.is_empty();

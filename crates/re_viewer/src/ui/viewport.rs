@@ -424,6 +424,8 @@ fn space_view_ui(
         return invalid_space_label(ui, &space_view.space_path);
     };
 
+    crate::profile_function!();
+
     let obj_tree_props = &space_view.obj_tree_properties;
 
     let mut scene = Scene::default();
