@@ -1,22 +1,22 @@
-pub(crate) mod class_description_ui;
+mod viewport;
+pub(crate) use self::viewport::{Blueprint, SpaceViewId};
+
+mod space_view;
+use self::space_view::SpaceView;
+
+mod scene;
+use self::scene::{Scene, SceneQuery};
+
 pub(crate) mod data_ui;
 pub(crate) mod event_log_view;
-pub(crate) mod image_ui;
 pub(crate) mod kb_shortcuts;
-pub(crate) mod legend;
 pub(crate) mod selection_panel;
-pub(crate) mod space_view;
-pub(crate) mod text_entry_view;
 pub(crate) mod time_panel;
-pub(crate) mod view2d;
-pub(crate) mod view3d;
-pub(crate) mod view_tensor;
-pub(crate) mod viewport;
 
-pub(crate) use space_view::SpaceView;
-pub(crate) use viewport::{Blueprint, SpaceViewId};
-
-mod tensor_dimension_mapper;
+pub(crate) mod view_2d;
+pub(crate) mod view_3d;
+mod view_tensor;
+mod view_text;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Preview {

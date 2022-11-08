@@ -12,14 +12,12 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{
-    log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, Objects, TimeQuery,
-};
+use re_data_store::{log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties};
 use re_log_types::ObjectType;
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
-use super::SpaceView;
+use super::{Scene, SceneQuery, SpaceView};
 
 // ----------------------------------------------------------------------------
 
@@ -419,94 +417,47 @@ fn space_view_ui(
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
 ) -> egui::Response {
-    if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-        let obj_tree_properties = &space_view.obj_tree_properties;
+    let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
+        return unknown_space_label(ui, &space_view.space_path);
+    };
+    let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
+        return invalid_space_label(ui, &space_view.space_path);
+    };
 
-        // Get the latest objects for the currently selected time:
-        let mut time_objects = Objects::default();
-        {
-            crate::profile_scope!("time_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
-                    for obj_path in &space_info.objects {
-                        if obj_tree_properties.projected.get(obj_path).visible {
-                            if let Some(obj_store) = timeline_store.get(obj_path) {
-                                if let Some(obj_type) =
-                                    ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                                {
-                                    if !is_sticky_type(obj_type) {
-                                        time_objects.query_object(
-                                            obj_store,
-                                            &time_query,
-                                            obj_path,
-                                            obj_type,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        let time_objects = filter_objects(&time_objects);
-
-        // Get the "sticky" objects (e.g. text logs)
-        // that don't care about the current time:
-        let mut sticky_objects = Objects::default();
-        {
-            crate::profile_scope!("sticky_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                for obj_path in &space_info.objects {
-                    if obj_tree_properties.projected.get(obj_path).visible {
-                        if let Some(obj_store) = timeline_store.get(obj_path) {
-                            if let Some(obj_type) =
-                                ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                            {
-                                if is_sticky_type(obj_type) {
-                                    sticky_objects.query_object(
-                                        obj_store,
-                                        &TimeQuery::EVERYTHING,
-                                        obj_path,
-                                        obj_type,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        let sticky_objects = filter_objects(&sticky_objects);
-
-        space_view.objects_ui(
-            ctx,
-            ui,
-            spaces_info,
-            space_info,
-            &time_objects,
-            &sticky_objects,
-        )
-    } else {
-        unknown_space_label(ui, &space_view.space_path)
-    }
-}
-
-fn is_sticky_type(obj_type: &ObjectType) -> bool {
-    obj_type == &ObjectType::TextEntry
-}
-
-fn filter_objects<'s>(objects: &'_ Objects<'s>) -> Objects<'s> {
     crate::profile_function!();
-    objects.filter(|props| props.visible)
+
+    let obj_tree_props = &space_view.obj_tree_properties;
+
+    let mut scene = Scene::default();
+    {
+        let query = SceneQuery {
+            obj_paths: &space_info.objects,
+            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+            time_query,
+        };
+
+        scene
+            .two_d
+            .load_objects(ctx, obj_tree_props, &query, &space_view.view_state.state_2d);
+        scene.three_d.load_objects(ctx, obj_tree_props, &query);
+        scene.text.load_objects(ctx, obj_tree_props, &query);
+        scene.tensor.load_objects(ctx, obj_tree_props, &query);
+    }
+
+    space_view.scene_ui(ctx, ui, spaces_info, space_info, &mut scene)
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
     ui.colored_label(
         ui.visuals().warn_fg_color,
         format!("Unknown space {space_path}"),
+    )
+}
+
+fn invalid_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
+    ui.colored_label(
+        ui.visuals().warn_fg_color,
+        format!("Invalid space {space_path}: no time query"),
     )
 }
 

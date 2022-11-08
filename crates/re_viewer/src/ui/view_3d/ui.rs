@@ -1,21 +1,7 @@
-mod eye;
-pub(crate) mod scene;
-mod space_camera;
-
-#[cfg(feature = "glow")]
-mod glow_rendering;
-
-mod mesh_cache;
-pub use mesh_cache::CpuMeshCache;
-
-use eye::*;
-use re_data_store::{InstanceId, InstanceIdHash};
-use scene::*;
-pub use space_camera::SpaceCamera;
-
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
+use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 
 use crate::{
@@ -23,9 +9,16 @@ use crate::{
     ViewerContext,
 };
 
+use super::{Eye, LineSegments3D, OrbitEye, Point3D, Scene3D, Size, SpaceCamera};
+
+#[cfg(feature = "glow")]
+use super::glow_rendering;
+
+// ---
+
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct State3D {
+pub(crate) struct View3DState {
     orbit_eye: Option<OrbitEye>,
 
     #[serde(skip)]
@@ -50,7 +43,7 @@ pub(crate) struct State3D {
     last_eye_interact_time: f64,
 }
 
-impl Default for State3D {
+impl Default for View3DState {
     fn default() -> Self {
         Self {
             orbit_eye: Default::default(),
@@ -65,7 +58,7 @@ impl Default for State3D {
     }
 }
 
-impl State3D {
+impl View3DState {
     fn update_eye(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -185,7 +178,7 @@ impl EyeInterpolation {
 fn show_settings_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut State3D,
+    state: &mut View3DState,
     space_specs: &SpaceSpecs,
 ) {
     ui.horizontal(|ui| {
@@ -302,7 +295,7 @@ fn find_camera(space_cameras: &[SpaceCamera], needle: &InstanceId) -> Option<Eye
 fn click_object(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera],
-    state: &mut State3D,
+    state: &mut View3DState,
     instance_id: &InstanceId,
 ) {
     ctx.rec_cfg.selection = crate::Selection::Instance(instance_id.clone());
@@ -324,10 +317,10 @@ fn click_object(
 pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut State3D,
+    state: &mut View3DState,
     space: Option<&ObjPath>,
     space_specs: &SpaceSpecs,
-    mut scene: Scene,
+    scene: &mut Scene3D,
     space_cameras: &[SpaceCamera],
 ) -> egui::Response {
     crate::profile_function!();
@@ -391,7 +384,7 @@ pub(crate) fn view_3d(
     }
 
     project_onto_other_spaces(ctx, space_cameras, state, space, &response, orbit_eye);
-    show_projections_from_2d_space(ctx, space_cameras, state, &mut scene);
+    show_projections_from_2d_space(ctx, space_cameras, state, scene);
 
     {
         let orbit_center_alpha = egui::remap_clamp(
@@ -402,9 +395,9 @@ pub(crate) fn view_3d(
 
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
-            scene.points.push(Point {
-                instance_id: InstanceIdHash::NONE,
-                pos: orbit_eye.orbit_center.to_array(),
+            scene.points.push(Point3D {
+                instance_id_hash: InstanceIdHash::NONE,
+                pos: orbit_eye.orbit_center,
                 radius: Size::new_scene(orbit_eye.orbit_radius * 0.01),
                 color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
             });
@@ -425,8 +418,8 @@ fn paint_view(
     ui: &mut egui::Ui,
     eye: Eye,
     rect: egui::Rect,
-    scene: Scene,
-    _state: &mut State3D,
+    scene: &mut Scene3D,
+    _state: &mut View3DState,
     response: egui::Response,
 ) -> egui::Response {
     crate::profile_function!();
@@ -591,6 +584,7 @@ fn paint_view(
     let callback = {
         let dark_mode = ui.visuals().dark_mode;
         let show_axes = _state.show_axes;
+        let scene = std::mem::take(scene);
         egui::PaintCallback {
             rect,
             callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
@@ -611,8 +605,8 @@ fn paint_view(
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera],
-    state: &mut State3D,
-    scene: &mut Scene,
+    state: &mut View3DState,
+    scene: &mut Scene3D,
 ) {
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
         for cam in space_cameras {
@@ -635,9 +629,9 @@ fn show_projections_from_2d_space(
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
                     let radius = Size::new_ui(1.5);
-                    scene.line_segments.push(LineSegments {
-                        instance_id: InstanceIdHash::NONE,
-                        segments: vec![[origin.into(), end.into()]],
+                    scene.line_segments.push(LineSegments3D {
+                        instance_id_hash: InstanceIdHash::NONE,
+                        segments: vec![(origin, end)],
                         radius,
                         color: [255; 4],
                         #[cfg(feature = "wgpu")]
@@ -646,9 +640,9 @@ fn show_projections_from_2d_space(
 
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
-                        scene.points.push(Point {
-                            instance_id: InstanceIdHash::NONE,
-                            pos: pos.into(),
+                        scene.points.push(Point3D {
+                            instance_id_hash: InstanceIdHash::NONE,
+                            pos,
                             radius: radius * 3.0,
                             color: [255; 4],
                         });
@@ -662,39 +656,39 @@ fn show_projections_from_2d_space(
 fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera],
-    state: &mut State3D,
+    state: &mut View3DState,
     space: Option<&ObjPath>,
     response: &egui::Response,
     orbit_eye: OrbitEye,
 ) {
-    if let Some(pos_in_ui) = response.hover_pos() {
-        let ray_in_world = {
-            let eye = orbit_eye.to_eye();
-            let world_from_ui = eye.world_from_ui(&response.rect);
-            let ray_origin = eye.pos_in_world();
-            let ray_dir = world_from_ui.project_point3(glam::vec3(pos_in_ui.x, pos_in_ui.y, 1.0))
-                - ray_origin;
-            Ray3::from_origin_dir(ray_origin, ray_dir.normalize())
-        };
+    let Some(pos_in_ui) = response.hover_pos() else { return };
 
-        let mut target_spaces = vec![];
-        for cam in space_cameras {
-            if let Some(target_space) = cam.target_space.clone() {
-                let ray_in_2d = cam
-                    .image_from_world()
-                    .map(|image_from_world| (image_from_world * ray_in_world).normalize());
+    let ray_in_world = {
+        let eye = orbit_eye.to_eye();
+        let world_from_ui = eye.world_from_ui(&response.rect);
+        let ray_origin = eye.pos_in_world();
+        let ray_dir =
+            world_from_ui.project_point3(glam::vec3(pos_in_ui.x, pos_in_ui.y, 1.0)) - ray_origin;
+        Ray3::from_origin_dir(ray_origin, ray_dir.normalize())
+    };
 
-                let point_in_2d = state
-                    .hovered_point
-                    .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
+    let mut target_spaces = vec![];
+    for cam in space_cameras {
+        if let Some(target_space) = cam.target_space.clone() {
+            let ray_in_2d = cam
+                .image_from_world()
+                .map(|image_from_world| (image_from_world * ray_in_world).normalize());
 
-                target_spaces.push((target_space, ray_in_2d, point_in_2d));
-            }
+            let point_in_2d = state
+                .hovered_point
+                .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
+
+            target_spaces.push((target_space, ray_in_2d, point_in_2d));
         }
-        ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
-            space_3d: space.cloned(),
-            target_spaces,
-        }
+    }
+    ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
+        space_3d: space.cloned(),
+        target_spaces,
     }
 }
 
@@ -733,7 +727,7 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> Orb
         world_from_view_rot: Quat::from_affine3(
             &Affine3A::look_at_rh(eye_pos, center, look_up).inverse(),
         ),
-        fov_y: eye::DEFAULT_FOV_Y,
+        fov_y: Eye::DEFAULT_FOV_Y,
         up: space_specs.up.unwrap_or(Vec3::ZERO),
         velocity: Vec3::ZERO,
     }

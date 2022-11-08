@@ -1,30 +1,52 @@
+use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
+
 use ahash::HashMap;
 use lazy_static::lazy_static;
+use re_data_store::ObjPath;
 use re_log_types::MsgId;
 
-pub type Legend<'s> = Option<&'s re_data_store::ClassDescriptionMap<'s>>;
+// ---
+
+#[derive(Clone, Debug)]
+pub struct ClassDescription {
+    pub label: Option<Cow<'static, str>>,
+    pub color: Option<[u8; 4]>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ClassDescriptionMap {
+    pub msg_id: MsgId,
+    pub map: HashMap<i32, ClassDescription>,
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct Legends(pub BTreeMap<ObjPath, Arc<ClassDescriptionMap>>);
+
+impl Legends {
+    // If the object_path is set on the image, but it doesn't point to a valid legend
+    // we return the default MissingLegend which gives us "reasonable" behavior.
+    // TODO(jleibs): We should still surface a user-visible error in this case
+    pub fn find<'a>(&self, obj_path: impl Into<Option<&'a ObjPath>>) -> Legend {
+        let obj_path = obj_path.into();
+        self.0
+            .get(obj_path?)
+            .cloned() // Arc
+            .or_else(|| Some(Arc::clone(&MISSING_LEGEND)))
+    }
+}
+
+pub type Legend = Option<Arc<ClassDescriptionMap>>;
+
+// ---
 
 lazy_static! {
     static ref MISSING_MSGID: MsgId = MsgId::random();
-    static ref MISSING_LEGEND: re_data_store::ClassDescriptionMap<'static> = {
-        re_data_store::ClassDescriptionMap {
-            msg_id: &MISSING_MSGID,
-            map: HashMap::<i32, re_data_store::ClassDescription<'static>>::default(),
-        }
+    static ref MISSING_LEGEND: Arc<ClassDescriptionMap> = {
+        Arc::new(ClassDescriptionMap {
+            msg_id: *MISSING_MSGID,
+            map: Default::default(),
+        })
     };
-}
-
-// If the object_path is set on the image, but it doesn't point to a valid legend
-// we return the default MissingLegend which gives us "reasonable" behavior.
-// TODO(jleibs): We should still surface a user-visible error in this case
-pub(crate) fn find_legend<'s>(
-    obj_path: Option<&re_data_store::ObjPath>,
-    objects: &'s re_data_store::Objects<'s>,
-) -> Legend<'s> {
-    objects
-        .class_description_map
-        .get(obj_path?)
-        .or(Some(&MISSING_LEGEND))
 }
 
 // default colors
@@ -38,11 +60,11 @@ pub fn auto_color(val: u16) -> [u8; 4] {
 
 // Currently using a pair [u8;4] since it converts more easily
 // to DynamicImage
-pub(crate) trait ColorMapping {
+pub trait ColorMapping {
     fn map_color(&self, val: u16) -> [u8; 4];
 }
 
-impl<'s> ColorMapping for re_data_store::ClassDescriptionMap<'s> {
+impl ColorMapping for ClassDescriptionMap {
     fn map_color(&self, val: u16) -> [u8; 4] {
         if let Some(seg_label) = self.map.get(&(val as i32)) {
             if let Some(color) = seg_label.color {
@@ -64,15 +86,15 @@ impl<'s> ColorMapping for re_data_store::ClassDescriptionMap<'s> {
 }
 
 // TODO(jleibs): sort out lifetime of label
-pub(crate) trait LabelMapping {
+pub trait LabelMapping {
     fn map_label(&self, val: u16) -> String;
 }
 
-impl<'s> LabelMapping for re_data_store::ClassDescriptionMap<'s> {
+impl LabelMapping for ClassDescriptionMap {
     fn map_label(&self, val: u16) -> String {
         if let Some(seg_label) = self.map.get(&(val as i32)) {
-            if let Some(label) = seg_label.label {
-                label.to_owned()
+            if let Some(label) = seg_label.label.as_ref() {
+                label.to_string()
             } else {
                 (val as i32).to_string()
             }

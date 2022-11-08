@@ -4,8 +4,9 @@ use re_data_store::InstanceId;
 pub use re_log_types::*;
 
 use crate::misc::ViewerContext;
+use crate::ui::view_2d::view_class_description_map;
 
-use super::{class_description_ui::view_class_description_map, Preview};
+use super::Preview;
 
 pub(crate) fn view_object(
     ctx: &mut ViewerContext<'_>,
@@ -135,7 +136,7 @@ pub(crate) fn show_detailed_data(
     data: &Data,
 ) {
     if let Data::Tensor(tensor) = data {
-        crate::image_ui::show_tensor(ctx, ui, msg_id, tensor);
+        crate::ui::view_2d::show_tensor(ctx, ui, msg_id, tensor);
     } else {
         crate::data_ui::ui_data(ctx, ui, msg_id, data, Preview::Medium);
     }
@@ -178,7 +179,7 @@ pub(crate) fn show_detailed_data_msg(
         });
 
     if let LoggedData::Single(Data::Tensor(tensor)) = &msg.data {
-        crate::image_ui::show_tensor(ctx, ui, msg_id, tensor);
+        crate::ui::view_2d::show_tensor(ctx, ui, msg_id, tensor);
     }
 }
 

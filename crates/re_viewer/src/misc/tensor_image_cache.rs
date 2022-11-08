@@ -1,10 +1,11 @@
 use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
-
 use image::DynamicImage;
-use re_log_types::*;
+use re_log_types::{MsgId, Tensor, TensorDataStore, TensorDataType};
 
-use crate::ui::legend::{ColorMapping, Legend};
+use crate::ui::view_2d::{ColorMapping, Legend};
+
+// ---
 
 /// The `TensorImageView` is a wrapper on top of `re_log_types::Tensor`
 ///
@@ -21,7 +22,7 @@ pub struct TensorImageView<'store, 'cache> {
     pub tensor: &'store Tensor,
 
     /// Legend used to create the view
-    pub legend: &'store Legend<'store>,
+    pub legend: &'store Legend,
 
     /// DynamicImage helper for things like zoom
     pub dynamic_img: &'cache DynamicImage,
@@ -68,13 +69,13 @@ impl ImageCache {
         &'cache mut self,
         msg_id: &MsgId,
         tensor: &'store Tensor,
-        legend: &'store Legend<'store>,
+        legend: &'store Legend,
     ) -> TensorImageView<'store, 'cache> {
         let ci = self
             .images
             .entry(ImageCacheKey {
                 image_msg_id: *msg_id,
-                legend_msg_id: legend.and_then(|seg_map| Some(*seg_map.msg_id)),
+                legend_msg_id: legend.as_ref().map(|seg_map| seg_map.msg_id),
             })
             .or_insert_with(|| {
                 // TODO(emilk): proper debug name for images
@@ -143,7 +144,7 @@ struct CachedImage {
 }
 
 impl CachedImage {
-    fn from_tensor<'store>(debug_name: String, tensor: &Tensor, legend: &Legend<'store>) -> Self {
+    fn from_tensor(debug_name: String, tensor: &Tensor, legend: &Legend) -> Self {
         crate::profile_function!();
         let dynamic_img = match tensor_to_dynamic_image(tensor, legend) {
             Ok(dynamic_image) => dynamic_image,
@@ -175,7 +176,7 @@ impl CachedImage {
     }
 }
 
-fn tensor_to_dynamic_image(tensor: &Tensor, legend: &Legend<'_>) -> anyhow::Result<DynamicImage> {
+fn tensor_to_dynamic_image(tensor: &Tensor, legend: &Legend) -> anyhow::Result<DynamicImage> {
     crate::profile_function!();
     use anyhow::Context as _;
 
@@ -211,7 +212,7 @@ fn tensor_to_dynamic_image(tensor: &Tensor, legend: &Legend<'_>) -> anyhow::Resu
                 "Tensor data length doesn't match tensor shape and dtype"
             );
 
-            match (*legend, depth, tensor.dtype) {
+            match (legend, depth, tensor.dtype) {
                 (Some(legend), 1, TensorDataType::U8) => {
                     // Apply legend mapping to raw bytes interpreted as u8
                     image::RgbaImage::from_raw(

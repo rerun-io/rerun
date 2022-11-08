@@ -1,17 +1,22 @@
 use eframe::{emath::RectTransform, epaint::text::TextWrapping};
-use egui::*;
+use egui::{
+    epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
+    Shape, TextFormat, TextStyle, Vec2,
+};
+use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 
-use re_data_store::{InstanceId, InstanceIdHash};
-use re_log_types::*;
+use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use crate::{legend::find_legend, misc::HoveredSpace, Selection, ViewerContext};
+use super::{show_zoomed_image_region_tooltip, Box2D, Image, LineSegments2D, Point2D, Scene2D};
+
+// ---
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct State2D {
+pub struct View2DState {
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
-    hovered_instance: Option<InstanceId>,
+    pub hovered_instance: Option<InstanceId>,
 
     /// Estimated bounding box of all data. Accumulated.
     ///
@@ -26,7 +31,7 @@ pub(crate) struct State2D {
 
 #[derive(Clone, Copy)]
 /// Sub-state specific to the Zoom/Scale/Pan engine
-enum ZoomState {
+pub enum ZoomState {
     Auto,
     Scaled {
         /// Number of ui points per scene unit
@@ -44,7 +49,7 @@ impl Default for ZoomState {
     }
 }
 
-impl Default for State2D {
+impl Default for View2DState {
     fn default() -> Self {
         Self {
             hovered_instance: Default::default(),
@@ -54,7 +59,7 @@ impl Default for State2D {
     }
 }
 
-impl State2D {
+impl View2DState {
     /// Determine the optimal sub-region and size based on the `ZoomState` and
     /// available size. This will generally be used to construct the painter and
     /// subsequent transforms
@@ -213,9 +218,9 @@ impl State2D {
 pub(crate) fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut State2D,
+    state: &mut View2DState,
     space: Option<&ObjPath>,
-    objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
+    scene: &Scene2D,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -241,7 +246,7 @@ pub(crate) fn view_2d(
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
-        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, objects)
+        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, scene)
     });
 
     // Update the scroll area based on the computed offset
@@ -256,14 +261,11 @@ fn view_2d_scrollable(
     available_size: Vec2,
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut State2D,
+    state: &mut View2DState,
     space: Option<&ObjPath>,
-    objects: &re_data_store::Objects<'_>, // Note: only the objects that belong to this space
+    scene: &Scene2D,
 ) -> egui::Response {
-    state.scene_bbox_accum = state
-        .scene_bbox_accum
-        .union(crate::misc::calc_bbox_2d(objects));
-
+    state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bbox);
     let scene_bbox = state.scene_bbox_accum;
 
     let (mut response, painter) = ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
@@ -272,18 +274,22 @@ fn view_2d_scrollable(
     let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
     let space_from_ui = ui_from_space.inverse();
 
-    // ------------------------------------------------------------------------
     state.update(&response, space_from_ui, available_size);
 
     // ------------------------------------------------------------------------
+
     if let Some(instance_id) = &state.hovered_instance {
         if response.clicked() {
             ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
         }
-        egui::containers::popup::show_tooltip_at_pointer(ui.ctx(), Id::new("2d_tooltip"), |ui| {
-            ctx.instance_id_button(ui, instance_id);
-            crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
-        });
+        egui::containers::popup::show_tooltip_at_pointer(
+            ui.ctx(),
+            egui::Id::new("2d_tooltip"),
+            |ui| {
+                ctx.instance_id_button(ui, instance_id);
+                crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
+            },
+        );
     }
 
     // ------------------------------------------------------------------------
@@ -297,7 +303,7 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    let total_num_images = objects.image.len();
+    let total_num_images = scene.images.len();
 
     let hover_radius = 5.0; // TODO(emilk): from egui?
 
@@ -305,10 +311,10 @@ fn view_2d_scrollable(
     let mut closest_instance_id_hash = InstanceIdHash::NONE;
     let pointer_pos = response.hover_pos();
 
-    let mut check_hovering = |props: &re_data_store::InstanceProps<'_>, dist: f32| {
+    let mut check_hovering = |instance_hash, dist: f32| {
         if dist <= closest_dist {
             closest_dist = dist;
-            closest_instance_id_hash = InstanceIdHash::from_props(props);
+            closest_instance_id_hash = instance_hash;
         }
     };
 
@@ -319,30 +325,18 @@ fn view_2d_scrollable(
         .as_ref()
         .map_or(InstanceIdHash::NONE, InstanceId::hash);
 
-    for (image_idx, (props, obj)) in objects.image.iter().enumerate() {
-        let re_data_store::Image {
+    for (image_idx, img) in scene.images.iter().enumerate() {
+        let Image {
+            msg_id,
+            obj_path,
+            instance_hash,
             tensor,
             meter,
+            paint_props,
             legend,
-        } = obj;
-        let paint_props = paint_properties(
-            ctx,
-            &hovered_instance_id_hash,
-            props,
-            DefaultColor::White,
-            &None,
-        );
+        } = img;
 
-        if tensor.shape.len() < 2 {
-            continue; // not an image. don't know how to display this!
-        }
-
-        let legend = find_legend(*legend, objects);
-
-        let tensor_view = ctx
-            .cache
-            .image
-            .get_view_with_legend(props.msg_id, tensor, &legend);
+        let tensor_view = ctx.cache.image.get_view_with_legend(msg_id, tensor, legend);
 
         let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
 
@@ -368,10 +362,12 @@ fn view_2d_scrollable(
         if let Some(pointer_pos) = pointer_pos {
             let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
-            check_hovering(props, dist);
+            check_hovering(*instance_hash, dist);
 
-            if hovered_instance_id_hash.is_instance(props) && rect_in_ui.contains(pointer_pos) {
-                response = crate::ui::image_ui::show_zoomed_image_region_tooltip(
+            if hovered_instance_id_hash.is_instance(obj_path, instance_hash.instance_index_hash)
+                && rect_in_ui.contains(pointer_pos)
+            {
+                response = show_zoomed_image_region_tooltip(
                     ui,
                     response,
                     &tensor_view,
@@ -394,19 +390,14 @@ fn view_2d_scrollable(
         }
     }
 
-    for (props, obj) in objects.bbox2d.iter() {
-        let re_data_store::BBox2D {
+    for bbox in &scene.boxes {
+        let Box2D {
+            instance_hash,
             bbox,
-            stroke_width,
+            stroke_width: _,
             label,
-        } = obj;
-        let paint_props = paint_properties(
-            ctx,
-            &hovered_instance_id_hash,
-            props,
-            DefaultColor::Random,
-            stroke_width,
-        );
+            paint_props,
+        } = bbox;
 
         let rect_in_ui =
             ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
@@ -432,13 +423,13 @@ fn view_2d_scrollable(
             let wrap_width = (rect_in_ui.width() - 4.0).at_least(60.0);
             let font_id = TextStyle::Body.resolve(ui.style());
             let galley = ui.fonts().layout_job({
-                text::LayoutJob {
-                    sections: vec![text::LayoutSection {
+                egui::text::LayoutJob {
+                    sections: vec![egui::text::LayoutSection {
                         leading_space: 0.0,
                         byte_range: 0..label.len(),
                         format: TextFormat::simple(font_id, paint_props.fg_stroke.color),
                     }],
-                    text: (*label).to_owned(),
+                    text: (*label).clone(),
                     wrap: TextWrapping {
                         max_width: wrap_width,
                         ..Default::default()
@@ -465,21 +456,16 @@ fn view_2d_scrollable(
             }
         }
 
-        check_hovering(props, hover_dist);
+        check_hovering(*instance_hash, hover_dist);
     }
 
-    for (props, obj) in objects.line_segments2d.iter() {
-        let re_data_store::LineSegments2D {
+    for segments in &scene.line_segments {
+        let LineSegments2D {
+            instance_hash,
             points,
-            stroke_width,
-        } = obj;
-        let paint_props = paint_properties(
-            ctx,
-            &hovered_instance_id_hash,
-            props,
-            DefaultColor::Random,
-            stroke_width,
-        );
+            stroke_width: _,
+            paint_props,
+        } = segments;
 
         let mut min_dist_sq = f32::INFINITY;
 
@@ -496,23 +482,21 @@ fn view_2d_scrollable(
             }
         }
 
-        check_hovering(props, min_dist_sq.sqrt());
+        check_hovering(*instance_hash, min_dist_sq.sqrt());
     }
 
-    for (props, obj) in objects.point2d.iter() {
-        let re_data_store::Point2D { pos, radius } = obj;
-        let paint_props = paint_properties(
-            ctx,
-            &hovered_instance_id_hash,
-            props,
-            DefaultColor::Random,
-            &None,
-        );
+    for point in &scene.points {
+        let Point2D {
+            instance_hash,
+            pos,
+            radius,
+            paint_props,
+        } = point;
 
         let radius = radius.unwrap_or(1.5);
         let radius = paint_props.boost_radius_on_hover(radius);
 
-        let pos_in_ui = ui_from_space.transform_pos(pos2(pos[0], pos[1]));
+        let pos_in_ui = ui_from_space.transform_pos(*pos);
         shapes.push(Shape::circle_filled(
             pos_in_ui,
             radius + 1.0,
@@ -525,7 +509,7 @@ fn view_2d_scrollable(
         ));
 
         if let Some(pointer_pos) = pointer_pos {
-            check_hovering(props, pos_in_ui.distance(pointer_pos));
+            check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));
         }
     }
 
@@ -624,68 +608,4 @@ fn show_projections_from_3d_space(
             }
         }
     }
-}
-
-// ------------------------------------------------------------------------
-
-struct ObjectPaintProperties {
-    is_hovered: bool,
-    bg_stroke: Stroke,
-    fg_stroke: Stroke,
-}
-
-impl ObjectPaintProperties {
-    pub fn boost_radius_on_hover(&self, r: f32) -> f32 {
-        if self.is_hovered {
-            2.0 * r
-        } else {
-            r
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-enum DefaultColor {
-    White,
-    Random,
-}
-
-fn paint_properties(
-    ctx: &mut ViewerContext<'_>,
-    hovered: &InstanceIdHash,
-    props: &re_data_store::InstanceProps<'_>,
-    default_color: DefaultColor,
-    stroke_width: &Option<f32>,
-) -> ObjectPaintProperties {
-    let bg_color = Color32::from_black_alpha(196);
-    let color = props.color.map_or_else(
-        || match default_color {
-            DefaultColor::White => Color32::WHITE,
-            DefaultColor::Random => {
-                let [r, g, b] = ctx.random_color(props);
-                Color32::from_rgb(r, g, b)
-            }
-        },
-        to_egui_color,
-    );
-    let is_hovered = &InstanceIdHash::from_props(props) == hovered;
-    let fg_color = if is_hovered { Color32::WHITE } else { color };
-    let stroke_width = stroke_width.unwrap_or(1.5);
-    let stoke_width = if is_hovered {
-        2.0 * stroke_width
-    } else {
-        stroke_width
-    };
-    let bg_stroke = Stroke::new(stoke_width + 2.0, bg_color);
-    let fg_stroke = Stroke::new(stoke_width, fg_color);
-
-    ObjectPaintProperties {
-        is_hovered,
-        bg_stroke,
-        fg_stroke,
-    }
-}
-
-fn to_egui_color([r, g, b, a]: [u8; 4]) -> Color32 {
-    Color32::from_rgba_unmultiplied(r, g, b, a)
 }

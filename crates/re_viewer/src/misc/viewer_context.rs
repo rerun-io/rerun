@@ -139,16 +139,8 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    pub fn random_color(&mut self, props: &re_data_store::InstanceProps<'_>) -> [u8; 3] {
-        // TODO(emilk): ignore "temporary" indices when calculating the hash.
-        let hash = props.obj_path.hash64();
-
-        let color = *self
-            .cache
-            .object_colors
-            .entry(hash)
-            .or_insert_with(|| crate::misc::random_rgb(hash));
-        color
+    pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
+        self.cache.random_color(obj_path)
     }
 }
 
@@ -214,7 +206,7 @@ pub(crate) struct Caches {
     pub image: crate::misc::ImageCache,
 
     /// For displaying meshes efficiently in immediate mode.
-    pub cpu_mesh: crate::ui::view3d::CpuMeshCache,
+    pub cpu_mesh: crate::ui::view_3d::CpuMeshCache,
 
     /// Auto-generated colors.
     object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,
@@ -225,6 +217,18 @@ impl Caches {
     pub fn new_frame(&mut self) {
         let max_image_cache_use = 1_000_000_000;
         self.image.new_frame(max_image_cache_use);
+    }
+
+    pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
+        // TODO(emilk): ignore "temporary" indices when calculating the hash.
+        let hash = obj_path.hash64();
+
+        let color = *self
+            .object_colors
+            .entry(hash)
+            .or_insert_with(|| crate::misc::random_rgb(hash));
+
+        color
     }
 }
 
@@ -255,7 +259,7 @@ pub(crate) enum Selection {
     Instance(InstanceId),
     DataPath(DataPath),
     Space(ObjPath),
-    SpaceView(crate::SpaceViewId),
+    SpaceView(crate::ui::SpaceViewId),
 }
 
 impl Default for Selection {

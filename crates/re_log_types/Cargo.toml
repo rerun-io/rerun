@@ -33,6 +33,7 @@ chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 derive_more = "0.99"
 document-features = "0.2"
 nohash-hasher = "0.2"
+re_log = { path = "../re_log" }
 re_string_interner = { path = "../re_string_interner" }
 thiserror = "1.0"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
