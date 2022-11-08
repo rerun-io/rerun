@@ -75,7 +75,7 @@ class Detector:
         self.model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
 
         self.lable_from_id = {cat["id"]: cat["name"] for cat in coco_categories}  # type: Dict[int, str]
-        self.is_thing_from_id = {cat["id"]: cat["isthing"] for cat in coco_categories}  # type: Dict[int, bool]
+        self.is_thing_from_id = {cat["id"]: bool(cat["isthing"]) for cat in coco_categories}  # type: Dict[int, bool]
         self.color_from_id = {cat["id"]: cat["color"] for cat in coco_categories}  # type: Dict[int, List[int]]
 
     def detect_objects_to_track(self, rgb: npt.NDArray[np.uint8], frame_idx: int) -> List[Detection]:
@@ -130,14 +130,14 @@ class Detector:
         return objects_to_track
 
     def log_detections(
-        self, boxes: npt.NDArray[np.float32], str_labels: List[str], colors: List[List[int]], things: List[int]
+        self, boxes: npt.NDArray[np.float32], str_labels: List[str], colors: List[List[int]], things: List[bool]
     ) -> None:
         things_np = np.array(things)
         colors_np = np.array(colors)
 
-        thing_boxes = boxes[things_np == 1, :]
-        thing_labels = [label for label, is_thing in zip(str_labels, things) if is_thing == 1]
-        thing_colors = colors_np[things_np == 1, :]
+        thing_boxes = boxes[things_np, :]
+        thing_labels = [label for label, is_thing in zip(str_labels, things) if is_thing]
+        thing_colors = colors_np[things_np, :]
         rerun.log_rects(
             "image/scaled/detections/things",
             thing_boxes,
@@ -146,9 +146,9 @@ class Detector:
             colors=thing_colors,
         )
 
-        background_boxes = boxes[things_np == 0, :]
-        background_labels = [label for label, is_thing in zip(str_labels, things) if is_thing == 0]
-        background_colors = colors_np[things_np == 0, :]
+        background_boxes = boxes[~things_np, :]
+        background_labels = [label for label, is_thing in zip(str_labels, things) if not is_thing]
+        background_colors = colors_np[~things_np, :]
         rerun.log_rects(
             "image/scaled/detections/background",
             background_boxes,
