@@ -58,6 +58,7 @@ fn do_query(obj_types: &IntMap<ObjTypePath, ObjectType>, data_store: &DataStore)
         );
     }
 
+    assert_eq!(points.len(), NUM_POINTS as usize);
     points
 }
 
