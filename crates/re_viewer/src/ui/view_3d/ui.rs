@@ -232,7 +232,7 @@ pub(crate) fn show_settings_ui(
 
     ui.checkbox(&mut state.spin, "Spin virtual camera")
         .on_hover_text("Spin view");
-    ui.checkbox(&mut state.show_axes, "show origin axes")
+    ui.checkbox(&mut state.show_axes, "Show origin axes")
         .on_hover_text("Show X-Y-Z axes");
 
     if !state.space_camera.is_empty() {
