@@ -9,7 +9,7 @@ use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{ui::SceneQuery, ViewerContext};
 
-use super::{ClassDescription, ClassDescriptionMap, Legend, Legends, TwoDViewState};
+use super::{ClassDescription, ClassDescriptionMap, Legend, Legends, State2D};
 
 // ---
 
@@ -83,300 +83,339 @@ impl Default for Scene2D {
     }
 }
 
-// TODO: what do we do with the whole IndexHash situation?
-
 impl Scene2D {
-    pub(crate) fn load(
+    /// Loads all objects into the scene according to the given query.
+    pub(crate) fn load_objects(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
-        state: &TwoDViewState, // TODO: messy
+        state: &State2D, // TODO: messy
         query: &SceneQuery<'_>,
     ) {
         puffin::profile_function!();
 
         // TODO: that is most definitely an issue.. no? maybe not
         // We introduce a 1-frame delay!
-        let hovered_instance_id_hash = state
+        let hovered = state
             .hovered_instance
             .as_ref()
             .map_or(InstanceIdHash::NONE, InstanceId::hash);
 
-        let mut legends = Legends::default();
+        self.load_legends(ctx, obj_tree_props, query); // before images!
+        self.load_images(ctx, obj_tree_props, query, hovered);
+        self.load_boxes(ctx, obj_tree_props, query, hovered);
+        self.load_points(ctx, obj_tree_props, query, hovered);
+        self.load_line_segments(ctx, obj_tree_props, query, hovered);
+    }
+
+    fn load_legends(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+    ) {
+        puffin::profile_function!();
+
+        for (_obj_type, obj_path, obj_store) in
+            query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::ClassDescription])
         {
-            puffin::profile_scope!("Scene2D - load legends");
-            for (_obj_type, obj_path, obj_store) in query.iter_object_stores(
-                ctx.log_db,
-                obj_tree_props,
-                &[ObjectType::ClassDescription],
-            ) {
-                visit_type_data_2(
+            visit_type_data_2(
+                obj_store,
+                &FieldName::from("id"),
+                &query.time_query,
+                ("label", "color"),
+                |_instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 msg_id: &MsgId,
+                 id: &i32,
+                 label: Option<&String>,
+                 color: Option<&[u8; 4]>| {
+                    let cdm = self.legends.0.entry(obj_path.clone()).or_insert_with(|| {
+                        Arc::new(ClassDescriptionMap {
+                            msg_id: *msg_id,
+                            map: Default::default(),
+                        })
+                    });
+
+                    Arc::get_mut(cdm).unwrap().map.insert(
+                        *id,
+                        ClassDescription {
+                            label: label.map(|s| s.clone().into()),
+                            color: color.cloned(),
+                        },
+                    );
+                },
+            );
+        }
+    }
+
+    fn load_images(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+        hovered: InstanceIdHash,
+    ) {
+        puffin::profile_function!();
+
+        let images = query
+            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
+            .flat_map(|(_obj_type, obj_path, obj_store)| {
+                let mut batch = Vec::new();
+                visit_type_data_4(
                     obj_store,
-                    &FieldName::from("id"),
+                    &FieldName::from("tensor"),
                     &query.time_query,
-                    ("label", "color"),
-                    |_instance_index: Option<&IndexHash>,
+                    ("_visible", "color", "meter", "legend"),
+                    |instance_index: Option<&IndexHash>,
                      _time: i64,
                      msg_id: &MsgId,
-                     id: &i32,
-                     label: Option<&String>,
-                     color: Option<&[u8; 4]>| {
-                        let cdm = legends.0.entry(obj_path.clone()).or_insert_with(|| {
-                            Arc::new(ClassDescriptionMap {
-                                msg_id: *msg_id,
-                                map: Default::default(),
-                            })
-                        });
+                     tensor: &re_log_types::Tensor,
+                     visible: Option<&bool>,
+                     color: Option<&[u8; 4]>,
+                     meter: Option<&f32>,
+                     legend: Option<&ObjPath>| {
+                        let visible = *visible.unwrap_or(&true);
+                        let two_dimensions_min = tensor.shape.len() >= 2;
+                        if !visible || !two_dimensions_min {
+                            return;
+                        }
 
-                        Arc::get_mut(cdm).unwrap().map.insert(
-                            *id,
-                            ClassDescription {
-                                label: label.map(|s| s.clone().into()),
-                                color: color.cloned(),
-                            },
-                        );
+                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+
+                        let image = Image {
+                            msg_id: *msg_id,
+                            obj_path: obj_path.clone(),
+                            instance_hash: InstanceIdHash::from_path_and_index(
+                                obj_path,
+                                instance_index,
+                            ),
+                            tensor: tensor.clone(), // shallow
+                            meter: meter.copied(),
+                            legend: self.legends.find(legend),
+                            paint_props: paint_properties(
+                                ctx,
+                                &hovered,
+                                obj_path,
+                                instance_index,
+                                color.copied(),
+                                DefaultColor::White,
+                                &None,
+                            ),
+                        };
+
+                        batch.push(image);
                     },
                 );
-            }
+                batch
+            });
+
+        self.images.extend(images);
+
+        for image in &self.images {
+            let [h, w] = [image.tensor.shape[0].size, image.tensor.shape[1].size];
+            self.bbox.extend_with(Pos2::ZERO);
+            self.bbox.extend_with(pos2(w as _, h as _));
         }
+    }
 
-        {
-            puffin::profile_scope!("Scene2D - load images");
-            let images = query
-                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
-                .flat_map(|(_obj_type, obj_path, obj_store)| {
-                    let mut batch = Vec::new();
-                    visit_type_data_4(
-                        obj_store,
-                        &FieldName::from("tensor"),
-                        &query.time_query,
-                        ("_visible", "color", "meter", "legend"),
-                        |instance_index: Option<&IndexHash>,
-                         _time: i64,
-                         msg_id: &MsgId,
-                         tensor: &re_log_types::Tensor,
-                         visible: Option<&bool>,
-                         color: Option<&[u8; 4]>,
-                         meter: Option<&f32>,
-                         legend: Option<&ObjPath>| {
-                            let visible = *visible.unwrap_or(&true);
-                            let two_dimensions_min = tensor.shape.len() >= 2;
-                            if !visible || !two_dimensions_min {
-                                return;
-                            }
+    fn load_boxes(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+        hovered: InstanceIdHash,
+    ) {
+        puffin::profile_function!();
 
-                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+        let boxes = query
+            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::BBox2D])
+            .flat_map(|(_obj_type, obj_path, obj_store)| {
+                let mut batch = Vec::new();
+                visit_type_data_4(
+                    obj_store,
+                    &FieldName::from("bbox"),
+                    &query.time_query,
+                    ("_visible", "color", "stroke_width", "label"),
+                    |instance_index: Option<&IndexHash>,
+                     _time: i64,
+                     _msg_id: &MsgId,
+                     bbox: &re_log_types::BBox2D,
+                     visible: Option<&bool>,
+                     color: Option<&[u8; 4]>,
+                     stroke_width: Option<&f32>,
+                     label: Option<&String>| {
+                        let visible = *visible.unwrap_or(&true);
+                        if !visible {
+                            return;
+                        }
 
-                            let image = Image {
-                                msg_id: *msg_id,
-                                obj_path: obj_path.clone(),
-                                instance_hash: InstanceIdHash::from_path_and_index(
-                                    obj_path,
-                                    instance_index,
-                                ),
-                                tensor: tensor.clone(), // shallow
-                                meter: meter.copied(),
-                                legend: legends.find(legend),
-                                paint_props: paint_properties(
-                                    ctx,
-                                    &hovered_instance_id_hash,
-                                    obj_path,
-                                    instance_index,
-                                    color.copied(),
-                                    DefaultColor::White,
-                                    &None,
-                                ),
-                            };
+                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                        let stroke_width = stroke_width.copied();
 
-                            batch.push(image);
-                        },
-                    );
-                    batch
-                });
-            self.images.extend(images);
+                        let paint_props = paint_properties(
+                            ctx,
+                            &hovered,
+                            obj_path,
+                            instance_index,
+                            color.copied(),
+                            DefaultColor::Random,
+                            &stroke_width,
+                        );
 
-            for image in &self.images {
-                let [h, w] = [image.tensor.shape[0].size, image.tensor.shape[1].size];
-                self.bbox.extend_with(Pos2::ZERO);
-                self.bbox.extend_with(pos2(w as _, h as _));
-            }
-        }
-
-        {
-            puffin::profile_scope!("Scene2D - load boxes");
-            let boxes = query
-                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::BBox2D])
-                .flat_map(|(_obj_type, obj_path, obj_store)| {
-                    let mut batch = Vec::new();
-                    visit_type_data_4(
-                        obj_store,
-                        &FieldName::from("bbox"),
-                        &query.time_query,
-                        ("_visible", "color", "stroke_width", "label"),
-                        |instance_index: Option<&IndexHash>,
-                         _time: i64,
-                         _msg_id: &MsgId,
-                         bbox: &re_log_types::BBox2D,
-                         visible: Option<&bool>,
-                         color: Option<&[u8; 4]>,
-                         stroke_width: Option<&f32>,
-                         label: Option<&String>| {
-                            let visible = *visible.unwrap_or(&true);
-                            if !visible {
-                                return;
-                            }
-
-                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                            let stroke_width = stroke_width.copied();
-
-                            // TODO: we gotta have something to replace the ol' InstanceProps
-                            let paint_props = paint_properties(
-                                ctx,
-                                &hovered_instance_id_hash,
+                        batch.push(Box2D {
+                            instance_hash: InstanceIdHash::from_path_and_index(
                                 obj_path,
                                 instance_index,
-                                color.copied(),
-                                DefaultColor::Random,
-                                &stroke_width,
-                            );
+                            ),
+                            bbox: bbox.clone(),
+                            stroke_width,
+                            label: label.map(ToOwned::to_owned),
+                            paint_props,
+                        });
+                    },
+                );
+                batch
+            });
 
-                            batch.push(Box2D {
-                                instance_hash: InstanceIdHash::from_path_and_index(
-                                    obj_path,
-                                    instance_index,
-                                ),
-                                bbox: bbox.clone(),
-                                stroke_width,
-                                label: label.map(ToOwned::to_owned),
-                                paint_props,
-                            });
-                        },
-                    );
-                    batch
-                });
-            self.boxes.extend(boxes);
+        self.boxes.extend(boxes);
 
-            for bbox in &self.boxes {
-                self.bbox.extend_with(bbox.bbox.min.into());
-                self.bbox.extend_with(bbox.bbox.max.into());
-            }
+        for bbox in &self.boxes {
+            self.bbox.extend_with(bbox.bbox.min.into());
+            self.bbox.extend_with(bbox.bbox.max.into());
         }
+    }
 
-        {
-            puffin::profile_scope!("Scene2D - load points");
-            let points = query
-                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Point2D])
-                .flat_map(|(_obj_type, obj_path, obj_store)| {
-                    let mut batch = Vec::new();
-                    visit_type_data_3(
-                        obj_store,
-                        &FieldName::from("pos"),
-                        &query.time_query,
-                        ("_visible", "color", "radius"),
-                        |instance_index: Option<&IndexHash>,
-                         _time: i64,
-                         _msg_id: &MsgId,
-                         pos: &[f32; 2],
-                         visible: Option<&bool>,
-                         color: Option<&[u8; 4]>,
-                         radius: Option<&f32>| {
-                            let visible = *visible.unwrap_or(&true);
-                            if !visible {
-                                return;
-                            }
+    fn load_points(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+        hovered: InstanceIdHash,
+    ) {
+        puffin::profile_function!();
 
-                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+        let points = query
+            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Point2D])
+            .flat_map(|(_obj_type, obj_path, obj_store)| {
+                let mut batch = Vec::new();
+                visit_type_data_3(
+                    obj_store,
+                    &FieldName::from("pos"),
+                    &query.time_query,
+                    ("_visible", "color", "radius"),
+                    |instance_index: Option<&IndexHash>,
+                     _time: i64,
+                     _msg_id: &MsgId,
+                     pos: &[f32; 2],
+                     visible: Option<&bool>,
+                     color: Option<&[u8; 4]>,
+                     radius: Option<&f32>| {
+                        let visible = *visible.unwrap_or(&true);
+                        if !visible {
+                            return;
+                        }
 
-                            // TODO: we gotta have something to replace the ol' InstanceProps
-                            let paint_props = paint_properties(
-                                ctx,
-                                &hovered_instance_id_hash,
+                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+
+                        // TODO: we gotta have something to replace the ol' InstanceProps
+                        let paint_props = paint_properties(
+                            ctx,
+                            &hovered,
+                            obj_path,
+                            instance_index,
+                            color.copied(),
+                            DefaultColor::Random,
+                            &None,
+                        );
+
+                        batch.push(Point2D {
+                            instance_hash: InstanceIdHash::from_path_and_index(
                                 obj_path,
                                 instance_index,
-                                color.copied(),
-                                DefaultColor::Random,
-                                &None,
-                            );
+                            ),
+                            pos: Pos2::new(pos[0], pos[1]),
+                            radius: radius.copied(),
+                            paint_props,
+                        });
+                    },
+                );
+                batch
+            });
 
-                            batch.push(Point2D {
-                                instance_hash: InstanceIdHash::from_path_and_index(
-                                    obj_path,
-                                    instance_index,
-                                ),
-                                pos: Pos2::new(pos[0], pos[1]),
-                                radius: radius.copied(),
-                                paint_props,
-                            });
-                        },
-                    );
-                    batch
-                });
-            self.points.extend(points);
+        self.points.extend(points);
 
-            for point in &self.points {
-                self.bbox.extend_with(point.pos);
-            }
+        for point in &self.points {
+            self.bbox.extend_with(point.pos);
         }
+    }
 
-        {
-            puffin::profile_scope!("Scene2D - load line segments");
-            let segments = query
-                .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::LineSegments2D])
-                .flat_map(|(_obj_type, obj_path, obj_store)| {
-                    let mut batch = Vec::new();
-                    visit_type_data_3(
-                        obj_store,
-                        &FieldName::from("points"),
-                        &query.time_query,
-                        ("_visible", "color", "stroke_width"),
-                        |instance_index: Option<&IndexHash>,
-                         _time: i64,
-                         _msg_id: &MsgId,
-                         points: &DataVec,
-                         visible: Option<&bool>,
-                         color: Option<&[u8; 4]>,
-                         stroke_width: Option<&f32>| {
-                            let visible = *visible.unwrap_or(&true);
-                            if !visible {
-                                return;
-                            }
+    fn load_line_segments(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+        hovered: InstanceIdHash,
+    ) {
+        puffin::profile_function!();
 
-                            let Some(points) = points.as_vec_of_vec2("LineSegments2D::points")
+        let segments = query
+            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::LineSegments2D])
+            .flat_map(|(_obj_type, obj_path, obj_store)| {
+                let mut batch = Vec::new();
+                visit_type_data_3(
+                    obj_store,
+                    &FieldName::from("points"),
+                    &query.time_query,
+                    ("_visible", "color", "stroke_width"),
+                    |instance_index: Option<&IndexHash>,
+                     _time: i64,
+                     _msg_id: &MsgId,
+                     points: &DataVec,
+                     visible: Option<&bool>,
+                     color: Option<&[u8; 4]>,
+                     stroke_width: Option<&f32>| {
+                        let visible = *visible.unwrap_or(&true);
+                        if !visible {
+                            return;
+                        }
+
+                        let Some(points) = points.as_vec_of_vec2("LineSegments2D::points")
                                 else { return };
 
-                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                            let stroke_width = stroke_width.copied();
+                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                        let stroke_width = stroke_width.copied();
 
-                            // TODO: we gotta have something to replace the ol' InstanceProps
-                            let paint_props = paint_properties(
-                                ctx,
-                                &hovered_instance_id_hash,
+                        // TODO: we gotta have something to replace the ol' InstanceProps
+                        let paint_props = paint_properties(
+                            ctx,
+                            &hovered,
+                            obj_path,
+                            instance_index,
+                            color.copied(),
+                            DefaultColor::Random,
+                            &None,
+                        );
+
+                        batch.push(LineSegments2D {
+                            instance_hash: InstanceIdHash::from_path_and_index(
                                 obj_path,
                                 instance_index,
-                                color.copied(),
-                                DefaultColor::Random,
-                                &None,
-                            );
+                            ),
+                            points: points.iter().map(|p| Pos2::new(p[0], p[1])).collect(),
+                            stroke_width,
+                            paint_props,
+                        });
+                    },
+                );
+                batch
+            });
 
-                            batch.push(LineSegments2D {
-                                instance_hash: InstanceIdHash::from_path_and_index(
-                                    obj_path,
-                                    instance_index,
-                                ),
-                                points: points.iter().map(|p| Pos2::new(p[0], p[1])).collect(),
-                                stroke_width,
-                                paint_props,
-                            });
-                        },
-                    );
-                    batch
-                });
-            self.line_segments.extend(segments);
+        self.line_segments.extend(segments);
 
-            for segment in &self.line_segments {
-                for &point in &segment.points {
-                    self.bbox.extend_with(point);
-                }
+        for segment in &self.line_segments {
+            for &point in &segment.points {
+                self.bbox.extend_with(point);
             }
         }
     }
