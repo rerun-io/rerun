@@ -12,15 +12,15 @@ Run:
 
 import argparse
 
-from math import pi
+from math import pi, sin
 
 import rerun_sdk as rerun
 
 
 def log_plots() -> None:
-    for i in range(0, int(pi * 3 * 1000.0), 1):
+    for i in range(0, int(pi * 3 * 100.0), 1):
         rerun.set_time_sequence("frame_nr", i)
-        rerun.log_scalar("plots/sin", i / 1000.0)
+        rerun.log_scalar("plots/sin", sin(i / 100.0))
 
 
 
