@@ -9,7 +9,7 @@ use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{ui::SceneQuery, ViewerContext};
 
-use super::{ClassDescription, ClassDescriptionMap, Legend, Legends, State2D};
+use super::{ClassDescription, ClassDescriptionMap, Legend, Legends, View2DState};
 
 // ---
 
@@ -93,7 +93,7 @@ impl Scene2D {
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
-        state: &State2D,
+        state: &View2DState,
     ) {
         crate::profile_function!();
 

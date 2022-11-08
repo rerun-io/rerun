@@ -145,9 +145,9 @@ impl SpaceView {
 /// Camera position and similar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
-    pub state_2d: view_2d::State2D,
-    pub state_3d: view_3d::State3D,
-    pub state_tensor: Option<view_tensor::TensorViewState>,
+    pub state_2d: view_2d::View2DState,
+    pub state_3d: view_3d::View3DState,
+    pub state_tensor: Option<view_tensor::ViewTensorState>,
     pub state_text_entry: view_text_entry::ViewTextEntryState,
 }
 
@@ -193,7 +193,7 @@ impl ViewState {
         let tensor = &scene.tensors[0];
         let state_tensor = self
             .state_tensor
-            .get_or_insert_with(|| view_tensor::TensorViewState::create(tensor));
+            .get_or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
         ui.vertical(|ui| {
             view_tensor::view_tensor(ui, state_tensor, tensor);
         })

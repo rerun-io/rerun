@@ -18,7 +18,7 @@ use super::glow_rendering;
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct State3D {
+pub(crate) struct View3DState {
     orbit_eye: Option<OrbitEye>,
 
     #[serde(skip)]
@@ -43,7 +43,7 @@ pub(crate) struct State3D {
     last_eye_interact_time: f64,
 }
 
-impl Default for State3D {
+impl Default for View3DState {
     fn default() -> Self {
         Self {
             orbit_eye: Default::default(),
@@ -58,7 +58,7 @@ impl Default for State3D {
     }
 }
 
-impl State3D {
+impl View3DState {
     fn update_eye(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -178,7 +178,7 @@ impl EyeInterpolation {
 fn show_settings_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut State3D,
+    state: &mut View3DState,
     space_specs: &SpaceSpecs,
 ) {
     ui.horizontal(|ui| {
@@ -295,7 +295,7 @@ fn find_camera(space_cameras: &[SpaceCamera], needle: &InstanceId) -> Option<Eye
 fn click_object(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera],
-    state: &mut State3D,
+    state: &mut View3DState,
     instance_id: &InstanceId,
 ) {
     ctx.rec_cfg.selection = crate::Selection::Instance(instance_id.clone());
@@ -317,7 +317,7 @@ fn click_object(
 pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut State3D,
+    state: &mut View3DState,
     space: Option<&ObjPath>,
     space_specs: &SpaceSpecs,
     scene: &mut Scene3D,
@@ -419,7 +419,7 @@ fn paint_view(
     eye: Eye,
     rect: egui::Rect,
     scene: &mut Scene3D,
-    _state: &mut State3D,
+    _state: &mut View3DState,
     response: egui::Response,
 ) -> egui::Response {
     crate::profile_function!();
@@ -605,7 +605,7 @@ fn paint_view(
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera],
-    state: &mut State3D,
+    state: &mut View3DState,
     scene: &mut Scene3D,
 ) {
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
@@ -656,7 +656,7 @@ fn show_projections_from_2d_space(
 fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera],
-    state: &mut State3D,
+    state: &mut View3DState,
     space: Option<&ObjPath>,
     response: &egui::Response,
     orbit_eye: OrbitEye,

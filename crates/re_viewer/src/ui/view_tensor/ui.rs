@@ -11,7 +11,7 @@ use super::dimension_mapping_ui;
 // ---
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-pub struct TensorViewState {
+pub struct ViewTensorState {
     /// How we select which dimensions to project the tensor onto.
     dimension_mapping: DimensionMapping,
 
@@ -25,8 +25,8 @@ pub struct TensorViewState {
     texture_settings: TextureSettings,
 }
 
-impl TensorViewState {
-    pub fn create(tensor: &Tensor) -> TensorViewState {
+impl ViewTensorState {
+    pub fn create(tensor: &Tensor) -> ViewTensorState {
         Self {
             selector_values: Default::default(),
             dimension_mapping: DimensionMapping::create(tensor),
@@ -36,7 +36,7 @@ impl TensorViewState {
     }
 }
 
-pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
+pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
     crate::profile_function!();
 
     ui.collapsing("Dimension Mapping", |ui| {
@@ -310,7 +310,7 @@ fn texture_filter_ui(ui: &mut egui::Ui, label: &str, filter: &mut egui::TextureF
 // ----------------------------------------------------------------------------
 
 fn selected_tensor_slice<'a, T: Copy>(
-    state: &TensorViewState,
+    state: &ViewTensorState,
     tensor: &'a ndarray::ArrayViewD<'_, T>,
 ) -> ndarray::ArrayViewD<'a, T> {
     let dim_mapping = &state.dimension_mapping;
@@ -351,7 +351,7 @@ fn selected_tensor_slice<'a, T: Copy>(
 
 fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
-    view_state: &TensorViewState,
+    view_state: &ViewTensorState,
     tensor_shape: &[TensorDimension],
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
@@ -423,7 +423,7 @@ fn into_image<T: Copy>(
 
 fn image_ui(
     ui: &mut egui::Ui,
-    view_state: &TensorViewState,
+    view_state: &ViewTensorState,
     image: ColorImage,
     dimension_labels: [(String, bool); 2],
 ) {
@@ -480,7 +480,7 @@ fn image_ui(
     });
 }
 
-fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
+fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
     if state.dimension_mapping.selectors.is_empty() {
         return;
     }
