@@ -5,6 +5,7 @@ use re_data_store::ObjPath;
 use re_log_types::{IndexHash, ViewCoordinates};
 
 /// A logged camera that connects spaces.
+#[derive(Clone)]
 pub struct SpaceCamera {
     /// Path to the object which has the rigid [Self::world_from_camera`] transforms.
     pub camera_obj_path: ObjPath,

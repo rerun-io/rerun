@@ -13,7 +13,7 @@ pub use self::scene::{
 };
 
 mod ui;
-pub(crate) use self::ui::{view_3d, SpaceSpecs, View3DState};
+pub(crate) use self::ui::{show_settings_ui, view_3d, SpaceSpecs, View3DState, HELP_TEXT};
 
 #[cfg(feature = "glow")]
 mod glow_rendering;

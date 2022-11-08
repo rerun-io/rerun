@@ -506,7 +506,7 @@ impl AppState {
 
         let central_panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.window_fill(),
-            inner_margin: egui::style::Margin::symmetric(4.0, 0.0),
+            inner_margin: egui::style::Margin::same(0.0),
             ..Default::default()
         };
 
@@ -551,11 +551,9 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
     crate::profile_function!();
 
     let panel_frame = {
-        let style = egui_ctx.style();
         egui::Frame {
             inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
             fill: app.design_tokens.top_bar_color,
-            stroke: style.visuals.window_stroke(),
             ..Default::default()
         }
     };
@@ -776,7 +774,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
 
     #[cfg(not(target_arch = "wasm32"))]
     if ui
-        .button("Load")
+        .button("Load…")
         .on_hover_text("Load a Rerun Data File (.rrd)")
         .clicked()
     {

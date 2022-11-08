@@ -41,6 +41,12 @@ pub(crate) struct View3DState {
     show_axes: bool,
 
     last_eye_interact_time: f64,
+
+    /// Filled in at the start of each frame
+    #[serde(skip)]
+    pub(crate) space_specs: SpaceSpecs,
+    #[serde(skip)]
+    space_camera: Vec<SpaceCamera>,
 }
 
 impl Default for View3DState {
@@ -54,6 +60,8 @@ impl Default for View3DState {
             spin: false,
             show_axes: false,
             last_eye_interact_time: f64::NEG_INFINITY,
+            space_specs: Default::default(),
+            space_camera: Default::default(),
         }
     }
 }
@@ -64,14 +72,13 @@ impl View3DState {
         ctx: &mut ViewerContext<'_>,
         tracking_camera: Option<Eye>,
         response: &egui::Response,
-        space_specs: &SpaceSpecs,
     ) -> &mut OrbitEye {
         if response.double_clicked() {
-            // Reset camera
+            // Reset eye
             if tracking_camera.is_some() {
                 ctx.rec_cfg.selection = Selection::None;
             }
-            self.interpolate_to_orbit_eye(default_eye(&self.scene_bbox, space_specs));
+            self.interpolate_to_orbit_eye(default_eye(&self.scene_bbox, &self.space_specs));
         }
 
         if let Some(tracking_camera) = tracking_camera {
@@ -89,7 +96,7 @@ impl View3DState {
 
         let orbit_camera = self
             .orbit_eye
-            .get_or_insert_with(|| default_eye(&self.scene_bbox, space_specs));
+            .get_or_insert_with(|| default_eye(&self.scene_bbox, &self.space_specs));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -175,82 +182,70 @@ impl EyeInterpolation {
     }
 }
 
-fn show_settings_ui(
+pub(crate) fn show_settings_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut View3DState,
-    space_specs: &SpaceSpecs,
 ) {
-    ui.horizontal(|ui| {
-        {
-            let up_response = if let Some(up) = space_specs.up {
-                if up == Vec3::X {
-                    ui.label("Up: +X")
-                } else if up == -Vec3::X {
-                    ui.label("Up: -X")
-                } else if up == Vec3::Y {
-                    ui.label("Up: +Y")
-                } else if up == -Vec3::Y {
-                    ui.label("Up: -Y")
-                } else if up == Vec3::Z {
-                    ui.label("Up: +Z")
-                } else if up == -Vec3::Z {
-                    ui.label("Up: -Z")
-                } else if up != Vec3::ZERO {
-                    ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
-                } else {
-                    ui.label("Up: —")
-                }
+    {
+        let up_response = if let Some(up) = state.space_specs.up {
+            if up == Vec3::X {
+                ui.label("Up: +X")
+            } else if up == -Vec3::X {
+                ui.label("Up: -X")
+            } else if up == Vec3::Y {
+                ui.label("Up: +Y")
+            } else if up == -Vec3::Y {
+                ui.label("Up: -Y")
+            } else if up == Vec3::Z {
+                ui.label("Up: +Z")
+            } else if up == -Vec3::Z {
+                ui.label("Up: -Z")
+            } else if up != Vec3::ZERO {
+                ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
             } else {
                 ui.label("Up: —")
-            };
+            }
+        } else {
+            ui.label("Up: —")
+        };
 
-            up_response.on_hover_ui(|ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-                    ui.label("Set with ");
-                    ui.code("rerun.log_view_coordinates");
-                    ui.label(".");
-                });
+        up_response.on_hover_ui(|ui| {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                ui.label("Set with ");
+                ui.code("rerun.log_view_coordinates");
+                ui.label(".");
             });
-        }
+        });
+    }
 
-        if ui
-            .button("Reset view")
-            .on_hover_text("You can also double-click the 3D view")
-            .clicked()
-        {
-            state.orbit_eye = Some(default_eye(&state.scene_bbox, space_specs));
-            state.eye_interpolation = None;
-            // TODO(emilk): reset tracking camera too
-        }
+    if ui
+        .button("Reset virtual camera")
+        .on_hover_text(
+            "Resets camera position & orientation.\nYou can also double-click the 3D view",
+        )
+        .clicked()
+    {
+        state.orbit_eye = Some(default_eye(&state.scene_bbox, &state.space_specs));
+        state.eye_interpolation = None;
+        // TODO(emilk): reset tracking camera too
+    }
 
-        // TODO(emilk): only show if there is a camera om scene.
-        ui.toggle_value(&mut ctx.options.show_camera_mesh_in_3d, "📷")
-            .on_hover_text("Show camera mesh");
+    ui.checkbox(&mut state.spin, "Spin virtual camera")
+        .on_hover_text("Spin view");
+    ui.checkbox(&mut state.show_axes, "Show origin axes")
+        .on_hover_text("Show X-Y-Z axes");
 
-        ui.toggle_value(&mut state.spin, "Spin")
-            .on_hover_text("Spin view");
-        ui.toggle_value(&mut state.show_axes, "Axes")
-            .on_hover_text("Show X-Y-Z axes");
-
-        crate::misc::help_hover_button(ui).on_hover_text(
-            "Drag to rotate.\n\
-            Drag with secondary mouse button to pan.\n\
-            Drag with middle mouse button to roll the view.\n\
-            Scroll to zoom.\n\
-            \n\
-            While hovering the 3D view, navigate with WSAD and QE.\n\
-            CTRL slows down, SHIFT speeds up.\n\
-            \n\
-            Click on a object to focus the view on it.\n\
-            \n\
-            Double-click anywhere to reset the view.",
+    if !state.space_camera.is_empty() {
+        ui.checkbox(
+            &mut ctx.options.show_camera_mesh_in_3d,
+            "Show camera meshes",
         );
-    });
+    }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct SpaceSpecs {
     up: Option<glam::Vec3>,
     right: Option<glam::Vec3>,
@@ -314,27 +309,35 @@ fn click_object(
 
 // ----------------------------------------------------------------------------
 
+pub(crate) const HELP_TEXT: &str = "Drag to rotate.\n\
+    Drag with secondary mouse button to pan.\n\
+    Drag with middle mouse button to roll the view.\n\
+    Scroll to zoom.\n\
+    \n\
+    While hovering the 3D view, navigate with WSAD and QE.\n\
+    CTRL slows down, SHIFT speeds up.\n\
+    \n\
+    Click on a object to focus the view on it.\n\
+    \n\
+    Double-click anywhere to reset the view.";
+
 pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut View3DState,
     space: Option<&ObjPath>,
-    space_specs: &SpaceSpecs,
     scene: &mut Scene3D,
     space_cameras: &[SpaceCamera],
 ) -> egui::Response {
     crate::profile_function!();
 
     state.scene_bbox = state.scene_bbox.union(scene.calc_bbox());
-
-    // TODO(emilk): show settings on top of 3D view.
-    // Requires some egui work to handle interaction of overlapping widgets.
-    show_settings_ui(ctx, ui, state, space_specs);
+    state.space_camera = space_cameras.to_vec();
 
     let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     let tracking_camera = tracking_camera(ctx, space_cameras);
-    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, space_specs);
+    let orbit_eye = state.update_eye(ctx, tracking_camera, &response);
 
     let did_interact_wth_eye = orbit_eye.interact(&response);
     let orbit_eye = *orbit_eye;
