@@ -65,7 +65,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let radius_sq = point_data.radius * point_data.radius;
     let camera_offset = radius_sq * distance_to_camera_inv;
     var modified_radius = point_data.radius * distance_to_camera_inv * sqrt(distance_to_camera_sq - radius_sq);
-    // We're computing a coverage mask int the fragment shader - make sure the quad doesn't cut off our antialiasing.
+    // We're computing a coverage mask in the fragment shader - make sure the quad doesn't cut off our antialiasing.
     // It's fairly subtle but if we don't do this our spheres look slightly squarish
     modified_radius += frame.pixel_world_size_from_camera_distance / distance_to_camera_inv;
     let pos = point_data.pos + pos_in_quad * modified_radius * 1.0 + camera_offset * quad_normal;
@@ -88,7 +88,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
 
 // Returns distance to sphere surface (x) and distance to of closest ray hit (y)
-// Via https://iquilezles.org/articles/spherefunctions/ with some adjustments - in particular the original returns negative thicknes.
+// Via https://iquilezles.org/articles/spherefunctions/ but with more verbose names.
 fn sphere_distance(ray_origin: Vec3, ray_dir: Vec3, sphere_origin: Vec3, sphere_radius: f32) -> Vec2 {
     let sphere_radius_sq = sphere_radius * sphere_radius;
     let sphere_to_origin = ray_origin - sphere_origin;
