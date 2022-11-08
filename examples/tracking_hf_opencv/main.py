@@ -107,7 +107,7 @@ class Detector:
         labels = detections["labels"].detach().cpu().numpy()
         str_labels = [self.id2Lable[l] for l in labels]
         colors = [self.id2Color[l] for l in labels]
-        isThing = [self.id2IsThing[l] for l in labels]
+        is_thing = [self.id2IsThing[l] for l in labels]
 
         rerun.log_rects(
             "image/scaled/detections",
