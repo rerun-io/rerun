@@ -7,6 +7,8 @@ from pathlib import Path
 import cv2
 import requests
 
+DATASET_BASE_URL = "https://storage.googleapis.com/objectron"
+
 
 def download(url: str, path: str) -> None:
     if not os.path.exists(path):
@@ -30,31 +32,27 @@ def split_video_into_frames(video_path: str, frames_path: str, reprocess_video: 
             count += 1
 
 
-public_url = "https://storage.googleapis.com/objectron"
-
-
 def download_data(video_id: str, reprocess_video: bool) -> None:
     print(f"downloading {video_id}…")
 
     dir = f"dataset/{video_id}"
     os.makedirs(dir, exist_ok=True)
 
-    download(f"{public_url}/videos/{video_id}/video.MOV", f"{dir}/video.MOV")
+    download(f"{DATASET_BASE_URL}/videos/{video_id}/video.MOV", f"{dir}/video.MOV")
 
     # use object.proto
-    download(f"{public_url}/videos/{video_id}/geometry.pbdata", f"{dir}/geometry.pbdata")
+    download(f"{DATASET_BASE_URL}/videos/{video_id}/geometry.pbdata", f"{dir}/geometry.pbdata")
 
     # Please refer to Parse Annotation tutorial to see how to parse the annotation files.
-    download(f"{public_url}/annotations/{video_id}.pbdata", f"{dir}/annotation.pbdata")
+    download(f"{DATASET_BASE_URL}/annotations/{video_id}.pbdata", f"{dir}/annotation.pbdata")
 
     split_video_into_frames(f"{dir}/video.MOV", f"{dir}/video", reprocess_video)
 
 
 def download_dataset(name: str, reprocess_video: bool) -> None:
-    video_ids_raw = requests.get(f"{public_url}/v1/index/{name}_annotations_test").text
-    video_ids = video_ids_raw.split("\n")
-    for i in range(3):
-        download_data(video_ids[i], reprocess_video)
+    video_ids_raw = requests.get(f"{DATASET_BASE_URL}/v1/index/{name}_annotations_test").text
+    video_id = video_ids_raw.split("\n")[0]
+    download_data(video_id, reprocess_video)
 
 
 if __name__ == "__main__":
