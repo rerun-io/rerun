@@ -107,7 +107,7 @@ class Detector:
         labels = detections["labels"].detach().cpu().numpy()
         str_labels = [self.id2Lable[l] for l in labels]
         colors = [self.id2Color[l] for l in labels]
-        is_thing = [self.id2IsThing[l] for l in labels]
+        things = [self.id2IsThing[l] for l in labels]
 
         rerun.log_rects(
             "image/scaled/detections",
@@ -118,7 +118,7 @@ class Detector:
         )
 
         objects_to_track = []  # type: List[Detection]
-        for idx, (label_id, label_str, label_color, is_thing) in enumerate(zip(labels, str_labels, colors, isThing)):
+        for idx, (label_id, label_str, label_color, is_thing) in enumerate(zip(labels, str_labels, colors, things)):
             if is_thing:
                 x_min, y_min, x_max, y_max = boxes[idx, :]
                 bbox_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]
@@ -230,7 +230,7 @@ class Tracker:
 
 
 def box_iou(first: List[float], second: List[float]) -> float:
-    """Calculate Intersection over Union (IoU) between two 2D rectangles in XYXY format."""
+    """Calculate Intersection over Union (IoU) between two 2D rectangles in XYWH format."""
     left = max(first[0], second[0])
     right = min(first[0] + first[2], second[0] + second[2])
     top = min(first[1] + first[3], second[1] + second[3])
@@ -352,7 +352,7 @@ def setup_looging() -> None:
     logger.setLevel(-1)
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
@@ -389,3 +389,7 @@ if __name__ == "__main__":
         pass
     elif not args.connect:
         rerun.show()
+
+
+if __name__ == "__main__":
+    main()
