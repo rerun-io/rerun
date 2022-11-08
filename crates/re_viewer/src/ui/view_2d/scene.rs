@@ -84,7 +84,7 @@ impl Default for Scene2D {
 }
 
 impl Scene2D {
-    /// Loads all objects into the scene according to the given query.
+    /// Loads all 2D objects into the scene according to the given query.
     ///
     /// In addition to the query, we also pass in the 2D state from last frame, so that we can
     /// compute custom paint properties for hovered items.

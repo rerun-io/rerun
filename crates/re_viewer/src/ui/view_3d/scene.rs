@@ -26,7 +26,7 @@ use super::{eye::Eye, SpaceCamera};
 /// * If positive, this is in scene units.
 /// * If negative, this is in ui points.
 /// * If NaN, auto-size it.
-/// Resolved in [`Scene::finalize_sizes_and_colors`].
+/// Resolved in [`Scene3D::finalize_sizes_and_colors`].
 #[derive(Clone, Copy, Debug)]
 pub struct Size(pub f32);
 
@@ -138,7 +138,8 @@ pub struct Scene3D {
 }
 
 impl Scene3D {
-    pub(crate) fn load(
+    /// Loads all 3D objects into the scene according to the given query.
+    pub(crate) fn load_objects(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
@@ -166,217 +167,38 @@ impl Scene3D {
             [r, g, b, a]
         };
 
-        let log_db = &ctx.log_db;
-        let caches = &mut *ctx.cache;
+        self.load_points(ctx, obj_tree_props, query, object_color);
+        self.load_boxes(ctx, obj_tree_props, query, object_color);
+        self.load_segments(ctx, obj_tree_props, query, object_color);
+        self.load_arrows(ctx, obj_tree_props, query, object_color);
+        self.load_meshes(ctx, obj_tree_props, query);
+    }
 
-        {
-            crate::profile_scope!("Scene3D - load points");
-            let points = query
-                .iter_object_stores(log_db, obj_tree_props, &[ObjectType::Point3D])
-                .flat_map(|(_obj_type, obj_path, obj_store)| {
-                    let mut batch = Vec::new();
-                    visit_type_data_3(
-                        obj_store,
-                        &FieldName::from("pos"),
-                        &query.time_query,
-                        ("_visible", "color", "radius"),
-                        |instance_index: Option<&IndexHash>,
-                         _time: i64,
-                         _msg_id: &MsgId,
-                         pos: &[f32; 3],
-                         visible: Option<&bool>,
-                         color: Option<&[u8; 4]>,
-                         radius: Option<&f32>| {
-                            if *visible.unwrap_or(&true) {
-                                let instance_index =
-                                    instance_index.copied().unwrap_or(IndexHash::NONE);
-                                let instance_id_hash =
-                                    InstanceIdHash::from_path_and_index(obj_path, instance_index);
+    fn load_points(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+        mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
+    ) {
+        crate::profile_function!();
 
-                                batch.push(Point3D {
-                                    instance_id_hash,
-                                    pos: Vec3::from_slice(pos),
-                                    radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
-                                    color: object_color(caches, color, obj_path),
-                                });
-                            }
-                        },
-                    );
-                    batch
-                });
-            self.points.extend(points);
-        }
-
-        {
-            crate::profile_scope!("Scene3D - load boxes");
-            for (_obj_type, obj_path, obj_store) in
-                query.iter_object_stores(log_db, obj_tree_props, &[ObjectType::Box3D])
-            {
-                visit_type_data_4(
+        let points = query
+            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Point3D])
+            .flat_map(|(_obj_type, obj_path, obj_store)| {
+                let mut batch = Vec::new();
+                visit_type_data_3(
                     obj_store,
-                    &FieldName::from("obb"),
+                    &FieldName::from("pos"),
                     &query.time_query,
-                    ("_visible", "color", "stroke_width", "label"),
+                    ("_visible", "color", "radius"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
-                     obb: &re_log_types::Box3,
+                     pos: &[f32; 3],
                      visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
-                     stroke_width: Option<&f32>,
-                     label: Option<&String>| {
-                        if *visible.unwrap_or(&true) {
-                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                            let line_radius =
-                                stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                            let color = object_color(caches, color, obj_path);
-
-                            self.add_box(
-                                InstanceIdHash::from_path_and_index(obj_path, instance_index),
-                                color,
-                                line_radius,
-                                label.map(|s| s.as_str()),
-                                obb,
-                            );
-                        }
-                    },
-                );
-            }
-        }
-
-        {
-            crate::profile_scope!("Scene3D - load paths & segments");
-
-            let segments = query
-                .iter_object_stores(
-                    log_db,
-                    obj_tree_props,
-                    &[ObjectType::Path3D, ObjectType::LineSegments3D],
-                )
-                .flat_map(|(obj_type, obj_path, obj_store)| {
-                    let mut batch = Vec::new();
-                    visit_type_data_3(
-                        obj_store,
-                        &FieldName::from("points"),
-                        &query.time_query,
-                        ("_visible", "color", "stroke_width"),
-                        |instance_index: Option<&IndexHash>,
-                         _time: i64,
-                         _msg_id: &MsgId,
-                         points: &DataVec,
-                         visible: Option<&bool>,
-                         color: Option<&[u8; 4]>,
-                         stroke_width: Option<&f32>| {
-                            if !*visible.unwrap_or(&true) {
-                                return;
-                            }
-
-                            let what = match obj_type {
-                                ObjectType::Path3D => "Path3D::points",
-                                ObjectType::LineSegments3D => "LineSegments3D::points",
-                                _ => return,
-                            };
-                            let Some(points) = points.as_vec_of_vec3(what)
-                                else { return };
-
-                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                            let instance_id_hash =
-                                InstanceIdHash::from_path_and_index(obj_path, instance_index);
-
-                            let radius =
-                                stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                            let color = object_color(caches, color, obj_path);
-
-                            let segments = points
-                                .iter()
-                                .tuple_windows()
-                                .map(|(a, b)| (Vec3::from_slice(a), Vec3::from_slice(b)))
-                                .collect();
-
-                            batch.push(LineSegments3D {
-                                instance_id_hash,
-                                segments,
-                                radius,
-                                color,
-                                #[cfg(feature = "wgpu")]
-                                flags: Default::default(),
-                            });
-                        },
-                    );
-                    batch
-                });
-            self.line_segments.extend(segments);
-        }
-
-        {
-            crate::profile_scope!("Scene3D - load meshes");
-            let meshes = query
-                .iter_object_stores(log_db, obj_tree_props, &[ObjectType::Mesh3D])
-                .flat_map(|(_obj_type, obj_path, obj_store)| {
-                    let mut batch = Vec::new();
-                    visit_type_data_2(
-                        obj_store,
-                        &FieldName::from("mesh"),
-                        &query.time_query,
-                        ("_visible", "color"),
-                        |instance_index: Option<&IndexHash>,
-                         _time: i64,
-                         msg_id: &MsgId,
-                         mesh: &re_log_types::Mesh3D,
-                         visible: Option<&bool>,
-                         _color: Option<&[u8; 4]>| {
-                            if !*visible.unwrap_or(&true) {
-                                return;
-                            }
-
-                            let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                            let mesh_id = egui::util::hash(msg_id);
-                            let Some(mesh) = caches.cpu_mesh.load(
-                    mesh_id,
-                    &obj_path.to_string(),
-                    &MeshSourceData::Mesh3D(mesh.clone()),
-                    #[cfg(feature = "wgpu")]
-                    &mut ctx.render_ctx.mesh_manager,
-                    #[cfg(feature = "wgpu")]
-                    &mut ctx.render_ctx.texture_manager_2d,
-                )
-                                .map(|cpu_mesh| MeshSource {
-                                    instance_id_hash: InstanceIdHash::from_path_and_index(
-                                        obj_path,
-                                        instance_index,
-                                    ),
-                                    mesh_id,
-                                    world_from_mesh: Default::default(),
-                                    cpu_mesh,
-                                    tint: None,
-                                }) else { return };
-
-                            batch.push(mesh);
-                        },
-                    );
-                    batch
-                });
-            self.meshes.extend(meshes);
-        }
-
-        {
-            crate::profile_scope!("Scene3D - load arrows");
-            for (_obj_type, obj_path, obj_store) in
-                query.iter_object_stores(log_db, obj_tree_props, &[ObjectType::Arrow3D])
-            {
-                visit_type_data_4(
-                    obj_store,
-                    &FieldName::from("arrow3d"),
-                    &query.time_query,
-                    ("_visible", "color", "width_scale", "label"),
-                    |instance_index: Option<&IndexHash>,
-                     _time: i64,
-                     _msg_id: &MsgId,
-                     arrow: &re_log_types::Arrow3D,
-                     visible: Option<&bool>,
-                     color: Option<&[u8; 4]>,
-                     width_scale: Option<&f32>,
-                     label: Option<&String>| {
+                     radius: Option<&f32>| {
                         if !*visible.unwrap_or(&true) {
                             return;
                         }
@@ -385,21 +207,242 @@ impl Scene3D {
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        let width = width_scale.copied().unwrap_or(1.0);
-                        let color = object_color(caches, color, obj_path);
-                        self.add_arrow(
-                            caches,
+                        batch.push(Point3D {
                             instance_id_hash,
-                            color,
-                            Some(width),
-                            label.map(|s| s.as_str()),
-                            arrow,
-                        );
+                            pos: Vec3::from_slice(pos),
+                            radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
+                            color: object_color(ctx.cache, color, obj_path),
+                        });
                     },
                 );
-            }
+                batch
+            });
+
+        self.points.extend(points);
+    }
+
+    fn load_boxes(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+        mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
+    ) {
+        crate::profile_function!();
+
+        for (_obj_type, obj_path, obj_store) in
+            query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Box3D])
+        {
+            visit_type_data_4(
+                obj_store,
+                &FieldName::from("obb"),
+                &query.time_query,
+                ("_visible", "color", "stroke_width", "label"),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 obb: &re_log_types::Box3,
+                 visible: Option<&bool>,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>,
+                 label: Option<&String>| {
+                    if !*visible.unwrap_or(&true) {
+                        return;
+                    }
+
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                    let color = object_color(ctx.cache, color, obj_path);
+
+                    self.add_box(
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index),
+                        color,
+                        line_radius,
+                        label.map(|s| s.as_str()),
+                        obb,
+                    );
+                },
+            );
         }
     }
+
+    /// Both `Path3D` and `LineSegments3D`.
+    fn load_segments(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+        mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
+    ) {
+        crate::profile_function!();
+
+        let segments = query
+            .iter_object_stores(
+                ctx.log_db,
+                obj_tree_props,
+                &[ObjectType::Path3D, ObjectType::LineSegments3D],
+            )
+            .flat_map(|(obj_type, obj_path, obj_store)| {
+                let mut batch = Vec::new();
+                visit_type_data_3(
+                    obj_store,
+                    &FieldName::from("points"),
+                    &query.time_query,
+                    ("_visible", "color", "stroke_width"),
+                    |instance_index: Option<&IndexHash>,
+                     _time: i64,
+                     _msg_id: &MsgId,
+                     points: &DataVec,
+                     visible: Option<&bool>,
+                     color: Option<&[u8; 4]>,
+                     stroke_width: Option<&f32>| {
+                        if !*visible.unwrap_or(&true) {
+                            return;
+                        }
+
+                        let what = match obj_type {
+                            ObjectType::Path3D => "Path3D::points",
+                            ObjectType::LineSegments3D => "LineSegments3D::points",
+                            _ => return,
+                        };
+                        let Some(points) = points.as_vec_of_vec3(what) else { return };
+
+                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                        let instance_id_hash =
+                            InstanceIdHash::from_path_and_index(obj_path, instance_index);
+
+                        let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                        let color = object_color(ctx.cache, color, obj_path);
+
+                        let segments = points
+                            .iter()
+                            .tuple_windows()
+                            .map(|(a, b)| (Vec3::from_slice(a), Vec3::from_slice(b)))
+                            .collect();
+
+                        batch.push(LineSegments3D {
+                            instance_id_hash,
+                            segments,
+                            radius,
+                            color,
+                            #[cfg(feature = "wgpu")]
+                            flags: Default::default(),
+                        });
+                    },
+                );
+                batch
+            });
+
+        self.line_segments.extend(segments);
+    }
+
+    fn load_arrows(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+        mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
+    ) {
+        crate::profile_function!();
+
+        for (_obj_type, obj_path, obj_store) in
+            query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Arrow3D])
+        {
+            visit_type_data_4(
+                obj_store,
+                &FieldName::from("arrow3d"),
+                &query.time_query,
+                ("_visible", "color", "width_scale", "label"),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 arrow: &re_log_types::Arrow3D,
+                 visible: Option<&bool>,
+                 color: Option<&[u8; 4]>,
+                 width_scale: Option<&f32>,
+                 label: Option<&String>| {
+                    if !*visible.unwrap_or(&true) {
+                        return;
+                    }
+
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_id_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+
+                    let width = width_scale.copied().unwrap_or(1.0);
+                    let color = object_color(ctx.cache, color, obj_path);
+                    self.add_arrow(
+                        ctx.cache,
+                        instance_id_hash,
+                        color,
+                        Some(width),
+                        label.map(|s| s.as_str()),
+                        arrow,
+                    );
+                },
+            );
+        }
+    }
+
+    fn load_meshes(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        obj_tree_props: &ObjectTreeProperties,
+        query: &SceneQuery<'_>,
+    ) {
+        crate::profile_function!();
+
+        let meshes = query
+            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Mesh3D])
+            .flat_map(|(_obj_type, obj_path, obj_store)| {
+                let mut batch = Vec::new();
+                visit_type_data_2(
+                    obj_store,
+                    &FieldName::from("mesh"),
+                    &query.time_query,
+                    ("_visible", "color"),
+                    |instance_index: Option<&IndexHash>,
+                     _time: i64,
+                     msg_id: &MsgId,
+                     mesh: &re_log_types::Mesh3D,
+                     visible: Option<&bool>,
+                     _color: Option<&[u8; 4]>| {
+                        if !*visible.unwrap_or(&true) {
+                            return;
+                        }
+
+                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                        let mesh_id = egui::util::hash(msg_id);
+                        let Some(mesh) = ctx.cache.cpu_mesh.load(
+                                mesh_id,
+                                &obj_path.to_string(),
+                                &MeshSourceData::Mesh3D(mesh.clone()),
+                                #[cfg(feature = "wgpu")]
+                                &mut ctx.render_ctx.mesh_manager,
+                                #[cfg(feature = "wgpu")]
+                                &mut ctx.render_ctx.texture_manager_2d,
+                            )
+                            .map(|cpu_mesh| MeshSource {
+                                instance_id_hash: InstanceIdHash::from_path_and_index(
+                                    obj_path,
+                                    instance_index,
+                                ),
+                                mesh_id,
+                                world_from_mesh: Default::default(),
+                                cpu_mesh,
+                                tint: None,
+                            }) else { return };
+
+                        batch.push(mesh);
+                    },
+                );
+                batch
+            });
+
+        self.meshes.extend(meshes);
+    }
+
+    // ---
 
     pub(super) fn add_cameras(
         &mut self,
