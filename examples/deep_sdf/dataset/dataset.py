@@ -70,13 +70,15 @@ def download_mcguire_sample(package: str, name: str) -> Path:
 
 def download_glb_sample(name: str) -> Path:
     """Downloads a sample glb mesh and returns the path it was downloaded to."""
-    url = f"https://github.com/KhronosGroup/glTF-Sample-Models/blob/master/2.0/{name}/glTF-Binary/{name}.glb?raw=true"
+    capitalized_name = name.capitalize()
+    url = f"https://github.com/KhronosGroup/glTF-Sample-Models/blob/master/2.0/{capitalized_name}/glTF-Binary/{capitalized_name}.glb?raw=true"
 
     def download_and_extract(url: str, path: Path) -> None:
         if not os.path.exists(path):
-            print(f"downloading {url}…")
+            print(f"downloading {url} …")
             resp = requests.get(url, stream=True)
-            with open(path, "wb+") as f:
+            os.makedirs(path.parent, exist_ok=True)
+            with open(path, "wb") as f:
                 f.write(resp.content)
 
     name = name.lower()
