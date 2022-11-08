@@ -10,6 +10,9 @@ pub enum ObjectType {
     /// A logging message.
     TextEntry,
 
+    /// A double-precision scalar.
+    Scalar,
+
     /// An image. Could be gray, RGB, a depth map, ….
     Image,
 

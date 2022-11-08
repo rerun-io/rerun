@@ -11,6 +11,7 @@ pub enum DataType {
     Bool,
     I32,
     F32,
+    F64,
     Color,
     String,
 
@@ -75,6 +76,12 @@ pub mod data_types {
     impl DataTrait for f32 {
         fn data_typ() -> DataType {
             DataType::F32
+        }
+    }
+
+    impl DataTrait for f64 {
+        fn data_typ() -> DataType {
+            DataType::F64
         }
     }
 
@@ -171,6 +178,7 @@ pub enum Data {
     Bool(bool),
     I32(i32),
     F32(f32),
+    F64(f64),
     Color(data_types::Color),
     String(String),
 
@@ -209,6 +217,7 @@ impl Data {
             Self::Bool(_) => DataType::Bool,
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
+            Self::F64(_) => DataType::F64,
             Self::Color(_) => DataType::Color,
             Self::String(_) => DataType::String,
 
@@ -234,6 +243,7 @@ impl Data {
 impl_into_enum!(bool, Data, Bool);
 impl_into_enum!(i32, Data, I32);
 impl_into_enum!(f32, Data, F32);
+impl_into_enum!(f64, Data, F64);
 impl_into_enum!(BBox2D, Data, BBox2D);
 impl_into_enum!(Tensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
@@ -252,6 +262,7 @@ pub enum DataVec {
     Bool(Vec<bool>),
     I32(Vec<i32>),
     F32(Vec<f32>),
+    F64(Vec<f64>),
     Color(Vec<data_types::Color>),
     String(Vec<String>),
 
@@ -288,6 +299,7 @@ macro_rules! data_map(
             $crate::Data::Bool($value) => $action,
             $crate::Data::I32($value) => $action,
             $crate::Data::F32($value) => $action,
+            $crate::Data::F64($value) => $action,
             $crate::Data::Color($value) => $action,
             $crate::Data::String($value) => $action,
             $crate::Data::Vec2($value) => $action,
@@ -326,6 +338,10 @@ macro_rules! data_type_map_none(
             }
             $crate::DataType::F32 => {
                 let $value = Option::<f32>::None;
+                $action
+            },
+            $crate::DataType::F64 => {
+                let $value = Option::<f64>::None;
                 $action
             },
             $crate::DataType::Color => {
@@ -398,6 +414,7 @@ macro_rules! data_vec_map(
             $crate::DataVec::Bool($vec) => $action,
             $crate::DataVec::I32($vec) => $action,
             $crate::DataVec::F32($vec) => $action,
+            $crate::DataVec::F64($vec) => $action,
             $crate::DataVec::Color($vec) => $action,
             $crate::DataVec::String($vec) => $action,
             $crate::DataVec::Vec2($vec) => $action,
@@ -422,6 +439,7 @@ impl DataVec {
             Self::Bool(_) => DataType::Bool,
             Self::I32(_) => DataType::I32,
             Self::F32(_) => DataType::F32,
+            Self::F64(_) => DataType::F64,
             Self::Color(_) => DataType::Color,
             Self::String(_) => DataType::String,
 
@@ -456,6 +474,7 @@ impl DataVec {
             Self::Bool(vec) => vec.last().cloned().map(Data::Bool),
             Self::I32(vec) => vec.last().cloned().map(Data::I32),
             Self::F32(vec) => vec.last().cloned().map(Data::F32),
+            Self::F64(vec) => vec.last().cloned().map(Data::F64),
             Self::Color(vec) => vec.last().cloned().map(Data::Color),
             Self::String(vec) => vec.last().cloned().map(Data::String),
 
