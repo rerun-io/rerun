@@ -225,14 +225,14 @@ impl Renderer for MeshRenderer {
                     .chain(mesh_vertices::vertex_buffer_layouts())
                     .collect(),
 
-                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR.into())],
+                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
                     ..Default::default()
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: ViewBuilder::MAIN_TARGET_DEPTH,
+                    format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
                     depth_compare: wgpu::CompareFunction::Greater,
                     depth_write_enabled: true,
                     stencil: Default::default(),

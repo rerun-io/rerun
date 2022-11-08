@@ -12,42 +12,42 @@ use super::*;
 
 use smallvec::smallvec;
 
-pub struct Tonemapper {
+pub struct Compositor {
     render_pipeline: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 #[derive(Clone)]
-pub struct TonemapperDrawable {
-    /// [`GpuBindGroup`] pointing at the current HDR source and
-    /// a uniform buffer for describing a tonemapper configuration.
-    hdr_target_bind_group: GpuBindGroupHandleStrong,
+pub struct CompositorDrawable {
+    /// [`GpuBindGroup`] pointing at the current image source and
+    /// a uniform buffer for describing a tonemapper/compositor configuration.
+    bind_group: GpuBindGroupHandleStrong,
 }
 
-impl Drawable for TonemapperDrawable {
-    type Renderer = Tonemapper;
+impl Drawable for CompositorDrawable {
+    type Renderer = Compositor;
 }
 
-impl TonemapperDrawable {
+impl CompositorDrawable {
     pub fn new(
         ctx: &mut RenderContext,
         device: &wgpu::Device,
-        hdr_target: &GpuTextureHandleStrong,
+        target: &GpuTextureHandleStrong,
     ) -> Self {
         let pools = &mut ctx.resource_pools;
-        let tonemapper = ctx.renderers.get_or_create::<_, Tonemapper>(
+        let compositor = ctx.renderers.get_or_create::<_, Compositor>(
             &ctx.shared_renderer_data,
             pools,
             device,
             &mut ctx.resolver,
         );
-        TonemapperDrawable {
-            hdr_target_bind_group: pools.bind_groups.alloc(
+        CompositorDrawable {
+            bind_group: pools.bind_groups.alloc(
                 device,
                 &BindGroupDesc {
-                    label: "tonemapping".into(),
-                    entries: smallvec![BindGroupEntry::DefaultTextureView(**hdr_target)],
-                    layout: tonemapper.bind_group_layout,
+                    label: "compositor".into(),
+                    entries: smallvec![BindGroupEntry::DefaultTextureView(**target)],
+                    layout: compositor.bind_group_layout,
                 },
                 &pools.bind_group_layouts,
                 &pools.textures,
@@ -58,8 +58,8 @@ impl TonemapperDrawable {
     }
 }
 
-impl Renderer for Tonemapper {
-    type DrawData = TonemapperDrawable;
+impl Renderer for Compositor {
+    type DrawData = CompositorDrawable;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -70,7 +70,7 @@ impl Renderer for Tonemapper {
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "tonemapping".into(),
+                label: "compositor".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
@@ -87,11 +87,11 @@ impl Renderer for Tonemapper {
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "tonemapping".into(),
+                label: "compositor".into(),
                 pipeline_layout: pools.pipeline_layouts.get_or_create(
                     device,
                     &PipelineLayoutDesc {
-                        label: "tonemapping".into(),
+                        label: "compositor".into(),
                         entries: vec![shared_data.global_bindings.layout, bind_group_layout],
                     },
                     &pools.bind_group_layouts,
@@ -111,7 +111,7 @@ impl Renderer for Tonemapper {
                     resolver,
                     &ShaderModuleDesc {
                         label: "tonemap (fragment)".into(),
-                        source: include_file!("../../shader/tonemap.wgsl"),
+                        source: include_file!("../../shader/composite.wgsl"),
                     },
                 ),
                 vertex_buffers: smallvec![],
@@ -124,7 +124,7 @@ impl Renderer for Tonemapper {
             &pools.shader_modules,
         );
 
-        Tonemapper {
+        Compositor {
             render_pipeline,
             bind_group_layout,
         }
@@ -134,12 +134,10 @@ impl Renderer for Tonemapper {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &TonemapperDrawable,
+        draw_data: &CompositorDrawable,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
-        let bind_group = pools
-            .bind_groups
-            .get_resource(&draw_data.hdr_target_bind_group)?;
+        let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;
 
         pass.set_pipeline(&pipeline.pipeline);
         pass.set_bind_group(1, &bind_group.bind_group, &[]);

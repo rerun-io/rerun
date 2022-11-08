@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     context::*,
     global_bindings::FrameUniformBuffer,
-    renderer::{tonemapper::*, Drawable, Renderer},
+    renderer::{compositor::*, Drawable, Renderer},
     resource_pools::{
         bind_group_pool::GpuBindGroupHandleStrong, buffer_pool::BufferDesc, texture_pool::*,
     },
@@ -30,7 +30,7 @@ pub struct ViewBuilder {
 }
 
 struct ViewTargetSetup {
-    tonemapping_drawable: TonemapperDrawable,
+    tonemapping_drawable: CompositorDrawable,
 
     bind_group_0: GpuBindGroupHandleStrong,
     hdr_render_target_msaa: GpuTextureHandleStrong,
@@ -63,8 +63,21 @@ pub struct TargetConfiguration {
 }
 
 impl ViewBuilder {
-    pub const MAIN_TARGET_COLOR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-    pub const MAIN_TARGET_DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+    /// Color format used for the main target of the view builder.
+    ///
+    /// Eventually we'll want to make this an HDR format and apply tonemapping during composite.
+    /// However, note that it is easy to run into subtle MSAA quality issues then:
+    /// Applying MSAA resolve before tonemapping is problematic as it means we're doing msaa in linear.
+    /// This is especially problematic at bright/dark edges where we may loose "smoothness"!
+    /// For a nice illustration see [this blog post by MRP](https://therealmjp.github.io/posts/msaa-overview/)
+    /// We either would need to keep the MSAA target and tonemap it,
+    /// apply a manual resolve where we inverse-tonemap non-fully-covered pixel before averaging.
+    /// (an optimized variant of this is described [by AMD here](https://gpuopen.com/learn/optimized-reversible-tonemapper-for-resolve/))
+    /// In any case, this gets us onto a potentially much costlier rendering path, especially for tiling GPUs.
+    pub const MAIN_TARGET_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+
+    /// Depth format used for the main target of the view builder.
+    pub const MAIN_TARGET_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
     /// Enable MSAA always. This makes our pipeline less variable as well, as we need MSAA resolve steps if we want any MSAA at all!
     ///
@@ -103,7 +116,7 @@ impl ViewBuilder {
             mip_level_count: 1,
             sample_count: Self::MAIN_TARGET_SAMPLE_COUNT,
             dimension: wgpu::TextureDimension::D2,
-            format: Self::MAIN_TARGET_COLOR,
+            format: Self::MAIN_TARGET_COLOR_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         };
         let hdr_render_target_msaa = ctx
@@ -125,13 +138,13 @@ impl ViewBuilder {
             device,
             &TextureDesc {
                 label: "depth buffer".into(),
-                format: Self::MAIN_TARGET_DEPTH,
+                format: Self::MAIN_TARGET_DEPTH_FORMAT,
                 ..hdr_render_target_desc
             },
         );
 
         let tonemapping_drawable =
-            TonemapperDrawable::new(ctx, device, &hdr_render_target_resolved);
+            CompositorDrawable::new(ctx, device, &hdr_render_target_resolved);
 
         // Setup frame uniform buffer
         let frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
@@ -262,14 +275,6 @@ impl ViewBuilder {
             .get_resource(&setup.depth_buffer)
             .context("depth buffer")?;
 
-        // TODO(andreas): Quality issue with too early MSAA resolve here:
-        // Applying MSAA resolve before tonemapping is problematic as it means we're doing msaa in linear.
-        // This is especially problematic at bright/dark edges where we may loose "smoothness"!
-        // For a nice illustration see https://therealmjp.github.io/posts/msaa-overview/
-        // We either would need to keep the MSAA target and tonemap it,
-        // apply a manual resolve where we inverse-tonemap non-fully-covered pixel before averaging.
-        // (an optimized variant of this is described here https://gpuopen.com/learn/optimized-reversible-tonemapper-for-resolve/)
-
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("frame builder hdr pass"), // TODO(andreas): It would be nice to specify this from the outside so we know which view we're rendering
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -346,10 +351,10 @@ impl ViewBuilder {
 
         let tonemapper = ctx
             .renderers
-            .get::<Tonemapper>()
-            .context("get tonemapper")?;
+            .get::<Compositor>()
+            .context("get compositor")?;
         tonemapper
             .draw(&ctx.resource_pools, pass, &setup.tonemapping_drawable)
-            .context("perform tonemapping")
+            .context("composite into main view")
     }
 }

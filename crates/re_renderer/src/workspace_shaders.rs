@@ -12,6 +12,12 @@ pub fn init() {
     let fs = crate::MemFileSystem::get();
 
     {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/composite.wgsl");
+        fs.create_file(&virtpath, include_str!("../shader/composite.wgsl").into())
+            .unwrap();
+    }
+
+    {
         let virtpath = ::std::path::Path::new("crates/re_renderer/shader/generic_skybox.wgsl");
         fs.create_file(
             &virtpath,
@@ -72,12 +78,6 @@ pub fn init() {
             include_str!("../shader/test_triangle.wgsl").into(),
         )
         .unwrap();
-    }
-
-    {
-        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/tonemap.wgsl");
-        fs.create_file(&virtpath, include_str!("../shader/tonemap.wgsl").into())
-            .unwrap();
     }
 
     {

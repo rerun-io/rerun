@@ -68,7 +68,7 @@ fn draw_views(
     resolution: [u32; 2],
 ) -> impl Iterator<Item = wgpu::CommandBuffer> {
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
-    let seconds_since_startup = state.time.seconds_since_startup();
+    let seconds_since_startup = 1.0_f32; //state.time.seconds_since_startup();
     let pos = Vec3::new(
         seconds_since_startup.sin(),
         0.5,
@@ -507,7 +507,7 @@ struct AppState {
 impl AppState {
     fn new(re_ctx: &mut RenderContext) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
-        let random_point_range = -2.0_f32..2.0_f32;
+        let random_point_range = -5.0_f32..5.0_f32;
         let random_points = (0..500000)
             .map(|_| PointCloudPoint {
                 position: glam::vec3(
@@ -515,7 +515,7 @@ impl AppState {
                     rnd.gen_range(random_point_range.clone()),
                     rnd.gen_range(random_point_range.clone()),
                 ),
-                radius: rnd.gen_range(0.005..0.025),
+                radius: rnd.gen_range(0.005..0.05),
                 srgb_color: [rnd.gen(), rnd.gen(), rnd.gen(), 255],
             })
             .collect_vec();

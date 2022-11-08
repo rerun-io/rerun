@@ -75,10 +75,10 @@ impl Renderer for TestTriangle {
                     },
                 ),
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR.into())],
+                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: ViewBuilder::MAIN_TARGET_DEPTH,
+                    format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
                     depth_compare: wgpu::CompareFunction::Always,
                     depth_write_enabled: true, // writes some depth for testing
                     stencil: Default::default(),

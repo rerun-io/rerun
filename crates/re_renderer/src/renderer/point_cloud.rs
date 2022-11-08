@@ -301,13 +301,13 @@ impl Renderer for PointCloudRenderer {
 
                 // Instance buffer with pairwise overlapping instances!
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR.into())],
+                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     ..Default::default()
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: ViewBuilder::MAIN_TARGET_DEPTH,
+                    format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
                     depth_compare: wgpu::CompareFunction::Greater,
                     depth_write_enabled: true,
                     stencil: Default::default(),
