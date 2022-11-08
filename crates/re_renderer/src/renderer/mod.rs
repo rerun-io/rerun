@@ -14,7 +14,7 @@ mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;
 pub use mesh_renderer::{MeshDrawable, MeshInstance};
 
-pub mod tonemapper;
+pub mod compositor;
 
 mod utils;
 

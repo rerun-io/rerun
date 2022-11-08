@@ -64,8 +64,11 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // "unnecessary" overlaps. So instead, we change the size _and_ move the sphere closer (using math!)
     let radius_sq = point_data.radius * point_data.radius;
     let camera_offset = radius_sq * distance_to_camera_inv;
-    let modified_radius = point_data.radius * distance_to_camera_inv * sqrt(distance_to_camera_sq - radius_sq);
-    let pos = point_data.pos + pos_in_quad * modified_radius + camera_offset * quad_normal;
+    var modified_radius = point_data.radius * distance_to_camera_inv * sqrt(distance_to_camera_sq - radius_sq);
+    // We're computing a coverage mask in the fragment shader - make sure the quad doesn't cut off our antialiasing.
+    // It's fairly subtle but if we don't do this our spheres look slightly squarish
+    modified_radius += frame.pixel_world_size_from_camera_distance / distance_to_camera_inv;
+    let pos = point_data.pos + pos_in_quad * modified_radius * 1.0 + camera_offset * quad_normal;
     // normal billboard (spheres are cut off!):
     //      pos = point_data.pos + pos_in_quad * point_data.radius;
     // only enlarged billboard (works but requires z care even for non-overlapping spheres):
@@ -83,31 +86,39 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     return out;
 }
 
-// Return how far the closest intersection point is from ray_origin.
-// Returns -1.0 if no intersection happend
-fn sphere_intersect(sphere_pos: Vec3, radius_sq: f32, ray_origin: Vec3, ray_dir: Vec3) -> f32 {
-    let sphere_to_origin = ray_origin - sphere_pos;
+
+// Returns distance to sphere surface (x) and distance to of closest ray hit (y)
+// Via https://iquilezles.org/articles/spherefunctions/ but with more verbose names.
+fn sphere_distance(ray_origin: Vec3, ray_dir: Vec3, sphere_origin: Vec3, sphere_radius: f32) -> Vec2 {
+    let sphere_radius_sq = sphere_radius * sphere_radius;
+    let sphere_to_origin = ray_origin - sphere_origin;
     let b = dot(sphere_to_origin, ray_dir);
-    let c = dot(sphere_to_origin, sphere_to_origin) - radius_sq;
-    let discriminant = b * b - c;
-    if (discriminant < 0.0) {
-        return -1.0;
-    }
-    return -b - sqrt(discriminant);
+    let c = dot(sphere_to_origin, sphere_to_origin) - sphere_radius_sq;
+    let h = b * b - c;
+    let d = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
+    return Vec2(d, -b - sqrt(max(h, 0.0)));
 }
 
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    // TODO(andreas): Pass around squared radius instead.
     let ray_dir = normalize(in.world_position - frame.camera_position);
-    if sphere_intersect(in.point_center, in.radius * in.radius, frame.camera_position, ray_dir) < 0.0 {
+
+    // Sphere intersection with anti-aliasing as described by Iq here
+    // https://www.shadertoy.com/view/MsSSWV
+    // (but rearranged and labled to it's easier to understand!)
+    let d = sphere_distance(frame.camera_position, ray_dir, in.point_center, in.radius);
+    let smallest_distance_to_sphere = d.x;
+    let closest_ray_dist = d.y;
+    let pixel_world_size = closest_ray_dist * frame.pixel_world_size_from_camera_distance;
+    if  smallest_distance_to_sphere > pixel_world_size {
         discard;
     }
+    let coverage = 1.0 - clamp(smallest_distance_to_sphere / pixel_world_size, 0.0, 1.0);
 
     // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
 
     // TODO(andreas): Proper shading
-    let shading = min(1.0, 1.2 - distance(in.point_center, in.world_position) / in.radius); // quick and dirty coloring)
-    return in.color * shading;
+    let shading = max(0.2, 1.2 - distance(in.point_center, in.world_position) / in.radius); // quick and dirty coloring)
+    return vec4(in.color.rgb * shading, coverage);
 }
