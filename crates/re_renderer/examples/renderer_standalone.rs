@@ -68,7 +68,7 @@ fn draw_views(
     resolution: [u32; 2],
 ) -> impl Iterator<Item = wgpu::CommandBuffer> {
     // Rotate camera around the center at a distance of 5, looking down at 45 deg
-    let seconds_since_startup = 1.0_f32; //state.time.seconds_since_startup();
+    let seconds_since_startup = state.time.seconds_since_startup();
     let pos = Vec3::new(
         seconds_since_startup.sin(),
         0.5,
