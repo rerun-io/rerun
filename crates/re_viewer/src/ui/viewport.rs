@@ -513,6 +513,7 @@ fn space_view_ui(
         scene.three_d.load_objects(ctx, obj_tree_props, &query);
         scene.text.load_objects(ctx, obj_tree_props, &query);
         scene.tensor.load_objects(ctx, obj_tree_props, &query);
+        scene.plot.load_objects(ctx, obj_tree_props, &query);
     }
 
     space_view.scene_ui(ctx, ui, spaces_info, space_info, &mut scene);

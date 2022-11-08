@@ -3,7 +3,7 @@ use re_log_types::Transform;
 
 use crate::misc::{space_info::*, ViewerContext};
 
-use super::{view_2d, view_3d, view_tensor, view_text, Scene};
+use super::{view_2d, view_3d, view_plot, view_tensor, view_text, Scene};
 
 // ----------------------------------------------------------------------------
 
@@ -14,6 +14,7 @@ pub(crate) enum ViewCategory {
     ThreeD,
     Tensor,
     Text,
+    Plot,
 }
 
 // ----------------------------------------------------------------------------
@@ -62,15 +63,18 @@ impl SpaceView {
         let has_3d = !scene.three_d.is_empty();
         let has_text = !scene.text.is_empty();
         let has_tensor = !scene.tensor.is_empty();
+        let has_plot = !scene.plot.is_empty();
         let categories = [
             has_2d.then_some(ViewCategory::TwoD),
             has_3d.then_some(ViewCategory::ThreeD),
             has_text.then_some(ViewCategory::Text),
             has_tensor.then_some(ViewCategory::Tensor),
+            has_plot.then_some(ViewCategory::Plot),
         ]
         .iter()
         .filter_map(|cat| *cat)
         .collect::<Vec<_>>();
+
         // Extra headroom required for the hovering controls at the top of the space view.
         let extra_headroom = {
             let frame = ctx.design_tokens.hovering_frame(ui.style());
@@ -102,12 +106,12 @@ impl SpaceView {
                         &mut scene.three_d,
                     );
                 } else if has_tensor {
-                    ui.add_space(extra_headroom);
                     self.view_state.ui_tensor(ui, &scene.tensor);
-                } else {
-                    assert!(has_text);
-                    ui.add_space(extra_headroom);
+                } else if has_text {
                     self.view_state.ui_text(ctx, ui, &scene.text);
+                } else {
+                    assert!(has_plot);
+                    self.view_state.ui_plot(ctx, ui, &scene.plot);
                 }
             }
             _ => {
@@ -124,6 +128,7 @@ impl SpaceView {
                             ViewCategory::ThreeD => "3D",
                             ViewCategory::Tensor => "Tensor",
                             ViewCategory::Text => "Text",
+                            ViewCategory::Plot => "Plot",
                         };
                         ui.selectable_value(&mut self.selected_category, category, text);
                         // TODO(emilk): make it look like tabs
@@ -132,6 +137,9 @@ impl SpaceView {
                 ui.separator();
 
                 match self.selected_category {
+                    ViewCategory::Plot => {
+                        self.view_state.ui_plot(ctx, ui, &scene.plot);
+                    }
                     ViewCategory::Text => {
                         self.view_state.ui_text(ctx, ui, &scene.text);
                     }
@@ -153,6 +161,7 @@ impl SpaceView {
                         );
                     }
                 }
+                ui.separator();
             }
         }
     }
@@ -185,7 +194,8 @@ pub(crate) struct ViewState {
     pub state_2d: view_2d::View2DState,
     pub state_3d: view_3d::View3DState,
     pub state_tensor: Option<view_tensor::ViewTensorState>,
-    pub state_text_entry: view_text::ViewTextState,
+    pub state_text: view_text::ViewTextState,
+    pub state_plot: view_plot::ViewPlotState,
 }
 
 impl ViewState {
@@ -249,7 +259,16 @@ impl ViewState {
         ui: &mut egui::Ui,
         scene: &view_text::SceneText,
     ) -> egui::Response {
-        view_text::view_text(ctx, ui, &mut self.state_text_entry, scene)
+        view_text::view_text(ctx, ui, &mut self.state_text, scene)
+    }
+
+    fn ui_plot(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        scene: &view_plot::ScenePlot,
+    ) -> egui::Response {
+        view_plot::view_plot(ctx, ui, &mut self.state_plot, scene)
     }
 }
 

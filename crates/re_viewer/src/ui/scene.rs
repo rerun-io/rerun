@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 use re_data_store::{LogDb, ObjPath, ObjStore, ObjectTreeProperties, TimeQuery, Timeline};
 use re_log_types::ObjectType;
 
-use super::{view_2d, view_3d, view_tensor, view_text};
+use super::{view_2d, view_3d, view_plot, view_tensor, view_text};
 
 // ---
 
@@ -13,6 +13,7 @@ pub struct Scene {
     pub three_d: view_3d::Scene3D,
     pub text: view_text::SceneText,
     pub tensor: view_tensor::SceneTensor,
+    pub plot: view_plot::ScenePlot,
 }
 
 #[derive(Debug)]
