@@ -1,7 +1,7 @@
 rerun_sdk
 requests==2.28.1
 timm==0.6.11
-torch==1.12.1
+torch==1.13.0
 transformers==4.23.1
 # Avoid opencv-4.6 since it rotates images incorrectly:
 # See: https://github.com/opencv/opencv/issues/22088
