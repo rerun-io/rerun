@@ -2,21 +2,6 @@
 
 """
 Example of using the Rerun SDK to log the Objectron dataset.
-
-
-Setup:
-```sh
-(cd examples/objectron && ./setup.sh)
-```
-
-Run:
-```sh
-# assuming your virtual env is up
-
-examples/objectron/main.py
-
-examples/objectron/main.py --dir examples/objectron/dataset/camera/batch-5/31
-```
 """
 
 
@@ -32,7 +17,7 @@ from typing import Final, Iterable, Iterator, List
 import numpy as np
 import numpy.typing as npt
 import rerun_sdk as rerun
-from proto.objectron.proto import (
+from dataset.proto.objectron.proto import (
     ARCamera,
     ARFrame,
     ARPointCloud,
@@ -44,9 +29,14 @@ from proto.objectron.proto import (
 from rerun_sdk import ImageFormat
 from scipy.spatial.transform import Rotation as R
 
-IMAGE_RESOLUTION: Final = (1440, 1920)
-GEOMETRY_FILENAME: Final = "geometry.pbdata"
-ANNOTATIONS_FILENAME: Final = "annotation.pbdata"
+from dataset.dataset import (
+    ANNOTATIONS_FILENAME,
+    AVAILABLE_RECORDINGS,
+    GEOMETRY_FILENAME,
+    IMAGE_RESOLUTION,
+    LOCAL_DATASET_DIR,
+    ensure_recording_available,
+)
 
 
 @dataclass
@@ -66,8 +56,8 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
     `dirpath` should be of the form `dataset/bike/batch-8/16/`.
     """
 
-    path = os.path.join(dirpath, GEOMETRY_FILENAME)
-    print(f"loading ARFrames from {path}")
+    path = dirpath / GEOMETRY_FILENAME
+    logging.info(f"loading ARFrames from %s", path)
     data = Path(path).read_bytes()
 
     frame_idx = 0
@@ -89,8 +79,8 @@ def read_annotations(dirpath: Path) -> Sequence:
     `dirpath` should be of the form `dataset/bike/batch-8/16/`.
     """
 
-    path = os.path.join(dirpath, ANNOTATIONS_FILENAME)
-    print(f"loading annotations from {path}")
+    path = dirpath / ANNOTATIONS_FILENAME
+    logging.info("loading annotations from %s", path)
     data = Path(path).read_bytes()
 
     seq = Sequence().parse(data)
@@ -242,21 +232,42 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
     rerun.log_line_segments(path, segments, color=[130, 160, 250, 255])
 
 
-if __name__ == "__main__":
+def setup_looging() -> None:
+    logger = logging.getLogger()
+    rerun_handler = rerun.LoggingHandler("logs")
+    rerun_handler.setLevel(-1)
+    logger.addHandler(rerun_handler)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel("INFO")
+    logger.addHandler(stream_handler)
+    logger.setLevel(-1)
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
-        "--frames", type=int, default=sys.maxsize, help="If specifies, limits the number of frames logged"
+        "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
     )
     parser.add_argument(
-        "--dir",
-        type=Path,
-        default="examples/objectron/dataset/camera/batch-5/31",
-        help="Directories to log (e.g. `dataset/bike/batch-8/16/`)",
+        "--recording",
+        type=str,
+        choices=AVAILABLE_RECORDINGS,
+        default=AVAILABLE_RECORDINGS[0],
+        help="The objectron recording to log to Rerun.",
     )
+    parser.add_argument(
+        "--force-reprocess-video",
+        action="store_true",
+        help="Reprocess video frames even if they already exist",
+    )
+    parser.add_argument(
+        "--dataset_dir", type=Path, default=LOCAL_DATASET_DIR, help="Directory to save example videos to."
+    )
+
     args = parser.parse_args()
 
     rerun.init("objectron")
@@ -267,8 +278,12 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    samples = read_ar_frames(args.dir, args.frames)
-    seq = read_annotations(args.dir)
+    setup_looging()
+
+    dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
+
+    samples = read_ar_frames(dir, args.frames)
+    seq = read_annotations(dir)
     log_ar_frames(samples, seq)
 
     if args.save is not None:
@@ -277,3 +292,7 @@ if __name__ == "__main__":
         pass
     elif not args.connect:
         rerun.show()
+
+
+if __name__ == "__main__":
+    main()

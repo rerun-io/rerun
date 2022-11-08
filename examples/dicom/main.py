@@ -104,5 +104,3 @@ if __name__ == "__main__":
         pass
     elif not args.connect:
         rerun.show()
-
-    rerun.show()
