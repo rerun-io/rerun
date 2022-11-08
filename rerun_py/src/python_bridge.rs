@@ -822,8 +822,8 @@ fn log_point(
     } else {
         match sdk.lookup_type(obj_path.obj_type_path()) {
             None => return Ok(()),
-            obj_type @ (Some(ObjectType::Point2D) | Some(ObjectType::Point3D)) => obj_type.unwrap(),
-            obj_type @ _ => {
+            Some(obj_type @ (ObjectType::Point2D | ObjectType::Point3D)) => obj_type,
+            Some(obj_type) => {
                 return Err(PyTypeError::new_err(format!(
                     "Tried to log None point to a path containing type: {:?}",
                     obj_type
@@ -911,8 +911,8 @@ fn log_points(
     } else {
         match sdk.lookup_type(obj_path.obj_type_path()) {
             None => return Ok(()),
-            obj_type @ (Some(ObjectType::Point2D) | Some(ObjectType::Point3D)) => obj_type.unwrap(),
-            obj_type @ _ => {
+            Some(obj_type @ (ObjectType::Point2D | ObjectType::Point3D)) => obj_type,
+            Some(obj_type) => {
                 return Err(PyTypeError::new_err(format!(
                     "Tried to log None point to a path containing type: {:?}",
                     obj_type
@@ -1122,10 +1122,8 @@ fn log_line_segments(
     } else {
         match sdk.lookup_type(obj_path.obj_type_path()) {
             None => return Ok(()),
-            obj_type @ (Some(ObjectType::LineSegments2D) | Some(ObjectType::LineSegments3D)) => {
-                obj_type.unwrap()
-            }
-            obj_type @ _ => {
+            Some(obj_type @ (ObjectType::LineSegments2D | ObjectType::LineSegments3D)) => obj_type,
+            Some(obj_type) => {
                 return Err(PyTypeError::new_err(format!(
                     "Tried to log None line_segment to a path containing type: {:?}",
                     obj_type
@@ -1194,9 +1192,9 @@ fn log_arrow(
         (Some(origin), Some(vector)) => Some(re_log_types::Arrow3D { origin, vector }),
         (None, None) => None,
         _ => {
-            return Err(PyTypeError::new_err(format!(
+            return Err(PyTypeError::new_err(
                 "log_arrow requires both origin and vector if either is not None",
-            )))
+            ))
         }
     };
 
@@ -1282,19 +1280,18 @@ fn log_obb(
 
     let time_point = time(timeless);
 
-    let obb = match (rotation_q, position, half_size) {
-        (Some(rotation), Some(translation), Some(half_size)) => Some(re_log_types::Box3 {
-            rotation,
-            translation,
-            half_size,
-        }),
-        (None, None, None) => None,
-        _ => {
-            return Err(PyTypeError::new_err(format!(
+    let obb =
+        match (rotation_q, position, half_size) {
+            (Some(rotation), Some(translation), Some(half_size)) => Some(re_log_types::Box3 {
+                rotation,
+                translation,
+                half_size,
+            }),
+            (None, None, None) => None,
+            _ => return Err(PyTypeError::new_err(
                 "log_obb requires all of half_size, position, and rotation to be provided or None",
-            )))
-        }
-    };
+            )),
+        };
 
     if let Some(obb) = obb {
         if let Some(color) = color {
