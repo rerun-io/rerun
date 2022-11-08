@@ -398,7 +398,7 @@ impl DataVec {
         }
     }
 
-    pub fn as_vec_of_vec2(&self, what: &str) -> Option<&Vec<[f32; 2]>> {
+    pub fn as_vec_of_vec2(&self, what: &str) -> Option<&[[f32; 2]]> {
         if let DataVec::Vec2(vec) = self {
             Some(vec)
         } else {
@@ -410,7 +410,7 @@ impl DataVec {
         }
     }
 
-    pub fn as_vec_of_vec3(&self, what: &str) -> Option<&Vec<[f32; 3]>> {
+    pub fn as_vec_of_vec3(&self, what: &str) -> Option<&[[f32; 3]]> {
         if let DataVec::Vec3(vec) = self {
             Some(vec)
         } else {

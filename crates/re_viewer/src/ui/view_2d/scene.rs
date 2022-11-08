@@ -178,8 +178,8 @@ impl Scene2D {
                      meter: Option<&f32>,
                      legend: Option<&ObjPath>| {
                         let visible = *visible.unwrap_or(&true);
-                        let two_dimensions_min = tensor.shape.len() >= 2;
-                        if !visible || !two_dimensions_min {
+                        let two_or_three_dims = 2 <= tensor.shape.len() && tensor.shape.len() <= 3;
+                        if !visible || !two_or_three_dims {
                             return;
                         }
 
