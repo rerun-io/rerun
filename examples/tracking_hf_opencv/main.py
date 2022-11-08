@@ -37,7 +37,7 @@ from transformers.models.detr.feature_extraction_detr import masks_to_boxes, rgb
 class Detection:
     """Information about a detected object."""
 
-    # TODO(Niko): Only include label_id here once log_rect(s) supports class_descriptions
+    # TODO(Niko): Remove label_id from here once log_rect(s) supports class_descriptions
     label_id: int
     label_str: str
     label_color: List[int]
