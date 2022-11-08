@@ -91,7 +91,8 @@ pub struct MeshInstance {
     pub mesh: MeshHandle,
     pub world_from_mesh: macaw::Conformal3,
 
-    /// Per-instance (as opposed to per-material/mesh!) tint color that is multiplied with the albedo texture.
+    /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
+    /// Alpha channel is currently unused.
     pub tint_color_srgb: [u8; 4],
 }
 

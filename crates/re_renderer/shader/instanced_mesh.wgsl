@@ -30,7 +30,7 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    let albedo = textureSample(albedo_texture, trilinear_sampler, in.texcoord).rgb * in.color_tint;
+    let albedo = textureSample(albedo_texture, trilinear_sampler, in.texcoord).rgb + in.color_tint;
 
     // Hardcoded lambert lighting. TODO(andreas): Some microfacet model.
     let light_dir = normalize(vec3(1.0, 2.0, 0.0)); // TODO(andreas): proper lighting
