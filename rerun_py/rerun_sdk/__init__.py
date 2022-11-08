@@ -326,7 +326,7 @@ def log_rect(
 
 def log_rects(
     obj_path: str,
-    rects: npt.ArrayLike,
+    rects: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
     colors: Optional[Colors] = None,
@@ -353,6 +353,9 @@ def log_rects(
     * float32/float64: all color components should be in 0-1 linear space.
 
     """
+    # Treat None the same as []
+    if rects is None:
+        rects = []
     rects = np.require(rects, dtype="float32")
     colors = _normalize_colors(colors)
     if labels is None:
@@ -363,7 +366,8 @@ def log_rects(
 
 def log_point(
     obj_path: str,
-    position: npt.NDArray[np.float32],
+    position: Optional[npt.NDArray[np.float32]],
+    *,
     color: Optional[Sequence[int]] = None,
     timeless: bool = False,
 ) -> None:
@@ -383,13 +387,14 @@ def log_point(
     space.
     * float32/float64: all color components should be in 0-1 linear space.
     """
-    position = np.require(position, dtype="float32")
+    if position is not None:
+        position = np.require(position, dtype="float32")
     rerun_rs.log_point(obj_path, position, color, timeless)
 
 
 def log_points(
     obj_path: str,
-    positions: npt.NDArray[np.float32],
+    positions: Optional[npt.NDArray[np.float32]],
     *,
     colors: Optional[Colors] = None,
     timeless: bool = False,
@@ -410,7 +415,10 @@ def log_points(
     space.
     * float32/float64: all color components should be in 0-1 linear space.
     """
-    positions = np.require(positions, dtype="float32")
+    if positions is None:
+        positions = np.require([], dtype="float32")
+    else:
+        positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
 
     rerun_rs.log_points(obj_path, positions, colors, timeless)
@@ -605,7 +613,7 @@ def log_view_coordinates(
 
 def log_path(
     obj_path: str,
-    positions: npt.NDArray[np.float32],
+    positions: Optional[npt.NDArray[np.float32]],
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
@@ -627,7 +635,8 @@ def log_path(
     `stroke_width`: width of the line.
     `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    positions = np.require(positions, dtype="float32")
+    if positions is not None:
+        positions = np.require(positions, dtype="float32")
     rerun_rs.log_path(obj_path, positions, stroke_width, color, timeless)
 
 
@@ -653,14 +662,17 @@ def log_line_segments(
     `stroke_width`: width of the line.
     `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
+    if positions is None:
+        positions = []
     positions = np.require(positions, dtype="float32")
     rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless)
 
 
 def log_arrow(
     obj_path: str,
-    origin: npt.ArrayLike,
-    vector: npt.ArrayLike,
+    origin: Optional[npt.ArrayLike],
+    vector: Optional[npt.ArrayLike] = None,
+    *,
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     width_scale: Optional[float] = None,
@@ -706,9 +718,9 @@ def log_arrow(
 
 def log_obb(
     obj_path: str,
-    half_size: npt.ArrayLike,
-    position: npt.ArrayLike,
-    rotation_q: npt.ArrayLike,
+    half_size: Optional[npt.ArrayLike],
+    position: Optional[npt.ArrayLike] = None,
+    rotation_q: Optional[npt.ArrayLike] = None,
     color: Optional[Sequence[int]] = None,
     stroke_width: Optional[float] = None,
     label: Optional[str] = None,
