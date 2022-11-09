@@ -113,7 +113,15 @@ impl ScenePlot {
             visit_type_data_4(
                 obj_store,
                 &FieldName::from("scalar"),
-                &TimeQuery::EVERYTHING, // always sticky!
+                // TODO: do this for real with a legend!
+                &if obj_path.to_string().starts_with("segmentation") {
+                    match ctx.rec_cfg.time_ctrl.time_query().unwrap() {
+                        TimeQuery::LatestAt(t) => TimeQuery::Range(0..=t),
+                        range @ TimeQuery::Range(_) => range,
+                    }
+                } else {
+                    TimeQuery::EVERYTHING // always sticky!
+                },
                 ("_visible", "label", "color", "radius"),
                 |_instance_index: Option<&IndexHash>,
                  time: i64,
