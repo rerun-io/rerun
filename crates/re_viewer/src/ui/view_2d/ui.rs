@@ -36,8 +36,10 @@ pub enum ZoomState {
     Scaled {
         /// Number of ui points per scene unit
         scale: f32,
+
         /// Which scene coordinate will be at the center of the zoomed region.
         center: Pos2,
+
         /// Whether to allow the state to be updated by the current `ScrollArea` offsets
         accepting_scroll: bool,
     },
@@ -279,14 +281,10 @@ fn view_2d_scrollable(
         if response.clicked() {
             ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
         }
-        egui::containers::popup::show_tooltip_at_pointer(
-            ui.ctx(),
-            egui::Id::new("2d_tooltip"),
-            |ui| {
-                ctx.instance_id_button(ui, instance_id);
-                crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
-            },
-        );
+        response = response.on_hover_ui_at_pointer(|ui| {
+            ctx.instance_id_button(ui, instance_id);
+            crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
+        });
     }
 
     // ------------------------------------------------------------------------
