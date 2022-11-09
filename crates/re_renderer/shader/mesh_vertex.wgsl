@@ -9,5 +9,5 @@ struct VertexIn {
 struct InstanceIn {
     @location(3) position_and_scale: Vec4,
     @location(4) rotation: Vec4,
-    @location(5) tint_color_srgb: Vec4,
+    @location(5) additive_tint_srgb: Vec4,
 };

@@ -201,7 +201,7 @@ fn build_mesh_instances(
                         glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
                         *p,
                     ) * model_mesh_instances.world_from_mesh,
-                    tint_color_srgb: *c,
+                    additive_tint_srgb: *c,
                 },
             )
         })

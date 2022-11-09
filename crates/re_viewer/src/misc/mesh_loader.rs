@@ -263,7 +263,7 @@ impl CpuMesh {
                 ResourceLifeTime::LongLived,
             ),
             world_from_mesh: Default::default(),
-            tint_color_srgb: [0, 0, 0, 0],
+            additive_tint_srgb: [0, 0, 0, 0],
         }];
 
         Self {

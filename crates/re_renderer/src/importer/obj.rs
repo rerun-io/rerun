@@ -67,7 +67,7 @@ pub fn load_obj_from_buffer(
             MeshInstance {
                 mesh,
                 world_from_mesh: Conformal3::IDENTITY,
-                tint_color_srgb: [0, 0, 0, 0],
+                additive_tint_srgb: [0, 0, 0, 0],
             }
         })
         .collect())
