@@ -76,7 +76,7 @@ def download_glb_sample(name: str) -> Path:
     def download_and_extract(url: str, path: Path) -> None:
         if not os.path.exists(path):
             print(f"downloading {url} …")
-            resp = requests.get(url, stream=True)
+            resp = requests.get(url)
             os.makedirs(path.parent, exist_ok=True)
             with open(path, "wb") as f:
                 f.write(resp.content)
