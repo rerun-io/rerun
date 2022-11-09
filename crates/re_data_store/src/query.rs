@@ -103,10 +103,8 @@ impl<'store, Time: 'static + Copy + Ord, T: DataTrait> MonoDataReader<'store, Ti
     }
 
     pub fn latest_at(&self, query_time: &Time) -> Option<&'store T> {
-        match latest_at(&self.history?.history, query_time) {
-            Some((_time, (_msg_id, Some(value)))) => Some(value),
-            _ => None,
-        }
+        latest_at(&self.history?.history, query_time)
+            .and_then(|(_time, (_msg_id, value))| value.as_ref())
     }
 }
 
