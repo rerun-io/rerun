@@ -13,6 +13,11 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 // - if legend: well, use that
 //
 // TODO:
+// - a plot is a space
+// - a line is an object path within that space
+// - a point is a scalar logged to that object path
+//
+// TODO:
 // - point-level props
 //   - label, color, radius
 //   -> read as-is from the Scalar object
@@ -31,16 +36,13 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 //      - width:
 //          - if all points share same radius, use that
 //          - otherwise, 1.0
+//   -> in the future, those should be modifiable at run-time from the blueprint UI
 // - plot-level props
 //   - label
 //   -> as-is from the legend object associated with that space (annotation context??)
 //   -> otherwise the missing ones are defaulted:
 //      - label: space name
-//
-// TODO:
-// - a plot is a space
-// - a line is an object path within that space
-// - a point is a scalar logged to that object path
+//   -> in the future, those should be modifiable at run-time from the blueprint UI
 
 #[derive(Clone, Debug)]
 pub struct PlotPoint {
