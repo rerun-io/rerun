@@ -491,7 +491,7 @@ fn paint_view(
         };
 
         let point_cloud_points = scene.point_cloud_points();
-        let line_strips = scene.line_strips();
+        let line_strips = scene.line_strips(_state.show_axes);
 
         // TODO(andreas): Right now we can't borrow the scene into a context where we have a device.
         //                  Once we can do that, this awful clone is no longer needed as we can acquire gpu data directly
