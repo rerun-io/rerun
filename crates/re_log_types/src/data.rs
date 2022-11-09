@@ -305,6 +305,85 @@ macro_rules! data_map(
     });
 );
 
+/// Map a [`DataType`] to the correct instance of `Option::<T>::None`.
+///
+/// ```
+/// # use re_log_types::{DataType, data_type_map_none};
+/// # let data_type: DataType = DataType::F32;
+/// data_type_map_none!(data_type, |data_none| { assert!(data_none.is_none()); });
+/// ```
+#[macro_export]
+macro_rules! data_type_map_none(
+    ($data_type: expr, |$value: pat_param| $action: expr) => ({
+        match $data_type {
+            $crate::DataType::Bool => {
+                let $value = Option::<bool>::None;
+                 $action
+            },
+            $crate::DataType::I32 => {
+                let $value = Option::<i32>::None;
+                $action
+            }
+            $crate::DataType::F32 => {
+                let $value = Option::<f32>::None;
+                $action
+            },
+            $crate::DataType::Color => {
+                let $value = Option::<$crate::data_types::Color>::None;
+                $action
+            },
+            $crate::DataType::String => {
+                let $value = Option::<String>::None;
+                $action
+            },
+            $crate::DataType::Vec2 => {
+                let $value = Option::<$crate::data_types::Vec2>::None;
+                $action
+            },
+            $crate::DataType::BBox2D => {
+                let $value = Option::<$crate::BBox2D>::None;
+                $action
+            },
+            $crate::DataType::Vec3 => {
+                let $value = Option::<$crate::data_types::Vec3>::None;
+                $action
+            },
+            $crate::DataType::Box3 => {
+                let $value = Option::<$crate::Box3>::None;
+                $action
+            },
+            $crate::DataType::Mesh3D => {
+                let $value = Option::<$crate::Mesh3D>::None;
+                $action
+            },
+            $crate::DataType::Arrow3D => {
+                let $value = Option::<$crate::Arrow3D>::None;
+                $action
+            },
+            $crate::DataType::Tensor => {
+                let $value = Option::<$crate::Tensor>::None;
+                $action
+            },
+            $crate::DataType::DataVec => {
+                let $value = Option::<$crate::DataVec>::None;
+                $action
+            },
+            $crate::DataType::ObjPath => {
+                let $value = Option::<$crate::ObjPath>::None;
+                $action
+            },
+            $crate::DataType::Transform => {
+                let $value = Option::<$crate::Transform>::None;
+                $action
+            },
+            $crate::DataType::ViewCoordinates => {
+                let $value = Option::<$crate::ViewCoordinates>::None;
+                $action
+            },
+        }
+    });
+);
+
 /// Do the same thing with all members of a [`DataVec`].
 ///
 /// ```

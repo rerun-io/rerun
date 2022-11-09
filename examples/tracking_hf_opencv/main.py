@@ -211,9 +211,7 @@ class Tracker:
                 color=self.tracked.label_color,
             )
         else:
-            rerun.set_visible(
-                f"image/tracked/{self.tracking_id}", False
-            )  # TODO(Niko): Log this path as None instead once sdk can handle nullable rects
+            rerun.log_rect(f"image/tracked/{self.tracking_id}", None)
 
     def update_with_detection(self, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
         self.num_recent_undetected_frames = 0

@@ -109,7 +109,22 @@ def run_text_logs() -> None:
     rerun.log_text_entry("logs", "this entry has loglevel TRACE", level=LogLevel.TRACE)
 
     logging.getLogger().addHandler(LoggingHandler("logs/handler"))
+    logging.getLogger().setLevel(-1)
     logging.info("This log got added through a `LoggingHandler`")
+
+
+def run_log_none() -> None:
+    rerun.set_time_seconds("sim_time", 1)
+    rerun.log_rect("null_demo/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
+    rerun.log_rect("null_demo/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
+    rerun.set_time_seconds("sim_time", 2)
+    rerun.log_rect("null_demo/rect/0", None)
+    rerun.set_time_seconds("sim_time", 3)
+    rerun.log_rect("null_demo/rect/1", None)
+    rerun.set_time_seconds("sim_time", 4)
+    rerun.log_rect("null_demo/rect/0", [5, 5, 4, 4])
+    rerun.set_time_seconds("sim_time", 5)
+    rerun.log_rect("null_demo/rect/1", [10, 5, 4, 4])
 
 
 def main() -> None:
@@ -119,6 +134,7 @@ def main() -> None:
         "set_visible": run_set_visible,
         "rects": run_rects,
         "text": run_text_logs,
+        "log_none": run_log_none,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

@@ -32,6 +32,7 @@ struct GpuInstanceData {
     // (staging buffer might be 4 byte aligned only!)
     translation_and_scale: [f32; 4],
     rotation: [f32; 4],
+    additive_tint_srgb: [u8; 4],
 }
 
 impl GpuInstanceData {
@@ -55,6 +56,12 @@ impl GpuInstanceData {
                     format: wgpu::VertexFormat::Float32x4,
                     offset: memoffset::offset_of!(GpuInstanceData, rotation) as _,
                     shader_location: shader_start_location + 1,
+                },
+                // Tint color
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Unorm8x4,
+                    offset: memoffset::offset_of!(GpuInstanceData, additive_tint_srgb) as _,
+                    shader_location: shader_start_location + 2,
                 },
             ],
         }
@@ -83,6 +90,10 @@ impl Drawable for MeshDrawable {
 pub struct MeshInstance {
     pub mesh: MeshHandle,
     pub world_from_mesh: macaw::Conformal3,
+
+    /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
+    /// Alpha channel is currently unused.
+    pub additive_tint_srgb: [u8; 4],
 }
 
 impl MeshDrawable {
@@ -138,6 +149,7 @@ impl MeshDrawable {
                     gpu_instance.translation_and_scale =
                         instance.world_from_mesh.translation_and_scale().into();
                     gpu_instance.rotation = instance.world_from_mesh.rotation().into();
+                    gpu_instance.additive_tint_srgb = instance.additive_tint_srgb;
                 }
                 num_processed_instances += count;
                 mesh_runs.push((mesh, count as u32));
