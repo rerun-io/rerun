@@ -15,9 +15,27 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 // TODO:
 // - point-level props
 //   - label, color, radius
+//   -> read as-is from the Scalar object
+//   -> missing ones are defaulted:
+//      - label: None
+//      - color: derived from obj_path hash
+//      - radius: 1.0
 // - line-level props
 //   - label, color, width, kind (e.g. enum{scatter, line})
+//   -> read as-is from the legend object associated with that obj_path (future PR?)
+//   -> otherwise the missing ones are defaulted:
+//      - label: obj_path
+//      - color:
+//          - if all points share same color, use that
+//          - otherwise, derived from obj_path hash
+//      - width:
+//          - if all points share same radius, use that
+//          - otherwise, 1.0
 // - plot-level props
+//   - label
+//   -> as-is from the legend object associated with that space (annotation context??)
+//   -> otherwise the missing ones are defaulted:
+//      - label: space name
 //
 // TODO:
 // - a plot is a space
