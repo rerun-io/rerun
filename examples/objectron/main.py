@@ -6,7 +6,6 @@ Example of using the Rerun SDK to log the Objectron dataset.
 
 
 import argparse
-import logging
 import math
 import os
 import sys
@@ -57,7 +56,7 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
     """
 
     path = dirpath / GEOMETRY_FILENAME
-    logging.info(f"loading ARFrames from %s", path)
+    print("loading ARFrames from {path}")
     data = Path(path).read_bytes()
 
     frame_idx = 0
@@ -80,7 +79,7 @@ def read_annotations(dirpath: Path) -> Sequence:
     """
 
     path = dirpath / ANNOTATIONS_FILENAME
-    logging.info("loading annotations from %s", path)
+    print("loading annotations from {path}")
     data = Path(path).read_bytes()
 
     seq = Sequence().parse(data)
@@ -154,7 +153,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
 
     for bbox in bboxes:
         if bbox.type != ObjectType.BOUNDING_BOX:
-            logging.error(f"err: object type not supported: {bbox.type}")
+            print(f"err: object type not supported: {bbox.type}")
             continue
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
@@ -232,17 +231,6 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
     rerun.log_line_segments(path, segments, color=[130, 160, 250, 255])
 
 
-def setup_looging() -> None:
-    logger = logging.getLogger()
-    rerun_handler = rerun.LoggingHandler("logs")
-    rerun_handler.setLevel(-1)
-    logger.addHandler(rerun_handler)
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel("INFO")
-    logger.addHandler(stream_handler)
-    logger.setLevel(-1)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
@@ -277,8 +265,6 @@ def main() -> None:
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
-
-    setup_looging()
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 
