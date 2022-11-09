@@ -3,7 +3,7 @@
 #import <./utils/srgb.wgsl>
 
 fn camera_dir_from_screenuv(texcoord: Vec2) -> vec3<f32> {
-    // convert texcoord to normalized device coordinates (NDC)
+    // convert [0, 1] to [-1, +1 (Normalized Device Coordinates)
     let ndc = Vec2(texcoord.x - 0.5, 0.5 - texcoord.y) * 2.0;
 
     // Negative z since z dir is towards viewer (by current RUB convention).
