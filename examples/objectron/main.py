@@ -256,7 +256,7 @@ def main() -> None:
         "--recording",
         type=str,
         choices=AVAILABLE_RECORDINGS,
-        default=AVAILABLE_RECORDINGS[0],
+        default=AVAILABLE_RECORDINGS[3],
         help="The objectron recording to log to Rerun.",
     )
     parser.add_argument(
