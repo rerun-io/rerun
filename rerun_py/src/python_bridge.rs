@@ -600,13 +600,18 @@ fn log_text_entry(
 
 /// Log a scalar.
 #[pyfunction]
-fn log_scalar(obj_path: &str, scalar: f64, color: Option<Vec<u8>>, timeless: bool) -> PyResult<()> {
+fn log_scalar(
+    obj_path: &str,
+    scalar: f64,
+    color: Option<Vec<u8>>,
+    label: Option<String>,
+) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Scalar);
 
-    let time_point = time(timeless);
+    let time_point = time(false); // TODO
 
     sdk.send_data(
         &time_point,
@@ -620,6 +625,14 @@ fn log_scalar(obj_path: &str, scalar: f64, color: Option<Vec<u8>>, timeless: boo
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
+        );
+    }
+
+    if let Some(label) = label {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "label"),
+            LoggedData::Single(Data::String(label)),
         );
     }
 

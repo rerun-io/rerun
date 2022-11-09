@@ -12,17 +12,34 @@ Run:
 
 import argparse
 
-from math import pi, sin, cos
+from math import tau, pi, sin, cos
 
 import rerun_sdk as rerun
+
+def clamp(n, smallest, largest):
+    return max(smallest, min(n, largest))
+
+def log_cubic() -> None:
+    for t in range(0, 1000, 10):
+        rerun.set_time_sequence("frame_nr", t)
+
+        f_of_t = (t * 0.01 - 3) ** 3 + 1
+        radius = clamp(abs(f_of_t), 0.5, 4.0);
+        color = [255, 255, 255, 255]
+        if f_of_t < 0.0:
+            color = [255, 0, 0, 255]
+        elif f_of_t > 10.0:
+            color = [0, 255, 0, 255]
+
+        rerun.log_scalar("f(t) = (t * 0.01 - 3)³ + 1", f_of_t, radius=radius, color=color)
 
 
 def log_plots() -> None:
     frame_nr = 1
-    for i in range(-int(pi * 3 * 100.0), int(pi * 3 * 100.0)):
+    for i in range(0, int(tau * 3 * 100.0)):
         rerun.set_time_sequence("frame_nr", frame_nr)
-        rerun.log_scalar("plots/sin", sin(i / 100.0))
-        rerun.log_scalar("plots/cos", cos(i / 100.0))
+        rerun.log_scalar("plots/sin(t)", sin(i / 100.0))
+        rerun.log_scalar("plots/cos(t)", cos(i / 100.0))
         frame_nr += 1
 
 
@@ -52,7 +69,8 @@ def main():
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    log_plots()
+    log_cubic()
+    # log_plots()
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")

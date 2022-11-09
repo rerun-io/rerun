@@ -33,6 +33,8 @@ pub(crate) fn view_plot(
     // - log_scalars doesn't make sense!
     // - does the time thing behave correctly here? what about multi-timeline setups?
     // - document how spaces work for plots
+    // - vertical marker based on selected time?
+    //    - are vertical ranges even possible?
     //
     // A scalar _literally_ cannot be timeless: we wouldn't even have an x value to work with!
     //
@@ -61,7 +63,16 @@ pub(crate) fn view_plot(
         .plots
         .iter()
         .map(|(obj_path, plot)| {
-            let points = plot.iter().map(|s| [s.time as _, s.value]).collect();
+            let points = plot
+                .iter()
+                .map(|s| [s.time as _, s.value])
+                .collect::<Vec<_>>();
+            dbg!(points.len());
+
+            // TODO:
+            // - Points::name?
+            // - Line::name?
+
             let points = PlotPoints::new(points);
             // let line = Line::new(points).name(obj_path);
             let line = Points::new(points).radius(2.0);

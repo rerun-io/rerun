@@ -286,14 +286,14 @@ def log_scalar(
     obj_path: str,
     scalar: np.float64,
     color: Optional[Sequence[int]] = None,
-    timeless: bool = False,
+    label: Optional[str] = None,
 ) -> None:
     """
     Log a double-precision scalar, with optional color.
 
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    rerun_rs.log_scalar(obj_path, scalar, color, timeless)
+    rerun_rs.log_scalar(obj_path, scalar, color, label)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
