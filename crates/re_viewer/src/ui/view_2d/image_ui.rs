@@ -47,7 +47,7 @@ pub fn show_zoomed_image_region_tooltip(
     response
         .on_hover_cursor(egui::CursorIcon::ZoomIn)
         .on_hover_ui_at_pointer(|ui| {
-            ui.horizontal(|ui| {
+        ui.horizontal(|ui| {
                 show_zoomed_image_region(
                     parent_ui,
                     ui,
@@ -56,12 +56,12 @@ pub fn show_zoomed_image_region_tooltip(
                     pointer_pos,
                     meter,
                 );
-            });
+        });
         })
 }
 
 /// meter: iff this is a depth map, how long is one meter?
-fn show_zoomed_image_region(
+pub fn show_zoomed_image_region(
     parent_ui: &mut egui::Ui,
     tooltip_ui: &mut egui::Ui,
     tensor_view: &tensor_image_cache::TensorImageView<'_, '_>,
@@ -71,16 +71,17 @@ fn show_zoomed_image_region(
 ) {
     use egui::*;
 
-    let (_id, zoom_rect) = tooltip_ui.allocate_space(vec2(192.0, 192.0));
+    // Show the surrounding pixels:
+    let texel_radius = 12;
+    let size = Vec2::splat(128.0);
+
+    let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
     let w = tensor_view.dynamic_img.width() as _;
     let h = tensor_view.dynamic_img.height() as _;
     let center_x =
         (remap(pointer_pos.x, image_rect.x_range(), 0.0..=(w as f32)).floor() as isize).at_most(w);
     let center_y =
         (remap(pointer_pos.y, image_rect.y_range(), 0.0..=(h as f32)).floor() as isize).at_most(h);
-
-    // Show the surrounding pixels:
-    let texel_radius = 12;
 
     {
         // Show where on the original image the zoomed-in region is at:
@@ -209,17 +210,14 @@ fn show_zoomed_image_region(
                     }
 
                     DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
-                        format!("L: {}\nA: {}", r, a)
+                        format!("L: {}, A: {}", r, a)
                     }
 
                     DynamicImage::ImageRgb8(_)
                     | DynamicImage::ImageRgb16(_)
                     | DynamicImage::ImageRgb32F(_) => {
                         // TODO(emilk): show 16-bit and 32f values differently
-                        format!(
-                            "R: {}\nG: {}\nB: {}\n\n#{:02X}{:02X}{:02X}",
-                            r, g, b, r, g, b
-                        )
+                        format!("R: {}, G: {}, B: {}\n#{:02X}{:02X}{:02X}", r, g, b, r, g, b)
                     }
 
                     DynamicImage::ImageRgba8(_)
@@ -227,7 +225,7 @@ fn show_zoomed_image_region(
                     | DynamicImage::ImageRgba32F(_) => {
                         // TODO(emilk): show 16-bit and 32f values differently
                         format!(
-                            "R: {}\nG: {}\nB: {}\nA: {}\n\n#{:02X}{:02X}{:02X}{:02X}",
+                            "R: {}, G: {}, B: {}, A: {}\n#{:02X}{:02X}{:02X}{:02X}",
                             r, g, b, a, r, g, b, a
                         )
                     }
@@ -238,7 +236,7 @@ fn show_zoomed_image_region(
                             tensor_view.dynamic_img.color()
                         );
                         format!(
-                            "R: {}\nG: {}\nB: {}\nA: {}\n\n#{:02X}{:02X}{:02X}{:02X}",
+                            "R: {}, G: {}, B: {}, A: {}\n#{:02X}{:02X}{:02X}{:02X}",
                             r, g, b, a, r, g, b, a
                         )
                     }
