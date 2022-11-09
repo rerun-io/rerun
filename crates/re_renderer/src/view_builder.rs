@@ -162,22 +162,22 @@ impl ViewBuilder {
         // We use infinite reverse-z projection matrix.
         // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
         // * no need to worry about far plane
+        let aspect_ratio =
+            config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
         let projection_from_view = glam::Mat4::perspective_infinite_reverse_rh(
             config.fov_y,
-            config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32,
+            aspect_ratio,
             config.near_plane_distance,
         );
         let projection_from_world = projection_from_view * view_from_world;
 
-        let view_from_projection = projection_from_view.inverse();
-
-        // Calculate the top right corner of the screen in view space.
-        // Top right corner in projection space is (also called Normalized Device Coordinates) is (1, 1, 0)
-        // (z zero means it sits on the near-plane)
-        let top_right_screen_corner_in_view = view_from_projection
-            .transform_point3(glam::vec3(1.0, 1.0, 0.0))
-            .truncate()
-            .normalize();
+        // Calculate ratio between screen size and screen distance.
+        // Great for getting directions from normalized device coordinates.
+        // (btw. this is the same as [1.0 / projection_from_view[0].x, 1.0 / projection_from_view[1].y])
+        let tan_half_fov = glam::vec2(
+            (config.fov_y * 0.5).tan() * aspect_ratio,
+            (config.fov_y * 0.5).tan(),
+        );
 
         // Determine how wide a pixel is in world space at unit distance from the camera.
         //
@@ -189,7 +189,7 @@ impl ViewBuilder {
         // => (resolution / screen_in_world / distance) = tan(FOV / 2) * distance * 2 / resolution / distance =
         //                                              = tan(FOV / 2) * 2.0 / resolution
         let pixel_world_size_from_camera_distance =
-            (config.fov_y * 0.5).tan() * 2.0 / config.resolution_in_pixel[1] as f32;
+            tan_half_fov.y * 2.0 / config.resolution_in_pixel[1] as f32;
 
         queue.write_buffer(
             &ctx.resource_pools
@@ -203,7 +203,7 @@ impl ViewBuilder {
                 projection_from_view: projection_from_view.into(),
                 projection_from_world: projection_from_world.into(),
                 camera_position: camera_position.into(),
-                top_right_screen_corner_in_view: top_right_screen_corner_in_view.into(),
+                tan_half_fov: tan_half_fov.into(),
                 pixel_world_size_from_camera_distance,
                 _padding: 0.0,
             }),
