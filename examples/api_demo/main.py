@@ -15,7 +15,7 @@ from typing import Any, Final
 
 import numpy as np
 import rerun_sdk as rerun
-from rerun_sdk import ClassDescription, RectFormat, LogLevel, LoggingHandler
+from rerun_sdk import ClassDescription, LoggingHandler, LogLevel, RectFormat
 
 
 def run_misc() -> None:

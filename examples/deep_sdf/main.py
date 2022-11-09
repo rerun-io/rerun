@@ -41,9 +41,7 @@ import trimesh
 from rerun_sdk import LogLevel, MeshFormat
 from trimesh import Trimesh
 
-
 from dataset.dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
-
 
 CACHE_DIR = Path(os.path.dirname(__file__)) / "cache"
 
