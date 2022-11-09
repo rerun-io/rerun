@@ -73,7 +73,7 @@ def download_glb_sample(name: str) -> Path:
     capitalized_name = name.capitalize()
     url = f"https://github.com/KhronosGroup/glTF-Sample-Models/blob/master/2.0/{capitalized_name}/glTF-Binary/{capitalized_name}.glb?raw=true"
 
-    def download_and_extract(url: str, path: Path) -> None:
+    def download(url: str, path: Path) -> None:
         if not os.path.exists(path):
             print(f"downloading {url} …")
             resp = requests.get(url)
@@ -85,5 +85,5 @@ def download_glb_sample(name: str) -> Path:
     sample_dir = DOWNLOADED_DIR / name
     os.makedirs(DOWNLOADED_DIR, exist_ok=True)
     download_path = sample_dir / f"{name}.glb"
-    download_and_extract(url, download_path)
+    download(url, download_path)
     return download_path
