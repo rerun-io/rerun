@@ -6,7 +6,7 @@ fn camera_dir_from_screenuv(texcoord: Vec2) -> vec3<f32> {
     // convert texcoord to normalized device coordinates (NDC)
     let ndc = Vec2(texcoord.x - 0.5, 0.5 - texcoord.y) * 2.0;
 
-    // Negative z since z dir is towards viewer (by current convention).
+    // Negative z since z dir is towards viewer (by current RUB convention).
     let view_space_dir = Vec3(ndc * frame.tan_half_fov, -1.0);
 
     // Note that since view_from_world is an orthonormal matrix, multiplying it from the right
