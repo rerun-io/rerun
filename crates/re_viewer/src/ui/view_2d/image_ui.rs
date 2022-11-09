@@ -47,7 +47,7 @@ pub fn show_zoomed_image_region_tooltip(
     response
         .on_hover_cursor(egui::CursorIcon::ZoomIn)
         .on_hover_ui_at_pointer(|ui| {
-        ui.horizontal(|ui| {
+            ui.horizontal(|ui| {
                 show_zoomed_image_region(
                     parent_ui,
                     ui,
@@ -56,7 +56,7 @@ pub fn show_zoomed_image_region_tooltip(
                     pointer_pos,
                     meter,
                 );
-        });
+            });
         })
 }
 
