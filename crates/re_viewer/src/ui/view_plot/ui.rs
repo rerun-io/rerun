@@ -65,6 +65,7 @@ pub(crate) fn view_plot(
     Plot::new("plot") // TODO
         .legend(Legend::default())
         .show(ui, |plot_ui| {
+            dbg!(scene.lines.len());
             for line in &scene.lines {
                 let points = line
                     .points

@@ -149,12 +149,12 @@ impl ScenePlot {
                 obj_path.to_string()
             };
 
-            let (color, kind) = 'color: {
+            let kind = 'kind: {
                 let color = points[0].color;
                 if points.iter().all(|p| p.color == color) {
-                    break 'color (color, PlotLineKind::Continuous);
+                    break 'kind PlotLineKind::Continuous;
                 }
-                (default_color, PlotLineKind::Scatter)
+                PlotLineKind::Scatter
             };
 
             let width = 'width: {
@@ -165,13 +165,45 @@ impl ScenePlot {
                 1.0
             };
 
-            self.lines.push(PlotLine {
-                label,
+            // TODO: one could argue this should be done in the ui file, since this is done
+            // only to work around a limitation of egui plots... but then again it's easier
+            // to do here sooo...
+
+            let mut color = points[0].color;
+            let mut nb_points = points.len();
+
+            let mut line: Option<PlotLine> = Some(PlotLine {
+                label: label.clone(),
                 color,
                 width,
                 kind,
-                points,
+                points: Vec::with_capacity(nb_points),
             });
+
+            for p in points.into_iter() {
+                if p.color == color {
+                    line.as_mut().unwrap().points.push(p);
+                } else {
+                    let taken = line.take().unwrap();
+
+                    nb_points -= taken.points.len();
+                    self.lines.push(taken);
+
+                    color = p.color;
+                    line = Some(PlotLine {
+                        label: label.clone(),
+                        color,
+                        width,
+                        kind,
+                        points: Vec::with_capacity(nb_points),
+                    });
+                    line.as_mut().unwrap().points.push(p);
+                }
+            }
+
+            if !line.as_ref().unwrap().points.is_empty() {
+                self.lines.push(line.take().unwrap());
+            }
         }
     }
 }
