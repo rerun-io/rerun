@@ -1,8 +1,20 @@
 /// Label for resources. Optimized out in release builds.
-#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Default, Hash, PartialEq, Eq)]
 pub struct DebugLabel {
     #[cfg(debug_assertions)]
     label: String,
+}
+
+impl std::fmt::Debug for DebugLabel {
+    #[cfg(debug_assertions)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.label.fmt(f)
+    }
+
+    #[cfg(not(debug_assertions))]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DebugLabel").finish_non_exhaustive()
+    }
 }
 
 impl DebugLabel {

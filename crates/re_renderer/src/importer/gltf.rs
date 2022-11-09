@@ -15,6 +15,7 @@ use super::to_uniform_scale;
 
 /// Loads both gltf and glb.
 pub fn load_gltf_from_buffer(
+    mesh_name: &str,
     buffer: &[u8],
     lifetime: ResourceLifeTime,
     mesh_manager: &mut MeshManager,
@@ -55,9 +56,9 @@ pub fn load_gltf_from_buffer(
 
         let mut texture = Texture2D {
             label: if texture_names.is_empty() {
-                "unnamed gltf image".to_owned()
+                format!("unnamed gltf image in {mesh_name}")
             } else {
-                format!("gltf image used by: {}", texture_names)
+                format!("gltf image used by {texture_names} in {mesh_name}")
             }
             .into(),
             data,

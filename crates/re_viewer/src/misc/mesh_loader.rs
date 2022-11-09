@@ -107,12 +107,14 @@ impl CpuMesh {
         {
             let mesh_instances = match format {
                 MeshFormat::Glb => re_renderer::importer::gltf::load_gltf_from_buffer(
+                    &name,
                     bytes,
                     ResourceLifeTime::LongLived,
                     _mesh_manager,
                     _texture_manager,
                 ),
                 MeshFormat::Gltf => re_renderer::importer::gltf::load_gltf_from_buffer(
+                    &name,
                     bytes,
                     ResourceLifeTime::LongLived,
                     _mesh_manager,
