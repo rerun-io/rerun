@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-11-07: Make re_renderer/wgpu the default renderer ([#273](https://github.com/rerun-io/rerun/pull/273).
 * 2022-11-03: Update pinned rust version to 1.65 ([#258](https://github.com/rerun-io/rerun/pull/258).
 * 2022-10-28: Add `rerun.init("my_app")` ([#237](https://github.com/rerun-io/rerun/pull/237)).
 * 2022-10-28: Add buttons to collapse/expand the side panels ([#238](https://github.com/rerun-io/rerun/pull/238)).

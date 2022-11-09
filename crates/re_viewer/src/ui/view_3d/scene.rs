@@ -844,7 +844,7 @@ impl Scene3D {
 
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     #[cfg(feature = "wgpu")]
-    pub fn line_strips(&self) -> Vec<LineStrip> {
+    pub fn line_strips(&self, show_origin_axis: bool) -> Vec<LineStrip> {
         let mut line_strips = Vec::with_capacity(self.line_segments.len());
         for segments in &self.line_segments {
             let mut current_strip = LineStrip {
@@ -878,6 +878,28 @@ impl Scene3D {
                 line_strips.push(current_strip);
             }
         }
+
+        if show_origin_axis {
+            line_strips.push(LineStrip {
+                points: vec![glam::Vec3::ZERO, glam::Vec3::X],
+                radius: 0.01,
+                color: [255, 0, 0, 255],
+                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
+            });
+            line_strips.push(LineStrip {
+                points: vec![glam::Vec3::ZERO, glam::Vec3::Y],
+                radius: 0.01,
+                color: [0, 255, 0, 255],
+                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
+            });
+            line_strips.push(LineStrip {
+                points: vec![glam::Vec3::ZERO, glam::Vec3::Z],
+                radius: 0.01,
+                color: [0, 0, 255, 255],
+                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
+            });
+        }
+
         line_strips
     }
 

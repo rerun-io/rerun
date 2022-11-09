@@ -865,8 +865,20 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 #[cfg(debug_assertions)]
 fn debug_menu(ui: &mut egui::Ui) {
     #[allow(clippy::manual_assert)]
-    if ui.button("Panic").clicked() {
+    if ui.button("panic!").clicked() {
         panic!("Intentional panic");
+    }
+
+    if ui.button("panic! during unwind").clicked() {
+        struct PanicOnDrop {}
+        impl Drop for PanicOnDrop {
+            fn drop(&mut self) {
+                panic!("second intentional panic in Drop::drop");
+            }
+        }
+
+        let _this_will_panic_when_dropped = PanicOnDrop {};
+        panic!("First intentional panic");
     }
 }
 
