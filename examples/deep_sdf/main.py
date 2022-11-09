@@ -38,10 +38,9 @@ import numpy as np
 import numpy.typing as npt
 import rerun_sdk as rerun
 import trimesh
+from dataset.dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 from rerun_sdk import LogLevel, MeshFormat
 from trimesh import Trimesh
-
-from dataset.dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 
 CACHE_DIR = Path(os.path.dirname(__file__)) / "cache"
 

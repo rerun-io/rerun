@@ -16,6 +16,14 @@ from typing import Iterable, Iterator, List
 import numpy as np
 import numpy.typing as npt
 import rerun_sdk as rerun
+from dataset.dataset import (
+    ANNOTATIONS_FILENAME,
+    AVAILABLE_RECORDINGS,
+    GEOMETRY_FILENAME,
+    IMAGE_RESOLUTION,
+    LOCAL_DATASET_DIR,
+    ensure_recording_available,
+)
 from dataset.proto.objectron.proto import (
     ARCamera,
     ARFrame,
@@ -27,15 +35,6 @@ from dataset.proto.objectron.proto import (
 )
 from rerun_sdk import ImageFormat
 from scipy.spatial.transform import Rotation as R
-
-from dataset.dataset import (
-    ANNOTATIONS_FILENAME,
-    AVAILABLE_RECORDINGS,
-    GEOMETRY_FILENAME,
-    IMAGE_RESOLUTION,
-    LOCAL_DATASET_DIR,
-    ensure_recording_available,
-)
 
 
 @dataclass
