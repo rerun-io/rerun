@@ -509,6 +509,7 @@ fn paint_view(
                 MeshInstance {
                     mesh: instance.mesh,
                     world_from_mesh: base_transform * instance.world_from_mesh,
+                    additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
                 }
             }));
         }

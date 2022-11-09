@@ -93,6 +93,7 @@ fn draw_views(
         device,
         queue,
         &state.model_mesh_instances,
+        &state.mesh_instance_positions_and_colors,
         seconds_since_startup,
     );
 
@@ -185,22 +186,24 @@ fn build_mesh_instances(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     model_mesh_instances: &[MeshInstance],
+    mesh_instance_positions_and_colors: &[(glam::Vec3, [u8; 4])],
     seconds_since_startup: f32,
 ) -> MeshDrawable {
-    let mesh_instances = lorenz_points(10.0)
-        .iter()
+    let mesh_instances = mesh_instance_positions_and_colors
+        .chunks_exact(model_mesh_instances.len())
         .enumerate()
-        .flat_map(|(i, p)| {
-            model_mesh_instances
-                .iter()
-                .map(move |model_mesh_instances| MeshInstance {
+        .flat_map(|(i, positions_and_colors)| {
+            model_mesh_instances.iter().zip(positions_and_colors).map(
+                move |(model_mesh_instances, (p, c))| MeshInstance {
                     mesh: model_mesh_instances.mesh,
                     world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
                         0.025 + (i % 10) as f32 * 0.01,
                         glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
                         *p,
                     ) * model_mesh_instances.world_from_mesh,
-                })
+                    additive_tint_srgb: *c,
+                },
+            )
         })
         .collect_vec();
     MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap()
@@ -496,9 +499,8 @@ impl Time {
 
 struct AppState {
     time: Time,
-
-    /// Lazily loaded mesh.
     model_mesh_instances: Vec<MeshInstance>,
+    mesh_instance_positions_and_colors: Vec<(glam::Vec3, [u8; 4])>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,
@@ -535,12 +537,23 @@ impl AppState {
             .unwrap()
         };
 
+        let mesh_instance_positions_and_colors = lorenz_points(10.0)
+            .iter()
+            .flat_map(|p| {
+                model_mesh_instances.iter().map(|_| {
+                    let mut rnd = rand::thread_rng();
+                    (*p, [rnd.gen(), rnd.gen(), rnd.gen(), 255])
+                })
+            })
+            .collect();
+
         Self {
             time: Time {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
             },
             model_mesh_instances,
+            mesh_instance_positions_and_colors,
             random_points,
         }
     }
