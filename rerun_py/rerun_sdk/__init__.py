@@ -282,18 +282,21 @@ def log_text_entry(
     rerun_rs.log_text_entry(obj_path, text, level, color, timeless)
 
 
+# TODO: let's do the legend thing implicitly, we'll see how that goes.
 def log_scalar(
     obj_path: str,
     scalar: np.float64,
-    color: Optional[Sequence[int]] = None,
+    class_description: Optional[str] = None,
     timeless: bool = False,
 ) -> None:
     """
     Log a double-precision scalar, with optional color.
 
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    * class_description: obj_path for a class_description object logged with
+      `log_class_description`.
     """
-    rerun_rs.log_scalar(obj_path, scalar, color, timeless)
+    rerun_rs.log_scalar(obj_path, scalar, class_description, timeless)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
@@ -958,6 +961,48 @@ def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
         return arg
     else:
         return ClassDescription(*arg)  # type: ignore[misc]
+
+
+def log_class_description(
+    obj_path: str,
+    class_description: ClassDescriptionLike,
+    *,
+    timeless: bool = False,
+) -> None:
+    """
+    Log a ClassDescription which can be used for annotation of another object.
+
+    This obj_path can be referenced from the `log_segmentation_image` and `log_scalar`
+    APIs to indicate this description is relevant to the image/scalar being logged.
+
+    The ClassDescription must include an id, which will be used for matching
+    the class and may optionally include a label and color.  Colors should
+    either be in 0-255 gamma space or in 0-1 linear space.  Colors can be RGB or
+    RGBA.
+
+    These can either be specified verbosely as:
+    ```
+    [ClassDescription(id=23, label='foo', color=(255, 0, 0)), ...]
+    ```
+
+    Or using short-hand tuples.
+    ```
+    [(23, 'bar'), ...]
+    ```
+
+    Unspecified colors will be filled in by the visualizer randomly.
+    """
+    # TODO: the id is meaningless
+
+    # Coerce tuples into ClassDescription dataclass for convenience
+    typed_class_descriptions = [coerce_class_description(class_description)]
+
+    # Convert back to fixed tuple for easy pyo3 conversion
+    tuple_class_descriptions = [
+        (d.id, d.label, _normalize_colors(d.color).tolist() or None) for d in typed_class_descriptions
+    ]
+
+    rerun_rs.log_class_descriptions(obj_path, tuple_class_descriptions, timeless)
 
 
 def log_class_descriptions(

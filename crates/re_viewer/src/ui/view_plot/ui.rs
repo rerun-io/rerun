@@ -1,5 +1,5 @@
 use crate::ViewerContext;
-use egui::plot::{Legend, Line, Plot, PlotPoints};
+use egui::plot::{Legend, Line, LineStyle, Plot, PlotPoints};
 use egui::Color32;
 use re_log_types::{LogMsg, TimePoint};
 
@@ -27,6 +27,12 @@ pub(crate) fn view_plot(
 
     // TODO:
     // - x legend (using timeline name)
+    // - plug in Legend/ClassDescr?
+    // - position marker
+    // - log_scalars doesn't make sense!
+    // - does the time thing behave correctly here? what about multi-timeline setups?
+    //
+    // - document how spaces work for plots
 
     let lines = scene
         .plots
@@ -34,7 +40,7 @@ pub(crate) fn view_plot(
         .map(|(obj_path, plot)| {
             let points = plot.iter().map(|s| [s.time as _, s.value]).collect();
             let points = PlotPoints::new(points);
-            let line = Line::new(points).name(obj_path);
+            let line = Line::new(points).name(obj_path).width(3.0);
             (obj_path, line)
         })
         .collect::<Vec<_>>();
