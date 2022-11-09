@@ -12,14 +12,12 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{
-    log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, Objects, TimeQuery,
-};
+use re_data_store::{log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties};
 use re_log_types::ObjectType;
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
-use super::SpaceView;
+use super::{Scene, SceneQuery, SpaceView};
 
 // ----------------------------------------------------------------------------
 
@@ -143,9 +141,10 @@ impl ViewportBlueprint {
         .show_header(ui, |ui| {
             ui.label("🗖"); // icon indicating this is a space-view
 
-            let is_selected = ctx.rec_cfg.selection == Selection::SpaceView(*space_view_id);
-            if ui.selectable_label(is_selected, &space_view.name).clicked() {
-                ctx.rec_cfg.selection = Selection::SpaceView(*space_view_id);
+            if ctx
+                .space_view_button_to(ui, space_view.name.clone(), *space_view_id)
+                .clicked()
+            {
                 if let Some(tree) = self.trees.get_mut(&self.visible) {
                     focus_tab(tree, space_view_id);
                 }
@@ -208,6 +207,7 @@ impl ViewportBlueprint {
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpacesInfo,
+        selection_panel_expanded: &mut bool,
     ) {
         // Lazily create a layout tree based on which SpaceViews are currently visible:
         let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
@@ -224,16 +224,26 @@ impl ViewportBlueprint {
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
 
-            ui.strong(&space_view.name);
+            let response = ui
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .response;
 
-            space_view_ui(ctx, ui, spaces_info, space_view);
+            let frame = ctx.design_tokens.hovering_frame(ui.style());
+            hovering_panel(ui, frame, response.rect, |ui| {
+                space_view_options_link(ctx, selection_panel_expanded, space_view_id, ui, "⛭");
+            });
         } else if let Some(space_view_id) = self.maximized {
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
 
-            ui.horizontal(|ui| {
+            let response = ui
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .response;
+
+            let frame = ctx.design_tokens.hovering_frame(ui.style());
+            hovering_panel(ui, frame, response.rect, |ui| {
                 if ui
                     .button("⬅")
                     .on_hover_text("Restore - show all spaces")
@@ -241,21 +251,21 @@ impl ViewportBlueprint {
                 {
                     self.maximized = None;
                 }
-                ui.strong(&space_view.name);
+                space_view_options_link(ctx, selection_panel_expanded, space_view_id, ui, "⛭");
             });
-
-            space_view_ui(ctx, ui, spaces_info, space_view);
         } else {
             let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
             dock_style.separator_width = 2.0;
             dock_style.show_close_buttons = false;
             dock_style.tab_include_scrollarea = false;
+            dock_style.expand_tabs = true;
 
             let mut tab_viewer = TabViewer {
                 ctx,
                 spaces_info,
                 space_views: &mut self.space_views,
                 maximized: &mut self.maximized,
+                selection_panel_expanded,
             };
 
             egui_dock::DockArea::new(tree)
@@ -382,6 +392,7 @@ struct TabViewer<'a, 'b> {
     spaces_info: &'a SpacesInfo,
     space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
     maximized: &'a mut Option<SpaceViewId>,
+    selection_panel_expanded: &'a mut bool,
 }
 
 impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
@@ -390,17 +401,33 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     fn ui(&mut self, ui: &mut egui::Ui, space_view_id: &mut Self::Tab) {
         crate::profile_function!();
 
-        ui.horizontal_top(|ui| {
-            if ui.button("🗖").on_hover_text("Maximize space").clicked() {
+        let space_view = self
+            .space_views
+            .get_mut(space_view_id)
+            .expect("Should have been populated beforehand");
+
+        let response = ui
+            .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view))
+            .response;
+
+        // Show buttons for maximize and space view options:
+        let frame = self.ctx.design_tokens.hovering_frame(ui.style());
+        hovering_panel(ui, frame, response.rect, |ui| {
+            if ui
+                .button("🗖")
+                .on_hover_text("Maximize Space View")
+                .clicked()
+            {
                 *self.maximized = Some(*space_view_id);
             }
 
-            let space_view = self
-                .space_views
-                .get_mut(space_view_id)
-                .expect("Should have been populated beforehand");
-
-            space_view_ui(self.ctx, ui, self.spaces_info, space_view);
+            space_view_options_link(
+                self.ctx,
+                self.selection_panel_expanded,
+                *space_view_id,
+                ui,
+                "⛭",
+            );
         });
     }
 
@@ -411,6 +438,46 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .expect("Should have been populated beforehand");
         space_view.name.clone().into()
     }
+
+    fn inner_margin(&self) -> egui::style::Margin {
+        egui::style::Margin::same(0.0)
+    }
+}
+
+fn space_view_options_link(
+    ctx: &mut ViewerContext<'_>,
+    selection_panel_expanded: &mut bool,
+    space_view_id: SpaceViewId,
+    ui: &mut egui::Ui,
+    text: &str,
+) {
+    let is_selected =
+        ctx.rec_cfg.selection == Selection::SpaceView(space_view_id) && *selection_panel_expanded;
+    if ui
+        .selectable_label(is_selected, text)
+        .on_hover_text("Space View options")
+        .clicked()
+    {
+        if is_selected {
+            ctx.rec_cfg.selection = Selection::None;
+            *selection_panel_expanded = false;
+        } else {
+            ctx.rec_cfg.selection = Selection::SpaceView(space_view_id);
+            *selection_panel_expanded = true;
+        }
+    }
+}
+
+fn hovering_panel(
+    ui: &mut egui::Ui,
+    frame: egui::Frame,
+    rect: egui::Rect,
+    add_contents: impl FnOnce(&mut egui::Ui),
+) {
+    let mut ui = ui.child_ui(rect, egui::Layout::top_down(egui::Align::LEFT));
+    ui.horizontal(|ui| {
+        frame.show(ui, add_contents);
+    });
 }
 
 fn space_view_ui(
@@ -418,95 +485,50 @@ fn space_view_ui(
     ui: &mut egui::Ui,
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
-) -> egui::Response {
-    if let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) {
-        let obj_tree_properties = &space_view.obj_tree_properties;
+) {
+    let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
+        unknown_space_label(ui, &space_view.space_path);
+        return
+    };
+    let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
+        invalid_space_label(ui, &space_view.space_path);
+        return
+    };
 
-        // Get the latest objects for the currently selected time:
-        let mut time_objects = Objects::default();
-        {
-            crate::profile_scope!("time_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                if let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() {
-                    for obj_path in &space_info.objects {
-                        if obj_tree_properties.projected.get(obj_path).visible {
-                            if let Some(obj_store) = timeline_store.get(obj_path) {
-                                if let Some(obj_type) =
-                                    ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                                {
-                                    if !is_sticky_type(obj_type) {
-                                        time_objects.query_object(
-                                            obj_store,
-                                            &time_query,
-                                            obj_path,
-                                            obj_type,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        let time_objects = filter_objects(&time_objects);
-
-        // Get the "sticky" objects (e.g. text logs)
-        // that don't care about the current time:
-        let mut sticky_objects = Objects::default();
-        {
-            crate::profile_scope!("sticky_query");
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            if let Some(timeline_store) = ctx.log_db.obj_db.store.get(timeline) {
-                for obj_path in &space_info.objects {
-                    if obj_tree_properties.projected.get(obj_path).visible {
-                        if let Some(obj_store) = timeline_store.get(obj_path) {
-                            if let Some(obj_type) =
-                                ctx.log_db.obj_db.types.get(obj_path.obj_type_path())
-                            {
-                                if is_sticky_type(obj_type) {
-                                    sticky_objects.query_object(
-                                        obj_store,
-                                        &TimeQuery::EVERYTHING,
-                                        obj_path,
-                                        obj_type,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        let sticky_objects = filter_objects(&sticky_objects);
-
-        space_view.objects_ui(
-            ctx,
-            ui,
-            spaces_info,
-            space_info,
-            &time_objects,
-            &sticky_objects,
-        )
-    } else {
-        unknown_space_label(ui, &space_view.space_path)
-    }
-}
-
-fn is_sticky_type(obj_type: &ObjectType) -> bool {
-    obj_type == &ObjectType::TextEntry
-}
-
-fn filter_objects<'s>(objects: &'_ Objects<'s>) -> Objects<'s> {
     crate::profile_function!();
-    objects.filter(|props| props.visible)
+
+    let obj_tree_props = &space_view.obj_tree_properties;
+
+    let mut scene = Scene::default();
+    {
+        let query = SceneQuery {
+            obj_paths: &space_info.objects,
+            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+            time_query,
+        };
+
+        scene
+            .two_d
+            .load_objects(ctx, obj_tree_props, &query, &space_view.view_state.state_2d);
+        scene.three_d.load_objects(ctx, obj_tree_props, &query);
+        scene.text.load_objects(ctx, obj_tree_props, &query);
+        scene.tensor.load_objects(ctx, obj_tree_props, &query);
+    }
+
+    space_view.scene_ui(ctx, ui, spaces_info, space_info, &mut scene);
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
     ui.colored_label(
         ui.visuals().warn_fg_color,
         format!("Unknown space {space_path}"),
+    )
+}
+
+fn invalid_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
+    ui.colored_label(
+        ui.visuals().warn_fg_color,
+        format!("Invalid space {space_path}: no time query"),
     )
 }
 
@@ -552,7 +574,12 @@ impl Blueprint {
         egui::CentralPanel::default()
             .frame(viewport_frame)
             .show_inside(ui, |ui| {
-                self.viewport.viewport_ui(ui, ctx, &spaces_info);
+                self.viewport.viewport_ui(
+                    ui,
+                    ctx,
+                    &spaces_info,
+                    &mut self.selection_panel_expanded,
+                );
             });
     }
 

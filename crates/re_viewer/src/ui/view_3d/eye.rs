@@ -4,8 +4,6 @@ use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
 use super::SpaceCamera;
 
-pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
-
 /// An eye in a 3D view.
 ///
 /// Note: we prefer the word "eye" to not confuse it with logged cameras.
@@ -18,11 +16,13 @@ pub struct Eye {
 }
 
 impl Eye {
+    pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
+
     pub fn from_camera(space_cameras: &SpaceCamera) -> Option<Eye> {
         let fov_y = space_cameras
             .pinhole
             .and_then(|i| i.fov_y())
-            .unwrap_or(DEFAULT_FOV_Y);
+            .unwrap_or(Self::DEFAULT_FOV_Y);
 
         Some(Self {
             world_from_view: space_cameras.world_from_rub_view()?,
@@ -76,7 +76,7 @@ impl Eye {
 
 /// Note: we use "eye" so we don't confuse this with logged camera.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
-pub(crate) struct OrbitEye {
+pub struct OrbitEye {
     pub orbit_center: Vec3,
     pub orbit_radius: f32,
     pub world_from_view_rot: Quat,

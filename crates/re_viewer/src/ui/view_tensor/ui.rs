@@ -1,19 +1,17 @@
 use std::{collections::BTreeMap, fmt::Display};
 
 use eframe::emath::Align2;
+use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
 use ndarray::{Axis, Ix2};
-
 use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
-use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
+use super::dimension_mapping_ui;
 
-use crate::ui::tensor_dimension_mapper::dimension_mapping_ui;
-
-// ----------------------------------------------------------------------------
+// ---
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-pub struct TensorViewState {
+pub struct ViewTensorState {
     /// How we select which dimensions to project the tensor onto.
     dimension_mapping: DimensionMapping,
 
@@ -25,16 +23,114 @@ pub struct TensorViewState {
 
     /// Scaling, filtering, aspect ratio, etc for the rendered texture.
     texture_settings: TextureSettings,
+
+    // last viewed tensor, copied each frame
+    #[serde(skip)]
+    #[serde(default = "empty_tensor")]
+    tensor: Tensor,
 }
 
-impl TensorViewState {
-    pub(crate) fn create(tensor: &re_log_types::Tensor) -> TensorViewState {
+fn empty_tensor() -> Tensor {
+    Tensor {
+        shape: vec![TensorDimension::unnamed(0)],
+        dtype: TensorDataType::U8,
+        data: re_log_types::TensorDataStore::Dense(vec![].into()),
+    }
+}
+
+impl ViewTensorState {
+    pub fn create(tensor: &Tensor) -> ViewTensorState {
         Self {
             selector_values: Default::default(),
             dimension_mapping: DimensionMapping::create(tensor),
             color_mapping: ColorMapping::default(),
             texture_settings: TextureSettings::default(),
+            tensor: tensor.clone(),
         }
+    }
+
+    pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.collapsing("Dimension Mapping", |ui| {
+            ui.label(format!("shape: {:?}", self.tensor.shape));
+            ui.label(format!("dtype: {:?}", self.tensor.dtype));
+            ui.add_space(12.0);
+
+            dimension_mapping_ui(ui, &mut self.dimension_mapping, &self.tensor.shape);
+        });
+
+        self.texture_settings.show(ui);
+
+        color_mapping_ui(ui, &mut self.color_mapping);
+    }
+}
+
+pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
+    crate::profile_function!();
+
+    state.tensor = tensor.clone();
+
+    selectors_ui(ui, state, tensor);
+
+    let tensor_shape = &tensor.shape;
+
+    match tensor.dtype {
+        TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
+            Ok(tensor) => {
+                let color_from_value = |value: u8| {
+                    state
+                        .color_mapping
+                        .color_from_normalized(value as f32 / 255.0)
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+            }
+        },
+
+        TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = tensor_range_u16(&tensor);
+                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+
+                let color_from_value = |value: u16| {
+                    state.color_mapping.color_from_normalized(egui::remap(
+                        value as f32,
+                        tensor_min as f32..=tensor_max as f32,
+                        0.0..=1.0,
+                    ))
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+            }
+        },
+
+        TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
+                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
+
+                let color_from_value = |value: f32| {
+                    state.color_mapping.color_from_normalized(egui::remap(
+                        value,
+                        tensor_min..=tensor_max,
+                        0.0..=1.0,
+                    ))
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+            }
+        },
     }
 }
 
@@ -224,95 +320,8 @@ fn texture_filter_ui(ui: &mut egui::Ui, label: &str, filter: &mut egui::TextureF
 
 // ----------------------------------------------------------------------------
 
-pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
-    crate::profile_function!();
-
-    ui.collapsing("Dimension Mapping", |ui| {
-        ui.label(format!("shape: {:?}", tensor.shape));
-        ui.label(format!("dtype: {:?}", tensor.dtype));
-        ui.add_space(12.0);
-
-        dimension_mapping_ui(ui, &mut state.dimension_mapping, &tensor.shape);
-    });
-
-    state.texture_settings.show(ui);
-    selectors_ui(ui, state, tensor);
-
-    let tensor_shape = &tensor.shape;
-
-    match tensor.dtype {
-        TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
-            Ok(tensor) => {
-                color_mapping_ui(ui, &mut state.color_mapping);
-
-                let color_from_value = |value: u8| {
-                    state
-                        .color_mapping
-                        .color_from_normalized(value as f32 / 255.0)
-                };
-
-                let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, state, tensor_shape, slice, color_from_value);
-            }
-            Err(err) => {
-                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
-            }
-        },
-
-        TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
-            Ok(tensor) => {
-                let (tensor_min, tensor_max) = tensor_range_u16(&tensor);
-
-                ui.group(|ui| {
-                    ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
-                    color_mapping_ui(ui, &mut state.color_mapping);
-                });
-
-                let color_from_value = |value: u16| {
-                    state.color_mapping.color_from_normalized(egui::remap(
-                        value as f32,
-                        tensor_min as f32..=tensor_max as f32,
-                        0.0..=1.0,
-                    ))
-                };
-
-                let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, state, tensor_shape, slice, color_from_value);
-            }
-            Err(err) => {
-                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
-            }
-        },
-
-        TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
-            Ok(tensor) => {
-                let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
-
-                ui.group(|ui| {
-                    ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
-                    color_mapping_ui(ui, &mut state.color_mapping);
-                });
-
-                let color_from_value = |value: f32| {
-                    state.color_mapping.color_from_normalized(egui::remap(
-                        value,
-                        tensor_min..=tensor_max,
-                        0.0..=1.0,
-                    ))
-                };
-
-                let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, state, tensor_shape, slice, color_from_value);
-            }
-            Err(err) => {
-                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
-            }
-        },
-    }
-}
-
 fn selected_tensor_slice<'a, T: Copy>(
-    state: &TensorViewState,
+    state: &ViewTensorState,
     tensor: &'a ndarray::ArrayViewD<'_, T>,
 ) -> ndarray::ArrayViewD<'a, T> {
     let dim_mapping = &state.dimension_mapping;
@@ -353,14 +362,13 @@ fn selected_tensor_slice<'a, T: Copy>(
 
 fn slice_ui<T: Copy>(
     ui: &mut egui::Ui,
-    view_state: &TensorViewState,
+    view_state: &ViewTensorState,
     tensor_shape: &[TensorDimension],
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
     crate::profile_function!();
 
-    ui.monospace(format!("Slice shape: {:?}", slice.shape()));
     let ndims = slice.ndim();
     if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
         let dimension_labels = {
@@ -425,7 +433,7 @@ fn into_image<T: Copy>(
 
 fn image_ui(
     ui: &mut egui::Ui,
-    view_state: &TensorViewState,
+    view_state: &ViewTensorState,
     image: ColorImage,
     dimension_labels: [(String, bool); 2],
 ) {
@@ -482,7 +490,7 @@ fn image_ui(
     });
 }
 
-fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor) {
+fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
     if state.dimension_mapping.selectors.is_empty() {
         return;
     }
@@ -497,7 +505,10 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut TensorViewState, tensor: &Tensor)
         for &dim_idx in &state.dimension_mapping.selectors {
             let dim = &tensor.shape[dim_idx];
             if dim.size > 1 {
-                let selector_value = state.selector_values.entry(dim_idx).or_default();
+                let selector_value = state
+                    .selector_values
+                    .entry(dim_idx)
+                    .or_insert_with(|| dim.size / 2); // start in the middle
 
                 ui.add(
                     egui::Slider::new(selector_value, 0..=dim.size - 1)
