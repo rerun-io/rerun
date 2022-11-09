@@ -8,7 +8,7 @@ from typing import Final, Optional
 
 import requests
 
-AVAILABLE_MESHES: Final = ["buddha", "bunny", "dragon", "mori_knob", "avocado", "lantern"]
+AVAILABLE_MESHES: Final = ["avocado", "lantern", "buddha", "bunny", "dragon", "mori_knob"]
 DOWNLOADED_DIR: Final = Path(os.path.dirname(__file__)) / "downloaded"
 
 
