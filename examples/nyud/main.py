@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
 """Example using an example depth dataset from NYU: https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
-
-Setup:
-``` sh
-wget -P examples/nyud http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/cafe.zip
-```
-
-Run:
-``` sh
-examples/nyud/main.py
-```
-
-Within the dataset are 3 subsets, corresponding to `--folder-idx` argument values `0-2`.
 """
 
 import argparse
@@ -87,23 +75,26 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
     return img
 
 
-def log_nyud_data(recording_path: Path, dir_idx: int = 0, depth_image_interval: int = 1) -> None:
+def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interval: int = 1) -> None:
     depth_images_counter = 0
 
     rerun.log_view_coordinates("world", up="-Y", timeless=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
-        print(f"Archive dirs: {archive_dirs}")
-        dir_to_log = archive_dirs[dir_idx]
-        files_to_process = [
+
+        print(f"Chose recording subset {subset_idx} ([0 - {len(archive_dirs) - 1}] available).")
+
+        dir_to_log = archive_dirs[subset_idx]
+        subset = [
             f
             for f in archive.filelist
             if f.filename.startswith(dir_to_log) and (f.filename.endswith(".ppm") or f.filename.endswith(".pgm"))
         ]
+        files_with_timestamps = [(parse_timestamp(f.filename), f) for f in subset]
+        files_with_timestamps.sort(key=lambda t: t[0])
 
-        for f in files_to_process:
-            time = parse_timestamp(f.filename)
+        for time, f in files_with_timestamps:
             rerun.set_time_seconds("time", time.timestamp())
 
             if f.filename.endswith(".ppm"):
@@ -190,9 +181,7 @@ if __name__ == "__main__":
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
-    parser.add_argument(
-        "--folder-idx", type=int, default=0, help="The index of the folders within the dataset archive to log."
-    )
+    parser.add_argument("--subset-idx", type=int, default=0, help="The index of the subset of the recording to use.")
     parser.add_argument(
         "--depth-image-interval",
         type=int,
@@ -214,7 +203,7 @@ if __name__ == "__main__":
     depth_image_interval = max(args.depth_image_interval, 1)
     log_nyud_data(
         recording_path=recording_path,
-        dir_idx=args.folder_idx,
+        subset_idx=args.subset_idx,
         depth_image_interval=depth_image_interval,
     )
 
