@@ -11,7 +11,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Iterable, Iterator, List
+from typing import Iterable, Iterator, List
 
 import numpy as np
 import numpy.typing as npt
