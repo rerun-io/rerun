@@ -1,3 +1,4 @@
+use crate::ui::view_plot::scene::PlotLineKind;
 use crate::ViewerContext;
 use egui::plot::{Legend, Line, Plot, PlotPoints, Points};
 use egui::Color32;
@@ -59,33 +60,33 @@ pub(crate) fn view_plot(
     //
     // Or should it all be handled by blueprints somehow..? Or both?!
 
-    let lines = scene
-        .plots
-        .iter()
-        .map(|(obj_path, plot)| {
-            let points = plot
-                .iter()
-                .map(|s| [s.time as _, s.value])
-                .collect::<Vec<_>>();
-            dbg!(points.len());
-
-            // TODO:
-            // - Points::name?
-            // - Line::name?
-
-            let points = PlotPoints::new(points);
-            // let line = Line::new(points).name(obj_path);
-            let line = Points::new(points).radius(2.0);
-            (obj_path, line)
-        })
-        .collect::<Vec<_>>();
-
     Plot::new("plot_view")
         .legend(Legend::default())
-        .show(ui, move |plot_ui| {
-            for (obj_path, line) in lines {
-                // plot_ui.line(line)
-                plot_ui.points(line)
+        .show(ui, |plot_ui| {
+            for line in &scene.lines {
+                let points = line
+                    .points
+                    .iter()
+                    .map(|p| [p.time as _, p.value])
+                    .collect::<Vec<_>>();
+
+                let c = line.color;
+                let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
+
+                match line.kind {
+                    PlotLineKind::Continuous => plot_ui.line(
+                        Line::new(points)
+                            .name(&line.label)
+                            .color(color)
+                            .width(line.width),
+                    ),
+                    PlotLineKind::Scatter => plot_ui.points(
+                        Points::new(points)
+                            .name(&line.label)
+                            .color(color)
+                            .radius(line.width),
+                    ),
+                }
             }
         })
         .response

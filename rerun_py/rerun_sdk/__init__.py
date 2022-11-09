@@ -282,18 +282,20 @@ def log_text_entry(
     rerun_rs.log_text_entry(obj_path, text, level, color, timeless)
 
 
+# TODO: explain lack of timeless
 def log_scalar(
     obj_path: str,
     scalar: np.float64,
-    color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
+    color: Optional[Sequence[int]] = None,
+    radius: Optional[float] = None,
 ) -> None:
     """
     Log a double-precision scalar, with optional color.
 
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    rerun_rs.log_scalar(obj_path, scalar, color, label)
+    rerun_rs.log_scalar(obj_path, scalar, label, color, radius)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """

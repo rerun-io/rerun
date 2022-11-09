@@ -603,8 +603,9 @@ fn log_text_entry(
 fn log_scalar(
     obj_path: &str,
     scalar: f64,
-    color: Option<Vec<u8>>,
     label: Option<String>,
+    color: Option<Vec<u8>>,
+    radius: Option<f32>,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
@@ -619,6 +620,14 @@ fn log_scalar(
         LoggedData::Single(Data::F64(scalar)),
     );
 
+    if let Some(label) = label {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "label"),
+            LoggedData::Single(Data::String(label)),
+        );
+    }
+
     if let Some(color) = color {
         let color = convert_color(color)?;
         sdk.send_data(
@@ -628,11 +637,11 @@ fn log_scalar(
         );
     }
 
-    if let Some(label) = label {
+    if let Some(radius) = radius {
         sdk.send_data(
             &time_point,
-            (&obj_path, "label"),
-            LoggedData::Single(Data::String(label)),
+            (&obj_path, "radius"),
+            LoggedData::Single(Data::F32(radius)),
         );
     }
 

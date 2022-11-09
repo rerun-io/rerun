@@ -23,7 +23,7 @@ def log_cubic() -> None:
     for t in range(0, 1000, 10):
         rerun.set_time_sequence("frame_nr", t)
 
-        f_of_t = (t * 0.01 - 3) ** 3 + 1
+        f_of_t = (t * 0.01 - 5) ** 3 + 1
         radius = clamp(abs(f_of_t), 0.5, 4.0);
         color = [255, 255, 255, 255]
         if f_of_t < 0.0:

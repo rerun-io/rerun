@@ -36,6 +36,8 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 //      - width:
 //          - if all points share same radius, use that
 //          - otherwise, 1.0
+//      - kind:
+//          - if all points share same color, default to line, scatter otherwise
 //   -> in the future, those should be modifiable at run-time from the blueprint UI
 // - plot-level props
 //   - label
@@ -48,25 +50,31 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 pub struct PlotPoint {
     pub time: i64,
     pub value: f64,
-    pub radius: f32,
+    // TODO: egui plots don't support attributes below the line-level at the moment
     pub label: Option<String>, // TODO: yeah we need an Arc in the storage layer
+    pub color: [u8; 4],        // TODO: make the Color32 PR
+    pub radius: f32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum PlotLineKind {
+    Continuous,
+    Scatter,
 }
 
 #[derive(Clone, Debug)]
 pub struct PlotLine {
-    // TODO: how do we derive the line label then?
-    pub label: String, // TODO: yeah we need an Arc in the storage layer
-    // TODO: how do we derive the line color then?!
+    pub label: String,
     pub color: [u8; 4], // TODO: make the Color32 PR
-    // TODO: how do we derive the line
     pub width: f32,
+    pub kind: PlotLineKind,
     pub points: Vec<PlotPoint>,
 }
 
 /// A plot scene, with everything needed to render it.
 #[derive(Default, Debug)]
 pub struct ScenePlot {
-    pub plots: HashMap<ObjPath, Vec<PlotLine>>,
+    pub lines: Vec<PlotLine>,
 }
 
 // TODO: document all the logic of how colors get selected and stuff
@@ -75,7 +83,7 @@ impl ScenePlot {
     /// Loads all plot objects into the scene according to the given query.
     pub(crate) fn load_objects(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
     ) {
@@ -86,7 +94,7 @@ impl ScenePlot {
 
     fn load_scalars(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
     ) {
@@ -95,13 +103,12 @@ impl ScenePlot {
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Scalar])
         {
-            let mut scalars = Vec::new();
-
-            let mut cur_color = {
+            let default_color = {
                 let c = ctx.cache.random_color(obj_path);
                 [c[0], c[1], c[2], 255]
             };
 
+            let mut points = Vec::new();
             visit_type_data_4(
                 obj_store,
                 &FieldName::from("scalar"),
@@ -119,66 +126,39 @@ impl ScenePlot {
                         return;
                     }
 
-                    let color = color.copied().unwrap_or(cur_color);
-
-                    scalars.push(Scalar {
+                    points.push(PlotPoint {
                         time,
                         label: label.cloned(),
-                        color,
+                        color: color.copied().unwrap_or(default_color),
+
                         radius: radius.copied().unwrap_or(1.0),
                         value: *value,
                     });
                 },
             );
+            points.sort_by_key(|s| s.time);
 
-            if let Some(lines) = scalars_to_lines(scalars) {
-                self.plots
-                    .entry(obj_path.clone())
-                    .or_default()
-                    .extend(lines);
+            if points.is_empty() {
+                continue;
             }
+
+            // TODO: derive line attributes from points
+
+            self.lines.push(PlotLine {
+                label: obj_path.to_string(),
+                color: default_color,
+                width: 1.0,
+                kind: PlotLineKind::Continuous,
+                points,
+            });
         }
     }
 }
 
 impl ScenePlot {
     pub fn is_empty(&self) -> bool {
-        let Self { plots } = self;
+        let Self { lines: plots } = self;
 
         plots.is_empty()
     }
-}
-
-// ---
-
-struct Scalar {
-    time: i64,
-    label: Option<String>, // TODO: yeah we need an Arc in the storage layer
-    color: [u8; 4],        // TODO: make the Color32 PR
-    radius: f32,
-    value: f64,
-}
-
-fn scalars_to_lines(
-    scalars: impl IntoIterator<Item = Scalar>,
-) -> Option<impl Iterator<Item = PlotLine>> {
-    let mut scalars = scalars.into_iter().collect::<Vec<_>>();
-    scalars.sort_by_key(|s| s.time);
-
-    if scalars.is_empty() {
-        return None;
-    }
-
-    let mut line = PlotLine {
-        label: "MyLineLabel".to_owned(),
-        color: todo!(),
-        points: scalars.into_iter().map(|s| PlotPoint {
-            time: s.time,
-            value: s.value,
-            radius: s.radius,
-            label: todo!(),
-        }),
-    };
-
-    Some(std::iter::once(line))
 }
