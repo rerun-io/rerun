@@ -9,27 +9,30 @@ wget -P examples/nyud http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/cafe.
 Run:
 ``` sh
 examples/nyud/main.py
-
-examples/nyud/main.py --folder-idx=0 --dataset examples/nyud/cafe.zip
 ```
 
 Within the dataset are 3 subsets, corresponding to `--folder-idx` argument values `0-2`.
 """
 
 import argparse
+import os
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 from typing import Final, Tuple
 
 import cv2
 import numpy as np
 import numpy.typing as npt
+import requests
 import rerun_sdk as rerun
+from tqdm import tqdm
 
-# Logging depth images is slow, so we don't log every frame
-DEPTH_IMAGE_INTERVAL: Final = 8
 DEPTH_IMAGE_SCALING: Final = 1e4
+DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
+DATASET_URL_BASE: Final = "http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2"
+AVAILABLE_RECORDINGS: Final = ["cafe", "basements", "studies", "office_kitchens", "playroooms"]
 
 
 def parse_timestamp(filename: str) -> datetime:
@@ -84,13 +87,14 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
     return img
 
 
-def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
+def log_nyud_data(recording_path: Path, dir_idx: int = 0, depth_image_interval: int = 1) -> None:
     depth_images_counter = 0
 
     rerun.log_view_coordinates("world", up="-Y", timeless=True)
 
-    with zipfile.ZipFile(dataset, "r") as archive:
+    with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
+        print(f"Archive dirs: {archive_dirs}")
         dir_to_log = archive_dirs[dir_idx]
         files_to_process = [
             f
@@ -108,7 +112,7 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                 rerun.log_image("world/camera/image/rgb", img_rgb)
 
             elif f.filename.endswith(".pgm"):
-                if depth_images_counter % DEPTH_IMAGE_INTERVAL == 0:
+                if depth_images_counter % depth_image_interval == 0:
                     buf = archive.read(f)
                     img_depth = read_image(buf)
 
@@ -136,14 +140,64 @@ def log_nyud_data(dataset: Path, dir_idx: int = 0) -> None:
                 depth_images_counter += 1
 
 
+def ensure_recording_downloaded(name: str) -> Path:
+    recording_filename = f"{name}.zip"
+    recording_path = DATASET_DIR / recording_filename
+    if recording_path.exists():
+        return recording_path
+
+    url = f"{DATASET_URL_BASE}/{recording_filename}"
+    print(f"downloading {url} to {recording_path}")
+    os.makedirs(DATASET_DIR, exist_ok=True)
+    try:
+        download_progress(url, recording_path)
+    except BaseException as e:
+        if recording_path.exists():
+            os.remove(recording_path)
+        raise e
+
+    return recording_path
+
+
+def download_progress(url: str, dst: Path) -> None:
+    """Download file with tqdm progress bar.
+    From: https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51"""
+    resp = requests.get(url, stream=True)
+    total = int(resp.headers.get("content-length", 0))
+    # Can also replace 'file' with a io.BytesIO object
+    with open(dst, "wb") as file, tqdm(
+        desc=dst.name,
+        total=total,
+        unit="iB",
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as bar:
+        for data in resp.iter_content(chunk_size=1024):
+            size = file.write(data)
+            bar.update(size)
+            sleep(0.001)  # Sleep so that we can react to KeyboardInterupt
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
-    parser.add_argument("--dataset", type=Path, default="examples/nyud/cafe.zip", help="Path to the cafe.zip archive.")
+    parser.add_argument(
+        "--recording",
+        type=str,
+        choices=AVAILABLE_RECORDINGS,
+        default=AVAILABLE_RECORDINGS[0],
+        help="Name of the NYU Depth Dataset V2 recording",
+    )
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "--folder-idx", type=int, default=0, help="The index of the folders within the dataset archive to log."
+    )
+    parser.add_argument(
+        "--depth-image-interval",
+        type=int,
+        default=8,
+        help="The number of rgb images logged for each depth image. (min value 1)",
     )
     args = parser.parse_args()
 
@@ -155,9 +209,13 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
+    recording_path = ensure_recording_downloaded(args.recording)
+
+    depth_image_interval = max(args.depth_image_interval, 1)
     log_nyud_data(
-        dataset=args.dataset,
+        recording_path=recording_path,
         dir_idx=args.folder_idx,
+        depth_image_interval=depth_image_interval,
     )
 
     if args.save is not None:
