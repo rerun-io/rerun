@@ -539,7 +539,7 @@ fn log_view_coordinates(
 #[pyfunction]
 fn log_text_entry(
     obj_path: &str,
-    text: &str,
+    text: Option<&str>,
     level: Option<&str>,
     color: Option<Vec<u8>>,
     timeless: bool,
@@ -551,26 +551,44 @@ fn log_text_entry(
 
     let time_point = time(timeless);
 
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "body"),
-        LoggedData::Single(Data::String(text.to_owned())),
-    );
+    if let Some(text) = text {
+        if let Some(lvl) = level {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "level"),
+                LoggedData::Single(Data::String(lvl.to_owned())),
+            );
+        }
 
-    if let Some(lvl) = level {
+        if let Some(color) = color {
+            let color = convert_color(color)?;
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "color"),
+                LoggedData::Single(Data::Color(color)),
+            );
+        }
+
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "body"),
+            LoggedData::Single(Data::String(text.to_owned())),
+        );
+    } else {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "body"),
+            LoggedData::Null(DataType::String),
+        );
         sdk.send_data(
             &time_point,
             (&obj_path, "level"),
-            LoggedData::Single(Data::String(lvl.to_owned())),
+            LoggedData::Null(DataType::String),
         );
-    }
-
-    if let Some(color) = color {
-        let color = convert_color(color)?;
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Null(DataType::Color),
         );
     }
 
@@ -627,13 +645,13 @@ impl RectFormat {
 fn log_rect(
     obj_path: &str,
     rect_format: &str,
-    r: [f32; 4],
+    r: Option<[f32; 4]>,
     color: Option<Vec<u8>>,
     label: Option<String>,
     timeless: bool,
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
-    let bbox = rect_format.to_bbox(r);
+    let bbox = r.map(|r| rect_format.to_bbox(r));
 
     let mut sdk = Sdk::global();
 
@@ -642,26 +660,46 @@ fn log_rect(
 
     let time_point = time(timeless);
 
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "bbox"),
-        LoggedData::Single(Data::BBox2D(bbox)),
-    );
+    if let Some(bbox) = bbox {
+        if let Some(color) = color {
+            let color = convert_color(color)?;
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "color"),
+                LoggedData::Single(Data::Color(color)),
+            );
+        }
 
-    if let Some(color) = color {
-        let color = convert_color(color)?;
+        if let Some(label) = label {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "label"),
+                LoggedData::Single(Data::String(label)),
+            );
+        }
+
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "bbox"),
+            LoggedData::Single(Data::BBox2D(bbox)),
+        );
+    } else {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "bbox"),
+            LoggedData::Null(DataType::BBox2D),
+        );
+
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Null(DataType::Color),
         );
-    }
 
-    if let Some(label) = label {
         sdk.send_data(
             &time_point,
             (&obj_path, "label"),
-            LoggedData::Single(Data::String(label)),
+            LoggedData::Null(DataType::String),
         );
     }
 
@@ -758,13 +796,18 @@ fn log_rects(
 #[pyfunction]
 fn log_point(
     obj_path: &str,
-    position: numpy::PyReadonlyArray1<'_, f32>,
+    position: Option<numpy::PyReadonlyArray1<'_, f32>>,
     color: Option<Vec<u8>>,
     timeless: bool,
 ) -> PyResult<()> {
-    let dim = match position.shape() {
-        [2] => 2,
-        [3] => 3,
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let obj_type = match position.as_ref().map(|p| p.shape()) {
+        None => None,
+        Some([2]) => Some(ObjectType::Point2D),
+        Some([3]) => Some(ObjectType::Point3D),
         shape => {
             return Err(PyTypeError::new_err(format!(
                 "Expected either a 2D or 3D position; got {shape:?}"
@@ -772,42 +815,62 @@ fn log_point(
         }
     };
 
-    let mut sdk = Sdk::global();
-
-    let obj_path = parse_obj_path(obj_path)?;
-
-    sdk.register_type(
-        obj_path.obj_type_path(),
-        if dim == 2 {
-            ObjectType::Point2D
-        } else {
-            ObjectType::Point3D
-        },
-    );
+    // If we have the type, register it, but otherwise look it up in the registery
+    let obj_type = if let Some(obj_type) = obj_type {
+        sdk.register_type(obj_path.obj_type_path(), obj_type);
+        obj_type
+    } else {
+        match sdk.lookup_type(obj_path.obj_type_path()) {
+            None => return Ok(()),
+            Some(obj_type @ (ObjectType::Point2D | ObjectType::Point3D)) => obj_type,
+            Some(obj_type) => {
+                return Err(PyTypeError::new_err(format!(
+                    "Tried to log None point to a path containing type: {:?}",
+                    obj_type
+                )));
+            }
+        }
+    };
 
     let time_point = time(timeless);
 
-    if let Some(color) = color {
-        let color = convert_color(color)?;
+    if let Some(position) = position {
+        if let Some(color) = color {
+            let color = convert_color(color)?;
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "color"),
+                LoggedData::Single(Data::Color(color)),
+            );
+        }
+
+        let position = vec_from_np_array(&position);
+        let pos_data = match obj_type {
+            ObjectType::Point2D => Data::Vec2([position[0], position[1]]),
+            ObjectType::Point3D => Data::Vec3([position[0], position[1], position[2]]),
+            _ => unreachable!(),
+        };
+
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "pos"),
+            LoggedData::Single(pos_data),
+        );
+    } else {
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Null(DataType::Color),
         );
+
+        let data_type = match obj_type {
+            ObjectType::Point2D => DataType::Vec2,
+            ObjectType::Point3D => DataType::Vec3,
+            _ => unreachable!(),
+        };
+
+        sdk.send_data(&time_point, (&obj_path, "pos"), LoggedData::Null(data_type));
     }
-
-    let position = vec_from_np_array(&position);
-    let pos_data = match dim {
-        2 => Data::Vec2([position[0], position[1]]),
-        3 => Data::Vec3([position[0], position[1], position[2]]),
-        _ => unreachable!(),
-    };
-
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "pos"),
-        LoggedData::Single(pos_data),
-    );
 
     Ok(())
 }
@@ -819,16 +882,21 @@ fn log_point(
 #[pyfunction]
 fn log_points(
     obj_path: &str,
-    positions: numpy::PyReadonlyArray2<'_, f32>,
+    positions: numpy::PyReadonlyArrayDyn<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     timeless: bool,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `positions.empty()`, beacause logging
     // an empty batch is same as deleting previous batch.
 
-    let (n, dim) = match positions.shape() {
-        [n, 2] => (*n, 2),
-        [n, 3] => (*n, 3),
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let (n, obj_type) = match positions.shape() {
+        [0] => (0, None),
+        [n, 2] => (*n, Some(ObjectType::Point2D)),
+        [n, 3] => (*n, Some(ObjectType::Point3D)),
         shape => {
             return Err(PyTypeError::new_err(format!(
                 "Expected Nx2 or Nx3 positions array; got {shape:?}"
@@ -836,18 +904,22 @@ fn log_points(
         }
     };
 
-    let mut sdk = Sdk::global();
-
-    let obj_path = parse_obj_path(obj_path)?;
-
-    sdk.register_type(
-        obj_path.obj_type_path(),
-        if dim == 2 {
-            ObjectType::Point2D
-        } else {
-            ObjectType::Point3D
-        },
-    );
+    // If we have the type, register it, but otherwise look it up in the registery
+    let obj_type = if let Some(obj_type) = obj_type {
+        sdk.register_type(obj_path.obj_type_path(), obj_type);
+        obj_type
+    } else {
+        match sdk.lookup_type(obj_path.obj_type_path()) {
+            None => return Ok(()),
+            Some(obj_type @ (ObjectType::Point2D | ObjectType::Point3D)) => obj_type,
+            Some(obj_type) => {
+                return Err(PyTypeError::new_err(format!(
+                    "Tried to log None point to a path containing type: {:?}",
+                    obj_type
+                )));
+            }
+        }
+    };
 
     let indices = BatchIndex::SequentialIndex(n);
 
@@ -858,9 +930,9 @@ fn log_points(
         sdk.send_data(&time_point, (&obj_path, "color"), color_data);
     }
 
-    let pos_data = match dim {
-        2 => DataVec::Vec2(pod_collect_to_vec(&vec_from_np_array(&positions))),
-        3 => DataVec::Vec3(pod_collect_to_vec(&vec_from_np_array(&positions))),
+    let pos_data = match obj_type {
+        ObjectType::Point2D => DataVec::Vec2(pod_collect_to_vec(&vec_from_np_array(&positions))),
+        ObjectType::Point3D => DataVec::Vec3(pod_collect_to_vec(&vec_from_np_array(&positions))),
         _ => unreachable!(),
     };
 
@@ -943,15 +1015,17 @@ fn color_batch(
 #[pyfunction]
 fn log_path(
     obj_path: &str,
-    positions: numpy::PyReadonlyArray2<'_, f32>,
+    positions: Option<numpy::PyReadonlyArray2<'_, f32>>,
     stroke_width: Option<f32>,
     color: Option<Vec<u8>>,
     timeless: bool,
 ) -> PyResult<()> {
-    if !matches!(positions.shape(), [_, 3]) {
+    let shape = positions.as_ref().map(|p| p.shape());
+
+    if !matches!(shape, None | Some([_, 3])) {
         return Err(PyTypeError::new_err(format!(
             "Expected Nx3 positions array; got {:?}",
-            positions.shape()
+            shape
         )));
     }
 
@@ -962,28 +1036,48 @@ fn log_path(
 
     let time_point = time(timeless);
 
-    let positions = pod_collect_to_vec(&vec_from_np_array(&positions));
+    if let Some(positions) = positions {
+        let positions = pod_collect_to_vec(&vec_from_np_array(&positions));
 
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "points"),
-        LoggedData::Single(Data::DataVec(DataVec::Vec3(positions))),
-    );
+        if let Some(color) = color {
+            let color = convert_color(color)?;
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "color"),
+                LoggedData::Single(Data::Color(color)),
+            );
+        }
 
-    if let Some(color) = color {
-        let color = convert_color(color)?;
+        if let Some(stroke_width) = stroke_width {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "stroke_width"),
+                LoggedData::Single(Data::F32(stroke_width)),
+            );
+        }
+
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "points"),
+            LoggedData::Single(Data::DataVec(DataVec::Vec3(positions))),
+        );
+    } else {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "points"),
+            LoggedData::Null(DataType::DataVec),
+        );
+
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Null(DataType::Color),
         );
-    }
 
-    if let Some(stroke_width) = stroke_width {
         sdk.send_data(
             &time_point,
             (&obj_path, "stroke_width"),
-            LoggedData::Single(Data::F32(stroke_width)),
+            LoggedData::Null(DataType::F32),
         );
     }
 
@@ -1005,19 +1099,14 @@ fn log_line_segments(
         )));
     }
 
-    let (dim, positions) = match positions.shape() {
-        [_, 2] => (
-            2,
-            Data::DataVec(DataVec::Vec2(pod_collect_to_vec(&vec_from_np_array(
-                &positions,
-            )))),
-        ),
-        [_, 3] => (
-            3,
-            Data::DataVec(DataVec::Vec3(pod_collect_to_vec(&vec_from_np_array(
-                &positions,
-            )))),
-        ),
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let obj_type = match positions.shape() {
+        [0] => None,
+        [_, 2] => Some(ObjectType::LineSegments2D),
+        [_, 3] => Some(ObjectType::LineSegments3D),
         _ => {
             return Err(PyTypeError::new_err(format!(
                 "Expected Nx2 or Nx3 positions array; got {:?}",
@@ -1026,15 +1115,32 @@ fn log_line_segments(
         }
     };
 
-    let mut sdk = Sdk::global();
-
-    let obj_path = parse_obj_path(obj_path)?;
-    let obj_type = if dim == 2 {
-        ObjectType::LineSegments2D
+    // If we have the type, register it, but otherwise look it up in the registery
+    let obj_type = if let Some(obj_type) = obj_type {
+        sdk.register_type(obj_path.obj_type_path(), obj_type);
+        obj_type
     } else {
-        ObjectType::LineSegments3D
+        match sdk.lookup_type(obj_path.obj_type_path()) {
+            None => return Ok(()),
+            Some(obj_type @ (ObjectType::LineSegments2D | ObjectType::LineSegments3D)) => obj_type,
+            Some(obj_type) => {
+                return Err(PyTypeError::new_err(format!(
+                    "Tried to log None line_segment to a path containing type: {:?}",
+                    obj_type
+                )));
+            }
+        }
     };
-    sdk.register_type(obj_path.obj_type_path(), obj_type);
+
+    let positions = match obj_type {
+        ObjectType::LineSegments2D => Data::DataVec(DataVec::Vec2(pod_collect_to_vec(
+            &vec_from_np_array(&positions),
+        ))),
+        ObjectType::LineSegments3D => Data::DataVec(DataVec::Vec3(pod_collect_to_vec(
+            &vec_from_np_array(&positions),
+        ))),
+        _ => unreachable!(),
+    };
 
     let time_point = time(timeless);
 
@@ -1068,8 +1174,8 @@ fn log_line_segments(
 #[allow(clippy::too_many_arguments)]
 fn log_arrow(
     obj_path: &str,
-    origin: [f32; 3],
-    vector: [f32; 3],
+    origin: Option<[f32; 3]>,
+    vector: Option<[f32; 3]>,
     color: Option<Vec<u8>>,
     label: Option<String>,
     width_scale: Option<f32>,
@@ -1082,36 +1188,70 @@ fn log_arrow(
 
     let time_point = time(timeless);
 
-    let arrow = re_log_types::Arrow3D { origin, vector };
+    let arrow = match (origin, vector) {
+        (Some(origin), Some(vector)) => Some(re_log_types::Arrow3D { origin, vector }),
+        (None, None) => None,
+        _ => {
+            return Err(PyTypeError::new_err(
+                "log_arrow requires both origin and vector if either is not None",
+            ))
+        }
+    };
 
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "arrow3d"),
-        LoggedData::Single(Data::Arrow3D(arrow)),
-    );
+    if let Some(arrow) = arrow {
+        if let Some(color) = color {
+            let color = convert_color(color)?;
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "color"),
+                LoggedData::Single(Data::Color(color)),
+            );
+        }
 
-    if let Some(color) = color {
-        let color = convert_color(color)?;
+        if let Some(width_scale) = width_scale {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "width_scale"),
+                LoggedData::Single(Data::F32(width_scale)),
+            );
+        }
+
+        if let Some(label) = label {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "label"),
+                LoggedData::Single(Data::String(label)),
+            );
+        }
+
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "arrow3d"),
+            LoggedData::Single(Data::Arrow3D(arrow)),
+        );
+    } else {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "arrow3d"),
+            LoggedData::Null(DataType::Arrow3D),
+        );
+
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Null(DataType::Color),
         );
-    }
 
-    if let Some(width_scale) = width_scale {
         sdk.send_data(
             &time_point,
             (&obj_path, "width_scale"),
-            LoggedData::Single(Data::F32(width_scale)),
+            LoggedData::Null(DataType::F32),
         );
-    }
 
-    if let Some(label) = label {
         sdk.send_data(
             &time_point,
             (&obj_path, "label"),
-            LoggedData::Single(Data::String(label)),
+            LoggedData::Null(DataType::String),
         );
     }
 
@@ -1125,9 +1265,9 @@ fn log_arrow(
 #[pyfunction]
 fn log_obb(
     obj_path: &str,
-    half_size: [f32; 3],
-    position: [f32; 3],
-    rotation_q: re_log_types::Quaternion,
+    half_size: Option<[f32; 3]>,
+    position: Option<[f32; 3]>,
+    rotation_q: Option<re_log_types::Quaternion>,
     color: Option<Vec<u8>>,
     stroke_width: Option<f32>,
     label: Option<String>,
@@ -1140,40 +1280,73 @@ fn log_obb(
 
     let time_point = time(timeless);
 
-    let obb = re_log_types::Box3 {
-        rotation: rotation_q,
-        translation: position,
-        half_size,
-    };
+    let obb =
+        match (rotation_q, position, half_size) {
+            (Some(rotation), Some(translation), Some(half_size)) => Some(re_log_types::Box3 {
+                rotation,
+                translation,
+                half_size,
+            }),
+            (None, None, None) => None,
+            _ => return Err(PyTypeError::new_err(
+                "log_obb requires all of half_size, position, and rotation to be provided or None",
+            )),
+        };
 
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "obb"),
-        LoggedData::Single(Data::Box3(obb)),
-    );
+    if let Some(obb) = obb {
+        if let Some(color) = color {
+            let color = convert_color(color)?;
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "color"),
+                LoggedData::Single(Data::Color(color)),
+            );
+        }
 
-    if let Some(color) = color {
-        let color = convert_color(color)?;
+        if let Some(stroke_width) = stroke_width {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "stroke_width"),
+                LoggedData::Single(Data::F32(stroke_width)),
+            );
+        }
+
+        if let Some(label) = label {
+            sdk.send_data(
+                &time_point,
+                (&obj_path, "label"),
+                LoggedData::Single(Data::String(label)),
+            );
+        }
+
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "obb"),
+            LoggedData::Single(Data::Box3(obb)),
+        );
+    } else {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "obb"),
+            LoggedData::Null(DataType::Box3),
+        );
+
         sdk.send_data(
             &time_point,
             (&obj_path, "color"),
-            LoggedData::Single(Data::Color(color)),
+            LoggedData::Null(DataType::Color),
         );
-    }
 
-    if let Some(stroke_width) = stroke_width {
         sdk.send_data(
             &time_point,
             (&obj_path, "stroke_width"),
-            LoggedData::Single(Data::F32(stroke_width)),
+            LoggedData::Null(DataType::F32),
         );
-    }
 
-    if let Some(label) = label {
         sdk.send_data(
             &time_point,
             (&obj_path, "label"),
-            LoggedData::Single(Data::String(label)),
+            LoggedData::Null(DataType::String),
         );
     }
 

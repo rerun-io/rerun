@@ -173,9 +173,18 @@ fn insert_msg_into_timeline_store(
     } = data_path.clone();
 
     match data {
+        LoggedData::Null(data_type) => {
+            re_log_types::data_type_map_none!(data_type, |data_none| timeline_store
+                .insert_mono(obj_path, field_name, time_i64, msg_id, data_none))
+        }
         LoggedData::Single(data) => {
-            re_log_types::data_map!(data.clone(), |data| timeline_store
-                .insert_mono(obj_path, field_name, time_i64, msg_id, data))
+            re_log_types::data_map!(data.clone(), |data| timeline_store.insert_mono(
+                obj_path,
+                field_name,
+                time_i64,
+                msg_id,
+                Some(data)
+            ))
         }
         LoggedData::Batch { data, .. } => {
             re_log_types::data_vec_map!(data, |vec| {

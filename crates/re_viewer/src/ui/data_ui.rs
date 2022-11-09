@@ -295,6 +295,7 @@ pub(crate) fn ui_logged_data(
     preview: Preview,
 ) -> egui::Response {
     match data {
+        LoggedData::Null(data_type) => ui.label(format!("null: {:?}", data_type)),
         LoggedData::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
         LoggedData::Single(data) => ui_data(ctx, ui, msg_id, data, preview),
         LoggedData::BatchSplat(data) => {

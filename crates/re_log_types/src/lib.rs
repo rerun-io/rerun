@@ -294,6 +294,9 @@ pub fn data_msg(
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum LoggedData {
+    /// An empty data value, for "mono-objects", indicates the data is no longer valid
+    Null(DataType),
+
     /// A single data value, for "mono-objects".
     Single(Data),
 
@@ -313,6 +316,7 @@ impl LoggedData {
     #[inline]
     pub fn data_type(&self) -> DataType {
         match self {
+            Self::Null(data_type) => *data_type,
             Self::Single(data) | Self::BatchSplat(data) => data.data_type(),
             Self::Batch { data, .. } => data.element_data_type(),
         }

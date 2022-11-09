@@ -57,7 +57,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         field_name: FieldName,
         time: Time,
         msg_id: MsgId,
-        value: T,
+        value: Option<T>,
     ) -> Result<()> {
         if self.fields.is_empty() {
             self.mono = true; // first insertion - we can decide that we are mono from now on
@@ -109,19 +109,19 @@ fn test_obj_store() {
     let mut obj_store = ObjStore::default();
 
     assert!(obj_store
-        .insert_mono("field1".into(), 0, MsgId::random(), 3.15)
+        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15))
         .is_ok());
 
     assert!(obj_store
-        .insert_mono("field1".into(), 0, MsgId::random(), 3.15)
+        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15))
         .is_ok());
 
     assert!(obj_store
-        .insert_mono("field2".into(), 0, MsgId::random(), 3.15)
+        .insert_mono("field2".into(), 0, MsgId::random(), Some(3.15))
         .is_ok());
 
     assert_eq!(
-        obj_store.insert_mono("field2".into(), 0, MsgId::random(), 42),
+        obj_store.insert_mono("field2".into(), 0, MsgId::random(), Some(42)),
         Err(crate::Error::MixingTypes {
             existing: DataType::F32,
             expected: DataType::I32

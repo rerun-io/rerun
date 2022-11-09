@@ -38,7 +38,7 @@ impl<Time: 'static + Copy + Ord> TimelineStore<Time> {
         field_name: FieldName,
         time: Time,
         msg_id: MsgId,
-        value: T,
+        value: Option<T>,
     ) -> Result<()> {
         self.objects
             .entry(obj_path)
