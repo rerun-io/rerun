@@ -1,7 +1,8 @@
 use crate::ui::view_plot::scene::PlotLineKind;
 use crate::ViewerContext;
-use egui::plot::{Legend, Line, Plot, PlotPoints, Points};
+use egui::plot::{Legend, Line, Plot, PlotPoint, PlotPoints, Points, Text, VLine};
 use egui::Color32;
+use re_data_store::TimeQuery;
 use re_log_types::{LogMsg, TimePoint};
 
 use super::ScenePlot;
@@ -27,15 +28,7 @@ pub(crate) fn view_plot(
     crate::profile_function!();
 
     // TODO:
-    // - x legend (using timeline name)
-    // - y legend (using obj_path or label if available)
     // - plug in Legend/ClassDescr?
-    // - position marker
-    // - log_scalars doesn't make sense!
-    // - does the time thing behave correctly here? what about multi-timeline setups?
-    // - document how spaces work for plots
-    // - vertical marker based on selected time?
-    //    - are vertical ranges even possible?
     //
     // A scalar _literally_ cannot be timeless: we wouldn't even have an x value to work with!
     //
@@ -45,7 +38,7 @@ pub(crate) fn view_plot(
     // - what happens when the scalar changes label?
     //
     // what about stuff that has nothing to do with points, e.g. the kind of plot, or whether
-    // we want a reference hline/vline to appear?
+    // we want a reference hline/vline to appear? Or better: stickiness!
     // - Sometimes it's nice to still set it at the scalar-level, so that things can evolve
     //   over time.
     // - on the other hand, do you really want each scalar to reassert the fact that this is
@@ -60,12 +53,33 @@ pub(crate) fn view_plot(
     //
     // Or should it all be handled by blueprints somehow..? Or both?!
 
-    // TODO: split on colors?
+    let tq = ctx.rec_cfg.time_ctrl.time_query().unwrap();
+
+    let x_axis = ctx.rec_cfg.time_ctrl.timeline().name().to_string();
 
     Plot::new("plot") // TODO
         .legend(Legend::default())
+        .label_formatter(move |name, value| {
+            let name = if name.is_empty() { "y" } else { name };
+            format!("{x_axis}: {:.0}\n{name}: {:.0}", value.x, value.y)
+        })
         .show(ui, |plot_ui| {
-            dbg!(scene.lines.len());
+            if plot_ui.plot_clicked() {
+                let timeline = ctx.rec_cfg.time_ctrl.timeline();
+                ctx.rec_cfg
+                    .time_ctrl
+                    .set_timeline_and_time(*timeline, plot_ui.pointer_coordinate().unwrap().x);
+                ctx.rec_cfg.time_ctrl.pause();
+            }
+
+            plot_ui.vline(
+                VLine::new(match tq {
+                    TimeQuery::LatestAt(t) => t as f64,
+                    TimeQuery::Range(r) => *r.start() as f64,
+                })
+                .color(Color32::WHITE),
+            );
+
             for line in &scene.lines {
                 let points = line
                     .points

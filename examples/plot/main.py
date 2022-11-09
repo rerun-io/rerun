@@ -50,6 +50,7 @@ def log_trig() -> None:
         rerun.log_scalar("trig/cos", cos_of_t, label="cos(0.01 * t)", color=[0, 255, 0])
 
 
+# TODO: make this one not sticky!
 def log_segmentation() -> None:
     for t in range(0, 1000, 2):
         rerun.set_time_sequence("frame_nr", t)

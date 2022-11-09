@@ -41,6 +41,7 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 //   -> in the future, those should be modifiable at run-time from the blueprint UI
 // - plot-level props
 //   - label
+//   - sticky
 //   -> as-is from the legend object associated with that space (annotation context??)
 //   -> otherwise the missing ones are defaulted:
 //      - label: space name
