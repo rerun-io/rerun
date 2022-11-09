@@ -55,7 +55,7 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
     """
 
     path = dirpath / GEOMETRY_FILENAME
-    print("loading ARFrames from {path}")
+    print(f"loading ARFrames from {path}")
     data = Path(path).read_bytes()
 
     frame_idx = 0
@@ -78,7 +78,7 @@ def read_annotations(dirpath: Path) -> Sequence:
     """
 
     path = dirpath / ANNOTATIONS_FILENAME
-    print("loading annotations from {path}")
+    print(f"loading annotations from {path}")
     data = Path(path).read_bytes()
 
     seq = Sequence().parse(data)
