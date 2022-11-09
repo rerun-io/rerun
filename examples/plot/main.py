@@ -11,36 +11,59 @@ Run:
 
 
 import argparse
+import random
 
-from math import tau, pi, sin, cos
+from math import cos, pi, sin, tau
 
 import rerun_sdk as rerun
+
 
 def clamp(n, smallest, largest):
     return max(smallest, min(n, largest))
 
-def log_cubic() -> None:
+
+def log_parabola() -> None:
     for t in range(0, 1000, 10):
         rerun.set_time_sequence("frame_nr", t)
 
+        # TODO: actually not possible without some legend support
+
         f_of_t = (t * 0.01 - 5) ** 3 + 1
-        radius = clamp(abs(f_of_t), 0.5, 4.0);
+        radius = clamp(abs(f_of_t), 0.5, 4.0)
         color = [255, 255, 255, 255]
         if f_of_t < 0.0:
             color = [255, 0, 0, 255]
         elif f_of_t > 10.0:
             color = [0, 255, 0, 255]
 
-        rerun.log_scalar("f(t) = (t * 0.01 - 3)³ + 1", f_of_t, radius=radius, color=color)
+        rerun.log_scalar("parabola", f_of_t, label="f(t) = (t * 0.01 - 3)³ + 1", radius=radius, color=color)
 
 
-def log_plots() -> None:
-    frame_nr = 1
-    for i in range(0, int(tau * 3 * 100.0)):
-        rerun.set_time_sequence("frame_nr", frame_nr)
-        rerun.log_scalar("plots/sin(t)", sin(i / 100.0))
-        rerun.log_scalar("plots/cos(t)", cos(i / 100.0))
-        frame_nr += 1
+def log_trig() -> None:
+    for t in range(0, int(tau * 2 * 100.0)):
+        rerun.set_time_sequence("frame_nr", t)
+
+        sin_of_t = sin(float(t) / 100.0)
+        rerun.log_scalar("trig/sin", sin_of_t, label="sin(0.01 * t)", color=[255, 0, 0])
+
+        cos_of_t = cos(float(t) / 100.0)
+        rerun.log_scalar("trig/cos", cos_of_t, label="cos(0.01 * t)", color=[0, 255, 0])
+
+
+def log_segmentation() -> None:
+    for t in range(0, 1000, 2):
+        rerun.set_time_sequence("frame_nr", t)
+
+        f_of_t = (2 * 0.01 * t) + 2
+        color = [255, 255, 0]
+        rerun.log_scalar("segmentation/line", f_of_t, color=color)
+
+        g_of_t = f_of_t + random.uniform(-5.0, 5.0)
+        if f_of_t < 0.0:
+            color = [255, 0, 0, 255]
+        elif f_of_t > 10.0:
+            color = [0, 255, 0, 255]
+        rerun.log_scalar("segmentation/samples", g_of_t, color=color)
 
 
 def main():
@@ -69,8 +92,9 @@ def main():
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    log_cubic()
-    # log_plots()
+    log_parabola()
+    log_trig()
+    log_segmentation()
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")

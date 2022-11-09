@@ -113,7 +113,7 @@ impl ScenePlot {
                 obj_store,
                 &FieldName::from("scalar"),
                 &TimeQuery::EVERYTHING, // always sticky!
-                ("_visible", "laebel", "color", "radius"),
+                ("_visible", "label", "color", "radius"),
                 |_instance_index: Option<&IndexHash>,
                  time: i64,
                  _msg_id: &MsgId,
@@ -130,7 +130,6 @@ impl ScenePlot {
                         time,
                         label: label.cloned(),
                         color: color.copied().unwrap_or(default_color),
-
                         radius: radius.copied().unwrap_or(1.0),
                         value: *value,
                     });
@@ -142,13 +141,35 @@ impl ScenePlot {
                 continue;
             }
 
-            // TODO: derive line attributes from points
+            let label = 'label: {
+                let label = points[0].label.as_ref();
+                if label.is_some() && points.iter().all(|p| p.label.as_ref() == label) {
+                    break 'label label.cloned().unwrap();
+                }
+                obj_path.to_string()
+            };
+
+            let (color, kind) = 'color: {
+                let color = points[0].color;
+                if points.iter().all(|p| p.color == color) {
+                    break 'color (color, PlotLineKind::Continuous);
+                }
+                (default_color, PlotLineKind::Scatter)
+            };
+
+            let width = 'width: {
+                let radius = points[0].radius;
+                if points.iter().all(|p| p.radius == radius) {
+                    break 'width radius;
+                }
+                1.0
+            };
 
             self.lines.push(PlotLine {
-                label: obj_path.to_string(),
-                color: default_color,
-                width: 1.0,
-                kind: PlotLineKind::Continuous,
+                label,
+                color,
+                width,
+                kind,
                 points,
             });
         }

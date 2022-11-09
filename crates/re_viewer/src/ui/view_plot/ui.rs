@@ -60,7 +60,9 @@ pub(crate) fn view_plot(
     //
     // Or should it all be handled by blueprints somehow..? Or both?!
 
-    Plot::new("plot_view")
+    // TODO: split on colors?
+
+    Plot::new("plot") // TODO
         .legend(Legend::default())
         .show(ui, |plot_ui| {
             for line in &scene.lines {
