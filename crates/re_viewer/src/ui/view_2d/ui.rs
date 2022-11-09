@@ -7,7 +7,7 @@ use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use super::{show_zoomed_image_region_tooltip, Box2D, Image, LineSegments2D, Point2D, Scene2D};
+use super::{Box2D, Image, LineSegments2D, Point2D, Scene2D};
 
 // ---
 
@@ -259,7 +259,7 @@ fn view_2d_scrollable(
     desired_size: Vec2,
     available_size: Vec2,
     ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
+    parent_ui: &mut egui::Ui,
     state: &mut View2DState,
     space: Option<&ObjPath>,
     scene: &Scene2D,
@@ -267,7 +267,8 @@ fn view_2d_scrollable(
     state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bbox);
     let scene_bbox = state.scene_bbox_accum;
 
-    let (mut response, painter) = ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
+    let (mut response, painter) =
+        parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
     // Create our transforms
     let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
@@ -277,23 +278,11 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    if let Some(instance_id) = &state.hovered_instance {
-        if response.clicked() {
-            ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
-        }
-        response = response.on_hover_ui_at_pointer(|ui| {
-            ctx.instance_id_button(ui, instance_id);
-            crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
-        });
-    }
-
-    // ------------------------------------------------------------------------
-
     // Paint background in case there is no image covering it all:
     let mut shapes = vec![Shape::rect_filled(
         ui_from_space.transform_rect(scene_bbox),
         3.0,
-        ui.visuals().extreme_bg_color,
+        parent_ui.visuals().extreme_bg_color,
     )];
 
     // ------------------------------------------------------------------------
@@ -313,17 +302,14 @@ fn view_2d_scrollable(
         }
     };
 
-    let mut depths_at_pointer = vec![];
+    // What tooltips we've shown so far
+    let mut shown_tooltips = ahash::HashSet::default();
 
-    let hovered_instance_id_hash = state
-        .hovered_instance
-        .as_ref()
-        .map_or(InstanceIdHash::NONE, InstanceId::hash);
+    let mut depths_at_pointer = vec![];
 
     for (image_idx, img) in scene.images.iter().enumerate() {
         let Image {
             msg_id,
-            obj_path,
             instance_hash,
             tensor,
             meter,
@@ -333,7 +319,7 @@ fn view_2d_scrollable(
 
         let tensor_view = ctx.cache.image.get_view_with_legend(msg_id, tensor, legend);
 
-        let texture_id = tensor_view.retained_img.texture_id(ui.ctx());
+        let texture_id = tensor_view.retained_img.texture_id(parent_ui.ctx());
 
         let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
@@ -359,17 +345,44 @@ fn view_2d_scrollable(
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
             check_hovering(*instance_hash, dist);
 
-            if hovered_instance_id_hash.is_instance(obj_path, instance_hash.instance_index_hash)
-                && rect_in_ui.contains(pointer_pos)
-            {
-                response = show_zoomed_image_region_tooltip(
-                    ui,
-                    response,
-                    &tensor_view,
-                    rect_in_ui,
-                    pointer_pos,
-                    *meter,
-                );
+            // Show tooltips for all images, not just the "most hovered" one.
+            if rect_in_ui.contains(pointer_pos) {
+                response = response
+                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
+                    .on_hover_ui_at_pointer(|ui| {
+                        ui.set_max_width(400.0);
+
+                        ui.vertical(|ui| {
+                            if let Some(instance_id) =
+                                instance_hash.resolve(&ctx.log_db.obj_db.store)
+                            {
+                                ui.label(instance_id.to_string());
+                                crate::ui::data_ui::view_instance(
+                                    ctx,
+                                    ui,
+                                    &instance_id,
+                                    crate::ui::Preview::Small,
+                                );
+                                ui.separator();
+                            }
+
+                            let tensor_view =
+                                ctx.cache.image.get_view_with_legend(msg_id, tensor, legend);
+
+                            ui.horizontal(|ui| {
+                                super::image_ui::show_zoomed_image_region(
+                                    parent_ui,
+                                    ui,
+                                    &tensor_view,
+                                    rect_in_ui,
+                                    pointer_pos,
+                                    *meter,
+                                );
+                            });
+                        });
+                    });
+
+                shown_tooltips.insert(*instance_hash);
             }
 
             if let Some(meter) = *meter {
@@ -416,8 +429,8 @@ fn view_2d_scrollable(
 
         if let Some(label) = label {
             let wrap_width = (rect_in_ui.width() - 4.0).at_least(60.0);
-            let font_id = TextStyle::Body.resolve(ui.style());
-            let galley = ui.fonts().layout_job({
+            let font_id = TextStyle::Body.resolve(parent_ui.style());
+            let galley = parent_ui.fonts().layout_job({
                 egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {
                         leading_space: 0.0,
@@ -510,13 +523,27 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
+    if let Some(instance_id) = &state.hovered_instance {
+        if response.clicked() {
+            ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
+        }
+        if !shown_tooltips.contains(&instance_id.hash()) {
+            response = response.on_hover_ui_at_pointer(|ui| {
+                ctx.instance_id_button(ui, instance_id);
+                crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
+            });
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
     let depth_at_pointer = if depths_at_pointer.len() == 1 {
         depths_at_pointer[0] as f32
     } else {
         f32::INFINITY
     };
     project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
-    show_projections_from_3d_space(ctx, ui, space, &ui_from_space, &mut shapes);
+    show_projections_from_3d_space(ctx, parent_ui, space, &ui_from_space, &mut shapes);
 
     // ------------------------------------------------------------------------
 
