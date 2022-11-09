@@ -129,6 +129,8 @@ impl LogDb {
                 } = msg;
                 self.add_data_msg(*msg_id, time_point, data_path, data);
             }
+            // TODO: handle the PathOpMsg
+            LogMsg::PathOpMsg(msg) => re_log::info!("Path Op: {:?}", msg.path_op),
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);

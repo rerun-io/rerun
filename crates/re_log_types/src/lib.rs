@@ -162,6 +162,9 @@ pub enum LogMsg {
 
     /// Log some data to a [`DataPath`].
     DataMsg(DataMsg),
+
+    /// Server-backed operation on an [`ObjPath`] or [`DataPath`].
+    PathOpMsg(PathOpMsg),
 }
 
 impl LogMsg {
@@ -170,6 +173,7 @@ impl LogMsg {
             Self::BeginRecordingMsg(msg) => msg.msg_id,
             Self::TypeMsg(msg) => msg.msg_id,
             Self::DataMsg(msg) => msg.msg_id,
+            Self::PathOpMsg(msg) => msg.msg_id,
         }
     }
 }
@@ -177,6 +181,7 @@ impl LogMsg {
 impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
 impl_into_enum!(TypeMsg, LogMsg, TypeMsg);
 impl_into_enum!(DataMsg, LogMsg, DataMsg);
+impl_into_enum!(PathOpMsg, LogMsg, PathOpMsg);
 
 // ----------------------------------------------------------------------------
 
@@ -351,6 +356,36 @@ impl_into_logged_data!(Tensor, Tensor);
 impl_into_logged_data!(Box3, Box3);
 impl_into_logged_data!(Mesh3D, Mesh3D);
 impl_into_logged_data!(ObjPath, ObjPath);
+
+// ----------------------------------------------------------------------------
+/// The message sent to specify the data of a single field of an object.
+#[must_use]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct PathOpMsg {
+    /// A unique id per [`ObjPathOpMsg`].
+    pub msg_id: MsgId,
+
+    /// Time information (when it was logged, when it was received, …)
+    ///
+    /// If this is empty, no operation will be performed as ObjPathOps
+    /// cannot be Timeless in a meaningful way.
+    pub time_point: TimePoint,
+
+    /// The value of this.
+    pub path_op: PathOp,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum PathOp {
+    // Clear a single field at a [`DataPath`]
+    ClearField(DataPath),
+    // Clear all the fields stored at an [`ObjPath`]
+    ClearFields(ObjPath),
+    // Clear all the fields of an `[ObjPath]` and any descendents.
+    ClearRecursive(ObjPath),
+}
 
 // ----------------------------------------------------------------------------
 
