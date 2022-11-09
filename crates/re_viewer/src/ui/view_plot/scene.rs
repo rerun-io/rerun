@@ -1,7 +1,4 @@
-use crate::{
-    ui::{view_2d::Legends, SceneQuery},
-    ViewerContext,
-};
+use crate::{ui::SceneQuery, ViewerContext};
 use ahash::HashMap;
 use re_data_store::{
     query::visit_type_data_2, FieldName, ObjPath, ObjectTreeProperties, TimeQuery,
@@ -13,13 +10,13 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 #[derive(Clone, Debug)]
 pub struct Scalar {
     pub time: i64,
+    pub color: Option<[u8; 4]>,
     pub value: f64,
 }
 
 /// A plot scene, with everything needed to render it.
 #[derive(Default, Debug)]
 pub struct ScenePlot {
-    pub legends: Legends,
     pub plots: HashMap<ObjPath, Vec<Scalar>>,
 }
 
@@ -52,16 +49,17 @@ impl ScenePlot {
                 obj_store,
                 &FieldName::from("scalar"),
                 &TimeQuery::EVERYTHING, // always sticky!
-                ("_visible", "legend"),
+                ("_visible", "color"),
                 |_instance_index: Option<&IndexHash>,
                  time: i64,
                  _msg_id: &MsgId,
                  value: &f64,
                  visible: Option<&bool>,
-                 legend: Option<&ObjPath>| {
+                 color: Option<&[u8; 4]>| {
                     if *visible.unwrap_or(&true) {
                         batch.push(Scalar {
                             time,
+                            color: color.copied(),
                             value: *value,
                         });
                     }
@@ -79,7 +77,7 @@ impl ScenePlot {
 
 impl ScenePlot {
     pub fn is_empty(&self) -> bool {
-        let Self { legends: _, plots } = self;
+        let Self { plots } = self;
 
         plots.is_empty()
     }
