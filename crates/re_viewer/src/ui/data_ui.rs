@@ -558,7 +558,7 @@ fn ui_mat3(ui: &mut egui::Ui, mat: &[[f32; 3]; 3]) {
 }
 
 pub(crate) fn ui_path_op(
-    ctx: &mut ViewerContext<'_>,
+    _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     path_op: &PathOp,
 ) -> egui::Response {
