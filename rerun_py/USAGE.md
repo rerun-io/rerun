@@ -5,7 +5,7 @@ Install instructions can be found at <https://github.com/rerun-io/rerun#readme>.
 ## Intro
 The Rerun Python SDK is a logging SDK. It lets you log rich data, such as images and point clouds. The logged data is streamed to the Rerun Viewer.
 
-To get started, start the Rerun Viewer by just typing `rerun` in a terminal. It will now wait for the Rerun Python SDK to start sending it log data.
+To get started, start the Rerun Viewer by just typing `python -m rerun_sdk` in a terminal. It will now wait for the Rerun Python SDK to start sending it log data.
 
 ## Logging
 Rerun assumes you are using `numpy` for any large chunks of data.
@@ -19,10 +19,23 @@ rerun.connect() # Connect to the separate `rerun` process.
 rerun.log_image("rgb_image", image)
 ```
 
-See more in [`examples/car/main.py`](examples/car/main.py).
+Check out the [`examples`](/examples) to see more of how logging can be done in practice.
+
+## Timelines
+Each piece of logged data is associated with one or more timelines. By default, each log is added to the `log_time` timeline, with a timestamp assigned by the SDK. Use the _set time_ functions (`set_time_sequence`, `set_time_seconds`, `set_time_nanos`) to associate logs with other timestamps on other timelines.
+
+For example:
+```python
+for frame in read_sensor_frames():
+    rerun.set_time_sequence("frame_idx", frame.idx)
+    rerun.set_time_seconds("sensor_time", frame.timestamp)
+
+    rerun.log_points("sensor/points", frame.points)
+```
+This will add the logged points to the timelines `log_time`, `frame_idx`, and `sensor_time`. You can then choose which timeline you want to organize your data along in the timeline view in the bottom of the Rerun Viewer.
 
 ## Paths
-The first argument to each log function is an _object path_. Each time you log to a specific object path you will update the object, i.e. log a new instance of it along the timeline. Each logging to a path bust be of the same type (you cannot log an image to the same path as a point cloud).
+The first argument to each log function is an _object path_. Each time you log to a specific object path you will update the object, i.e. log a new instance of it along the timeline. Each logging to a path must be of the same type (you cannot log an image to the same path as a point cloud).
 
 A path can look like this: `world/camera/image/detection/#42/bbox`. Each component (between the slashes) can either be:
 
@@ -39,7 +52,7 @@ Example usage:
 ``` python
 for cam in cameras:
     for i, detection in enumerate(cam.detect()):
-        rerun.log_rect(f'camera/"{cam.id}"/detection/#{i}', detection.top_left, detection.bottom_right)
+        rerun.log_rect(f'camera/"{cam.id}"/detection/#{i}', detection.bbox)
 ```
 
 ## Transform hierarchy
@@ -71,7 +84,7 @@ rerun.log_image("world/camera/#0/image", …)
 rerun.log_rect("world/camera/#0/image/detection", …)
 ```
 
-Rerun will from this understand out how the `world` space and the two image spaces (`world/camera/#0/image` and `world/camera/#1/image`) relate to each other, allowing you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space. In the future Rerun will also be able to transform objects between spaces, so that you can view 3D objects projected onto a 2D space, for instance.
+Rerun will from this understand how the `world` space and the two image spaces (`world/camera/#0/image` and `world/camera/#1/image`) relate to each other, which allows you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space. In the future Rerun will also be able to transform objects between spaces, so that you can view 3D objects projected onto a 2D space, for instance.
 
 Note that none of the names in the path are special.
 
@@ -79,8 +92,8 @@ Note that none of the names in the path are special.
 and `rerun.log_rigid3("foo/bar/baz", …)` is logging the relationship between the parent `bar` and the child `baz`.
 
 ### Unknown transforms
-Sometimes you have a child space that do not have an identity transform to the parent, but you don't know the transform, or don't know it yet.
-You can use `rerun.log_unknown_transform("parent/child")` to indicate to that `child` is separate from `parent`. You can later replace this unknown transform with a known once, using e.g. `log_rigid`.
+Sometimes you have a child space that doesn't have an identity transform to the parent, but you don't know the transform, or don't know it yet.
+You can use `rerun.log_unknown_transform("parent/child")` to indicate to that `child` is separate from `parent`. You can later replace this unknown transform with a known one, using e.g. `log_rigid`.
 
 
 ## View coordinates
@@ -90,9 +103,9 @@ Each object defines its own coordinate system, called a space.
 By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
 This is for instance useful for camera objects ("what axis is forward?").
 
-For camera spaces this can be for instance `rerun.log_view_coordinates("world/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3` also takes this as an argument. Logging view coordinates helps Rerun figure out how to interpret your logged cameras.
+For camera spaces this could for instance be `rerun.log_view_coordinates("world/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3` also takes this as an argument. Logging view coordinates helps Rerun figure out how to interpret your logged camera.
 
-For 3D world spaces it can be useful to log what the up-axis is in your coordinate system. This will help Rerun setup a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rerun.log_view_coordinates("world", up="+Z", timeless=True)`.
+For 3D world spaces it can be useful to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rerun.log_view_coordinates("world", up="+Z", timeless=True)`.
 
 
 ## Timeless data
