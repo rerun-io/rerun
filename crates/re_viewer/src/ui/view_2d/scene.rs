@@ -3,13 +3,13 @@ use std::sync::Arc;
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
     query::{visit_type_data_2, visit_type_data_3, visit_type_data_4},
-    FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectTreeProperties,
+    FieldName, InstanceIdHash, ObjPath, ObjectTreeProperties,
 };
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{ui::SceneQuery, ViewerContext};
 
-use super::{ClassDescription, ClassDescriptionMap, Legend, Legends, View2DState};
+use super::{ClassDescription, ClassDescriptionMap, Legend, Legends};
 
 // ---
 
@@ -29,6 +29,9 @@ pub struct Image {
     pub paint_props: ObjectPaintProperties,
     /// A thing that provides additional semantic context for your dtype.
     pub legend: Legend,
+
+    /// If true, draw a frame around it
+    pub is_hovered: bool,
 }
 
 pub struct Box2D {
@@ -92,21 +95,14 @@ impl Scene2D {
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
-        state: &View2DState,
     ) {
         crate::profile_function!();
 
-        // NOTE: 1 frame delay here!
-        let hovered = state
-            .hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, InstanceId::hash);
-
         self.load_legends(ctx, obj_tree_props, query); // before images!
-        self.load_images(ctx, obj_tree_props, query, hovered);
-        self.load_boxes(ctx, obj_tree_props, query, hovered);
-        self.load_points(ctx, obj_tree_props, query, hovered);
-        self.load_line_segments(ctx, obj_tree_props, query, hovered);
+        self.load_images(ctx, obj_tree_props, query);
+        self.load_boxes(ctx, obj_tree_props, query);
+        self.load_points(ctx, obj_tree_props, query);
+        self.load_line_segments(ctx, obj_tree_props, query);
     }
 
     fn load_legends(
@@ -155,7 +151,6 @@ impl Scene2D {
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
-        hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
 
@@ -184,6 +179,14 @@ impl Scene2D {
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
+                        let paint_props = paint_properties(
+                            ctx,
+                            obj_path,
+                            color.copied(),
+                            DefaultColor::White,
+                            &None,
+                        );
+
                         let image = Image {
                             msg_id: *msg_id,
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -193,15 +196,8 @@ impl Scene2D {
                             tensor: tensor.clone(), // shallow
                             meter: meter.copied(),
                             legend: self.legends.find(legend),
-                            paint_props: paint_properties(
-                                ctx,
-                                &hovered,
-                                obj_path,
-                                instance_index,
-                                color.copied(),
-                                DefaultColor::White,
-                                &None,
-                            ),
+                            paint_props,
+                            is_hovered: false, // Will be filled in later
                         };
 
                         batch.push(image);
@@ -224,7 +220,6 @@ impl Scene2D {
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
-        hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
 
@@ -255,9 +250,7 @@ impl Scene2D {
 
                         let paint_props = paint_properties(
                             ctx,
-                            &hovered,
                             obj_path,
-                            instance_index,
                             color.copied(),
                             DefaultColor::Random,
                             &stroke_width,
@@ -291,7 +284,6 @@ impl Scene2D {
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
-        hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
 
@@ -320,9 +312,7 @@ impl Scene2D {
 
                         let paint_props = paint_properties(
                             ctx,
-                            &hovered,
                             obj_path,
-                            instance_index,
                             color.copied(),
                             DefaultColor::Random,
                             &None,
@@ -354,7 +344,6 @@ impl Scene2D {
         ctx: &mut ViewerContext<'_>,
         obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
-        hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
 
@@ -387,9 +376,7 @@ impl Scene2D {
 
                         let paint_props = paint_properties(
                             ctx,
-                            &hovered,
                             obj_path,
-                            instance_index,
                             color.copied(),
                             DefaultColor::Random,
                             &None,
@@ -437,19 +424,8 @@ impl Scene2D {
 // ---
 
 pub struct ObjectPaintProperties {
-    pub is_hovered: bool,
     pub bg_stroke: Stroke,
     pub fg_stroke: Stroke,
-}
-
-impl ObjectPaintProperties {
-    pub fn boost_radius_on_hover(&self, r: f32) -> f32 {
-        if self.is_hovered {
-            2.0 * r
-        } else {
-            r
-        }
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -460,15 +436,13 @@ enum DefaultColor {
 
 fn paint_properties(
     ctx: &mut ViewerContext<'_>,
-    hovered: &InstanceIdHash,
     obj_path: &ObjPath,
-    instance_index: IndexHash,
     color: Option<[u8; 4]>,
     default_color: DefaultColor,
     stroke_width: &Option<f32>,
 ) -> ObjectPaintProperties {
     let bg_color = Color32::from_black_alpha(196);
-    let color = color.map_or_else(
+    let fg_color = color.map_or_else(
         || match default_color {
             DefaultColor::White => Color32::WHITE,
             DefaultColor::Random => {
@@ -478,19 +452,11 @@ fn paint_properties(
         },
         to_egui_color,
     );
-    let is_hovered = &InstanceIdHash::from_path_and_index(obj_path, instance_index) == hovered;
-    let fg_color = if is_hovered { Color32::WHITE } else { color };
     let stroke_width = stroke_width.unwrap_or(1.5);
-    let stoke_width = if is_hovered {
-        2.0 * stroke_width
-    } else {
-        stroke_width
-    };
-    let bg_stroke = Stroke::new(stoke_width + 2.0, bg_color);
-    let fg_stroke = Stroke::new(stoke_width, fg_color);
+    let bg_stroke = Stroke::new(stroke_width + 2.0, bg_color);
+    let fg_stroke = Stroke::new(stroke_width, fg_color);
 
     ObjectPaintProperties {
-        is_hovered,
         bg_stroke,
         fg_stroke,
     }

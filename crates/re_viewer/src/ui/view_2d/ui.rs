@@ -7,7 +7,7 @@ use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use super::{Box2D, Image, LineSegments2D, Point2D, Scene2D};
+use super::{Box2D, Image, LineSegments2D, ObjectPaintProperties, Point2D, Scene2D};
 
 // ---
 
@@ -226,9 +226,13 @@ pub(crate) fn view_2d(
     ui: &mut egui::Ui,
     state: &mut View2DState,
     space: Option<&ObjPath>,
-    scene: &Scene2D,
+    mut scene: Scene2D,
 ) -> egui::Response {
     crate::profile_function!();
+
+    if let Some(hovered_instance) = &state.hovered_instance {
+        hover_effect(&mut scene, hovered_instance.hash());
+    };
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
@@ -245,13 +249,60 @@ pub(crate) fn view_2d(
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
-        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, scene)
+        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, &scene)
     });
 
     // Update the scroll area based on the computed offset
     // This handles cases of dragging/zooming the space
     state.capture_scroll(scroll_out.state.offset, available_size);
     scroll_out.inner
+}
+
+fn hover_effect(scene: &mut Scene2D, hovered: InstanceIdHash) {
+    crate::profile_function!();
+
+    let Scene2D {
+        bbox: _,
+        legends: _,
+
+        images,
+        boxes,
+        line_segments,
+        points,
+    } = scene;
+
+    for obj in images {
+        obj.is_hovered = obj.instance_hash == hovered;
+        if obj.is_hovered {
+            apply_hover_effect(&mut obj.paint_props);
+        }
+    }
+    for obj in boxes {
+        if obj.instance_hash == hovered {
+            apply_hover_effect(&mut obj.paint_props);
+        }
+    }
+    for obj in line_segments {
+        if obj.instance_hash == hovered {
+            apply_hover_effect(&mut obj.paint_props);
+        }
+    }
+    for obj in points {
+        if obj.instance_hash == hovered {
+            apply_hover_effect(&mut obj.paint_props);
+            if let Some(radius) = &mut obj.radius {
+                *radius *= 2.0;
+            }
+        }
+    }
+}
+
+fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
+    paint_props.bg_stroke.width *= 2.0;
+    paint_props.bg_stroke.color = Color32::BLACK;
+
+    paint_props.fg_stroke.width *= 2.0;
+    paint_props.fg_stroke.color = Color32::WHITE;
 }
 
 /// Create the real 2D view inside the scrollable area
@@ -314,6 +365,7 @@ fn view_2d_scrollable(
             tensor,
             meter,
             paint_props,
+            is_hovered,
             legend,
         } = img;
 
@@ -336,7 +388,7 @@ fn view_2d_scrollable(
         let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
         shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
 
-        if paint_props.is_hovered {
+        if *is_hovered {
             shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
         }
 
@@ -502,7 +554,6 @@ fn view_2d_scrollable(
         } = point;
 
         let radius = radius.unwrap_or(1.5);
-        let radius = paint_props.boost_radius_on_hover(radius);
 
         let pos_in_ui = ui_from_space.transform_pos(*pos);
         shapes.push(Shape::circle_filled(

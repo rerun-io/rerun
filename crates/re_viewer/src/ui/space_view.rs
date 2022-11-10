@@ -81,7 +81,7 @@ impl SpaceView {
                     ViewCategory::TwoD => {
                         _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
                         self.view_state
-                            .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
+                            .ui_2d(ctx, ui, &self.space_path, scene.two_d);
                     }
                     ViewCategory::ThreeD => {
                         _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
@@ -134,7 +134,7 @@ impl SpaceView {
                     }
                     ViewCategory::TwoD => {
                         self.view_state
-                            .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
+                            .ui_2d(ctx, ui, &self.space_path, scene.two_d);
                     }
                     ViewCategory::ThreeD => {
                         self.view_state.ui_3d(
@@ -188,7 +188,7 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
-        scene: &view_2d::Scene2D,
+        scene: view_2d::Scene2D,
     ) -> egui::Response {
         let response = ui
             .scope(|ui| {
