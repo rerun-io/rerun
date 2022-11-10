@@ -22,7 +22,7 @@ pub struct TensorImageView<'store, 'cache> {
     pub tensor: &'store Tensor,
 
     /// Legend used to create the view
-    pub legend: Option<&'store Legend>,
+    pub legend: &'store Option<Legend>,
 
     /// DynamicImage helper for things like zoom
     pub dynamic_img: &'cache DynamicImage,
@@ -69,7 +69,7 @@ impl ImageCache {
         &'cache mut self,
         msg_id: &MsgId,
         tensor: &'store Tensor,
-        legend: Option<&'store Legend>,
+        legend: &'store Option<Legend>,
     ) -> TensorImageView<'store, 'cache> {
         let ci = self
             .images
@@ -98,7 +98,7 @@ impl ImageCache {
         msg_id: &MsgId,
         tensor: &'store Tensor,
     ) -> TensorImageView<'store, 'cache> {
-        self.get_view_with_legend(msg_id, tensor, None)
+        self.get_view_with_legend(msg_id, tensor, &None)
     }
 
     /// Call once per frame to (potentially) flush the cache.
@@ -144,7 +144,7 @@ struct CachedImage {
 }
 
 impl CachedImage {
-    fn from_tensor(debug_name: String, tensor: &Tensor, legend: Option<&Legend>) -> Self {
+    fn from_tensor(debug_name: String, tensor: &Tensor, legend: &Option<Legend>) -> Self {
         crate::profile_function!();
         let dynamic_img = match tensor_to_dynamic_image(tensor, legend) {
             Ok(dynamic_image) => dynamic_image,
@@ -178,7 +178,7 @@ impl CachedImage {
 
 fn tensor_to_dynamic_image(
     tensor: &Tensor,
-    legend: Option<&Legend>,
+    legend: &Option<Legend>,
 ) -> anyhow::Result<DynamicImage> {
     crate::profile_function!();
     use anyhow::Context as _;

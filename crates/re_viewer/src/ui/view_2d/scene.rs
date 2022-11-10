@@ -31,7 +31,7 @@ pub struct Image {
     pub meter: Option<f32>,
     pub paint_props: ObjectPaintProperties,
     /// A thing that provides additional semantic context for your dtype.
-    pub legend: Legend,
+    pub legend: Option<Legend>,
 
     /// If true, draw a frame around it
     pub is_hovered: bool,
