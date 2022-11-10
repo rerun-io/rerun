@@ -87,7 +87,7 @@ class Detector:
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
         rgb_scaled = cv.resize(rgb, scaled_size)
-        rerun.log_image("image/scaled", rgb_scaled)
+        rerun.log_image("image/scaled/rgb", rgb_scaled)
         rerun.log_unknown_transform("image/scaled")  # Note: Haven't implemented 2D transforms yet.
 
         logging.debug("Pass image to detection network")
@@ -338,7 +338,7 @@ def track_objects(video_path: str) -> None:
             break
 
         rgb = cv.cvtColor(bgr, cv.COLOR_BGR2RGB)
-        rerun.log_image("image", rgb)
+        rerun.log_image("image/rgb", rgb)
 
         if not trackers or frame_idx % 40 == 0:
             detections = detector.detect_objects_to_track(rgb=rgb, frame_idx=frame_idx)

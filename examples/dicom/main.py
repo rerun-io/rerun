@@ -49,8 +49,7 @@ def list_dicom_files(dir: Path) -> Iterable[Path]:
                 yield Path(path) / f
 
 
-def read_and_log_dicom_dataset() -> None:
-    dicom_files = list_dicom_files(DATASET_DIR)
+def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
     voxels_volume, _ = extract_voxel_data(dicom_files)
 
     # the data is i16, but in range [0, 536].
@@ -63,12 +62,17 @@ def read_and_log_dicom_dataset() -> None:
     )
 
 
-def download_dataset() -> None:
+def ensure_dataset_downloaded() -> Iterable[Path]:
+    dicom_files = [p for p in list_dicom_files(DATASET_DIR)]
+    if dicom_files:
+        return dicom_files
     print(f"downloading dataset…")
     os.makedirs(DATASET_DIR.absolute(), exist_ok=True)
     resp = requests.get(DATASET_URL, stream=True)
     z = zipfile.ZipFile(io.BytesIO(resp.content))
     z.extractall(DATASET_DIR.absolute())
+
+    return list_dicom_files(DATASET_DIR)
 
 
 if __name__ == "__main__":
@@ -82,13 +86,9 @@ if __name__ == "__main__":
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
-    parser.add_argument("--download", action="store_true", help="Download dataset")
     args = parser.parse_args()
 
     rerun.init("dicom")
-
-    if args.download:
-        download_dataset()
 
     if args.connect:
         # Send logging data to separate `rerun` process.
@@ -96,7 +96,8 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    read_and_log_dicom_dataset()
+    dicom_files = ensure_dataset_downloaded()
+    read_and_log_dicom_dataset(dicom_files)
 
     if args.save is not None:
         rerun.save(args.save)
@@ -104,5 +105,3 @@ if __name__ == "__main__":
         pass
     elif not args.connect:
         rerun.show()
-
-    rerun.show()

@@ -67,12 +67,13 @@ def log_clock() -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(
+        description="An example visualizing an analog clock is built with Rerun Arrow3D primitives."
+    )
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
-    parser.add_argument("--download", action="store_true", help="Download dataset")
     args = parser.parse_args()
 
     rerun.init("clock")
@@ -91,5 +92,3 @@ if __name__ == "__main__":
         pass
     elif not args.connect:
         rerun.show()
-
-    rerun.show()

@@ -13,4 +13,4 @@ pub use self::legend::{
 };
 
 mod image_ui;
-pub(crate) use self::image_ui::{show_tensor, show_zoomed_image_region_tooltip};
+pub(crate) use self::image_ui::show_tensor;
