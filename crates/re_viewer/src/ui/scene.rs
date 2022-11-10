@@ -1,8 +1,9 @@
 use nohash_hasher::IntSet;
+
 use re_data_store::{LogDb, ObjPath, ObjStore, ObjectTreeProperties, TimeQuery, Timeline};
 use re_log_types::ObjectType;
 
-use super::{view_2d, view_3d, view_tensor, view_text};
+use super::{space_view::ViewCategory, view_2d, view_3d, view_tensor, view_text};
 
 // ---
 
@@ -15,12 +16,32 @@ pub struct Scene {
     pub tensor: view_tensor::SceneTensor,
 }
 
+impl Scene {
+    pub(crate) fn categories(&self) -> std::collections::BTreeSet<ViewCategory> {
+        let has_2d = !self.two_d.is_empty() && self.tensor.is_empty();
+        let has_3d = !self.three_d.is_empty();
+        let has_text = !self.text.is_empty();
+        let has_tensor = !self.tensor.is_empty();
+
+        [
+            has_2d.then_some(ViewCategory::TwoD),
+            has_3d.then_some(ViewCategory::ThreeD),
+            has_text.then_some(ViewCategory::Text),
+            has_tensor.then_some(ViewCategory::Tensor),
+        ]
+        .iter()
+        .filter_map(|cat| *cat)
+        .collect()
+    }
+}
+
 #[derive(Debug)]
 pub struct SceneQuery<'s> {
     pub obj_paths: &'s IntSet<ObjPath>,
     pub timeline: Timeline,
     pub time_query: TimeQuery<i64>,
 }
+
 impl<'s> SceneQuery<'s> {
     /// Given a list of `ObjectType`s, this will return all relevant `ObjStore`s that should be
     /// queried for datapoints.

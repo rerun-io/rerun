@@ -7,7 +7,9 @@ use super::{view_2d, view_3d, view_tensor, view_text, Scene};
 
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+)]
 pub(crate) enum ViewCategory {
     TwoD,
     #[default]
@@ -58,19 +60,8 @@ impl SpaceView {
     ) {
         crate::profile_function!();
 
-        let has_2d = !scene.two_d.is_empty() && scene.tensor.is_empty();
-        let has_3d = !scene.three_d.is_empty();
-        let has_text = !scene.text.is_empty();
-        let has_tensor = !scene.tensor.is_empty();
-        let categories = [
-            has_2d.then_some(ViewCategory::TwoD),
-            has_3d.then_some(ViewCategory::ThreeD),
-            has_text.then_some(ViewCategory::Text),
-            has_tensor.then_some(ViewCategory::Tensor),
-        ]
-        .iter()
-        .filter_map(|cat| *cat)
-        .collect::<Vec<_>>();
+        let categories = scene.categories();
+
         // Extra headroom required for the hovering controls at the top of the space view.
         let extra_headroom = {
             let frame = ctx.design_tokens.hovering_frame(ui.style());
@@ -86,35 +77,40 @@ impl SpaceView {
                 });
             }
             1 => {
-                self.selected_category = categories[0];
-                if has_2d {
-                    _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
-                    self.view_state
-                        .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
-                } else if has_3d {
-                    _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
-                    self.view_state.ui_3d(
-                        ctx,
-                        ui,
-                        &self.space_path,
-                        spaces_info,
-                        space_info,
-                        &mut scene.three_d,
-                    );
-                } else if has_tensor {
-                    ui.add_space(extra_headroom);
-                    self.view_state.ui_tensor(ui, &scene.tensor);
-                } else {
-                    assert!(has_text);
-                    ui.add_space(extra_headroom);
-                    self.view_state.ui_text(ctx, ui, &scene.text);
-                }
+                self.selected_category = *categories.iter().next().unwrap();
+
+                match self.selected_category {
+                    ViewCategory::TwoD => {
+                        _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+                        self.view_state
+                            .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
+                    }
+                    ViewCategory::ThreeD => {
+                        _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+                        self.view_state.ui_3d(
+                            ctx,
+                            ui,
+                            &self.space_path,
+                            spaces_info,
+                            space_info,
+                            &mut scene.three_d,
+                        );
+                    }
+                    ViewCategory::Tensor => {
+                        ui.add_space(extra_headroom);
+                        self.view_state.ui_tensor(ui, &scene.tensor);
+                    }
+                    ViewCategory::Text => {
+                        ui.add_space(extra_headroom);
+                        self.view_state.ui_text(ctx, ui, &scene.text);
+                    }
+                };
             }
             _ => {
                 // Show tabs to let user select which category to view
                 ui.add_space(extra_headroom);
                 if !categories.contains(&self.selected_category) {
-                    self.selected_category = categories[0];
+                    self.selected_category = *categories.iter().next().unwrap();
                 }
 
                 ui.horizontal(|ui| {
