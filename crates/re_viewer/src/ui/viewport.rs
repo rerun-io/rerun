@@ -72,7 +72,7 @@ impl ViewportBlueprint {
             };
             let scene = query.query(ctx);
             for category in scene.categories() {
-                let space_view = SpaceView::from_path(category, path.clone());
+                let space_view = SpaceView::new(&scene, category, path.clone());
                 let space_view_id = SpaceViewId::random();
                 blueprint.space_views.insert(space_view_id, space_view);
                 blueprint.visible.insert(space_view_id, true);
@@ -205,7 +205,7 @@ impl ViewportBlueprint {
                     };
                     let scene = query.query(ctx);
                     for category in scene.categories() {
-                        self.add_space_view(SpaceView::from_path(category, path.clone()));
+                        self.add_space_view(SpaceView::new(&scene, category, path.clone()));
                     }
                 }
             }
@@ -656,10 +656,15 @@ fn tree_from_space_views(
             visible.get(space_view_id).copied().unwrap_or_default()
         })
         .map(|(space_view_id, space_view)| {
+            let aspect_ratio = (space_view.category == ViewCategory::TwoD).then(|| {
+                let size = space_view.view_state.state_2d.scene_bbox_accum.size();
+                size.x / size.y
+            });
+
             SpaceMakeInfo {
                 id: *space_view_id,
                 path: space_view.space_path.clone(),
-                size2d: None, // TODO(emilk): figure out the size of spaces somehow. Each object path could have a running bbox?
+                aspect_ratio,
             }
         })
         .collect_vec();
@@ -676,12 +681,13 @@ fn tree_from_space_views(
 struct SpaceMakeInfo {
     id: SpaceViewId,
     path: ObjPath,
-    size2d: Option<egui::Vec2>,
+    /// Desired aspect ratio, if any.
+    aspect_ratio: Option<f32>,
 }
 
 impl SpaceMakeInfo {
     fn is_2d(&self) -> bool {
-        self.size2d.is_some()
+        self.aspect_ratio.is_some()
     }
 }
 
@@ -776,10 +782,9 @@ fn desired_aspect_ratio(spaces: &[SpaceMakeInfo]) -> Option<f32> {
     let mut sum = 0.0;
     let mut num = 0.0;
     for space in spaces {
-        if let Some(size) = space.size2d {
-            let aspect = size.x / size.y;
-            if aspect.is_finite() {
-                sum += aspect;
+        if let Some(aspect_ratio) = space.aspect_ratio {
+            if aspect_ratio.is_finite() {
+                sum += aspect_ratio;
                 num += 1.0;
             }
         }

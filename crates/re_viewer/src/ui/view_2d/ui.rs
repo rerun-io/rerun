@@ -22,7 +22,7 @@ pub struct View2DState {
     ///
     /// TODO(emilk): accumulate this per space once as data arrives instead.
     #[serde(skip)]
-    scene_bbox_accum: epaint::Rect,
+    pub scene_bbox_accum: epaint::Rect,
 
     /// The zoom and pan state, which is either a zoom/center or `Auto` which will fill the screen
     #[serde(skip)]

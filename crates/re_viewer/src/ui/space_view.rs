@@ -8,7 +8,16 @@ use super::{view_2d, view_3d, view_tensor, view_text};
 // ----------------------------------------------------------------------------
 
 #[derive(
-    Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    serde::Deserialize,
+    serde::Serialize,
 )]
 pub(crate) enum ViewCategory {
     TwoD,
@@ -34,11 +43,18 @@ pub(crate) struct SpaceView {
 }
 
 impl SpaceView {
-    pub fn from_path(category: ViewCategory, space_path: ObjPath) -> Self {
+    pub fn new(scene: &super::scene::Scene, category: ViewCategory, space_path: ObjPath) -> Self {
+        let mut view_state = ViewState::default();
+
+        if category == ViewCategory::TwoD {
+            // A good start:
+            view_state.state_2d.scene_bbox_accum = scene.two_d.bbox;
+        }
+
         Self {
             name: space_path.to_string(),
             space_path,
-            view_state: Default::default(),
+            view_state,
             category,
             obj_tree_properties: Default::default(),
         }
