@@ -67,7 +67,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 // ----------------------------------------------------------------------------
 
 /// A query in time.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum TimeQuery<Time> {
     /// Get the latest version of the data available at this time.
     LatestAt(Time),

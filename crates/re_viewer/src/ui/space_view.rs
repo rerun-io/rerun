@@ -27,19 +27,19 @@ pub(crate) struct SpaceView {
     pub space_path: ObjPath,
     pub view_state: ViewState,
 
-    /// In case we are a mix of 2d/3d/tensor/text, we show what?
-    pub selected_category: ViewCategory,
+    /// We only show data that match this category.
+    pub category: ViewCategory,
 
     pub obj_tree_properties: ObjectTreeProperties,
 }
 
 impl SpaceView {
-    pub fn from_path(space_path: ObjPath) -> Self {
+    pub fn from_path(category: ViewCategory, space_path: ObjPath) -> Self {
         Self {
             name: space_path.to_string(),
             space_path,
             view_state: Default::default(),
-            selected_category: Default::default(),
+            category,
             obj_tree_properties: Default::default(),
         }
     }
@@ -58,8 +58,6 @@ impl SpaceView {
     ) {
         crate::profile_function!();
 
-        let categories = scene.categories();
-
         // Extra headroom required for the hovering controls at the top of the space view.
         let extra_headroom = {
             let frame = ctx.design_tokens.hovering_frame(ui.style());
@@ -68,87 +66,32 @@ impl SpaceView {
                 + ui.spacing().item_spacing.y
         };
 
-        match categories.len() {
-            0 => {
-                ui.centered_and_justified(|ui| {
-                    ui.label("(empty)");
-                });
+        match self.category {
+            ViewCategory::TwoD => {
+                _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+                self.view_state
+                    .ui_2d(ctx, ui, &self.space_path, scene.two_d);
             }
-            1 => {
-                self.selected_category = *categories.iter().next().unwrap();
-
-                match self.selected_category {
-                    ViewCategory::TwoD => {
-                        _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
-                        self.view_state
-                            .ui_2d(ctx, ui, &self.space_path, scene.two_d);
-                    }
-                    ViewCategory::ThreeD => {
-                        _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
-                        self.view_state.ui_3d(
-                            ctx,
-                            ui,
-                            &self.space_path,
-                            spaces_info,
-                            space_info,
-                            scene.three_d,
-                        );
-                    }
-                    ViewCategory::Tensor => {
-                        ui.add_space(extra_headroom);
-                        self.view_state.ui_tensor(ui, &scene.tensor);
-                    }
-                    ViewCategory::Text => {
-                        ui.add_space(extra_headroom);
-                        self.view_state.ui_text(ctx, ui, &scene.text);
-                    }
-                };
+            ViewCategory::ThreeD => {
+                _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+                self.view_state.ui_3d(
+                    ctx,
+                    ui,
+                    &self.space_path,
+                    spaces_info,
+                    space_info,
+                    scene.three_d,
+                );
             }
-            _ => {
-                // Show tabs to let user select which category to view
+            ViewCategory::Tensor => {
                 ui.add_space(extra_headroom);
-                if !categories.contains(&self.selected_category) {
-                    self.selected_category = *categories.iter().next().unwrap();
-                }
-
-                ui.horizontal(|ui| {
-                    for category in categories {
-                        let text = match category {
-                            ViewCategory::TwoD => "2D",
-                            ViewCategory::ThreeD => "3D",
-                            ViewCategory::Tensor => "Tensor",
-                            ViewCategory::Text => "Text",
-                        };
-                        ui.selectable_value(&mut self.selected_category, category, text);
-                        // TODO(emilk): make it look like tabs
-                    }
-                });
-                ui.separator();
-
-                match self.selected_category {
-                    ViewCategory::Text => {
-                        self.view_state.ui_text(ctx, ui, &scene.text);
-                    }
-                    ViewCategory::Tensor => {
-                        self.view_state.ui_tensor(ui, &scene.tensor);
-                    }
-                    ViewCategory::TwoD => {
-                        self.view_state
-                            .ui_2d(ctx, ui, &self.space_path, scene.two_d);
-                    }
-                    ViewCategory::ThreeD => {
-                        self.view_state.ui_3d(
-                            ctx,
-                            ui,
-                            &self.space_path,
-                            spaces_info,
-                            space_info,
-                            scene.three_d,
-                        );
-                    }
-                }
+                self.view_state.ui_tensor(ui, &scene.tensor);
             }
-        }
+            ViewCategory::Text => {
+                ui.add_space(extra_headroom);
+                self.view_state.ui_text(ctx, ui, &scene.text);
+            }
+        };
     }
 }
 

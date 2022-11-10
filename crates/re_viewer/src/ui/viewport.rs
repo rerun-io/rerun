@@ -12,8 +12,7 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties};
-use re_log_types::ObjectType;
+use re_data_store::{ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, TimeQuery};
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
@@ -59,19 +58,23 @@ pub struct ViewportBlueprint {
 
 impl ViewportBlueprint {
     /// Create a default suggested blueprint using some heuristics.
-    fn new(obj_db: &ObjDb, spaces_info: &SpacesInfo) -> Self {
+    fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
-            if should_have_default_view(obj_db, space_info) {
+            let query = SceneQuery {
+                obj_paths: &space_info.objects,
+                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+                time_query: TimeQuery::LatestAt(i64::MAX),
+                obj_props: &Default::default(), // all visible
+            };
+            let scene = query.query(ctx);
+            for category in scene.categories() {
+                let space_view = SpaceView::from_path(category, path.clone());
                 let space_view_id = SpaceViewId::random();
-
-                blueprint
-                    .space_views
-                    .insert(space_view_id, SpaceView::from_path(path.clone()));
-
+                blueprint.space_views.insert(space_view_id, space_view);
                 blueprint.visible.insert(space_view_id, true);
             }
         }
@@ -170,14 +173,10 @@ impl ViewportBlueprint {
         });
     }
 
-    fn add_space_view(&mut self, path: &ObjPath) {
+    fn add_space_view(&mut self, space_view: SpaceView) {
         let space_view_id = SpaceViewId::random();
-
-        self.space_views
-            .insert(space_view_id, SpaceView::from_path(path.clone()));
-
+        self.space_views.insert(space_view_id, space_view);
         self.visible.insert(space_view_id, true);
-
         self.trees.clear(); // Reset them
     }
 
@@ -185,14 +184,24 @@ impl ViewportBlueprint {
         crate::profile_function!();
 
         if self.space_views.is_empty() {
-            *self = Self::new(&ctx.log_db.obj_db, spaces_info);
+            *self = Self::new(ctx, spaces_info);
         } else {
+            crate::profile_scope!("look for missing space views");
+
             // Check if the blueprint is missing a space,
             // maybe one that has been added by new data:
             for (path, space_info) in &spaces_info.spaces {
-                if should_have_default_view(&ctx.log_db.obj_db, space_info) && !self.has_space(path)
-                {
-                    self.add_space_view(path);
+                if !self.has_space(path) {
+                    let query = SceneQuery {
+                        obj_paths: &space_info.objects,
+                        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+                        time_query: TimeQuery::LatestAt(i64::MAX),
+                        obj_props: &Default::default(), // all visible
+                    };
+                    let scene = query.query(ctx);
+                    for category in scene.categories() {
+                        self.add_space_view(SpaceView::from_path(category, path.clone()));
+                    }
                 }
             }
         }
@@ -273,21 +282,6 @@ impl ViewportBlueprint {
                 .show_inside(ui, &mut tab_viewer);
         }
     }
-}
-
-/// Is this space worthy of its on space view by default?
-fn should_have_default_view(obj_db: &ObjDb, space_info: &SpaceInfo) -> bool {
-    // As long as some object in the space needs a default view, return true
-
-    // Make sure there is least one object type that is NOT:
-    // - None: probably a transform
-    // - ClassDescription: doesn't have a view yet
-    space_info.objects.iter().any(|obj| {
-        !matches!(
-            obj_db.types.get(obj.obj_type_path()),
-            None | Some(ObjectType::ClassDescription)
-        )
-    })
 }
 
 fn show_obj_tree(
@@ -635,7 +629,7 @@ impl Blueprint {
 
                     ui.vertical_centered(|ui| {
                         if ui.button("Reset space views").clicked() {
-                            self.viewport = ViewportBlueprint::new(&ctx.log_db.obj_db, spaces_info);
+                            self.viewport = ViewportBlueprint::new(ctx, spaces_info);
                         }
                     });
 
