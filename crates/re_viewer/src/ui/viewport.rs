@@ -497,20 +497,19 @@ fn space_view_ui(
 
     crate::profile_function!();
 
-    let obj_tree_props = &space_view.obj_tree_properties;
-
     let mut scene = Scene::default();
     {
         let query = SceneQuery {
             obj_paths: &space_info.objects,
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             time_query,
+            obj_props: &space_view.obj_tree_properties.projected,
         };
 
-        scene.two_d.load_objects(ctx, obj_tree_props, &query);
-        scene.three_d.load_objects(ctx, obj_tree_props, &query);
-        scene.text.load_objects(ctx, obj_tree_props, &query);
-        scene.tensor.load_objects(ctx, obj_tree_props, &query);
+        scene.two_d.load_objects(ctx, &query);
+        scene.three_d.load_objects(ctx, &query);
+        scene.text.load_objects(ctx, &query);
+        scene.tensor.load_objects(ctx, &query);
     }
 
     space_view.scene_ui(ctx, ui, spaces_info, space_info, scene);

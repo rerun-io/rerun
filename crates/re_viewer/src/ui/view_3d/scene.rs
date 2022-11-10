@@ -5,7 +5,7 @@ use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
 use re_data_store::query::{visit_type_data_2, visit_type_data_3, visit_type_data_4};
-use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectTreeProperties};
+use re_data_store::{FieldName, InstanceIdHash, ObjPath};
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
@@ -139,12 +139,7 @@ pub struct Scene3D {
 
 impl Scene3D {
     /// Loads all 3D objects into the scene according to the given query.
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         // hack because three-d handles colors wrong. TODO(emilk): fix three-d
@@ -167,24 +162,23 @@ impl Scene3D {
             [r, g, b, a]
         };
 
-        self.load_points(ctx, obj_tree_props, query, object_color);
-        self.load_boxes(ctx, obj_tree_props, query, object_color);
-        self.load_segments(ctx, obj_tree_props, query, object_color);
-        self.load_arrows(ctx, obj_tree_props, query, object_color);
-        self.load_meshes(ctx, obj_tree_props, query);
+        self.load_points(ctx, query, object_color);
+        self.load_boxes(ctx, query, object_color);
+        self.load_segments(ctx, query, object_color);
+        self.load_arrows(ctx, query, object_color);
+        self.load_meshes(ctx, query);
     }
 
     fn load_points(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
         mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
     ) {
         crate::profile_function!();
 
         let points = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Point3D])
+            .iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_3(
@@ -224,14 +218,13 @@ impl Scene3D {
     fn load_boxes(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
         mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
     ) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, obj_store) in
-            query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Box3D])
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Box3D])
         {
             visit_type_data_4(
                 obj_store,
@@ -270,7 +263,6 @@ impl Scene3D {
     fn load_segments(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
         mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
     ) {
@@ -279,7 +271,6 @@ impl Scene3D {
         let segments = query
             .iter_object_stores(
                 ctx.log_db,
-                obj_tree_props,
                 &[ObjectType::Path3D, ObjectType::LineSegments3D],
             )
             .flat_map(|(obj_type, obj_path, obj_store)| {
@@ -339,14 +330,13 @@ impl Scene3D {
     fn load_arrows(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
         mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
     ) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, obj_store) in
-            query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Arrow3D])
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Arrow3D])
         {
             visit_type_data_4(
                 obj_store,
@@ -384,16 +374,11 @@ impl Scene3D {
         }
     }
 
-    fn load_meshes(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_meshes(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let meshes = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Mesh3D])
+            .iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_2(

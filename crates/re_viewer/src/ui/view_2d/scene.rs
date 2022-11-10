@@ -3,7 +3,7 @@ use std::sync::Arc;
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
     query::{visit_type_data_2, visit_type_data_3, visit_type_data_4},
-    FieldName, InstanceIdHash, ObjPath, ObjectTreeProperties,
+    FieldName, InstanceIdHash, ObjPath,
 };
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
@@ -90,31 +90,21 @@ impl Scene2D {
     ///
     /// In addition to the query, we also pass in the 2D state from last frame, so that we can
     /// compute custom paint properties for hovered items.
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        self.load_legends(ctx, obj_tree_props, query); // before images!
-        self.load_images(ctx, obj_tree_props, query);
-        self.load_boxes(ctx, obj_tree_props, query);
-        self.load_points(ctx, obj_tree_props, query);
-        self.load_line_segments(ctx, obj_tree_props, query);
+        self.load_legends(ctx, query); // before images!
+        self.load_images(ctx, query);
+        self.load_boxes(ctx, query);
+        self.load_points(ctx, query);
+        self.load_line_segments(ctx, query);
     }
 
-    fn load_legends(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_legends(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, obj_store) in
-            query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::ClassDescription])
+            query.iter_object_stores(ctx.log_db, &[ObjectType::ClassDescription])
         {
             visit_type_data_2(
                 obj_store,
@@ -146,16 +136,11 @@ impl Scene2D {
         }
     }
 
-    fn load_images(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_images(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let images = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
+            .iter_object_stores(ctx.log_db, &[ObjectType::Image])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_4(
@@ -215,16 +200,11 @@ impl Scene2D {
         }
     }
 
-    fn load_boxes(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_boxes(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let boxes = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::BBox2D])
+            .iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_4(
@@ -279,16 +259,11 @@ impl Scene2D {
         }
     }
 
-    fn load_points(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_points(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let points = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Point2D])
+            .iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_3(
@@ -339,16 +314,11 @@ impl Scene2D {
         }
     }
 
-    fn load_line_segments(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_line_segments(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let segments = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::LineSegments2D])
+            .iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_3(
