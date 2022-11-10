@@ -628,7 +628,7 @@ fn log_scalar(
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Scalar);
 
-    let time_point = time(false); // TODO
+    let time_point = time(false);
 
     sdk.send_data(
         &time_point,
