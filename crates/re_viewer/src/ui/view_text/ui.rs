@@ -1,5 +1,5 @@
 use crate::ViewerContext;
-use egui::{Color32, RichText};
+use egui::{Color32, NumExt as _, RichText};
 use re_log_types::{LogMsg, TimePoint};
 
 use super::{SceneText, TextEntry};
@@ -34,15 +34,14 @@ pub(crate) fn view_text(
         });
 
     // Did the time cursor move since last time?
-    // - If it did, time to autoscroll approriately.
+    // - If it did, time to autoscroll appropriately.
     // - Otherwise, let the user scroll around freely!
     let time_cursor_moved = state.latest_time != time;
     let scroll_to_row = time_cursor_moved.then(|| {
         crate::profile_scope!("TextEntryState - search scroll time");
-        let index = scene
+        scene
             .text_entries
-            .partition_point(|entry| entry.time < time);
-        usize::min(index, index.saturating_sub(1))
+            .partition_point(|entry| entry.time < time)
     });
 
     state.latest_time = time;
@@ -89,8 +88,13 @@ fn show_table(
 ) {
     use egui_extras::Size;
     const ROW_HEIGHT: f32 = 18.0;
+    const HEADER_HEIGHT: f32 = 20.0;
 
-    let spacing_y = ui.spacing().item_spacing.y;
+    let max_content_height = ui.available_height() - HEADER_HEIGHT;
+    let item_spacing = ui.spacing().item_spacing;
+
+    let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
+    let current_time = ctx.rec_cfg.time_ctrl.time().map(|tr| tr.floor());
 
     let mut builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
@@ -98,34 +102,46 @@ fn show_table(
         .scroll(true);
 
     if let Some(index) = scroll_to_row {
-        let row_height_full = ROW_HEIGHT + spacing_y;
+        let row_height_full = ROW_HEIGHT + item_spacing.y;
         let scroll_to_offset = index as f32 * row_height_full;
+
+        // Scroll to center:
+        let scroll_to_offset = scroll_to_offset - max_content_height / 2.0;
+
+        // Don't over-scroll:
+        let scroll_to_offset = scroll_to_offset.clamp(
+            0.0,
+            (text_entries.len() as f32 * row_height_full - max_content_height).at_least(0.0),
+        );
+
         builder = builder.vertical_scroll_offset(scroll_to_offset);
     }
+
+    let mut current_time_y = None;
 
     builder
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(
-            Size::initial(180.0).at_least(100.0),
+            Size::initial(140.0).at_least(50.0), // timelines
             ctx.log_db.time_points.0.len(),
         ) // time(s)
-        .column(Size::initial(120.0).at_least(100.0)) // path
-        .column(Size::initial(60.0).at_least(60.0)) // level
+        .column(Size::initial(120.0).at_least(50.0)) // path
+        .column(Size::initial(50.0).at_least(50.0)) // level
         .column(Size::remainder().at_least(200.0)) // body
-        .header(20.0, |mut header| {
+        .header(HEADER_HEIGHT, |mut header| {
             for timeline in ctx.log_db.time_points.0.keys() {
                 header.col(|ui| {
-                    ui.heading(timeline.name().as_str());
+                    ctx.timeline_button(ui, timeline);
                 });
             }
             header.col(|ui| {
-                ui.heading("Path");
+                ui.strong("Path");
             });
             header.col(|ui| {
-                ui.heading("Level");
+                ui.strong("Level");
             });
             header.col(|ui| {
-                ui.heading("Body");
+                ui.strong("Body");
             });
         })
         .body(|body| {
@@ -150,8 +166,17 @@ fn show_table(
                 // time(s)
                 for timeline in ctx.log_db.time_points.0.keys() {
                     row.col(|ui| {
-                        if let Some(value) = time_point.0.get(timeline) {
-                            ctx.time_button(ui, timeline, *value);
+                        if let Some(value) = time_point.0.get(timeline).copied() {
+                            if let Some(current_time) = current_time {
+                                if current_time_y.is_none()
+                                    && timeline == &current_timeline
+                                    && value >= current_time
+                                {
+                                    current_time_y = Some(ui.max_rect().top());
+                                }
+                            }
+
+                            ctx.time_button(ui, timeline, value);
                         }
                     });
                 }
@@ -181,6 +206,15 @@ fn show_table(
                 });
             });
         });
+
+    if let Some(current_time_y) = current_time_y {
+        // Show that the current time is here:
+        ui.painter().hline(
+            ui.max_rect().x_range(),
+            current_time_y,
+            (1.0, Color32::WHITE),
+        );
+    }
 }
 
 fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
