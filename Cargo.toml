@@ -24,12 +24,12 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-09 - only show tooltips when mouse is still
-eframe = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
-egui = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
+# 2022-11-10 - puffin profiling of egui-wgpu
+eframe = { git = "https://github.com/emilk/egui", rev = "e225c6b8d09b80b99ca45e11e90d4bb37c42393f" }
+egui = { git = "https://github.com/emilk/egui", rev = "e225c6b8d09b80b99ca45e11e90d4bb37c42393f" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "e225c6b8d09b80b99ca45e11e90d4bb37c42393f" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "e225c6b8d09b80b99ca45e11e90d4bb37c42393f" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "e225c6b8d09b80b99ca45e11e90d4bb37c42393f" }
 
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }

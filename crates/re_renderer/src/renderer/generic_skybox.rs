@@ -49,6 +49,8 @@ impl Renderer for GenericSkybox {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
+        crate::profile_function!();
+
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
@@ -106,6 +108,8 @@ impl Renderer for GenericSkybox {
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &GenericSkyboxDrawable,
     ) -> anyhow::Result<()> {
+        crate::profile_function!();
+
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 
         pass.set_pipeline(&pipeline.pipeline);

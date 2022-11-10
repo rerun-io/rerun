@@ -105,6 +105,8 @@ impl ViewBuilder {
         queue: &wgpu::Queue,
         config: &TargetConfiguration,
     ) -> anyhow::Result<&mut Self> {
+        crate::profile_function!();
+
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
         let hdr_render_target_desc = TextureDesc {
             label: "hdr rendertarget msaa".into(),
@@ -232,6 +234,8 @@ impl ViewBuilder {
         &mut self,
         draw_data: &D,
     ) -> &mut Self {
+        crate::profile_function!();
+
         let draw_data = draw_data.clone();
 
         self.queued_draws.push(QueuedDraw {
@@ -254,6 +258,8 @@ impl ViewBuilder {
         ctx: &RenderContext,
         encoder: &mut wgpu::CommandEncoder,
     ) -> anyhow::Result<()> {
+        crate::profile_function!();
+
         let setup = self
             .setup
             .as_ref()
@@ -326,6 +332,8 @@ impl ViewBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
     ) -> anyhow::Result<()> {
+        crate::profile_function!();
+
         let setup = self
             .setup
             .context("ViewBuilder::setup_view wasn't called yet")?;

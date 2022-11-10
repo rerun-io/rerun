@@ -140,16 +140,24 @@ impl<'a> ViewerContext<'a> {
         timeline: &Timeline,
         value: TimeInt,
     ) -> egui::Response {
-        let is_selected = self
-            .rec_cfg
-            .time_ctrl
-            .is_time_selected(timeline, value.into());
+        let is_selected = self.rec_cfg.time_ctrl.is_time_selected(timeline, value);
 
         let response = ui.selectable_label(is_selected, timeline.typ().format(value));
         if response.clicked() {
             self.rec_cfg
                 .time_ctrl
                 .set_timeline_and_time(*timeline, value);
+            self.rec_cfg.time_ctrl.pause();
+        }
+        response
+    }
+
+    pub fn timeline_button(&mut self, ui: &mut egui::Ui, timeline: &Timeline) -> egui::Response {
+        let is_selected = self.rec_cfg.time_ctrl.timeline() == timeline;
+
+        let response = ui.selectable_label(is_selected, timeline.name().as_str());
+        if response.clicked() {
+            self.rec_cfg.time_ctrl.set_timeline(*timeline);
             self.rec_cfg.time_ctrl.pause();
         }
         response

@@ -494,21 +494,24 @@ fn paint_view(
         //                  Once we can do that, this awful clone is no longer needed as we can acquire gpu data directly
         // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
         let mut mesh_instances = Vec::new();
-        for mesh in &scene.meshes {
-            let (scale, rotation, translation) =
-                mesh.world_from_mesh.to_scale_rotation_translation();
-            let base_transform = macaw::Conformal3::from_scale_rotation_translation(
-                re_renderer::importer::to_uniform_scale(scale),
-                rotation,
-                translation,
-            );
-            mesh_instances.extend(mesh.cpu_mesh.mesh_instances.iter().map(|instance| {
-                MeshInstance {
-                    mesh: instance.mesh,
-                    world_from_mesh: base_transform * instance.world_from_mesh,
-                    additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
-                }
-            }));
+        {
+            crate::profile_scope!("meshes");
+            for mesh in &scene.meshes {
+                let (scale, rotation, translation) =
+                    mesh.world_from_mesh.to_scale_rotation_translation();
+                let base_transform = macaw::Conformal3::from_scale_rotation_translation(
+                    re_renderer::importer::to_uniform_scale(scale),
+                    rotation,
+                    translation,
+                );
+                mesh_instances.extend(mesh.cpu_mesh.mesh_instances.iter().map(|instance| {
+                    MeshInstance {
+                        mesh: instance.mesh,
+                        world_from_mesh: base_transform * instance.world_from_mesh,
+                        additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
+                    }
+                }));
+            }
         }
 
         egui::PaintCallback {
@@ -518,6 +521,7 @@ fn paint_view(
                     // TODO(andreas): The only thing that should happen inside this callback is
                     // passing a previously created commandbuffer out!
                     .prepare(move |device, queue, _, paint_callback_resources| {
+                        crate::profile_scope!("prepare");
                         let ctx: &mut RenderContext = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
 
@@ -570,6 +574,7 @@ fn paint_view(
                         vec![encoder.finish()]
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
+                        crate::profile_scope!("paint");
                         let ctx = paint_callback_resources.get().unwrap();
                         let view_builder = view_builder_draw.write().take();
                         view_builder.unwrap().composite(ctx, render_pass).unwrap();

@@ -74,6 +74,7 @@ impl SceneText {
             });
 
         self.text_entries.extend(text_entries);
+        self.text_entries.sort_by_key(|entry| entry.time);
     }
 }
 
