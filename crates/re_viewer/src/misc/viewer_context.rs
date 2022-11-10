@@ -140,10 +140,7 @@ impl<'a> ViewerContext<'a> {
         timeline: &Timeline,
         value: TimeInt,
     ) -> egui::Response {
-        let is_selected = self
-            .rec_cfg
-            .time_ctrl
-            .is_time_selected(timeline, value.into());
+        let is_selected = self.rec_cfg.time_ctrl.is_time_selected(timeline, value);
 
         let response = ui.selectable_label(is_selected, timeline.typ().format(value));
         if response.clicked() {
