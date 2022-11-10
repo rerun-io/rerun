@@ -1,6 +1,9 @@
 use nohash_hasher::IntSet;
 
-use re_data_store::{LogDb, ObjPath, ObjStore, ObjectsProperties, TimeQuery, Timeline};
+use re_data_store::{
+    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectTreeProperties, ObjectsProperties,
+    TimeQuery, Timeline,
+};
 use re_log_types::ObjectType;
 
 use super::{space_view::ViewCategory, view_2d, view_3d, view_tensor, view_text};
@@ -92,5 +95,56 @@ impl<'s> SceneQuery<'s> {
                             .flatten()
                     })
             })
+    }
+
+    /// Given a list of `FieldName`s, this will return all relevant `ObjStore`s that contain
+    /// the relevant fields.
+    ///
+    /// An `ObjStore` is considered relevant if it contains at least one of the fields we are
+    /// lookign for and its object path is a prefix of one of the visible object paths in question
+    pub(crate) fn iter_parent_meta_field<'a>(
+        &'a self,
+        log_db: &'a LogDb,
+        obj_tree_props: &'a ObjectTreeProperties,
+        field_name: &'a FieldName,
+    ) -> impl Iterator<Item = (ObjPath, &FieldStore<i64>)> + 'a {
+        // TODO: Seems like there should be a better way to do this
+        let mut visible_prefixes = IntSet::<ObjPath>::default();
+        for obj_path in self
+            .obj_paths
+            .iter()
+            .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
+        {
+            let mut next_parent = Some(obj_path.clone());
+            while let Some(parent) = next_parent {
+                visible_prefixes.insert(parent.clone());
+                next_parent = parent.parent();
+            }
+        }
+        // For the appropriate timeline store...
+        log_db
+            .obj_db
+            .store
+            .get(&self.timeline)
+            .into_iter()
+            .flat_map(|timeline_store| {
+                // ...and for all visible object prefix-paths within that timeline store...
+                visible_prefixes
+                    .iter()
+                    .filter_map(|obj_path| {
+                        // Get the object store if it exists
+                        timeline_store
+                            .get(obj_path)
+                            .map(|obj_store| (obj_path, obj_store))
+                    })
+                    .filter_map(|(obj_path, obj_store)| {
+                        // Get the field store if it exists
+                        obj_store
+                            .get(field_name)
+                            .map(|field_store| (obj_path.clone(), field_store))
+                    })
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
