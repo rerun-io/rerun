@@ -20,6 +20,7 @@ puffin = [
   "dep:puffin_http",
   "eframe/puffin",
   "re_log_types/puffin",
+  "re_renderer?/puffin",
 ]
 
 #! #### Rendering backends

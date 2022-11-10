@@ -183,10 +183,9 @@ impl Scene3D {
     ) {
         crate::profile_function!();
 
-        let points = query
+        query
             .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Point3D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
-                let mut batch = Vec::new();
+            .for_each(|(_obj_type, obj_path, obj_store)| {
                 visit_type_data_3(
                     obj_store,
                     &FieldName::from("pos"),
@@ -207,7 +206,7 @@ impl Scene3D {
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        batch.push(Point3D {
+                        self.points.push(Point3D {
                             instance_id_hash,
                             pos: Vec3::from_slice(pos),
                             radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
@@ -215,10 +214,7 @@ impl Scene3D {
                         });
                     },
                 );
-                batch
             });
-
-        self.points.extend(points);
     }
 
     fn load_boxes(
@@ -845,6 +841,7 @@ impl Scene3D {
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     #[cfg(feature = "wgpu")]
     pub fn line_strips(&self, show_origin_axis: bool) -> Vec<LineStrip> {
+        crate::profile_function!();
         let mut line_strips = Vec::with_capacity(self.line_segments.len());
         for segments in &self.line_segments {
             let mut current_strip = LineStrip {
@@ -906,6 +903,7 @@ impl Scene3D {
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     #[cfg(feature = "wgpu")]
     pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
+        crate::profile_function!();
         self.points
             .iter()
             .map(|point| PointCloudPoint {

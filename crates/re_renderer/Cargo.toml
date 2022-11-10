@@ -23,7 +23,7 @@ bytemuck = { version = "1.12", features = ["derive"] }
 clean-path = "0.2"
 glam = { version = "0.20", features = [
   "bytemuck",
-] } # can't upgrade until macaw gets a new version using glam 0.21
+] } # can't upgrade glam until macaw gets a new version using glam 0.21
 half = { version = "2.1", features = ["bytemuck"] }
 itertools = "0.10"
 macaw = "0.17.2"

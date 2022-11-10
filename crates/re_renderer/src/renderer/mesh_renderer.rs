@@ -103,6 +103,8 @@ impl MeshDrawable {
         queue: &wgpu::Queue,
         instances: &[MeshInstance],
     ) -> anyhow::Result<Self> {
+        crate::profile_function!();
+
         let _mesh_renderer = ctx.renderers.get_or_create::<_, MeshRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
@@ -188,6 +190,8 @@ impl Renderer for MeshRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
+        crate::profile_function!();
+
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
@@ -268,6 +272,8 @@ impl Renderer for MeshRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
+        crate::profile_function!();
+
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         pass.set_pipeline(&pipeline.pipeline);
 
