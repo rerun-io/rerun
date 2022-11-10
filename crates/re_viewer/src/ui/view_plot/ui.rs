@@ -52,6 +52,8 @@ pub(crate) fn view_plot(
     // Does this tie in with Jeremy's work on annotation contexts?
     //
     // Or should it all be handled by blueprints somehow..? Or both?!
+    //
+    // - Label of a line is a good example of something that shouldn't be derived from points'
 
     let tq = ctx.rec_cfg.time_ctrl.time_query().unwrap();
 

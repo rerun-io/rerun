@@ -12,7 +12,6 @@ Run:
 
 import argparse
 import random
-
 from math import cos, pi, sin, tau
 
 import rerun_sdk as rerun
@@ -23,6 +22,7 @@ def clamp(n, smallest, largest):
 
 
 def log_parabola() -> None:
+    stick = True
     for t in range(0, 1000, 10):
         rerun.set_time_sequence("frame_nr", t)
 
@@ -36,18 +36,21 @@ def log_parabola() -> None:
         elif f_of_t > 10.0:
             color = [0, 255, 0]
 
-        rerun.log_scalar("parabola", f_of_t, label="f(t) = (t * 0.01 - 3)³ + 1", radius=radius, color=color)
+        rerun.log_scalar(
+            "parabola", f_of_t, label="f(t) = (t * 0.01 - 3)³ + 1", radius=radius, color=color, stick=stick
+        )
 
 
 def log_trig() -> None:
+    stick = True
     for t in range(0, int(tau * 2 * 100.0)):
         rerun.set_time_sequence("frame_nr", t)
 
         sin_of_t = sin(float(t) / 100.0)
-        rerun.log_scalar("trig/sin", sin_of_t, label="sin(0.01 * t)", color=[255, 0, 0])
+        rerun.log_scalar("trig/sin", sin_of_t, label="sin(0.01 * t)", color=[255, 0, 0], stick=stick)
 
         cos_of_t = cos(float(t) / 100.0)
-        rerun.log_scalar("trig/cos", cos_of_t, label="cos(0.01 * t)", color=[0, 255, 0])
+        rerun.log_scalar("trig/cos", cos_of_t, label="cos(0.01 * t)", color=[0, 255, 0], stick=stick)
 
 
 # TODO: make this one not sticky!

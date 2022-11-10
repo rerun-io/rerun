@@ -1,7 +1,8 @@
 use crate::{ui::SceneQuery, ViewerContext};
 use ahash::HashMap;
 use re_data_store::{
-    query::visit_type_data_4, FieldName, ObjPath, ObjectTreeProperties, TimeQuery,
+    query::{visit_type_data_4, visit_type_data_5},
+    FieldName, ObjPath, ObjectTreeProperties, TimeQuery,
 };
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
@@ -19,14 +20,15 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 //
 // TODO:
 // - point-level props
-//   - label, color, radius
+//   - label, color, radius, stick
 //   -> read as-is from the Scalar object
 //   -> missing ones are defaulted:
 //      - label: None
 //      - color: derived from obj_path hash
 //      - radius: 1.0
+//      - stick: false
 // - line-level props
-//   - label, color, width, kind (e.g. enum{scatter, line})
+//   - label, color, width, stick, kind (e.g. enum{scatter, line})
 //   -> read as-is from the legend object associated with that obj_path (future PR?)
 //   -> otherwise the missing ones are defaulted:
 //      - label: obj_path
@@ -48,13 +50,35 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 //   -> in the future, those should be modifiable at run-time from the blueprint UI
 
 #[derive(Clone, Debug)]
+pub struct PlotPointAttrs {
+    pub label: Option<String>, // TODO: yeah we need an Arc in the storage layer
+    pub color: [u8; 4],        // TODO: make the Color32 PR
+    pub radius: f32,
+    pub stick: bool,
+}
+impl PartialEq for PlotPointAttrs {
+    fn eq(&self, rhs: &Self) -> bool {
+        let Self {
+            label,
+            color,
+            radius,
+            stick,
+        } = self;
+        use eframe::epaint::util::FloatOrd as _;
+        label.eq(&rhs.label)
+            && color.eq(&rhs.color)
+            && radius.ord().eq(&rhs.radius.ord())
+            && stick.eq(&rhs.stick)
+    }
+}
+impl Eq for PlotPointAttrs {}
+
+#[derive(Clone, Debug)]
 pub struct PlotPoint {
     pub time: i64,
     pub value: f64,
     // TODO: egui plots don't support attributes below the line-level at the moment
-    pub label: Option<String>, // TODO: yeah we need an Arc in the storage layer
-    pub color: [u8; 4],        // TODO: make the Color32 PR
-    pub radius: f32,
+    pub attrs: PlotPointAttrs,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -110,19 +134,15 @@ impl ScenePlot {
             };
 
             let mut points = Vec::new();
-            visit_type_data_4(
+            // load non-sticky scalars
+            visit_type_data_5(
                 obj_store,
                 &FieldName::from("scalar"),
-                // TODO: do this for real with a legend!
-                &if obj_path.to_string().starts_with("segmentation") {
-                    match ctx.rec_cfg.time_ctrl.time_query().unwrap() {
-                        TimeQuery::LatestAt(t) => TimeQuery::Range(0..=t),
-                        range @ TimeQuery::Range(_) => range,
-                    }
-                } else {
-                    TimeQuery::EVERYTHING // always sticky!
+                &match ctx.rec_cfg.time_ctrl.time_query().unwrap() {
+                    TimeQuery::LatestAt(t) => TimeQuery::Range(0..=t),
+                    range @ TimeQuery::Range(_) => range,
                 },
-                ("_visible", "label", "color", "radius"),
+                ("_visible", "label", "color", "radius", "stick"),
                 |_instance_index: Option<&IndexHash>,
                  time: i64,
                  _msg_id: &MsgId,
@@ -130,17 +150,56 @@ impl ScenePlot {
                  visible: Option<&bool>,
                  label: Option<&String>,
                  color: Option<&[u8; 4]>,
-                 radius: Option<&f32>| {
-                    if !*visible.unwrap_or(&true) {
+                 radius: Option<&f32>,
+                 stick: Option<&bool>| {
+                    let visible = *visible.unwrap_or(&true);
+                    let stick = *stick.unwrap_or(&false);
+                    if !visible || stick {
                         return;
                     }
 
                     points.push(PlotPoint {
                         time,
-                        label: label.cloned(),
-                        color: color.copied().unwrap_or(default_color),
-                        radius: radius.copied().unwrap_or(1.0),
                         value: *value,
+                        attrs: PlotPointAttrs {
+                            label: label.cloned(),
+                            color: color.copied().unwrap_or(default_color),
+                            radius: radius.copied().unwrap_or(1.0),
+                            stick,
+                        },
+                    });
+                },
+            );
+            // load sticky scalars
+            visit_type_data_5(
+                obj_store,
+                &FieldName::from("scalar"),
+                &TimeQuery::EVERYTHING, // always sticky!
+                ("_visible", "label", "color", "radius", "stick"),
+                |_instance_index: Option<&IndexHash>,
+                 time: i64,
+                 _msg_id: &MsgId,
+                 value: &f64,
+                 visible: Option<&bool>,
+                 label: Option<&String>,
+                 color: Option<&[u8; 4]>,
+                 radius: Option<&f32>,
+                 stick: Option<&bool>| {
+                    let visible = *visible.unwrap_or(&true);
+                    let stick = *stick.unwrap_or(&false);
+                    if !visible || !stick {
+                        return;
+                    }
+
+                    points.push(PlotPoint {
+                        time,
+                        value: *value,
+                        attrs: PlotPointAttrs {
+                            label: label.cloned(),
+                            color: color.copied().unwrap_or(default_color),
+                            radius: radius.copied().unwrap_or(1.0),
+                            stick,
+                        },
                     });
                 },
             );
@@ -150,47 +209,36 @@ impl ScenePlot {
                 continue;
             }
 
-            let label = 'label: {
-                let label = points[0].label.as_ref();
-                if label.is_some() && points.iter().all(|p| p.label.as_ref() == label) {
+            // TODO: we still want only one line label no matter what..!
+            let line_label = 'label: {
+                let label = points[0].attrs.label.as_ref();
+                if label.is_some() && points.iter().all(|p| p.attrs.label.as_ref() == label) {
                     break 'label label.cloned().unwrap();
                 }
                 obj_path.to_string()
-            };
-
-            let kind = 'kind: {
-                let color = points[0].color;
-                if points.iter().all(|p| p.color == color) {
-                    break 'kind PlotLineKind::Continuous;
-                }
-                PlotLineKind::Scatter
-            };
-
-            let width = 'width: {
-                let radius = points[0].radius;
-                if points.iter().all(|p| p.radius == radius) {
-                    break 'width radius;
-                }
-                1.0
             };
 
             // TODO: one could argue this should be done in the ui file, since this is done
             // only to work around a limitation of egui plots... but then again it's easier
             // to do here sooo...
 
-            let mut color = points[0].color;
+            // TODO: now we do it for two reasons: limitations & logical requirement!
+
+            // Line splitting!
+
+            let mut attrs = points[0].attrs.clone();
             let mut nb_points = points.len();
 
             let mut line: Option<PlotLine> = Some(PlotLine {
-                label: label.clone(),
-                color,
-                width,
-                kind,
+                label: line_label.clone(),
+                color: attrs.color,
+                width: attrs.radius,
+                kind: PlotLineKind::Continuous, // TODO
                 points: Vec::with_capacity(nb_points),
             });
 
             for p in points.into_iter() {
-                if p.color == color {
+                if p.attrs == attrs {
                     line.as_mut().unwrap().points.push(p);
                 } else {
                     let taken = line.take().unwrap();
@@ -198,12 +246,12 @@ impl ScenePlot {
                     nb_points -= taken.points.len();
                     self.lines.push(taken);
 
-                    color = p.color;
+                    attrs = p.attrs.clone();
                     line = Some(PlotLine {
-                        label: label.clone(),
-                        color,
-                        width,
-                        kind,
+                        label: line_label.clone(),
+                        color: attrs.color,
+                        width: attrs.radius,
+                        kind: PlotLineKind::Continuous, // TODO
                         points: Vec::with_capacity(nb_points),
                     });
                     line.as_mut().unwrap().points.push(p);
