@@ -4,47 +4,10 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 
 // ---
 
-// TODO:
-// - do everything _per point_
-// - if no legend: derive what we can for the whole line
-// - if legend: well, use that
-//
-// TODO:
-// - a plot is a space
-// - a line is an object path within that space
-// - a point is a scalar logged to that object path
-//
-// TODO:
-// - point-level props
-//   - label, color, radius, stick, scattered
-//   -> read as-is from the Scalar object
-//   -> missing ones are defaulted:
-//      - label: None
-//      - color: derived from obj_path hash
-//      - radius: 1.0
-//      - stick: false
-//      - scattered: false
-// - line-level props
-//   - label, color, width, stick, kind (e.g. enum{scatter, line})
-//   -> read as-is from the legend object associated with that obj_path (future PR?)
-//   -> otherwise the missing ones are defaulted:
-//      - label: obj_path
-//      - color: use whatever the current linesplit dictates
-//      - width: use whatever the current linesplit dictates
-//      - stick: use whatever the current linesplit dictates
-//      - kind: use whatever the current linesplit dictates
-//   -> in the future, those should be modifiable at run-time from the blueprint UI
-// - plot-level props
-//   - label
-//   -> as-is from the legend object associated with that space (annotation context??)
-//   -> otherwise the missing ones are defaulted:
-//      - label: space name
-//   -> in the future, those should be modifiable at run-time from the blueprint UI
-
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
-    pub label: Option<String>, // TODO: yeah we need an Arc in the storage layer
-    pub color: [u8; 4],        // TODO: make the Color32 PR
+    pub label: Option<String>,
+    pub color: [u8; 4],
     pub radius: f32,
     pub scattered: bool,
 }
@@ -66,11 +29,10 @@ impl PartialEq for PlotPointAttrs {
 impl Eq for PlotPointAttrs {}
 
 #[derive(Clone, Debug)]
-pub struct PlotPoint {
-    pub time: i64,
-    pub value: f64,
-    // TODO: egui plots don't support attributes below the line-level at the moment
-    pub attrs: PlotPointAttrs,
+struct PlotPoint {
+    time: i64,
+    value: f64,
+    attrs: PlotPointAttrs,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -82,10 +44,10 @@ pub enum PlotLineKind {
 #[derive(Clone, Debug)]
 pub struct PlotLine {
     pub label: String,
-    pub color: [u8; 4], // TODO: make the Color32 PR
+    pub color: [u8; 4],
     pub width: f32,
     pub kind: PlotLineKind,
-    pub points: Vec<PlotPoint>,
+    pub points: Vec<(i64, f64)>,
 }
 
 /// A plot scene, with everything needed to render it.
@@ -93,8 +55,6 @@ pub struct PlotLine {
 pub struct ScenePlot {
     pub lines: Vec<PlotLine>,
 }
-
-// TODO: document all the logic of how colors get selected and stuff
 
 impl ScenePlot {
     /// Loads all plot objects into the scene according to the given query.
@@ -163,7 +123,9 @@ impl ScenePlot {
                 continue;
             }
 
-            // TODO: we still want only one line label no matter what..!
+            // If all points within a line share the label (and it isn't `None`), then we use it
+            // as the whole line label for the plot legend.
+            // Otherwise, we just use the object path as-is.
             let line_label = 'label: {
                 let label = points[0].attrs.label.as_ref();
                 if label.is_some() && points.iter().all(|p| p.attrs.label.as_ref() == label) {
@@ -172,13 +134,9 @@ impl ScenePlot {
                 obj_path.to_string()
             };
 
-            // TODO: one could argue this should be done in the ui file, since this is done
-            // only to work around a limitation of egui plots... but then again it's easier
-            // to do here sooo...
-
-            // TODO: now we do it for two reasons: limitations & logical requirement!
-
-            // Line splitting!
+            // We have a bunch of raw points, and now we need to group them into actual lines.
+            // A line is a continuous run of points with similar attributes: each time we notice
+            // a change in attributes, we need a new line segment.
 
             let mut attrs = points[0].attrs.clone();
             let mut nb_points = points.len();
@@ -197,34 +155,46 @@ impl ScenePlot {
 
             for p in points {
                 if p.attrs == attrs {
-                    line.as_mut().unwrap().points.push(p);
+                    // Similar attributes, just add to the current line segment.
+
+                    line.as_mut().unwrap().points.push((p.time, p.value));
                 } else {
+                    // Attributes changed since last point, break up the current run into a
+                    // line segment, and start the next one.
+
                     let taken = line.take().unwrap();
 
                     nb_points = nb_points.saturating_sub(taken.points.len());
                     self.lines.push(taken);
 
                     attrs = p.attrs.clone();
+                    let kind = if attrs.scattered {
+                        PlotLineKind::Scatter
+                    } else {
+                        PlotLineKind::Continuous
+                    };
                     line = Some(PlotLine {
                         label: line_label.clone(),
                         color: attrs.color,
                         width: attrs.radius,
-                        kind: if attrs.scattered {
-                            PlotLineKind::Scatter
-                        } else {
-                            PlotLineKind::Continuous
-                        },
+                        kind,
                         points: Vec::with_capacity(nb_points),
                     });
 
-                    if matches!(line.as_ref().unwrap().kind, PlotLineKind::Continuous) {
-                        line.as_mut()
-                            .unwrap()
-                            .points
-                            .push(self.lines.last().unwrap().points.last().unwrap().clone());
+                    let prev_line = self.lines.last().unwrap();
+                    let prev_point = *prev_line.points.last().unwrap();
+
+                    // If the previous point was continous and the current point is continuous
+                    // too, then we want the 2 segments to appear continuous even though they
+                    // are actually split from a data standpoint.
+                    let cur_continuous = matches!(kind, PlotLineKind::Continuous);
+                    let prev_continuous = matches!(kind, PlotLineKind::Continuous);
+                    if cur_continuous && prev_continuous {
+                        line.as_mut().unwrap().points.push(prev_point);
                     }
 
-                    line.as_mut().unwrap().points.push(p);
+                    // Add the point that triggered the split to the new segment.
+                    line.as_mut().unwrap().points.push((p.time, p.value));
                 }
             }
 

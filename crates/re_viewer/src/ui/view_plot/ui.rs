@@ -19,39 +19,10 @@ pub(crate) fn view_plot(
 ) -> egui::Response {
     crate::profile_function!();
 
-    // TODO:
-    // - plug in Legend/ClassDescr?
-    //
-    // A scalar _literally_ cannot be timeless: we wouldn't even have an x value to work with!
-    //
-    // - what does the timequery look like?
-    //   we're always timed and always sticky,
-    // - what happens when the scalar changes color?
-    // - what happens when the scalar changes label?
-    //
-    // what about stuff that has nothing to do with points, e.g. the kind of plot, or whether
-    // we want a reference hline/vline to appear? Or better: stickiness!
-    // - Sometimes it's nice to still set it at the scalar-level, so that things can evolve
-    //   over time.
-    // - on the other hand, do you really want each scalar to reassert the fact that this is
-    //   a bar chart or whatever? (whether from a logic perspective, or a storage perspective)
-    //
-    // what happens when you want to set one color on the scalar itself, and another for line
-    // that goes through all of these scalars?
-    //
-    // Shall these things use some kind of metadata API that applies to a whole obj_path,
-    // similar to class descriptions? E.g. we expose some kind of `log_plot_config`?
-    // Does this tie in with Jeremy's work on annotation contexts?
-    //
-    // Or should it all be handled by blueprints somehow..? Or both?!
-    //
-    // - Label of a line is a good example of something that shouldn't be derived from points'
-
-    let tq = ctx.rec_cfg.time_ctrl.time_query().unwrap();
-
+    let time_query = ctx.rec_cfg.time_ctrl.time_query().unwrap();
     let x_axis = ctx.rec_cfg.time_ctrl.timeline().name().to_string();
 
-    Plot::new("plot") // TODO
+    Plot::new("plot")
         .legend(Legend::default())
         .label_formatter(move |name, value| {
             let name = if name.is_empty() { "y" } else { name };
@@ -67,7 +38,7 @@ pub(crate) fn view_plot(
             }
 
             plot_ui.vline(
-                VLine::new(match tq {
+                VLine::new(match time_query {
                     TimeQuery::LatestAt(t) => t as f64,
                     TimeQuery::Range(r) => *r.start() as f64,
                 })
@@ -78,7 +49,7 @@ pub(crate) fn view_plot(
                 let points = line
                     .points
                     .iter()
-                    .map(|p| [p.time as _, p.value])
+                    .map(|p| [p.0 as _, p.1])
                     .collect::<Vec<_>>();
 
                 let c = line.color;

@@ -212,6 +212,6 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
                 state_tensor.ui(ui);
             }
         }
-        ViewCategory::TwoD | ViewCategory::Text | ViewCategory::Plot => {} // TODO
+        ViewCategory::TwoD | ViewCategory::Text | ViewCategory::Plot => {}
     }
 }

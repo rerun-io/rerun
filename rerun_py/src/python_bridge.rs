@@ -604,6 +604,16 @@ fn log_text_entry(
 // ----------------------------------------------------------------------------
 
 /// Log a scalar.
+//
+// TODO(cmc): Note that this will unnecessarily duplicate data in the very likely case that
+// the caller logs a bunch of points all with the same attribute(s).
+// E.g. if the caller logs 1000 points with `color=[255,0,0]`, then we will in fact store that
+// information a 1000 times for no good reason.
+//
+// In the future, I'm hopeful that Arrow will allow us to automagically identify and eliminate
+// that kind of deduplication at the lowest layer.
+// If not, there is still the option of deduplicating either on the SDK-side (but then
+// multiprocess can become problematic) or immediately upon entry on the server-side.
 #[pyfunction]
 fn log_scalar(
     obj_path: &str,
