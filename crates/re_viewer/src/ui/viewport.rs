@@ -10,6 +10,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use egui::Vec2;
 use itertools::Itertools as _;
 
 use re_data_store::{ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, TimeQuery};
@@ -644,7 +645,7 @@ impl Blueprint {
 // Code for automatic layout of panels:
 
 fn tree_from_space_views(
-    available_size: egui::Vec2,
+    viewport_size: egui::Vec2,
     visible: &BTreeMap<SpaceViewId, bool>,
     space_views: &HashMap<SpaceViewId, SpaceView>,
 ) -> egui_dock::Tree<SpaceViewId> {
@@ -664,13 +665,14 @@ fn tree_from_space_views(
             SpaceMakeInfo {
                 id: *space_view_id,
                 path: space_view.space_path.clone(),
+                category: space_view.category,
                 aspect_ratio,
             }
         })
         .collect_vec();
 
     if !space_make_infos.is_empty() {
-        let layout = layout_spaces(available_size, &mut space_make_infos);
+        let layout = layout_by_groups(viewport_size, &mut space_make_infos);
         tree_from_split(&mut tree, egui_dock::NodeIndex(0), &layout);
     }
 
@@ -681,20 +683,22 @@ fn tree_from_space_views(
 struct SpaceMakeInfo {
     id: SpaceViewId,
     path: ObjPath,
+
+    category: ViewCategory,
+
     /// Desired aspect ratio, if any.
     aspect_ratio: Option<f32>,
-}
-
-impl SpaceMakeInfo {
-    fn is_2d(&self) -> bool {
-        self.aspect_ratio.is_some()
-    }
 }
 
 enum LayoutSplit {
     LeftRight(Box<LayoutSplit>, f32, Box<LayoutSplit>),
     TopBottom(Box<LayoutSplit>, f32, Box<LayoutSplit>),
     Leaf(SpaceMakeInfo),
+}
+
+enum SplitDirection {
+    LeftRight { left: Vec2, t: f32, right: Vec2 },
+    TopBottom { top: Vec2, t: f32, bottom: Vec2 },
 }
 
 fn tree_from_split(
@@ -720,61 +724,106 @@ fn tree_from_split(
     }
 }
 
-// TODO(emilk): fix O(N^2) execution for layout_spaces
-fn layout_spaces(size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> LayoutSplit {
+// TODO(emilk): fix O(N^2) execution time (where N = number of spaces)
+fn layout_by_groups(viewport_size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> LayoutSplit {
     assert!(!spaces.is_empty());
 
     if spaces.len() == 1 {
         LayoutSplit::Leaf(spaces[0].clone())
     } else {
-        spaces.sort_by_key(|si| si.is_2d());
-        let start_3d = spaces.partition_point(|si| !si.is_2d());
+        let groups = group_by_category(spaces);
 
-        if 0 < start_3d && start_3d < spaces.len() {
-            split_spaces_at(size, spaces, start_3d)
+        if groups.len() == 1 {
+            // All same category
+            layout_by_path_prefix(viewport_size, spaces)
         } else {
-            // All 2D or all 3D
-            let groups = group_by_path_prefix(spaces);
-            assert!(groups.len() > 1);
-
-            let num_spaces = spaces.len();
-
-            let mut best_split = 0;
-            let mut rearranged_spaces = vec![];
-            for mut group in groups {
-                rearranged_spaces.append(&mut group);
-
-                let split_candidate = rearranged_spaces.len();
-                if (split_candidate as f32 / num_spaces as f32 - 0.5).abs()
-                    < (best_split as f32 / num_spaces as f32 - 0.5).abs()
-                {
-                    best_split = split_candidate;
-                }
-            }
-            assert_eq!(rearranged_spaces.len(), num_spaces);
-            assert!(0 < best_split && best_split < num_spaces,);
-
-            split_spaces_at(size, &mut rearranged_spaces, best_split)
+            // Mixed categories.
+            let (mut spaces, split_index) = find_group_split_point(groups);
+            split_spaces_at(viewport_size, &mut spaces, split_index)
         }
     }
 }
 
-fn split_spaces_at(size: egui::Vec2, spaces: &mut [SpaceMakeInfo], index: usize) -> LayoutSplit {
+fn layout_by_path_prefix(viewport_size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> LayoutSplit {
+    assert!(!spaces.is_empty());
+    if spaces.len() == 1 {
+        LayoutSplit::Leaf(spaces[0].clone())
+    } else {
+        split_groups(viewport_size, group_by_path_prefix(spaces))
+    }
+}
+
+fn split_groups(viewport_size: egui::Vec2, groups: Vec<Vec<SpaceMakeInfo>>) -> LayoutSplit {
+    let (mut spaces, split_point) = find_group_split_point(groups);
+    split_spaces_at(viewport_size, &mut spaces, split_point)
+}
+
+fn find_group_split_point(groups: Vec<Vec<SpaceMakeInfo>>) -> (Vec<SpaceMakeInfo>, usize) {
+    assert!(groups.len() > 1);
+
+    let num_spaces: usize = groups.iter().map(|g| g.len()).sum();
+
+    let mut best_split = 0;
+    let mut rearranged_spaces = vec![];
+    for mut group in groups {
+        rearranged_spaces.append(&mut group);
+
+        let split_candidate = rearranged_spaces.len();
+
+        // Prefer the split that is closest to the middle:
+        if (split_candidate as f32 / num_spaces as f32 - 0.5).abs()
+            < (best_split as f32 / num_spaces as f32 - 0.5).abs()
+        {
+            best_split = split_candidate;
+        }
+    }
+    assert_eq!(rearranged_spaces.len(), num_spaces);
+    assert!(0 < best_split && best_split < num_spaces,);
+
+    (rearranged_spaces, best_split)
+}
+
+fn suggest_split_direction(
+    viewport_size: egui::Vec2,
+    spaces: &[SpaceMakeInfo],
+    split_index: usize,
+) -> SplitDirection {
     use egui::vec2;
 
-    assert!(0 < index && index < spaces.len());
+    assert!(0 < split_index && split_index < spaces.len());
 
-    let t = index as f32 / spaces.len() as f32;
+    let t = split_index as f32 / spaces.len() as f32;
     let desired_aspect_ratio = desired_aspect_ratio(spaces).unwrap_or(16.0 / 9.0);
 
-    if size.x > desired_aspect_ratio * size.y {
-        let left = layout_spaces(vec2(size.x * t, size.y), &mut spaces[..index]);
-        let right = layout_spaces(vec2(size.x * (1.0 - t), size.y), &mut spaces[index..]);
-        LayoutSplit::LeftRight(left.into(), t, right.into())
+    if viewport_size.x > desired_aspect_ratio * viewport_size.y {
+        let left = vec2(viewport_size.x * t, viewport_size.y);
+        let right = vec2(viewport_size.x * (1.0 - t), viewport_size.y);
+        SplitDirection::LeftRight { left, t, right }
     } else {
-        let top = layout_spaces(vec2(size.y, size.y * t), &mut spaces[..index]);
-        let bottom = layout_spaces(vec2(size.y, size.x * (1.0 - t)), &mut spaces[index..]);
-        LayoutSplit::TopBottom(top.into(), t, bottom.into())
+        let top = vec2(viewport_size.y, viewport_size.y * t);
+        let bottom = vec2(viewport_size.y, viewport_size.x * (1.0 - t));
+        SplitDirection::TopBottom { top, t, bottom }
+    }
+}
+
+fn split_spaces_at(
+    viewport_size: egui::Vec2,
+    spaces: &mut [SpaceMakeInfo],
+    split_index: usize,
+) -> LayoutSplit {
+    assert!(0 < split_index && split_index < spaces.len());
+
+    match suggest_split_direction(viewport_size, spaces, split_index) {
+        SplitDirection::LeftRight { left, t, right } => {
+            let left = layout_by_groups(left, &mut spaces[..split_index]);
+            let right = layout_by_groups(right, &mut spaces[split_index..]);
+            LayoutSplit::LeftRight(left.into(), t, right.into())
+        }
+        SplitDirection::TopBottom { top, t, bottom } => {
+            let top = layout_by_groups(top, &mut spaces[..split_index]);
+            let bottom = layout_by_groups(bottom, &mut spaces[split_index..]);
+            LayoutSplit::TopBottom(top.into(), t, bottom.into())
+        }
     }
 }
 
@@ -791,6 +840,14 @@ fn desired_aspect_ratio(spaces: &[SpaceMakeInfo]) -> Option<f32> {
     }
 
     (num != 0.0).then_some(sum / num)
+}
+
+fn group_by_category(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>> {
+    let mut groups: BTreeMap<ViewCategory, Vec<SpaceMakeInfo>> = Default::default();
+    for info in space_infos {
+        groups.entry(info.category).or_default().push(info.clone());
+    }
+    groups.into_iter().map(|(_, group)| group).collect()
 }
 
 fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>> {
