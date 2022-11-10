@@ -197,15 +197,22 @@ impl ViewState {
         .response
     }
 
-    fn ui_tensor(&mut self, ui: &mut egui::Ui, scene: &view_tensor::SceneTensor) -> egui::Response {
-        let tensor = &scene.tensors[0];
-        let state_tensor = self
-            .state_tensor
-            .get_or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
-        ui.vertical(|ui| {
-            view_tensor::view_tensor(ui, state_tensor, tensor);
-        })
-        .response
+    fn ui_tensor(&mut self, ui: &mut egui::Ui, scene: &view_tensor::SceneTensor) {
+        if scene.tensors.is_empty() {
+            ui.centered(|ui| ui.label("(empty)"));
+        } else if scene.tensors.len() == 1 {
+            let tensor = &scene.tensors[0];
+            let state_tensor = self
+                .state_tensor
+                .get_or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
+            ui.vertical(|ui| {
+                view_tensor::view_tensor(ui, state_tensor, tensor);
+            });
+        } else {
+            ui.centered(|ui| {
+                ui.label("ERROR: more than one tensor!") // TODO(emilk): in this case we should have one space-view per tensor.
+            });
+        }
     }
 
     fn ui_text(
