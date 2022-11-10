@@ -809,7 +809,6 @@ def log_segmentation_image(
     obj_path: str,
     image: ClassIds,
     *,
-    class_descriptions: Optional[str] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -833,9 +832,9 @@ def log_segmentation_image(
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
     if image.dtype == "uint8":
-        rerun_rs.log_tensor_u8(obj_path, image, None, None, class_descriptions, timeless)
+        rerun_rs.log_tensor_u8(obj_path, image, None, None, obj_path, timeless)
     elif image.dtype == "uint16":
-        rerun_rs.log_tensor_u16(obj_path, image, None, None, class_descriptions, timeless)
+        rerun_rs.log_tensor_u16(obj_path, image, None, None, obj_path, timeless)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")
 
