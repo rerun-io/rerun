@@ -808,8 +808,8 @@ def log_depth_image(
 def log_segmentation_image(
     obj_path: str,
     image: ClassIds,
-    class_descriptions: str = "",
     *,
+    class_descriptions: Optional[str] = None,
     timeless: bool = False,
 ) -> None:
     """

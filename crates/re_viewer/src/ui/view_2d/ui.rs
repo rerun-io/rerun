@@ -369,7 +369,10 @@ fn view_2d_scrollable(
             legend,
         } = img;
 
-        let tensor_view = ctx.cache.image.get_view_with_legend(msg_id, tensor, legend);
+        let tensor_view = ctx
+            .cache
+            .image
+            .get_view_with_legend(msg_id, tensor, Some(legend));
 
         let texture_id = tensor_view.retained_img.texture_id(parent_ui.ctx());
 
@@ -419,7 +422,9 @@ fn view_2d_scrollable(
                             }
 
                             let tensor_view =
-                                ctx.cache.image.get_view_with_legend(msg_id, tensor, legend);
+                                ctx.cache
+                                    .image
+                                    .get_view_with_legend(msg_id, tensor, Some(legend));
 
                             ui.horizontal(|ui| {
                                 super::image_ui::show_zoomed_image_region(
