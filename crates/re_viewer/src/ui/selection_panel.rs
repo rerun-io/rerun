@@ -79,9 +79,11 @@ impl SelectionPanel {
 
         ui.separator();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            self.inner_ui(ctx, blueprint, ui);
-        });
+        egui::ScrollArea::both()
+            .auto_shrink([false; 2])
+            .show(ui, |ui| {
+                self.inner_ui(ctx, blueprint, ui);
+            });
     }
 
     #[allow(clippy::unused_self)]
