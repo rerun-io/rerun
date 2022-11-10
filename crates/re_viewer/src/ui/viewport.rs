@@ -17,7 +17,7 @@ use re_log_types::ObjectType;
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
-use super::{Scene, SceneQuery, SpaceView};
+use super::{SceneQuery, SpaceView};
 
 // ----------------------------------------------------------------------------
 
@@ -495,22 +495,13 @@ fn space_view_ui(
         return
     };
 
-    crate::profile_function!();
-
-    let mut scene = Scene::default();
-    {
-        let query = SceneQuery {
-            obj_paths: &space_info.objects,
-            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-            time_query,
-            obj_props: &space_view.obj_tree_properties.projected,
-        };
-
-        scene.two_d.load_objects(ctx, &query);
-        scene.three_d.load_objects(ctx, &query);
-        scene.text.load_objects(ctx, &query);
-        scene.tensor.load_objects(ctx, &query);
-    }
+    let query = SceneQuery {
+        obj_paths: &space_info.objects,
+        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+        time_query,
+        obj_props: &space_view.obj_tree_properties.projected,
+    };
+    let scene = query.query(ctx);
 
     space_view.scene_ui(ctx, ui, spaces_info, space_info, scene);
 }

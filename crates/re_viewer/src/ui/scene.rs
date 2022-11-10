@@ -45,6 +45,16 @@ pub struct SceneQuery<'s> {
 }
 
 impl<'s> SceneQuery<'s> {
+    pub(crate) fn query(&self, ctx: &mut crate::misc::ViewerContext<'_>) -> Scene {
+        crate::profile_function!();
+        let mut scene = Scene::default();
+        scene.two_d.load_objects(ctx, self);
+        scene.three_d.load_objects(ctx, self);
+        scene.text.load_objects(ctx, self);
+        scene.tensor.load_objects(ctx, self);
+        scene
+    }
+
     /// Given a list of `ObjectType`s, this will return all relevant `ObjStore`s that should be
     /// queried for datapoints.
     ///
