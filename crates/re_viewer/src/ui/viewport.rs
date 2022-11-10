@@ -16,7 +16,7 @@ use re_data_store::{ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, Time
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
-use super::{SceneQuery, SpaceView};
+use super::{space_view::ViewCategory, SceneQuery, SpaceView};
 
 // ----------------------------------------------------------------------------
 
@@ -142,7 +142,12 @@ impl ViewportBlueprint {
             default_open,
         )
         .show_header(ui, |ui| {
-            ui.label("🗖"); // icon indicating this is a space-view
+            match space_view.category {
+                ViewCategory::TwoD => ui.label("🖼"),
+                ViewCategory::ThreeD => ui.label("🔭"),
+                ViewCategory::Tensor => ui.label("🇹"),
+                ViewCategory::Text => ui.label("📃"),
+            };
 
             if ctx
                 .space_view_button_to(ui, space_view.name.clone(), *space_view_id)
