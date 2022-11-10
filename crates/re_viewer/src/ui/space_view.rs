@@ -54,9 +54,7 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        // NOTE: mutable because the glow-based 3D view `take()`s the scene because reasons.
-        // TODO(cmc): remove this while removing glow.
-        scene: &mut Scene,
+        scene: Scene,
     ) {
         crate::profile_function!();
 
@@ -93,7 +91,7 @@ impl SpaceView {
                             &self.space_path,
                             spaces_info,
                             space_info,
-                            &mut scene.three_d,
+                            scene.three_d,
                         );
                     }
                     ViewCategory::Tensor => {
@@ -145,7 +143,7 @@ impl SpaceView {
                             &self.space_path,
                             spaces_info,
                             space_info,
-                            &mut scene.three_d,
+                            scene.three_d,
                         );
                     }
                 }
@@ -210,7 +208,7 @@ impl ViewState {
         space: &ObjPath,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        scene: &mut view_3d::Scene3D,
+        scene: view_3d::Scene3D,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;

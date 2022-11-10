@@ -515,7 +515,7 @@ fn space_view_ui(
         scene.tensor.load_objects(ctx, obj_tree_props, &query);
     }
 
-    space_view.scene_ui(ctx, ui, spaces_info, space_info, &mut scene);
+    space_view.scene_ui(ctx, ui, spaces_info, space_info, scene);
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
