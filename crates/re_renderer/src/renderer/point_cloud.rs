@@ -79,6 +79,8 @@ impl PointCloudDrawable {
         queue: &wgpu::Queue,
         points: &[PointCloudPoint],
     ) -> anyhow::Result<Self> {
+        crate::profile_function!();
+
         let line_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
@@ -144,19 +146,26 @@ impl PointCloudDrawable {
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let num_points_written = next_multiple_of(points.len() as u32, TEXTURE_SIZE) as usize;
         let num_points_zeroed = num_points_written - points.len();
-        let position_and_size_staging = points
-            .iter()
-            .map(|point| gpu_data::PositionData {
-                pos: point.position,
-                radius: point.radius,
-            })
-            .chain(std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_points_zeroed))
-            .collect_vec();
-        let color_staging = points
-            .iter()
-            .map(|point| point.srgb_color)
-            .chain(std::iter::repeat([0, 0, 0, 0]).take(num_points_zeroed))
-            .collect_vec();
+        let position_and_size_staging = {
+            crate::profile_scope!("collect_pos_size");
+            points
+                .iter()
+                .map(|point| gpu_data::PositionData {
+                    pos: point.position,
+                    radius: point.radius,
+                })
+                .chain(std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_points_zeroed))
+                .collect_vec()
+        };
+
+        let color_staging = {
+            crate::profile_scope!("collect_colors");
+            points
+                .iter()
+                .map(|point| point.srgb_color)
+                .chain(std::iter::repeat([0, 0, 0, 0]).take(num_points_zeroed))
+                .collect_vec()
+        };
 
         // Upload data from staging buffers to gpu.
         let size = wgpu::Extent3d {
@@ -164,48 +173,56 @@ impl PointCloudDrawable {
             height: num_points_written as u32 / TEXTURE_SIZE,
             depth_or_array_layers: 1,
         };
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: &ctx
-                    .resource_pools
-                    .textures
-                    .get_resource(&position_data_texture)?
-                    .texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            bytemuck::cast_slice(&position_and_size_staging),
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: NonZeroU32::new(
-                    TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
-                ),
-                rows_per_image: None,
-            },
-            size,
-        );
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: &ctx
-                    .resource_pools
-                    .textures
-                    .get_resource(&color_texture)?
-                    .texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            bytemuck::cast_slice(&color_staging),
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: NonZeroU32::new(
-                    TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32,
-                ),
-                rows_per_image: None,
-            },
-            size,
-        );
+
+        {
+            crate::profile_scope!("write_pos_size_texture");
+            queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &ctx
+                        .resource_pools
+                        .textures
+                        .get_resource(&position_data_texture)?
+                        .texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(&position_and_size_staging),
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: NonZeroU32::new(
+                        TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
+                    ),
+                    rows_per_image: None,
+                },
+                size,
+            );
+        }
+
+        {
+            crate::profile_scope!("write_color_texture");
+            queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &ctx
+                        .resource_pools
+                        .textures
+                        .get_resource(&color_texture)?
+                        .texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(&color_staging),
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: NonZeroU32::new(
+                        TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32,
+                    ),
+                    rows_per_image: None,
+                },
+                size,
+            );
+        }
 
         Ok(PointCloudDrawable {
             bind_group: ctx.resource_pools.bind_groups.alloc(
@@ -242,6 +259,8 @@ impl Renderer for PointCloudRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
+        crate::profile_function!();
+
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
@@ -335,6 +354,8 @@ impl Renderer for PointCloudRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
+        crate::profile_function!();
+
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;
 

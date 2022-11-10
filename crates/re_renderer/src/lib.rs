@@ -41,3 +41,25 @@ mod workspace_shaders;
 
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
 mod error_tracker;
+
+// ---------------------------------------------------------------------------
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_function {
+    ($($arg: tt)*) => {
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        puffin::profile_function!($($arg)*);
+    };
+}
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_scope {
+    ($($arg: tt)*) => {
+        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        puffin::profile_scope!($($arg)*);
+    };
+}
