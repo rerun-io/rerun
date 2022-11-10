@@ -169,8 +169,8 @@ fn suggest_split_direction(
         let right = vec2(viewport_size.x * (1.0 - t), viewport_size.y);
         SplitDirection::LeftRight { left, t, right }
     } else {
-        let top = vec2(viewport_size.y, viewport_size.y * t);
-        let bottom = vec2(viewport_size.y, viewport_size.x * (1.0 - t));
+        let top = vec2(viewport_size.x, viewport_size.y * t);
+        let bottom = vec2(viewport_size.x, viewport_size.y * (1.0 - t));
         SplitDirection::TopBottom { top, t, bottom }
     }
 }
