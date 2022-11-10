@@ -334,7 +334,8 @@ pub(crate) fn view_3d(
     state.scene_bbox = state.scene_bbox.union(scene.calc_bbox());
     state.space_camera = space_cameras.to_vec();
 
-    let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
+    let (rect, mut response) =
+        ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     let tracking_camera = tracking_camera(ctx, space_cameras);
     let orbit_eye = state.update_eye(ctx, tracking_camera, &response);
@@ -363,14 +364,10 @@ pub(crate) fn view_3d(
     }
 
     if let Some(instance_id) = &hovered_instance {
-        egui::containers::popup::show_tooltip_at_pointer(
-            ui.ctx(),
-            egui::Id::new("3d_tooltip"),
-            |ui| {
-                ctx.instance_id_button(ui, instance_id);
-                crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Medium);
-            },
-        );
+        response = response.on_hover_ui_at_pointer(|ui| {
+            ctx.instance_id_button(ui, instance_id);
+            crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Medium);
+        });
     }
 
     let hovered = response
