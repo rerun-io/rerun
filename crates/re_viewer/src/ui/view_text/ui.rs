@@ -1,5 +1,5 @@
 use crate::ViewerContext;
-use egui::{Color32, RichText};
+use egui::{Color32, NumExt as _, RichText};
 use re_log_types::{LogMsg, TimePoint};
 
 use super::{SceneText, TextEntry};
@@ -34,7 +34,7 @@ pub(crate) fn view_text(
         });
 
     // Did the time cursor move since last time?
-    // - If it did, time to autoscroll approriately.
+    // - If it did, time to autoscroll appropriately.
     // - Otherwise, let the user scroll around freely!
     let time_cursor_moved = state.latest_time != time;
     let scroll_to_row = time_cursor_moved.then(|| {
@@ -89,8 +89,10 @@ fn show_table(
 ) {
     use egui_extras::Size;
     const ROW_HEIGHT: f32 = 18.0;
+    const HEADER_HEIGHT: f32 = 20.0;
 
-    let spacing_y = ui.spacing().item_spacing.y;
+    let max_content_height = ui.available_height() - HEADER_HEIGHT;
+    let item_spacing = ui.spacing().item_spacing;
 
     let mut builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
@@ -98,8 +100,18 @@ fn show_table(
         .scroll(true);
 
     if let Some(index) = scroll_to_row {
-        let row_height_full = ROW_HEIGHT + spacing_y;
+        let row_height_full = ROW_HEIGHT + item_spacing.y;
         let scroll_to_offset = index as f32 * row_height_full;
+
+        // Scroll to center:
+        let scroll_to_offset = scroll_to_offset - max_content_height / 2.0;
+
+        // Don't over-scroll:
+        let scroll_to_offset = scroll_to_offset.clamp(
+            0.0,
+            (text_entries.len() as f32 * row_height_full - max_content_height).at_least(0.0),
+        );
+
         builder = builder.vertical_scroll_offset(scroll_to_offset);
     }
 
@@ -112,7 +124,7 @@ fn show_table(
         .column(Size::initial(120.0).at_least(50.0)) // path
         .column(Size::initial(50.0).at_least(50.0)) // level
         .column(Size::remainder().at_least(200.0)) // body
-        .header(20.0, |mut header| {
+        .header(HEADER_HEIGHT, |mut header| {
             for timeline in ctx.log_db.time_points.0.keys() {
                 header.col(|ui| {
                     ctx.timeline_button(ui, timeline);
