@@ -1661,9 +1661,9 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
     let time_point = time(false);
 
     if recursive {
-        sdk.send_path_op(&time_point, PathOp::ClearRecursive(obj_path.clone()));
+        sdk.send_path_op(&time_point, PathOp::ClearRecursive(obj_path));
     } else {
-        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path.clone()));
+        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
     }
 
     Ok(())

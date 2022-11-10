@@ -363,7 +363,7 @@ impl_into_logged_data!(ObjPath, ObjPath);
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct PathOpMsg {
-    /// A unique id per [`ObjPathOpMsg`].
+    /// A unique id per [`PathOpMsg`].
     pub msg_id: MsgId,
 
     /// Time information (when it was logged, when it was received, …)
