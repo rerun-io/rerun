@@ -93,6 +93,9 @@ fn show_table(
     let max_content_height = ui.available_height() - HEADER_HEIGHT;
     let item_spacing = ui.spacing().item_spacing;
 
+    let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
+    let current_time = ctx.rec_cfg.time_ctrl.time().map(|tr| tr.floor());
+
     let mut builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
         .resizable(true)
@@ -113,6 +116,8 @@ fn show_table(
 
         builder = builder.vertical_scroll_offset(scroll_to_offset);
     }
+
+    let mut current_time_y = None;
 
     builder
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -161,8 +166,17 @@ fn show_table(
                 // time(s)
                 for timeline in ctx.log_db.time_points.0.keys() {
                     row.col(|ui| {
-                        if let Some(value) = time_point.0.get(timeline) {
-                            ctx.time_button(ui, timeline, *value);
+                        if let Some(value) = time_point.0.get(timeline).copied() {
+                            if let Some(current_time) = current_time {
+                                if current_time_y.is_none()
+                                    && timeline == &current_timeline
+                                    && value >= current_time
+                                {
+                                    current_time_y = Some(ui.max_rect().top());
+                                }
+                            }
+
+                            ctx.time_button(ui, timeline, value);
                         }
                     });
                 }
@@ -192,6 +206,15 @@ fn show_table(
                 });
             });
         });
+
+    if let Some(current_time_y) = current_time_y {
+        // Show that the current time is here:
+        ui.painter().hline(
+            ui.max_rect().x_range(),
+            current_time_y,
+            (1.0, Color32::WHITE),
+        );
+    }
 }
 
 fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
