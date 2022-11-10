@@ -51,7 +51,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
             });
             for timeline in ctx.log_db.time_points.0.keys() {
                 header.col(|ui| {
-                    ui.heading(timeline.name().as_str());
+                    ctx.timeline_button(ui, timeline);
                 });
             }
             header.col(|ui| {

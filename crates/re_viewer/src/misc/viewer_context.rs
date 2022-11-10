@@ -155,6 +155,17 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
+    pub fn timeline_button(&mut self, ui: &mut egui::Ui, timeline: &Timeline) -> egui::Response {
+        let is_selected = self.rec_cfg.time_ctrl.timeline() == timeline;
+
+        let response = ui.selectable_label(is_selected, timeline.name().as_str());
+        if response.clicked() {
+            self.rec_cfg.time_ctrl.set_timeline(*timeline);
+            self.rec_cfg.time_ctrl.pause();
+        }
+        response
+    }
+
     pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
         self.cache.random_color(obj_path)
     }

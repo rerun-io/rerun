@@ -115,17 +115,17 @@ fn show_table(
         .header(20.0, |mut header| {
             for timeline in ctx.log_db.time_points.0.keys() {
                 header.col(|ui| {
-                    ui.heading(timeline.name().as_str());
+                    ctx.timeline_button(ui, timeline);
                 });
             }
             header.col(|ui| {
-                ui.heading("Path");
+                ui.strong("Path");
             });
             header.col(|ui| {
-                ui.heading("Level");
+                ui.strong("Level");
             });
             header.col(|ui| {
-                ui.heading("Body");
+                ui.strong("Body");
             });
         })
         .body(|body| {
