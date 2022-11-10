@@ -1,7 +1,7 @@
 use crate::{ui::SceneQuery, ViewerContext};
 use ahash::HashMap;
 use re_data_store::{
-    query::{visit_type_data_4, visit_type_data_5},
+    query::{visit_type_data_4, visit_type_data_5, visit_type_data_6},
     FieldName, ObjPath, ObjectTreeProperties, TimeQuery,
 };
 use re_log_types::{IndexHash, MsgId, ObjectType};
@@ -20,30 +20,26 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 //
 // TODO:
 // - point-level props
-//   - label, color, radius, stick
+//   - label, color, radius, stick, scattered
 //   -> read as-is from the Scalar object
 //   -> missing ones are defaulted:
 //      - label: None
 //      - color: derived from obj_path hash
 //      - radius: 1.0
 //      - stick: false
+//      - scattered: false
 // - line-level props
 //   - label, color, width, stick, kind (e.g. enum{scatter, line})
 //   -> read as-is from the legend object associated with that obj_path (future PR?)
 //   -> otherwise the missing ones are defaulted:
 //      - label: obj_path
-//      - color:
-//          - if all points share same color, use that
-//          - otherwise, derived from obj_path hash
-//      - width:
-//          - if all points share same radius, use that
-//          - otherwise, 1.0
-//      - kind:
-//          - if all points share same color, default to line, scatter otherwise
+//      - color: use whatever the current linesplit dictates
+//      - width: use whatever the current linesplit dictates
+//      - stick: use whatever the current linesplit dictates
+//      - kind: use whatever the current linesplit dictates
 //   -> in the future, those should be modifiable at run-time from the blueprint UI
 // - plot-level props
 //   - label
-//   - sticky
 //   -> as-is from the legend object associated with that space (annotation context??)
 //   -> otherwise the missing ones are defaulted:
 //      - label: space name
@@ -55,6 +51,7 @@ pub struct PlotPointAttrs {
     pub color: [u8; 4],        // TODO: make the Color32 PR
     pub radius: f32,
     pub stick: bool,
+    pub scattered: bool,
 }
 impl PartialEq for PlotPointAttrs {
     fn eq(&self, rhs: &Self) -> bool {
@@ -63,12 +60,14 @@ impl PartialEq for PlotPointAttrs {
             color,
             radius,
             stick,
+            scattered,
         } = self;
         use eframe::epaint::util::FloatOrd as _;
         label.eq(&rhs.label)
             && color.eq(&rhs.color)
             && radius.ord().eq(&rhs.radius.ord())
             && stick.eq(&rhs.stick)
+            && scattered.eq(&rhs.scattered)
     }
 }
 impl Eq for PlotPointAttrs {}
@@ -135,14 +134,14 @@ impl ScenePlot {
 
             let mut points = Vec::new();
             // load non-sticky scalars
-            visit_type_data_5(
+            visit_type_data_6(
                 obj_store,
                 &FieldName::from("scalar"),
                 &match ctx.rec_cfg.time_ctrl.time_query().unwrap() {
                     TimeQuery::LatestAt(t) => TimeQuery::Range(0..=t),
                     range @ TimeQuery::Range(_) => range,
                 },
-                ("_visible", "label", "color", "radius", "stick"),
+                ("_visible", "label", "color", "radius", "stick", "scattered"),
                 |_instance_index: Option<&IndexHash>,
                  time: i64,
                  _msg_id: &MsgId,
@@ -151,7 +150,8 @@ impl ScenePlot {
                  label: Option<&String>,
                  color: Option<&[u8; 4]>,
                  radius: Option<&f32>,
-                 stick: Option<&bool>| {
+                 stick: Option<&bool>,
+                 scattered: Option<&bool>| {
                     let visible = *visible.unwrap_or(&true);
                     let stick = *stick.unwrap_or(&false);
                     if !visible || stick {
@@ -166,16 +166,17 @@ impl ScenePlot {
                             color: color.copied().unwrap_or(default_color),
                             radius: radius.copied().unwrap_or(1.0),
                             stick,
+                            scattered: *scattered.unwrap_or(&false),
                         },
                     });
                 },
             );
             // load sticky scalars
-            visit_type_data_5(
+            visit_type_data_6(
                 obj_store,
                 &FieldName::from("scalar"),
                 &TimeQuery::EVERYTHING, // always sticky!
-                ("_visible", "label", "color", "radius", "stick"),
+                ("_visible", "label", "color", "radius", "stick", "scattered"),
                 |_instance_index: Option<&IndexHash>,
                  time: i64,
                  _msg_id: &MsgId,
@@ -184,7 +185,8 @@ impl ScenePlot {
                  label: Option<&String>,
                  color: Option<&[u8; 4]>,
                  radius: Option<&f32>,
-                 stick: Option<&bool>| {
+                 stick: Option<&bool>,
+                 scattered: Option<&bool>| {
                     let visible = *visible.unwrap_or(&true);
                     let stick = *stick.unwrap_or(&false);
                     if !visible || !stick {
@@ -199,6 +201,7 @@ impl ScenePlot {
                             color: color.copied().unwrap_or(default_color),
                             radius: radius.copied().unwrap_or(1.0),
                             stick,
+                            scattered: *scattered.unwrap_or(&false),
                         },
                     });
                 },
@@ -233,7 +236,11 @@ impl ScenePlot {
                 label: line_label.clone(),
                 color: attrs.color,
                 width: attrs.radius,
-                kind: PlotLineKind::Continuous, // TODO
+                kind: if attrs.scattered {
+                    PlotLineKind::Scatter
+                } else {
+                    PlotLineKind::Continuous
+                },
                 points: Vec::with_capacity(nb_points),
             });
 
@@ -243,7 +250,7 @@ impl ScenePlot {
                 } else {
                     let taken = line.take().unwrap();
 
-                    nb_points -= taken.points.len();
+                    nb_points = nb_points.saturating_sub(taken.points.len());
                     self.lines.push(taken);
 
                     attrs = p.attrs.clone();
@@ -251,9 +258,21 @@ impl ScenePlot {
                         label: line_label.clone(),
                         color: attrs.color,
                         width: attrs.radius,
-                        kind: PlotLineKind::Continuous, // TODO
+                        kind: if attrs.scattered {
+                            PlotLineKind::Scatter
+                        } else {
+                            PlotLineKind::Continuous
+                        },
                         points: Vec::with_capacity(nb_points),
                     });
+
+                    if matches!(line.as_ref().unwrap().kind, PlotLineKind::Continuous) {
+                        line.as_mut()
+                            .unwrap()
+                            .points
+                            .push(self.lines.last().unwrap().points.last().unwrap().clone());
+                    }
+
                     line.as_mut().unwrap().points.push(p);
                 }
             }

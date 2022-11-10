@@ -29,7 +29,7 @@ def log_parabola() -> None:
         # TODO: actually not possible to get a line out of this without some legend support
 
         f_of_t = (t * 0.01 - 5) ** 3 + 1
-        radius = clamp(abs(f_of_t), 0.5, 4.0)
+        radius = clamp(abs(f_of_t)*0.1, 0.5, 10.0)
         color = [255, 255, 0]
         if f_of_t < -10.0:
             color = [255, 0, 0]
@@ -69,7 +69,7 @@ def log_segmentation() -> None:
             color = [0, 255, 0]
         else:
             color = [255, 255, 255]
-        rerun.log_scalar("segmentation/samples", g_of_t, color=color)
+        rerun.log_scalar("segmentation/samples", g_of_t, color=color, scattered=True)
 
 
 def main():
