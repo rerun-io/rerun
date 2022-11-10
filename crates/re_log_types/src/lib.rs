@@ -21,6 +21,7 @@
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
+pub mod context;
 pub mod coordinates;
 mod data;
 pub mod hash;
