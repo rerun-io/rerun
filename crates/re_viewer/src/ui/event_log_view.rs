@@ -39,11 +39,11 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .resizable(true)
         .columns(
-            Size::initial(200.0).at_least(100.0),
+            Size::initial(140.0).at_least(50.0), // timelines
             ctx.log_db.time_points.0.len(),
         )
-        .column(Size::initial(300.0).at_least(60.0)) // message type
-        .column(Size::initial(300.0).at_least(120.0)) // path
+        .column(Size::initial(200.0).at_least(60.0)) // message type
+        .column(Size::initial(240.0).at_least(50.0)) // path
         .column(Size::remainder().at_least(180.0)) // payload
         .header(20.0, |mut header| {
             header.col(|ui| {

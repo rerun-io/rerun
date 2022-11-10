@@ -106,11 +106,11 @@ fn show_table(
     builder
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(
-            Size::initial(180.0).at_least(100.0),
+            Size::initial(140.0).at_least(50.0), // timelines
             ctx.log_db.time_points.0.len(),
         ) // time(s)
-        .column(Size::initial(120.0).at_least(100.0)) // path
-        .column(Size::initial(60.0).at_least(60.0)) // level
+        .column(Size::initial(120.0).at_least(50.0)) // path
+        .column(Size::initial(50.0).at_least(50.0)) // level
         .column(Size::remainder().at_least(200.0)) // body
         .header(20.0, |mut header| {
             for timeline in ctx.log_db.time_points.0.keys() {
