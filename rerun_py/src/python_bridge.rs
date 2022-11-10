@@ -2,7 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, io::Cursor, path::PathBuf};
+use std::{borrow::Cow, io::Cursor, path::PathBuf, sync::Arc};
 
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
@@ -1598,84 +1598,39 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
     Ok(())
 }
 
-// Unzip supports nested, but not 3 or 4-length parallel structures
-// ((id, index), (label, color))
-type UnzipSegMap = (
-    (Vec<i32>, Vec<Index>),
-    (Vec<Option<String>>, Vec<Option<[u8; 4]>>),
-);
-
 #[pyfunction]
 fn log_class_descriptions(
     obj_path: &str,
-    class_descriptions: Vec<(i32, Option<String>, Option<Vec<u8>>)>,
+    class_descriptions: Vec<(u16, Option<String>, Option<Vec<u8>>)>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
     let obj_path = parse_obj_path(obj_path)?;
 
-    let ((ids, indices), (labels, colors)): UnzipSegMap = class_descriptions
-        .iter()
-        .map(|(id, label, color)| {
-            let corrected_color = color
-                .as_ref()
-                .map(|color| convert_color(color.clone()).unwrap());
-            (
-                (id, Index::Integer(*id as i128)),
-                (label.clone(), corrected_color),
-            )
-        })
-        .unzip();
+    let mut annotation_context = AnnotationContext::default();
 
-    // Avoid duplicate indices
-    let dups: Vec<&i32> = ids.iter().duplicates().collect();
-    if !dups.is_empty() {
-        return Err(PyTypeError::new_err(format!(
-            "ClassDescription contains duplicate ids {:?}",
-            dups
-        )));
+    for (id, label, color) in class_descriptions {
+        annotation_context
+            .class_map
+            .entry(id)
+            .or_insert_with(|| context::ClassDescription {
+                info: context::Info {
+                    label: label.map(Arc::new),
+                    color: color
+                        .as_ref()
+                        .map(|color| convert_color(color.clone()).unwrap()),
+                },
+                ..Default::default()
+            });
     }
-
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::ClassDescription);
 
     let time_point = time(timeless);
 
     sdk.send_data(
         &time_point,
-        (&obj_path, "id"),
-        LoggedData::Batch {
-            indices: BatchIndex::FullIndex(indices.clone()),
-            data: DataVec::I32(ids),
-        },
-    );
-
-    // Strip out any indices with unset labels
-    let (label_indices, labels) = std::iter::zip(indices.clone(), labels)
-        .filter_map(|(i, l)| Some((i, l?)))
-        .unzip();
-
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "label"),
-        LoggedData::Batch {
-            indices: BatchIndex::FullIndex(label_indices),
-            data: DataVec::String(labels),
-        },
-    );
-
-    // Strip out any indices with unset colors
-    let (color_indices, colors) = std::iter::zip(indices, colors)
-        .filter_map(|(i, c)| Some((i, c?)))
-        .unzip();
-
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "color"),
-        LoggedData::Batch {
-            indices: BatchIndex::FullIndex(color_indices),
-            data: DataVec::Color(colors),
-        },
+        (&obj_path, "_annotations"),
+        LoggedData::Single(Data::AnnotationContext(annotation_context)),
     );
 
     Ok(())
