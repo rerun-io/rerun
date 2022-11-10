@@ -60,7 +60,7 @@ impl SceneText {
                 visit_type_data_3(
                     obj_store,
                     &FieldName::from("body"),
-                    &TimeQuery::EVERYTHING, // always sticky!
+                    &TimeQuery::EVERYTHING,
                     ("_visible", "level", "color"),
                     |_instance_index: Option<&IndexHash>,
                      time: i64,

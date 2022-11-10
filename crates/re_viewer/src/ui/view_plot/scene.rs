@@ -89,7 +89,7 @@ impl ScenePlot {
             visit_type_data_5(
                 obj_store,
                 &FieldName::from("scalar"),
-                &TimeQuery::EVERYTHING, // always sticky!
+                &TimeQuery::EVERYTHING,
                 ("_visible", "label", "color", "radius", "scattered"),
                 |_instance_index: Option<&IndexHash>,
                  time: i64,
