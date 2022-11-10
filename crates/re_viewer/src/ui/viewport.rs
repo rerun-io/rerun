@@ -494,15 +494,7 @@ fn space_view_ui(
         return
     };
 
-    let query = SceneQuery {
-        obj_paths: &space_info.objects,
-        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-        time_query,
-        obj_props: &space_view.obj_tree_properties.projected,
-    };
-    let scene = query.query(ctx);
-
-    space_view.scene_ui(ctx, ui, spaces_info, space_info, scene);
+    space_view.scene_ui(ctx, ui, spaces_info, space_info, time_query);
 }
 
 fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {

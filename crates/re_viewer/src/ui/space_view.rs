@@ -3,7 +3,7 @@ use re_log_types::Transform;
 
 use crate::misc::{space_info::*, ViewerContext};
 
-use super::{view_2d, view_3d, view_tensor, view_text, Scene};
+use super::{view_2d, view_3d, view_tensor, view_text};
 
 // ----------------------------------------------------------------------------
 
@@ -54,9 +54,16 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        scene: Scene,
+        time_query: re_data_store::TimeQuery<i64>,
     ) {
         crate::profile_function!();
+
+        let query = crate::ui::scene::SceneQuery {
+            obj_paths: &space_info.objects,
+            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+            time_query,
+            obj_props: &self.obj_tree_properties.projected,
+        };
 
         // Extra headroom required for the hovering controls at the top of the space view.
         let extra_headroom = {
@@ -69,27 +76,32 @@ impl SpaceView {
         match self.category {
             ViewCategory::TwoD => {
                 _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
-                self.view_state
-                    .ui_2d(ctx, ui, &self.space_path, scene.two_d);
+
+                let mut scene = view_2d::Scene2D::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_2d(ctx, ui, &self.space_path, scene);
             }
             ViewCategory::ThreeD => {
                 _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
-                self.view_state.ui_3d(
-                    ctx,
-                    ui,
-                    &self.space_path,
-                    spaces_info,
-                    space_info,
-                    scene.three_d,
-                );
+
+                let mut scene = view_3d::Scene3D::default();
+                scene.load_objects(ctx, &query);
+                self.view_state
+                    .ui_3d(ctx, ui, &self.space_path, spaces_info, space_info, scene);
             }
             ViewCategory::Tensor => {
                 ui.add_space(extra_headroom);
-                self.view_state.ui_tensor(ui, &scene.tensor);
+
+                let mut scene = view_tensor::SceneTensor::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_tensor(ui, &scene);
             }
             ViewCategory::Text => {
                 ui.add_space(extra_headroom);
-                self.view_state.ui_text(ctx, ui, &scene.text);
+
+                let mut scene = view_text::SceneText::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_text(ctx, ui, &scene);
             }
         };
     }
