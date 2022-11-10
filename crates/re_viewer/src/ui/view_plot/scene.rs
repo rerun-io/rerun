@@ -137,6 +137,12 @@ impl ScenePlot {
             visit_type_data_6(
                 obj_store,
                 &FieldName::from("scalar"),
+                // TODO: btw we're introducing a new kind of time query here: "range up to now".
+                // All in all, we now have:
+                // - range
+                // - latest at
+                // - instantaneous
+                // - range up to now
                 &match ctx.rec_cfg.time_ctrl.time_query().unwrap() {
                     TimeQuery::LatestAt(t) => TimeQuery::Range(0..=t),
                     range @ TimeQuery::Range(_) => range,
