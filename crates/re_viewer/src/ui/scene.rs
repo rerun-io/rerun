@@ -97,11 +97,11 @@ impl<'s> SceneQuery<'s> {
             })
     }
 
-    /// Given a list of `FieldName`s, this will return all relevant `ObjStore`s that contain
-    /// the relevant fields.
+    /// Given a `FieldName`, this will return all relevant `ObjStore`s that contain
+    /// the relevant fields
     ///
-    /// An `ObjStore` is considered relevant if it contains at least one of the fields we are
-    /// lookign for and its object path is a prefix of one of the visible object paths in question
+    /// An `ObjStore` is considered relevant if it contains the fields we are looking for
+    /// and its object path is a prefix of one of the visible object paths.
     pub(crate) fn iter_parent_meta_field<'a>(
         &'a self,
         log_db: &'a LogDb,

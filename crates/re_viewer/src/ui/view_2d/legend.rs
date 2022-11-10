@@ -17,9 +17,8 @@ pub type Legend = Arc<Annotations>;
 pub struct Legends(pub BTreeMap<ObjPath, Arc<Annotations>>);
 
 impl Legends {
-    // If the object_path is set on the image, but it doesn't point to a valid legend
-    // we return the default MissingLegend which gives us "reasonable" behavior.
-    // TODO(jleibs): We should still surface a user-visible error in this case
+    // Search through the all prefixes of this object path until we find a
+    // matching legend. If we find nothing return the default missing-legend.
     pub fn find<'a>(&self, obj_path: impl Into<&'a ObjPath>) -> Legend {
         let mut next_parent = Some(obj_path.into().clone());
         while let Some(parent) = next_parent {
