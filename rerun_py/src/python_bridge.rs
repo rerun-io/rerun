@@ -611,7 +611,6 @@ fn log_scalar(
     label: Option<String>,
     color: Option<Vec<u8>>,
     radius: Option<f32>,
-    stick: Option<bool>,
     scattered: Option<bool>,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -649,14 +648,6 @@ fn log_scalar(
             &time_point,
             (&obj_path, "radius"),
             LoggedData::Single(Data::F32(radius)),
-        );
-    }
-
-    if let Some(stick) = stick {
-        sdk.send_data(
-            &time_point,
-            (&obj_path, "stick"),
-            LoggedData::Single(Data::Bool(stick)),
         );
     }
 

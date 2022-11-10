@@ -289,7 +289,6 @@ def log_scalar(
     label: Optional[str] = None,
     color: Optional[Sequence[int]] = None,
     radius: Optional[float] = None,
-    stick: Optional[bool] = None,
     scattered: Optional[bool] = None,
 ) -> None:
     """
@@ -297,7 +296,7 @@ def log_scalar(
 
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    rerun_rs.log_scalar(obj_path, scalar, label, color, radius, stick, scattered)
+    rerun_rs.log_scalar(obj_path, scalar, label, color, radius, scattered)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """

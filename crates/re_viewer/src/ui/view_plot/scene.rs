@@ -1,5 +1,5 @@
 use crate::{ui::SceneQuery, ViewerContext};
-use re_data_store::{query::visit_type_data_6, FieldName, ObjectTreeProperties, TimeQuery};
+use re_data_store::{query::visit_type_data_5, FieldName, ObjectTreeProperties, TimeQuery};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
 // ---
@@ -46,7 +46,6 @@ pub struct PlotPointAttrs {
     pub label: Option<String>, // TODO: yeah we need an Arc in the storage layer
     pub color: [u8; 4],        // TODO: make the Color32 PR
     pub radius: f32,
-    pub stick: bool,
     pub scattered: bool,
 }
 impl PartialEq for PlotPointAttrs {
@@ -55,14 +54,12 @@ impl PartialEq for PlotPointAttrs {
             label,
             color,
             radius,
-            stick,
             scattered,
         } = self;
         use eframe::epaint::util::FloatOrd as _;
         label.eq(&rhs.label)
             && color.eq(&rhs.color)
             && radius.ord().eq(&rhs.radius.ord())
-            && stick.eq(&rhs.stick)
             && scattered.eq(&rhs.scattered)
     }
 }
@@ -129,56 +126,11 @@ impl ScenePlot {
             };
 
             let mut points = Vec::new();
-            // load non-sticky scalars
-            visit_type_data_6(
-                obj_store,
-                &FieldName::from("scalar"),
-                // TODO: btw we're introducing a new kind of time query here: "range up to now".
-                // All in all, we now have:
-                // - range
-                // - latest at
-                // - instantaneous
-                // - range up to now
-                &match ctx.rec_cfg.time_ctrl.time_query().unwrap() {
-                    TimeQuery::LatestAt(t) => TimeQuery::Range(0..=t),
-                    range @ TimeQuery::Range(_) => range,
-                },
-                ("_visible", "label", "color", "radius", "stick", "scattered"),
-                |_instance_index: Option<&IndexHash>,
-                 time: i64,
-                 _msg_id: &MsgId,
-                 value: &f64,
-                 visible: Option<&bool>,
-                 label: Option<&String>,
-                 color: Option<&[u8; 4]>,
-                 radius: Option<&f32>,
-                 stick: Option<&bool>,
-                 scattered: Option<&bool>| {
-                    let visible = *visible.unwrap_or(&true);
-                    let stick = *stick.unwrap_or(&false);
-                    if !visible || stick {
-                        return;
-                    }
-
-                    points.push(PlotPoint {
-                        time,
-                        value: *value,
-                        attrs: PlotPointAttrs {
-                            label: label.cloned(),
-                            color: color.copied().unwrap_or(default_color),
-                            radius: radius.copied().unwrap_or(1.0),
-                            stick,
-                            scattered: *scattered.unwrap_or(&false),
-                        },
-                    });
-                },
-            );
-            // load sticky scalars
-            visit_type_data_6(
+            visit_type_data_5(
                 obj_store,
                 &FieldName::from("scalar"),
                 &TimeQuery::EVERYTHING, // always sticky!
-                ("_visible", "label", "color", "radius", "stick", "scattered"),
+                ("_visible", "label", "color", "radius", "scattered"),
                 |_instance_index: Option<&IndexHash>,
                  time: i64,
                  _msg_id: &MsgId,
@@ -187,11 +139,9 @@ impl ScenePlot {
                  label: Option<&String>,
                  color: Option<&[u8; 4]>,
                  radius: Option<&f32>,
-                 stick: Option<&bool>,
                  scattered: Option<&bool>| {
                     let visible = *visible.unwrap_or(&true);
-                    let stick = *stick.unwrap_or(&false);
-                    if !visible || !stick {
+                    if !visible {
                         return;
                     }
 
@@ -202,7 +152,6 @@ impl ScenePlot {
                             label: label.cloned(),
                             color: color.copied().unwrap_or(default_color),
                             radius: radius.copied().unwrap_or(1.0),
-                            stick,
                             scattered: *scattered.unwrap_or(&false),
                         },
                     });
