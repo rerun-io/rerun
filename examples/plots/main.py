@@ -17,7 +17,7 @@ from math import cos, pi, sin, tau
 import rerun_sdk as rerun
 
 
-def clamp(n, smallest, largest):
+def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
     return max(smallest, min(n, largest))
 
 
@@ -26,7 +26,7 @@ def log_parabola() -> None:
         rerun.set_time_sequence("frame_nr", t)
 
         f_of_t = (t * 0.01 - 5) ** 3 + 1
-        radius = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)
+        radius = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)  # type: ignore[no-untyped-call]
         color = [255, 255, 0]
         if f_of_t < -10.0:
             color = [255, 0, 0]
@@ -66,7 +66,7 @@ def log_segmentation() -> None:
         rerun.log_scalar("segmentation/samples", g_of_t, color=color, scattered=True, radius=radius)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
     )

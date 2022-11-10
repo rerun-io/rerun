@@ -284,7 +284,7 @@ def log_text_entry(
 
 def log_scalar(
     obj_path: str,
-    scalar: np.float64,
+    scalar: float,
     label: Optional[str] = None,
     color: Optional[Sequence[int]] = None,
     radius: Optional[float] = None,
