@@ -20,6 +20,9 @@ import rerun_sdk as rerun
 def clamp(n, smallest, largest):
     return max(smallest, min(n, largest))
 
+# TODO: of course you really don't want to be storing the color information for each and every
+# point, but that should be on us to transparently optimize it out!
+# From the user's PoV, everything should stay as simple and stateless as possible!
 
 def log_parabola() -> None:
     stick = True
