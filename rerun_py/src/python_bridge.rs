@@ -129,6 +129,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(set_visible, m)?)?;
+    m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_class::<TensorDataMeaning>()?;
 
     Ok(())
@@ -1647,6 +1648,23 @@ fn log_annotation_context(
         (&obj_path, "_annotation_context"),
         LoggedData::Single(Data::AnnotationContext(annotation_context)),
     );
+
+    Ok(())
+}
+
+#[pyfunction]
+fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+
+    let time_point = time(false);
+
+    if recursive {
+        sdk.send_path_op(&time_point, PathOp::ClearRecursive(obj_path.clone()));
+    } else {
+        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path.clone()));
+    }
 
     Ok(())
 }
