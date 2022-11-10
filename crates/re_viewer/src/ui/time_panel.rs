@@ -250,8 +250,7 @@ impl TimePanel {
         };
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
-        let default_open = tree.path.len() <= 1 && tree.num_children_and_fields() <= 10
-            || tree.num_children_and_fields() <= 2;
+        let default_open = tree.path.len() <= 1 && !tree.is_leaf();
         let (header_response, _, body_returned) =
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
