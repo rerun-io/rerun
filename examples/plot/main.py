@@ -26,10 +26,8 @@ def log_parabola() -> None:
     for t in range(0, 1000, 10):
         rerun.set_time_sequence("frame_nr", t)
 
-        # TODO: actually not possible to get a line out of this without some legend support
-
         f_of_t = (t * 0.01 - 5) ** 3 + 1
-        radius = clamp(abs(f_of_t)*0.1, 0.5, 10.0)
+        radius = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)
         color = [255, 255, 0]
         if f_of_t < -10.0:
             color = [255, 0, 0]
@@ -53,7 +51,6 @@ def log_trig() -> None:
         rerun.log_scalar("trig/cos", cos_of_t, label="cos(0.01 * t)", color=[0, 255, 0], stick=stick)
 
 
-# TODO: make this one not sticky!
 def log_segmentation() -> None:
     for t in range(0, 1000, 2):
         rerun.set_time_sequence("frame_nr", t)
@@ -69,7 +66,8 @@ def log_segmentation() -> None:
             color = [0, 255, 0]
         else:
             color = [255, 255, 255]
-        rerun.log_scalar("segmentation/samples", g_of_t, color=color, scattered=True)
+        radius = abs(g_of_t - f_of_t)
+        rerun.log_scalar("segmentation/samples", g_of_t, color=color, scattered=True, radius=radius)
 
 
 def main():
