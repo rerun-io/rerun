@@ -1,9 +1,5 @@
 use crate::{ui::SceneQuery, ViewerContext};
-use ahash::HashMap;
-use re_data_store::{
-    query::{visit_type_data_4, visit_type_data_5, visit_type_data_6},
-    FieldName, ObjPath, ObjectTreeProperties, TimeQuery,
-};
+use re_data_store::{query::visit_type_data_6, FieldName, ObjectTreeProperties, TimeQuery};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
 // ---
@@ -250,7 +246,7 @@ impl ScenePlot {
                 points: Vec::with_capacity(nb_points),
             });
 
-            for p in points.into_iter() {
+            for p in points {
                 if p.attrs == attrs {
                     line.as_mut().unwrap().points.push(p);
                 } else {

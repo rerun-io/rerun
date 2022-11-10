@@ -1,28 +1,20 @@
 use crate::ui::view_plot::scene::PlotLineKind;
 use crate::ViewerContext;
-use egui::plot::{Legend, Line, Plot, PlotPoint, PlotPoints, Points, Text, VLine};
+use egui::plot::{Legend, Line, Plot, Points, VLine};
 use egui::Color32;
 use re_data_store::TimeQuery;
-use re_log_types::{LogMsg, TimePoint};
 
 use super::ScenePlot;
 
 // ---
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct ViewPlotState {
-    /// Keeps track of the latest time selection made by the user.
-    ///
-    /// We need this because we want the user to be able to manually scroll the
-    /// plot entry window however they please when the time cursor isn't moving.
-    latest_time: i64,
-}
+pub struct ViewPlotState;
 
 pub(crate) fn view_plot(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut ViewPlotState,
+    _state: &mut ViewPlotState,
     scene: &ScenePlot,
 ) -> egui::Response {
     crate::profile_function!();
