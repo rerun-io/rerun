@@ -841,6 +841,7 @@ impl Scene3D {
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     #[cfg(feature = "wgpu")]
     pub fn line_strips(&self, show_origin_axis: bool) -> Vec<LineStrip> {
+        crate::profile_function!();
         let mut line_strips = Vec::with_capacity(self.line_segments.len());
         for segments in &self.line_segments {
             let mut current_strip = LineStrip {
@@ -902,6 +903,7 @@ impl Scene3D {
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     #[cfg(feature = "wgpu")]
     pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
+        crate::profile_function!();
         self.points
             .iter()
             .map(|point| PointCloudPoint {
