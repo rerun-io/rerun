@@ -30,6 +30,7 @@ pub mod objects;
 pub mod path;
 mod time;
 
+pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
 pub use data::*;
 pub use index::*;

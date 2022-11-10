@@ -172,6 +172,9 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::ViewCoordinates => {
                 handle_type!(ViewCoordinates, re_log_types::ViewCoordinates)
             }
+            DataType::AnnotationContext => {
+                handle_type!(AnnotationContext, re_log_types::AnnotationContext)
+            }
             DataType::DataVec => handle_type!(DataVec, DataVec),
         }
     }

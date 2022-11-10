@@ -354,6 +354,7 @@ pub(crate) fn ui_data(
             Preview::Medium => ui_transform(ui, transform),
         },
         Data::ViewCoordinates(coordinates) => ui_view_coordinates(ui, coordinates),
+        Data::AnnotationContext(context) => ui_annotation_context(ui, context),
 
         Data::Tensor(tensor) => {
             let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
@@ -414,6 +415,11 @@ fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
 
 fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Response {
     ui.label(system.describe())
+}
+
+fn ui_annotation_context(ui: &mut egui::Ui, _context: &AnnotationContext) -> egui::Response {
+    // TODO!
+    ui.label("An Annotation Context")
 }
 
 fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
