@@ -588,8 +588,9 @@ fn main() {
     {
         // Make sure panics are logged using `console.error`.
         console_error_panic_hook::set_once();
-        // Redirect tracing to console.log and friends:
-        tracing_wasm::set_as_global_default();
+
+        // Redirect tracing to `console.log`:
+        redirect_tracing_to_console_log();
 
         use winit::platform::web::WindowExtWebSys;
         // On wasm, append the canvas to the document body
@@ -603,4 +604,19 @@ fn main() {
             .expect("couldn't append canvas to document body");
         wasm_bindgen_futures::spawn_local(run(event_loop, window));
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn redirect_tracing_to_console_log() {
+    use tracing_subscriber::layer::SubscriberExt as _;
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::Registry::default()
+            .with(tracing_subscriber::EnvFilter::new(
+                "debug,wgpu_core=warn,wgpu_hal=warn",
+            ))
+            .with(tracing_wasm::WASMLayer::new(
+                tracing_wasm::WASMLayerConfig::default(),
+            )),
+    )
+    .expect("Failed to set tracing subscriber.");
 }
