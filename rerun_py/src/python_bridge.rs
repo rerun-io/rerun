@@ -1600,13 +1600,17 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
 
 #[pyfunction]
 fn log_class_descriptions(
-    obj_path: &str,
+    obj_path: Option<&str>,
     class_descriptions: Vec<(u16, Option<String>, Option<Vec<u8>>)>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
-    let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = if let Some(obj_path) = obj_path {
+        parse_obj_path(obj_path)?
+    } else {
+        ObjPath::root()
+    };
 
     let mut annotation_context = AnnotationContext::default();
 

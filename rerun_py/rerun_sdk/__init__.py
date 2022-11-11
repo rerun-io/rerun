@@ -982,4 +982,8 @@ def log_class_descriptions(
         (d.id, d.label, _normalize_colors(d.color).tolist() or None) for d in typed_class_descriptions
     ]
 
+    # We normally disallow logging to root, but we make an exception for class_descriptions
+    if obj_path == "/":
+        obj_path = None  # type: ignore[assignment]
+
     rerun_rs.log_class_descriptions(obj_path, tuple_class_descriptions, timeless)
