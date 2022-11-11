@@ -37,10 +37,15 @@ pub(crate) fn tree_from_space_views(
             visible.get(space_view_id).copied().unwrap_or_default()
         })
         .map(|(space_view_id, space_view)| {
-            let aspect_ratio = (space_view.category == ViewCategory::TwoD).then(|| {
-                let size = space_view.view_state.state_2d.scene_bbox_accum.size();
-                size.x / size.y
-            });
+            let aspect_ratio = match space_view.category {
+                ViewCategory::TwoD => {
+                    let size = space_view.view_state.state_2d.scene_bbox_accum.size();
+                    Some(size.x / size.y)
+                }
+                ViewCategory::ThreeD => None,
+                ViewCategory::Tensor => Some(1.0),
+                ViewCategory::Text => Some(2.0), // wide
+            };
 
             SpaceMakeInfo {
                 id: *space_view_id,
