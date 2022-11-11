@@ -8,7 +8,7 @@ mod class_description_ui;
 pub(crate) use self::class_description_ui::view_class_description_map;
 
 mod legend;
-pub use self::legend::{ColorMapping, LabelMapping, Legend, Legends};
+pub use self::legend::{auto_color, ColorMapping, LabelMapping, Legend, Legends};
 
 mod image_ui;
 pub(crate) use self::image_ui::show_tensor;
