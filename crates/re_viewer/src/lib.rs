@@ -70,12 +70,10 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
-#[cfg(feature = "wgpu")]
 pub(crate) fn hardware_tier() -> re_renderer::config::HardwareTier {
     re_renderer::config::HardwareTier::Web
 }
 
-#[cfg(feature = "wgpu")]
 pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
     egui_wgpu::WgpuConfiguration {
             // When running wgpu on native debug builds, we want some extra control over how
@@ -103,7 +101,6 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
 }
 
 pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::DesignTokens {
-    #[cfg(feature = "wgpu")]
     if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::{config::RenderContextConfig, RenderContext};
 

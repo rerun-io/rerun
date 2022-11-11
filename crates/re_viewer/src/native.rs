@@ -4,26 +4,16 @@ use re_log_types::LogMsg;
 
 use crate::DesignTokens;
 
-#[cfg(not(any(feature = "glow", feature = "wgpu")))]
-compile_error!("You must enable either the 'glow' or 'wgpu' feature of re_viewer.");
-
 type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, DesignTokens) -> Box<dyn eframe::App>>;
 
 pub fn run_native_app(app_creator: AppCreator) {
     let native_options = eframe::NativeOptions {
-        #[cfg(not(feature = "wgpu"))]
-        depth_buffer: 24,
-        #[cfg(feature = "wgpu")]
+        // re_renderer renders to a separate target with depth buffer and MSAA
         depth_buffer: 0,
-
-        #[cfg(not(feature = "wgpu"))]
-        multisampling: 8,
-
-        #[cfg(feature = "glow")]
-        renderer: eframe::Renderer::Glow,
-        #[cfg(not(feature = "glow"))]
+        multisampling: 0,
         renderer: eframe::Renderer::Wgpu,
+        wgpu_options: crate::wgpu_options(),
 
         initial_window_size: Some([1600.0, 1200.0].into()),
         follow_system_theme: false,
@@ -31,9 +21,6 @@ pub fn run_native_app(app_creator: AppCreator) {
 
         #[cfg(target_os = "macos")]
         fullsize_content: crate::FULLSIZE_CONTENT,
-
-        #[cfg(feature = "wgpu")]
-        wgpu_options: crate::wgpu_options(),
 
         ..Default::default()
     };

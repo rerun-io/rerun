@@ -18,7 +18,6 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
 
-        #[cfg(feature = "wgpu")]
         wgpu_options: crate::wgpu_options(),
 
         ..Default::default()

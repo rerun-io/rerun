@@ -295,12 +295,12 @@ impl eframe::App for App {
             .on_frame_start();
 
         // TODO(andreas): store the re_renderer somewhere else.
-        #[cfg(feature = "wgpu")]
+
         let egui_renderer = {
             let render_state = frame.wgpu_render_state().unwrap();
             &mut render_state.renderer.write()
         };
-        #[cfg(feature = "wgpu")]
+
         let render_ctx = egui_renderer
             .paint_callback_resources
             .get_mut::<re_renderer::RenderContext>()
@@ -313,19 +313,13 @@ impl eframe::App for App {
                 });
             });
         } else {
-            self.state.show(
-                egui_ctx,
-                log_db,
-                &self.design_tokens,
-                #[cfg(feature = "wgpu")]
-                render_ctx,
-            );
+            self.state
+                .show(egui_ctx, log_db, &self.design_tokens, render_ctx);
         }
 
         self.handle_dropping_files(egui_ctx);
         self.toasts.show(egui_ctx);
 
-        #[cfg(feature = "wgpu")]
         if let Some(render_state) = frame.wgpu_render_state() {
             // TODO(andreas): the re_renderer should always know/hold on to queue and device.
             render_ctx.frame_maintenance(&render_state.device);
@@ -467,7 +461,7 @@ impl AppState {
         egui_ctx: &egui::Context,
         log_db: &LogDb,
         design_tokens: &DesignTokens,
-        #[cfg(feature = "wgpu")] render_ctx: &mut re_renderer::RenderContext,
+        render_ctx: &mut re_renderer::RenderContext,
     ) {
         crate::profile_function!();
 
@@ -499,7 +493,6 @@ impl AppState {
             log_db,
             rec_cfg,
             design_tokens,
-            #[cfg(feature = "wgpu")]
             render_ctx,
         };
 
