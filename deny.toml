@@ -28,7 +28,6 @@ deny = [
 skip = [
   { name = "ahash" }, # Old version via dark-light
   { name = "nix" },   # Too many to protect against
-  { name = "glow" },  # Both wgpu and egui patch glow. Later is going to be removed with old renderer
 ]
 skip-tree = [
   { name = "criterion" }, # dev-dependency
