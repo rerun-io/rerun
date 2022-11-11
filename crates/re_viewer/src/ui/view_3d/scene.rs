@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 
 use re_data_store::query::{visit_type_data_2, visit_type_data_3, visit_type_data_4};
 use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectTreeProperties};
-use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
+use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::misc::Caches;
@@ -110,17 +110,33 @@ pub struct LineSegments3D {
 
 pub enum MeshSourceData {
     Mesh3D(re_log_types::Mesh3D),
+
     /// e.g. the camera mesh
-    StaticGlb(&'static [u8]),
+    StaticGlb(MeshId, &'static [u8]),
+}
+
+impl MeshSourceData {
+    pub fn mesh_id(&self) -> MeshId {
+        match self {
+            MeshSourceData::Mesh3D(mesh) => mesh.mesh_id(),
+            MeshSourceData::StaticGlb(id, _) => *id,
+        }
+    }
 }
 
 pub struct MeshSource {
     pub instance_id_hash: InstanceIdHash,
-    pub mesh_id: u64,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
     pub tint: Option<[u8; 4]>,
+}
+
+impl MeshSource {
+    #[allow(unused)] // only used by glow
+    pub fn mesh_id(&self) -> MeshId {
+        self.cpu_mesh.mesh_id()
+    }
 }
 
 pub struct Label3D {
@@ -399,7 +415,7 @@ impl Scene3D {
                     ("_visible", "color"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
-                     msg_id: &MsgId,
+                     _msg_id: &MsgId,
                      mesh: &re_log_types::Mesh3D,
                      visible: Option<&bool>,
                      _color: Option<&[u8; 4]>| {
@@ -408,9 +424,7 @@ impl Scene3D {
                         }
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                        let mesh_id = egui::util::hash(msg_id);
                         let Some(mesh) = ctx.cache.cpu_mesh.load(
-                                mesh_id,
                                 &obj_path.to_string(),
                                 &MeshSourceData::Mesh3D(mesh.clone()),
                                 #[cfg(feature = "wgpu")]
@@ -423,7 +437,6 @@ impl Scene3D {
                                     obj_path,
                                     instance_index,
                                 ),
-                                mesh_id,
                                 world_from_mesh: Default::default(),
                                 cpu_mesh,
                                 tint: None,
@@ -480,13 +493,15 @@ impl Scene3D {
 
                     let scale = Vec3::splat(scale);
 
-                    let mesh_id = egui::util::hash("camera_mesh");
+                    let mesh_id = MeshId(uuid::uuid!("0de12a29-64ea-40b9-898b-63686b5436af"));
                     let world_from_mesh = world_from_rub_view * glam::Affine3A::from_scale(scale);
 
                     if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
-                        mesh_id,
                         "camera_mesh",
-                        &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
+                        &MeshSourceData::StaticGlb(
+                            mesh_id,
+                            include_bytes!("../../../data/camera.glb"),
+                        ),
                         #[cfg(feature = "wgpu")]
                         &mut ctx.render_ctx.mesh_manager,
                         #[cfg(feature = "wgpu")]
@@ -494,7 +509,6 @@ impl Scene3D {
                     ) {
                         self.meshes.push(MeshSource {
                             instance_id_hash: instance_id,
-                            mesh_id,
                             world_from_mesh,
                             cpu_mesh,
                             tint: None,
@@ -706,8 +720,8 @@ impl Scene3D {
 
         #[cfg(feature = "glow")]
         {
-            let (cylinder_id, cylinder_mesh) = _caches.cpu_mesh.cylinder();
-            let (cone_id, cone_mesh) = _caches.cpu_mesh.cone();
+            let cylinder_mesh = _caches.cpu_mesh.cylinder();
+            let cone_mesh = _caches.cpu_mesh.cone();
 
             let rotation = glam::Quat::from_rotation_arc(Vec3::X, vector.normalize());
 
@@ -725,7 +739,6 @@ impl Scene3D {
 
             self.meshes.push(MeshSource {
                 instance_id_hash,
-                mesh_id: cylinder_id,
                 world_from_mesh: cylinder_transform,
                 cpu_mesh: cylinder_mesh,
                 tint: Some(color),
@@ -740,7 +753,6 @@ impl Scene3D {
 
             self.meshes.push(MeshSource {
                 instance_id_hash,
-                mesh_id: cone_id,
                 world_from_mesh: cone_transform,
                 cpu_mesh: cone_mesh,
                 tint: Some(color),

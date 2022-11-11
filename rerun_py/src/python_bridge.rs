@@ -1501,6 +1501,7 @@ fn log_mesh_file(
         &time_point,
         (&obj_path, "mesh"),
         LoggedData::Single(Data::Mesh3D(Mesh3D::Encoded(EncodedMesh3D {
+            mesh_id: MeshId::random(),
             format,
             bytes,
             transform,

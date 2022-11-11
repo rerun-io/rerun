@@ -1,5 +1,7 @@
 mod sphere_renderer;
 
+use re_log_types::MeshId;
+
 use super::{eye::Eye, mesh_cache::GpuMeshCache, scene::*};
 
 type LineMaterial = three_d::ColorMaterial;
@@ -55,7 +57,7 @@ pub struct GpuScene {
     points: sphere_renderer::InstancedSpheres<three_d::PhysicalMaterial>,
     lines: three_d::Gm<three_d::InstancedMesh, LineMaterial>,
 
-    mesh_instances: std::collections::HashMap<u64, three_d::Instances>,
+    mesh_instances: std::collections::HashMap<MeshId, three_d::Instances>,
 }
 
 impl GpuScene {
@@ -80,7 +82,6 @@ impl GpuScene {
             gpu_meshes: Default::default(),
             points: points_cache,
             lines: lines_cache,
-
             mesh_instances: Default::default(),
         }
     }
@@ -103,7 +104,7 @@ impl GpuScene {
         self.mesh_instances.clear();
 
         for mesh in meshes {
-            let instances = self.mesh_instances.entry(mesh.mesh_id).or_default();
+            let instances = self.mesh_instances.entry(mesh.mesh_id()).or_default();
 
             let (scale, rotation, translation) =
                 mesh.world_from_mesh.to_scale_rotation_translation();
@@ -124,7 +125,8 @@ impl GpuScene {
                 }),
             );
 
-            self.gpu_meshes.load(three_d, mesh.mesh_id, &mesh.cpu_mesh);
+            self.gpu_meshes
+                .load(three_d, mesh.mesh_id(), &mesh.cpu_mesh);
         }
 
         for (mesh_id, instances) in &self.mesh_instances {
