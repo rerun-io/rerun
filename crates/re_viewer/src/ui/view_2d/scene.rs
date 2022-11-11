@@ -132,19 +132,18 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::Image])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_4(
+                visit_type_data_3(
                     obj_store,
                     &FieldName::from("tensor"),
                     &query.time_query,
-                    ("_visible", "color", "meter", "legend"),
+                    ("_visible", "color", "meter"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      msg_id: &MsgId,
                      tensor: &re_log_types::Tensor,
                      visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
-                     meter: Option<&f32>,
-                     legend: Option<&ObjPath>| {
+                     meter: Option<&f32>| {
                         let visible = *visible.unwrap_or(&true);
                         let two_or_three_dims = 2 <= tensor.shape.len() && tensor.shape.len() <= 3;
                         if !visible || !two_or_three_dims {
@@ -169,7 +168,7 @@ impl Scene2D {
                             ),
                             tensor: tensor.clone(), // shallow
                             meter: meter.copied(),
-                            legend: Some(self.legends.find(legend)),
+                            legend: Some(self.legends.find(obj_path)),
                             paint_props,
                             is_hovered: false, // Will be filled in later
                         };

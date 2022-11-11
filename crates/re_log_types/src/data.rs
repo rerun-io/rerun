@@ -722,6 +722,16 @@ impl TensorDataType {
     }
 }
 
+// TODO(jleibs) This should be extended to include things like rgb vs bgr
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum TensorDataMeaning {
+    /// Default behavior: guess based on shape
+    Unknown,
+    /// The data is an annotated class-id which should be looked up
+    ClassId,
+}
+
 pub trait TensorDataTypeTrait: Copy + Clone + Send + Sync {
     const DTYPE: TensorDataType;
 }
@@ -873,6 +883,10 @@ pub struct Tensor {
     /// The per-element data format.
     /// numpy calls this `dtype`.
     pub dtype: TensorDataType,
+
+    /// The per-element data meaning
+    /// Used to indicated if the data should be interpreted as color, class_id, etc.
+    pub meaning: TensorDataMeaning,
 
     /// The actual contents of the tensor.
     pub data: TensorDataStore,

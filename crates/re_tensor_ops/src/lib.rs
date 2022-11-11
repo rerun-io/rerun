@@ -4,7 +4,9 @@
 //! This is particularly helpful for performing slice-operations for
 //! dimensionality reduction.
 
-use re_log_types::{Tensor, TensorDataStore, TensorDataTypeTrait, TensorDimension};
+use re_log_types::{
+    Tensor, TensorDataMeaning, TensorDataStore, TensorDataTypeTrait, TensorDimension,
+};
 
 pub mod dimension_mapping;
 
@@ -52,6 +54,7 @@ pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
 pub fn to_rerun_tensor<A: ndarray::Data + ndarray::RawData, D: ndarray::Dimension>(
     data: &ndarray::ArrayBase<A, D>,
     names: Option<Vec<String>>,
+    meaning: TensorDataMeaning,
 ) -> Result<Tensor, TensorCastError>
 where
     <A as ndarray::RawData>::Elem: TensorDataTypeTrait + bytemuck::Pod,
@@ -83,6 +86,7 @@ where
     Ok(Tensor {
         shape,
         dtype: A::Elem::DTYPE,
+        meaning,
         data: TensorDataStore::Dense(arc),
     })
 }
@@ -102,6 +106,7 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             dtype: TensorDataType::U8,
+            meaning: TensorDataMeaning::Unknown,
             data: TensorDataStore::Dense(vec![0; 60].into()),
         };
 
@@ -119,6 +124,7 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             dtype: TensorDataType::U16,
+            meaning: TensorDataMeaning::Unknown,
             data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&[0_u16; 60]).into()),
         };
 
@@ -136,6 +142,7 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             dtype: TensorDataType::F32,
+            meaning: TensorDataMeaning::Unknown,
             data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&[0_f32; 60]).into()),
         };
 
@@ -147,7 +154,12 @@ mod tests {
     #[test]
     fn convert_ndarray_u8_to_tensor() {
         let n = ndarray::array![[1., 2., 3.], [4., 5., 6.]];
-        let t = to_rerun_tensor(&n, Some(vec!["height".to_owned(), "width".to_owned()])).unwrap();
+        let t = to_rerun_tensor(
+            &n,
+            Some(vec!["height".to_owned(), "width".to_owned()]),
+            TensorDataMeaning::Unknown,
+        )
+        .unwrap();
 
         assert_eq!(
             t.shape,
@@ -159,7 +171,12 @@ mod tests {
     fn convert_ndarray_slice_to_tensor() {
         let n = ndarray::array![[1., 2., 3.], [4., 5., 6.]];
         let n = &n.slice(ndarray::s![.., 1]);
-        let t = to_rerun_tensor(n, Some(vec!["height".to_owned()])).unwrap();
+        let t = to_rerun_tensor(
+            n,
+            Some(vec!["height".to_owned()]),
+            TensorDataMeaning::Unknown,
+        )
+        .unwrap();
 
         assert_eq!(t.shape, vec![TensorDimension::height(2)]);
     }
@@ -173,6 +190,7 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             dtype: TensorDataType::U16,
+            meaning: TensorDataMeaning::Unknown,
             data: TensorDataStore::Dense(
                 bytemuck::pod_collect_to_vec(&(0..60).map(|x| x as i16).collect::<Vec<i16>>())
                     .into(),
@@ -216,6 +234,7 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             dtype: TensorDataType::U8,
+            meaning: TensorDataMeaning::Unknown,
             data: TensorDataStore::Dense(vec![0; 59].into()),
         };
 
@@ -238,6 +257,7 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             dtype: TensorDataType::U16,
+            meaning: TensorDataMeaning::Unknown,
             data: TensorDataStore::Dense(vec![0; 60].into()),
         };
 

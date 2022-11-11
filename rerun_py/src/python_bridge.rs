@@ -129,6 +129,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(set_visible, m)?)?;
+    m.add_class::<TensorDataMeaning>()?;
 
     Ok(())
 }
@@ -1358,6 +1359,15 @@ fn log_obb(
     Ok(())
 }
 
+// TODO(jleibs): This shadows [`re_log_types::TensorDataMeaning`]
+//
+#[pyclass]
+#[derive(Clone, Debug)]
+enum TensorDataMeaning {
+    Unknown,
+    ClassId,
+}
+
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
 fn log_tensor_u8(
@@ -1365,10 +1375,10 @@ fn log_tensor_u8(
     img: numpy::PyReadonlyArrayDyn<'_, u8>,
     names: Option<&PyList>,
     meter: Option<f32>,
-    legend: Option<String>,
+    meaning: Option<TensorDataMeaning>,
     timeless: bool,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, legend, timeless)
+    log_tensor(obj_path, img, names, meter, meaning, timeless)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -1378,10 +1388,10 @@ fn log_tensor_u16(
     img: numpy::PyReadonlyArrayDyn<'_, u16>,
     names: Option<&PyList>,
     meter: Option<f32>,
-    legend: Option<String>,
+    meaning: Option<TensorDataMeaning>,
     timeless: bool,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, legend, timeless)
+    log_tensor(obj_path, img, names, meter, meaning, timeless)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -1391,10 +1401,10 @@ fn log_tensor_f32(
     img: numpy::PyReadonlyArrayDyn<'_, f32>,
     names: Option<&PyList>,
     meter: Option<f32>,
-    legend: Option<String>,
+    meaning: Option<TensorDataMeaning>,
     timeless: bool,
 ) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, legend, timeless)
+    log_tensor(obj_path, img, names, meter, meaning, timeless)
 }
 
 fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
@@ -1402,7 +1412,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     img: numpy::PyReadonlyArrayDyn<'_, T>,
     names: Option<&PyList>,
     meter: Option<f32>,
-    legend: Option<String>,
+    meaning: Option<TensorDataMeaning>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -1415,11 +1425,17 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     let names: Option<Vec<String>> =
         names.map(|names| names.iter().map(|n| n.to_string()).collect());
 
+    // Convert from pyclass TensorDataMeaning -> re_log_types
+    let meaning = match meaning {
+        Some(TensorDataMeaning::ClassId) => re_log_types::TensorDataMeaning::ClassId,
+        _ => re_log_types::TensorDataMeaning::Unknown,
+    };
+
     sdk.send_data(
         &time_point,
         (&obj_path, "tensor"),
         LoggedData::Single(Data::Tensor(
-            re_tensor_ops::to_rerun_tensor(&img.as_array(), names)
+            re_tensor_ops::to_rerun_tensor(&img.as_array(), names, meaning)
                 .map_err(|err| PyTypeError::new_err(err.to_string()))?,
         )),
     );
@@ -1429,14 +1445,6 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
             &time_point,
             (&obj_path, "meter"),
             LoggedData::Single(Data::F32(meter)),
-        );
-    }
-
-    if let Some(legend) = legend {
-        sdk.send_data(
-            &time_point,
-            (&obj_path, "legend"),
-            LoggedData::Single(Data::ObjPath(parse_obj_path(&legend)?)),
         );
     }
 
@@ -1573,6 +1581,7 @@ fn log_image_file(
                 TensorDimension::depth(3),
             ],
             dtype: TensorDataType::U8,
+            meaning: re_log_types::TensorDataMeaning::Unknown,
             data,
         })),
     );

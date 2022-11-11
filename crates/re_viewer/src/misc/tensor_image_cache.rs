@@ -1,7 +1,7 @@
 use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
-use re_log_types::{MsgId, Tensor, TensorDataStore, TensorDataType};
+use re_log_types::{MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType};
 
 use crate::ui::view_2d::{ColorMapping, Legend};
 
@@ -215,8 +215,8 @@ fn tensor_to_dynamic_image(
                 "Tensor data length doesn't match tensor shape and dtype"
             );
 
-            match (legend, depth, tensor.dtype) {
-                (Some(legend), 1, TensorDataType::U8) => {
+            match (legend, depth, tensor.dtype, tensor.meaning) {
+                (Some(legend), 1, TensorDataType::U8, TensorDataMeaning::ClassId) => {
                     // Apply legend mapping to raw bytes interpreted as u8
                     image::RgbaImage::from_raw(
                         width,
@@ -230,7 +230,7 @@ fn tensor_to_dynamic_image(
                     .context("Bad RGBA8")
                     .map(DynamicImage::ImageRgba8)
                 }
-                (Some(legend), 1, TensorDataType::U16) => {
+                (Some(legend), 1, TensorDataType::U16, TensorDataMeaning::ClassId) => {
                     // Apply legend mapping to bytes interpreted as u16
                     image::RgbaImage::from_raw(
                         width,
@@ -244,19 +244,19 @@ fn tensor_to_dynamic_image(
                     .context("Bad RGBA8")
                     .map(DynamicImage::ImageRgba8)
                 }
-                (None, 1, TensorDataType::U8) => {
+                (None, 1, TensorDataType::U8, _) => {
                     // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
                     image::GrayImage::from_raw(width, height, bytes.to_vec())
                         .context("Bad Luminance8")
                         .map(DynamicImage::ImageLuma8)
                 }
-                (None, 1, TensorDataType::U16) => {
+                (None, 1, TensorDataType::U16, _) => {
                     // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
                     Gray16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                         .context("Bad Luminance16")
                         .map(DynamicImage::ImageLuma16)
                 }
-                (None, 1, TensorDataType::F32) => {
+                (None, 1, TensorDataType::F32, _) => {
                     let assume_depth = true; // TODO(emilk): we should read some meta-data to check if this is luminance, alpha or a depth map.
 
                     if assume_depth {
@@ -312,17 +312,17 @@ fn tensor_to_dynamic_image(
                     }
                 }
 
-                (None, 3, TensorDataType::U8) => {
+                (None, 3, TensorDataType::U8, _) => {
                     image::RgbImage::from_raw(width, height, bytes.to_vec())
                         .context("Bad RGB8")
                         .map(DynamicImage::ImageRgb8)
                 }
-                (None, 3, TensorDataType::U16) => {
+                (None, 3, TensorDataType::U16, _) => {
                     Rgb16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                         .context("Bad RGB16 image")
                         .map(DynamicImage::ImageRgb16)
                 }
-                (None, 3, TensorDataType::F32) => {
+                (None, 3, TensorDataType::F32, _) => {
                     let rgb: &[[f32; 3]] = bytemuck::cast_slice(bytes);
                     let colors: Vec<u8> = rgb
                         .iter()
@@ -338,17 +338,17 @@ fn tensor_to_dynamic_image(
                         .map(DynamicImage::ImageRgb8)
                 }
 
-                (None, 4, TensorDataType::U8) => {
+                (None, 4, TensorDataType::U8, _) => {
                     image::RgbaImage::from_raw(width, height, bytes.to_vec())
                         .context("Bad RGBA8")
                         .map(DynamicImage::ImageRgba8)
                 }
-                (None, 4, TensorDataType::U16) => {
+                (None, 4, TensorDataType::U16, _) => {
                     Rgba16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                         .context("Bad RGBA16 image")
                         .map(DynamicImage::ImageRgba16)
                 }
-                (None, 4, TensorDataType::F32) => {
+                (None, 4, TensorDataType::F32, _) => {
                     let rgba: &[[f32; 4]] = bytemuck::cast_slice(bytes);
                     let colors: Vec<u8> = rgba
                         .iter()
@@ -364,13 +364,13 @@ fn tensor_to_dynamic_image(
                         .context("Bad RGBA f32")
                         .map(DynamicImage::ImageRgba8)
                 }
-                (Some(_), _depth, dtype) => {
+                (Some(_), _depth, dtype, _) => {
                     anyhow::bail!(
                         "Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image using a Legend"
                     )
                 }
 
-                (None, _depth, dtype) => {
+                (None, _depth, dtype, _) => {
                     anyhow::bail!(
                         "Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image"
                     )

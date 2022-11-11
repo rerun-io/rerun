@@ -49,7 +49,7 @@ impl ObjectType {
 
             Self::TextEntry => &["color", "body", "level"],
 
-            Self::Image => &["color", "tensor", "meter", "legend"],
+            Self::Image => &["color", "tensor", "meter"],
             Self::Point2D => &["color", "pos", "radius"],
             Self::BBox2D => &["color", "bbox", "stroke_width", "label"],
             Self::LineSegments2D => &["color", "points", "stroke_width"],
