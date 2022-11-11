@@ -1,3 +1,4 @@
+use ahash::HashMap;
 use nohash_hasher::IntSet;
 
 use re_data_store::{
@@ -98,18 +99,18 @@ impl<'s> SceneQuery<'s> {
     }
 
     /// Given a `FieldName`, this will return all relevant `ObjStore`s that contain
-    /// the relevant fields
+    /// the specified field
     ///
-    /// An `ObjStore` is considered relevant if it contains the fields we are looking for
-    /// and its object path is a prefix of one of the visible object paths.
+    /// An `ObjStore` is considered relevant if it is the first parent in bottom-up order
+    /// that contains that field for some visible object in the space.
     pub(crate) fn iter_parent_meta_field<'a>(
         &'a self,
         log_db: &'a LogDb,
         obj_tree_props: &'a ObjectTreeProperties,
         field_name: &'a FieldName,
     ) -> impl Iterator<Item = (ObjPath, &FieldStore<i64>)> + 'a {
-        // TODO: Seems like there should be a better way to do this
-        let mut visible_prefixes = IntSet::<ObjPath>::default();
+        let mut visited = IntSet::<ObjPath>::default();
+        let mut found_fields = HashMap::<ObjPath, &FieldStore<i64>>::default();
         for obj_path in self
             .obj_paths
             .iter()
@@ -117,34 +118,41 @@ impl<'s> SceneQuery<'s> {
         {
             let mut next_parent = Some(obj_path.clone());
             while let Some(parent) = next_parent {
-                visible_prefixes.insert(parent.clone());
+                // If we've visited this parent before it's safe to break early.
+                // All of it's parents have have also been visited.
+                if visited.contains(&parent) {
+                    break;
+                } else {
+                    visited.insert(parent.clone());
+                }
+
+                match found_fields.entry(parent.clone()) {
+                    // If we've hit this path before and found a match, we can also break.
+                    // This should not actually get hit due to the above early-exit.
+                    std::collections::hash_map::Entry::Occupied(_) => break,
+                    // Otherwise check the obj_store for the field.
+                    // If we find one, insert it and then we can break.
+                    std::collections::hash_map::Entry::Vacant(entry) => {
+                        if log_db
+                            .obj_db
+                            .store
+                            .get(&self.timeline)
+                            .and_then(|timeline_store| timeline_store.get(&parent))
+                            .and_then(|obj_store| obj_store.get(field_name))
+                            .map(|field_store| entry.insert(field_store))
+                            .is_some()
+                        {
+                            break;
+                        }
+                    }
+                }
+                // Finally recurse to the next parent up the path
+                // TODO(jleibs): this is somewhat expensive as it needs to re-hash the object path
+                // given ObjPathImpl is already an Arc, consider pre-computing and storing parents
+                // for faster iteration.
                 next_parent = parent.parent();
             }
         }
-        // For the appropriate timeline store...
-        log_db
-            .obj_db
-            .store
-            .get(&self.timeline)
-            .into_iter()
-            .flat_map(|timeline_store| {
-                // ...and for all visible object prefix-paths within that timeline store...
-                visible_prefixes
-                    .iter()
-                    .filter_map(|obj_path| {
-                        // Get the object store if it exists
-                        timeline_store
-                            .get(obj_path)
-                            .map(|obj_store| (obj_path, obj_store))
-                    })
-                    .filter_map(|(obj_path, obj_store)| {
-                        // Get the field store if it exists
-                        obj_store
-                            .get(field_name)
-                            .map(|field_store| (obj_path.clone(), field_store))
-                    })
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
+        found_fields.into_iter()
     }
 }
