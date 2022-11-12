@@ -949,13 +949,15 @@ def log_class_descriptions(
     obj_path: str,
     class_descriptions: Sequence[ClassDescriptionLike],
     *,
-    timeless: bool = False,
+    timeless: bool = True,
 ) -> None:
     """
     Log a collection of ClassDescriptions which can be used for annotation of other objects.
 
-    This obj_path can be referenced from the `log_segmentation_image` API to
-    indicate this set of descriptions is relevant to the image.
+    Any object needing to access a ClassDescription context will find it by searching the
+    path upward. If you only need a single ClassDescriptions you can simply log it to the
+    root ("/"), or if you want a per-object ClassDescriptions log it to the same path as
+    your object.
 
     Each ClassDescription must include an id, which will be used for matching
     the class and may optionally include a label and color.  Colors should
