@@ -49,19 +49,22 @@ def run_segmentation() -> None:
 
     # Log an initial segmentation map with arbitrary colors
     rerun.set_time_seconds("sim_time", 2)
-    rerun.log_class_descriptions("seg_demo", [(13, "label1"), (42, "label2"), (99, "label3")])
+    rerun.log_annotation_context("seg_demo", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
 
     # Log an updated segmentation map with specific colors
     rerun.set_time_seconds("sim_time", 3)
-    rerun.log_class_descriptions(
-        "seg_demo", [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]
+    rerun.log_annotation_context(
+        "seg_demo",
+        [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))],
+        timeless=False,
     )
 
     # Log with a mixture of set and unset colors / labels
     rerun.set_time_seconds("sim_time", 4)
-    rerun.log_class_descriptions(
+    rerun.log_annotation_context(
         "seg_demo",
         [ClassDescription(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), ClassDescription(99, label="label3")],
+        timeless=False,
     )
 
 

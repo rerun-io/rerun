@@ -66,7 +66,7 @@ impl ObjectType {
 
 /// These are fields not part of the actual object, but express meta-info about paths.
 pub const META_FIELDS: &[&str] = &[
-    "_annotations",
+    "_annotation_context",
     "_transform",
     "_view_coordinates",
     "_visible",

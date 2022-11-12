@@ -945,17 +945,17 @@ def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
         return ClassDescription(*arg)  # type: ignore[misc]
 
 
-def log_class_descriptions(
+def log_annotation_context(
     obj_path: str,
     class_descriptions: Sequence[ClassDescriptionLike],
     *,
     timeless: bool = True,
 ) -> None:
     """
-    Log a collection of ClassDescriptions which can be used for annotation of other objects.
+    Log an annotation context made up of a collection of ClassDescriptions.
 
-    Any object needing to access a ClassDescription context will find it by searching the
-    path upward. If you only need a single ClassDescriptions you can simply log it to the
+    Any object needing to access the annotation context will find it by searching the
+    path upward. If all objects share the same you can simply log it to the
     root ("/"), or if you want a per-object ClassDescriptions log it to the same path as
     your object.
 
@@ -988,4 +988,4 @@ def log_class_descriptions(
     if obj_path == "/":
         obj_path = None  # type: ignore[assignment]
 
-    rerun_rs.log_class_descriptions(obj_path, tuple_class_descriptions, timeless)
+    rerun_rs.log_annotation_context(obj_path, tuple_class_descriptions, timeless)

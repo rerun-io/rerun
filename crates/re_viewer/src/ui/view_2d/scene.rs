@@ -109,7 +109,7 @@ impl Scene2D {
         for (obj_path, field_store) in query.iter_parent_meta_field(
             ctx.log_db,
             obj_tree_props,
-            &FieldName::from("_annotations"),
+            &FieldName::from("_annotation_context"),
         ) {
             if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
             {

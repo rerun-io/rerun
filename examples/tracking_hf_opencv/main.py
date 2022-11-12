@@ -320,7 +320,7 @@ def track_objects(video_path: str) -> None:
     class_descriptions = [
         rerun.ClassDescription(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
-    rerun.log_class_descriptions("/", class_descriptions, timeless=True)
+    rerun.log_annotation_context("/", class_descriptions, timeless=True)
 
     detector = Detector(coco_categories=coco_categories)
 

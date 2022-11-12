@@ -120,7 +120,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_line_segments, m)?)?;
     m.add_function(wrap_pyfunction!(log_obb, m)?)?;
-    m.add_function(wrap_pyfunction!(log_class_descriptions, m)?)?;
+    m.add_function(wrap_pyfunction!(log_annotation_context, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
@@ -1608,7 +1608,7 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn log_class_descriptions(
+fn log_annotation_context(
     obj_path: Option<&str>,
     class_descriptions: Vec<(u16, Option<String>, Option<Vec<u8>>)>,
     timeless: bool,
@@ -1642,7 +1642,7 @@ fn log_class_descriptions(
 
     sdk.send_data(
         &time_point,
-        (&obj_path, "_annotations"),
+        (&obj_path, "_annotation_context"),
         LoggedData::Single(Data::AnnotationContext(annotation_context)),
     );
 
