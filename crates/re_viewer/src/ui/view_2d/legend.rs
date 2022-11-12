@@ -10,7 +10,7 @@ pub struct Annotations {
     pub context: AnnotationContext,
 }
 
-// TODO: rename Legend to something more annotation-specific?
+// TODO(jleibs): rename Legend to something more annotation-specific?
 pub type Legend = Arc<Annotations>;
 
 #[derive(Default, Clone, Debug)]
