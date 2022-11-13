@@ -72,26 +72,66 @@ impl TimePanel {
             expanded,
             |ui: &mut egui::Ui, expansion: f32| {
                 if expansion < 1.0 {
-                    // Collapsed, or animating:
-                    if ui
-                        .small_button("⏶")
-                        .on_hover_text(format!(
-                            "Expand Timeline View ({})",
-                            egui_ctx.format_shortcut(&crate::ui::kb_shortcuts::TOGGLE_TIME_PANEL)
-                        ))
-                        .clicked()
-                    {
-                        blueprint.time_panel_expanded = true;
-                    }
+                    // Collapsed or animating
+                    ui.horizontal(|ui| {
+                        self.collapsed_ui(ctx, blueprint, ui);
+                    });
                 } else {
                     // Expanded:
-                    self.ui(ctx, blueprint, ui);
+                    self.expanded_ui(ctx, blueprint, ui);
                 }
             },
         );
     }
 
-    fn ui(&mut self, ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut egui::Ui) {
+    #[allow(clippy::unused_self)]
+    fn collapsed_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        ui: &mut egui::Ui,
+    ) {
+        if ui
+            .small_button("⏶")
+            .on_hover_text(format!(
+                "Expand Timeline View ({})",
+                ui.ctx()
+                    .format_shortcut(&crate::ui::kb_shortcuts::TOGGLE_TIME_PANEL)
+            ))
+            .clicked()
+        {
+            blueprint.time_panel_expanded = true;
+        }
+
+        ui.separator();
+
+        ctx.rec_cfg
+            .time_ctrl
+            .timeline_selector_ui(&ctx.log_db.time_points, ui);
+
+        ui.separator();
+
+        ctx.rec_cfg
+            .time_ctrl
+            .play_pause_ui(&ctx.log_db.time_points, ui);
+
+        ui.separator();
+
+        ui.vertical_centered(|ui| {
+            current_time_ui(ctx, ui);
+        });
+
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            help_button(ui);
+        });
+    }
+
+    fn expanded_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        ui: &mut egui::Ui,
+    ) {
         crate::profile_function!();
 
         // play control and current time
@@ -428,41 +468,48 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut e
             .timeline_selector_ui(&ctx.log_db.time_points, ui);
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            crate::misc::help_hover_button(ui).on_hover_text(
-                "Drag main area to pan.\n\
-            Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
-            Double-click to reset view.\n\
-            Press spacebar to pause/resume.",
-            );
-
-            if let Some(range) = ctx.rec_cfg.time_ctrl.time_range() {
-                let time_type = ctx.rec_cfg.time_ctrl.time_type();
-
-                ui.vertical_centered(|ui| {
-                    if range.min == range.max {
-                        ui.monospace(time_type.format(range.min.floor())); // floor makes sense for "latest at" queries
-                    } else {
-                        match time_type {
-                            TimeType::Time => {
-                                ui.monospace(format!(
-                                    "{} - {}",
-                                    time_type.format(range.min.round()),
-                                    time_type.format(range.max.round())
-                                ));
-                            }
-                            TimeType::Sequence => {
-                                ui.monospace(format!(
-                                    "[{} - {})",
-                                    time_type.format(range.min.ceil()),
-                                    time_type.format(range.max.floor())
-                                ));
-                            }
-                        }
-                    }
-                });
-            }
+            help_button(ui);
+            ui.vertical_centered(|ui| {
+                current_time_ui(ctx, ui);
+            });
         });
     });
+}
+
+fn help_button(ui: &mut egui::Ui) {
+    crate::misc::help_hover_button(ui).on_hover_text(
+        "Drag main area to pan.\n\
+         Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
+         Double-click to reset view.\n\
+         Press spacebar to pause/resume.",
+    );
+}
+
+fn current_time_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    if let Some(range) = ctx.rec_cfg.time_ctrl.time_range() {
+        let time_type = ctx.rec_cfg.time_ctrl.time_type();
+
+        if range.min == range.max {
+            ui.monospace(time_type.format(range.min.floor())); // floor makes sense for "latest at" queries
+        } else {
+            match time_type {
+                TimeType::Time => {
+                    ui.monospace(format!(
+                        "{} - {}",
+                        time_type.format(range.min.round()),
+                        time_type.format(range.max.round())
+                    ));
+                }
+                TimeType::Sequence => {
+                    ui.monospace(format!(
+                        "[{} - {})",
+                        time_type.format(range.min.ceil()),
+                        time_type.format(range.max.floor())
+                    ));
+                }
+            }
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
