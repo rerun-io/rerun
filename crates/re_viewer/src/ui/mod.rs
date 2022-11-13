@@ -5,7 +5,7 @@ mod space_view;
 use self::space_view::SpaceView;
 
 mod scene;
-use self::scene::{Scene, SceneQuery};
+use self::scene::SceneQuery;
 
 pub(crate) mod data_ui;
 pub(crate) mod event_log_view;

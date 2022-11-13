@@ -1,4 +1,4 @@
-use re_data_store::{query::visit_type_data_1, FieldName, ObjectTreeProperties};
+use re_data_store::{query::visit_type_data_1, FieldName};
 use re_log_types::{IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{misc::ViewerContext, ui::SceneQuery};
@@ -13,27 +13,17 @@ pub struct SceneTensor {
 
 impl SceneTensor {
     /// Loads all tensor objects into the scene according to the given query.
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    pub(crate) fn load_objects(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        self.load_tensors(ctx, obj_tree_props, query);
+        self.load_tensors(ctx, query);
     }
 
-    fn load_tensors(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_tensors(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let tensors = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Image])
+            .iter_object_stores(ctx.log_db, &[ObjectType::Image])
             .filter_map(|(_obj_type, _obj_path, obj_store)| {
                 let mut tensors = Vec::new();
                 visit_type_data_1(

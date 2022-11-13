@@ -1,8 +1,7 @@
-use crate::{ui::SceneQuery, ViewerContext};
-use re_data_store::{
-    query::visit_type_data_3, FieldName, ObjPath, ObjectTreeProperties, TimeQuery,
-};
+use re_data_store::{query::visit_type_data_3, FieldName, ObjPath, TimeQuery};
 use re_log_types::{IndexHash, MsgId, ObjectType};
+
+use crate::{ui::SceneQuery, ViewerContext};
 
 // ---
 
@@ -27,27 +26,17 @@ pub struct SceneText {
 
 impl SceneText {
     /// Loads all text objects into the scene according to the given query.
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    pub(crate) fn load_objects(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        self.load_text_entries(ctx, obj_tree_props, query);
+        self.load_text_entries(ctx, query);
     }
 
-    fn load_text_entries(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_text_entries(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let text_entries = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::TextEntry])
+            .iter_object_stores(ctx.log_db, &[ObjectType::TextEntry])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
                 // TODO(cmc): We're cloning full strings here, which is very much a bad idea.
