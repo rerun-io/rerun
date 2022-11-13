@@ -1609,16 +1609,17 @@ fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
 
 #[pyfunction]
 fn log_annotation_context(
-    obj_path: Option<&str>,
+    obj_path: &str,
     class_descriptions: Vec<(u16, Option<String>, Option<Vec<u8>>)>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
-    let obj_path = if let Some(obj_path) = obj_path {
-        parse_obj_path(obj_path)?
-    } else {
+    // We normally disallow logging to root, but we make an exception for class_descriptions
+    let obj_path = if obj_path == "/" {
         ObjPath::root()
+    } else {
+        parse_obj_path(obj_path)?
     };
 
     let mut annotation_context = AnnotationContext::default();
