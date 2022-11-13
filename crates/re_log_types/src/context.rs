@@ -60,7 +60,7 @@ pub struct ClassDescription {
     pub skeleton_edges: BTreeMap<KeypointSkeletonEdge, AnnotationInfo>,
 }
 
-/// The AnnotationContext provides aditional information on how to display
+/// The `AnnotationContext` provides aditional information on how to display
 /// entities.
 ///
 /// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and

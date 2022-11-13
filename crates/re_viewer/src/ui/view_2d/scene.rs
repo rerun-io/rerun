@@ -8,11 +8,11 @@ use re_data_store::{
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{
-    ui::{view_2d::legend::Annotations, SceneQuery},
+    ui::{view_2d::annotations::Annotations, SceneQuery},
     ViewerContext,
 };
 
-use super::Legends;
+use super::AnnotationMap;
 
 // ---
 
@@ -31,7 +31,7 @@ pub struct Image {
     pub meter: Option<f32>,
     pub paint_props: ObjectPaintProperties,
     /// A thing that provides additional semantic context for your dtype.
-    pub legend: Option<Arc<Annotations>>,
+    pub annotations: Option<Arc<Annotations>>,
 
     /// If true, draw a frame around it
     pub is_hovered: bool,
@@ -67,7 +67,7 @@ pub struct Point2D {
 pub struct Scene2D {
     /// Estimated bounding box of all data. Accumulated.
     pub bbox: Rect,
-    pub legends: Legends,
+    pub annotation_map: AnnotationMap,
 
     pub images: Vec<Image>,
     pub boxes: Vec<Box2D>,
@@ -79,7 +79,7 @@ impl Default for Scene2D {
     fn default() -> Self {
         Self {
             bbox: Rect::NOTHING,
-            legends: Default::default(),
+            annotation_map: Default::default(),
             images: Default::default(),
             boxes: Default::default(),
             line_segments: Default::default(),
@@ -96,14 +96,14 @@ impl Scene2D {
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        self.load_legends(ctx, query); // before images!
+        self.load_annotations(ctx, query); // before images!
         self.load_images(ctx, query);
         self.load_boxes(ctx, query);
         self.load_points(ctx, query);
         self.load_line_segments(ctx, query);
     }
 
-    fn load_legends(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_annotations(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         for (obj_path, field_store) in
@@ -112,12 +112,15 @@ impl Scene2D {
             if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
             {
                 mono_field_store.query(&query.time_query, |_time, msg_id, context| {
-                    self.legends.0.entry(obj_path.clone()).or_insert_with(|| {
-                        Arc::new(Annotations {
-                            msg_id: *msg_id,
-                            context: context.clone(),
-                        })
-                    });
+                    self.annotation_map
+                        .0
+                        .entry(obj_path.clone())
+                        .or_insert_with(|| {
+                            Arc::new(Annotations {
+                                msg_id: *msg_id,
+                                context: context.clone(),
+                            })
+                        });
                 });
             }
         }
@@ -166,7 +169,7 @@ impl Scene2D {
                             ),
                             tensor: tensor.clone(), // shallow
                             meter: meter.copied(),
-                            legend: Some(self.legends.find(obj_path)),
+                            annotations: Some(self.annotation_map.find(obj_path)),
                             paint_props,
                             is_hovered: false, // Will be filled in later
                         };
@@ -366,7 +369,7 @@ impl Scene2D {
     pub fn is_empty(&self) -> bool {
         let Self {
             bbox: _,
-            legends: _,
+            annotation_map: _,
             images,
             boxes: bboxes,
             line_segments,

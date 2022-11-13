@@ -11,11 +11,11 @@ pub struct Annotations {
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct Legends(pub BTreeMap<ObjPath, Arc<Annotations>>);
+pub struct AnnotationMap(pub BTreeMap<ObjPath, Arc<Annotations>>);
 
-impl Legends {
+impl AnnotationMap {
     // Search through the all prefixes of this object path until we find a
-    // matching legend. If we find nothing return the default missing-legend.
+    // matching annotation. If we find nothing return the default `MISSING_ANNOTATIONS`.
     pub fn find<'a>(&self, obj_path: impl Into<&'a ObjPath>) -> Arc<Annotations> {
         let mut next_parent = Some(obj_path.into().clone());
         while let Some(parent) = next_parent {
@@ -27,7 +27,7 @@ impl Legends {
         }
 
         // Otherwise return the missing legend
-        Arc::clone(&MISSING_LEGEND)
+        Arc::clone(&MISSING_ANNOTATIONS)
     }
 }
 
@@ -35,7 +35,7 @@ impl Legends {
 
 lazy_static! {
     static ref MISSING_MSGID: MsgId = MsgId::random();
-    static ref MISSING_LEGEND: Arc<Annotations> = {
+    static ref MISSING_ANNOTATIONS: Arc<Annotations> = {
         Arc::new(Annotations {
             msg_id: *MISSING_MSGID,
             context: Default::default(),

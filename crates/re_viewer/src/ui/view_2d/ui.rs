@@ -263,7 +263,7 @@ fn hover_effect(scene: &mut Scene2D, hovered: InstanceIdHash) {
 
     let Scene2D {
         bbox: _,
-        legends: _,
+        annotation_map: _,
 
         images,
         boxes,
@@ -366,7 +366,7 @@ fn view_2d_scrollable(
             meter,
             paint_props,
             is_hovered,
-            legend,
+            annotations: legend,
         } = img;
 
         let tensor_view = ctx

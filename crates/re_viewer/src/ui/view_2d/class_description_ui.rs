@@ -35,7 +35,7 @@ pub(crate) fn view_class_description_map(
          label: Option<&String>,
          color: Option<&[u8; 4]>| {
             let val = u16::try_from(*id % (u16::MAX as i32)).unwrap();
-            let color = *color.unwrap_or(&super::legend::auto_color(val));
+            let color = *color.unwrap_or(&super::annotations::auto_color(val));
             map.insert(
                 *id,
                 (
