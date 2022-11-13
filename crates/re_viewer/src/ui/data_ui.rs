@@ -377,14 +377,7 @@ pub(crate) fn ui_data(
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
                     ui.label(format!("dtype: {:?}", tensor.dtype));
-
-                    if tensor.shape.len() == 2 {
-                        ui.label(format!("shape: {:?} (height, width)", tensor.shape));
-                    } else if tensor.shape.len() == 3 {
-                        ui.label(format!("shape: {:?} (height, width, depth)", tensor.shape));
-                    } else {
-                        ui.label(format!("shape: {:?}", tensor.shape));
-                    }
+                    ui.label(format!("shape: {:?}", tensor.shape));
                 });
             })
             .response
