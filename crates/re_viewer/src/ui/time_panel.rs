@@ -130,7 +130,7 @@ impl TimePanel {
                     initialize_time_ranges_ui(ctx, time_range_rect.x_range(), None, 0.0);
                 time_ranges_ui.snap_time_control(ctx);
 
-                let painter = ui.painter_at(time_range_rect);
+                let painter = ui.painter_at(time_range_rect.expand(4.0));
                 painter.hline(
                     time_range_rect.x_range(),
                     time_range_rect.center().y,
@@ -1226,6 +1226,7 @@ fn time_marker_ui(
                 && !is_anything_being_dragged)
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
+                let time = time_ranges_ui.clamp_time(time);
                 time_ctrl.set_time(time);
                 time_ctrl.pause();
                 ui.memory().set_dragged_id(time_drag_id);
@@ -1391,6 +1392,27 @@ impl TimeRangesUi {
         }
 
         slf
+    }
+
+    /// Clamp the time to the valid ranges.
+    fn clamp_time(&self, mut time: TimeReal) -> TimeReal {
+        if let (Some(first), Some(last)) = (self.segments.first(), self.segments.last()) {
+            time = time.clamp(
+                TimeReal::from(first.tight_time.min),
+                TimeReal::from(last.tight_time.max),
+            );
+
+            // Special: don't allow users dragging time between
+            // BEGINNING (-∞) and some real time.
+            if first.tight_time == TimeRange::point(TimeInt::BEGINNING) {
+                if let Some(second) = self.segments.get(1) {
+                    if TimeInt::BEGINNING < time && time < second.tight_time.min {
+                        time = TimeReal::from(second.tight_time.min);
+                    }
+                }
+            }
+        }
+        time
     }
 
     /// Make sure the time is not between ranges.
