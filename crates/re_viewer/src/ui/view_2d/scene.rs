@@ -3,7 +3,7 @@ use std::sync::Arc;
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
     query::{visit_type_data_3, visit_type_data_4},
-    FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectTreeProperties,
+    FieldName, InstanceIdHash, ObjPath,
 };
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
@@ -12,7 +12,7 @@ use crate::{
     ViewerContext,
 };
 
-use super::{Legend, Legends, View2DState};
+use super::{Legend, Legends};
 
 // ---
 
@@ -106,11 +106,9 @@ impl Scene2D {
     fn load_legends(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        for (obj_path, field_store) in query.iter_parent_meta_field(
-            ctx.log_db,
-            obj_tree_props,
-            &FieldName::from("_annotation_context"),
-        ) {
+        for (obj_path, field_store) in
+            query.iter_ancestor_meta_field(ctx.log_db, &FieldName::from("_annotation_context"))
+        {
             if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
             {
                 mono_field_store.query(&query.time_query, |_time, msg_id, context| {

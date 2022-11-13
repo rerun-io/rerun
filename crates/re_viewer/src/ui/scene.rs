@@ -2,8 +2,7 @@ use ahash::HashMap;
 use nohash_hasher::IntSet;
 
 use re_data_store::{
-    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectTreeProperties, ObjectsProperties,
-    TimeQuery, Timeline,
+    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectsProperties, TimeQuery, Timeline,
 };
 use re_log_types::ObjectType;
 
@@ -98,15 +97,16 @@ impl<'s> SceneQuery<'s> {
             })
     }
 
-    /// Given a `FieldName`, this will return all relevant `ObjStore`s that contain
-    /// the specified field
+    /// Given a [`FieldName`], this will return all relevant [`ObjStore`]s that contain
+    /// the specified field.
     ///
-    /// An `ObjStore` is considered relevant if it is the first parent in bottom-up order
+    /// An [`ObjStore`] is considered relevant if it is the nearest ancestor
     /// that contains that field for some visible object in the space.
-    pub(crate) fn iter_parent_meta_field<'a>(
+    ///
+    /// An object is considered its own (nearest) ancestor.
+    pub(crate) fn iter_ancestor_meta_field<'a>(
         &'a self,
         log_db: &'a LogDb,
-        obj_tree_props: &'a ObjectTreeProperties,
         field_name: &'a FieldName,
     ) -> impl Iterator<Item = (ObjPath, &FieldStore<i64>)> + 'a {
         let mut visited = IntSet::<ObjPath>::default();
@@ -114,7 +114,7 @@ impl<'s> SceneQuery<'s> {
         for obj_path in self
             .obj_paths
             .iter()
-            .filter(|obj_path| obj_tree_props.projected.get(obj_path).visible)
+            .filter(|obj_path| self.obj_props.get(obj_path).visible)
         {
             let mut next_parent = Some(obj_path.clone());
             while let Some(parent) = next_parent {

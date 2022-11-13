@@ -728,7 +728,8 @@ impl TensorDataType {
 pub enum TensorDataMeaning {
     /// Default behavior: guess based on shape
     Unknown,
-    /// The data is an annotated class-id which should be looked up
+    /// The data is an annotated [`crate::context::ClassId`] which should be
+    /// looked up using the appropriate [`crate::context::AnnotationContext`]
     ClassId,
 }
 
