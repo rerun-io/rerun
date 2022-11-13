@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType};
 
-use crate::ui::view_2d::{ColorMapping, Legend};
+use crate::ui::view_2d::{Annotations, ColorMapping};
 
 // ---
 
@@ -21,8 +23,8 @@ pub struct TensorImageView<'store, 'cache> {
     /// Borrowed tensor from the object store
     pub tensor: &'store Tensor,
 
-    /// Legend used to create the view
-    pub legend: &'store Option<Legend>,
+    /// Annotations used to create the view
+    pub annotations: &'store Option<Arc<Annotations>>,
 
     /// DynamicImage helper for things like zoom
     pub dynamic_img: &'cache DynamicImage,
@@ -32,11 +34,11 @@ pub struct TensorImageView<'store, 'cache> {
 }
 
 // Use a MsgIdPair for the cache index so that we don't cache across
-// changes to the legend
+// changes to the annotations
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageCacheKey {
     image_msg_id: MsgId,
-    legend_msg_id: Option<MsgId>,
+    annotation_msg_id: Option<MsgId>,
 }
 impl nohash_hasher::IsEnabled for ImageCacheKey {}
 
@@ -47,13 +49,13 @@ impl std::hash::Hash for ImageCacheKey {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let msg_hash = self.image_msg_id.0.as_u128() as u64;
 
-        let legend_hash = if let Some(legend_msg_id) = self.legend_msg_id {
-            (legend_msg_id.0.as_u128() >> 1) as u64
+        let annotation_hash = if let Some(annotation_msg_id) = self.annotation_msg_id {
+            (annotation_msg_id.0.as_u128() >> 1) as u64
         } else {
             0
         };
 
-        state.write_u64(msg_hash ^ legend_hash);
+        state.write_u64(msg_hash ^ annotation_hash);
     }
 }
 
@@ -65,21 +67,21 @@ pub struct ImageCache {
 }
 
 impl ImageCache {
-    pub(crate) fn get_view_with_legend<'store, 'cache>(
+    pub(crate) fn get_view_with_annotations<'store, 'cache>(
         &'cache mut self,
         msg_id: &MsgId,
         tensor: &'store Tensor,
-        legend: &'store Option<Legend>,
+        annotations: &'store Option<Arc<Annotations>>,
     ) -> TensorImageView<'store, 'cache> {
         let ci = self
             .images
             .entry(ImageCacheKey {
                 image_msg_id: *msg_id,
-                legend_msg_id: legend.as_ref().map(|seg_map| seg_map.msg_id),
+                annotation_msg_id: annotations.as_ref().map(|seg_map| seg_map.msg_id),
             })
             .or_insert_with(|| {
                 // TODO(emilk): proper debug name for images
-                let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor, legend);
+                let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor, annotations);
                 self.memory_used += ci.memory_used;
                 ci
             });
@@ -87,7 +89,7 @@ impl ImageCache {
 
         TensorImageView::<'store, '_> {
             tensor,
-            legend,
+            annotations,
             dynamic_img: &ci.dynamic_img,
             retained_img: &ci.retained_img,
         }
@@ -98,7 +100,7 @@ impl ImageCache {
         msg_id: &MsgId,
         tensor: &'store Tensor,
     ) -> TensorImageView<'store, 'cache> {
-        self.get_view_with_legend(msg_id, tensor, &None)
+        self.get_view_with_annotations(msg_id, tensor, &None)
     }
 
     /// Call once per frame to (potentially) flush the cache.
@@ -144,9 +146,13 @@ struct CachedImage {
 }
 
 impl CachedImage {
-    fn from_tensor(debug_name: String, tensor: &Tensor, legend: &Option<Legend>) -> Self {
+    fn from_tensor(
+        debug_name: String,
+        tensor: &Tensor,
+        annotations: &Option<Arc<Annotations>>,
+    ) -> Self {
         crate::profile_function!();
-        let dynamic_img = match tensor_to_dynamic_image(tensor, legend) {
+        let dynamic_img = match tensor_to_dynamic_image(tensor, annotations) {
             Ok(dynamic_image) => dynamic_image,
             Err(err) => {
                 re_log::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
@@ -178,7 +184,7 @@ impl CachedImage {
 
 fn tensor_to_dynamic_image(
     tensor: &Tensor,
-    legend: &Option<Legend>,
+    annotations: &Option<Arc<Annotations>>,
 ) -> anyhow::Result<DynamicImage> {
     crate::profile_function!();
     use anyhow::Context as _;
@@ -215,30 +221,30 @@ fn tensor_to_dynamic_image(
                 "Tensor data length doesn't match tensor shape and dtype"
             );
 
-            match (legend, depth, tensor.dtype, tensor.meaning) {
-                (Some(legend), 1, TensorDataType::U8, TensorDataMeaning::ClassId) => {
-                    // Apply legend mapping to raw bytes interpreted as u8
+            match (annotations, depth, tensor.dtype, tensor.meaning) {
+                (Some(annotations), 1, TensorDataType::U8, TensorDataMeaning::ClassId) => {
+                    // Apply annotation mapping to raw bytes interpreted as u8
                     image::RgbaImage::from_raw(
                         width,
                         height,
                         bytes
                             .to_vec()
                             .iter()
-                            .flat_map(|p| legend.map_color(*p as u16))
+                            .flat_map(|p| annotations.map_color(*p as u16))
                             .collect(),
                     )
                     .context("Bad RGBA8")
                     .map(DynamicImage::ImageRgba8)
                 }
-                (Some(legend), 1, TensorDataType::U16, TensorDataMeaning::ClassId) => {
-                    // Apply legend mapping to bytes interpreted as u16
+                (Some(annotations), 1, TensorDataType::U16, TensorDataMeaning::ClassId) => {
+                    // Apply annotations mapping to bytes interpreted as u16
                     image::RgbaImage::from_raw(
                         width,
                         height,
                         bytemuck::cast_slice(bytes)
                             .to_vec()
                             .iter()
-                            .flat_map(|p| legend.map_color(*p))
+                            .flat_map(|p| annotations.map_color(*p))
                             .collect(),
                     )
                     .context("Bad RGBA8")

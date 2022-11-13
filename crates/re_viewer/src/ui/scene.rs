@@ -120,10 +120,8 @@ impl<'s> SceneQuery<'s> {
             while let Some(parent) = next_parent {
                 // If we've visited this parent before it's safe to break early.
                 // All of it's parents have have also been visited.
-                if visited.contains(&parent) {
+                if !visited.insert(parent.clone()) {
                     break;
-                } else {
-                    visited.insert(parent.clone());
                 }
 
                 match found_fields.entry(parent.clone()) {

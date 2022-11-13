@@ -10,16 +10,13 @@ pub struct Annotations {
     pub context: AnnotationContext,
 }
 
-// TODO(jleibs): rename Legend to something more annotation-specific?
-pub type Legend = Arc<Annotations>;
-
 #[derive(Default, Clone, Debug)]
 pub struct Legends(pub BTreeMap<ObjPath, Arc<Annotations>>);
 
 impl Legends {
     // Search through the all prefixes of this object path until we find a
     // matching legend. If we find nothing return the default missing-legend.
-    pub fn find<'a>(&self, obj_path: impl Into<&'a ObjPath>) -> Legend {
+    pub fn find<'a>(&self, obj_path: impl Into<&'a ObjPath>) -> Arc<Annotations> {
         let mut next_parent = Some(obj_path.into().clone());
         while let Some(parent) = next_parent {
             if let Some(legend) = self.0.get(&parent) {

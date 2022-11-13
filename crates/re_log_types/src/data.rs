@@ -769,6 +769,16 @@ impl TensorElement {
             Self::F32(value) => *value as _,
         }
     }
+
+    #[inline]
+    pub fn try_as_u16(&self) -> Option<u16> {
+        match self {
+            Self::U8(value) => Some(*value as u16),
+            Self::U16(value) => Some(*value as u16),
+            // TODO(jleibs) support this conversion if it's in range
+            Self::F32(_) => None,
+        }
+    }
 }
 
 /// The data types supported by a [`Tensor`].
