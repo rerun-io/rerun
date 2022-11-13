@@ -117,9 +117,39 @@ impl TimePanel {
 
         ui.separator();
 
-        ui.vertical_centered(|ui| {
-            current_time_ui(ctx, ui);
-        });
+        {
+            let time_range_width = 400.0;
+            let mut time_range_rect = ui.available_rect_before_wrap();
+            time_range_rect.max.x = f32::min(
+                time_range_rect.max.x - 220.0, // Make room for current time and help button,
+                time_range_rect.min.x + time_range_width,
+            );
+
+            if time_range_rect.width() > 10.0 {
+                let time_ranges_ui =
+                    initialize_time_ranges_ui(ctx, time_range_rect.x_range(), None, 0.0);
+                time_ranges_ui.snap_time_control(ctx);
+
+                let painter = ui.painter_at(time_range_rect);
+                painter.hline(
+                    time_range_rect.x_range(),
+                    time_range_rect.center().y,
+                    ui.visuals().widgets.inactive.fg_stroke,
+                );
+                time_marker_ui(
+                    &time_ranges_ui,
+                    &mut ctx.rec_cfg.time_ctrl,
+                    ui,
+                    &painter,
+                    &time_range_rect,
+                    time_range_rect.bottom(),
+                );
+
+                ui.allocate_rect(time_range_rect, egui::Sense::hover());
+            }
+        }
+
+        current_time_ui(ctx, ui);
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             help_button(ui);
@@ -148,7 +178,12 @@ impl TimePanel {
             time_x_left..=right
         };
 
-        self.time_ranges_ui = initialize_time_ranges_ui(ctx, time_x_range.clone());
+        self.time_ranges_ui = initialize_time_ranges_ui(
+            ctx,
+            time_x_range.clone(),
+            ctx.rec_cfg.time_ctrl.time_view(),
+            SIDE_MARGIN,
+        );
 
         // includes the time selection and time ticks rows.
         let time_area_rect = Rect::from_x_y_ranges(
@@ -688,6 +723,8 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
 fn initialize_time_ranges_ui(
     ctx: &mut ViewerContext<'_>,
     time_x_range: RangeInclusive<f32>,
+    time_view: Option<TimeView>,
+    side_margin: f32,
 ) -> TimeRangesUi {
     crate::profile_function!();
     if let Some(time_points) = ctx
@@ -697,8 +734,8 @@ fn initialize_time_ranges_ui(
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), time_points);
-        let time_view = ctx.rec_cfg.time_ctrl.time_view();
-        let time_view = time_view.unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis));
+        let time_view = time_view
+            .unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis, side_margin));
 
         TimeRangesUi::new(time_x_range, time_view, &timeline_axis.ranges)
     } else {
@@ -1218,7 +1255,11 @@ fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
 }
 
 /// Find a nice view of everything.
-fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) -> TimeView {
+fn view_everything(
+    x_range: &RangeInclusive<f32>,
+    timeline_axis: &TimelineAxis,
+    side_margin: f32,
+) -> TimeView {
     let gap_width = gap_width(x_range, &timeline_axis.ranges);
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
     let width = *x_range.end() - *x_range.start();
@@ -1234,7 +1275,7 @@ fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) 
     let time_spanned = timeline_axis.sum_time_lengths().as_f64() * factor as f64;
 
     // Leave some room on the margins:
-    let time_margin = time_spanned * (SIDE_MARGIN / width.at_least(64.0)) as f64;
+    let time_margin = time_spanned * (side_margin / width.at_least(64.0)) as f64;
     let min = min - TimeReal::from(time_margin);
     let time_spanned = time_spanned + 2.0 * time_margin;
 
