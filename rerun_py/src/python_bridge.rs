@@ -12,7 +12,7 @@ use pyo3::{
     types::PyList,
 };
 
-use re_log_types::{LoggedData, *};
+use re_log_types::{context::ClassId, LoggedData, *};
 
 use crate::sdk::Sdk;
 
@@ -1626,7 +1626,7 @@ fn log_annotation_context(
     for (id, label, color) in class_descriptions {
         annotation_context
             .class_map
-            .entry(id)
+            .entry(ClassId(id))
             .or_insert_with(|| context::ClassDescription {
                 info: context::AnnotationInfo {
                     label: label.map(Arc::new),

@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use lazy_static::lazy_static;
 use re_data_store::ObjPath;
-use re_log_types::{AnnotationContext, MsgId};
+use re_log_types::{context::ClassId, AnnotationContext, MsgId};
 
 #[derive(Clone, Debug)]
 pub struct Annotations {
@@ -63,7 +63,7 @@ pub trait ColorMapping {
 
 impl ColorMapping for Annotations {
     fn map_color(&self, val: u16) -> [u8; 4] {
-        if let Some(class_desc) = self.context.class_map.get(&val) {
+        if let Some(class_desc) = self.context.class_map.get(&ClassId(val)) {
             if let Some(color) = class_desc.info.color {
                 color
             } else {
@@ -89,7 +89,7 @@ pub trait LabelMapping {
 
 impl LabelMapping for Annotations {
     fn map_label(&self, val: u16) -> String {
-        if let Some(class_desc) = self.context.class_map.get(&val) {
+        if let Some(class_desc) = self.context.class_map.get(&ClassId(val)) {
             if let Some(label) = class_desc.info.label.as_ref() {
                 label.to_string()
             } else {

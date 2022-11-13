@@ -444,7 +444,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                 for (id, description) in &context.class_map {
                     body.row(ROW_HEIGHT, |mut row| {
                         row.col(|ui| {
-                            ui.label(id.to_string());
+                            ui.label(id.0.to_string());
                         });
                         row.col(|ui| {
                             let label = if let Some(label) = &description.info.label {
@@ -458,7 +458,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                             let color = description
                                 .info
                                 .color
-                                .unwrap_or_else(|| crate::view_2d::auto_color(*id));
+                                .unwrap_or_else(|| crate::view_2d::auto_color(id.0));
                             let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
 
                             color_picker::show_color(ui, color, Vec2::splat(64.0));
