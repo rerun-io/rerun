@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Info {
+pub struct AnnotationInfo {
     pub label: Option<Arc<String>>,
     pub color: Option<[u8; 4]>,
 }
@@ -10,9 +10,9 @@ pub struct Info {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ClassDescription {
-    pub info: Info,
-    pub keypoint_map: BTreeMap<u16, Info>,
-    pub skeleton_edges: BTreeMap<(u16, u16), Info>,
+    pub info: AnnotationInfo,
+    pub keypoint_map: BTreeMap<u16, AnnotationInfo>,
+    pub skeleton_edges: BTreeMap<(u16, u16), AnnotationInfo>,
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

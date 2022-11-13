@@ -1628,7 +1628,7 @@ fn log_annotation_context(
             .class_map
             .entry(id)
             .or_insert_with(|| context::ClassDescription {
-                info: context::Info {
+                info: context::AnnotationInfo {
                     label: label.map(Arc::new),
                     color: color
                         .as_ref()
