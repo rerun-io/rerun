@@ -121,11 +121,11 @@ impl TimePanel {
             let time_range_width = 400.0;
             let mut time_range_rect = ui.available_rect_before_wrap();
             time_range_rect.max.x = f32::min(
-                time_range_rect.max.x - 220.0, // Make room for current time and help button,
+                time_range_rect.max.x - 220.0, // save space for current time and help button,
                 time_range_rect.min.x + time_range_width,
             );
 
-            if time_range_rect.width() > 10.0 {
+            if time_range_rect.width() > 50.0 {
                 let time_ranges_ui =
                     initialize_time_ranges_ui(ctx, time_range_rect.x_range(), None, 0.0);
                 time_ranges_ui.snap_time_control(ctx);
