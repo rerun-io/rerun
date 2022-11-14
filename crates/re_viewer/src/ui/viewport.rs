@@ -490,25 +490,26 @@ fn space_view_ui(
         return
     };
     let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
-        invalid_space_label(ui, &space_view.space_path);
+        invalid_space_label(ui);
         return
     };
 
     space_view.scene_ui(ctx, ui, spaces_info, space_info, time_query);
 }
 
-fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
-    ui.colored_label(
-        ui.visuals().warn_fg_color,
-        format!("Unknown space {space_path}"),
-    )
+fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) {
+    ui.centered(|ui| {
+        ui.colored_label(
+            ui.visuals().warn_fg_color,
+            format!("Unknown space {space_path}"),
+        );
+    });
 }
 
-fn invalid_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
-    ui.colored_label(
-        ui.visuals().warn_fg_color,
-        format!("Invalid space {space_path}: no time query"),
-    )
+fn invalid_space_label(ui: &mut egui::Ui) {
+    ui.centered(|ui| {
+        ui.colored_label(ui.visuals().warn_fg_color, "No time selected");
+    });
 }
 
 // ----------------------------------------------------------------------------
