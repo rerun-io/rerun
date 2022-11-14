@@ -1,4 +1,13 @@
-//! Code for automatic layout of space views
+//! Code for automatic layout of space views.
+//!
+//! This uses rough heuristics and have a lot of room for improvement.
+//!
+//! Some of the heuristics include:
+//! * We want similar space views together. Similar can mean:
+//!   * Same category (2D vs text vs …)
+//!   * Similar object path (common prefix)
+//! * We also want to pick aspect ratios that fit the data pretty well
+// TODO(emilk): fix O(N^2) execution time (where N = number of spaces)
 
 use std::collections::BTreeMap;
 
@@ -24,6 +33,17 @@ pub struct SpaceMakeInfo {
     pub aspect_ratio: Option<f32>,
 }
 
+enum LayoutSplit {
+    LeftRight(Box<LayoutSplit>, f32, Box<LayoutSplit>),
+    TopBottom(Box<LayoutSplit>, f32, Box<LayoutSplit>),
+    Leaf(SpaceMakeInfo),
+}
+
+enum SplitDirection {
+    LeftRight { left: Vec2, t: f32, right: Vec2 },
+    TopBottom { top: Vec2, t: f32, bottom: Vec2 },
+}
+
 pub(crate) fn tree_from_space_views(
     viewport_size: egui::Vec2,
     visible: &BTreeMap<SpaceViewId, bool>,
@@ -39,12 +59,13 @@ pub(crate) fn tree_from_space_views(
         .map(|(space_view_id, space_view)| {
             let aspect_ratio = match space_view.category {
                 ViewCategory::TwoD => {
+                    // This is the only thing where the aspect ratio makes complete sense.
                     let size = space_view.view_state.state_2d.scene_bbox_accum.size();
                     Some(size.x / size.y)
                 }
-                ViewCategory::ThreeD => None,
-                ViewCategory::Tensor => Some(1.0),
-                ViewCategory::Text => Some(2.0), // wide
+                ViewCategory::ThreeD => None, // 3D scenes can be pretty flexible
+                ViewCategory::Tensor => Some(1.0), // Not sure if we should do `None` here.
+                ViewCategory::Text => Some(2.0), // Make text logs wide
             };
 
             SpaceMakeInfo {
@@ -57,22 +78,11 @@ pub(crate) fn tree_from_space_views(
         .collect_vec();
 
     if !space_make_infos.is_empty() {
-        let layout = layout_by_groups(viewport_size, &mut space_make_infos);
+        let layout = layout_by_category(viewport_size, &mut space_make_infos);
         tree_from_split(&mut tree, egui_dock::NodeIndex(0), &layout);
     }
 
     tree
-}
-
-enum LayoutSplit {
-    LeftRight(Box<LayoutSplit>, f32, Box<LayoutSplit>),
-    TopBottom(Box<LayoutSplit>, f32, Box<LayoutSplit>),
-    Leaf(SpaceMakeInfo),
-}
-
-enum SplitDirection {
-    LeftRight { left: Vec2, t: f32, right: Vec2 },
-    TopBottom { top: Vec2, t: f32, bottom: Vec2 },
 }
 
 fn tree_from_split(
@@ -98,8 +108,8 @@ fn tree_from_split(
     }
 }
 
-// TODO(emilk): fix O(N^2) execution time (where N = number of spaces)
-fn layout_by_groups(viewport_size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> LayoutSplit {
+/// Group categories together, i.e. so that 2D stuff is next to 2D stuff, and text logs are next to text logs.
+fn layout_by_category(viewport_size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> LayoutSplit {
     assert!(!spaces.is_empty());
 
     if spaces.len() == 1 {
@@ -118,6 +128,7 @@ fn layout_by_groups(viewport_size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> 
     }
 }
 
+/// Put spaces with common path prefix close together.
 fn layout_by_path_prefix(viewport_size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> LayoutSplit {
     assert!(!spaces.is_empty());
     if spaces.len() == 1 {
@@ -167,6 +178,7 @@ fn suggest_split_direction(
     assert!(0 < split_index && split_index < spaces.len());
 
     let t = split_index as f32 / spaces.len() as f32;
+
     let desired_aspect_ratio = desired_aspect_ratio(spaces).unwrap_or(16.0 / 9.0);
 
     if viewport_size.x > desired_aspect_ratio * viewport_size.y {
@@ -189,19 +201,32 @@ fn split_spaces_at(
 
     match suggest_split_direction(viewport_size, spaces, split_index) {
         SplitDirection::LeftRight { left, t, right } => {
-            let left = layout_by_groups(left, &mut spaces[..split_index]);
-            let right = layout_by_groups(right, &mut spaces[split_index..]);
+            let left = layout_by_category(left, &mut spaces[..split_index]);
+            let right = layout_by_category(right, &mut spaces[split_index..]);
             LayoutSplit::LeftRight(left.into(), t, right.into())
         }
         SplitDirection::TopBottom { top, t, bottom } => {
-            let top = layout_by_groups(top, &mut spaces[..split_index]);
-            let bottom = layout_by_groups(bottom, &mut spaces[split_index..]);
+            let top = layout_by_category(top, &mut spaces[..split_index]);
+            let bottom = layout_by_category(bottom, &mut spaces[split_index..]);
             LayoutSplit::TopBottom(top.into(), t, bottom.into())
         }
     }
 }
 
+/// If we need to pick only one aspect ratio for all these spaces, what is a good aspect ratio?
+///
+/// This is a very, VERY, rough heuristic. It really only work in a few cases:
+///
+/// * All spaces have similar aspect ration (e.g. all portrait or all landscape)
+/// * Only one space care about aspect ratio, and the other are flexible
+/// * A mix of the above
+///
+/// Still, it is better than nothing.
 fn desired_aspect_ratio(spaces: &[SpaceMakeInfo]) -> Option<f32> {
+    // Taking the arithmetic mean of all given aspect ratios.
+    // It makes very little sense, unless the aspect ratios are all close already.
+    // Perhaps a mode or median would make more sense?
+
     let mut sum = 0.0;
     let mut num = 0.0;
     for space in spaces {
