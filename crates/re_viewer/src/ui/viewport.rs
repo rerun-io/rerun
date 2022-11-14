@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties, TimeQuery};
+use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeQuery};
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
@@ -225,7 +225,11 @@ impl ViewportBlueprint {
     ) {
         // Lazily create a layout tree based on which SpaceViews are currently visible:
         let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
-            tree_from_space_views(ui.available_size(), &self.visible, &self.space_views)
+            super::auto_layout::tree_from_space_views(
+                ui.available_size(),
+                &self.visible,
+                &self.space_views,
+            )
         });
 
         let num_space_views = num_tabs(tree);
@@ -639,192 +643,6 @@ impl Blueprint {
             },
         );
     }
-}
-
-// ----------------------------------------------------------------------------
-// Code for automatic layout of panels:
-
-fn tree_from_space_views(
-    available_size: egui::Vec2,
-    visible: &BTreeMap<SpaceViewId, bool>,
-    space_views: &HashMap<SpaceViewId, SpaceView>,
-) -> egui_dock::Tree<SpaceViewId> {
-    let mut tree = egui_dock::Tree::new(vec![]);
-
-    let mut space_make_infos = space_views
-        .iter()
-        .filter(|(space_view_id, _space_view)| {
-            visible.get(space_view_id).copied().unwrap_or_default()
-        })
-        .map(|(space_view_id, space_view)| {
-            let aspect_ratio = (space_view.category == ViewCategory::TwoD).then(|| {
-                let size = space_view.view_state.state_2d.scene_bbox_accum.size();
-                size.x / size.y
-            });
-
-            SpaceMakeInfo {
-                id: *space_view_id,
-                path: space_view.space_path.clone(),
-                aspect_ratio,
-            }
-        })
-        .collect_vec();
-
-    if !space_make_infos.is_empty() {
-        let layout = layout_spaces(available_size, &mut space_make_infos);
-        tree_from_split(&mut tree, egui_dock::NodeIndex(0), &layout);
-    }
-
-    tree
-}
-
-#[derive(Clone, Debug)]
-struct SpaceMakeInfo {
-    id: SpaceViewId,
-    path: ObjPath,
-    /// Desired aspect ratio, if any.
-    aspect_ratio: Option<f32>,
-}
-
-impl SpaceMakeInfo {
-    fn is_2d(&self) -> bool {
-        self.aspect_ratio.is_some()
-    }
-}
-
-enum LayoutSplit {
-    LeftRight(Box<LayoutSplit>, f32, Box<LayoutSplit>),
-    TopBottom(Box<LayoutSplit>, f32, Box<LayoutSplit>),
-    Leaf(SpaceMakeInfo),
-}
-
-fn tree_from_split(
-    tree: &mut egui_dock::Tree<SpaceViewId>,
-    parent: egui_dock::NodeIndex,
-    split: &LayoutSplit,
-) {
-    match split {
-        LayoutSplit::LeftRight(left, fraction, right) => {
-            let [left_ni, right_ni] = tree.split_right(parent, *fraction, vec![]);
-            tree_from_split(tree, left_ni, left);
-            tree_from_split(tree, right_ni, right);
-        }
-        LayoutSplit::TopBottom(top, fraction, bottom) => {
-            let [top_ni, bottom_ni] = tree.split_below(parent, *fraction, vec![]);
-            tree_from_split(tree, top_ni, top);
-            tree_from_split(tree, bottom_ni, bottom);
-        }
-        LayoutSplit::Leaf(space_info) => {
-            tree.set_focused_node(parent);
-            tree.push_to_focused_leaf(space_info.id);
-        }
-    }
-}
-
-// TODO(emilk): fix O(N^2) execution for layout_spaces
-fn layout_spaces(size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> LayoutSplit {
-    assert!(!spaces.is_empty());
-
-    if spaces.len() == 1 {
-        LayoutSplit::Leaf(spaces[0].clone())
-    } else {
-        spaces.sort_by_key(|si| si.is_2d());
-        let start_3d = spaces.partition_point(|si| !si.is_2d());
-
-        if 0 < start_3d && start_3d < spaces.len() {
-            split_spaces_at(size, spaces, start_3d)
-        } else {
-            // All 2D or all 3D
-            let groups = group_by_path_prefix(spaces);
-            assert!(groups.len() > 1);
-
-            let num_spaces = spaces.len();
-
-            let mut best_split = 0;
-            let mut rearranged_spaces = vec![];
-            for mut group in groups {
-                rearranged_spaces.append(&mut group);
-
-                let split_candidate = rearranged_spaces.len();
-                if (split_candidate as f32 / num_spaces as f32 - 0.5).abs()
-                    < (best_split as f32 / num_spaces as f32 - 0.5).abs()
-                {
-                    best_split = split_candidate;
-                }
-            }
-            assert_eq!(rearranged_spaces.len(), num_spaces);
-            assert!(0 < best_split && best_split < num_spaces,);
-
-            split_spaces_at(size, &mut rearranged_spaces, best_split)
-        }
-    }
-}
-
-fn split_spaces_at(size: egui::Vec2, spaces: &mut [SpaceMakeInfo], index: usize) -> LayoutSplit {
-    use egui::vec2;
-
-    assert!(0 < index && index < spaces.len());
-
-    let t = index as f32 / spaces.len() as f32;
-    let desired_aspect_ratio = desired_aspect_ratio(spaces).unwrap_or(16.0 / 9.0);
-
-    if size.x > desired_aspect_ratio * size.y {
-        let left = layout_spaces(vec2(size.x * t, size.y), &mut spaces[..index]);
-        let right = layout_spaces(vec2(size.x * (1.0 - t), size.y), &mut spaces[index..]);
-        LayoutSplit::LeftRight(left.into(), t, right.into())
-    } else {
-        let top = layout_spaces(vec2(size.y, size.y * t), &mut spaces[..index]);
-        let bottom = layout_spaces(vec2(size.y, size.x * (1.0 - t)), &mut spaces[index..]);
-        LayoutSplit::TopBottom(top.into(), t, bottom.into())
-    }
-}
-
-fn desired_aspect_ratio(spaces: &[SpaceMakeInfo]) -> Option<f32> {
-    let mut sum = 0.0;
-    let mut num = 0.0;
-    for space in spaces {
-        if let Some(aspect_ratio) = space.aspect_ratio {
-            if aspect_ratio.is_finite() {
-                sum += aspect_ratio;
-                num += 1.0;
-            }
-        }
-    }
-
-    (num != 0.0).then_some(sum / num)
-}
-
-fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>> {
-    if space_infos.len() < 2 {
-        return vec![space_infos.to_vec()];
-    }
-    crate::profile_function!();
-
-    let paths = space_infos
-        .iter()
-        .map(|space_info| space_info.path.to_components())
-        .collect_vec();
-
-    for i in 0.. {
-        let mut groups: std::collections::BTreeMap<Option<&ObjPathComp>, Vec<&SpaceMakeInfo>> =
-            Default::default();
-        for (path, space) in paths.iter().zip(space_infos) {
-            groups.entry(path.get(i)).or_default().push(space);
-        }
-        if groups.len() == 1 && groups.contains_key(&None) {
-            break;
-        }
-        if groups.len() > 1 {
-            return groups
-                .values()
-                .map(|spaces| spaces.iter().cloned().cloned().collect())
-                .collect();
-        }
-    }
-    space_infos
-        .iter()
-        .map(|space| vec![space.clone()])
-        .collect()
 }
 
 // ----------------------------------------------------------------------------

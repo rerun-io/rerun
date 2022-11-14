@@ -1,3 +1,5 @@
+mod auto_layout;
+
 mod viewport;
 pub(crate) use self::viewport::{Blueprint, SpaceViewId};
 

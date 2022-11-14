@@ -19,7 +19,7 @@ use super::{view_2d, view_3d, view_tensor, view_text};
     serde::Deserialize,
     serde::Serialize,
 )]
-pub(crate) enum ViewCategory {
+pub enum ViewCategory {
     TwoD,
     #[default]
     ThreeD,
