@@ -141,6 +141,7 @@ def log_camera(cam: ARCamera) -> None:
 def log_point_cloud(point_cloud: ARPointCloud) -> None:
     """Logs a point cloud from an `ARFrame` using the Rerun SDK."""
 
+    rerun.log_cleared(f"world/points", recursive=True)
     for i in range(point_cloud.count):
         point_raw = point_cloud.point[i]
         point = np.array([point_raw.x, point_raw.y, point_raw.z], dtype=np.float32)
