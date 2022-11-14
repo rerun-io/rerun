@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
-    query::{visit_type_data_3, visit_type_data_4},
+    query::{visit_type_data_2, visit_type_data_3},
     FieldName, InstanceIdHash, ObjPath,
 };
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
@@ -133,21 +133,19 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::Image])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_3(
+                visit_type_data_2(
                     obj_store,
                     &FieldName::from("tensor"),
                     &query.time_query,
-                    ("_visible", "color", "meter"),
+                    ("color", "meter"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      msg_id: &MsgId,
                      tensor: &re_log_types::Tensor,
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      meter: Option<&f32>| {
-                        let visible = *visible.unwrap_or(&true);
                         let two_or_three_dims = 2 <= tensor.shape.len() && tensor.shape.len() <= 3;
-                        if !visible || !two_or_three_dims {
+                        if !two_or_three_dims {
                             return;
                         }
 
@@ -196,24 +194,18 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_4(
+                visit_type_data_3(
                     obj_store,
                     &FieldName::from("bbox"),
                     &query.time_query,
-                    ("_visible", "color", "stroke_width", "label"),
+                    ("color", "stroke_width", "label"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      bbox: &re_log_types::BBox2D,
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>,
                      label: Option<&String>| {
-                        let visible = *visible.unwrap_or(&true);
-                        if !visible {
-                            return;
-                        }
-
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
@@ -255,23 +247,17 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_3(
+                visit_type_data_2(
                     obj_store,
                     &FieldName::from("pos"),
                     &query.time_query,
-                    ("_visible", "color", "radius"),
+                    ("color", "radius"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 2],
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>| {
-                        let visible = *visible.unwrap_or(&true);
-                        if !visible {
-                            return;
-                        }
-
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
                         let paint_props = paint_properties(
@@ -310,23 +296,17 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_3(
+                visit_type_data_2(
                     obj_store,
                     &FieldName::from("points"),
                     &query.time_query,
-                    ("_visible", "color", "stroke_width"),
+                    ("color", "stroke_width"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      points: &DataVec,
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>| {
-                        let visible = *visible.unwrap_or(&true);
-                        if !visible {
-                            return;
-                        }
-
                         let Some(points) = points.as_vec_of_vec2("LineSegments2D::points")
                                 else { return };
 

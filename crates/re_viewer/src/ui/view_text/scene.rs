@@ -1,4 +1,4 @@
-use re_data_store::{query::visit_type_data_3, FieldName, ObjPath, TimeQuery};
+use re_data_store::{query::visit_type_data_2, FieldName, ObjPath, TimeQuery};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
 use crate::{ui::SceneQuery, ViewerContext};
@@ -46,28 +46,25 @@ impl SceneText {
                 // On the other hand:
                 // - A) We're about to change our storage engine.
                 // - B) Nobody is logging gazillon of text logs into Rerun yet.
-                visit_type_data_3(
+                visit_type_data_2(
                     obj_store,
                     &FieldName::from("body"),
                     &TimeQuery::EVERYTHING, // always sticky!
-                    ("_visible", "level", "color"),
+                    ("level", "color"),
                     |_instance_index: Option<&IndexHash>,
                      time: i64,
                      msg_id: &MsgId,
                      body: &String,
-                     visible: Option<&bool>,
                      level: Option<&String>,
                      color: Option<&[u8; 4]>| {
-                        if *visible.unwrap_or(&true) {
-                            batch.push(TextEntry {
-                                msg_id: *msg_id,
-                                obj_path: obj_path.clone(),
-                                time,
-                                color: color.copied(),
-                                level: level.map(ToOwned::to_owned),
-                                body: body.clone(),
-                            });
-                        }
+                        batch.push(TextEntry {
+                            msg_id: *msg_id,
+                            obj_path: obj_path.clone(),
+                            time,
+                            color: color.copied(),
+                            level: level.map(ToOwned::to_owned),
+                            body: body.clone(),
+                        });
                     },
                 );
                 batch

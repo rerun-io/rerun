@@ -918,11 +918,6 @@ def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
     return array  # type: ignore[return-value]
 
 
-def set_visible(obj_path: str, visibile: bool) -> None:
-    """Change the visibility of an object."""
-    rerun_sdk.set_visible(obj_path, visibile)
-
-
 def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
     """
     Indicate that an object at a given path should no longer be displayed.
