@@ -484,6 +484,7 @@ impl DataVec {
 
             DataType::Transform => Self::Transform(vec![]),
             DataType::ViewCoordinates => Self::ViewCoordinates(vec![]),
+            DataType::AnnotationContext => Self::AnnotationContext(vec![]),
         }
     }
 
