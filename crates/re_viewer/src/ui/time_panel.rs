@@ -1395,6 +1395,8 @@ impl TimeRangesUi {
     }
 
     /// Clamp the time to the valid ranges.
+    ///
+    /// Used when user is dragging the time handle.
     fn clamp_time(&self, mut time: TimeReal) -> TimeReal {
         if let (Some(first), Some(last)) = (self.segments.first(), self.segments.last()) {
             time = time.clamp(
@@ -1403,7 +1405,14 @@ impl TimeRangesUi {
             );
 
             // Special: don't allow users dragging time between
-            // BEGINNING (-∞) and some real time.
+            // BEGINNING (-∞ = timeless data) and some real time.
+            // Otherwise we get weird times (e.g. dates in 1923).
+            // Selecting times between other segments is not as problematic, as all other segments are
+            // real times, so interpolating between them always produces valid times.
+            // By disallowing times between BEGINNING and the first real segment,
+            // we also disallow users dragging the time to be between -∞ and the
+            // real beginning of their data. That further highlights the specialness of -∞.
+            // Furthermore, we want users to have a smooth experience dragging the time handle anywhere else.
             if first.tight_time == TimeRange::point(TimeInt::BEGINNING) {
                 if let Some(second) = self.segments.get(1) {
                     if TimeInt::BEGINNING < time && time < second.tight_time.min {
@@ -1415,8 +1424,10 @@ impl TimeRangesUi {
         time
     }
 
-    /// Make sure the time is not between ranges.
-    fn snap_time(&self, value: TimeReal) -> TimeReal {
+    /// Make sure the time is not between segments.
+    ///
+    /// This is so that the playback doesn't get stuck between segments.
+    fn snap_time_to_segments(&self, value: TimeReal) -> TimeReal {
         for segment in &self.segments {
             if value < segment.time.min {
                 return segment.time.min;
@@ -1427,7 +1438,7 @@ impl TimeRangesUi {
         value
     }
 
-    // Make sure time doesn't get stuck between non-continuos regions:
+    // Make sure playback time doesn't get stuck between non-continuos regions:
     fn snap_time_control(&self, ctx: &mut ViewerContext<'_>) {
         if !ctx.rec_cfg.time_ctrl.is_playing() {
             return;
@@ -1435,11 +1446,11 @@ impl TimeRangesUi {
 
         // Make sure time doesn't get stuck between non-continuos regions:
         if let Some(time) = ctx.rec_cfg.time_ctrl.time() {
-            let time = self.snap_time(time);
+            let time = self.snap_time_to_segments(time);
             ctx.rec_cfg.time_ctrl.set_time(time);
         } else if let Some(selection) = ctx.rec_cfg.time_ctrl.time_selection() {
-            let snapped_min = self.snap_time(selection.min);
-            let snapped_max = self.snap_time(selection.max);
+            let snapped_min = self.snap_time_to_segments(selection.min);
+            let snapped_max = self.snap_time_to_segments(selection.max);
 
             let min_was_good = selection.min == snapped_min;
             let max_was_good = selection.max == snapped_max;
