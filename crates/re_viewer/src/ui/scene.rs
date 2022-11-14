@@ -1,6 +1,9 @@
+use ahash::HashMap;
 use nohash_hasher::IntSet;
 
-use re_data_store::{LogDb, ObjPath, ObjStore, ObjectsProperties, TimeQuery, Timeline};
+use re_data_store::{
+    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectsProperties, TimeQuery, Timeline,
+};
 use re_log_types::ObjectType;
 
 use super::{space_view::ViewCategory, view_2d, view_3d, view_tensor, view_text};
@@ -92,5 +95,62 @@ impl<'s> SceneQuery<'s> {
                             .flatten()
                     })
             })
+    }
+
+    /// Given a [`FieldName`], this will return all relevant [`ObjStore`]s that contain
+    /// the specified field.
+    ///
+    /// An [`ObjStore`] is considered relevant if it is the nearest ancestor
+    /// that contains that field for some visible object in the space.
+    ///
+    /// An object is considered its own (nearest) ancestor.
+    pub(crate) fn iter_ancestor_meta_field<'a>(
+        &'a self,
+        log_db: &'a LogDb,
+        field_name: &'a FieldName,
+    ) -> impl Iterator<Item = (ObjPath, &FieldStore<i64>)> + 'a {
+        let mut visited = IntSet::<ObjPath>::default();
+        let mut found_fields = HashMap::<ObjPath, &FieldStore<i64>>::default();
+        for obj_path in self
+            .obj_paths
+            .iter()
+            .filter(|obj_path| self.obj_props.get(obj_path).visible)
+        {
+            let mut next_parent = Some(obj_path.clone());
+            while let Some(parent) = next_parent {
+                // If we've visited this parent before it's safe to break early.
+                // All of it's parents have have also been visited.
+                if !visited.insert(parent.clone()) {
+                    break;
+                }
+
+                match found_fields.entry(parent.clone()) {
+                    // If we've hit this path before and found a match, we can also break.
+                    // This should not actually get hit due to the above early-exit.
+                    std::collections::hash_map::Entry::Occupied(_) => break,
+                    // Otherwise check the obj_store for the field.
+                    // If we find one, insert it and then we can break.
+                    std::collections::hash_map::Entry::Vacant(entry) => {
+                        if log_db
+                            .obj_db
+                            .store
+                            .get(&self.timeline)
+                            .and_then(|timeline_store| timeline_store.get(&parent))
+                            .and_then(|obj_store| obj_store.get(field_name))
+                            .map(|field_store| entry.insert(field_store))
+                            .is_some()
+                        {
+                            break;
+                        }
+                    }
+                }
+                // Finally recurse to the next parent up the path
+                // TODO(jleibs): this is somewhat expensive as it needs to re-hash the object path
+                // given ObjPathImpl is already an Arc, consider pre-computing and storing parents
+                // for faster iteration.
+                next_parent = parent.parent();
+            }
+        }
+        found_fields.into_iter()
     }
 }

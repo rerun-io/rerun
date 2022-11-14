@@ -263,7 +263,7 @@ fn hover_effect(scene: &mut Scene2D, hovered: InstanceIdHash) {
 
     let Scene2D {
         bbox: _,
-        legends: _,
+        annotation_map: _,
 
         images,
         boxes,
@@ -366,10 +366,13 @@ fn view_2d_scrollable(
             meter,
             paint_props,
             is_hovered,
-            legend,
+            annotations: legend,
         } = img;
 
-        let tensor_view = ctx.cache.image.get_view_with_legend(msg_id, tensor, legend);
+        let tensor_view = ctx
+            .cache
+            .image
+            .get_view_with_annotations(msg_id, tensor, legend);
 
         let texture_id = tensor_view.retained_img.texture_id(parent_ui.ctx());
 
@@ -418,8 +421,10 @@ fn view_2d_scrollable(
                                 ui.separator();
                             }
 
-                            let tensor_view =
-                                ctx.cache.image.get_view_with_legend(msg_id, tensor, legend);
+                            let tensor_view = ctx
+                                .cache
+                                .image
+                                .get_view_with_annotations(msg_id, tensor, legend);
 
                             ui.horizontal(|ui| {
                                 super::image_ui::show_zoomed_image_region(

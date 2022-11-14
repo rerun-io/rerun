@@ -808,7 +808,6 @@ def log_depth_image(
 def log_segmentation_image(
     obj_path: str,
     image: ClassIds,
-    class_descriptions: str = "",
     *,
     timeless: bool = False,
 ) -> None:
@@ -833,9 +832,9 @@ def log_segmentation_image(
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
     if image.dtype == "uint8":
-        rerun_rs.log_tensor_u8(obj_path, image, None, None, class_descriptions, timeless)
+        rerun_rs.log_tensor_u8(obj_path, image, None, None, rerun_rs.TensorDataMeaning.ClassId, timeless)
     elif image.dtype == "uint16":
-        rerun_rs.log_tensor_u16(obj_path, image, None, None, class_descriptions, timeless)
+        rerun_rs.log_tensor_u16(obj_path, image, None, None, rerun_rs.TensorDataMeaning.ClassId, timeless)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")
 
@@ -946,17 +945,19 @@ def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
         return ClassDescription(*arg)  # type: ignore[misc]
 
 
-def log_class_descriptions(
+def log_annotation_context(
     obj_path: str,
     class_descriptions: Sequence[ClassDescriptionLike],
     *,
-    timeless: bool = False,
+    timeless: bool = True,
 ) -> None:
     """
-    Log a collection of ClassDescriptions which can be used for annotation of other objects.
+    Log an annotation context made up of a collection of ClassDescriptions.
 
-    This obj_path can be referenced from the `log_segmentation_image` API to
-    indicate this set of descriptions is relevant to the image.
+    Any object needing to access the annotation context will find it by searching the
+    path upward. If all objects share the same you can simply log it to the
+    root ("/"), or if you want a per-object ClassDescriptions log it to the same path as
+    your object.
 
     Each ClassDescription must include an id, which will be used for matching
     the class and may optionally include a label and color.  Colors should
@@ -983,4 +984,4 @@ def log_class_descriptions(
         (d.id, d.label, _normalize_colors(d.color).tolist() or None) for d in typed_class_descriptions
     ]
 
-    rerun_rs.log_class_descriptions(obj_path, tuple_class_descriptions, timeless)
+    rerun_rs.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
