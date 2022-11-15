@@ -340,15 +340,20 @@ fn bytes_used_net() -> usize {
 impl App {
     fn prune_memory_if_needed(&mut self) {
         if let Some(bytes_used_gross_before) = bytes_used_gross() {
-            let too_many_bytes = 8_000_000_000;
-            if bytes_used_gross_before > too_many_bytes {
-                let bytes_used_net_before = bytes_used_net();
+            let bytes_used_net_before = bytes_used_net();
 
+            let too_many_gross_bytes = 8_000_000_000;
+            let too_many_net_bytes = 8_000_000_000;
+
+            if bytes_used_gross_before > too_many_gross_bytes
+                || bytes_used_net_before > too_many_net_bytes
+            {
                 re_log::info!(
-                    "Using {:.2} GB according to OS. Actually used: {:.2} GB. Maximum: {:.2} GB. PRUNING!",
+                    "Using {:.2}/{:2} GB according to OS. Actually used: {:.2}/{:2} GB. PRUNING!",
                     bytes_used_gross_before as f32 / 1e9,
+                    too_many_gross_bytes as f32 / 1e9,
                     bytes_used_net_before as f32 / 1e9,
-                    too_many_bytes as f32 / 1e9
+                    too_many_net_bytes as f32 / 1e9,
                 );
 
                 for log_db in self.log_dbs.values_mut() {
@@ -363,13 +368,13 @@ impl App {
                     re_log::info!(
                         "Freed up {:.3} GB of memory, returning {:.3} GB to the OS",
                         net_diff as f32 / 1e9,
-                        gross_diff as f32 / 1e9
+                        gross_diff as f32 / 1e9,
                     );
 
                     re_log::info!(
                         "Now using {:.2} GB according to OS (actually used: {:.2} GB)",
                         bytes_used_gross as f32 / 1e9,
-                        bytes_used_net() as f32 / 1e9
+                        bytes_used_net() as f32 / 1e9,
                     );
                 }
             }
