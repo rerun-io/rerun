@@ -350,6 +350,8 @@ impl App {
                     log_db.prune_memory();
                 }
 
+                self.state.cache.prune_memory();
+
                 if let Some(usage) = memory_stats::memory_stats() {
                     re_log::info!("Now using {:.2} GB.", usage.physical_mem as f32 / 1e9);
                 }
