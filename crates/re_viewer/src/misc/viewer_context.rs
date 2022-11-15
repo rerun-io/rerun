@@ -232,6 +232,12 @@ impl Caches {
         let max_image_cache_use = 1_000_000_000;
         self.image.new_frame(max_image_cache_use);
     }
+
+    pub fn prune_memory(&mut self) {
+        // image cache already self-prunes.
+        // cpu_mesh cache _shouldn't_ fill up.
+        self.object_colors.clear();
+    }
 }
 
 // ----------------------------------------------------------------------------
