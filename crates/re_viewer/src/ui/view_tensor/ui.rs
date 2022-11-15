@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fmt::Display};
 use eframe::emath::Align2;
 use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
 use ndarray::{Axis, Ix2};
-use re_log_types::{Tensor, TensorDataType, TensorDimension};
+use re_log_types::{Tensor, TensorDataMeaning, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 use super::dimension_mapping_ui;
@@ -34,6 +34,7 @@ fn empty_tensor() -> Tensor {
     Tensor {
         shape: vec![TensorDimension::unnamed(0)],
         dtype: TensorDataType::U8,
+        meaning: TensorDataMeaning::Unknown,
         data: re_log_types::TensorDataStore::Dense(vec![].into()),
     }
 }

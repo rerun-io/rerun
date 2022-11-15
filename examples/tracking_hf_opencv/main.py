@@ -102,7 +102,7 @@ class Detector:
         )[0]
 
         mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
-        rerun.log_segmentation_image("image/scaled/segmentation", mask, class_descriptions="coco_categories")
+        rerun.log_segmentation_image("image/scaled/segmentation", mask)
 
         boxes = detections["boxes"].detach().cpu().numpy()
         labels = detections["labels"].detach().cpu().numpy()
@@ -321,7 +321,7 @@ def track_objects(video_path: str) -> None:
     class_descriptions = [
         rerun.ClassDescription(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
-    rerun.log_class_descriptions("coco_categories", class_descriptions, timeless=True)
+    rerun.log_annotation_context("/", class_descriptions, timeless=True)
 
     detector = Detector(coco_categories=coco_categories)
 

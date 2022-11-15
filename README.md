@@ -33,6 +33,7 @@ From here on out, we assume you have this virtualenv activated.
 
 ### Build and install
 ``` sh
+./scripts/setup.sh
 pip install ./rerun_py
 ```
 > Note: If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip install` command.
