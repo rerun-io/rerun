@@ -48,7 +48,7 @@ class SampleARFrame:
     image_path: Path
 
 
-def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
+def read_ar_frames(dirpath: Path, nb_frames: int, forever: bool = False) -> Iterator[SampleARFrame]:
     """
     Loads up to `nb_frames` consecutive ARFrames from the given path on disk.
 
@@ -60,17 +60,19 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
 
     time_offset = 0
     frame_offset = 0
-    frame_idx = 0
-    while True:
+
+    run = True
+    while run:
+        frame_idx = 0
         data = Path(path).read_bytes()
-        while len(data) > 0:
+        while len(data) > 0 and frame_idx < nb_frames:
             next_len = int.from_bytes(data[:4], byteorder="little", signed=False)
             data = data[4:]
 
             frame = ARFrame().parse(data[:next_len])
-            img_path = Path(os.path.join(dirpath, f"video/{frame_idx - frame_offset}.jpg"))
+            img_path = Path(os.path.join(dirpath, f"video/{frame_idx}.jpg"))
             yield SampleARFrame(
-                index=frame_idx,
+                index=frame_idx + frame_offset,
                 timestamp=frame.timestamp + time_offset,
                 dirpath=dirpath,
                 frame=frame,
@@ -79,8 +81,10 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
 
             data = data[next_len:]
             frame_idx += 1
+
+        run = forever
         time_offset += frame.timestamp
-        frame_offset = frame_idx
+        frame_offset += frame_idx
 
 
 def read_annotations(dirpath: Path) -> Sequence:
@@ -251,6 +255,7 @@ def main() -> None:
     parser.add_argument(
         "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
     )
+    parser.add_argument("--run-forever", action="store_true", help="Run forever, continually logging data.")
     parser.add_argument(
         "--recording",
         type=str,
@@ -279,7 +284,7 @@ def main() -> None:
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 
-    samples = read_ar_frames(dir, args.frames)
+    samples = read_ar_frames(dir, args.frames, args.run_forever)
     seq = read_annotations(dir)
     log_ar_frames(samples, seq)
 
