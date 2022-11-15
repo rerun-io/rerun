@@ -44,6 +44,8 @@ pub struct App {
 
     /// Toast notifications, using `egui-notify`.
     toasts: Toasts,
+
+    last_memory_free: std::time::Instant,
 }
 
 impl App {
@@ -129,6 +131,7 @@ impl App {
             ctrl_c,
             pending_promises: Default::default(),
             toasts: Toasts::new(),
+            last_memory_free: std::time::Instant::now(),
         }
     }
 
@@ -339,6 +342,10 @@ fn bytes_used_net() -> i64 {
 
 impl App {
     fn prune_memory_if_needed(&mut self) {
+        if self.last_memory_free.elapsed() < std::time::Duration::from_secs(30) {
+            return;
+        }
+
         if let Some(bytes_used_gross_before) = bytes_used_gross() {
             let bytes_used_net_before = bytes_used_net();
 
@@ -377,6 +384,8 @@ impl App {
                         bytes_used_net() as f32 / 1e9,
                     );
                 }
+
+                self.last_memory_free = std::time::Instant::now();
             }
         }
     }
