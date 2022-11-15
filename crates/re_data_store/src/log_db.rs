@@ -337,6 +337,12 @@ impl LogDb {
 
         for (timeline, time_points) in &mut self.time_points.0 {
             if let Some(cutoff_time) = time_points.iter().nth(time_points.len() / 2).copied() {
+                re_log::info!(
+                    "Pruning {} before {}",
+                    timeline.name(),
+                    timeline.typ().format(cutoff_time)
+                );
+
                 time_points.retain(|&time| cutoff_time <= time);
                 self.obj_db
                     .prune_everything_before(*timeline, cutoff_time, &keep_msg_ids);
