@@ -2249,6 +2249,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "memory-stats"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d3f458a3076e337e027943b8cb5f4f72a6651714f9258fc7dcd3ae3b51f0276"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "metal"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3207,6 +3217,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "macaw",
+ "memory-stats",
  "mint",
  "ndarray",
  "nohash-hasher",

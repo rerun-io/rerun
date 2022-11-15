@@ -64,6 +64,7 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
 lazy_static = "1.4.0"
 macaw = { version = "0.17", features = ["with_serde"] }
+memory-stats = "1.0"
 mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"
