@@ -325,16 +325,16 @@ impl eframe::App for App {
 }
 
 /// According to the OS. This is what matters.
-fn bytes_used_gross() -> Option<usize> {
-    memory_stats::memory_stats().map(|usage| usage.physical_mem)
+fn bytes_used_gross() -> Option<i64> {
+    memory_stats::memory_stats().map(|usage| usage.physical_mem as i64)
 }
 
 /// What we are using internally.
 ///
 /// The difference to [`bytes_used_gross`] is memory allocated by `MiMalloc`.
 /// that hasn't been returned to the OS.
-fn bytes_used_net() -> usize {
-    crate::mem_tracker::global_allocs_and_bytes().1
+fn bytes_used_net() -> i64 {
+    crate::mem_tracker::global_allocs_and_bytes().1 as _
 }
 
 impl App {
@@ -343,7 +343,7 @@ impl App {
             let bytes_used_net_before = bytes_used_net();
 
             let too_many_gross_bytes = 8_000_000_000;
-            let too_many_net_bytes = 8_000_000_000;
+            let too_many_net_bytes = 4_000_000_000;
 
             if bytes_used_gross_before > too_many_gross_bytes
                 || bytes_used_net_before > too_many_net_bytes
@@ -362,9 +362,9 @@ impl App {
 
                 self.state.cache.prune_memory();
 
-                if let Some(bytes_used_gross) = bytes_used_gross() {
+                if let Some(bytes_used_gross_after) = bytes_used_gross() {
                     let net_diff = bytes_used_net_before - bytes_used_net();
-                    let gross_diff = bytes_used_gross_before - bytes_used_gross;
+                    let gross_diff = bytes_used_gross_before - bytes_used_gross_after;
                     re_log::info!(
                         "Freed up {:.3} GB of memory, returning {:.3} GB to the OS",
                         net_diff as f32 / 1e9,
@@ -373,7 +373,7 @@ impl App {
 
                     re_log::info!(
                         "Now using {:.2} GB according to OS (actually used: {:.2} GB)",
-                        bytes_used_gross as f32 / 1e9,
+                        bytes_used_gross_after as f32 / 1e9,
                         bytes_used_net() as f32 / 1e9,
                     );
                 }
