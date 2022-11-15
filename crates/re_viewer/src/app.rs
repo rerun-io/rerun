@@ -229,6 +229,8 @@ impl eframe::App for App {
 
         self.check_keyboard_shortcuts(egui_ctx, frame);
 
+        self.prune_memory_if_needed();
+
         self.state.cache.new_frame();
 
         if let Some(rx) = &mut self.rx {
@@ -323,6 +325,27 @@ impl eframe::App for App {
 }
 
 impl App {
+    fn prune_memory_if_needed(&mut self) {
+        if let Some(usage) = memory_stats::memory_stats() {
+            let too_many_bytes = 8_000_000_000;
+            if usage.physical_mem > too_many_bytes {
+                re_log::info!(
+                    "Using {:.2} GB out of {:.2} GB maximum. PRUNING!",
+                    usage.physical_mem as f32 / 1e9,
+                    too_many_bytes as f32 / 1e9
+                );
+
+                for log_db in self.log_dbs.values_mut() {
+                    log_db.prune_memory();
+                }
+
+                if let Some(usage) = memory_stats::memory_stats() {
+                    re_log::info!("Now using {:.2} GB.", usage.physical_mem as f32 / 1e9);
+                }
+            }
+        }
+    }
+
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, egui_ctx: &egui::Context) {
         let selected_rec_id = self.state.selected_rec_id;
