@@ -73,6 +73,11 @@ impl ObjDb {
 
         self.tree.add_data_msg(msg_id, time_point, data_path, data);
     }
+
+    fn prune_everything_before(&mut self, timeline: Timeline, cutoff: TimeInt) {
+        // self.tree.prune_everything_before(timeline, cutoff);
+        // self.store.prune_everything_before(timeline, cutoff);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -238,5 +243,32 @@ impl LogDb {
 
     pub fn get_log_msg(&self, msg_id: &MsgId) -> Option<&LogMsg> {
         self.log_messages.get(msg_id)
+    }
+
+    pub fn prune_memory(&mut self) {
+        crate::profile_function!();
+
+        // remove the first half of everything.
+
+        self.chronological_message_ids =
+            self.chronological_message_ids[(self.chronological_message_ids.len() / 2)..].to_vec();
+
+        let keep_message_ids: nohash_hasher::IntSet<MsgId> =
+            self.chronological_message_ids.iter().copied().collect();
+
+        self.log_messages
+            .retain(|msg_id, _| keep_message_ids.contains(msg_id));
+        self.timeless_message_ids
+            .retain(|msg_id| keep_message_ids.contains(msg_id));
+
+        // -----
+
+        for (timeline, time_points) in &mut self.time_points.0 {
+            if let Some(cutoff_time) = time_points.iter().nth(time_points.len() / 2).copied() {
+                time_points.retain(|&time| time >= cutoff_time);
+
+                self.obj_db.prune_everything_before(*timeline, cutoff_time);
+            }
+        }
     }
 }
