@@ -132,9 +132,15 @@ impl ObjDb {
         }
     }
 
-    fn prune_everything_before(&mut self, timeline: Timeline, cutoff: TimeInt) {
-        // self.tree.prune_everything_before(timeline, cutoff);
-        // self.store.prune_everything_before(timeline, cutoff);
+    fn prune_everything_before(
+        &mut self,
+        timeline: Timeline,
+        cutoff_time: TimeInt,
+        keep_msg_ids: &nohash_hasher::IntSet<MsgId>,
+    ) {
+        self.tree
+            .prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+        // self.store.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
     }
 }
 
@@ -319,21 +325,21 @@ impl LogDb {
         self.chronological_message_ids =
             self.chronological_message_ids[(self.chronological_message_ids.len() / 2)..].to_vec();
 
-        let keep_message_ids: nohash_hasher::IntSet<MsgId> =
+        let keep_msg_ids: nohash_hasher::IntSet<MsgId> =
             self.chronological_message_ids.iter().copied().collect();
 
         self.log_messages
-            .retain(|msg_id, _| keep_message_ids.contains(msg_id));
+            .retain(|msg_id, _| keep_msg_ids.contains(msg_id));
         self.timeless_message_ids
-            .retain(|msg_id| keep_message_ids.contains(msg_id));
+            .retain(|msg_id| keep_msg_ids.contains(msg_id));
 
         // -----
 
         for (timeline, time_points) in &mut self.time_points.0 {
             if let Some(cutoff_time) = time_points.iter().nth(time_points.len() / 2).copied() {
-                time_points.retain(|&time| time >= cutoff_time);
-
-                self.obj_db.prune_everything_before(*timeline, cutoff_time);
+                time_points.retain(|&time| cutoff_time <= time);
+                self.obj_db
+                    .prune_everything_before(*timeline, cutoff_time, &keep_msg_ids);
             }
         }
     }
