@@ -108,7 +108,7 @@ impl ImageCache {
         if self.memory_used > max_memory_use {
             let before = self.memory_used;
             self.flush();
-            re_log::debug!(
+            re_log::info!(
                 "Flushed image cache. Before: {:.2} GB. After: {:.2} GB",
                 before as f64 / 1e9,
                 self.memory_used as f64 / 1e9,
@@ -120,7 +120,7 @@ impl ImageCache {
 
     fn flush(&mut self) {
         crate::profile_function!();
-        // Very agressively flush everything not used in this frame
+        // Very aggressively flush everything not used in this frame
         self.images.retain(|_, ci| {
             let retain = ci.last_use_generation == self.generation;
             if !retain {
