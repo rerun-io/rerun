@@ -324,14 +324,30 @@ impl eframe::App for App {
     }
 }
 
+/// According to the OS. This is what matters.
+fn bytes_used_gross() -> Option<usize> {
+    memory_stats::memory_stats().map(|usage| usage.physical_mem)
+}
+
+/// What we are using internally.
+///
+/// The difference to [`bytes_used_gross`] is memory allocated by `MiMalloc`.
+/// that hasn't been returned to the OS.
+fn bytes_used_net() -> usize {
+    crate::mem_tracker::global_allocs_and_bytes().1
+}
+
 impl App {
     fn prune_memory_if_needed(&mut self) {
-        if let Some(usage) = memory_stats::memory_stats() {
+        if let Some(bytes_used_gross_before) = bytes_used_gross() {
             let too_many_bytes = 8_000_000_000;
-            if usage.physical_mem > too_many_bytes {
+            if bytes_used_gross_before > too_many_bytes {
+                let bytes_used_net_before = bytes_used_net();
+
                 re_log::info!(
-                    "Using {:.2} GB out of {:.2} GB maximum. PRUNING!",
-                    usage.physical_mem as f32 / 1e9,
+                    "Using {:.2} GB according to OS. Actually used: {:.2} GB. Maximum: {:.2} GB. PRUNING!",
+                    bytes_used_gross_before as f32 / 1e9,
+                    bytes_used_net_before as f32 / 1e9,
                     too_many_bytes as f32 / 1e9
                 );
 
@@ -341,8 +357,20 @@ impl App {
 
                 self.state.cache.prune_memory();
 
-                if let Some(usage) = memory_stats::memory_stats() {
-                    re_log::info!("Now using {:.2} GB.", usage.physical_mem as f32 / 1e9);
+                if let Some(bytes_used_gross) = bytes_used_gross() {
+                    let net_diff = bytes_used_net_before - bytes_used_net();
+                    let gross_diff = bytes_used_gross_before - bytes_used_gross;
+                    re_log::info!(
+                        "Freed up {:.3} GB of memory, returning {:.3} GB to the OS",
+                        net_diff as f32 / 1e9,
+                        gross_diff as f32 / 1e9
+                    );
+
+                    re_log::info!(
+                        "Now using {:.2} GB according to OS (actually used: {:.2} GB)",
+                        bytes_used_gross as f32 / 1e9,
+                        bytes_used_net() as f32 / 1e9
+                    );
                 }
             }
         }
@@ -882,10 +910,14 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 fn debug_menu(ui: &mut egui::Ui) {
     ui.style_mut().wrap = Some(false);
 
-    if let Some(usage) = memory_stats::memory_stats() {
+    if let Some(bytes_used_gross) = bytes_used_gross() {
         ui.label(format!(
-            "Physical memory: {:.2} GB",
-            usage.physical_mem as f32 / 1e9
+            "{:.2} GB allocated from OS",
+            bytes_used_gross as f32 / 1e9
+        ));
+        ui.label(format!(
+            "{:.2} GB actually used",
+            bytes_used_net() as f32 / 1e9
         ));
     }
 
