@@ -45,6 +45,7 @@ class SampleARFrame:
     timestamp: float
     dirpath: Path
     frame: ARFrame
+    image_path: Path
 
 
 def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
@@ -56,18 +57,30 @@ def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
 
     path = dirpath / GEOMETRY_FILENAME
     print(f"loading ARFrames from {path}")
-    data = Path(path).read_bytes()
 
+    time_offset = 0
+    frame_offset = 0
     frame_idx = 0
-    while len(data) > 0 and frame_idx < nb_frames:
-        next_len = int.from_bytes(data[:4], byteorder="little", signed=False)
-        data = data[4:]
+    while True:
+        data = Path(path).read_bytes()
+        while len(data) > 0:
+            next_len = int.from_bytes(data[:4], byteorder="little", signed=False)
+            data = data[4:]
 
-        frame = ARFrame().parse(data[:next_len])
-        yield SampleARFrame(index=frame_idx, timestamp=frame.timestamp, dirpath=dirpath, frame=frame)
+            frame = ARFrame().parse(data[:next_len])
+            img_path = Path(os.path.join(dirpath, f"video/{frame_idx - frame_offset}.jpg"))
+            yield SampleARFrame(
+                index=frame_idx,
+                timestamp=frame.timestamp + time_offset,
+                dirpath=dirpath,
+                frame=frame,
+                image_path=img_path,
+            )
 
-        data = data[next_len:]
-        frame_idx += 1
+            data = data[next_len:]
+            frame_idx += 1
+        time_offset += frame.timestamp
+        frame_offset = frame_idx
 
 
 def read_annotations(dirpath: Path) -> Sequence:
@@ -97,8 +110,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         rerun.set_time_seconds("time", sample.timestamp)
         frame_times.append(sample.timestamp)
 
-        img_path = Path(os.path.join(sample.dirpath, f"video/{sample.index}.jpg"))
-        rerun.log_image_file("world/camera/video", img_path, img_format=ImageFormat.JPEG)
+        rerun.log_image_file("world/camera/video", sample.image_path, img_format=ImageFormat.JPEG)
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
