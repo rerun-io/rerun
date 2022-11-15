@@ -98,6 +98,12 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
 
         Ok(())
     }
+
+    pub fn prune_everything_before(&mut self, cutoff_time: Time) {
+        for field_store in self.fields.values_mut() {
+            field_store.prune_everything_before(cutoff_time);
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

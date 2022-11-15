@@ -59,4 +59,10 @@ impl<Time: 'static + Copy + Ord> TimelineStore<Time> {
             .or_default()
             .insert_batch(field_name, time, msg_id, batch)
     }
+
+    pub fn prune_everything_before(&mut self, cutoff_time: Time) {
+        for obj_store in self.objects.values_mut() {
+            obj_store.prune_everything_before(cutoff_time);
+        }
+    }
 }

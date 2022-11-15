@@ -132,7 +132,7 @@ impl ObjDb {
         }
     }
 
-    fn prune_everything_before(
+    pub fn prune_everything_before(
         &mut self,
         timeline: Timeline,
         cutoff_time: TimeInt,
@@ -140,7 +140,7 @@ impl ObjDb {
     ) {
         self.tree
             .prune_everything_before(timeline, cutoff_time, keep_msg_ids);
-        // self.store.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+        self.store.prune_everything_before(timeline, cutoff_time);
     }
 }
 
