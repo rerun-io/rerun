@@ -9,7 +9,8 @@ from typing import Iterator, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
-import rerun_sdk as rerun
+
+import rerun
 
 
 def log_car_data() -> None:

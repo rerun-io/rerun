@@ -57,7 +57,7 @@ If you'd rather see the visualizations live, as data is being logged. Run the ex
 
 To visualize an example live, first in one terminal (with the activated virtualenv) run:
 ```sh
-python -m rerun_sdk  # Opens a Rerun Viewer that will wait for data from the Rerun SDK
+python -m rerun  # Opens a Rerun Viewer that will wait for data from the Rerun SDK
 ```
 Then run the example in a second terminal like:
 ```sh
@@ -67,7 +67,7 @@ python examples/car/main.py --connect  # The Rerun SDK will connect and send dat
 ## Using the Rerun Python SDK
 Most documentation is found in the docstrings of the functions in the Rerun. Either check out the docstrings directly in code or use the built in `help()` function. For example, to see the docstring of the `log_image` function, open a python terminal and run:
 ```python
-import rerun_sdk as rerun
+import rerun
 help(rerun.log_image)
 ```
 For a description of how to use the SDK, including some of the key concepts, see [`rerun_py/USAGE.md`](rerun_py/USAGE.md).

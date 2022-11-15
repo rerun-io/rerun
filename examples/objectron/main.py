@@ -15,7 +15,6 @@ from typing import Iterable, Iterator, List
 
 import numpy as np
 import numpy.typing as npt
-import rerun_sdk as rerun
 from dataset.dataset import (
     ANNOTATIONS_FILENAME,
     AVAILABLE_RECORDINGS,
@@ -33,8 +32,10 @@ from dataset.proto.objectron.proto import (
     ObjectType,
     Sequence,
 )
-from rerun_sdk import ImageFormat
 from scipy.spatial.transform import Rotation as R
+
+import rerun
+from rerun import ImageFormat
 
 
 @dataclass

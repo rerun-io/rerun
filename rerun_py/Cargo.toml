@@ -8,7 +8,7 @@ version.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
-name = "rerun_sdk"      # name of the Python library
+name = "rerun"          # name of the Python library
 
 
 [features]
@@ -68,3 +68,6 @@ webbrowser = { version = "0.8", optional = true }
 
 [build-dependencies]
 pyo3-build-config = "0.17"
+
+[package.metadata.maturin]
+name = "rerun.rerun_sdk"

@@ -5,7 +5,7 @@ build-backend = "maturin"
 requires = ["maturin>=0.13.5,<0.14"]
 
 [project]
-name = "rerun_sdk"
+name = "rerun"
 authors = [{ name = "Rerun.io", email = "opensource@rerun.io" }]
 classifiers = [
   "Programming Language :: Rust",

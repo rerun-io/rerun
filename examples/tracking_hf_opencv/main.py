@@ -12,8 +12,9 @@ import cv2 as cv
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun_sdk as rerun
 from PIL import Image
+
+import rerun
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "tracking_sequences"

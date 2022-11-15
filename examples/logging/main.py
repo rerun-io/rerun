@@ -13,7 +13,7 @@ Run:
 import argparse
 import logging
 
-import rerun_sdk as rerun
+import rerun
 
 
 def log_stuff() -> None:
