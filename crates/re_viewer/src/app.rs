@@ -342,8 +342,8 @@ impl App {
         if let Some(bytes_used_gross_before) = bytes_used_gross() {
             let bytes_used_net_before = bytes_used_net();
 
-            let too_many_gross_bytes = 8_000_000_000;
-            let too_many_net_bytes = 4_000_000_000;
+            let too_many_gross_bytes = 12_000_000_000;
+            let too_many_net_bytes = 8_000_000_000;
 
             if bytes_used_gross_before > too_many_gross_bytes
                 || bytes_used_net_before > too_many_net_bytes
