@@ -366,7 +366,7 @@ impl App {
                     let net_diff = bytes_used_net_before - bytes_used_net();
                     let gross_diff = bytes_used_gross_before - bytes_used_gross_after;
                     re_log::info!(
-                        "Freed up {:.3} GB of memory, returning {:.3} GB to the OS",
+                        "Freed up {:.3} GB of memory (returning {:.3} GB to the OS)",
                         net_diff as f32 / 1e9,
                         gross_diff as f32 / 1e9,
                     );
@@ -924,6 +924,12 @@ fn debug_menu(ui: &mut egui::Ui) {
             "{:.2} GB actually used",
             bytes_used_net() as f32 / 1e9
         ));
+        ui.label(format!(
+            "{:.2} MB used by the string interner",
+            re_string_interner::bytes_used() as f32 / 1e6
+        ));
+
+        ui.separator();
     }
 
     #[allow(clippy::manual_assert)]
