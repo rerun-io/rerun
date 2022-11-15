@@ -100,6 +100,23 @@ impl ObjectTree {
 
         subtree_recursive(self, &path.to_components())
     }
+
+    pub fn prune_everything_before(
+        &mut self,
+        timeline: Timeline,
+        cutoff_time: TimeInt,
+        keep_msg_ids: &nohash_hasher::IntSet<MsgId>,
+    ) {
+        for child in self.children.values_mut() {
+            child.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+        }
+        if let Some(map) = self.prefix_times.get_mut(&timeline) {
+            map.retain(|&time, _| cutoff_time <= time);
+        }
+        for columns in self.fields.values_mut() {
+            columns.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+        }
+    }
 }
 
 /// Column transform of [`Data`].
@@ -161,6 +178,20 @@ impl DataColumns {
         }
 
         summaries.join(", ")
+    }
+
+    pub fn prune_everything_before(
+        &mut self,
+        timeline: Timeline,
+        cutoff_time: TimeInt,
+        keep_msg_ids: &nohash_hasher::IntSet<MsgId>,
+    ) {
+        if let Some(map) = self.times.get_mut(&timeline) {
+            map.retain(|&time, _| cutoff_time <= time);
+        }
+        for msg_set in self.per_type.values_mut() {
+            msg_set.retain(|msg_id| keep_msg_ids.contains(msg_id));
+        }
     }
 }
 
