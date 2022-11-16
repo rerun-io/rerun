@@ -223,6 +223,11 @@ impl ViewportBlueprint {
         spaces_info: &SpacesInfo,
         selection_panel_expanded: &mut bool,
     ) {
+        let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
+        if is_zero_sized_viewport {
+            return;
+        }
+
         // Lazily create a layout tree based on which SpaceViews are currently visible:
         let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
             super::auto_layout::tree_from_space_views(
