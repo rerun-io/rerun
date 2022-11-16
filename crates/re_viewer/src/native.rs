@@ -10,7 +10,7 @@ type AppCreator =
 pub fn run_native_app(app_creator: AppCreator) {
     let native_options = eframe::NativeOptions {
         depth_buffer: 0,
-        multisampling: 8,
+        multisampling: 0, // the 3D views do their own MSAA
 
         renderer: eframe::Renderer::Wgpu,
 
