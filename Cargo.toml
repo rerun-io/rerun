@@ -24,12 +24,12 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-13 - allow comboboxes to open upwards
-eframe = { git = "https://github.com/emilk/egui", rev = "ef931c406c47c64d71462886692787ebca4b7b04" }
-egui = { git = "https://github.com/emilk/egui", rev = "ef931c406c47c64d71462886692787ebca4b7b04" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "ef931c406c47c64d71462886692787ebca4b7b04" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "ef931c406c47c64d71462886692787ebca4b7b04" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "ef931c406c47c64d71462886692787ebca4b7b04" }
+# 2022-11-16 - handle zero-sized surfaces
+eframe = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
+egui = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
+egui_glow = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
 
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
