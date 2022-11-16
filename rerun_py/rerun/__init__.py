@@ -338,7 +338,7 @@ def log_rect(
 
         rect_arr = pa.array([], type=RectType)
         if rect is not None:
-            rect_arr = pa.array([tuple(rect)], type=RectType)
+            rect_arr = pa.array([tuple(rect)], type=RectType)  # type: ignore[arg-type]
 
         rerun_sdk.log_arrow_msg(obj_path, "rect", rect_arr)
 

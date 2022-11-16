@@ -12,7 +12,7 @@ from time import sleep
 from typing import Any, Final
 
 import rerun
-from rerun import rerun_sdk
+from rerun import rerun_sdk  # type: ignore[attr-defined]
 
 
 def run_log() -> None:
