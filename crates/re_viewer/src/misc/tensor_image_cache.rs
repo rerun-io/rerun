@@ -69,7 +69,6 @@ pub struct ImageCache {
 impl ImageCache {
     pub(crate) fn get_view_with_annotations<'store, 'cache>(
         &'cache mut self,
-        msg_id: &MsgId,
         tensor: &'store Tensor,
         annotations: &'store Option<Arc<Annotations>>,
     ) -> TensorImageView<'store, 'cache> {
@@ -80,8 +79,8 @@ impl ImageCache {
                 annotation_msg_id: annotations.as_ref().map(|seg_map| seg_map.msg_id),
             })
             .or_insert_with(|| {
-                // TODO(emilk): proper debug name for images
-                let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor, annotations);
+                let debug_name = format!("tensor {:?}", tensor.shape);
+                let ci = CachedImage::from_tensor(debug_name, tensor, annotations);
                 self.memory_used += ci.memory_used;
                 ci
             });
@@ -97,10 +96,9 @@ impl ImageCache {
 
     pub(crate) fn get_view<'store, 'cache>(
         &'cache mut self,
-        msg_id: &MsgId,
         tensor: &'store Tensor,
     ) -> TensorImageView<'store, 'cache> {
-        self.get_view_with_annotations(msg_id, tensor, &None)
+        self.get_view_with_annotations(tensor, &None)
     }
 
     /// Call once per frame to (potentially) flush the cache.

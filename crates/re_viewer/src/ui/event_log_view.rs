@@ -143,7 +143,7 @@ fn table_row(
         }
         LogMsg::DataMsg(msg) => {
             let DataMsg {
-                msg_id,
+                msg_id: _,
                 time_point,
                 data_path,
                 data,
@@ -163,13 +163,7 @@ fn table_row(
                 ctx.data_path_button(ui, data_path);
             });
             row.col(|ui| {
-                crate::data_ui::ui_logged_data(
-                    ctx,
-                    ui,
-                    msg_id,
-                    data,
-                    Preview::Specific(row_height),
-                );
+                crate::data_ui::ui_logged_data(ctx, ui, data, Preview::Specific(row_height));
             });
         }
     }
