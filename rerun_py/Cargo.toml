@@ -30,8 +30,11 @@ extension-module = ["pyo3/extension-module"]
 ## since it requires compiling and bundling the viewer as wasm.
 web = ["rerun/web", "dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
+arrow = ["dep:arrow2"]
+
 
 [dependencies]
+arrow2 = {optional = true}
 re_error = { path = "../crates/re_error" }
 re_log = { path = "../crates/re_log" }
 re_log_types = { path = "../crates/re_log_types" }

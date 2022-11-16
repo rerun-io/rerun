@@ -324,6 +324,9 @@ def log_rect(
     """
     rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless)
 
+    if rerun_sdk.experimental_guard_arrow():
+        rerun_sdk.log_arrow_msg(obj_path)
+
 
 def log_rects(
     obj_path: str,

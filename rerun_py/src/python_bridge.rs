@@ -130,7 +130,11 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(set_visible, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
-    m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
+    m.add_function(wrap_pyfunction!(experimental_guard_arrow, m)?)?;
+    #[cfg(feature = "arrow")]
+    {
+        m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
+    }
     m.add_class::<TensorDataMeaning>()?;
 
     Ok(())
@@ -1670,6 +1674,19 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
     Ok(())
 }
 
+#[pyfunction]
+fn experimental_guard_arrow() -> PyResult<bool> {
+    #[cfg(feature = "arrow")]
+    {
+        Ok(true)
+    }
+    #[cfg(not(feature = "arrow"))]
+    {
+        Ok(false)
+    }
+}
+
+#[cfg(feature = "arrow")]
 #[pyfunction]
 fn log_arrow_msg(obj_path: &str) -> PyResult<()> {
     let mut sdk = Sdk::global();
