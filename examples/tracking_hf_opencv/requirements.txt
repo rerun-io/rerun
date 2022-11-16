@@ -1,4 +1,4 @@
-rerun_sdk
+rerun
 requests==2.28.1
 timm==0.6.11
 torch==1.13.0

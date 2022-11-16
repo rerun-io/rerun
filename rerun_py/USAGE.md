@@ -1,17 +1,17 @@
-# Using the `rerun_sdk` Python Library
+# Using the `rerun` Python Library
 
 Install instructions can be found at <https://github.com/rerun-io/rerun#readme>.
 
 ## Intro
 The Rerun Python SDK is a logging SDK. It lets you log rich data, such as images and point clouds. The logged data is streamed to the Rerun Viewer.
 
-To get started, start the Rerun Viewer by just typing `python -m rerun_sdk` in a terminal. It will now wait for the Rerun Python SDK to start sending it log data.
+To get started, start the Rerun Viewer by just typing `python -m rerun` in a terminal. It will now wait for the Rerun Python SDK to start sending it log data.
 
 ## Logging
 Rerun assumes you are using `numpy` for any large chunks of data.
 
 ```python
-import rerun_sdk as rerun
+import rerun
 
 rerun.init("my_app")
 rerun.connect() # Connect to the separate `rerun` process.

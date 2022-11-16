@@ -9,12 +9,13 @@ from typing import Final, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun_sdk import rerun_sdk as rerun_rs  # type: ignore[attr-defined]
-from rerun_sdk.color_conversion import linear_to_gamma_u8_pixel
+from rerun.color_conversion import linear_to_gamma_u8_pixel
+
+from rerun import rerun_sdk  # type: ignore[attr-defined]
 
 
 def rerun_shutdown() -> None:
-    rerun_rs.flush()
+    rerun_sdk.flush()
 
 
 atexit.register(rerun_shutdown)
@@ -63,7 +64,7 @@ def get_recording_id() -> str:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    return str(rerun_rs.get_recording_id())
+    return str(rerun_sdk.get_recording_id())
 
 
 def set_recording_id(value: str) -> None:
@@ -79,7 +80,7 @@ def set_recording_id(value: str) -> None:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    rerun_rs.set_recording_id(str)
+    rerun_sdk.set_recording_id(str)
 
 
 def init(application_id: str) -> None:
@@ -93,12 +94,12 @@ def init(application_id: str) -> None:
     and another doing camera calibration, you could have
     `rerun.init("object_detector")` and `rerun.init("calibrator")`.
     """
-    rerun_rs.init(application_id)
+    rerun_sdk.init(application_id)
 
 
 def connect(addr: Optional[str] = None) -> None:
     """Connect to a remote Rerun Viewer on the given ip:port."""
-    rerun_rs.connect(addr)
+    rerun_sdk.connect(addr)
 
 
 def serve() -> None:
@@ -107,12 +108,12 @@ def serve() -> None:
 
     WARNING: This is an experimental feature.
     """
-    rerun_rs.serve()
+    rerun_sdk.serve()
 
 
 def disconnect() -> None:
     """Disconnect from the remote rerun server (if any)."""
-    rerun_rs.disconnect()
+    rerun_sdk.disconnect()
 
 
 def show() -> None:
@@ -125,7 +126,7 @@ def show() -> None:
 
     NOTE: There is a bug which causes this function to only work once on some platforms.
     """
-    rerun_rs.show()
+    rerun_sdk.show()
 
 
 def save(path: str) -> None:
@@ -136,7 +137,7 @@ def save(path: str) -> None:
 
     This will clear the logged data after saving.
     """
-    rerun_rs.save(path)
+    rerun_sdk.save(path)
 
 
 def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
@@ -152,7 +153,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_rs.set_time_sequence(timeline, sequence)
+    rerun_sdk.set_time_sequence(timeline, sequence)
 
 
 def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
@@ -174,7 +175,7 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_rs.set_time_seconds(timeline, seconds)
+    rerun_sdk.set_time_seconds(timeline, seconds)
 
 
 def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
@@ -196,7 +197,7 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_rs.set_time_nanos(timeline, nanos)
+    rerun_sdk.set_time_nanos(timeline, nanos)
 
 
 @dataclass
@@ -279,7 +280,7 @@ def log_text_entry(
     * If no `level` is given, it will default to `LogLevel.INFO`.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    rerun_rs.log_text_entry(obj_path, text, level, color, timeless)
+    rerun_sdk.log_text_entry(obj_path, text, level, color, timeless)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
@@ -321,7 +322,7 @@ def log_rect(
     * `label` is an optional text to show inside the rectangle.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    rerun_rs.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless)
+    rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless)
 
 
 def log_rects(
@@ -361,7 +362,7 @@ def log_rects(
     if labels is None:
         labels = []
 
-    rerun_rs.log_rects(obj_path, rect_format.value, rects, colors, labels, timeless)
+    rerun_sdk.log_rects(obj_path, rect_format.value, rects, colors, labels, timeless)
 
 
 def log_point(
@@ -389,7 +390,7 @@ def log_point(
     """
     if position is not None:
         position = np.require(position, dtype="float32")
-    rerun_rs.log_point(obj_path, position, color, timeless)
+    rerun_sdk.log_point(obj_path, position, color, timeless)
 
 
 def log_points(
@@ -421,7 +422,7 @@ def log_points(
         positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
 
-    rerun_rs.log_points(obj_path, positions, colors, timeless)
+    rerun_sdk.log_points(obj_path, positions, colors, timeless)
 
 
 def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:
@@ -444,7 +445,7 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
 
 def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
     """Log that this object is NOT in the same space as the parent, but you do not (yet) know how they relate."""
-    rerun_rs.log_unknown_transform(obj_path, timeless=timeless)
+    rerun_sdk.log_unknown_transform(obj_path, timeless=timeless)
 
 
 def log_rigid3(
@@ -496,7 +497,7 @@ def log_rigid3(
         raise TypeError("Set either parent_from_child or child_from_parent, but not both")
     elif parent_from_child:
         (t, q) = parent_from_child
-        rerun_rs.log_rigid3(
+        rerun_sdk.log_rigid3(
             obj_path,
             parent_from_child=True,
             rotation_q=_to_sequence(q),
@@ -505,7 +506,7 @@ def log_rigid3(
         )
     elif child_from_parent:
         (t, q) = child_from_parent
-        rerun_rs.log_rigid3(
+        rerun_sdk.log_rigid3(
             obj_path,
             parent_from_child=False,
             rotation_q=_to_sequence(q),
@@ -544,7 +545,7 @@ def log_pinhole(
     `resolution`: Array with [width, height] image resolution in pixels.
 
     """
-    rerun_rs.log_pinhole(
+    rerun_sdk.log_pinhole(
         obj_path,
         resolution=[width, height],
         child_from_parent=np.asarray(child_from_parent).T.tolist(),
@@ -601,11 +602,11 @@ def log_view_coordinates(
     if xyz != "" and up != "":
         raise TypeError("You must set either 'xyz' or 'up', but not both")
     if xyz != "":
-        rerun_rs.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
+        rerun_sdk.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
     else:
         if right_handed is None:
             right_handed = True
-        rerun_rs.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
+        rerun_sdk.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
 
 
 # -----------------------------------------------------------------------------
@@ -637,7 +638,7 @@ def log_path(
     """
     if positions is not None:
         positions = np.require(positions, dtype="float32")
-    rerun_rs.log_path(obj_path, positions, stroke_width, color, timeless)
+    rerun_sdk.log_path(obj_path, positions, stroke_width, color, timeless)
 
 
 def log_line_segments(
@@ -665,7 +666,7 @@ def log_line_segments(
     if positions is None:
         positions = []
     positions = np.require(positions, dtype="float32")
-    rerun_rs.log_line_segments(obj_path, positions, stroke_width, color, timeless)
+    rerun_sdk.log_line_segments(obj_path, positions, stroke_width, color, timeless)
 
 
 def log_arrow(
@@ -705,7 +706,7 @@ def log_arrow(
         Object is not time-dependent, and will be visible at any time point.
 
     """
-    rerun_rs.log_arrow(
+    rerun_sdk.log_arrow(
         obj_path,
         origin=_to_sequence(origin),
         vector=_to_sequence(vector),
@@ -736,7 +737,7 @@ def log_obb(
     `stroke_width`: width of the OBB edges.
     `label` is an optional text label placed at `position`.
     """
-    rerun_rs.log_obb(
+    rerun_sdk.log_obb(
         obj_path,
         half_size=_to_sequence(half_size),
         position=_to_sequence(position),
@@ -832,9 +833,9 @@ def log_segmentation_image(
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
     if image.dtype == "uint8":
-        rerun_rs.log_tensor_u8(obj_path, image, None, None, rerun_rs.TensorDataMeaning.ClassId, timeless)
+        rerun_sdk.log_tensor_u8(obj_path, image, None, None, rerun_sdk.TensorDataMeaning.ClassId, timeless)
     elif image.dtype == "uint16":
-        rerun_rs.log_tensor_u16(obj_path, image, None, None, rerun_rs.TensorDataMeaning.ClassId, timeless)
+        rerun_sdk.log_tensor_u16(obj_path, image, None, None, rerun_sdk.TensorDataMeaning.ClassId, timeless)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")
 
@@ -852,13 +853,13 @@ def log_tensor(
         assert len(tensor.shape) == len(names)
 
     if tensor.dtype == "uint8":
-        rerun_rs.log_tensor_u8(obj_path, tensor, names, meter, None, timeless)
+        rerun_sdk.log_tensor_u8(obj_path, tensor, names, meter, None, timeless)
     elif tensor.dtype == "uint16":
-        rerun_rs.log_tensor_u16(obj_path, tensor, names, meter, None, timeless)
+        rerun_sdk.log_tensor_u16(obj_path, tensor, names, meter, None, timeless)
     elif tensor.dtype == "float32":
-        rerun_rs.log_tensor_f32(obj_path, tensor, names, meter, None, timeless)
+        rerun_sdk.log_tensor_f32(obj_path, tensor, names, meter, None, timeless)
     elif tensor.dtype == "float64":
-        rerun_rs.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, None, timeless)
+        rerun_sdk.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, None, timeless)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
@@ -892,7 +893,7 @@ def log_mesh_file(
     else:
         transform = np.require(transform, dtype="float32")
 
-    rerun_rs.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
+    rerun_sdk.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
 
 
 def log_image_file(
@@ -907,7 +908,7 @@ def log_image_file(
     If no `img_format` is specified, we will try and guess it.
     """
     img_format = getattr(img_format, "value", None)
-    rerun_rs.log_image_file(obj_path, img_path, img_format, timeless)
+    rerun_sdk.log_image_file(obj_path, img_path, img_format, timeless)
 
 
 def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
@@ -919,7 +920,7 @@ def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
 
 def set_visible(obj_path: str, visibile: bool) -> None:
     """Change the visibility of an object."""
-    rerun_rs.set_visible(obj_path, visibile)
+    rerun_sdk.set_visible(obj_path, visibile)
 
 
 @dataclass
@@ -984,4 +985,4 @@ def log_annotation_context(
         (d.id, d.label, _normalize_colors(d.color).tolist() or None) for d in typed_class_descriptions
     ]
 
-    rerun_rs.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
+    rerun_sdk.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
