@@ -107,6 +107,10 @@ impl ViewBuilder {
     ) -> anyhow::Result<&mut Self> {
         crate::profile_function!();
 
+        // Can't handle 0 size resolution.
+        assert_ne!(config.resolution_in_pixel[0], 0);
+        assert_ne!(config.resolution_in_pixel[1], 0);
+
         // TODO(andreas): Should tonemapping preferences go here as well? Likely!
         let hdr_render_target_desc = TextureDesc {
             label: "hdr rendertarget msaa".into(),
