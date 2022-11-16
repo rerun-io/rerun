@@ -13,7 +13,11 @@ from rerun.color_conversion import linear_to_gamma_u8_pixel
 
 from rerun import rerun_sdk  # type: ignore[attr-defined]
 
-if rerun_sdk.experimental_guard_arrow():
+import os
+
+EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
+
+if EXP_ARROW:
     import pyarrow as pa
 
 
@@ -327,7 +331,7 @@ def log_rect(
     """
     rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless)
 
-    if rerun_sdk.experimental_guard_arrow():
+    if EXP_ARROW:
         # TODO: build this from the rectangle
         rect = pa.array([1, 2, 3, 4])
         rerun_sdk.log_arrow_msg(obj_path, rect)

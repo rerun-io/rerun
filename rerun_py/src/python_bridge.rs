@@ -4,6 +4,7 @@
 
 use std::{borrow::Cow, io::Cursor, path::PathBuf, sync::Arc};
 
+use arrow2::array::Array;
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
 use pyo3::{
@@ -130,11 +131,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(set_visible, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
-    m.add_function(wrap_pyfunction!(experimental_guard_arrow, m)?)?;
-    #[cfg(feature = "arrow")]
-    {
-        m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
-    }
+    m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_class::<TensorDataMeaning>()?;
 
     Ok(())
@@ -1686,10 +1683,6 @@ fn experimental_guard_arrow() -> PyResult<bool> {
     }
 }
 
-#[cfg(feature = "arrow")]
-use arrow2::array::Array;
-
-#[cfg(feature = "arrow")]
 fn array_to_rust(arrow_array: &PyAny) -> PyResult<Box<dyn Array>> {
     // prepare a pointer to receive the Array struct
 
@@ -1715,7 +1708,6 @@ fn array_to_rust(arrow_array: &PyAny) -> PyResult<Box<dyn Array>> {
     }
 }
 
-#[cfg(feature = "arrow")]
 #[pyfunction]
 fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
     let mut sdk = Sdk::global();
