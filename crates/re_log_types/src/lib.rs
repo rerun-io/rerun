@@ -290,8 +290,13 @@ pub struct ArrowMsg {
 impl ArrowMsg {
     pub fn to_arrow_array(&self) -> Option<Box<dyn Array>> {
         let mut cursor = std::io::Cursor::new(&self.data);
-        // TODO handle error
-        let metadata = read_stream_metadata(&mut cursor).ok()?;
+        let metadata = match read_stream_metadata(&mut cursor) {
+            Ok(metadata) => metadata,
+            Err(err) => {
+                re_log::error!("Could not parse arrow metadata: {:?}", err);
+                return None;
+            }
+        };
         let mut reader = StreamReader::new(cursor, metadata, None);
 
         loop {
@@ -302,7 +307,9 @@ impl ArrowMsg {
                         return some_arr.cloned();
                     }
                     Ok(StreamState::Waiting) => {}
-                    Err(l) => println!("{:?}", l),
+                    Err(err) => {
+                        re_log::error!("Could not parse arrow arrow message: {:?}", err);
+                    }
                 },
                 None => return None,
             };

@@ -1696,9 +1696,10 @@ fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
         (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),
     )?;
 
-    // TODO: Figure out if this is safe and why
-    // Following pattern from: https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
     #[allow(unsafe_code)]
+    // SAFETY:
+    // TODO(jleibs): Convince ourselves that this is safe
+    // Following pattern from: https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
     unsafe {
         let field = ffi::import_field_from_c(schema.as_ref()).unwrap();
         let array = ffi::import_array_from_c(*array, field.data_type.clone()).unwrap();
