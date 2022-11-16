@@ -130,6 +130,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(set_visible, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
+    m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_class::<TensorDataMeaning>()?;
 
     Ok(())
@@ -1665,6 +1666,22 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
     } else {
         sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
     }
+
+    Ok(())
+}
+
+#[pyfunction]
+fn log_arrow_msg(obj_path: &str) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    // We normally disallow logging to root, but we make an exception for class_descriptions
+    let obj_path = if obj_path == "/" {
+        ObjPath::root()
+    } else {
+        parse_obj_path(obj_path)?
+    };
+
+    re_log::info!("Logged an arrow msg at {}", obj_path);
 
     Ok(())
 }
