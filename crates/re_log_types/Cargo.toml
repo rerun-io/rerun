@@ -28,6 +28,7 @@ serde = ["dep:serde", "re_string_interner/serde"]
 
 [dependencies]
 ahash = "0.8"
+arrow2 = "0.14.2"
 bytemuck = "1.11"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 derive_more = "0.99"

@@ -4,7 +4,7 @@
 
 use std::{borrow::Cow, io::Cursor, path::PathBuf, sync::Arc};
 
-use arrow2::array::Array;
+use arrow2::{array::Array, chunk::Chunk, datatypes::Schema, io::ipc::write::StreamWriter};
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
 use pyo3::{
@@ -1683,7 +1683,10 @@ fn experimental_guard_arrow() -> PyResult<bool> {
     }
 }
 
-fn array_to_rust(arrow_array: &PyAny) -> PyResult<Box<dyn Array>> {
+// TODO: Need a proper type registry for schemas
+fn array_to_rust(
+    arrow_array: &PyAny,
+) -> PyResult<(Box<dyn arrow2::array::Array>, arrow2::datatypes::Field)> {
     // prepare a pointer to receive the Array struct
 
     use arrow2::ffi;
@@ -1704,12 +1707,13 @@ fn array_to_rust(arrow_array: &PyAny) -> PyResult<Box<dyn Array>> {
 
     unsafe {
         let field = ffi::import_field_from_c(schema.as_ref()).unwrap();
-        return Ok(ffi::import_array_from_c(*array, field.data_type).unwrap());
+        let array = ffi::import_array_from_c(*array, field.data_type.clone()).unwrap();
+        Ok((array, field))
     }
 }
 
 #[pyfunction]
-fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
+fn log_arrow_msg(obj_path: &str, field_name: &str, msg: &PyAny) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
@@ -1719,9 +1723,38 @@ fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
         parse_obj_path(obj_path)?
     };
 
-    let arrow_array = array_to_rust(msg)?;
+    let time_point = time(false);
 
-    re_log::info!("Logged an arrow msg at {} {:?}", obj_path, arrow_array);
+    let (array, field) = array_to_rust(msg)?;
+
+    re_log::info!("Logged an arrow msg at {} {:?}", obj_path, array);
+
+    let mut data = Vec::<u8>::new();
+
+    let schema = Schema {
+        fields: vec![field],
+        metadata: Default::default(),
+    };
+
+    let chunk = Chunk::new(vec![array]);
+
+    let mut writer = StreamWriter::new(&mut data, Default::default());
+    writer.start(&schema, None).ok();
+    writer.write(&chunk, None).ok();
+
+    /*
+    let (encoded_dicts, encoded_msgs) =
+        arrow2::io::ipc::write::common::encode_chunk(chunk, fields, dictionary_tracker, options);
+        */
+
+    let data_path = DataPath::new(obj_path, FieldName::from(field_name));
+
+    let msg = ArrowMsg {
+        msg_id: MsgId::random(),
+        time_point,
+        data_path,
+        data,
+    };
 
     Ok(())
 }
