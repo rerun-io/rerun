@@ -3,12 +3,23 @@ use re_log_types::Transform;
 
 use crate::misc::{space_info::*, ViewerContext};
 
-use super::{view_2d, view_3d, view_tensor, view_text, Scene};
+use super::{view_2d, view_3d, view_tensor, view_text};
 
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub(crate) enum ViewCategory {
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    serde::Deserialize,
+    serde::Serialize,
+)]
+pub enum ViewCategory {
     TwoD,
     #[default]
     ThreeD,
@@ -25,19 +36,26 @@ pub(crate) struct SpaceView {
     pub space_path: ObjPath,
     pub view_state: ViewState,
 
-    /// In case we are a mix of 2d/3d/tensor/text, we show what?
-    pub selected_category: ViewCategory,
+    /// We only show data that match this category.
+    pub category: ViewCategory,
 
     pub obj_tree_properties: ObjectTreeProperties,
 }
 
 impl SpaceView {
-    pub fn from_path(space_path: ObjPath) -> Self {
+    pub fn new(scene: &super::scene::Scene, category: ViewCategory, space_path: ObjPath) -> Self {
+        let mut view_state = ViewState::default();
+
+        if category == ViewCategory::TwoD {
+            // A good start:
+            view_state.state_2d.scene_bbox_accum = scene.two_d.bbox;
+        }
+
         Self {
             name: space_path.to_string(),
             space_path,
-            view_state: Default::default(),
-            selected_category: Default::default(),
+            view_state,
+            category,
             obj_tree_properties: Default::default(),
         }
     }
@@ -52,25 +70,17 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        // NOTE: mutable because the glow-based 3D view `take()`s the scene because reasons.
-        // TODO(cmc): remove this while removing glow.
-        scene: &mut Scene,
+        time_query: re_data_store::TimeQuery<i64>,
     ) {
         crate::profile_function!();
 
-        let has_2d = !scene.two_d.is_empty() && scene.tensor.is_empty();
-        let has_3d = !scene.three_d.is_empty();
-        let has_text = !scene.text.is_empty();
-        let has_tensor = !scene.tensor.is_empty();
-        let categories = [
-            has_2d.then_some(ViewCategory::TwoD),
-            has_3d.then_some(ViewCategory::ThreeD),
-            has_text.then_some(ViewCategory::Text),
-            has_tensor.then_some(ViewCategory::Tensor),
-        ]
-        .iter()
-        .filter_map(|cat| *cat)
-        .collect::<Vec<_>>();
+        let query = crate::ui::scene::SceneQuery {
+            obj_paths: &space_info.objects,
+            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+            time_query,
+            obj_props: &self.obj_tree_properties.projected,
+        };
+
         // Extra headroom required for the hovering controls at the top of the space view.
         let extra_headroom = {
             let frame = ctx.design_tokens.hovering_frame(ui.style());
@@ -79,82 +89,37 @@ impl SpaceView {
                 + ui.spacing().item_spacing.y
         };
 
-        match categories.len() {
-            0 => {
-                ui.centered_and_justified(|ui| {
-                    ui.label("(empty)");
-                });
+        match self.category {
+            ViewCategory::TwoD => {
+                _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+
+                let mut scene = view_2d::Scene2D::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_2d(ctx, ui, &self.space_path, scene);
             }
-            1 => {
-                self.selected_category = categories[0];
-                if has_2d {
-                    _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
-                    self.view_state
-                        .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
-                } else if has_3d {
-                    _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
-                    self.view_state.ui_3d(
-                        ctx,
-                        ui,
-                        &self.space_path,
-                        spaces_info,
-                        space_info,
-                        &mut scene.three_d,
-                    );
-                } else if has_tensor {
-                    ui.add_space(extra_headroom);
-                    self.view_state.ui_tensor(ui, &scene.tensor);
-                } else {
-                    assert!(has_text);
-                    ui.add_space(extra_headroom);
-                    self.view_state.ui_text(ctx, ui, &scene.text);
-                }
+            ViewCategory::ThreeD => {
+                _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+
+                let mut scene = view_3d::Scene3D::default();
+                scene.load_objects(ctx, &query);
+                self.view_state
+                    .ui_3d(ctx, ui, &self.space_path, spaces_info, space_info, scene);
             }
-            _ => {
-                // Show tabs to let user select which category to view
+            ViewCategory::Tensor => {
                 ui.add_space(extra_headroom);
-                if !categories.contains(&self.selected_category) {
-                    self.selected_category = categories[0];
-                }
 
-                ui.horizontal(|ui| {
-                    for category in categories {
-                        let text = match category {
-                            ViewCategory::TwoD => "2D",
-                            ViewCategory::ThreeD => "3D",
-                            ViewCategory::Tensor => "Tensor",
-                            ViewCategory::Text => "Text",
-                        };
-                        ui.selectable_value(&mut self.selected_category, category, text);
-                        // TODO(emilk): make it look like tabs
-                    }
-                });
-                ui.separator();
-
-                match self.selected_category {
-                    ViewCategory::Text => {
-                        self.view_state.ui_text(ctx, ui, &scene.text);
-                    }
-                    ViewCategory::Tensor => {
-                        self.view_state.ui_tensor(ui, &scene.tensor);
-                    }
-                    ViewCategory::TwoD => {
-                        self.view_state
-                            .ui_2d(ctx, ui, &self.space_path, &scene.two_d);
-                    }
-                    ViewCategory::ThreeD => {
-                        self.view_state.ui_3d(
-                            ctx,
-                            ui,
-                            &self.space_path,
-                            spaces_info,
-                            space_info,
-                            &mut scene.three_d,
-                        );
-                    }
-                }
+                let mut scene = view_tensor::SceneTensor::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_tensor(ui, &scene);
             }
-        }
+            ViewCategory::Text => {
+                ui.add_space(extra_headroom);
+
+                let mut scene = view_text::SceneText::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_text(ctx, ui, &scene);
+            }
+        };
     }
 }
 
@@ -194,7 +159,7 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
-        scene: &view_2d::Scene2D,
+        scene: view_2d::Scene2D,
     ) -> egui::Response {
         let response = ui
             .scope(|ui| {
@@ -214,7 +179,7 @@ impl ViewState {
         space: &ObjPath,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        scene: &mut view_3d::Scene3D,
+        scene: view_3d::Scene3D,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
@@ -232,15 +197,22 @@ impl ViewState {
         .response
     }
 
-    fn ui_tensor(&mut self, ui: &mut egui::Ui, scene: &view_tensor::SceneTensor) -> egui::Response {
-        let tensor = &scene.tensors[0];
-        let state_tensor = self
-            .state_tensor
-            .get_or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
-        ui.vertical(|ui| {
-            view_tensor::view_tensor(ui, state_tensor, tensor);
-        })
-        .response
+    fn ui_tensor(&mut self, ui: &mut egui::Ui, scene: &view_tensor::SceneTensor) {
+        if scene.tensors.is_empty() {
+            ui.centered(|ui| ui.label("(empty)"));
+        } else if scene.tensors.len() == 1 {
+            let tensor = &scene.tensors[0];
+            let state_tensor = self
+                .state_tensor
+                .get_or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
+            ui.vertical(|ui| {
+                view_tensor::view_tensor(ui, state_tensor, tensor);
+            });
+        } else {
+            ui.centered(|ui| {
+                ui.label("ERROR: more than one tensor!") // TODO(emilk): in this case we should have one space-view per tensor.
+            });
+        }
     }
 
     fn ui_text(

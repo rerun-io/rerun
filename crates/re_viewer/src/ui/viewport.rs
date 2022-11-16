@@ -12,12 +12,11 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{log_db::ObjDb, ObjPath, ObjPathComp, ObjectTree, ObjectTreeProperties};
-use re_log_types::ObjectType;
+use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeQuery};
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
-use super::{Scene, SceneQuery, SpaceView};
+use super::{space_view::ViewCategory, SceneQuery, SpaceView};
 
 // ----------------------------------------------------------------------------
 
@@ -59,19 +58,23 @@ pub struct ViewportBlueprint {
 
 impl ViewportBlueprint {
     /// Create a default suggested blueprint using some heuristics.
-    fn new(obj_db: &ObjDb, spaces_info: &SpacesInfo) -> Self {
+    fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
-            if should_have_default_view(obj_db, space_info) {
+            let query = SceneQuery {
+                obj_paths: &space_info.objects,
+                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+                time_query: TimeQuery::LatestAt(i64::MAX),
+                obj_props: &Default::default(), // all visible
+            };
+            let scene = query.query(ctx);
+            for category in scene.categories() {
+                let space_view = SpaceView::new(&scene, category, path.clone());
                 let space_view_id = SpaceViewId::random();
-
-                blueprint
-                    .space_views
-                    .insert(space_view_id, SpaceView::from_path(path.clone()));
-
+                blueprint.space_views.insert(space_view_id, space_view);
                 blueprint.visible.insert(space_view_id, true);
             }
         }
@@ -139,7 +142,12 @@ impl ViewportBlueprint {
             default_open,
         )
         .show_header(ui, |ui| {
-            ui.label("🗖"); // icon indicating this is a space-view
+            match space_view.category {
+                ViewCategory::TwoD => ui.label("🖼"),
+                ViewCategory::ThreeD => ui.label("🔭"),
+                ViewCategory::Tensor => ui.label("🇹"),
+                ViewCategory::Text => ui.label("📃"),
+            };
 
             if ctx
                 .space_view_button_to(ui, space_view.name.clone(), *space_view_id)
@@ -170,14 +178,10 @@ impl ViewportBlueprint {
         });
     }
 
-    fn add_space_view(&mut self, path: &ObjPath) {
+    fn add_space_view(&mut self, space_view: SpaceView) {
         let space_view_id = SpaceViewId::random();
-
-        self.space_views
-            .insert(space_view_id, SpaceView::from_path(path.clone()));
-
+        self.space_views.insert(space_view_id, space_view);
         self.visible.insert(space_view_id, true);
-
         self.trees.clear(); // Reset them
     }
 
@@ -185,14 +189,24 @@ impl ViewportBlueprint {
         crate::profile_function!();
 
         if self.space_views.is_empty() {
-            *self = Self::new(&ctx.log_db.obj_db, spaces_info);
+            *self = Self::new(ctx, spaces_info);
         } else {
+            crate::profile_scope!("look for missing space views");
+
             // Check if the blueprint is missing a space,
             // maybe one that has been added by new data:
             for (path, space_info) in &spaces_info.spaces {
-                if should_have_default_view(&ctx.log_db.obj_db, space_info) && !self.has_space(path)
-                {
-                    self.add_space_view(path);
+                if !self.has_space(path) {
+                    let query = SceneQuery {
+                        obj_paths: &space_info.objects,
+                        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+                        time_query: TimeQuery::LatestAt(i64::MAX),
+                        obj_props: &Default::default(), // all visible
+                    };
+                    let scene = query.query(ctx);
+                    for category in scene.categories() {
+                        self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+                    }
                 }
             }
         }
@@ -211,7 +225,11 @@ impl ViewportBlueprint {
     ) {
         // Lazily create a layout tree based on which SpaceViews are currently visible:
         let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
-            tree_from_space_views(ui.available_size(), &self.visible, &self.space_views)
+            super::auto_layout::tree_from_space_views(
+                ui.available_size(),
+                &self.visible,
+                &self.space_views,
+            )
         });
 
         let num_space_views = num_tabs(tree);
@@ -273,21 +291,6 @@ impl ViewportBlueprint {
                 .show_inside(ui, &mut tab_viewer);
         }
     }
-}
-
-/// Is this space worthy of its on space view by default?
-fn should_have_default_view(obj_db: &ObjDb, space_info: &SpaceInfo) -> bool {
-    // As long as some object in the space needs a default view, return true
-
-    // Make sure there is least one object type that is NOT:
-    // - None: probably a transform
-    // - ClassDescription: doesn't have a view yet
-    space_info.objects.iter().any(|obj| {
-        !matches!(
-            obj_db.types.get(obj.obj_type_path()),
-            None | Some(ObjectType::ClassDescription)
-        )
-    })
 }
 
 fn show_obj_tree(
@@ -491,45 +494,26 @@ fn space_view_ui(
         return
     };
     let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
-        invalid_space_label(ui, &space_view.space_path);
+        invalid_space_label(ui);
         return
     };
 
-    crate::profile_function!();
-
-    let obj_tree_props = &space_view.obj_tree_properties;
-
-    let mut scene = Scene::default();
-    {
-        let query = SceneQuery {
-            obj_paths: &space_info.objects,
-            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-            time_query,
-        };
-
-        scene
-            .two_d
-            .load_objects(ctx, obj_tree_props, &query, &space_view.view_state.state_2d);
-        scene.three_d.load_objects(ctx, obj_tree_props, &query);
-        scene.text.load_objects(ctx, obj_tree_props, &query);
-        scene.tensor.load_objects(ctx, obj_tree_props, &query);
-    }
-
-    space_view.scene_ui(ctx, ui, spaces_info, space_info, &mut scene);
+    space_view.scene_ui(ctx, ui, spaces_info, space_info, time_query);
 }
 
-fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
-    ui.colored_label(
-        ui.visuals().warn_fg_color,
-        format!("Unknown space {space_path}"),
-    )
+fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) {
+    ui.centered(|ui| {
+        ui.colored_label(
+            ui.visuals().warn_fg_color,
+            format!("Unknown space {space_path}"),
+        );
+    });
 }
 
-fn invalid_space_label(ui: &mut egui::Ui, space_path: &ObjPath) -> egui::Response {
-    ui.colored_label(
-        ui.visuals().warn_fg_color,
-        format!("Invalid space {space_path}: no time query"),
-    )
+fn invalid_space_label(ui: &mut egui::Ui) {
+    ui.centered(|ui| {
+        ui.colored_label(ui.visuals().warn_fg_color, "No time selected");
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -647,7 +631,7 @@ impl Blueprint {
 
                     ui.vertical_centered(|ui| {
                         if ui.button("Reset space views").clicked() {
-                            self.viewport = ViewportBlueprint::new(&ctx.log_db.obj_db, spaces_info);
+                            self.viewport = ViewportBlueprint::new(ctx, spaces_info);
                         }
                     });
 
@@ -659,187 +643,6 @@ impl Blueprint {
             },
         );
     }
-}
-
-// ----------------------------------------------------------------------------
-// Code for automatic layout of panels:
-
-fn tree_from_space_views(
-    available_size: egui::Vec2,
-    visible: &BTreeMap<SpaceViewId, bool>,
-    space_views: &HashMap<SpaceViewId, SpaceView>,
-) -> egui_dock::Tree<SpaceViewId> {
-    let mut tree = egui_dock::Tree::new(vec![]);
-
-    let mut space_make_infos = space_views
-        .iter()
-        .filter(|(space_view_id, _space_view)| {
-            visible.get(space_view_id).copied().unwrap_or_default()
-        })
-        .map(|(space_view_id, space_view)| {
-            SpaceMakeInfo {
-                id: *space_view_id,
-                path: space_view.space_path.clone(),
-                size2d: None, // TODO(emilk): figure out the size of spaces somehow. Each object path could have a running bbox?
-            }
-        })
-        .collect_vec();
-
-    if !space_make_infos.is_empty() {
-        let layout = layout_spaces(available_size, &mut space_make_infos);
-        tree_from_split(&mut tree, egui_dock::NodeIndex(0), &layout);
-    }
-
-    tree
-}
-
-#[derive(Clone, Debug)]
-struct SpaceMakeInfo {
-    id: SpaceViewId,
-    path: ObjPath,
-    size2d: Option<egui::Vec2>,
-}
-
-impl SpaceMakeInfo {
-    fn is_2d(&self) -> bool {
-        self.size2d.is_some()
-    }
-}
-
-enum LayoutSplit {
-    LeftRight(Box<LayoutSplit>, f32, Box<LayoutSplit>),
-    TopBottom(Box<LayoutSplit>, f32, Box<LayoutSplit>),
-    Leaf(SpaceMakeInfo),
-}
-
-fn tree_from_split(
-    tree: &mut egui_dock::Tree<SpaceViewId>,
-    parent: egui_dock::NodeIndex,
-    split: &LayoutSplit,
-) {
-    match split {
-        LayoutSplit::LeftRight(left, fraction, right) => {
-            let [left_ni, right_ni] = tree.split_right(parent, *fraction, vec![]);
-            tree_from_split(tree, left_ni, left);
-            tree_from_split(tree, right_ni, right);
-        }
-        LayoutSplit::TopBottom(top, fraction, bottom) => {
-            let [top_ni, bottom_ni] = tree.split_below(parent, *fraction, vec![]);
-            tree_from_split(tree, top_ni, top);
-            tree_from_split(tree, bottom_ni, bottom);
-        }
-        LayoutSplit::Leaf(space_info) => {
-            tree.set_focused_node(parent);
-            tree.push_to_focused_leaf(space_info.id);
-        }
-    }
-}
-
-// TODO(emilk): fix O(N^2) execution for layout_spaces
-fn layout_spaces(size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> LayoutSplit {
-    assert!(!spaces.is_empty());
-
-    if spaces.len() == 1 {
-        LayoutSplit::Leaf(spaces[0].clone())
-    } else {
-        spaces.sort_by_key(|si| si.is_2d());
-        let start_3d = spaces.partition_point(|si| !si.is_2d());
-
-        if 0 < start_3d && start_3d < spaces.len() {
-            split_spaces_at(size, spaces, start_3d)
-        } else {
-            // All 2D or all 3D
-            let groups = group_by_path_prefix(spaces);
-            assert!(groups.len() > 1);
-
-            let num_spaces = spaces.len();
-
-            let mut best_split = 0;
-            let mut rearranged_spaces = vec![];
-            for mut group in groups {
-                rearranged_spaces.append(&mut group);
-
-                let split_candidate = rearranged_spaces.len();
-                if (split_candidate as f32 / num_spaces as f32 - 0.5).abs()
-                    < (best_split as f32 / num_spaces as f32 - 0.5).abs()
-                {
-                    best_split = split_candidate;
-                }
-            }
-            assert_eq!(rearranged_spaces.len(), num_spaces);
-            assert!(0 < best_split && best_split < num_spaces,);
-
-            split_spaces_at(size, &mut rearranged_spaces, best_split)
-        }
-    }
-}
-
-fn split_spaces_at(size: egui::Vec2, spaces: &mut [SpaceMakeInfo], index: usize) -> LayoutSplit {
-    use egui::vec2;
-
-    assert!(0 < index && index < spaces.len());
-
-    let t = index as f32 / spaces.len() as f32;
-    let desired_aspect_ratio = desired_aspect_ratio(spaces).unwrap_or(16.0 / 9.0);
-
-    if size.x > desired_aspect_ratio * size.y {
-        let left = layout_spaces(vec2(size.x * t, size.y), &mut spaces[..index]);
-        let right = layout_spaces(vec2(size.x * (1.0 - t), size.y), &mut spaces[index..]);
-        LayoutSplit::LeftRight(left.into(), t, right.into())
-    } else {
-        let top = layout_spaces(vec2(size.y, size.y * t), &mut spaces[..index]);
-        let bottom = layout_spaces(vec2(size.y, size.x * (1.0 - t)), &mut spaces[index..]);
-        LayoutSplit::TopBottom(top.into(), t, bottom.into())
-    }
-}
-
-fn desired_aspect_ratio(spaces: &[SpaceMakeInfo]) -> Option<f32> {
-    let mut sum = 0.0;
-    let mut num = 0.0;
-    for space in spaces {
-        if let Some(size) = space.size2d {
-            let aspect = size.x / size.y;
-            if aspect.is_finite() {
-                sum += aspect;
-                num += 1.0;
-            }
-        }
-    }
-
-    (num != 0.0).then_some(sum / num)
-}
-
-fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>> {
-    if space_infos.len() < 2 {
-        return vec![space_infos.to_vec()];
-    }
-    crate::profile_function!();
-
-    let paths = space_infos
-        .iter()
-        .map(|space_info| space_info.path.to_components())
-        .collect_vec();
-
-    for i in 0.. {
-        let mut groups: std::collections::BTreeMap<Option<&ObjPathComp>, Vec<&SpaceMakeInfo>> =
-            Default::default();
-        for (path, space) in paths.iter().zip(space_infos) {
-            groups.entry(path.get(i)).or_default().push(space);
-        }
-        if groups.len() == 1 && groups.contains_key(&None) {
-            break;
-        }
-        if groups.len() > 1 {
-            return groups
-                .values()
-                .map(|spaces| spaces.iter().cloned().cloned().collect())
-                .collect();
-        }
-    }
-    space_infos
-        .iter()
-        .map(|space| vec![space.clone()])
-        .collect()
 }
 
 // ----------------------------------------------------------------------------
