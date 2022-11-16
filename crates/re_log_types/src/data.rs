@@ -662,6 +662,33 @@ pub enum Transform {
 
 // ----------------------------------------------------------------------------
 
+/// A unique id per [`MeshId`].
+///
+/// TODO(emilk): this should be a hash of the mesh (CAS).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct MeshId(pub uuid::Uuid);
+
+impl nohash_hasher::IsEnabled for MeshId {}
+
+// required for [`nohash_hasher`].
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for MeshId {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.0.as_u128() as u64);
+    }
+}
+
+impl MeshId {
+    #[inline]
+    pub fn random() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
+}
+
+// ----------------
+
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Mesh3D {
@@ -669,9 +696,19 @@ pub enum Mesh3D {
     Raw(Arc<RawMesh3D>),
 }
 
+impl Mesh3D {
+    pub fn mesh_id(&self) -> MeshId {
+        match self {
+            Mesh3D::Encoded(mesh) => mesh.mesh_id,
+            Mesh3D::Raw(mesh) => mesh.mesh_id,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RawMesh3D {
+    pub mesh_id: MeshId,
     pub positions: Vec<[f32; 3]>,
     pub indices: Vec<[u32; 3]>,
 }
@@ -680,6 +717,7 @@ pub struct RawMesh3D {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EncodedMesh3D {
+    pub mesh_id: MeshId,
     pub format: MeshFormat,
     pub bytes: std::sync::Arc<[u8]>,
     /// four columns of an affine transformation matrix

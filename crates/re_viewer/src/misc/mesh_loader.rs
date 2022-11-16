@@ -1,11 +1,12 @@
 #[cfg(feature = "glow")]
 use anyhow::Context as _;
-use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
+use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 
 #[cfg(feature = "wgpu")]
 use re_renderer::resource_managers::{MeshManager, ResourceLifeTime, TextureManager2D};
 
 pub struct CpuMesh {
+    mesh_id: re_log_types::MeshId,
     name: String,
 
     #[cfg(feature = "glow")]
@@ -59,6 +60,7 @@ impl CpuMesh {
     }
 
     pub fn load_raw(
+        mesh_id: MeshId,
         name: String,
         format: MeshFormat,
         bytes: &[u8],
@@ -95,6 +97,7 @@ impl CpuMesh {
             let bbox = bbox(&meshes);
 
             Ok(Self {
+                mesh_id,
                 name,
                 meshes,
                 materials,
@@ -131,6 +134,7 @@ impl CpuMesh {
                 re_renderer::importer::calculate_bounding_box(_mesh_manager, &mesh_instances);
 
             Ok(Self {
+                mesh_id,
                 name,
                 bbox,
                 #[cfg(feature = "wgpu")]
@@ -148,12 +152,14 @@ impl CpuMesh {
     ) -> anyhow::Result<Self> {
         crate::profile_function!();
         let EncodedMesh3D {
+            mesh_id: _,
             format,
             bytes,
             transform,
         } = encoded_mesh;
 
         let mut slf = Self::load_raw(
+            encoded_mesh.mesh_id,
             name,
             *format,
             bytes,
@@ -206,7 +212,11 @@ impl CpuMesh {
         crate::profile_function!();
         #[cfg(feature = "glow")]
         let meshes = {
-            let RawMesh3D { positions, indices } = raw_mesh;
+            let RawMesh3D {
+                mesh_id: _,
+                positions,
+                indices,
+            } = raw_mesh;
             let positions = positions
                 .iter()
                 .map(|&[x, y, z]| three_d::vec3(x, y, z))
@@ -267,6 +277,7 @@ impl CpuMesh {
         }];
 
         Self {
+            mesh_id: raw_mesh.mesh_id,
             name,
             #[cfg(feature = "glow")]
             meshes,
@@ -281,7 +292,7 @@ impl CpuMesh {
 
     /// Builds a cylinder mesh around the x-axis in the range [0..1] and with radius 1. The default material is used.
     #[cfg(feature = "glow")]
-    pub(crate) fn cylinder(angle_subdivisions: u32) -> Self {
+    pub(crate) fn cylinder(mesh_id: MeshId, angle_subdivisions: u32) -> Self {
         let meshes = vec![three_d::CpuMesh::cylinder(angle_subdivisions)];
         let material = three_d::CpuMaterial {
             name: "cylinder_material".to_owned(),
@@ -289,6 +300,7 @@ impl CpuMesh {
         };
         let bbox = bbox(&meshes);
         Self {
+            mesh_id,
             name: "cylinder".to_owned(),
             meshes,
             materials: vec![material],
@@ -300,7 +312,7 @@ impl CpuMesh {
 
     /// Builds a cone mesh around the x-axis in the range [0..1] and with radius 1 at x=0. The default material is used.
     #[cfg(feature = "glow")]
-    pub(crate) fn cone(angle_subdivisions: u32) -> Self {
+    pub(crate) fn cone(mesh_id: MeshId, angle_subdivisions: u32) -> Self {
         let meshes = vec![three_d::CpuMesh::cone(angle_subdivisions)];
         let material = three_d::CpuMaterial {
             name: "cone_material".to_owned(),
@@ -309,6 +321,7 @@ impl CpuMesh {
 
         let bbox = bbox(&meshes);
         Self {
+            mesh_id,
             name: "cone".to_owned(),
             meshes,
             materials: vec![material],
@@ -321,6 +334,10 @@ impl CpuMesh {
     #[allow(dead_code)]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn mesh_id(&self) -> MeshId {
+        self.mesh_id
     }
 
     pub fn bbox(&self) -> &macaw::BoundingBox {
