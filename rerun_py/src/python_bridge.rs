@@ -1726,6 +1726,10 @@ fn log_arrow_msg(obj_path: &str, field_name: &str, msg: &PyAny) -> PyResult<()> 
 
     let mut data = Vec::<u8>::new();
 
+    // TODO(jleibs):
+    // This stream-writer interface re-encodes and transmits the schema on every send
+    // I believe We can optimize this using some combination of calls to:
+    // https://docs.rs/arrow2/latest/arrow2/io/ipc/write/fn.write.html
     let schema = Schema {
         fields: vec![field],
         metadata: Default::default(),
@@ -1736,11 +1740,6 @@ fn log_arrow_msg(obj_path: &str, field_name: &str, msg: &PyAny) -> PyResult<()> 
     let mut writer = StreamWriter::new(&mut data, Default::default());
     writer.start(&schema, None).ok();
     writer.write(&chunk, None).ok();
-
-    /*
-    let (encoded_dicts, encoded_msgs) =
-        arrow2::io::ipc::write::common::encode_chunk(chunk, fields, dictionary_tracker, options);
-        */
 
     let data_path = DataPath::new(obj_path, FieldName::from(field_name));
 
