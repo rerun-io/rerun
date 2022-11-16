@@ -332,9 +332,15 @@ def log_rect(
     rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless)
 
     if EXP_ARROW:
-        # TODO: build this from the rectangle
-        rect = pa.array([1, 2, 3, 4])
-        rerun_sdk.log_arrow_msg(obj_path, "rect", rect)
+        # TODO(jleibs): type registry?
+        # TODO(jleibs): proper handling of rect_format
+        RectType = pa.struct([("x", pa.float32()), ("y", pa.float32()), ("w", pa.float32()), ("h", pa.float32())])
+
+        rect_arr = pa.array([], type=RectType)
+        if rect is not None:
+            rect_arr = pa.array([tuple(rect)], type=RectType)
+
+        rerun_sdk.log_arrow_msg(obj_path, "rect", rect_arr)
 
 
 def log_rects(
