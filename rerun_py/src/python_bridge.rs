@@ -1576,6 +1576,7 @@ fn log_image_file(
         &time_point,
         (&obj_path, "tensor"),
         LoggedData::Single(Data::Tensor(re_log_types::Tensor {
+            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),

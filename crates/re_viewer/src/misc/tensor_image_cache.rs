@@ -3,7 +3,7 @@ use std::sync::Arc;
 use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
-use re_log_types::{MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType};
+use re_log_types::{MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType, TensorId};
 
 use crate::ui::view_2d::{Annotations, ColorMapping};
 
@@ -33,11 +33,11 @@ pub struct TensorImageView<'store, 'cache> {
     pub retained_img: &'cache RetainedImage,
 }
 
-// Use a MsgIdPair for the cache index so that we don't cache across
+// Use this for the cache index so that we don't cache across
 // changes to the annotations
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageCacheKey {
-    image_msg_id: MsgId,
+    tensor_id: TensorId,
     annotation_msg_id: Option<MsgId>,
 }
 impl nohash_hasher::IsEnabled for ImageCacheKey {}
@@ -47,7 +47,7 @@ impl nohash_hasher::IsEnabled for ImageCacheKey {}
 impl std::hash::Hash for ImageCacheKey {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let msg_hash = self.image_msg_id.0.as_u128() as u64;
+        let msg_hash = self.tensor_id.0.as_u128() as u64;
 
         let annotation_hash = if let Some(annotation_msg_id) = self.annotation_msg_id {
             (annotation_msg_id.0.as_u128() >> 1) as u64
@@ -76,7 +76,7 @@ impl ImageCache {
         let ci = self
             .images
             .entry(ImageCacheKey {
-                image_msg_id: *msg_id,
+                tensor_id: tensor.tensor_id,
                 annotation_msg_id: annotations.as_ref().map(|seg_map| seg_map.msg_id),
             })
             .or_insert_with(|| {
