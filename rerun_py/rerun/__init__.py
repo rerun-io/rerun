@@ -833,9 +833,9 @@ def log_segmentation_image(
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
     if image.dtype == "uint8":
-        rerun_sdk.log_tensor_u8(obj_path, image, None, None, rerun_rs.TensorDataMeaning.ClassId, timeless)
+        rerun_sdk.log_tensor_u8(obj_path, image, None, None, rerun_sdk.TensorDataMeaning.ClassId, timeless)
     elif image.dtype == "uint16":
-        rerun_sdk.log_tensor_u16(obj_path, image, None, None, rerun_rs.TensorDataMeaning.ClassId, timeless)
+        rerun_sdk.log_tensor_u16(obj_path, image, None, None, rerun_sdk.TensorDataMeaning.ClassId, timeless)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")
 
