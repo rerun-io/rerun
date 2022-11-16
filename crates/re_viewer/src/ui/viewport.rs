@@ -237,6 +237,25 @@ impl ViewportBlueprint {
             )
         });
 
+        let is_tree_invalid = tree.iter().any(|node| match node {
+            egui_dock::Node::Vertical { rect: _, fraction } => fraction.is_nan(),
+            egui_dock::Node::Horizontal { rect: _, fraction } => fraction.is_nan(),
+            _ => false,
+        });
+        let tree = if is_tree_invalid {
+            self.trees.insert(
+                self.visible.clone(),
+                super::auto_layout::tree_from_space_views(
+                    ui.available_size(),
+                    &self.visible,
+                    &self.space_views,
+                ),
+            );
+            self.trees.get_mut(&self.visible).unwrap()
+        } else {
+            tree
+        };
+
         let num_space_views = num_tabs(tree);
         if num_space_views == 0 {
             // nothing to show
