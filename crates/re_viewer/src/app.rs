@@ -246,7 +246,7 @@ impl eframe::App for App {
                     let arr = msg.to_arrow_array();
 
                     re_log::info!("Got ArrowMsg: {:?}", arr);
-                    // TODO: Send to the ArrowStore instead
+                    // TODO(jleibs): Send to the ArrowStore instead
                 } else {
                     log_db.add(msg);
                     if start.elapsed() > instant::Duration::from_millis(10) {

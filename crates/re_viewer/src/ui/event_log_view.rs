@@ -196,8 +196,36 @@ fn table_row(
                 crate::data_ui::ui_path_op(ctx, ui, path_op);
             });
         }
-        LogMsg::ArrowMsg(_) => {
-            // TODO
+        LogMsg::ArrowMsg(msg) => {
+            let ArrowMsg {
+                msg_id,
+                time_point,
+                data_path,
+                data: _,
+            } = msg;
+
+            row.col(|ui| {
+                ui.monospace("ArrowMsg");
+            });
+            for timeline in ctx.log_db.time_points.0.keys() {
+                row.col(|ui| {
+                    if let Some(value) = time_point.0.get(timeline) {
+                        ctx.time_button(ui, timeline, *value);
+                    }
+                });
+            }
+            row.col(|ui| {
+                ctx.data_path_button(ui, data_path);
+            });
+            row.col(|ui| {
+                crate::data_ui::ui_logged_arrow_data(
+                    ctx,
+                    ui,
+                    msg_id,
+                    msg,
+                    Preview::Specific(row_height),
+                );
+            });
         }
     }
 }

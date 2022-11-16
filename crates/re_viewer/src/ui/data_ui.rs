@@ -201,8 +201,8 @@ pub(crate) fn show_log_msg(
         LogMsg::PathOpMsg(msg) => {
             show_path_op_msg(ctx, ui, msg);
         }
-        LogMsg::ArrowMsg(_) => {
-            // TODO
+        LogMsg::ArrowMsg(msg) => {
+            show_arrow_msg(ctx, ui, msg, preview);
         }
     }
 }
@@ -299,6 +299,23 @@ pub(crate) fn show_path_op_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, m
         });
 }
 
+pub(crate) fn show_arrow_msg(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    msg: &ArrowMsg,
+    preview: Preview,
+) {
+    let ArrowMsg {
+        msg_id,
+        time_point: _,
+        data_path: _,
+        data: _,
+    } = msg;
+
+    // TODO(jleibs): Better ArrowMsg view
+    ui_logged_arrow_data(ctx, ui, msg_id, msg, preview);
+}
+
 pub(crate) fn ui_time_point(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -336,6 +353,19 @@ pub(crate) fn ui_logged_data(
             .response
         }
     }
+}
+
+// TODO(jleibs): Better ArrowMsg view
+pub(crate) fn ui_logged_arrow_data(
+    _ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _msg_id: &MsgId,
+    msg: &ArrowMsg,
+    _preview: Preview,
+) -> egui::Response {
+    // TODO: more handling
+    let arr = msg.to_arrow_array();
+    ui.label(format!("Arrow Payload: {arr:?}"))
 }
 
 pub(crate) fn ui_data(
