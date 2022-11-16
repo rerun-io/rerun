@@ -228,6 +228,8 @@ impl ViewportBlueprint {
             return;
         }
 
+        self.trees.retain(|_, tree| is_tree_valid(tree));
+
         // Lazily create a layout tree based on which SpaceViews are currently visible:
         let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
             super::auto_layout::tree_from_space_views(
@@ -236,25 +238,6 @@ impl ViewportBlueprint {
                 &self.space_views,
             )
         });
-
-        let is_tree_invalid = tree.iter().any(|node| match node {
-            egui_dock::Node::Vertical { rect: _, fraction } => fraction.is_nan(),
-            egui_dock::Node::Horizontal { rect: _, fraction } => fraction.is_nan(),
-            _ => false,
-        });
-        let tree = if is_tree_invalid {
-            self.trees.insert(
-                self.visible.clone(),
-                super::auto_layout::tree_from_space_views(
-                    ui.available_size(),
-                    &self.visible,
-                    &self.space_views,
-                ),
-            );
-            self.trees.get_mut(&self.visible).unwrap()
-        } else {
-            tree
-        };
 
         let num_space_views = num_tabs(tree);
         if num_space_views == 0 {
@@ -699,4 +682,12 @@ fn focus_tab(tree: &mut egui_dock::Tree<SpaceViewId>, tab: &SpaceViewId) {
         tree.set_focused_node(node_index);
         tree.set_active_tab(node_index, tab_index);
     }
+}
+
+fn is_tree_valid(tree: &egui_dock::Tree<SpaceViewId>) -> bool {
+    tree.iter().all(|node| match node {
+        egui_dock::Node::Vertical { rect: _, fraction }
+        | egui_dock::Node::Horizontal { rect: _, fraction } => fraction.is_finite(),
+        _ => true,
+    })
 }
