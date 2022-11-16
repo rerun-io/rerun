@@ -8,7 +8,6 @@ use crate::ui::SpaceViewId;
 /// Common things needed by many parts of the viewer.
 pub(crate) struct ViewerContext<'a> {
     /// Global options for the whole viewer.
-    #[allow(unused)] // only used with 'glow' feature
     pub options: &'a mut Options,
 
     /// Things that need caching.
@@ -23,7 +22,6 @@ pub(crate) struct ViewerContext<'a> {
     /// The look and feel of the UI
     pub design_tokens: &'a crate::design_tokens::DesignTokens,
 
-    #[cfg(feature = "wgpu")]
     pub render_ctx: &'a mut re_renderer::RenderContext,
 }
 
@@ -181,7 +179,6 @@ pub enum HoveredSpace {
         pos: glam::Vec3,
     },
     /// Hovering in a 3D space.
-    #[allow(unused)] // only used with 'glow' feature
     ThreeD {
         /// The 3D space with the camera(s)
         space_3d: Option<ObjPath>,

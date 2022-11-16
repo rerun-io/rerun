@@ -13,7 +13,6 @@ use crate::misc::Caches;
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
-#[cfg(feature = "wgpu")]
 use re_renderer::renderer::*;
 
 use super::{eye::Eye, SpaceCamera};
@@ -104,7 +103,6 @@ pub struct LineSegments3D {
     pub segments: Vec<(Vec3, Vec3)>,
     pub radius: Size,
     pub color: [u8; 4],
-    #[cfg(feature = "wgpu")]
     pub flags: re_renderer::renderer::LineStripFlags,
 }
 
@@ -130,13 +128,6 @@ pub struct MeshSource {
     pub world_from_mesh: macaw::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
     pub tint: Option<[u8; 4]>,
-}
-
-impl MeshSource {
-    #[allow(unused)] // only used by glow
-    pub fn mesh_id(&self) -> MeshId {
-        self.cpu_mesh.mesh_id()
-    }
 }
 
 pub struct Label3D {
@@ -328,7 +319,6 @@ impl Scene3D {
                             segments,
                             radius,
                             color,
-                            #[cfg(feature = "wgpu")]
                             flags: Default::default(),
                         });
                     },
@@ -412,9 +402,7 @@ impl Scene3D {
                         let Some(mesh) = ctx.cache.cpu_mesh.load(
                                 &obj_path.to_string(),
                                 &MeshSourceData::Mesh3D(mesh.clone()),
-                                #[cfg(feature = "wgpu")]
                                 &mut ctx.render_ctx.mesh_manager,
-                                #[cfg(feature = "wgpu")]
                                 &mut ctx.render_ctx.texture_manager_2d,
                             )
                             .map(|cpu_mesh| MeshSource {
@@ -487,9 +475,7 @@ impl Scene3D {
                             mesh_id,
                             include_bytes!("../../../data/camera.glb"),
                         ),
-                        #[cfg(feature = "wgpu")]
                         &mut ctx.render_ctx.mesh_manager,
-                        #[cfg(feature = "wgpu")]
                         &mut ctx.render_ctx.texture_manager_2d,
                     ) {
                         self.meshes.push(MeshSource {
@@ -518,7 +504,6 @@ impl Scene3D {
                         segments: vec![(cam_origin, axis_end)],
                         radius,
                         color,
-                        #[cfg(feature = "wgpu")]
                         flags: Default::default(),
                     });
                 }
@@ -681,7 +666,6 @@ impl Scene3D {
             segments,
             radius: line_radius,
             color,
-            #[cfg(feature = "wgpu")]
             flags: Default::default(),
         });
 
@@ -703,60 +687,17 @@ impl Scene3D {
         let vector = Vec3::from_slice(vector);
         let origin = Vec3::from_slice(origin);
 
-        #[cfg(feature = "glow")]
-        {
-            let cylinder_mesh = _caches.cpu_mesh.cylinder();
-            let cone_mesh = _caches.cpu_mesh.cone();
-
-            let rotation = glam::Quat::from_rotation_arc(Vec3::X, vector.normalize());
-
-            let tip_length = 2.0 * width_scale;
-
-            let cylinder_transform = macaw::Affine3A::from_scale_rotation_translation(
-                vec3(
-                    vector.length() - tip_length,
-                    0.5 * width_scale,
-                    0.5 * width_scale,
-                ),
-                rotation,
-                origin,
-            );
-
-            self.meshes.push(MeshSource {
-                instance_id_hash,
-                world_from_mesh: cylinder_transform,
-                cpu_mesh: cylinder_mesh,
-                tint: Some(color),
-            });
-
-            // The cone has it's origin at the base, so we translate it by [-1,0,0] so the tip lines up with vector.
-            let cone_transform = glam::Affine3A::from_scale_rotation_translation(
-                vec3(tip_length, 1.0 * width_scale, 1.0 * width_scale),
-                rotation,
-                origin + vector,
-            ) * glam::Affine3A::from_translation(-Vec3::X);
-
-            self.meshes.push(MeshSource {
-                instance_id_hash,
-                world_from_mesh: cone_transform,
-                cpu_mesh: cone_mesh,
-                tint: Some(color),
-            });
-        }
-        #[cfg(not(feature = "glow"))]
-        {
-            let radius = width_scale * 0.5;
-            let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius);
-            let vector_len = vector.length();
-            let end = origin + vector * ((vector_len - tip_length) / vector_len);
-            self.line_segments.push(LineSegments3D {
-                instance_id_hash,
-                segments: vec![(origin, end)],
-                radius: Size::new_scene(radius),
-                color,
-                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
-            })
-        }
+        let radius = width_scale * 0.5;
+        let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius);
+        let vector_len = vector.length();
+        let end = origin + vector * ((vector_len - tip_length) / vector_len);
+        self.line_segments.push(LineSegments3D {
+            instance_id_hash,
+            segments: vec![(origin, end)],
+            radius: Size::new_scene(radius),
+            color,
+            flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
+        });
     }
 
     fn add_box(
@@ -819,7 +760,6 @@ impl Scene3D {
             segments,
             radius: line_radius,
             color,
-            #[cfg(feature = "wgpu")]
             flags: Default::default(),
         });
     }
@@ -836,7 +776,6 @@ impl Scene3D {
     }
 
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
-    #[cfg(feature = "wgpu")]
     pub fn line_strips(&self, show_origin_axis: bool) -> Vec<LineStrip> {
         crate::profile_function!();
         let mut line_strips = Vec::with_capacity(self.line_segments.len());
@@ -898,7 +837,6 @@ impl Scene3D {
     }
 
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
-    #[cfg(feature = "wgpu")]
     pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
         crate::profile_function!();
         self.points
