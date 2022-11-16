@@ -1687,8 +1687,37 @@ fn experimental_guard_arrow() -> PyResult<bool> {
 }
 
 #[cfg(feature = "arrow")]
+use arrow2::array::Array;
+
+#[cfg(feature = "arrow")]
+fn array_to_rust(arrow_array: &PyAny) -> PyResult<Box<dyn Array>> {
+    // prepare a pointer to receive the Array struct
+
+    use arrow2::ffi;
+    use pyo3::ffi::Py_uintptr_t;
+
+    let array = Box::new(ffi::ArrowArray::empty());
+    let schema = Box::new(ffi::ArrowSchema::empty());
+
+    let array_ptr = &*array as *const ffi::ArrowArray;
+    let schema_ptr = &*schema as *const ffi::ArrowSchema;
+
+    // make the conversion through PyArrow's private API
+    // this changes the pointer's memory and is thus unsafe. In particular, `_export_to_c` can go out of bounds
+    arrow_array.call_method1(
+        "_export_to_c",
+        (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),
+    )?;
+
+    unsafe {
+        let field = ffi::import_field_from_c(schema.as_ref()).unwrap();
+        return Ok(ffi::import_array_from_c(*array, field.data_type).unwrap());
+    }
+}
+
+#[cfg(feature = "arrow")]
 #[pyfunction]
-fn log_arrow_msg(obj_path: &str) -> PyResult<()> {
+fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
@@ -1698,7 +1727,9 @@ fn log_arrow_msg(obj_path: &str) -> PyResult<()> {
         parse_obj_path(obj_path)?
     };
 
-    re_log::info!("Logged an arrow msg at {}", obj_path);
+    let arrow_array = array_to_rust(msg)?;
+
+    re_log::info!("Logged an arrow msg at {} {:?}", obj_path, arrow_array);
 
     Ok(())
 }
