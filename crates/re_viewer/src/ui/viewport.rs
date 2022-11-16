@@ -223,6 +223,13 @@ impl ViewportBlueprint {
         spaces_info: &SpacesInfo,
         selection_panel_expanded: &mut bool,
     ) {
+        let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
+        if is_zero_sized_viewport {
+            return;
+        }
+
+        self.trees.retain(|_, tree| is_tree_valid(tree));
+
         // Lazily create a layout tree based on which SpaceViews are currently visible:
         let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
             super::auto_layout::tree_from_space_views(
@@ -675,4 +682,12 @@ fn focus_tab(tree: &mut egui_dock::Tree<SpaceViewId>, tab: &SpaceViewId) {
         tree.set_focused_node(node_index);
         tree.set_active_tab(node_index, tab_index);
     }
+}
+
+fn is_tree_valid(tree: &egui_dock::Tree<SpaceViewId>) -> bool {
+    tree.iter().all(|node| match node {
+        egui_dock::Node::Vertical { rect: _, fraction }
+        | egui_dock::Node::Horizontal { rect: _, fraction } => fraction.is_finite(),
+        _ => true,
+    })
 }
