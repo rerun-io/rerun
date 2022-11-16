@@ -243,8 +243,10 @@ impl eframe::App for App {
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
                 if let LogMsg::ArrowMsg(msg) = &msg {
-                    re_log::info!("Got ArrowMsg...");
-                    // TODO: Send to the ArrowStore
+                    let arr = msg.to_arrow_array();
+
+                    re_log::info!("Got ArrowMsg: {:?}", arr);
+                    // TODO: Send to the ArrowStore instead
                 } else {
                     log_db.add(msg);
                     if start.elapsed() > instant::Duration::from_millis(10) {
