@@ -522,6 +522,10 @@ fn paint_view(
                     // passing a previously created commandbuffer out!
                     .prepare(move |device, queue, _, paint_callback_resources| {
                         crate::profile_scope!("prepare");
+                        if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+                            return Vec::new();
+                        }
+
                         let ctx: &mut RenderContext = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
 
