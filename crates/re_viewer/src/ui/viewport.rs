@@ -512,7 +512,7 @@ fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) {
     ui.centered(|ui| {
         ui.colored_label(
             ui.visuals().warn_fg_color,
-            format!("Unknown space {space_path}"),
+            format!("Unknown space {space_path:?}"),
         );
     });
 }
