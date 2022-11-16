@@ -195,6 +195,9 @@ impl LogDb {
                 } = msg;
                 self.obj_db.add_path_op(*msg_id, time_point, path_op);
             }
+            LogMsg::ArrowMsg(_) => {
+                re_log::info!("Received ArrowMsg...");
+            }
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);

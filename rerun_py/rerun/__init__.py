@@ -334,7 +334,7 @@ def log_rect(
     if EXP_ARROW:
         # TODO: build this from the rectangle
         rect = pa.array([1, 2, 3, 4])
-        rerun_sdk.log_arrow_msg(obj_path, rect)
+        rerun_sdk.log_arrow_msg(obj_path, "rect", rect)
 
 
 def log_rects(

@@ -124,6 +124,9 @@ impl SelectionPanel {
                     LogMsg::PathOpMsg(msg) => {
                         show_path_op_msg(ctx, ui, msg);
                     }
+                    LogMsg::ArrowMsg(_) => {
+                        // TODO
+                    }
                 }
             }
             Selection::ObjTypePath(obj_type_path) => {

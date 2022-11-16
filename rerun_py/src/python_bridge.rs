@@ -4,7 +4,12 @@
 
 use std::{borrow::Cow, io::Cursor, path::PathBuf, sync::Arc};
 
-use arrow2::{array::Array, chunk::Chunk, datatypes::Schema, io::ipc::write::StreamWriter};
+use arrow2::{
+    array::Array,
+    chunk::Chunk,
+    datatypes::{Field, Schema},
+    io::ipc::write::StreamWriter,
+};
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
 use pyo3::{
@@ -1671,22 +1676,8 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
     Ok(())
 }
 
-#[pyfunction]
-fn experimental_guard_arrow() -> PyResult<bool> {
-    #[cfg(feature = "arrow")]
-    {
-        Ok(true)
-    }
-    #[cfg(not(feature = "arrow"))]
-    {
-        Ok(false)
-    }
-}
-
 // TODO: Need a proper type registry for schemas
-fn array_to_rust(
-    arrow_array: &PyAny,
-) -> PyResult<(Box<dyn arrow2::array::Array>, arrow2::datatypes::Field)> {
+fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
     // prepare a pointer to receive the Array struct
 
     use arrow2::ffi;
@@ -1705,6 +1696,9 @@ fn array_to_rust(
         (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),
     )?;
 
+    // TODO: Figure out if this is safe and why
+    // Following pattern from: https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+    #[allow(unsafe_code)]
     unsafe {
         let field = ffi::import_field_from_c(schema.as_ref()).unwrap();
         let array = ffi::import_array_from_c(*array, field.data_type.clone()).unwrap();
@@ -1755,6 +1749,8 @@ fn log_arrow_msg(obj_path: &str, field_name: &str, msg: &PyAny) -> PyResult<()> 
         data_path,
         data,
     };
+
+    sdk.send(LogMsg::ArrowMsg(msg));
 
     Ok(())
 }

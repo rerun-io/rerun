@@ -201,6 +201,9 @@ pub(crate) fn show_log_msg(
         LogMsg::PathOpMsg(msg) => {
             show_path_op_msg(ctx, ui, msg);
         }
+        LogMsg::ArrowMsg(_) => {
+            // TODO
+        }
     }
 }
 

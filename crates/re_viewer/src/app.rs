@@ -242,10 +242,15 @@ impl eframe::App for App {
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
-                log_db.add(msg);
-                if start.elapsed() > instant::Duration::from_millis(10) {
-                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                    break; // don't block the main thread for too long
+                if let LogMsg::ArrowMsg(msg) = &msg {
+                    re_log::info!("Got ArrowMsg...");
+                    // TODO: Send to the ArrowStore
+                } else {
+                    log_db.add(msg);
+                    if start.elapsed() > instant::Duration::from_millis(10) {
+                        egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                        break; // don't block the main thread for too long
+                    }
                 }
             }
         }
@@ -914,6 +919,10 @@ fn save_database_to_file(
                                     .map_or(false, |t| range.contains(t));
                                 is_within_range
                             }
+                        }
+                        LogMsg::ArrowMsg(_) => {
+                            // TODO
+                            false
                         }
                     }
                 })

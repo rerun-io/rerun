@@ -196,5 +196,8 @@ fn table_row(
                 crate::data_ui::ui_path_op(ctx, ui, path_op);
             });
         }
+        LogMsg::ArrowMsg(_) => {
+            // TODO
+        }
     }
 }

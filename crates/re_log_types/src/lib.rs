@@ -30,7 +30,6 @@ pub mod objects;
 pub mod path;
 mod time;
 
-use arrow2::array::Array;
 pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
 pub use data::*;
@@ -166,8 +165,9 @@ pub enum LogMsg {
 
     /// Server-backed operation on an [`ObjPath`] or [`DataPath`].
     PathOpMsg(PathOpMsg),
-    // Log an arrow message to data to a [`DataPath`].
-    //ArrowMsg(ArrowMsg),
+
+    /// Log an arrow message to data to a [`DataPath`].
+    ArrowMsg(ArrowMsg),
 }
 
 impl LogMsg {
@@ -177,7 +177,7 @@ impl LogMsg {
             Self::TypeMsg(msg) => msg.msg_id,
             Self::DataMsg(msg) => msg.msg_id,
             Self::PathOpMsg(msg) => msg.msg_id,
-            //Self::ArrowMsg(msg) => msg.msg_id,
+            Self::ArrowMsg(msg) => msg.msg_id,
         }
     }
 }
@@ -186,7 +186,7 @@ impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
 impl_into_enum!(TypeMsg, LogMsg, TypeMsg);
 impl_into_enum!(DataMsg, LogMsg, DataMsg);
 impl_into_enum!(PathOpMsg, LogMsg, PathOpMsg);
-//impl_into_enum!(ArrowMsg, LogMsg, ArrowMsg);
+impl_into_enum!(ArrowMsg, LogMsg, ArrowMsg);
 
 // ----------------------------------------------------------------------------
 
@@ -263,7 +263,7 @@ impl TypeMsg {
 }
 /// The message sent to specify the data of a single field of an object.
 #[must_use]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ArrowMsg {
     /// A unique id per [`DataMsg`].
