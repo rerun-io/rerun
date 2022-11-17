@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
@@ -14,6 +16,9 @@ use crate::{
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
+    pub(crate) device: Arc<wgpu::Device>,
+    pub(crate) queue: Arc<wgpu::Queue>,
+
     pub(crate) shared_renderer_data: SharedRendererData,
     pub(crate) renderers: Renderers,
     pub(crate) resource_pools: WgpuResourcePools,
@@ -63,9 +68,13 @@ impl Renderers {
 }
 
 impl RenderContext {
-    pub fn new(device: &wgpu::Device, _queue: &wgpu::Queue, config: RenderContextConfig) -> Self {
+    pub fn new(
+        device: Arc<wgpu::Device>,
+        queue: Arc<wgpu::Queue>,
+        config: RenderContextConfig,
+    ) -> Self {
         let mut resource_pools = WgpuResourcePools::default();
-        let global_bindings = GlobalBindings::new(&mut resource_pools, device);
+        let global_bindings = GlobalBindings::new(&mut resource_pools, &device);
 
         // Validate capabilities of the device.
         assert!(
@@ -106,6 +115,9 @@ impl RenderContext {
         };
 
         RenderContext {
+            device,
+            queue,
+
             shared_renderer_data: SharedRendererData {
                 config,
                 global_bindings,
@@ -128,7 +140,7 @@ impl RenderContext {
         }
     }
 
-    pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
+    pub fn frame_maintenance(&mut self) {
         // Tick the error tracker so that it knows when to reset!
         // Note that we're ticking on frame_maintenance rather than raw frames, which
         // makes a world of difference when we're in a poisoned state.
@@ -164,14 +176,14 @@ impl RenderContext {
             // Render pipeline maintenance must come before shader module maintenance since
             // it registers them.
             render_pipelines.frame_maintenance(
-                device,
+                &self.device,
                 self.frame_index,
                 shader_modules,
                 pipeline_layouts,
             );
 
             shader_modules.frame_maintenance(
-                device,
+                &self.device,
                 &mut self.resolver,
                 self.frame_index,
                 &modified_paths,

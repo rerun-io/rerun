@@ -10,7 +10,7 @@
 //! cargo run-wasm --example renderer_standalone
 //! ```
 
-use std::{f32::consts::TAU, io::Read};
+use std::{f32::consts::TAU, io::Read, sync::Arc};
 
 use anyhow::Context as _;
 use glam::Vec3;
@@ -296,8 +296,8 @@ fn build_lines(
 struct Application {
     event_loop: EventLoop<()>,
     window: Window,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
+    device: Arc<wgpu::Device>,
+    queue: Arc<wgpu::Queue>,
     surface: wgpu::Surface,
     surface_config: wgpu::SurfaceConfiguration,
     state: AppState,
@@ -334,6 +334,8 @@ impl Application {
             )
             .await
             .context("failed to create device")?;
+        let device = Arc::new(device);
+        let queue = Arc::new(queue);
 
         let swapchain_format = if cfg!(target_arch = "wasm32") {
             wgpu::TextureFormat::Rgba8Unorm
@@ -355,8 +357,8 @@ impl Application {
         surface.configure(&device, &surface_config);
 
         let mut re_ctx = RenderContext::new(
-            &device,
-            &queue,
+            device.clone(),
+            queue.clone(),
             RenderContextConfig {
                 output_format_color: swapchain_format,
                 hardware_tier,
@@ -447,7 +449,7 @@ impl Application {
                     self.queue.submit(cmd_buffers);
                     frame.present();
 
-                    self.re_ctx.frame_maintenance(&self.device);
+                    self.re_ctx.frame_maintenance();
 
                     // Note that this measures time spent on CPU, not GPU
                     // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
