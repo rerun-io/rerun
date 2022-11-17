@@ -20,10 +20,13 @@ use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
-    renderer::*,
+    renderer::{
+        GenericSkyboxDrawable, LineDrawable, LineStrip, LineStripFlags, MeshDrawable, MeshInstance,
+        PointCloudDrawable, PointCloudPoint, TestTriangleDrawable,
+    },
     resource_managers::ResourceLifeTime,
     view_builder::{TargetConfiguration, ViewBuilder},
-    DebugLabel, *,
+    RenderContext,
 };
 use winit::{
     event::{Event, WindowEvent},
@@ -73,13 +76,6 @@ fn draw_views(
         seconds_since_startup.cos(),
     ) * 10.0;
     let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
-    let mut target_cfg = TargetConfiguration {
-        resolution_in_pixel: resolution,
-        origin_in_pixel: [0, 0],
-        view_from_world,
-        fov_y: 70.0 * TAU / 360.0,
-        near_plane_distance: 0.01,
-    };
 
     let triangle = TestTriangleDrawable::new(re_ctx);
     let skybox = GenericSkyboxDrawable::new(re_ctx);
@@ -100,9 +96,18 @@ fn draw_views(
     macro_rules! draw {
         ($name:ident @ split #$n:expr) => {{
             let ((x, y), (width, height)) = splits[$n];
-            target_cfg.resolution_in_pixel = [width as u32, height as u32];
-            target_cfg.origin_in_pixel = [x as u32, y as u32];
-            draw_view(re_ctx, &target_cfg, &stringify!($name).into(), &skybox, &$name)
+            draw_view(re_ctx,
+                TargetConfiguration {
+                    name: stringify!($name).into(),
+                    resolution_in_pixel: [width as u32, height as u32],
+                    origin_in_pixel: [x as u32, y as u32],
+                    view_from_world,
+                    fov_y: 70.0 * TAU / 360.0,
+                    near_plane_distance: 0.01,
+                },
+                &skybox,
+                &$name
+            )
         }};
     }
 
@@ -152,28 +157,22 @@ fn draw_views(
         .chain(std::iter::once(composite_cmd_encoder.finish()))
 }
 
-fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
+fn draw_view<'a, D: 'static + re_renderer::renderer::Drawable + Sync + Send + Clone>(
     re_ctx: &'a mut RenderContext,
-    target_cfg: &TargetConfiguration,
-    label: &DebugLabel,
+    target_cfg: TargetConfiguration,
     skybox: &GenericSkyboxDrawable,
     drawable: &D,
 ) -> (ViewBuilder, wgpu::CommandBuffer) {
     let mut view_builder = ViewBuilder::default();
-
-    let mut encoder = re_ctx
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: label.get() });
-
-    view_builder
+    let command_buffer = view_builder
         .setup_view(re_ctx, target_cfg)
         .unwrap()
         .queue_draw(skybox)
         .queue_draw(drawable)
-        .draw(re_ctx, &mut encoder)
+        .draw(re_ctx)
         .unwrap();
 
-    (view_builder, encoder.finish())
+    (view_builder, command_buffer)
 }
 
 fn build_mesh_instances(
@@ -514,7 +513,7 @@ impl AppState {
             let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
             let mut obj_data = Vec::new();
             zipped_obj.read_to_end(&mut obj_data).unwrap();
-            importer::obj::load_obj_from_buffer(
+            re_renderer::importer::obj::load_obj_from_buffer(
                 &obj_data,
                 ResourceLifeTime::LongLived,
                 &mut re_ctx.mesh_manager,

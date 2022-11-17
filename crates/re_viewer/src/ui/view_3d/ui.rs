@@ -413,7 +413,17 @@ pub(crate) fn view_3d(
         hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
     );
 
-    paint_view(ui, eye, rect, &scene, state, response, ctx.render_ctx)
+    paint_view(
+        ui,
+        eye,
+        rect,
+        &scene,
+        state,
+        ctx.render_ctx,
+        &space.map_or("<unnamed>".to_owned(), |space| space.to_string()),
+    );
+
+    response
 }
 
 fn paint_view(
@@ -422,9 +432,9 @@ fn paint_view(
     rect: egui::Rect,
     scene: &Scene3D,
     state: &mut View3DState,
-    response: egui::Response,
     render_ctx: &mut RenderContext,
-) -> egui::Response {
+    name: &str,
+) {
     crate::profile_function!();
 
     // Draw labels:
@@ -480,7 +490,7 @@ fn paint_view(
         )
     };
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return response;
+        return;
     }
 
     let (view_builder, command_buffer) = {
@@ -490,7 +500,9 @@ fn paint_view(
         view_builder
             .setup_view(
                 render_ctx,
-                &TargetConfiguration {
+                TargetConfiguration {
+                    name: name.into(),
+
                     resolution_in_pixel,
                     origin_in_pixel,
 
@@ -507,16 +519,8 @@ fn paint_view(
             )
             .queue_draw(&PointCloudDrawable::new(render_ctx, &scene.point_cloud_points()).unwrap());
 
-        // TODO: put this inside the view_builder
-        let mut encoder =
-            render_ctx
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: "view_encoder".into(), // TODO(cmc): view name in here!
-                });
-
-        view_builder.draw(render_ctx, &mut encoder).unwrap(); // TODO(andreas): Graceful error handling
-        (view_builder, encoder.finish())
+        let command_buffer = view_builder.draw(render_ctx).unwrap();
+        (view_builder, command_buffer)
     };
 
     // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
@@ -544,8 +548,6 @@ fn paint_view(
                 }),
         ),
     });
-
-    response
 }
 
 fn show_projections_from_2d_space(
