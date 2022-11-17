@@ -5,7 +5,7 @@
 //! dimensionality reduction.
 
 use re_log_types::{
-    Tensor, TensorDataMeaning, TensorDataStore, TensorDataTypeTrait, TensorDimension,
+    Tensor, TensorDataMeaning, TensorDataStore, TensorDataTypeTrait, TensorDimension, TensorId,
 };
 
 pub mod dimension_mapping;
@@ -84,6 +84,7 @@ where
     };
 
     Ok(Tensor {
+        tensor_id: TensorId::random(),
         shape,
         dtype: A::Elem::DTYPE,
         meaning,
@@ -100,6 +101,7 @@ mod tests {
     #[test]
     fn convert_tensor_to_ndarray_u8() {
         let t = Tensor {
+            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
@@ -118,6 +120,7 @@ mod tests {
     #[test]
     fn convert_tensor_to_ndarray_u16() {
         let t = Tensor {
+            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
@@ -136,6 +139,7 @@ mod tests {
     #[test]
     fn convert_tensor_to_ndarray_f32() {
         let t = Tensor {
+            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
@@ -184,6 +188,7 @@ mod tests {
     #[test]
     fn check_slices() {
         let t = Tensor {
+            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
@@ -228,6 +233,7 @@ mod tests {
     #[test]
     fn check_tensor_shape_error() {
         let t = Tensor {
+            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
@@ -251,6 +257,7 @@ mod tests {
     #[test]
     fn check_tensor_type_error() {
         let t = Tensor {
+            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),

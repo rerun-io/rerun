@@ -689,7 +689,7 @@ pub enum Transform {
 
 // ----------------------------------------------------------------------------
 
-/// A unique id per [`MeshId`].
+/// A unique id per [`Mesh3D`].
 ///
 /// TODO(emilk): this should be a hash of the mesh (CAS).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -940,12 +940,44 @@ impl std::fmt::Debug for TensorDimension {
     }
 }
 
+// ----------------------------------------------------------------------------
+
+/// A unique id per [`Tensor`].
+///
+/// TODO(emilk): this should be a hash of the tensor (CAS).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TensorId(pub uuid::Uuid);
+
+impl nohash_hasher::IsEnabled for TensorId {}
+
+// required for [`nohash_hasher`].
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for TensorId {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.0.as_u128() as u64);
+    }
+}
+
+impl TensorId {
+    #[inline]
+    pub fn random() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// An N-dimensional collection of numbers.
 ///
 /// Most often used to describe image pixels.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tensor {
+    /// Unique identifier for the tensor
+    pub tensor_id: TensorId,
+
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
     /// The order matches that of numpy etc, and is ordered so that
     /// the "tighest wound" dimension is last.

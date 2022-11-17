@@ -70,11 +70,10 @@ pub(crate) fn view_instance_generic(
                 match field_store
                     .query_field_to_datavec(&time_query, instance_id.instance_index.as_ref())
                 {
-                    Ok((time_msgid_index, data_vec)) => {
+                    Ok((_, data_vec)) => {
                         if data_vec.len() == 1 {
                             let data = data_vec.last().unwrap();
-                            let (_, msg_id) = &time_msgid_index[0];
-                            crate::data_ui::ui_data(ctx, ui, msg_id, &data, preview);
+                            crate::data_ui::ui_data(ctx, ui, &data, preview);
                         } else {
                             ui_data_vec(ui, &data_vec);
                         }
@@ -109,11 +108,10 @@ pub(crate) fn view_data(
         .store
         .query_data_path(timeline, &time_query, data_path)?
     {
-        Ok((time_msgid_index, data_vec)) => {
+        Ok((_, data_vec)) => {
             if data_vec.len() == 1 {
                 let data = data_vec.last().unwrap();
-                let (_, msg_id) = &time_msgid_index[0];
-                show_detailed_data(ctx, ui, msg_id, &data);
+                show_detailed_data(ctx, ui, &data);
             } else {
                 ui_data_vec(ui, &data_vec);
             }
@@ -130,16 +128,11 @@ pub(crate) fn view_data(
     Some(())
 }
 
-pub(crate) fn show_detailed_data(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    msg_id: &MsgId,
-    data: &Data,
-) {
+pub(crate) fn show_detailed_data(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, data: &Data) {
     if let Data::Tensor(tensor) = data {
-        crate::ui::view_2d::show_tensor(ctx, ui, msg_id, tensor);
+        crate::ui::view_2d::show_tensor(ctx, ui, tensor);
     } else {
-        crate::data_ui::ui_data(ctx, ui, msg_id, data, Preview::Medium);
+        crate::data_ui::ui_data(ctx, ui, data, Preview::Medium);
     }
 }
 
@@ -149,7 +142,7 @@ pub(crate) fn show_detailed_data_msg(
     msg: &DataMsg,
 ) {
     let DataMsg {
-        msg_id,
+        msg_id: _,
         time_point,
         data_path,
         data,
@@ -174,13 +167,13 @@ pub(crate) fn show_detailed_data_msg(
 
             if !is_image {
                 ui.monospace("data:");
-                crate::data_ui::ui_logged_data(ctx, ui, msg_id, data, Preview::Medium);
+                crate::data_ui::ui_logged_data(ctx, ui, data, Preview::Medium);
                 ui.end_row();
             }
         });
 
     if let LoggedData::Single(Data::Tensor(tensor)) = &msg.data {
-        crate::ui::view_2d::show_tensor(ctx, ui, msg_id, tensor);
+        crate::ui::view_2d::show_tensor(ctx, ui, tensor);
     }
 }
 
@@ -251,7 +244,7 @@ pub(crate) fn show_data_msg(
     preview: Preview,
 ) {
     let DataMsg {
-        msg_id,
+        msg_id: _,
         time_point,
         data_path,
         data,
@@ -270,7 +263,7 @@ pub(crate) fn show_data_msg(
             ui.end_row();
 
             ui.monospace("data:");
-            ui_logged_data(ctx, ui, msg_id, data, preview);
+            ui_logged_data(ctx, ui, data, preview);
             ui.end_row();
         });
 }
@@ -317,18 +310,17 @@ pub(crate) fn ui_time_point(
 pub(crate) fn ui_logged_data(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    msg_id: &MsgId,
     data: &LoggedData,
     preview: Preview,
 ) -> egui::Response {
     match data {
         LoggedData::Null(data_type) => ui.label(format!("null: {:?}", data_type)),
         LoggedData::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
-        LoggedData::Single(data) => ui_data(ctx, ui, msg_id, data, preview),
+        LoggedData::Single(data) => ui_data(ctx, ui, data, preview),
         LoggedData::BatchSplat(data) => {
             ui.horizontal(|ui| {
                 ui.label("Batch Splat:");
-                ui_data(ctx, ui, msg_id, data, preview)
+                ui_data(ctx, ui, data, preview)
             })
             .response
         }
@@ -338,7 +330,6 @@ pub(crate) fn ui_logged_data(
 pub(crate) fn ui_data(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    msg_id: &MsgId,
     data: &Data,
     preview: Preview,
 ) -> egui::Response {
@@ -382,7 +373,7 @@ pub(crate) fn ui_data(
         Data::AnnotationContext(context) => ui_annotation_context(ui, context),
 
         Data::Tensor(tensor) => {
-            let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
+            let tensor_view = ctx.cache.image.get_view(tensor);
 
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {

@@ -19,7 +19,6 @@ use super::AnnotationMap;
 // TODO(cmc): just turn all colors into Color32?
 
 pub struct Image {
-    pub msg_id: MsgId,
     pub instance_hash: InstanceIdHash,
 
     pub tensor: Tensor,
@@ -140,7 +139,7 @@ impl Scene2D {
                     ("_visible", "color", "meter"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
-                     msg_id: &MsgId,
+                     _msg_id: &MsgId,
                      tensor: &re_log_types::Tensor,
                      visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
@@ -162,7 +161,6 @@ impl Scene2D {
                         );
 
                         let image = Image {
-                            msg_id: *msg_id,
                             instance_hash: InstanceIdHash::from_path_and_index(
                                 obj_path,
                                 instance_index,
