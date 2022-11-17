@@ -82,7 +82,7 @@ impl ObjDb {
                         self.add_data_msg(
                             msg_id,
                             &time_point,
-                            &data_path,
+                            data_path,
                             &LoggedData::Null(data.data_type()),
                         );
                     }
@@ -90,7 +90,7 @@ impl ObjDb {
                         self.add_data_msg(
                             msg_id,
                             &time_point,
-                            &data_path,
+                            data_path,
                             &LoggedData::Batch {
                                 indices: BatchIndex::SequentialIndex(0),
                                 data: DataVec::empty_from_data_type(data.data_type()),

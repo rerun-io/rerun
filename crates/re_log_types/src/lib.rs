@@ -388,8 +388,7 @@ pub enum PathOp {
 impl PathOp {
     pub fn obj_path(&self) -> &ObjPath {
         match &self {
-            PathOp::ClearFields(path) => path,
-            PathOp::ClearRecursive(path) => path,
+            PathOp::ClearFields(path) | PathOp::ClearRecursive(path) => path,
         }
     }
 }
