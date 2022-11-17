@@ -163,10 +163,6 @@ impl Sdk {
         }
     }
 
-    pub fn lookup_type(&self, obj_type_path: &ObjTypePath) -> Option<ObjectType> {
-        self.registered_types.get(obj_type_path).copied()
-    }
-
     pub fn send(&mut self, log_msg: LogMsg) {
         if !self.has_sent_begin_recording_msg {
             if let Some(recording_id) = self.recording_id {
