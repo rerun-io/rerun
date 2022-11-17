@@ -20,6 +20,7 @@ EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
 
 if EXP_ARROW:
     import pyarrow as pa
+    from . import components
 
 
 def rerun_shutdown() -> None:
@@ -336,29 +337,11 @@ def log_rect(
         # TODO(jleibs): type registry?
         # TODO(jleibs): proper handling of rect_format
 
-        rect_field = pa.field(
-            name="rect",
-            type=pa.struct([("x", pa.float32()), ("y", pa.float32()), ("w", pa.float32()), ("h", pa.float32())]),
-            nullable=False,
-            metadata={
-                "ARROW:extension:name": "rerun.rect",
-            },
-        )
-
-        color_field = pa.field(
-            name="rgbacolor",
-            type=pa.uint32(),
-            nullable=False,
-            metadata={
-                "ARROW:extension:name": "rerun.rgbacolor",
-            },
-        )
-
-        rect_arr = pa.array([tuple(rect) if rect else None], type=rect_field.type)
+        rect_arr = pa.array([[tuple(rect)] if rect else None], type=components.RectField.type)
         colors = _normalize_colors(color)
-        color_arr = pa.array([u8_array_to_rgba(colors) if color else None], type=color_field.type)
+        color_arr = pa.array([[u8_array_to_rgba(colors)] if color else None], type=components.ColorField.type)
 
-        arr = pa.StructArray.from_arrays([rect_arr, color_arr], fields=[rect_field, color_field])
+        arr = pa.StructArray.from_arrays([rect_arr, color_arr], fields=[components.RectField, components.ColorField])
         print(arr)
         rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
 
@@ -401,6 +384,14 @@ def log_rects(
         labels = []
 
     rerun_sdk.log_rects(obj_path, rect_format.value, rects, colors, labels, timeless)
+
+    if EXP_ARROW:
+        # TODO(jleibs) find the right build in np -> pa convrsoin for this
+        rect_arr = pa.array([[tuple(rect) for rect in rects]], type=components.RectField.type)
+        color_arr = pa.array([[u8_array_to_rgba(color) for color in colors]], type=components.ColorField.type)
+        arr = pa.StructArray.from_arrays([rect_arr, color_arr], fields=[components.RectField, components.ColorField])
+        print(arr)
+        rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
 
 
 def log_point(
