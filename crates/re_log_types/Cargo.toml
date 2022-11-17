@@ -23,7 +23,7 @@ puffin = ["dep:puffin"]
 save = ["anyhow", "rmp-serde", "serde", "zstd"]
 
 ## Enable (de)serialization using serde.
-serde = ["dep:serde", "re_string_interner/serde"]
+serde = ["dep:serde", "re_string_interner/serde", "re_tuid/serde"]
 
 
 [dependencies]
@@ -35,6 +35,7 @@ document-features = "0.2"
 nohash-hasher = "0.2"
 re_log = { path = "../re_log" }
 re_string_interner = { path = "../re_string_interner" }
+re_tuid = { path = "../re_tuid", features = ["nohash-hasher"] }
 thiserror = "1.0"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 

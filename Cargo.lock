@@ -3047,6 +3047,7 @@ dependencies = [
  "puffin",
  "re_log",
  "re_string_interner",
+ "re_tuid",
  "rmp-serde",
  "ruzstd",
  "serde",
