@@ -929,7 +929,7 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
     If `recursive` is True this will also clear all sub-paths
     """
-    rerun_rs.log_cleared(obj_path, recursive)
+    rerun_sdk.log_cleared(obj_path, recursive)
 
 
 @dataclass
