@@ -41,6 +41,7 @@ eframe = { version = "0.19", default-features = false, features = [
 ] }
 egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { version = "0.19", features = ["tracing"] }
+egui-wgpu = "0.19"
 
 ahash = "0.8"
 anyhow = "1.0"
@@ -75,9 +76,7 @@ smallvec = "1.10"
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
-
-egui-wgpu = { version = "0.19" }
-wgpu = { version = "0.14" }
+wgpu = "0.14"
 
 
 # native dependencies:
