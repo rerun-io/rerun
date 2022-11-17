@@ -82,7 +82,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rerun.init("plot2")
+    rerun.init("plot")
 
     if args.serve:
         rerun.serve()

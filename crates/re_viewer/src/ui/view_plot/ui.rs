@@ -8,6 +8,12 @@ use super::ScenePlot;
 
 // ---
 
+pub(crate) const HELP_TEXT: &str = "Pan by dragging, or scroll (+ shift = horizontal).\n\
+    Box zooming: Right click to zoom in and zoom out using a selection.\n\
+    Drag with middle mouse button to roll the view.\n\
+    Zoom with ctrl / ⌘ + pointer wheel, or with pinch gesture.\n\
+    Reset view with double-click.";
+
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct ViewPlotState;
 
@@ -20,16 +26,25 @@ pub(crate) fn view_plot(
     crate::profile_function!();
 
     let time_query = ctx.rec_cfg.time_ctrl.time_query().unwrap();
+    let time_type = ctx.rec_cfg.time_ctrl.time_type();
     let x_axis = ctx.rec_cfg.time_ctrl.timeline().name().to_string();
 
     Plot::new("plot")
-        .legend(Legend::default())
+        .legend(Legend {
+            position: egui::plot::Corner::RightBottom,
+            ..Default::default()
+        })
+        .x_axis_formatter(move |time, _| time_type.format((time as i64).into()))
         .label_formatter(move |name, value| {
             let name = if name.is_empty() { "y" } else { name };
-            format!("{x_axis}: {:.0}\n{name}: {:.0}", value.x, value.y)
+            format!(
+                "{x_axis}: {}\n{name}: {:.5}",
+                time_type.format((value.x as i64).into()),
+                value.y
+            )
         })
         .show(ui, |plot_ui| {
-            if plot_ui.plot_clicked() {
+            if plot_ui.plot_secondary_clicked() {
                 let timeline = ctx.rec_cfg.time_ctrl.timeline();
                 ctx.rec_cfg
                     .time_ctrl

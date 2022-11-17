@@ -201,7 +201,7 @@ impl ViewState {
                 })
                 .response;
 
-            show_help_button_overlay(ui, response.rect, ctx, super::view_3d::HELP_TEXT);
+            show_help_button_overlay(ui, response.rect, ctx, view_3d::HELP_TEXT);
         })
         .response
     }
@@ -239,7 +239,16 @@ impl ViewState {
         ui: &mut egui::Ui,
         scene: &view_plot::ScenePlot,
     ) -> egui::Response {
-        view_plot::view_plot(ctx, ui, &mut self.state_plot, scene)
+        ui.vertical(|ui| {
+            let response = ui
+                .scope(|ui| {
+                    view_plot::view_plot(ctx, ui, &mut self.state_plot, scene);
+                })
+                .response;
+
+            show_help_button_overlay(ui, response.rect, ctx, view_plot::HELP_TEXT);
+        })
+        .response
     }
 }
 

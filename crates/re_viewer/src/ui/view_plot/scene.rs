@@ -19,10 +19,9 @@ impl PartialEq for PlotPointAttrs {
             radius,
             scattered,
         } = self;
-        use eframe::epaint::util::FloatOrd as _;
         label.eq(&rhs.label)
             && color.eq(&rhs.color)
-            && radius.ord().eq(&rhs.radius.ord())
+            && radius.total_cmp(&rhs.radius).is_eq()
             && scattered.eq(&rhs.scattered)
     }
 }
@@ -42,7 +41,7 @@ pub enum PlotLineKind {
 }
 
 #[derive(Clone, Debug)]
-pub struct PlotLine {
+pub struct PlotSeries {
     pub label: String,
     pub color: [u8; 4],
     pub width: f32,
@@ -53,7 +52,7 @@ pub struct PlotLine {
 /// A plot scene, with everything needed to render it.
 #[derive(Default, Debug)]
 pub struct ScenePlot {
-    pub lines: Vec<PlotLine>,
+    pub lines: Vec<PlotSeries>,
 }
 
 impl ScenePlot {
@@ -116,81 +115,81 @@ impl ScenePlot {
             // If all points within a line share the label (and it isn't `None`), then we use it
             // as the whole line label for the plot legend.
             // Otherwise, we just use the object path as-is.
-            let line_label = 'label: {
+            let same_label = |points: &[PlotPoint]| {
                 let label = points[0].attrs.label.as_ref();
-                if label.is_some() && points.iter().all(|p| p.attrs.label.as_ref() == label) {
-                    break 'label label.cloned().unwrap();
-                }
-                obj_path.to_string()
+                (label.is_some() && points.iter().all(|p| p.attrs.label.as_ref() == label))
+                    .then(|| label.cloned().unwrap())
             };
+            let line_label = same_label(&points).unwrap_or_else(|| obj_path.to_string());
 
-            // We have a bunch of raw points, and now we need to group them into actual lines.
-            // A line is a continuous run of points with similar attributes: each time we notice
-            // a change in attributes, we need a new line segment.
+            self.add_line_segments(&line_label, points);
+        }
+    }
 
-            let mut attrs = points[0].attrs.clone();
-            let mut nb_points = points.len();
+    // We have a bunch of raw points, and now we need to group them into actual line
+    // segments.
+    // A line segment is a continuous run of points with identical attributes: each time
+    // we notice a change in attributes, we need a new line segment.
+    fn add_line_segments(&mut self, line_label: &str, points: Vec<PlotPoint>) {
+        let nb_points = points.len();
+        let mut attrs = points[0].attrs.clone();
+        let mut line: Option<PlotSeries> = Some(PlotSeries {
+            label: line_label.to_owned(),
+            color: attrs.color,
+            width: attrs.radius,
+            kind: if attrs.scattered {
+                PlotLineKind::Scatter
+            } else {
+                PlotLineKind::Continuous
+            },
+            points: Vec::with_capacity(nb_points),
+        });
 
-            let mut line: Option<PlotLine> = Some(PlotLine {
-                label: line_label.clone(),
-                color: attrs.color,
-                width: attrs.radius,
-                kind: if attrs.scattered {
+        for (i, p) in points.into_iter().enumerate() {
+            if p.attrs == attrs {
+                // Same attributes, just add to the current line segment.
+
+                line.as_mut().unwrap().points.push((p.time, p.value));
+            } else {
+                // Attributes changed since last point, break up the current run into a
+                // line segment, and start the next one.
+
+                let taken = line.take().unwrap();
+                self.lines.push(taken);
+
+                attrs = p.attrs.clone();
+                let kind = if attrs.scattered {
                     PlotLineKind::Scatter
                 } else {
                     PlotLineKind::Continuous
-                },
-                points: Vec::with_capacity(nb_points),
-            });
+                };
+                line = Some(PlotSeries {
+                    label: line_label.to_owned(),
+                    color: attrs.color,
+                    width: attrs.radius,
+                    kind,
+                    points: Vec::with_capacity(nb_points - i),
+                });
 
-            for p in points {
-                if p.attrs == attrs {
-                    // Similar attributes, just add to the current line segment.
+                let prev_line = self.lines.last().unwrap();
+                let prev_point = *prev_line.points.last().unwrap();
 
-                    line.as_mut().unwrap().points.push((p.time, p.value));
-                } else {
-                    // Attributes changed since last point, break up the current run into a
-                    // line segment, and start the next one.
-
-                    let taken = line.take().unwrap();
-
-                    nb_points = nb_points.saturating_sub(taken.points.len());
-                    self.lines.push(taken);
-
-                    attrs = p.attrs.clone();
-                    let kind = if attrs.scattered {
-                        PlotLineKind::Scatter
-                    } else {
-                        PlotLineKind::Continuous
-                    };
-                    line = Some(PlotLine {
-                        label: line_label.clone(),
-                        color: attrs.color,
-                        width: attrs.radius,
-                        kind,
-                        points: Vec::with_capacity(nb_points),
-                    });
-
-                    let prev_line = self.lines.last().unwrap();
-                    let prev_point = *prev_line.points.last().unwrap();
-
-                    // If the previous point was continous and the current point is continuous
-                    // too, then we want the 2 segments to appear continuous even though they
-                    // are actually split from a data standpoint.
-                    let cur_continuous = matches!(kind, PlotLineKind::Continuous);
-                    let prev_continuous = matches!(kind, PlotLineKind::Continuous);
-                    if cur_continuous && prev_continuous {
-                        line.as_mut().unwrap().points.push(prev_point);
-                    }
-
-                    // Add the point that triggered the split to the new segment.
-                    line.as_mut().unwrap().points.push((p.time, p.value));
+                // If the previous point was continous and the current point is continuous
+                // too, then we want the 2 segments to appear continuous even though they
+                // are actually split from a data standpoint.
+                let cur_continuous = matches!(kind, PlotLineKind::Continuous);
+                let prev_continuous = matches!(kind, PlotLineKind::Continuous);
+                if cur_continuous && prev_continuous {
+                    line.as_mut().unwrap().points.push(prev_point);
                 }
-            }
 
-            if !line.as_ref().unwrap().points.is_empty() {
-                self.lines.push(line.take().unwrap());
+                // Add the point that triggered the split to the new segment.
+                line.as_mut().unwrap().points.push((p.time, p.value));
             }
+        }
+
+        if !line.as_ref().unwrap().points.is_empty() {
+            self.lines.push(line.take().unwrap());
         }
     }
 }
