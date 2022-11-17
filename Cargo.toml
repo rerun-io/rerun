@@ -28,13 +28,11 @@ debug = true
 eframe = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
 egui = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
 egui_extras = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
 egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
 
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
 # egui_extras = { path = "../../egui/crates/egui_extras" }
-# egui_glow = { path = "../../egui/crates/egui_glow" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357

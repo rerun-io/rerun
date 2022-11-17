@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = ["puffin", "wgpu"]
+default = ["puffin"]
 
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
 puffin = [
@@ -20,22 +20,8 @@ puffin = [
   "dep:puffin_http",
   "eframe/puffin",
   "re_log_types/puffin",
-  "re_renderer?/puffin",
+  "re_renderer/puffin",
 ]
-
-#! #### Rendering backends
-#! You must enable either `glow` or `wgpu`.
-## Enable the [`glow`](https://crates.io/crates/glow) renderer.
-glow = [
-  "eframe/glow",
-  "dep:egui_glow",
-  "dep:glow",
-  "dep:three-d",
-  "dep:three-d-asset",
-]
-
-## Enable the [`wgpu`](https://crates.io/crates/wgpu) renderer.
-wgpu = ["eframe/wgpu", "dep:egui-wgpu", "dep:re_renderer", "dep:wgpu"]
 
 
 [dependencies]
@@ -46,17 +32,16 @@ re_log_types = { path = "../re_log_types", features = ["glam", "save", "load"] }
 re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
-# TODO(cmc): remove the hardcoded `puffin` feature once re_renderer isn't optional anymore.
-re_renderer = { path = "../re_renderer", optional = true, features = [
-  "puffin",
-] }
+re_renderer = { path = "../re_renderer" }
 
 eframe = { version = "0.19", default-features = false, features = [
   "default_fonts",
   "persistence",
+  "wgpu",
 ] }
 egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { version = "0.19", features = ["tracing"] }
+egui-wgpu = "0.19"
 
 ahash = "0.8"
 anyhow = "1.0"
@@ -91,21 +76,7 @@ smallvec = "1.10"
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
-
-# Optional dependencies:
-egui_glow = { version = "0.19", optional = true }
-glow = { version = "0.11", optional = true }
-three-d = { version = "0.13.0", optional = true, default-features = false }
-three-d-asset = { version = "0.3.0", optional = true, default-features = false, features = [
-  "gltf",
-  "image",
-  "jpeg",
-  "obj",
-  "png",
-] }
-
-egui-wgpu = { version = "0.19", optional = true }
-wgpu = { version = "0.14", optional = true }
+wgpu = "0.14"
 
 
 # native dependencies:

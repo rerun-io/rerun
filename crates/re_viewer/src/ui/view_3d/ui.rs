@@ -11,9 +11,6 @@ use crate::{
 
 use super::{Eye, LineSegments3D, OrbitEye, Point3D, Scene3D, Size, SpaceCamera};
 
-#[cfg(feature = "glow")]
-use super::glow_rendering;
-
 // ---
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
@@ -411,14 +408,14 @@ pub(crate) fn view_3d(
         hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
     );
 
-    paint_view(ui, eye, rect, scene, state, response)
+    paint_view(ui, eye, rect, &scene, state, response)
 }
 
 fn paint_view(
     ui: &mut egui::Ui,
     eye: Eye,
     rect: egui::Rect,
-    scene: Scene3D,
+    scene: &Scene3D,
     _state: &mut View3DState,
     response: egui::Response,
 ) -> egui::Response {
@@ -462,8 +459,7 @@ fn paint_view(
         },
     );
 
-    #[cfg(feature = "wgpu")]
-    let _callback = {
+    let callback = {
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
         use re_renderer::RenderContext;
@@ -587,24 +583,6 @@ fn paint_view(
             ),
         }
     };
-    #[cfg(not(feature = "glow"))]
-    let callback = _callback;
-
-    #[cfg(feature = "glow")]
-    let callback = {
-        let dark_mode = ui.visuals().dark_mode;
-        let show_axes = _state.show_axes;
-        egui::PaintCallback {
-            rect,
-            callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
-                glow_rendering::with_three_d_context(painter.gl(), |rendering| {
-                    glow_rendering::paint_with_three_d(
-                        rendering, &eye, &info, &scene, dark_mode, show_axes, painter,
-                    );
-                });
-            })),
-        }
-    };
 
     ui.painter().add(callback);
 
@@ -643,7 +621,6 @@ fn show_projections_from_2d_space(
                         segments: vec![(origin, end)],
                         radius,
                         color: [255; 4],
-                        #[cfg(feature = "wgpu")]
                         flags: Default::default(),
                     });
 
