@@ -141,12 +141,6 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           rust-version: "1.65.0"
-          # NOTE(cmc): run_wasm relies on the wasm-bindgen infrastructure of crates, which uses
-          # much older versions of common crates than we do.
-          # This is not really an issue for two reasons:
-          # 1. `run_wasm` is temporary while we build our own xtask/build tools
-          # 2. those dependencies never end up in an actual binary
-          arguments: --exclude run_wasm
 
 
   rs-maturin-linux:
