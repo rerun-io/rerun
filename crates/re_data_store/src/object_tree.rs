@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
-    mem,
-};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use itertools::Itertools;
 use re_log_types::*;
@@ -19,8 +16,8 @@ pub struct ObjectTree {
     pub prefix_times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
 
     /// Book-keeping around whether we should clear fields when data is added
-    pub field_clears: BTreeMap<MsgId, TimePoint>,
-    /// Book-keepign around whether we should clear recursively when data is added
+    pub nonrecursive_clears: BTreeMap<MsgId, TimePoint>,
+    /// Book-keeping around whether we should clear recursively when data is added
     pub recursive_clears: BTreeMap<MsgId, TimePoint>,
 
     /// Data logged at this object path.
@@ -37,7 +34,7 @@ impl ObjectTree {
             path,
             children: Default::default(),
             prefix_times: Default::default(),
-            field_clears: recursive_clears.clone(),
+            nonrecursive_clears: recursive_clears.clone(),
             recursive_clears,
             fields: Default::default(),
         }
@@ -60,31 +57,25 @@ impl ObjectTree {
         time_point: &TimePoint,
         data_path: &DataPath,
         data: &LoggedData,
-    ) -> Vec<(MsgId, TimePoint, DataPath)> {
+    ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
         let obj_path = data_path.obj_path.to_components();
 
         let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, msg_id, time_point);
 
-        let fields = leaf
-            .fields
-            .entry(data_path.field_name)
-            .or_insert_with(|| DataColumns {
-                pending_clears: leaf.field_clears.clone(),
-                ..Default::default()
-            });
+        let mut pending_clears = vec![];
+
+        let fields = leaf.fields.entry(data_path.field_name).or_insert_with(|| {
+            // If we needed to create a new leaf to hold this data, we also want to
+            // insert all of the historical pending clear operations
+            pending_clears = leaf.nonrecursive_clears.clone().into_iter().collect_vec();
+
+            Default::default()
+        });
 
         fields.add(msg_id, time_point, data);
 
-        if !fields.pending_clears.is_empty() {
-            let pending_clears = mem::take(&mut fields.pending_clears);
-            pending_clears
-                .into_iter()
-                .map(|(msg_id, time_point)| (msg_id, time_point, data_path.clone()))
-                .collect_vec()
-        } else {
-            vec![]
-        }
+        pending_clears
     }
 
     /// Add a path operation into the the object tree
@@ -98,41 +89,18 @@ impl ObjectTree {
         path_op: &PathOp,
     ) -> Vec<(DataPath, DataType, MonoOrMulti)> {
         crate::profile_function!();
-        let obj_path = match path_op {
-            PathOp::ClearField(data_path) => data_path.obj_path(),
-            PathOp::ClearFields(obj_path) | PathOp::ClearRecursive(obj_path) => obj_path,
-        }
-        .to_components();
+
+        let obj_path = path_op.obj_path().to_components();
 
         // Look up the leaf at which we will execute the path operation
         let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, msg_id, time_point);
 
         // TODO(jleibs): Refactor this as separate functions
         match path_op {
-            PathOp::ClearField(data_path) => {
-                let fields = leaf.fields.entry(data_path.field_name).or_default();
-
-                // If we don't have any type information, store this as a pending clear-operation
-                // on the specific field.
-                if fields.per_type.is_empty() {
-                    fields
-                        .pending_clears
-                        .entry(msg_id)
-                        .or_insert_with(|| time_point.clone());
-                }
-
-                fields
-                    .per_type
-                    .iter()
-                    .map(|((data_type, multi_or_mono), _)| {
-                        (data_path.clone(), *data_type, *multi_or_mono)
-                    })
-                    .collect_vec()
-            }
             PathOp::ClearFields(obj_path) => {
                 // Track that any new fields need a Null at the right
                 // time-point when added.
-                leaf.field_clears
+                leaf.nonrecursive_clears
                     .entry(msg_id)
                     .or_insert_with(|| time_point.clone());
 
@@ -166,7 +134,7 @@ impl ObjectTree {
                         .entry(msg_id)
                         .or_insert_with(|| time_point.clone());
 
-                    next.field_clears
+                    next.nonrecursive_clears
                         .entry(msg_id)
                         .or_insert_with(|| time_point.clone());
 
@@ -250,8 +218,6 @@ pub struct DataColumns {
     /// When do we have data?
     pub times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
     pub per_type: HashMap<(DataType, MonoOrMulti), BTreeSet<MsgId>>,
-    /// This field was cleared at this point in time
-    pub pending_clears: BTreeMap<MsgId, TimePoint>,
 }
 
 impl DataColumns {

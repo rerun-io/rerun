@@ -379,12 +379,19 @@ pub struct PathOpMsg {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum PathOp {
-    // Clear a single field at a [`DataPath`]
-    ClearField(DataPath),
     // Clear all the fields stored at an [`ObjPath`]
     ClearFields(ObjPath),
     // Clear all the fields of an `[ObjPath]` and any descendents.
     ClearRecursive(ObjPath),
+}
+
+impl PathOp {
+    pub fn obj_path(&self) -> &ObjPath {
+        match &self {
+            PathOp::ClearFields(path) => path,
+            PathOp::ClearRecursive(path) => path,
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

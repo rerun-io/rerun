@@ -74,7 +74,7 @@ impl ObjDb {
         let pending_clears = self.tree.add_data_msg(msg_id, time_point, data_path, data);
 
         // Since we now know the type, we can retroactively add any collected nulls at the correct timestamps
-        for (msg_id, time_point, data_path) in pending_clears {
+        for (msg_id, time_point) in pending_clears {
             if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
                 // TODO(jleibs) After we reconcile Mono & Multi objects this can be simplified to just use Null
                 match data {

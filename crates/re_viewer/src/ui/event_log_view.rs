@@ -189,13 +189,8 @@ fn table_row(
                     }
                 });
             }
-            row.col(|ui| match path_op {
-                PathOp::ClearField(data_path) => {
-                    ctx.data_path_button(ui, data_path);
-                }
-                PathOp::ClearFields(obj_path) | PathOp::ClearRecursive(obj_path) => {
-                    ctx.obj_path_button(ui, obj_path);
-                }
+            row.col(|ui| {
+                ctx.obj_path_button(ui, path_op.obj_path());
             });
             row.col(|ui| {
                 crate::data_ui::ui_path_op(ctx, ui, path_op);

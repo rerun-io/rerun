@@ -563,7 +563,6 @@ pub(crate) fn ui_path_op(
     path_op: &PathOp,
 ) -> egui::Response {
     match path_op {
-        PathOp::ClearField(data_path) => ui.label(format!("ClearField: {data_path}")),
         PathOp::ClearFields(obj_path) => ui.label(format!("ClearFields: {obj_path}")),
         PathOp::ClearRecursive(obj_path) => ui.label(format!("ClearRecursive: {obj_path}")),
     }
