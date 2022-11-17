@@ -836,6 +836,31 @@ impl Scene3D {
         line_strips
     }
 
+    pub fn meshes(&self) -> Vec<MeshInstance> {
+        crate::profile_function!();
+        self.meshes
+            .iter()
+            .flat_map(|mesh| {
+                let (scale, rotation, translation) =
+                    mesh.world_from_mesh.to_scale_rotation_translation();
+                // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
+                let base_transform = macaw::Conformal3::from_scale_rotation_translation(
+                    re_renderer::importer::to_uniform_scale(scale),
+                    rotation,
+                    translation,
+                );
+                mesh.cpu_mesh
+                    .mesh_instances
+                    .iter()
+                    .map(move |instance| MeshInstance {
+                        mesh: instance.mesh,
+                        world_from_mesh: base_transform * instance.world_from_mesh,
+                        additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
+                    })
+            })
+            .collect()
+    }
+
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
         crate::profile_function!();

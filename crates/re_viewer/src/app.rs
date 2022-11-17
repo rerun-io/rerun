@@ -318,10 +318,7 @@ impl eframe::App for App {
         self.handle_dropping_files(egui_ctx);
         self.toasts.show(egui_ctx);
 
-        if let Some(render_state) = frame.wgpu_render_state() {
-            // TODO(andreas): the re_renderer should always know/hold on to queue and device.
-            render_ctx.frame_maintenance(&render_state.device);
-        }
+        render_ctx.frame_maintenance();
     }
 }
 
