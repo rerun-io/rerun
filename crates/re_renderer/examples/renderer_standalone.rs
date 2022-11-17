@@ -79,7 +79,6 @@ fn draw_views(
         view_from_world,
         fov_y: 70.0 * TAU / 360.0,
         near_plane_distance: 0.01,
-        target_identifier: 0,
     };
 
     let triangle = TestTriangleDrawable::new(re_ctx);

@@ -148,7 +148,7 @@ mod gpu_data {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct LineDrawable {
-    bind_group: GpuBindGroupHandleStrong,
+    bind_group: Option<GpuBindGroupHandleStrong>,
     num_quads: u32,
 }
 
@@ -197,6 +197,11 @@ pub struct LineStrip {
 }
 
 impl LineDrawable {
+    /// Transforms and uploads line strip data to be consumed by gpu.
+    ///
+    /// Try to bundle all line strips into a single drawable whenever possible.
+    /// As with all drawables, data is alive only for a single frame!
+    /// If you pass zero lines instances, subsequent drawing will do nothing.
     pub fn new(ctx: &mut RenderContext, line_strips: &[LineStrip]) -> anyhow::Result<Self> {
         let line_renderer = ctx.renderers.get_or_create::<_, LineRenderer>(
             &ctx.shared_renderer_data,
@@ -204,6 +209,13 @@ impl LineDrawable {
             &ctx.device,
             &mut ctx.resolver,
         );
+
+        if line_strips.is_empty() {
+            return Ok(LineDrawable {
+                bind_group: None,
+                num_quads: 0,
+            });
+        }
 
         // Textures are 2D since 1D textures are very limited in size (8k typically).
         // Need to keep these values in sync with lines.wgsl!
@@ -377,7 +389,7 @@ impl LineDrawable {
         );
 
         Ok(LineDrawable {
-            bind_group: ctx.resource_pools.bind_groups.alloc(
+            bind_group: Some(ctx.resource_pools.bind_groups.alloc(
                 &ctx.device,
                 &BindGroupDesc {
                     label: "line drawable".into(),
@@ -391,7 +403,7 @@ impl LineDrawable {
                 &ctx.resource_pools.textures,
                 &ctx.resource_pools.buffers,
                 &ctx.resource_pools.samplers,
-            ),
+            )),
             num_quads,
         })
     }
@@ -498,8 +510,11 @@ impl Renderer for LineRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
+        let Some(bind_group) = &draw_data.bind_group else {
+            return Ok(()); // No lines submitted.
+        };
+        let bind_group = pools.bind_groups.get_resource(bind_group)?;
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
-        let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;
 
         pass.set_pipeline(&pipeline.pipeline);
         pass.set_bind_group(1, &bind_group.bind_group, &[]);

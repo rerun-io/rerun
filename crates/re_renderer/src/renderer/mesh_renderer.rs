@@ -79,7 +79,7 @@ pub struct MeshDrawable {
     // There is a single instance buffer for all instances of all meshes.
     // This means we only ever need to bind the instance buffer once and then change the
     // instance range on every instanced draw call!
-    instance_buffer: GpuBufferHandleStrong,
+    instance_buffer: Option<GpuBufferHandleStrong>,
     batches: Vec<MeshBatch>,
 }
 
@@ -97,6 +97,12 @@ pub struct MeshInstance {
 }
 
 impl MeshDrawable {
+    /// Transforms and uploads mesh instance data to be consumed by gpu.
+    ///
+    /// Try bundling all mesh instances into a single drawable whenever possible.
+    /// As with all drawables, data is alive only for a single frame!
+    /// If you pass zero mesh instances, subsequent drawing will do nothing.
+    /// Mesh data itself is gpu uploaded if not already present.
     pub fn new(ctx: &mut RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
         crate::profile_function!();
 
@@ -106,6 +112,13 @@ impl MeshDrawable {
             &ctx.device,
             &mut ctx.resolver,
         );
+
+        if instances.is_empty() {
+            return Ok(MeshDrawable {
+                batches: Vec::new(),
+                instance_buffer: None,
+            });
+        }
 
         // Group by mesh to facilitate instancing.
 
@@ -166,7 +179,7 @@ impl MeshDrawable {
 
         Ok(MeshDrawable {
             batches: batches?,
-            instance_buffer,
+            instance_buffer: Some(instance_buffer),
         })
     }
 }
@@ -269,10 +282,14 @@ impl Renderer for MeshRenderer {
     ) -> anyhow::Result<()> {
         crate::profile_function!();
 
+        let Some(instance_buffer) = &draw_data.instance_buffer else {
+            return Ok(()); // Instance buffer was empty.
+        };
+
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         pass.set_pipeline(&pipeline.pipeline);
 
-        let instance_buffer = pools.buffers.get_resource(&draw_data.instance_buffer)?;
+        let instance_buffer = pools.buffers.get_resource(instance_buffer)?;
         pass.set_vertex_buffer(0, instance_buffer.buffer.slice(..));
         let mut instance_start_index = 0;
 

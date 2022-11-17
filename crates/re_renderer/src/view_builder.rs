@@ -56,10 +56,6 @@ pub struct TargetConfiguration {
 
     pub fov_y: f32,
     pub near_plane_distance: f32,
-
-    /// Every target needs an individual as persistent as possible identifier.
-    /// This is used to facilitate easier resource re-use.
-    pub target_identifier: u64,
 }
 
 impl ViewBuilder {
@@ -93,10 +89,6 @@ impl ViewBuilder {
         mask: !0,
         alpha_to_coverage_enabled: false,
     };
-
-    pub fn new_shared() -> SharedViewBuilder {
-        Arc::new(RwLock::new(Some(ViewBuilder::default())))
-    }
 
     pub fn setup_view(
         &mut self,
