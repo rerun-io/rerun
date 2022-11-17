@@ -138,7 +138,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: EmbarkStudios/cargo-deny-action@v1
+      - uses: rerun-io/cargo-deny-action@1c79bb84606a6e71145edbfd4105404783914c85
         with:
           rust-version: "1.65.0"
           arguments: --log-level error
