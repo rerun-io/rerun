@@ -71,7 +71,65 @@ impl ObjDb {
             re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 
-        self.tree.add_data_msg(msg_id, time_point, data_path, data);
+        let pending_clears = self.tree.add_data_msg(msg_id, time_point, data_path, data);
+
+        // Since we now know the type, we can retroactively add any collected nulls at the correct timestamps
+        for (msg_id, time_point) in pending_clears {
+            if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
+                // TODO(jleibs) After we reconcile Mono & Multi objects this can be simplified to just use Null
+                match data {
+                    LoggedData::Null(_) | LoggedData::Single(_) => {
+                        self.add_data_msg(
+                            msg_id,
+                            &time_point,
+                            data_path,
+                            &LoggedData::Null(data.data_type()),
+                        );
+                    }
+                    LoggedData::Batch { .. } | LoggedData::BatchSplat(_) => {
+                        self.add_data_msg(
+                            msg_id,
+                            &time_point,
+                            data_path,
+                            &LoggedData::Batch {
+                                indices: BatchIndex::SequentialIndex(0),
+                                data: DataVec::empty_from_data_type(data.data_type()),
+                            },
+                        );
+                    }
+                };
+            }
+        }
+    }
+
+    fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
+        let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
+
+        for (data_path, data_type, mono_or_multi) in cleared_paths {
+            if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
+                match mono_or_multi {
+                    crate::MonoOrMulti::Mono => {
+                        self.add_data_msg(
+                            msg_id,
+                            time_point,
+                            &data_path,
+                            &LoggedData::Null(data_type),
+                        );
+                    }
+                    crate::MonoOrMulti::Multi => {
+                        self.add_data_msg(
+                            msg_id,
+                            time_point,
+                            &data_path,
+                            &LoggedData::Batch {
+                                indices: BatchIndex::SequentialIndex(0),
+                                data: DataVec::empty_from_data_type(data_type),
+                            },
+                        );
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -128,6 +186,14 @@ impl LogDb {
                     data,
                 } = msg;
                 self.add_data_msg(*msg_id, time_point, data_path, data);
+            }
+            LogMsg::PathOpMsg(msg) => {
+                let PathOpMsg {
+                    msg_id,
+                    time_point,
+                    path_op,
+                } = msg;
+                self.obj_db.add_path_op(*msg_id, time_point, path_op);
             }
         }
         self.chronological_message_ids.push(msg.id());

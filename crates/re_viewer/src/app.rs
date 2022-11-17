@@ -905,7 +905,8 @@ fn save_database_to_file(
                 .filter(|msg| {
                     match msg {
                         LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true, // timeless
-                        LogMsg::DataMsg(DataMsg { time_point, .. }) => {
+                        LogMsg::DataMsg(DataMsg { time_point, .. })
+                        | LogMsg::PathOpMsg(PathOpMsg { time_point, .. }) => {
                             time_point.is_timeless() || {
                                 let is_within_range = time_point
                                     .0

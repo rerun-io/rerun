@@ -461,6 +461,33 @@ impl DataVec {
         }
     }
 
+    pub fn empty_from_data_type(data_type: DataType) -> Self {
+        match data_type {
+            DataType::Bool => Self::Bool(vec![]),
+            DataType::I32 => Self::I32(vec![]),
+            DataType::F32 => Self::F32(vec![]),
+            DataType::Color => Self::Color(vec![]),
+            DataType::String => Self::String(vec![]),
+
+            DataType::Vec2 => Self::Vec2(vec![]),
+            DataType::BBox2D => Self::BBox2D(vec![]),
+
+            DataType::Vec3 => Self::Vec3(vec![]),
+            DataType::Box3 => Self::Box3(vec![]),
+            DataType::Mesh3D => Self::Mesh3D(vec![]),
+            DataType::Arrow3D => Self::Arrow3D(vec![]),
+
+            DataType::Tensor => Self::Tensor(vec![]),
+            DataType::DataVec => Self::DataVec(vec![]),
+
+            DataType::ObjPath => Self::ObjPath(vec![]),
+
+            DataType::Transform => Self::Transform(vec![]),
+            DataType::ViewCoordinates => Self::ViewCoordinates(vec![]),
+            DataType::AnnotationContext => Self::AnnotationContext(vec![]),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

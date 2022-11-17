@@ -172,5 +172,29 @@ fn table_row(
                 );
             });
         }
+        LogMsg::PathOpMsg(msg) => {
+            let PathOpMsg {
+                msg_id: _,
+                time_point,
+                path_op,
+            } = msg;
+
+            row.col(|ui| {
+                ui.monospace("PathOpMsg");
+            });
+            for timeline in ctx.log_db.time_points.0.keys() {
+                row.col(|ui| {
+                    if let Some(value) = time_point.0.get(timeline) {
+                        ctx.time_button(ui, timeline, *value);
+                    }
+                });
+            }
+            row.col(|ui| {
+                ctx.obj_path_button(ui, path_op.obj_path());
+            });
+            row.col(|ui| {
+                crate::data_ui::ui_path_op(ctx, ui, path_op);
+            });
+        }
     }
 }

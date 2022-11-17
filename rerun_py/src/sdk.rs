@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use re_log_types::{
     ApplicationId, BeginRecordingMsg, LogMsg, LoggedData, MsgId, ObjPath, ObjTypePath, ObjectType,
-    RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
+    PathOp, RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
 };
 
 pub struct Sdk {
@@ -212,6 +212,15 @@ impl Sdk {
             time_point: time_point.clone(),
             data_path: re_log_types::DataPath::new(obj_path.clone(), field_name.into()),
             data,
+        }));
+    }
+
+    // convenience
+    pub fn send_path_op(&mut self, time_point: &TimePoint, path_op: PathOp) {
+        self.send(LogMsg::PathOpMsg(re_log_types::PathOpMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            path_op,
         }));
     }
 }

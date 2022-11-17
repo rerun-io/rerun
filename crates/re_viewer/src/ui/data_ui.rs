@@ -198,6 +198,9 @@ pub(crate) fn show_log_msg(
         LogMsg::DataMsg(msg) => {
             show_data_msg(ctx, ui, msg, preview);
         }
+        LogMsg::PathOpMsg(msg) => {
+            show_path_op_msg(ctx, ui, msg);
+        }
     }
 }
 
@@ -268,6 +271,27 @@ pub(crate) fn show_data_msg(
 
             ui.monospace("data:");
             ui_logged_data(ctx, ui, msg_id, data, preview);
+            ui.end_row();
+        });
+}
+
+pub(crate) fn show_path_op_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg: &PathOpMsg) {
+    let PathOpMsg {
+        msg_id: _,
+        time_point,
+        path_op,
+    } = msg;
+
+    egui::Grid::new("fields")
+        .striped(true)
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.monospace("time_point:");
+            ui_time_point(ctx, ui, time_point);
+            ui.end_row();
+
+            ui.monospace("path_op:");
+            ui_path_op(ctx, ui, path_op);
             ui.end_row();
         });
 }
@@ -531,4 +555,15 @@ fn ui_mat3(ui: &mut egui::Ui, mat: &[[f32; 3]; 3]) {
         ui.monospace(mat[2][2].to_string());
         ui.end_row();
     });
+}
+
+pub(crate) fn ui_path_op(
+    _ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    path_op: &PathOp,
+) -> egui::Response {
+    match path_op {
+        PathOp::ClearFields(obj_path) => ui.label(format!("ClearFields: {obj_path}")),
+        PathOp::ClearRecursive(obj_path) => ui.label(format!("ClearRecursive: {obj_path}")),
+    }
 }
