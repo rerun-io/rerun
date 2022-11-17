@@ -28,7 +28,8 @@ serde = ["dep:serde", "re_string_interner/serde"]
 
 [dependencies]
 ahash = "0.8"
-arrow2 = "0.14.2"
+arrow2 = { version = "0.14.2", features = ["io_ipc"] }
+polars = { version = "0.25", features = [], default-features = false }
 bytemuck = "1.11"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 derive_more = "0.99"

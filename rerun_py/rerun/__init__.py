@@ -9,7 +9,8 @@ from typing import Final, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.color_conversion import linear_to_gamma_u8_pixel
+from rerun.color_conversion import linear_to_gamma_u8_pixel, u8_array_to_rgba
+
 
 from rerun import rerun_sdk  # type: ignore[attr-defined]
 
@@ -334,13 +335,32 @@ def log_rect(
     if EXP_ARROW:
         # TODO(jleibs): type registry?
         # TODO(jleibs): proper handling of rect_format
-        RectType = pa.struct([("x", pa.float32()), ("y", pa.float32()), ("w", pa.float32()), ("h", pa.float32())])
 
-        rect_arr = pa.array([], type=RectType)
-        if rect is not None:
-            rect_arr = pa.array([tuple(rect)], type=RectType)  # type: ignore[arg-type]
+        rect_field = pa.field(
+            name="rect",
+            type=pa.struct([("x", pa.float32()), ("y", pa.float32()), ("w", pa.float32()), ("h", pa.float32())]),
+            nullable=False,
+            metadata={
+                "ARROW:extension:name": "rerun.rect",
+            },
+        )
 
-        rerun_sdk.log_arrow_msg(obj_path, "rect", rect_arr)
+        color_field = pa.field(
+            name="rgbacolor",
+            type=pa.uint32(),
+            nullable=False,
+            metadata={
+                "ARROW:extension:name": "rerun.rgbacolor",
+            },
+        )
+
+        rect_arr = pa.array([tuple(rect) if rect else None], type=rect_field.type)
+        colors = _normalize_colors(color)
+        color_arr = pa.array([u8_array_to_rgba(colors) if color else None], type=color_field.type)
+
+        arr = pa.StructArray.from_arrays([rect_arr, color_arr], fields=[rect_field, color_field])
+        print(arr)
+        rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
 
 
 def log_rects(
