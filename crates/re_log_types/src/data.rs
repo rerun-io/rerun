@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{impl_into_enum, ObjPath, ViewCoordinates};
+use crate::{impl_into_enum, AnnotationContext, ObjPath, ViewCoordinates};
 
 // ----------------------------------------------------------------------------
 
@@ -40,6 +40,7 @@ pub enum DataType {
 
     Transform,
     ViewCoordinates,
+    AnnotationContext,
 }
 
 // ----------------------------------------------------------------------------
@@ -167,6 +168,12 @@ pub mod data_types {
             DataType::ViewCoordinates
         }
     }
+
+    impl DataTrait for crate::AnnotationContext {
+        fn data_typ() -> DataType {
+            DataType::AnnotationContext
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -208,6 +215,7 @@ pub enum Data {
 
     Transform(Transform),
     ViewCoordinates(ViewCoordinates),
+    AnnotationContext(AnnotationContext),
 }
 
 impl Data {
@@ -236,6 +244,7 @@ impl Data {
 
             Self::Transform(_) => DataType::Transform,
             Self::ViewCoordinates(_) => DataType::ViewCoordinates,
+            Self::AnnotationContext(_) => DataType::AnnotationContext,
         }
     }
 }
@@ -251,6 +260,7 @@ impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(ObjPath, Data, ObjPath);
 impl_into_enum!(Transform, Data, Transform);
 impl_into_enum!(ViewCoordinates, Data, ViewCoordinates);
+impl_into_enum!(AnnotationContext, Data, AnnotationContext);
 
 // ----------------------------------------------------------------------------
 
@@ -283,6 +293,7 @@ pub enum DataVec {
 
     Transform(Vec<Transform>),
     ViewCoordinates(Vec<ViewCoordinates>),
+    AnnotationContext(Vec<AnnotationContext>),
 }
 
 /// Do the same thing with all members of a [`Data`].
@@ -313,6 +324,7 @@ macro_rules! data_map(
             $crate::Data::ObjPath($value) => $action,
             $crate::Data::Transform($value) => $action,
             $crate::Data::ViewCoordinates($value) => $action,
+            $crate::Data::AnnotationContext($value) => $action,
         }
     });
 );
@@ -396,6 +408,10 @@ macro_rules! data_type_map_none(
                 let $value = Option::<$crate::ViewCoordinates>::None;
                 $action
             },
+            $crate::DataType::AnnotationContext => {
+                let $value = Option::<$crate::AnnotationContext>::None;
+                $action
+            },
         }
     });
 );
@@ -428,6 +444,7 @@ macro_rules! data_vec_map(
             $crate::DataVec::ObjPath($vec) => $action,
             $crate::DataVec::Transform($vec) => $action,
             $crate::DataVec::ViewCoordinates($vec) => $action,
+            $crate::DataVec::AnnotationContext($vec) => $action,
         }
     });
 );
@@ -458,6 +475,7 @@ impl DataVec {
 
             Self::Transform(_) => DataType::Transform,
             Self::ViewCoordinates(_) => DataType::ViewCoordinates,
+            Self::AnnotationContext(_) => DataType::AnnotationContext,
         }
     }
 
@@ -493,6 +511,7 @@ impl DataVec {
 
             Self::Transform(vec) => vec.last().cloned().map(Data::Transform),
             Self::ViewCoordinates(vec) => vec.last().cloned().map(Data::ViewCoordinates),
+            Self::AnnotationContext(vec) => vec.last().cloned().map(Data::AnnotationContext),
         }
     }
 
@@ -662,6 +681,33 @@ pub enum Transform {
 
 // ----------------------------------------------------------------------------
 
+/// A unique id per [`MeshId`].
+///
+/// TODO(emilk): this should be a hash of the mesh (CAS).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct MeshId(pub uuid::Uuid);
+
+impl nohash_hasher::IsEnabled for MeshId {}
+
+// required for [`nohash_hasher`].
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for MeshId {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.0.as_u128() as u64);
+    }
+}
+
+impl MeshId {
+    #[inline]
+    pub fn random() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
+}
+
+// ----------------
+
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Mesh3D {
@@ -669,9 +715,19 @@ pub enum Mesh3D {
     Raw(Arc<RawMesh3D>),
 }
 
+impl Mesh3D {
+    pub fn mesh_id(&self) -> MeshId {
+        match self {
+            Mesh3D::Encoded(mesh) => mesh.mesh_id,
+            Mesh3D::Raw(mesh) => mesh.mesh_id,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RawMesh3D {
+    pub mesh_id: MeshId,
     pub positions: Vec<[f32; 3]>,
     pub indices: Vec<[u32; 3]>,
 }
@@ -680,6 +736,7 @@ pub struct RawMesh3D {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EncodedMesh3D {
+    pub mesh_id: MeshId,
     pub format: MeshFormat,
     pub bytes: std::sync::Arc<[u8]>,
     /// four columns of an affine transformation matrix
@@ -722,6 +779,17 @@ impl TensorDataType {
     }
 }
 
+// TODO(jleibs) This should be extended to include things like rgb vs bgr
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum TensorDataMeaning {
+    /// Default behavior: guess based on shape
+    Unknown,
+    /// The data is an annotated [`crate::context::ClassId`] which should be
+    /// looked up using the appropriate [`crate::context::AnnotationContext`]
+    ClassId,
+}
+
 pub trait TensorDataTypeTrait: Copy + Clone + Send + Sync {
     const DTYPE: TensorDataType;
 }
@@ -756,6 +824,16 @@ impl TensorElement {
             Self::U8(value) => *value as _,
             Self::U16(value) => *value as _,
             Self::F32(value) => *value as _,
+        }
+    }
+
+    #[inline]
+    pub fn try_as_u16(&self) -> Option<u16> {
+        match self {
+            Self::U8(value) => Some(*value as u16),
+            Self::U16(value) => Some(*value),
+            // TODO(jleibs) support this conversion if it's in range
+            Self::F32(_) => None,
         }
     }
 }
@@ -873,6 +951,10 @@ pub struct Tensor {
     /// The per-element data format.
     /// numpy calls this `dtype`.
     pub dtype: TensorDataType,
+
+    /// The per-element data meaning
+    /// Used to indicated if the data should be interpreted as color, class_id, etc.
+    pub meaning: TensorDataMeaning,
 
     /// The actual contents of the tensor.
     pub data: TensorDataStore,

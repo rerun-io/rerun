@@ -14,8 +14,9 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun_sdk as rerun
 from tqdm import tqdm
+
+import rerun
 
 DEPTH_IMAGE_SCALING: Final = 1e4
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"

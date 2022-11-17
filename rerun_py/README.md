@@ -3,11 +3,11 @@
 Goal: an ergonomic Python library for logging rich data, over TCP, to a rerun server.
 
 ℹ️ Note:
-- The rust crate is called `re_sdk_python`, while the Python library is called `rerun_sdk`.
+- The rust crate is called `re_sdk_python`, while the Python library is called `rerun`.
 - These instructions assume you're running from the `rerun` root folder and have Python 3.7 or later available.
 
 ## Simply build and install
-To build from source and install the `rerun_sdk` into your *current* Python environment run:
+To build from source and install the `rerun` into your *current* Python environment run:
 
 ```sh
 python3 -m pip install --upgrade pip
@@ -25,7 +25,7 @@ See [`USAGE.md`](USAGE.md).
 python examples/car/main.py
 ```
 
-By default, the example runs Rerun in buffered mode, in the same process as the example code. This means all logged data is buffered until `rerun_sdk.show()` is called in the end, which shows the viewer and blocks until the viewer is closed.
+By default, the example runs Rerun in buffered mode, in the same process as the example code. This means all logged data is buffered until `rerun.show()` is called in the end, which shows the viewer and blocks until the viewer is closed.
 
 ## Development
 
@@ -41,7 +41,7 @@ source venv/bin/activate.fish
 
 ## Build, test, and run
 
-For ease of development you can build and install in "editable" mode. This means you can edit the `rerun_sdk` Python code without having to re-build and install to see changes.
+For ease of development you can build and install in "editable" mode. This means you can edit the `rerun` Python code without having to re-build and install to see changes.
 
 ```sh
 # Build the SDK and install in develop mode into the virtualenv
@@ -86,7 +86,7 @@ maturin build -m rerun_py/Cargo.toml --release
 
 By default the wheels will be built to `target/wheels` (use the `-o` flag to set a different output directory).
 
-Now you can install `rerun_sdk` in any Python3 environment using:
+Now you can install `rerun` in any Python3 environment using:
 
 ```
 pip3 install target/wheels/*.whl

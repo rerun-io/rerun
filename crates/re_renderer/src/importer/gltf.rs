@@ -24,7 +24,7 @@ pub fn load_gltf_from_buffer(
     let (doc, buffers, images) = gltf::import_slice(buffer)?;
 
     let mut images_as_textures = Vec::with_capacity(images.len());
-    for (index, image) in images.into_iter().enumerate() {
+    for (_index, image) in images.into_iter().enumerate() {
         let (format, data) = if let Some(format) = map_format(image.format) {
             (format, image.pixels)
         } else {
@@ -43,7 +43,7 @@ pub fn load_gltf_from_buffer(
         // Images don't have names, but textures do. Gather all texture names for debug labeling.
         #[cfg(debug_assertions)]
         let texture_names = doc.textures().fold(String::new(), |mut name_list, t| {
-            if t.source().index() == index {
+            if t.source().index() == _index {
                 if !name_list.is_empty() {
                     name_list.push_str(", ");
                 }

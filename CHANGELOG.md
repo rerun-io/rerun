@@ -2,6 +2,9 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-11-16: Fix crash on zero sized space view in re_viewer (caused by resizing) [#302](https://github.com/rerun-io/rerun/pull/302).
+* 2022-11-15: Rename the Python library to `rerun` ([#300](https://github.com/rerun-io/rerun/pull/300)).
+* 2022-11-12: Change logging of class_descriptions to annotation_context [#289](https://github.com/rerun-io/rerun/pull/289).
 * 2022-11-09: Objects can be cleared by logging with the value `None`: [#248](https://github.com/rerun-io/rerun/pull/248).
 * 2022-11-07: Make re_renderer/wgpu the default renderer ([#273](https://github.com/rerun-io/rerun/pull/273).
 * 2022-11-03: Update pinned rust version to 1.65 ([#258](https://github.com/rerun-io/rerun/pull/258).

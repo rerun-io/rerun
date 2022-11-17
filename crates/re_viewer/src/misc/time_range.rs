@@ -5,7 +5,7 @@ use re_log_types::TimeInt;
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub(crate) struct TimeRange {
     pub min: TimeInt,
     pub max: TimeInt,

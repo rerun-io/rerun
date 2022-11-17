@@ -68,3 +68,6 @@ webbrowser = { version = "0.8", optional = true }
 
 [build-dependencies]
 pyo3-build-config = "0.17"
+
+[package.metadata.maturin]
+name = "rerun.rerun_sdk"

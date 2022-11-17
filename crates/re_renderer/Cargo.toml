@@ -23,7 +23,7 @@ bytemuck = { version = "1.12", features = ["derive"] }
 clean-path = "0.2"
 glam = { version = "0.20", features = [
   "bytemuck",
-] } # can't upgrade until macaw gets a new version using glam 0.21
+] } # can't upgrade glam until macaw gets a new version using glam 0.21
 half = { version = "2.1", features = ["bytemuck"] }
 itertools = "0.10"
 macaw = "0.17.2"
@@ -66,6 +66,7 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 pollster = "0.2"
 rand = "0.8"
+tracing = "0.1"
 tracing-subscriber = "0.3"
 winit = "0.27"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }

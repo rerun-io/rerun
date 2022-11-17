@@ -72,26 +72,96 @@ impl TimePanel {
             expanded,
             |ui: &mut egui::Ui, expansion: f32| {
                 if expansion < 1.0 {
-                    // Collapsed, or animating:
-                    if ui
-                        .small_button("⏶")
-                        .on_hover_text(format!(
-                            "Expand Timeline View ({})",
-                            egui_ctx.format_shortcut(&crate::ui::kb_shortcuts::TOGGLE_TIME_PANEL)
-                        ))
-                        .clicked()
-                    {
-                        blueprint.time_panel_expanded = true;
-                    }
+                    // Collapsed or animating
+                    ui.horizontal(|ui| {
+                        self.collapsed_ui(ctx, blueprint, ui);
+                    });
                 } else {
                     // Expanded:
-                    self.ui(ctx, blueprint, ui);
+                    self.expanded_ui(ctx, blueprint, ui);
                 }
             },
         );
     }
 
-    fn ui(&mut self, ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut egui::Ui) {
+    #[allow(clippy::unused_self)]
+    fn collapsed_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        ui: &mut egui::Ui,
+    ) {
+        if ui
+            .small_button("⏶")
+            .on_hover_text(format!(
+                "Expand Timeline View ({})",
+                ui.ctx()
+                    .format_shortcut(&crate::ui::kb_shortcuts::TOGGLE_TIME_PANEL)
+            ))
+            .clicked()
+        {
+            blueprint.time_panel_expanded = true;
+        }
+
+        ui.separator();
+
+        ctx.rec_cfg
+            .time_ctrl
+            .timeline_selector_ui(&ctx.log_db.time_points, ui);
+
+        ui.separator();
+
+        ctx.rec_cfg
+            .time_ctrl
+            .play_pause_ui(&ctx.log_db.time_points, ui);
+
+        ui.separator();
+
+        {
+            let time_range_width = 400.0;
+            let mut time_range_rect = ui.available_rect_before_wrap();
+            time_range_rect.max.x = f32::min(
+                time_range_rect.max.x - 220.0, // save space for current time and help button,
+                time_range_rect.min.x + time_range_width,
+            );
+
+            if time_range_rect.width() > 50.0 {
+                let time_ranges_ui =
+                    initialize_time_ranges_ui(ctx, time_range_rect.x_range(), None, 0.0);
+                time_ranges_ui.snap_time_control(ctx);
+
+                let painter = ui.painter_at(time_range_rect.expand(4.0));
+                painter.hline(
+                    time_range_rect.x_range(),
+                    time_range_rect.center().y,
+                    ui.visuals().widgets.inactive.fg_stroke,
+                );
+                time_marker_ui(
+                    &time_ranges_ui,
+                    &mut ctx.rec_cfg.time_ctrl,
+                    ui,
+                    &painter,
+                    &time_range_rect,
+                    time_range_rect.bottom(),
+                );
+
+                ui.allocate_rect(time_range_rect, egui::Sense::hover());
+            }
+        }
+
+        current_time_ui(ctx, ui);
+
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            help_button(ui);
+        });
+    }
+
+    fn expanded_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        ui: &mut egui::Ui,
+    ) {
         crate::profile_function!();
 
         // play control and current time
@@ -108,7 +178,12 @@ impl TimePanel {
             time_x_left..=right
         };
 
-        self.time_ranges_ui = initialize_time_ranges_ui(ctx, time_x_range.clone());
+        self.time_ranges_ui = initialize_time_ranges_ui(
+            ctx,
+            time_x_range.clone(),
+            ctx.rec_cfg.time_ctrl.time_view(),
+            SIDE_MARGIN,
+        );
 
         // includes the time selection and time ticks rows.
         let time_area_rect = Rect::from_x_y_ranges(
@@ -250,8 +325,7 @@ impl TimePanel {
         };
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
-        let default_open = tree.path.len() <= 1 && tree.num_children_and_fields() <= 10
-            || tree.num_children_and_fields() <= 2;
+        let default_open = tree.path.len() <= 1 && !tree.is_leaf();
         let (header_response, _, body_returned) =
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
@@ -429,41 +503,48 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut e
             .timeline_selector_ui(&ctx.log_db.time_points, ui);
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            crate::misc::help_hover_button(ui).on_hover_text(
-                "Drag main area to pan.\n\
-            Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
-            Double-click to reset view.\n\
-            Press spacebar to pause/resume.",
-            );
-
-            if let Some(range) = ctx.rec_cfg.time_ctrl.time_range() {
-                let time_type = ctx.rec_cfg.time_ctrl.time_type();
-
-                ui.vertical_centered(|ui| {
-                    if range.min == range.max {
-                        ui.monospace(time_type.format(range.min.floor())); // floor makes sense for "latest at" queries
-                    } else {
-                        match time_type {
-                            TimeType::Time => {
-                                ui.monospace(format!(
-                                    "{} - {}",
-                                    time_type.format(range.min.round()),
-                                    time_type.format(range.max.round())
-                                ));
-                            }
-                            TimeType::Sequence => {
-                                ui.monospace(format!(
-                                    "[{} - {})",
-                                    time_type.format(range.min.ceil()),
-                                    time_type.format(range.max.floor())
-                                ));
-                            }
-                        }
-                    }
-                });
-            }
+            help_button(ui);
+            ui.vertical_centered(|ui| {
+                current_time_ui(ctx, ui);
+            });
         });
     });
+}
+
+fn help_button(ui: &mut egui::Ui) {
+    crate::misc::help_hover_button(ui).on_hover_text(
+        "Drag main area to pan.\n\
+         Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
+         Double-click to reset view.\n\
+         Press spacebar to pause/resume.",
+    );
+}
+
+fn current_time_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    if let Some(range) = ctx.rec_cfg.time_ctrl.time_range() {
+        let time_type = ctx.rec_cfg.time_ctrl.time_type();
+
+        if range.min == range.max {
+            ui.monospace(time_type.format(range.min.floor())); // floor makes sense for "latest at" queries
+        } else {
+            match time_type {
+                TimeType::Time => {
+                    ui.monospace(format!(
+                        "{} - {}",
+                        time_type.format(range.min.round()),
+                        time_type.format(range.max.round())
+                    ));
+                }
+                TimeType::Sequence => {
+                    ui.monospace(format!(
+                        "[{} - {})",
+                        time_type.format(range.min.ceil()),
+                        time_type.format(range.max.floor())
+                    ));
+                }
+            }
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -642,6 +723,8 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
 fn initialize_time_ranges_ui(
     ctx: &mut ViewerContext<'_>,
     time_x_range: RangeInclusive<f32>,
+    time_view: Option<TimeView>,
+    side_margin: f32,
 ) -> TimeRangesUi {
     crate::profile_function!();
     if let Some(time_points) = ctx
@@ -651,8 +734,8 @@ fn initialize_time_ranges_ui(
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), time_points);
-        let time_view = ctx.rec_cfg.time_ctrl.time_view();
-        let time_view = time_view.unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis));
+        let time_view = time_view
+            .unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis, side_margin));
 
         TimeRangesUi::new(time_x_range, time_view, &timeline_axis.ranges)
     } else {
@@ -1143,6 +1226,7 @@ fn time_marker_ui(
                 && !is_anything_being_dragged)
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
+                let time = time_ranges_ui.clamp_time(time);
                 time_ctrl.set_time(time);
                 time_ctrl.pause();
                 ui.memory().set_dragged_id(time_drag_id);
@@ -1172,7 +1256,11 @@ fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
 }
 
 /// Find a nice view of everything.
-fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) -> TimeView {
+fn view_everything(
+    x_range: &RangeInclusive<f32>,
+    timeline_axis: &TimelineAxis,
+    side_margin: f32,
+) -> TimeView {
     let gap_width = gap_width(x_range, &timeline_axis.ranges);
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
     let width = *x_range.end() - *x_range.start();
@@ -1188,7 +1276,7 @@ fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) 
     let time_spanned = timeline_axis.sum_time_lengths().as_f64() * factor as f64;
 
     // Leave some room on the margins:
-    let time_margin = time_spanned * (SIDE_MARGIN / width.at_least(64.0)) as f64;
+    let time_margin = time_spanned * (side_margin / width.at_least(64.0)) as f64;
     let min = min - TimeReal::from(time_margin);
     let time_spanned = time_spanned + 2.0 * time_margin;
 
@@ -1306,8 +1394,40 @@ impl TimeRangesUi {
         slf
     }
 
-    /// Make sure the time is not between ranges.
-    fn snap_time(&self, value: TimeReal) -> TimeReal {
+    /// Clamp the time to the valid ranges.
+    ///
+    /// Used when user is dragging the time handle.
+    fn clamp_time(&self, mut time: TimeReal) -> TimeReal {
+        if let (Some(first), Some(last)) = (self.segments.first(), self.segments.last()) {
+            time = time.clamp(
+                TimeReal::from(first.tight_time.min),
+                TimeReal::from(last.tight_time.max),
+            );
+
+            // Special: don't allow users dragging time between
+            // BEGINNING (-∞ = timeless data) and some real time.
+            // Otherwise we get weird times (e.g. dates in 1923).
+            // Selecting times between other segments is not as problematic, as all other segments are
+            // real times, so interpolating between them always produces valid times.
+            // By disallowing times between BEGINNING and the first real segment,
+            // we also disallow users dragging the time to be between -∞ and the
+            // real beginning of their data. That further highlights the specialness of -∞.
+            // Furthermore, we want users to have a smooth experience dragging the time handle anywhere else.
+            if first.tight_time == TimeRange::point(TimeInt::BEGINNING) {
+                if let Some(second) = self.segments.get(1) {
+                    if TimeInt::BEGINNING < time && time < second.tight_time.min {
+                        time = TimeReal::from(second.tight_time.min);
+                    }
+                }
+            }
+        }
+        time
+    }
+
+    /// Make sure the time is not between segments.
+    ///
+    /// This is so that the playback doesn't get stuck between segments.
+    fn snap_time_to_segments(&self, value: TimeReal) -> TimeReal {
         for segment in &self.segments {
             if value < segment.time.min {
                 return segment.time.min;
@@ -1318,7 +1438,7 @@ impl TimeRangesUi {
         value
     }
 
-    // Make sure time doesn't get stuck between non-continuos regions:
+    // Make sure playback time doesn't get stuck between non-continuos regions:
     fn snap_time_control(&self, ctx: &mut ViewerContext<'_>) {
         if !ctx.rec_cfg.time_ctrl.is_playing() {
             return;
@@ -1326,11 +1446,11 @@ impl TimeRangesUi {
 
         // Make sure time doesn't get stuck between non-continuos regions:
         if let Some(time) = ctx.rec_cfg.time_ctrl.time() {
-            let time = self.snap_time(time);
+            let time = self.snap_time_to_segments(time);
             ctx.rec_cfg.time_ctrl.set_time(time);
         } else if let Some(selection) = ctx.rec_cfg.time_ctrl.time_selection() {
-            let snapped_min = self.snap_time(selection.min);
-            let snapped_max = self.snap_time(selection.max);
+            let snapped_min = self.snap_time_to_segments(selection.min);
+            let snapped_max = self.snap_time_to_segments(selection.max);
 
             let min_was_good = selection.min == snapped_min;
             let max_was_good = selection.max == snapped_max;

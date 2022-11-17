@@ -51,9 +51,10 @@ impl Renderers {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> &R {
-        self.renderers
-            .entry()
-            .or_insert_with(|| R::create_renderer(shared_data, resource_pools, device, resolver))
+        self.renderers.entry().or_insert_with(|| {
+            crate::profile_scope!("create_renderer", std::any::type_name::<R>());
+            R::create_renderer(shared_data, resource_pools, device, resolver)
+        })
     }
 
     pub fn get<R: 'static + Renderer>(&self) -> Option<&R> {

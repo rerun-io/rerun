@@ -22,8 +22,7 @@ cargo doc --no-deps --all-features
 cargo doc --document-private-items --no-deps --all-features
 
 (cd crates/re_log_types && cargo check --no-default-features)
-(cd crates/re_viewer && cargo check --no-default-features --features "glow")
-(cd crates/re_viewer && cargo check --no-default-features --features "wgpu")
+(cd crates/re_viewer && cargo check --no-default-features)
 (cd crates/re_web_server && cargo check --no-default-features)
 (cd crates/re_ws_comms && cargo check --no-default-features)
 (cd crates/rerun && cargo check --no-default-features)
@@ -42,6 +41,8 @@ cargo doc --document-private-items --no-deps --all-features
 
 ./scripts/lint.py
 
-cargo deny check
+cargo deny --all-features --log-level error check
+cargo deny --all-features --log-level error --target wasm32-unknown-unknown check
+cargo deny --all-features --log-level error --target x86_64-unknown-linux-musl check
 
 echo "All checks passed!"

@@ -11,9 +11,6 @@ use crate::{
 
 use super::{Eye, LineSegments3D, OrbitEye, Point3D, Scene3D, Size, SpaceCamera};
 
-#[cfg(feature = "glow")]
-use super::glow_rendering;
-
 // ---
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
@@ -326,7 +323,7 @@ pub(crate) fn view_3d(
     ui: &mut egui::Ui,
     state: &mut View3DState,
     space: Option<&ObjPath>,
-    scene: &mut Scene3D,
+    mut scene: Scene3D,
     space_cameras: &[SpaceCamera],
 ) -> egui::Response {
     crate::profile_function!();
@@ -384,7 +381,7 @@ pub(crate) fn view_3d(
     }
 
     project_onto_other_spaces(ctx, space_cameras, state, space, &response, orbit_eye);
-    show_projections_from_2d_space(ctx, space_cameras, state, scene);
+    show_projections_from_2d_space(ctx, space_cameras, state, &mut scene);
 
     {
         let orbit_center_alpha = egui::remap_clamp(
@@ -411,14 +408,14 @@ pub(crate) fn view_3d(
         hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
     );
 
-    paint_view(ui, eye, rect, scene, state, response)
+    paint_view(ui, eye, rect, &scene, state, response)
 }
 
 fn paint_view(
     ui: &mut egui::Ui,
     eye: Eye,
     rect: egui::Rect,
-    scene: &mut Scene3D,
+    scene: &Scene3D,
     _state: &mut View3DState,
     response: egui::Response,
 ) -> egui::Response {
@@ -462,8 +459,7 @@ fn paint_view(
         },
     );
 
-    #[cfg(feature = "wgpu")]
-    let _callback = {
+    let callback = {
         use re_renderer::renderer::*;
         use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
         use re_renderer::RenderContext;
@@ -494,21 +490,24 @@ fn paint_view(
         //                  Once we can do that, this awful clone is no longer needed as we can acquire gpu data directly
         // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
         let mut mesh_instances = Vec::new();
-        for mesh in &scene.meshes {
-            let (scale, rotation, translation) =
-                mesh.world_from_mesh.to_scale_rotation_translation();
-            let base_transform = macaw::Conformal3::from_scale_rotation_translation(
-                re_renderer::importer::to_uniform_scale(scale),
-                rotation,
-                translation,
-            );
-            mesh_instances.extend(mesh.cpu_mesh.mesh_instances.iter().map(|instance| {
-                MeshInstance {
-                    mesh: instance.mesh,
-                    world_from_mesh: base_transform * instance.world_from_mesh,
-                    additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
-                }
-            }));
+        {
+            crate::profile_scope!("meshes");
+            for mesh in &scene.meshes {
+                let (scale, rotation, translation) =
+                    mesh.world_from_mesh.to_scale_rotation_translation();
+                let base_transform = macaw::Conformal3::from_scale_rotation_translation(
+                    re_renderer::importer::to_uniform_scale(scale),
+                    rotation,
+                    translation,
+                );
+                mesh_instances.extend(mesh.cpu_mesh.mesh_instances.iter().map(|instance| {
+                    MeshInstance {
+                        mesh: instance.mesh,
+                        world_from_mesh: base_transform * instance.world_from_mesh,
+                        additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
+                    }
+                }));
+            }
         }
 
         egui::PaintCallback {
@@ -518,6 +517,11 @@ fn paint_view(
                     // TODO(andreas): The only thing that should happen inside this callback is
                     // passing a previously created commandbuffer out!
                     .prepare(move |device, queue, _, paint_callback_resources| {
+                        crate::profile_scope!("prepare");
+                        if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+                            return Vec::new();
+                        }
+
                         let ctx: &mut RenderContext = paint_callback_resources.get_mut().unwrap();
                         let mut view_builder_lock = view_builder_prepare.write();
 
@@ -570,31 +574,13 @@ fn paint_view(
                         vec![encoder.finish()]
                     })
                     .paint(move |_info, render_pass, paint_callback_resources| {
+                        crate::profile_scope!("paint");
                         let ctx = paint_callback_resources.get().unwrap();
                         let view_builder = view_builder_draw.write().take();
                         view_builder.unwrap().composite(ctx, render_pass).unwrap();
                         // TODO(andreas): Graceful error handling
                     }),
             ),
-        }
-    };
-    #[cfg(not(feature = "glow"))]
-    let callback = _callback;
-
-    #[cfg(feature = "glow")]
-    let callback = {
-        let dark_mode = ui.visuals().dark_mode;
-        let show_axes = _state.show_axes;
-        let scene = std::mem::take(scene);
-        egui::PaintCallback {
-            rect,
-            callback: std::sync::Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
-                glow_rendering::with_three_d_context(painter.gl(), |rendering| {
-                    glow_rendering::paint_with_three_d(
-                        rendering, &eye, &info, &scene, dark_mode, show_axes, painter,
-                    );
-                });
-            })),
         }
     };
 
@@ -635,7 +621,6 @@ fn show_projections_from_2d_space(
                         segments: vec![(origin, end)],
                         radius,
                         color: [255; 4],
-                        #[cfg(feature = "wgpu")]
                         flags: Default::default(),
                     });
 

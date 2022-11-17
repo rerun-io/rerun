@@ -21,6 +21,7 @@
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
+pub mod context;
 pub mod coordinates;
 mod data;
 pub mod hash;
@@ -29,6 +30,7 @@ pub mod objects;
 pub mod path;
 mod time;
 
+pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
 pub use data::*;
 pub use index::*;

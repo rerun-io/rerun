@@ -5,15 +5,14 @@ use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
 use re_data_store::query::{visit_type_data_2, visit_type_data_3, visit_type_data_4};
-use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectTreeProperties};
-use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
+use re_data_store::{FieldName, InstanceIdHash, ObjPath};
+use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::misc::Caches;
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
-#[cfg(feature = "wgpu")]
 use re_renderer::renderer::*;
 
 use super::{eye::Eye, SpaceCamera};
@@ -104,19 +103,27 @@ pub struct LineSegments3D {
     pub segments: Vec<(Vec3, Vec3)>,
     pub radius: Size,
     pub color: [u8; 4],
-    #[cfg(feature = "wgpu")]
     pub flags: re_renderer::renderer::LineStripFlags,
 }
 
 pub enum MeshSourceData {
     Mesh3D(re_log_types::Mesh3D),
+
     /// e.g. the camera mesh
-    StaticGlb(&'static [u8]),
+    StaticGlb(MeshId, &'static [u8]),
+}
+
+impl MeshSourceData {
+    pub fn mesh_id(&self) -> MeshId {
+        match self {
+            MeshSourceData::Mesh3D(mesh) => mesh.mesh_id(),
+            MeshSourceData::StaticGlb(id, _) => *id,
+        }
+    }
 }
 
 pub struct MeshSource {
     pub instance_id_hash: InstanceIdHash,
-    pub mesh_id: u64,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub cpu_mesh: Arc<CpuMesh>,
@@ -139,12 +146,7 @@ pub struct Scene3D {
 
 impl Scene3D {
     /// Loads all 3D objects into the scene according to the given query.
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         // hack because three-d handles colors wrong. TODO(emilk): fix three-d
@@ -167,26 +169,24 @@ impl Scene3D {
             [r, g, b, a]
         };
 
-        self.load_points(ctx, obj_tree_props, query, object_color);
-        self.load_boxes(ctx, obj_tree_props, query, object_color);
-        self.load_segments(ctx, obj_tree_props, query, object_color);
-        self.load_arrows(ctx, obj_tree_props, query, object_color);
-        self.load_meshes(ctx, obj_tree_props, query);
+        self.load_points(ctx, query, object_color);
+        self.load_boxes(ctx, query, object_color);
+        self.load_segments(ctx, query, object_color);
+        self.load_arrows(ctx, query, object_color);
+        self.load_meshes(ctx, query);
     }
 
     fn load_points(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
         mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
     ) {
         crate::profile_function!();
 
-        let points = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Point3D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
-                let mut batch = Vec::new();
+        query
+            .iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
+            .for_each(|(_obj_type, obj_path, obj_store)| {
                 visit_type_data_3(
                     obj_store,
                     &FieldName::from("pos"),
@@ -207,7 +207,7 @@ impl Scene3D {
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        batch.push(Point3D {
+                        self.points.push(Point3D {
                             instance_id_hash,
                             pos: Vec3::from_slice(pos),
                             radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
@@ -215,23 +215,19 @@ impl Scene3D {
                         });
                     },
                 );
-                batch
             });
-
-        self.points.extend(points);
     }
 
     fn load_boxes(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
         mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
     ) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, obj_store) in
-            query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Box3D])
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Box3D])
         {
             visit_type_data_4(
                 obj_store,
@@ -270,7 +266,6 @@ impl Scene3D {
     fn load_segments(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
         mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
     ) {
@@ -279,7 +274,6 @@ impl Scene3D {
         let segments = query
             .iter_object_stores(
                 ctx.log_db,
-                obj_tree_props,
                 &[ObjectType::Path3D, ObjectType::LineSegments3D],
             )
             .flat_map(|(obj_type, obj_path, obj_store)| {
@@ -325,7 +319,6 @@ impl Scene3D {
                             segments,
                             radius,
                             color,
-                            #[cfg(feature = "wgpu")]
                             flags: Default::default(),
                         });
                     },
@@ -339,14 +332,13 @@ impl Scene3D {
     fn load_arrows(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
         query: &SceneQuery<'_>,
         mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
     ) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, obj_store) in
-            query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Arrow3D])
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Arrow3D])
         {
             visit_type_data_4(
                 obj_store,
@@ -384,16 +376,11 @@ impl Scene3D {
         }
     }
 
-    fn load_meshes(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_meshes(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let meshes = query
-            .iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Mesh3D])
+            .iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_2(
@@ -403,7 +390,7 @@ impl Scene3D {
                     ("_visible", "color"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
-                     msg_id: &MsgId,
+                     _msg_id: &MsgId,
                      mesh: &re_log_types::Mesh3D,
                      visible: Option<&bool>,
                      _color: Option<&[u8; 4]>| {
@@ -412,14 +399,10 @@ impl Scene3D {
                         }
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                        let mesh_id = egui::util::hash(msg_id);
                         let Some(mesh) = ctx.cache.cpu_mesh.load(
-                                mesh_id,
                                 &obj_path.to_string(),
                                 &MeshSourceData::Mesh3D(mesh.clone()),
-                                #[cfg(feature = "wgpu")]
                                 &mut ctx.render_ctx.mesh_manager,
-                                #[cfg(feature = "wgpu")]
                                 &mut ctx.render_ctx.texture_manager_2d,
                             )
                             .map(|cpu_mesh| MeshSource {
@@ -427,7 +410,6 @@ impl Scene3D {
                                     obj_path,
                                     instance_index,
                                 ),
-                                mesh_id,
                                 world_from_mesh: Default::default(),
                                 cpu_mesh,
                                 tint: None,
@@ -484,21 +466,20 @@ impl Scene3D {
 
                     let scale = Vec3::splat(scale);
 
-                    let mesh_id = egui::util::hash("camera_mesh");
+                    let mesh_id = MeshId(uuid::uuid!("0de12a29-64ea-40b9-898b-63686b5436af"));
                     let world_from_mesh = world_from_rub_view * glam::Affine3A::from_scale(scale);
 
                     if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
-                        mesh_id,
                         "camera_mesh",
-                        &MeshSourceData::StaticGlb(include_bytes!("../../../data/camera.glb")),
-                        #[cfg(feature = "wgpu")]
+                        &MeshSourceData::StaticGlb(
+                            mesh_id,
+                            include_bytes!("../../../data/camera.glb"),
+                        ),
                         &mut ctx.render_ctx.mesh_manager,
-                        #[cfg(feature = "wgpu")]
                         &mut ctx.render_ctx.texture_manager_2d,
                     ) {
                         self.meshes.push(MeshSource {
                             instance_id_hash: instance_id,
-                            mesh_id,
                             world_from_mesh,
                             cpu_mesh,
                             tint: None,
@@ -523,7 +504,6 @@ impl Scene3D {
                         segments: vec![(cam_origin, axis_end)],
                         radius,
                         color,
-                        #[cfg(feature = "wgpu")]
                         flags: Default::default(),
                     });
                 }
@@ -686,7 +666,6 @@ impl Scene3D {
             segments,
             radius: line_radius,
             color,
-            #[cfg(feature = "wgpu")]
             flags: Default::default(),
         });
 
@@ -708,62 +687,17 @@ impl Scene3D {
         let vector = Vec3::from_slice(vector);
         let origin = Vec3::from_slice(origin);
 
-        #[cfg(feature = "glow")]
-        {
-            let (cylinder_id, cylinder_mesh) = _caches.cpu_mesh.cylinder();
-            let (cone_id, cone_mesh) = _caches.cpu_mesh.cone();
-
-            let rotation = glam::Quat::from_rotation_arc(Vec3::X, vector.normalize());
-
-            let tip_length = 2.0 * width_scale;
-
-            let cylinder_transform = macaw::Affine3A::from_scale_rotation_translation(
-                vec3(
-                    vector.length() - tip_length,
-                    0.5 * width_scale,
-                    0.5 * width_scale,
-                ),
-                rotation,
-                origin,
-            );
-
-            self.meshes.push(MeshSource {
-                instance_id_hash,
-                mesh_id: cylinder_id,
-                world_from_mesh: cylinder_transform,
-                cpu_mesh: cylinder_mesh,
-                tint: Some(color),
-            });
-
-            // The cone has it's origin at the base, so we translate it by [-1,0,0] so the tip lines up with vector.
-            let cone_transform = glam::Affine3A::from_scale_rotation_translation(
-                vec3(tip_length, 1.0 * width_scale, 1.0 * width_scale),
-                rotation,
-                origin + vector,
-            ) * glam::Affine3A::from_translation(-Vec3::X);
-
-            self.meshes.push(MeshSource {
-                instance_id_hash,
-                mesh_id: cone_id,
-                world_from_mesh: cone_transform,
-                cpu_mesh: cone_mesh,
-                tint: Some(color),
-            });
-        }
-        #[cfg(not(feature = "glow"))]
-        {
-            let radius = width_scale * 0.5;
-            let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius);
-            let vector_len = vector.length();
-            let end = origin + vector * ((vector_len - tip_length) / vector_len);
-            self.line_segments.push(LineSegments3D {
-                instance_id_hash,
-                segments: vec![(origin, end)],
-                radius: Size::new_scene(radius),
-                color,
-                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
-            })
-        }
+        let radius = width_scale * 0.5;
+        let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius);
+        let vector_len = vector.length();
+        let end = origin + vector * ((vector_len - tip_length) / vector_len);
+        self.line_segments.push(LineSegments3D {
+            instance_id_hash,
+            segments: vec![(origin, end)],
+            radius: Size::new_scene(radius),
+            color,
+            flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
+        });
     }
 
     fn add_box(
@@ -826,7 +760,6 @@ impl Scene3D {
             segments,
             radius: line_radius,
             color,
-            #[cfg(feature = "wgpu")]
             flags: Default::default(),
         });
     }
@@ -843,8 +776,8 @@ impl Scene3D {
     }
 
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
-    #[cfg(feature = "wgpu")]
     pub fn line_strips(&self, show_origin_axis: bool) -> Vec<LineStrip> {
+        crate::profile_function!();
         let mut line_strips = Vec::with_capacity(self.line_segments.len());
         for segments in &self.line_segments {
             let mut current_strip = LineStrip {
@@ -904,8 +837,8 @@ impl Scene3D {
     }
 
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
-    #[cfg(feature = "wgpu")]
     pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
+        crate::profile_function!();
         self.points
             .iter()
             .map(|point| PointCloudPoint {

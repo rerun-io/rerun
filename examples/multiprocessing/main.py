@@ -14,7 +14,7 @@ import multiprocessing
 import os
 import threading
 
-import rerun_sdk as rerun
+import rerun
 
 
 def task(title: str) -> None:

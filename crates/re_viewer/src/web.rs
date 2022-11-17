@@ -11,14 +11,13 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
     // Make sure panics are logged using `console.error`.
     console_error_panic_hook::set_once();
 
-    // Redirect tracing to console.log and friends:
-    tracing_wasm::set_as_global_default();
+    // Redirect tracing to `console.log`:
+    redirect_tracing_to_console_log();
 
     let web_options = eframe::WebOptions {
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
 
-        #[cfg(feature = "wgpu")]
         wgpu_options: crate::wgpu_options(),
 
         ..Default::default()
@@ -54,4 +53,19 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
     } else {
         url
     }
+}
+
+fn redirect_tracing_to_console_log() {
+    use tracing_subscriber::layer::SubscriberExt as _;
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::Registry::default()
+            // Filtering out wgpu spam seems to mitigate https://linear.app/rerun/issue/PRO-256/wgpu-crashes-on-web
+            .with(tracing_subscriber::EnvFilter::new(
+                "info,wgpu_core=warn,wgpu_hal=warn",
+            ))
+            .with(tracing_wasm::WASMLayer::new(
+                tracing_wasm::WASMLayerConfig::default(),
+            )),
+    )
+    .expect("Failed to set tracing subscriber.");
 }

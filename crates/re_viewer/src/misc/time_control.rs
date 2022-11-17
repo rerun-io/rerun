@@ -372,7 +372,7 @@ impl TimeControl {
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
-    pub fn is_time_selected(&self, timeline: &Timeline, needle: TimeReal) -> bool {
+    pub fn is_time_selected(&self, timeline: &Timeline, needle: TimeInt) -> bool {
         if timeline != &self.timeline {
             return false;
         }
@@ -380,11 +380,11 @@ impl TimeControl {
         if let Some(state) = self.states.get(&self.timeline) {
             if self.is_time_filter_active() {
                 if let Some(range) = state.selection {
-                    return range.contains(needle);
+                    return range.contains(TimeReal::from(needle));
                 }
             }
 
-            state.time == needle
+            state.time.floor() == needle
         } else {
             false
         }

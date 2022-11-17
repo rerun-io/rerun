@@ -24,17 +24,15 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-09 - only show tooltips when mouse is still
-eframe = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
-egui = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
-egui_glow = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2" }
+# 2022-11-16 - handle zero-sized surfaces
+eframe = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
+egui = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f7019926dcc3ccef59e228c14fae98c08c727ae6" }
 
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
 # egui_extras = { path = "../../egui/crates/egui_extras" }
-# egui_glow = { path = "../../egui/crates/egui_glow" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357

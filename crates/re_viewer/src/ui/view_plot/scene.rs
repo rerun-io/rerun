@@ -1,5 +1,5 @@
 use crate::{ui::SceneQuery, ViewerContext};
-use re_data_store::{query::visit_type_data_5, FieldName, ObjectTreeProperties, TimeQuery};
+use re_data_store::{query::visit_type_data_5, FieldName, TimeQuery};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
 // ---
@@ -58,27 +58,17 @@ pub struct ScenePlot {
 
 impl ScenePlot {
     /// Loads all plot objects into the scene according to the given query.
-    pub(crate) fn load_objects(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        self.load_scalars(ctx, obj_tree_props, query);
+        self.load_scalars(ctx, query);
     }
 
-    fn load_scalars(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        obj_tree_props: &ObjectTreeProperties,
-        query: &SceneQuery<'_>,
-    ) {
+    fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, obj_store) in
-            query.iter_object_stores(ctx.log_db, obj_tree_props, &[ObjectType::Scalar])
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Scalar])
         {
             let default_color = {
                 let c = ctx.cache.random_color(obj_path);
@@ -202,13 +192,5 @@ impl ScenePlot {
                 self.lines.push(line.take().unwrap());
             }
         }
-    }
-}
-
-impl ScenePlot {
-    pub fn is_empty(&self) -> bool {
-        let Self { lines: plots } = self;
-
-        plots.is_empty()
     }
 }

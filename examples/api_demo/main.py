@@ -14,8 +14,9 @@ from time import sleep
 from typing import Any, Final
 
 import numpy as np
-import rerun_sdk as rerun
-from rerun_sdk import ClassDescription, LoggingHandler, LogLevel, RectFormat
+
+import rerun
+from rerun import ClassDescription, LoggingHandler, LogLevel, RectFormat
 
 
 def run_misc() -> None:
@@ -45,23 +46,26 @@ def run_segmentation() -> None:
     segmentation_img[10:20, 30:50] = 13
     segmentation_img[80:100, 60:80] = 42
     segmentation_img[20:50, 90:110] = 99
-    rerun.log_segmentation_image("seg_demo/img", segmentation_img, "seg_demo/labels")
+    rerun.log_segmentation_image("seg_demo/img", segmentation_img)
 
     # Log an initial segmentation map with arbitrary colors
     rerun.set_time_seconds("sim_time", 2)
-    rerun.log_class_descriptions("seg_demo/labels", [(13, "label1"), (42, "label2"), (99, "label3")])
+    rerun.log_annotation_context("seg_demo", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
 
     # Log an updated segmentation map with specific colors
     rerun.set_time_seconds("sim_time", 3)
-    rerun.log_class_descriptions(
-        "seg_demo/labels", [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]
+    rerun.log_annotation_context(
+        "seg_demo",
+        [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))],
+        timeless=False,
     )
 
     # Log with a mixture of set and unset colors / labels
     rerun.set_time_seconds("sim_time", 4)
-    rerun.log_class_descriptions(
-        "seg_demo/labels",
+    rerun.log_annotation_context(
+        "seg_demo",
         [ClassDescription(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), ClassDescription(99, label="label3")],
+        timeless=False,
     )
 
 

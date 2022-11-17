@@ -1,5 +1,6 @@
-use egui::Vec2;
+use egui::{color_picker, Vec2};
 
+use egui_extras::{Size, TableBuilder};
 use re_data_store::InstanceId;
 pub use re_log_types::*;
 
@@ -278,8 +279,10 @@ pub(crate) fn ui_time_point(
 ) {
     ui.vertical(|ui| {
         egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
+            ui.spacing_mut().item_spacing.x = 0.0;
             for (timeline, value) in &time_point.0 {
-                ui.label(format!("{}:", timeline.name()));
+                ctx.timeline_button(ui, timeline);
+                ui.label(": ");
                 ctx.time_button(ui, timeline, *value);
                 ui.end_row();
             }
@@ -353,6 +356,7 @@ pub(crate) fn ui_data(
             Preview::Medium => ui_transform(ui, transform),
         },
         Data::ViewCoordinates(coordinates) => ui_view_coordinates(ui, coordinates),
+        Data::AnnotationContext(context) => ui_annotation_context(ui, context),
 
         Data::Tensor(tensor) => {
             let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
@@ -376,14 +380,7 @@ pub(crate) fn ui_data(
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
                     ui.label(format!("dtype: {:?}", tensor.dtype));
-
-                    if tensor.shape.len() == 2 {
-                        ui.label(format!("shape: {:?} (height, width)", tensor.shape));
-                    } else if tensor.shape.len() == 3 {
-                        ui.label(format!("shape: {:?} (height, width, depth)", tensor.shape));
-                    } else {
-                        ui.label(format!("shape: {:?}", tensor.shape));
-                    }
+                    ui.label(format!("shape: {:?}", tensor.shape));
                 });
             })
             .response
@@ -413,6 +410,58 @@ fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
 
 fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Response {
     ui.label(system.describe())
+}
+
+fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui::Response {
+    ui.vertical(|ui| {
+        let table = TableBuilder::new(ui)
+            .striped(true)
+            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+            .column(Size::initial(60.0).at_least(40.0))
+            .column(Size::initial(60.0).at_least(40.0))
+            .column(Size::remainder().at_least(60.0));
+
+        table
+            .header(20.0, |mut header| {
+                header.col(|ui| {
+                    ui.heading("Id");
+                });
+                header.col(|ui| {
+                    ui.heading("Label");
+                });
+                header.col(|ui| {
+                    ui.heading("Color");
+                });
+            })
+            .body(|mut body| {
+                const ROW_HEIGHT: f32 = 18.0;
+                for (id, description) in &context.class_map {
+                    body.row(ROW_HEIGHT, |mut row| {
+                        row.col(|ui| {
+                            ui.label(id.0.to_string());
+                        });
+                        row.col(|ui| {
+                            let label = if let Some(label) = &description.info.label {
+                                label.as_str()
+                            } else {
+                                ""
+                            };
+                            ui.label(label);
+                        });
+                        row.col(|ui| {
+                            let color = description
+                                .info
+                                .color
+                                .unwrap_or_else(|| crate::view_2d::auto_color(id.0));
+                            let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
+
+                            color_picker::show_color(ui, color, Vec2::splat(64.0));
+                        });
+                    });
+                }
+            });
+    })
+    .response
 }
 
 fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {

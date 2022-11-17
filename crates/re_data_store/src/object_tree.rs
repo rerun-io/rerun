@@ -153,6 +153,7 @@ impl DataColumns {
 
                 DataType::Transform => ("transform", "s"),
                 DataType::ViewCoordinates => ("coordinate system", "s"),
+                DataType::AnnotationContext => ("annotation context", "s"),
 
                 DataType::DataVec => ("vector", "s"),
             };

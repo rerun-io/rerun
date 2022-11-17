@@ -1,4 +1,4 @@
-rerun_sdk
+rerun
 betterproto[compiler]
 requests
 scipy

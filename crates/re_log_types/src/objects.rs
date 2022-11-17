@@ -53,7 +53,7 @@ impl ObjectType {
             Self::TextEntry => &["color", "body", "level"],
             Self::Scalar => &["label", "color", "radius", "scattered"],
 
-            Self::Image => &["color", "tensor", "meter", "legend"],
+            Self::Image => &["color", "tensor", "meter"],
             Self::Point2D => &["color", "pos", "radius"],
             Self::BBox2D => &["color", "bbox", "stroke_width", "label"],
             Self::LineSegments2D => &["color", "points", "stroke_width"],
@@ -69,4 +69,9 @@ impl ObjectType {
 }
 
 /// These are fields not part of the actual object, but express meta-info about paths.
-pub const META_FIELDS: &[&str] = &["_transform", "_view_coordinates", "_visible"];
+pub const META_FIELDS: &[&str] = &[
+    "_annotation_context",
+    "_transform",
+    "_view_coordinates",
+    "_visible",
+];

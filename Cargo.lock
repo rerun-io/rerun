@@ -1021,7 +1021,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2#b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2"
+source = "git+https://github.com/emilk/egui?rev=f7019926dcc3ccef59e228c14fae98c08c727ae6#f7019926dcc3ccef59e228c14fae98c08c727ae6"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1029,7 +1029,6 @@ dependencies = [
  "egui-wgpu",
  "egui-winit",
  "egui_glow",
- "glow 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "glutin",
  "js-sys",
  "percent-encoding",
@@ -1047,7 +1046,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2#b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2"
+source = "git+https://github.com/emilk/egui?rev=f7019926dcc3ccef59e228c14fae98c08c727ae6#f7019926dcc3ccef59e228c14fae98c08c727ae6"
 dependencies = [
  "ahash 0.8.1",
  "epaint",
@@ -1069,11 +1068,12 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2#b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2"
+source = "git+https://github.com/emilk/egui?rev=f7019926dcc3ccef59e228c14fae98c08c727ae6#f7019926dcc3ccef59e228c14fae98c08c727ae6"
 dependencies = [
  "bytemuck",
  "egui",
  "pollster",
+ "puffin",
  "tracing",
  "type-map",
  "wgpu",
@@ -1083,7 +1083,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2#b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2"
+source = "git+https://github.com/emilk/egui?rev=f7019926dcc3ccef59e228c14fae98c08c727ae6#f7019926dcc3ccef59e228c14fae98c08c727ae6"
 dependencies = [
  "arboard",
  "egui",
@@ -1108,7 +1108,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2#b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2"
+source = "git+https://github.com/emilk/egui?rev=f7019926dcc3ccef59e228c14fae98c08c727ae6#f7019926dcc3ccef59e228c14fae98c08c727ae6"
 dependencies = [
  "egui",
  "tracing",
@@ -1117,7 +1117,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2#b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2"
+source = "git+https://github.com/emilk/egui?rev=f7019926dcc3ccef59e228c14fae98c08c727ae6#f7019926dcc3ccef59e228c14fae98c08c727ae6"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1139,7 +1139,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2#b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2"
+source = "git+https://github.com/emilk/egui?rev=f7019926dcc3ccef59e228c14fae98c08c727ae6#f7019926dcc3ccef59e228c14fae98c08c727ae6"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1148,7 +1148,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2#b1e71d308f6e34094ae8560f771cd6ba1ac5d5e2"
+source = "git+https://github.com/emilk/egui?rev=f7019926dcc3ccef59e228c14fae98c08c727ae6#f7019926dcc3ccef59e228c14fae98c08c727ae6"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.1",
@@ -1774,10 +1774,6 @@ name = "half"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
-dependencies = [
- "num-traits",
- "zerocopy",
-]
 
 [[package]]
 name = "half"
@@ -2111,29 +2107,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
-name = "lexical"
-version = "5.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f404a90a744e32e8be729034fc33b90cf2a56418fbf594d69aa3c0214ad414e5"
-dependencies = [
- "cfg-if",
- "lexical-core",
-]
-
-[[package]]
-name = "lexical-core"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6607c62aa161d23d17a9072cc5da0be67cdfc89d3afb1e8d9c842bebc2525ffe"
-dependencies = [
- "arrayvec 0.5.2",
- "bitflags",
- "cfg-if",
- "ryu",
- "static_assertions",
-]
-
-[[package]]
 name = "libc"
 version = "0.2.132"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2216,6 +2189,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62bb907fe88d54d8d9ce32a3cceab4218ed2f6b7d35617cafe9adf84e43919cb"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "matchers"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
+dependencies = [
+ "regex-automata",
 ]
 
 [[package]]
@@ -3108,6 +3090,7 @@ dependencies = [
  "static_assertions",
  "thiserror",
  "tobj",
+ "tracing",
  "tracing-subscriber",
  "tracing-wasm",
  "type-map",
@@ -3206,10 +3189,8 @@ dependencies = [
  "egui-wgpu",
  "egui_dock",
  "egui_extras",
- "egui_glow",
  "fixed",
  "glam",
- "glow 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "image",
  "instant",
  "itertools",
@@ -3234,8 +3215,8 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
- "three-d",
- "three-d-asset",
+ "tracing",
+ "tracing-subscriber",
  "tracing-wasm",
  "typenum",
  "uuid",
@@ -3312,6 +3293,9 @@ name = "regex-automata"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
+dependencies = [
+ "regex-syntax",
+]
 
 [[package]]
 name = "regex-syntax"
@@ -3755,18 +3739,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "synstructure"
-version = "0.12.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f36bdaa60a83aca3921b5259d5400cbf5e90fc51931376a9bd4a0eb79aa7210f"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "unicode-xid",
-]
-
-[[package]]
 name = "system-deps"
 version = "6.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3844,36 +3816,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
 dependencies = [
  "once_cell",
-]
-
-[[package]]
-name = "three-d"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7a5a1017829335f6761bdbae2daf3021a88314a1f8d5f188c9b62ce62e2fd31"
-dependencies = [
- "cgmath",
- "glow 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "instant",
- "thiserror",
- "three-d-asset",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
-name = "three-d-asset"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e953f34aa4169e098621a1ff23a68c47b7798711f7c769bf741248e850e93fbe"
-dependencies = [
- "cgmath",
- "gltf",
- "half 1.8.2",
- "image",
- "thiserror",
- "wavefront_obj",
- "web-sys",
 ]
 
 [[package]]
@@ -4094,9 +4036,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60db860322da191b40952ad9affe65ea23e7dd6a5c442c2c42865810c6ab8e6b"
 dependencies = [
  "ansi_term",
+ "matchers",
+ "once_cell",
+ "regex",
  "sharded-slab",
  "smallvec",
  "thread_local",
+ "tracing",
  "tracing-core",
  "tracing-log",
 ]
@@ -4513,15 +4459,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b1844f66a2bc8526d71690104c0e78a8e59ffa1597b7245769d174ebb91deb5"
 dependencies = [
  "leb128",
-]
-
-[[package]]
-name = "wavefront_obj"
-version = "10.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b44bbcea20221556597a89462dba84fd4a1ece9a56ab9ec017f872f33b34e8a"
-dependencies = [
- "lexical",
 ]
 
 [[package]]
@@ -5033,27 +4970,6 @@ name = "xml-rs"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2d7d3948613f75c98fd9328cfdcc45acc4d360655289d0a7d4ec931392200a3"
-
-[[package]]
-name = "zerocopy"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "332f188cc1bcf1fe1064b8c58d150f497e697f49774aa846f2dc949d9a25f236"
-dependencies = [
- "byteorder",
- "zerocopy-derive",
-]
-
-[[package]]
-name = "zerocopy-derive"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0fbc82b82efe24da867ee52e015e58178684bd9dd64c34e66bdf21da2582a9f"
-dependencies = [
- "proc-macro2",
- "syn",
- "synstructure",
-]
 
 [[package]]
 name = "zip"

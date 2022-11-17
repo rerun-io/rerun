@@ -79,9 +79,11 @@ impl SelectionPanel {
 
         ui.separator();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            self.inner_ui(ctx, blueprint, ui);
-        });
+        egui::ScrollArea::both()
+            .auto_shrink([false; 2])
+            .show(ui, |ui| {
+                self.inner_ui(ctx, blueprint, ui);
+            });
     }
 
     #[allow(clippy::unused_self)]
@@ -201,7 +203,7 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
     ui.separator();
 
     use super::space_view::ViewCategory;
-    match space_view.selected_category {
+    match space_view.category {
         ViewCategory::ThreeD => {
             ui.label("3D view.");
             super::view_3d::show_settings_ui(ctx, ui, &mut space_view.view_state.state_3d);

@@ -93,12 +93,6 @@ jobs:
           command: test
           args: --all-features --lib
 
-      - name: Check wgpu support
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: -p re_viewer --no-default-features --features wgpu
-
 
   rs-check-wasm:
     name: Check Rust web build (wasm32 + wasm-bindgen)
@@ -118,11 +112,17 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Check wasm32
+      - name: Check re_viewer wasm32
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: -p re_viewer --all-features --lib --target wasm32-unknown-unknown
+          args: --all-features --lib --target wasm32-unknown-unknown -p re_viewer
+
+      - name: Check renderer_stadalone wasm32
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --target wasm32-unknown-unknown --example renderer_standalone
 
       - name: wasm-bindgen
         uses: jetli/wasm-bindgen-action@v0.1.0
@@ -138,15 +138,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: EmbarkStudios/cargo-deny-action@v1
+      - uses: rerun-io/cargo-deny-action@1c79bb84606a6e71145edbfd4105404783914c85
         with:
           rust-version: "1.65.0"
-          # NOTE(cmc): run_wasm relies on the wasm-bindgen infrastructure of crates, which uses
-          # much older versions of common crates than we do.
-          # This is not really an issue for two reasons:
-          # 1. `run_wasm` is temporary while we build our own xtask/build tools
-          # 2. those dependencies never end up in an actual binary
-          arguments: --exclude run_wasm
+          arguments: --log-level error
 
 
   rs-maturin-linux:

@@ -14,7 +14,7 @@ import argparse
 import random
 from math import cos, pi, sin, tau
 
-import rerun_sdk as rerun
+import rerun
 
 
 def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
