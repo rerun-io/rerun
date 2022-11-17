@@ -10,6 +10,18 @@ pub struct Tuid {
 }
 
 impl Tuid {
+    /// All zeroes.
+    pub const ZERO: Self = Self {
+        ns_since_epoch: 0,
+        randomness: 0,
+    };
+
+    /// All ones.
+    pub const MAX: Self = Self {
+        ns_since_epoch: u64::MAX,
+        randomness: u64::MAX,
+    };
+
     #[inline]
     #[cfg(not(target_arch = "wasm32"))] // TODO(emilk): implement for wasm32 (needs ms since epoch).
     pub fn random() -> Self {

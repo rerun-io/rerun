@@ -62,6 +62,12 @@ pub struct MsgId(re_tuid::Tuid);
 impl nohash_hasher::IsEnabled for MsgId {}
 
 impl MsgId {
+    /// All zeroes.
+    pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
+
+    /// All ones.
+    pub const MAX: Self = Self(re_tuid::Tuid::MAX);
+
     #[inline]
     #[cfg(not(target_arch = "wasm32"))]
     pub fn random() -> Self {
