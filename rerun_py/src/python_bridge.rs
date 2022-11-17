@@ -706,13 +706,14 @@ fn log_rects(
 
     let obj_path = parse_obj_path(obj_path)?;
 
+    if rects.is_empty() {
+        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        return Ok(());
+    }
+
     let rect_format = RectFormat::parse(rect_format)?;
 
     let n = match rects.shape() {
-        [0] => {
-            sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
-            return Ok(());
-        }
         [n, 4] => *n,
         shape => {
             return Err(PyTypeError::new_err(format!(
@@ -854,12 +855,12 @@ fn log_points(
 
     let obj_path = parse_obj_path(obj_path)?;
 
+    if positions.is_empty() {
+        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        return Ok(());
+    }
+
     let (n, obj_type) = match positions.shape() {
-        [0] => {
-            // The empty set means we should clear this object
-            sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
-            return Ok(());
-        }
         [n, 2] => (*n, ObjectType::Point2D),
         [n, 3] => (*n, ObjectType::Point3D),
         shape => {
@@ -970,15 +971,6 @@ fn log_path(
     color: Option<Vec<u8>>,
     timeless: bool,
 ) -> PyResult<()> {
-    let shape = positions.as_ref().map(|p| p.shape());
-
-    if !matches!(shape, None | Some([_, 3])) {
-        return Err(PyTypeError::new_err(format!(
-            "Expected Nx3 positions array; got {:?}",
-            shape
-        )));
-    }
-
     let mut sdk = Sdk::global();
 
     let time_point = time(timeless);
@@ -990,6 +982,13 @@ fn log_path(
         sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
         return Ok(());
     };
+
+    if !matches!(positions.shape(), [_, 3]) {
+        return Err(PyTypeError::new_err(format!(
+            "Expected Nx3 positions array; got {:?}",
+            positions.shape()
+        )));
+    }
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Path3D);
 
@@ -1042,12 +1041,12 @@ fn log_line_segments(
 
     let obj_path = parse_obj_path(obj_path)?;
 
+    if positions.is_empty() {
+        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        return Ok(());
+    }
+
     let obj_type = match positions.shape() {
-        [0] => {
-            // The empty set means we should clear this object
-            sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
-            return Ok(());
-        }
         [_, 2] => ObjectType::LineSegments2D,
         [_, 3] => ObjectType::LineSegments3D,
         _ => {
