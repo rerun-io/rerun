@@ -62,8 +62,6 @@ fn split_resolution(
 fn draw_views(
     state: &AppState,
     re_ctx: &mut RenderContext,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
     backbuffer_view: &wgpu::TextureView,
     resolution: [u32; 2],
 ) -> impl Iterator<Item = wgpu::CommandBuffer> {
@@ -84,14 +82,12 @@ fn draw_views(
         target_identifier: 0,
     };
 
-    let triangle = TestTriangleDrawable::new(re_ctx, device);
-    let skybox = GenericSkyboxDrawable::new(re_ctx, device);
-    let lines = build_lines(re_ctx, device, queue, seconds_since_startup);
-    let point_cloud = PointCloudDrawable::new(re_ctx, device, queue, &state.random_points).unwrap();
+    let triangle = TestTriangleDrawable::new(re_ctx);
+    let skybox = GenericSkyboxDrawable::new(re_ctx);
+    let lines = build_lines(re_ctx, seconds_since_startup);
+    let point_cloud = PointCloudDrawable::new(re_ctx, &state.random_points).unwrap();
     let meshes = build_mesh_instances(
         re_ctx,
-        device,
-        queue,
         &state.model_mesh_instances,
         &state.mesh_instance_positions_and_colors,
         seconds_since_startup,
@@ -107,8 +103,7 @@ fn draw_views(
             let ((x, y), (width, height)) = splits[$n];
             target_cfg.resolution_in_pixel = [width as u32, height as u32];
             target_cfg.origin_in_pixel = [x as u32, y as u32];
-            draw_view(re_ctx, device, queue, &target_cfg,
-                      &stringify!($name).into(), &skybox, &$name)
+            draw_view(re_ctx, &target_cfg, &stringify!($name).into(), &skybox, &$name)
         }};
     }
 
@@ -120,9 +115,11 @@ fn draw_views(
     ];
 
     let mut composite_cmd_encoder =
-        device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: "composite_encoder".into(),
-        });
+        re_ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: "composite_encoder".into(),
+            });
 
     let view_cmd_buffers = {
         let mut composite_pass =
@@ -158,8 +155,6 @@ fn draw_views(
 
 fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
     re_ctx: &'a mut RenderContext,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
     target_cfg: &TargetConfiguration,
     label: &DebugLabel,
     skybox: &GenericSkyboxDrawable,
@@ -167,11 +162,12 @@ fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
 ) -> (ViewBuilder, wgpu::CommandBuffer) {
     let mut view_builder = ViewBuilder::default();
 
-    let mut encoder =
-        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: label.get() });
+    let mut encoder = re_ctx
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: label.get() });
 
     view_builder
-        .setup_view(re_ctx, device, queue, target_cfg)
+        .setup_view(re_ctx, target_cfg)
         .unwrap()
         .queue_draw(skybox)
         .queue_draw(drawable)
@@ -183,8 +179,6 @@ fn draw_view<'a, D: 'static + Drawable + Sync + Send + Clone>(
 
 fn build_mesh_instances(
     re_ctx: &mut RenderContext,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
     model_mesh_instances: &[MeshInstance],
     mesh_instance_positions_and_colors: &[(glam::Vec3, [u8; 4])],
     seconds_since_startup: f32,
@@ -206,7 +200,7 @@ fn build_mesh_instances(
             )
         })
         .collect_vec();
-    MeshDrawable::new(re_ctx, device, queue, &mesh_instances).unwrap()
+    MeshDrawable::new(re_ctx, &mesh_instances).unwrap()
 }
 
 fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
@@ -237,18 +231,11 @@ fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
     .collect()
 }
 
-fn build_lines(
-    re_ctx: &mut RenderContext,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    seconds_since_startup: f32,
-) -> LineDrawable {
+fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDrawable {
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
     LineDrawable::new(
         re_ctx,
-        device,
-        queue,
         &[
             // Complex orange line.
             LineStrip {
@@ -440,8 +427,6 @@ impl Application {
                     let cmd_buffers = draw_views(
                         &self.state,
                         &mut self.re_ctx,
-                        &self.device,
-                        &self.queue,
                         &view,
                         [self.surface_config.width, self.surface_config.height],
                     );

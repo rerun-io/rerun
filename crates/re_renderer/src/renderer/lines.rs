@@ -197,16 +197,11 @@ pub struct LineStrip {
 }
 
 impl LineDrawable {
-    pub fn new(
-        ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        line_strips: &[LineStrip],
-    ) -> anyhow::Result<Self> {
+    pub fn new(ctx: &mut RenderContext, line_strips: &[LineStrip]) -> anyhow::Result<Self> {
         let line_renderer = ctx.renderers.get_or_create::<_, LineRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
-            device,
+            &ctx.device,
             &mut ctx.resolver,
         );
 
@@ -266,7 +261,7 @@ impl LineDrawable {
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawable!
         let position_data_texture = ctx.resource_pools.textures.alloc(
-            device,
+            &ctx.device,
             &TextureDesc {
                 label: "line position data".into(),
                 size: wgpu::Extent3d {
@@ -282,7 +277,7 @@ impl LineDrawable {
             },
         );
         let line_strip_texture = ctx.resource_pools.textures.alloc(
-            device,
+            &ctx.device,
             &TextureDesc {
                 label: "line strips".into(),
                 size: wgpu::Extent3d {
@@ -330,7 +325,7 @@ impl LineDrawable {
         ));
 
         // Upload data from staging buffers to gpu.
-        queue.write_texture(
+        ctx.queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &ctx
                     .resource_pools
@@ -355,7 +350,7 @@ impl LineDrawable {
                 depth_or_array_layers: 1,
             },
         );
-        queue.write_texture(
+        ctx.queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &ctx
                     .resource_pools
@@ -383,7 +378,7 @@ impl LineDrawable {
 
         Ok(LineDrawable {
             bind_group: ctx.resource_pools.bind_groups.alloc(
-                device,
+                &ctx.device,
                 &BindGroupDesc {
                     label: "line drawable".into(),
                     entries: smallvec![

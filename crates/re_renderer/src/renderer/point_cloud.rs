@@ -73,18 +73,13 @@ pub struct PointCloudPoint {
 }
 
 impl PointCloudDrawable {
-    pub fn new(
-        ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        points: &[PointCloudPoint],
-    ) -> anyhow::Result<Self> {
+    pub fn new(ctx: &mut RenderContext, points: &[PointCloudPoint]) -> anyhow::Result<Self> {
         crate::profile_function!();
 
         let line_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
-            device,
+            &ctx.device,
             &mut ctx.resolver,
         );
 
@@ -130,9 +125,9 @@ impl PointCloudDrawable {
         let position_data_texture = ctx
             .resource_pools
             .textures
-            .alloc(device, &position_data_texture_desc);
+            .alloc(&ctx.device, &position_data_texture_desc);
         let color_texture = ctx.resource_pools.textures.alloc(
-            device,
+            &ctx.device,
             &TextureDesc {
                 label: "point cloud color data".into(),
                 dimension: wgpu::TextureDimension::D2,
@@ -176,7 +171,7 @@ impl PointCloudDrawable {
 
         {
             crate::profile_scope!("write_pos_size_texture");
-            queue.write_texture(
+            ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &ctx
                         .resource_pools
@@ -201,7 +196,7 @@ impl PointCloudDrawable {
 
         {
             crate::profile_scope!("write_color_texture");
-            queue.write_texture(
+            ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &ctx
                         .resource_pools
@@ -226,7 +221,7 @@ impl PointCloudDrawable {
 
         Ok(PointCloudDrawable {
             bind_group: ctx.resource_pools.bind_groups.alloc(
-                device,
+                &ctx.device,
                 &BindGroupDesc {
                     label: "line drawable".into(),
                     entries: smallvec![

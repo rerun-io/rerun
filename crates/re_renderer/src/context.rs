@@ -16,8 +16,8 @@ use crate::{
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
-    pub(crate) device: Arc<wgpu::Device>,
-    pub(crate) queue: Arc<wgpu::Queue>,
+    pub device: Arc<wgpu::Device>,
+    pub queue: Arc<wgpu::Queue>,
 
     pub(crate) shared_renderer_data: SharedRendererData,
     pub(crate) renderers: Renderers,

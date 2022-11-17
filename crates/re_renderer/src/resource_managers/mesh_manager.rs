@@ -28,8 +28,6 @@ impl MeshManager {
     /// Uploads to gpu if not already done.
     pub(crate) fn get_or_create_gpu_resource(
         ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
         handle: MeshHandle,
     ) -> Result<GpuMesh, ResourceManagerError> {
         ctx.mesh_manager
@@ -40,8 +38,8 @@ impl MeshManager {
                     &mut ctx.resource_pools,
                     &mut ctx.texture_manager_2d,
                     ctx.renderers.get::<MeshRenderer>().unwrap(),
-                    device,
-                    queue,
+                    &ctx.device,
+                    &ctx.queue,
                     resource,
                 )
             })

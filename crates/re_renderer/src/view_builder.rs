@@ -101,8 +101,6 @@ impl ViewBuilder {
     pub fn setup_view(
         &mut self,
         ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
         config: &TargetConfiguration,
     ) -> anyhow::Result<&mut Self> {
         crate::profile_function!();
@@ -128,10 +126,10 @@ impl ViewBuilder {
         let hdr_render_target_msaa = ctx
             .resource_pools
             .textures
-            .alloc(device, &hdr_render_target_desc);
+            .alloc(&ctx.device, &hdr_render_target_desc);
         // Like hdr_render_target, but with MSAA resolved.
         let hdr_render_target_resolved = ctx.resource_pools.textures.alloc(
-            device,
+            &ctx.device,
             &TextureDesc {
                 label: "hdr rendertarget resolved".into(),
                 sample_count: 1,
@@ -141,7 +139,7 @@ impl ViewBuilder {
             },
         );
         let depth_buffer = ctx.resource_pools.textures.alloc(
-            device,
+            &ctx.device,
             &TextureDesc {
                 label: "depth buffer".into(),
                 format: Self::MAIN_TARGET_DEPTH_FORMAT,
@@ -149,12 +147,11 @@ impl ViewBuilder {
             },
         );
 
-        let tonemapping_drawable =
-            CompositorDrawable::new(ctx, device, &hdr_render_target_resolved);
+        let tonemapping_drawable = CompositorDrawable::new(ctx, &hdr_render_target_resolved);
 
         // Setup frame uniform buffer
         let frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
-            device,
+            &ctx.device,
             &BufferDesc {
                 label: "frame uniform buffer".into(),
                 size: std::mem::size_of::<FrameUniformBuffer>() as _,
@@ -197,7 +194,7 @@ impl ViewBuilder {
         let pixel_world_size_from_camera_distance =
             tan_half_fov.y * 2.0 / config.resolution_in_pixel[1] as f32;
 
-        queue.write_buffer(
+        ctx.queue.write_buffer(
             &ctx.resource_pools
                 .buffers
                 .get_resource(&frame_uniform_buffer)
@@ -217,7 +214,7 @@ impl ViewBuilder {
 
         let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
             &mut ctx.resource_pools,
-            device,
+            &ctx.device,
             &frame_uniform_buffer,
         );
 

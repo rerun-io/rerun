@@ -97,18 +97,13 @@ pub struct MeshInstance {
 }
 
 impl MeshDrawable {
-    pub fn new(
-        ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        instances: &[MeshInstance],
-    ) -> anyhow::Result<Self> {
+    pub fn new(ctx: &mut RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
         crate::profile_function!();
 
         let _mesh_renderer = ctx.renderers.get_or_create::<_, MeshRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
-            device,
+            &ctx.device,
             &mut ctx.resolver,
         );
 
@@ -117,7 +112,7 @@ impl MeshDrawable {
         // TODO(andreas): Use a temp allocator
         let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
         let instance_buffer = ctx.resource_pools.buffers.alloc(
-            device,
+            &ctx.device,
             &BufferDesc {
                 label: "MeshDrawable instance buffer".into(),
                 size: instance_buffer_size,
@@ -127,7 +122,7 @@ impl MeshDrawable {
 
         let mut mesh_runs = Vec::new();
         {
-            let mut instance_buffer_staging = queue.write_buffer_with(
+            let mut instance_buffer_staging = ctx.queue.write_buffer_with(
                 &ctx.resource_pools
                     .buffers
                     .get_resource(&instance_buffer)
@@ -164,7 +159,7 @@ impl MeshDrawable {
         let batches: Result<Vec<_>, _> = mesh_runs
             .into_iter()
             .map(|(mesh_handle, count)| {
-                MeshManager::get_or_create_gpu_resource(ctx, device, queue, mesh_handle)
+                MeshManager::get_or_create_gpu_resource(ctx, mesh_handle)
                     .map(|mesh| MeshBatch { mesh, count })
             })
             .collect();

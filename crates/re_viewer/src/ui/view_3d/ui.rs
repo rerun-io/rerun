@@ -516,7 +516,7 @@ fn paint_view(
                 egui_wgpu::CallbackFn::new()
                     // TODO(andreas): The only thing that should happen inside this callback is
                     // passing a previously created commandbuffer out!
-                    .prepare(move |device, queue, _, paint_callback_resources| {
+                    .prepare(move |device, _queue, _, paint_callback_resources| {
                         crate::profile_scope!("prepare");
                         if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
                             return Vec::new();
@@ -530,8 +530,6 @@ fn paint_view(
                             .unwrap()
                             .setup_view(
                                 ctx,
-                                device,
-                                queue,
                                 &TargetConfiguration {
                                     resolution_in_pixel,
                                     origin_in_pixel,
@@ -544,23 +542,19 @@ fn paint_view(
                                 },
                             )
                             .unwrap()
-                            .queue_draw(&GenericSkyboxDrawable::new(ctx, device));
+                            .queue_draw(&GenericSkyboxDrawable::new(ctx));
 
                         if !mesh_instances.is_empty() {
-                            view_builder.queue_draw(
-                                &MeshDrawable::new(ctx, device, queue, &mesh_instances).unwrap(),
-                            );
+                            view_builder
+                                .queue_draw(&MeshDrawable::new(ctx, &mesh_instances).unwrap());
                         }
 
                         if !line_strips.is_empty() {
-                            view_builder.queue_draw(
-                                &LineDrawable::new(ctx, device, queue, &line_strips).unwrap(),
-                            );
+                            view_builder.queue_draw(&LineDrawable::new(ctx, &line_strips).unwrap());
                         }
                         if !point_cloud_points.is_empty() {
                             view_builder.queue_draw(
-                                &PointCloudDrawable::new(ctx, device, queue, &point_cloud_points)
-                                    .unwrap(),
+                                &PointCloudDrawable::new(ctx, &point_cloud_points).unwrap(),
                             );
                         }
 
