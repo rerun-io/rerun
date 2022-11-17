@@ -21,18 +21,19 @@ ignore = [
 multiple-versions = "deny"
 wildcards = "allow" # at least until https://github.com/EmbarkStudios/cargo-deny/issues/241 is fixed
 deny = [
-  { name = "openssl" },     # We prefer rustls
+  { name = "egui_glow" },   # We use wgpu
   { name = "openssl-sys" }, # We prefer rustls
+  { name = "openssl" },     # We prefer rustls
 ]
 
 skip = [
   { name = "ahash" }, # Old version via dark-light
   { name = "nix" },   # Too many to protect against
-  { name = "glow" },  # Both wgpu and egui patch glow
 ]
 skip-tree = [
-  { name = "criterion" }, # dev-dependency
-  { name = "winit" },     # winit pulls in a lot of old, duplicated crates. At least it is not wasm
+  { name = "cargo-run-wasm" }, # Dev-tool
+  { name = "criterion" },      # dev-dependency
+  { name = "winit" },          # winit pulls in a lot of old, duplicated crates. At least it is not wasm
 ]
 
 
