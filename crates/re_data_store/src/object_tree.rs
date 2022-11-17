@@ -50,6 +50,7 @@ impl ObjectTree {
     }
 
     /// Add a `LoggedData` into the object tree
+    ///
     /// Returns a collection of pending clear operations
     pub fn add_data_msg(
         &mut self,
@@ -79,6 +80,7 @@ impl ObjectTree {
     }
 
     /// Add a path operation into the the object tree
+    ///j
     /// Returns a collection of data paths to clear as a result of the operation
     /// Additional pending clear operations will be stored in the tree for future
     /// insertion.
@@ -98,12 +100,13 @@ impl ObjectTree {
         // TODO(jleibs): Refactor this as separate functions
         match path_op {
             PathOp::ClearFields(obj_path) => {
-                // Track that any new fields need a Null at the right
+                // Track that any future fields need a Null at the right
                 // time-point when added.
                 leaf.nonrecursive_clears
                     .entry(msg_id)
                     .or_insert_with(|| time_point.clone());
 
+                // For every existing field return a clear event
                 leaf.fields
                     .iter()
                     .flat_map(|(field_name, fields)| {
@@ -122,39 +125,38 @@ impl ObjectTree {
             }
             PathOp::ClearRecursive(_) => {
                 let mut results = vec![];
-                let mut trees: Vec<&mut Self> = vec![];
+                let mut trees = vec![];
                 trees.push(leaf);
                 while !trees.is_empty() {
                     let next = trees.pop().unwrap();
                     trees.extend(next.children.values_mut().collect::<Vec<&mut Self>>());
 
-                    // Track that any new children and any new need a Null at the right
+                    // Track that any future children need a Null at the right
                     // time-point when added.
                     next.recursive_clears
                         .entry(msg_id)
                         .or_insert_with(|| time_point.clone());
 
+                    // Track that any future fields need a Null at the right
+                    // time-point when added.
                     next.nonrecursive_clears
                         .entry(msg_id)
                         .or_insert_with(|| time_point.clone());
 
-                    results.extend(
-                        next.fields
+                    // For every existing field append a clear event into the
+                    // results
+                    results.extend(next.fields.iter().flat_map(|(field_name, fields)| {
+                        fields
+                            .per_type
                             .iter()
-                            .flat_map(|(field_name, fields)| {
-                                fields
-                                    .per_type
-                                    .iter()
-                                    .map(|((data_type, multi_or_mono), _)| {
-                                        (
-                                            DataPath::new(next.path.clone(), *field_name),
-                                            *data_type,
-                                            *multi_or_mono,
-                                        )
-                                    })
+                            .map(|((data_type, multi_or_mono), _)| {
+                                (
+                                    DataPath::new(next.path.clone(), *field_name),
+                                    *data_type,
+                                    *multi_or_mono,
+                                )
                             })
-                            .collect_vec(),
-                    );
+                    }));
                 }
                 results
             }
