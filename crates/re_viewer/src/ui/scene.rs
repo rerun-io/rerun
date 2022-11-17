@@ -22,19 +22,30 @@ pub struct Scene {
 
 impl Scene {
     pub(crate) fn categories(&self) -> std::collections::BTreeSet<ViewCategory> {
-        let has_2d = !self.two_d.is_empty() && self.tensor.is_empty();
-        let has_3d = !self.three_d.is_empty();
-        let has_text = !self.text.is_empty();
-        let has_tensor = !self.tensor.is_empty();
+        let Self {
+            two_d,
+            three_d,
+            text,
+            tensor,
+            plot,
+        } = self;
+
+        let has_2d = !two_d.is_empty() && tensor.is_empty();
+        let has_3d = !three_d.is_empty();
+        let has_text = !text.is_empty();
+        let has_tensor = !tensor.is_empty();
+        let has_plot = !plot.is_empty();
 
         [
             has_2d.then_some(ViewCategory::TwoD),
             has_3d.then_some(ViewCategory::ThreeD),
             has_text.then_some(ViewCategory::Text),
             has_tensor.then_some(ViewCategory::Tensor),
+            has_plot.then_some(ViewCategory::Plot),
         ]
         .iter()
         .filter_map(|cat| *cat)
+        .chain(std::iter::once(ViewCategory::Plot))
         .collect()
     }
 }
@@ -52,10 +63,18 @@ impl<'s> SceneQuery<'s> {
     pub(crate) fn query(&self, ctx: &mut crate::misc::ViewerContext<'_>) -> Scene {
         crate::profile_function!();
         let mut scene = Scene::default();
-        scene.two_d.load_objects(ctx, self);
-        scene.three_d.load_objects(ctx, self);
-        scene.text.load_objects(ctx, self);
-        scene.tensor.load_objects(ctx, self);
+        let Scene {
+            two_d,
+            three_d,
+            text,
+            tensor,
+            plot,
+        } = &mut scene;
+        two_d.load_objects(ctx, self);
+        three_d.load_objects(ctx, self);
+        text.load_objects(ctx, self);
+        tensor.load_objects(ctx, self);
+        plot.load_objects(ctx, self);
         scene
     }
 

@@ -33,7 +33,7 @@ def log_parabola() -> None:
         elif f_of_t > 10.0:
             color = [0, 255, 0]
 
-        rerun.log_scalar("parabola", f_of_t, label="f(t) = (t * 0.01 - 3)³ + 1", radius=radius, color=color)
+        rerun.log_scalar("parabola", f_of_t, label="f(t) = (0.01t - 3)³ + 1", radius=radius, color=color)
 
 
 def log_trig() -> None:
@@ -41,10 +41,10 @@ def log_trig() -> None:
         rerun.set_time_sequence("frame_nr", t)
 
         sin_of_t = sin(float(t) / 100.0)
-        rerun.log_scalar("trig/sin", sin_of_t, label="sin(0.01 * t)", color=[255, 0, 0])
+        rerun.log_scalar("trig/sin", sin_of_t, label="sin(0.01t)", color=[255, 0, 0])
 
         cos_of_t = cos(float(t) / 100.0)
-        rerun.log_scalar("trig/cos", cos_of_t, label="cos(0.01 * t)", color=[0, 255, 0])
+        rerun.log_scalar("trig/cos", cos_of_t, label="cos(0.01t)", color=[0, 255, 0])
 
 
 def log_segmentation() -> None:
@@ -82,7 +82,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rerun.init("plot")
+    rerun.init("plot2")
 
     if args.serve:
         rerun.serve()

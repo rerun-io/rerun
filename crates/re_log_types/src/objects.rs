@@ -51,7 +51,7 @@ impl ObjectType {
             Self::ClassDescription => &["id", "label", "color"],
 
             Self::TextEntry => &["color", "body", "level"],
-            Self::Scalar => &["label", "color", "radius", "scattered"],
+            Self::Scalar => &["scalar", "label", "color", "radius", "scattered"],
 
             Self::Image => &["color", "tensor", "meter"],
             Self::Point2D => &["color", "pos", "radius"],

@@ -194,3 +194,11 @@ impl ScenePlot {
         }
     }
 }
+
+impl ScenePlot {
+    pub fn is_empty(&self) -> bool {
+        let Self { lines } = self;
+
+        lines.is_empty()
+    }
+}
