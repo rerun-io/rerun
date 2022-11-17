@@ -3090,6 +3090,7 @@ dependencies = [
  "static_assertions",
  "thiserror",
  "tobj",
+ "tracing",
  "tracing-subscriber",
  "tracing-wasm",
  "type-map",

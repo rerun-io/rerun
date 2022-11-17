@@ -112,11 +112,17 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Check wasm32
+      - name: Check re_viewer wasm32
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: -p re_viewer --all-features --lib --target wasm32-unknown-unknown
+          args: --all-features --lib --target wasm32-unknown-unknown -p re_viewer
+
+      - name: Check renderer_stadalone wasm32
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --target wasm32-unknown-unknown --example renderer_standalone
 
       - name: wasm-bindgen
         uses: jetli/wasm-bindgen-action@v0.1.0
