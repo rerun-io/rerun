@@ -131,7 +131,8 @@ impl Scene2D {
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
-                        let color = self.annotation_map.find(obj_path).color(
+                        let annotations = self.annotation_map.find(obj_path);
+                        let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for images
                             obj_path,
@@ -147,7 +148,7 @@ impl Scene2D {
                             ),
                             tensor: tensor.clone(), // shallow
                             meter: meter.copied(),
-                            annotations: Some(self.annotation_map.find(obj_path)),
+                            annotations: Some(annotations),
                             paint_props,
                             is_hovered: false, // Will be filled in later
                         };
@@ -189,12 +190,14 @@ impl Scene2D {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
-                        let color = self.annotation_map.find(obj_path).color(
+                        let annotations = self.annotation_map.find(obj_path);
+                        let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for boxes segments
                             obj_path,
                             DefaultColor::Random,
                         );
+                        let label = annotations.label(label, None);
 
                         let paint_props = paint_properties(color, &stroke_width);
 
@@ -205,7 +208,7 @@ impl Scene2D {
                             ),
                             bbox: bbox.clone(),
                             stroke_width,
-                            label: label.map(ToOwned::to_owned),
+                            label,
                             paint_props,
                         });
                     },
@@ -241,7 +244,8 @@ impl Scene2D {
                      radius: Option<&f32>| {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
-                        let color = self.annotation_map.find(obj_path).color(
+                        let annotations = self.annotation_map.find(obj_path);
+                        let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for points
                             obj_path,
@@ -295,7 +299,8 @@ impl Scene2D {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
-                        let color = self.annotation_map.find(obj_path).color(
+                        let annotations = self.annotation_map.find(obj_path);
+                        let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for line segments
                             obj_path,

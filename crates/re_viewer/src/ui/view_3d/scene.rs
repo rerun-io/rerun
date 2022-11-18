@@ -182,7 +182,8 @@ impl Scene3D {
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        let color = self.annotation_map.find(obj_path).color(
+                        let annotations = self.annotation_map.find(obj_path);
+                        let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for points
                             obj_path,
@@ -220,18 +221,21 @@ impl Scene3D {
                  label: Option<&String>| {
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                     let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                    let color = self.annotation_map.find(obj_path).color(
+
+                    let annotations = self.annotation_map.find(obj_path);
+                    let color = annotations.color(
                         color,
                         None, // TODO(andreas): support class ids for boxes
                         obj_path,
                         DefaultColor::Random,
                     );
+                    let label = annotations.label(label, None);
 
                     self.add_box(
                         InstanceIdHash::from_path_and_index(obj_path, instance_index),
                         color,
                         line_radius,
-                        label.map(|s| s.as_str()),
+                        label,
                         obb,
                     );
                 },
@@ -273,7 +277,9 @@ impl Scene3D {
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
                         let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                        let color = self.annotation_map.find(obj_path).color(
+
+                        let annotations = self.annotation_map.find(obj_path);
+                        let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for points
                             obj_path,
@@ -324,18 +330,22 @@ impl Scene3D {
                         InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
                     let width = width_scale.copied().unwrap_or(1.0);
-                    let color = self.annotation_map.find(obj_path).color(
+
+                    let annotations = self.annotation_map.find(obj_path);
+                    let color = annotations.color(
                         color,
                         None, // TODO(andreas): support class ids for arrows
                         obj_path,
                         DefaultColor::Random,
                     );
+                    let label = annotations.label(label, None);
+
                     self.add_arrow(
                         ctx.cache,
                         instance_id_hash,
                         color,
                         Some(width),
-                        label.map(|s| s.as_str()),
+                        label,
                         arrow,
                     );
                 },
@@ -641,9 +651,11 @@ impl Scene3D {
         instance_id_hash: InstanceIdHash,
         color: [u8; 4],
         width_scale: Option<f32>,
-        _label: Option<&str>,
+        label: Option<String>,
         arrow: &re_log_types::Arrow3D,
     ) {
+        drop(label); // TODO(andreas): support labels
+
         let re_log_types::Arrow3D { origin, vector } = arrow;
 
         let width_scale = width_scale.unwrap_or(1.0);
@@ -668,7 +680,7 @@ impl Scene3D {
         instance_id: InstanceIdHash,
         color: [u8; 4],
         line_radius: Size,
-        label: Option<&str>,
+        label: Option<String>,
         box3: &re_log_types::Box3,
     ) {
         let re_log_types::Box3 {
@@ -713,7 +725,7 @@ impl Scene3D {
 
         if let Some(label) = label {
             self.labels.push(Label3D {
-                text: (*label).to_owned(),
+                text: label,
                 origin: translation,
             });
         }

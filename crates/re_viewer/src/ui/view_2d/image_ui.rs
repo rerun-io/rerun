@@ -3,8 +3,6 @@ use re_log_types::*;
 
 use crate::misc::{tensor_image_cache, ViewerContext};
 
-use super::LabelMapping as _;
-
 pub(crate) fn show_tensor(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -157,7 +155,10 @@ pub fn show_zoomed_image_region(
                         tensor_view.annotations,
                         raw_value.try_as_u16(),
                     ) {
-                        ui.monospace(format!("Label: {}", annotations.map_label(u16_val)));
+                        ui.monospace(format!(
+                            "Label: {}",
+                            annotations.label_from_class_id(u16_val)
+                        ));
                     };
                 }
             } else if tensor_view.tensor.num_dim() == 3 {

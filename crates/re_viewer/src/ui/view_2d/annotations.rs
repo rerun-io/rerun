@@ -58,7 +58,29 @@ impl Annotations {
         }
     }
 
-    // TODO: Same for labels
+    pub fn label(&self, label: Option<&String>, class_id: Option<ClassId>) -> Option<String> {
+        if let Some(label) = label {
+            return Some(label.clone());
+        }
+
+        if let Some(class_id) = class_id {
+            return Some(self.label_from_class_id(class_id.0));
+        }
+
+        None
+    }
+
+    pub fn label_from_class_id(&self, val: u16) -> String {
+        if let Some(class_desc) = self.context.class_map.get(&ClassId(val)) {
+            if let Some(label) = class_desc.info.label.as_ref() {
+                label.to_string()
+            } else {
+                (val as i32).to_string()
+            }
+        } else {
+            format!("unknown class id {val}")
+        }
+    }
 }
 
 #[derive(Default, Clone, Debug)]
@@ -121,23 +143,4 @@ pub fn auto_color(val: u16) -> [u8; 4] {
     let h = val as f32 * golden_ratio;
     let color = egui::Color32::from(egui::color::Hsva::new(h, 0.85, 0.5, 1.0));
     color.to_array()
-}
-
-// TODO(jleibs): sort out lifetime of label
-pub trait LabelMapping {
-    fn map_label(&self, val: u16) -> String;
-}
-
-impl LabelMapping for Annotations {
-    fn map_label(&self, val: u16) -> String {
-        if let Some(class_desc) = self.context.class_map.get(&ClassId(val)) {
-            if let Some(label) = class_desc.info.label.as_ref() {
-                label.to_string()
-            } else {
-                (val as i32).to_string()
-            }
-        } else {
-            "unknown".to_owned()
-        }
-    }
 }
