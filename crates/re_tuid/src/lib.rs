@@ -2,24 +2,21 @@
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
-    ns_since_epoch: u64,
+    time_ns: u64,
 
     /// Initialized to something random on each thread,
-    /// then incremented for each new Tuid being allocated.
-    randomness: u64,
+    /// then incremented for each new [`Tuid`] being allocated.
+    inc: u64,
 }
 
 impl Tuid {
     /// All zeroes.
-    pub const ZERO: Self = Self {
-        ns_since_epoch: 0,
-        randomness: 0,
-    };
+    pub const ZERO: Self = Self { time_ns: 0, inc: 0 };
 
     /// All ones.
     pub const MAX: Self = Self {
-        ns_since_epoch: u64::MAX,
-        randomness: u64::MAX,
+        time_ns: u64::MAX,
+        inc: u64::MAX,
     };
 
     #[inline]
@@ -29,10 +26,10 @@ impl Tuid {
 
         thread_local! {
             pub static LATEST_TUID: RefCell<Tuid> = RefCell::new(Tuid{
-                ns_since_epoch: monotonic_nanos_since_epoch(),
+                time_ns: monotonic_nanos_since_epoch(),
 
                 // Leave top bit at zero so we have plenty of room to grow.
-                randomness: random_u64() & !(1_u64 << 63),
+                inc: random_u64() & !(1_u64 << 63),
             });
         }
 
@@ -40,12 +37,12 @@ impl Tuid {
             let mut latest = latest_tuid.borrow_mut();
 
             let new = Tuid {
-                ns_since_epoch: monotonic_nanos_since_epoch(),
-                randomness: latest.randomness + 1,
+                time_ns: monotonic_nanos_since_epoch(),
+                inc: latest.inc + 1,
             };
 
             debug_assert!(
-                latest.ns_since_epoch <= new.ns_since_epoch,
+                latest.time_ns <= new.time_ns,
                 "Time should be monotonically increasing"
             );
 
@@ -57,7 +54,7 @@ impl Tuid {
 
     #[inline]
     pub fn as_u128(&self) -> u128 {
-        ((self.ns_since_epoch as u128) << 64) | (self.randomness as u128)
+        ((self.time_ns as u128) << 64) | (self.inc as u128)
     }
 }
 
@@ -65,7 +62,7 @@ impl Tuid {
 impl std::hash::Hash for Tuid {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.ns_since_epoch ^ self.randomness);
+        state.write_u64(self.time_ns ^ self.inc);
     }
 }
 
@@ -98,7 +95,7 @@ fn monotonic_nanos_since_epoch() -> u64 {
 #[cfg(not(target_arch = "wasm32"))]
 fn random_u64() -> u64 {
     let mut bytes = [0_u8; 8];
-    getrandom::getrandom(&mut bytes).expect("Couldn't get randomness");
+    getrandom::getrandom(&mut bytes).expect("Couldn't get inc");
     u64::from_le_bytes(bytes)
 }
 

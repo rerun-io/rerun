@@ -1,5 +1,5 @@
 # TUID: Time-based Unique IDentifier
-TUID:s are 128-bit globally unique identifiers, that have a global time-based order, with tie-breaking between threads. This means you can use a TUID as a tie-breaker in time series databases.
+TUID:s are 128-bit identifiers, that have a global time-based order, with tie-breaking between threads. This means you can use a TUID as a tie-breaker in time series databases.
 
 ## Implementation
 TUID is based on two fields, both of which are monotonically increasing:

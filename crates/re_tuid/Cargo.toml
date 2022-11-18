@@ -7,6 +7,12 @@ license.workspace = true
 publish = false
 
 
+[features]
+default = []
+
+serde = ["dep:serde"]
+
+
 [dependencies]
 once_cell = "1.16"
 
@@ -16,7 +22,7 @@ getrandom = "0.2"
 
 # Optional dependencies:
 nohash-hasher = { version = "0.2", optional = true }
-serde = { version = "1", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
