@@ -484,6 +484,7 @@ impl DataVec {
             DataType::Bool => Self::Bool(vec![]),
             DataType::I32 => Self::I32(vec![]),
             DataType::F32 => Self::F32(vec![]),
+            DataType::F64 => Self::F64(vec![]),
             DataType::Color => Self::Color(vec![]),
             DataType::String => Self::String(vec![]),
 
