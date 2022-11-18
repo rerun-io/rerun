@@ -29,21 +29,17 @@ impl Drawable for CompositorDrawable {
 }
 
 impl CompositorDrawable {
-    pub fn new(
-        ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        target: &GpuTextureHandleStrong,
-    ) -> Self {
+    pub fn new(ctx: &mut RenderContext, target: &GpuTextureHandleStrong) -> Self {
         let pools = &mut ctx.resource_pools;
         let compositor = ctx.renderers.get_or_create::<_, Compositor>(
             &ctx.shared_renderer_data,
             pools,
-            device,
+            &ctx.device,
             &mut ctx.resolver,
         );
         CompositorDrawable {
             bind_group: pools.bind_groups.alloc(
-                device,
+                &ctx.device,
                 &BindGroupDesc {
                     label: "compositor".into(),
                     entries: smallvec![BindGroupEntry::DefaultTextureView(**target)],

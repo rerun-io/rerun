@@ -8,10 +8,9 @@ use super::LabelMapping as _;
 pub(crate) fn show_tensor(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    msg_id: &MsgId,
     tensor: &re_log_types::Tensor,
 ) {
-    let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
+    let tensor_view = ctx.cache.image.get_view(tensor);
 
     let max_size = ui
         .available_size()

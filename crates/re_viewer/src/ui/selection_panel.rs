@@ -121,6 +121,9 @@ impl SelectionPanel {
                         ui.separator();
                         view_object(ctx, ui, &msg.data_path.obj_path, Preview::Medium);
                     }
+                    LogMsg::PathOpMsg(msg) => {
+                        show_path_op_msg(ctx, ui, msg);
+                    }
                 }
             }
             Selection::ObjTypePath(obj_type_path) => {

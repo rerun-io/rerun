@@ -28,11 +28,11 @@ impl Drawable for GenericSkyboxDrawable {
 }
 
 impl GenericSkyboxDrawable {
-    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
+    pub fn new(ctx: &mut RenderContext) -> Self {
         ctx.renderers.get_or_create::<_, GenericSkybox>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
-            device,
+            &ctx.device,
             &mut ctx.resolver,
         );
 

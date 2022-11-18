@@ -117,14 +117,14 @@ def run_text_logs() -> None:
     logging.info("This log got added through a `LoggingHandler`")
 
 
-def run_log_none() -> None:
+def run_log_cleared() -> None:
     rerun.set_time_seconds("sim_time", 1)
     rerun.log_rect("null_demo/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
     rerun.log_rect("null_demo/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
     rerun.set_time_seconds("sim_time", 2)
-    rerun.log_rect("null_demo/rect/0", None)
+    rerun.log_cleared("null_demo/rect/0")
     rerun.set_time_seconds("sim_time", 3)
-    rerun.log_rect("null_demo/rect/1", None)
+    rerun.log_cleared("null_demo/rect", recursive=True)
     rerun.set_time_seconds("sim_time", 4)
     rerun.log_rect("null_demo/rect/0", [5, 5, 4, 4])
     rerun.set_time_seconds("sim_time", 5)
@@ -138,7 +138,7 @@ def main() -> None:
         "set_visible": run_set_visible,
         "rects": run_rects,
         "text": run_text_logs,
-        "log_none": run_log_none,
+        "log_cleared": run_log_cleared,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

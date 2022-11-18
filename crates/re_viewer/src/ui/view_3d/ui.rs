@@ -3,6 +3,11 @@ use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
+use re_renderer::{
+    renderer::{GenericSkyboxDrawable, LineDrawable, MeshDrawable, PointCloudDrawable},
+    view_builder::{TargetConfiguration, ViewBuilder},
+    RenderContext,
+};
 
 use crate::{
     misc::{HoveredSpace, Selection},
@@ -408,7 +413,17 @@ pub(crate) fn view_3d(
         hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
     );
 
-    paint_view(ui, eye, rect, &scene, state, response)
+    paint_view(
+        ui,
+        eye,
+        rect,
+        &scene,
+        state,
+        ctx.render_ctx,
+        &space.map_or("<unnamed>".to_owned(), |space| space.to_string()),
+    );
+
+    response
 }
 
 fn paint_view(
@@ -416,9 +431,10 @@ fn paint_view(
     eye: Eye,
     rect: egui::Rect,
     scene: &Scene3D,
-    _state: &mut View3DState,
-    response: egui::Response,
-) -> egui::Response {
+    state: &mut View3DState,
+    render_ctx: &mut RenderContext,
+    name: &str,
+) {
     crate::profile_function!();
 
     // Draw labels:
@@ -459,134 +475,79 @@ fn paint_view(
         },
     );
 
-    let callback = {
-        use re_renderer::renderer::*;
-        use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-        use re_renderer::RenderContext;
+    // Determine view port resolution and position.
+    let (resolution_in_pixel, origin_in_pixel) = {
+        let ppp = ui.ctx().pixels_per_point();
+        let min = (rect.min.to_vec2() * ppp).round();
+        let max = (rect.max.to_vec2() * ppp).round();
 
-        let view_builder_prepare = ViewBuilder::new_shared();
-        let view_builder_draw = view_builder_prepare.clone();
+        let resolution = max - min;
+        let origin = min;
 
-        let target_identifier = egui::util::hash(ui.id());
+        (
+            [resolution.x as u32, resolution.y as u32],
+            [origin.x as u32, origin.y as u32],
+        )
+    };
+    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+        return;
+    }
 
-        let (resolution_in_pixel, origin_in_pixel) = {
-            let ppp = ui.ctx().pixels_per_point();
-            let min = (rect.min.to_vec2() * ppp).round();
-            let max = (rect.max.to_vec2() * ppp).round();
+    let (view_builder, command_buffer) = {
+        crate::profile_scope!("build command buffer for view");
 
-            let resolution = max - min;
-            let origin = min;
+        let mut view_builder = ViewBuilder::default();
+        view_builder
+            .setup_view(
+                render_ctx,
+                TargetConfiguration {
+                    name: name.into(),
 
-            (
-                [resolution.x as u32, resolution.y as u32],
-                [origin.x as u32, origin.y as u32],
+                    resolution_in_pixel,
+                    origin_in_pixel,
+
+                    view_from_world: eye.world_from_view.inverse(),
+                    fov_y: eye.fov_y,
+                    near_plane_distance: eye.near(),
+                },
             )
-        };
+            .unwrap()
+            .queue_draw(&GenericSkyboxDrawable::new(render_ctx))
+            .queue_draw(&MeshDrawable::new(render_ctx, &scene.meshes()).unwrap())
+            .queue_draw(
+                &LineDrawable::new(render_ctx, &scene.line_strips(state.show_axes)).unwrap(),
+            )
+            .queue_draw(&PointCloudDrawable::new(render_ctx, &scene.point_cloud_points()).unwrap());
 
-        let point_cloud_points = scene.point_cloud_points();
-        let line_strips = scene.line_strips(_state.show_axes);
-
-        // TODO(andreas): Right now we can't borrow the scene into a context where we have a device.
-        //                  Once we can do that, this awful clone is no longer needed as we can acquire gpu data directly
-        // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
-        let mut mesh_instances = Vec::new();
-        {
-            crate::profile_scope!("meshes");
-            for mesh in &scene.meshes {
-                let (scale, rotation, translation) =
-                    mesh.world_from_mesh.to_scale_rotation_translation();
-                let base_transform = macaw::Conformal3::from_scale_rotation_translation(
-                    re_renderer::importer::to_uniform_scale(scale),
-                    rotation,
-                    translation,
-                );
-                mesh_instances.extend(mesh.cpu_mesh.mesh_instances.iter().map(|instance| {
-                    MeshInstance {
-                        mesh: instance.mesh,
-                        world_from_mesh: base_transform * instance.world_from_mesh,
-                        additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
-                    }
-                }));
-            }
-        }
-
-        egui::PaintCallback {
-            rect,
-            callback: std::sync::Arc::new(
-                egui_wgpu::CallbackFn::new()
-                    // TODO(andreas): The only thing that should happen inside this callback is
-                    // passing a previously created commandbuffer out!
-                    .prepare(move |device, queue, _, paint_callback_resources| {
-                        crate::profile_scope!("prepare");
-                        if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-                            return Vec::new();
-                        }
-
-                        let ctx: &mut RenderContext = paint_callback_resources.get_mut().unwrap();
-                        let mut view_builder_lock = view_builder_prepare.write();
-
-                        let view_builder = view_builder_lock
-                            .as_mut()
-                            .unwrap()
-                            .setup_view(
-                                ctx,
-                                device,
-                                queue,
-                                &TargetConfiguration {
-                                    resolution_in_pixel,
-                                    origin_in_pixel,
-
-                                    view_from_world: eye.world_from_view.inverse(),
-                                    fov_y: eye.fov_y,
-                                    near_plane_distance: eye.near(),
-
-                                    target_identifier,
-                                },
-                            )
-                            .unwrap()
-                            .queue_draw(&GenericSkyboxDrawable::new(ctx, device));
-
-                        if !mesh_instances.is_empty() {
-                            view_builder.queue_draw(
-                                &MeshDrawable::new(ctx, device, queue, &mesh_instances).unwrap(),
-                            );
-                        }
-
-                        if !line_strips.is_empty() {
-                            view_builder.queue_draw(
-                                &LineDrawable::new(ctx, device, queue, &line_strips).unwrap(),
-                            );
-                        }
-                        if !point_cloud_points.is_empty() {
-                            view_builder.queue_draw(
-                                &PointCloudDrawable::new(ctx, device, queue, &point_cloud_points)
-                                    .unwrap(),
-                            );
-                        }
-
-                        let mut encoder =
-                            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: "view_encoder".into(), // TODO(cmc): view name in here!
-                            });
-
-                        view_builder.draw(ctx, &mut encoder).unwrap(); // TODO(andreas): Graceful error handling
-
-                        vec![encoder.finish()]
-                    })
-                    .paint(move |_info, render_pass, paint_callback_resources| {
-                        crate::profile_scope!("paint");
-                        let ctx = paint_callback_resources.get().unwrap();
-                        let view_builder = view_builder_draw.write().take();
-                        view_builder.unwrap().composite(ctx, render_pass).unwrap();
-                        // TODO(andreas): Graceful error handling
-                    }),
-            ),
-        }
+        let command_buffer = view_builder.draw(render_ctx).unwrap();
+        (view_builder, command_buffer)
     };
 
-    ui.painter().add(callback);
-
-    response
+    // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
+    let command_buffer = std::sync::Arc::new(egui::mutex::Mutex::new(Some(command_buffer)));
+    let view_builder = std::sync::Arc::new(egui::mutex::Mutex::new(Some(view_builder)));
+    ui.painter().add(egui::PaintCallback {
+        rect,
+        callback: std::sync::Arc::new(
+            egui_wgpu::CallbackFn::new()
+                .prepare(
+                    move |_device, _queue, _encoder, _paint_callback_resources| {
+                        let mut command_buffer = command_buffer.lock();
+                        vec![std::mem::replace(&mut *command_buffer, None)
+                            .expect("egui_wgpu prepare callback called more than once")]
+                    },
+                )
+                .paint(move |_info, render_pass, paint_callback_resources| {
+                    crate::profile_scope!("paint");
+                    let ctx = paint_callback_resources.get().unwrap();
+                    let mut view_builder = view_builder.lock();
+                    std::mem::replace(&mut *view_builder, None)
+                        .expect("egui_wgpu paint callback called more than once")
+                        .composite(ctx, render_pass)
+                        .unwrap();
+                }),
+        ),
+    });
 }
 
 fn show_projections_from_2d_space(

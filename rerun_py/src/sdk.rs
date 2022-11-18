@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use re_log_types::{
     ApplicationId, BeginRecordingMsg, LogMsg, LoggedData, MsgId, ObjPath, ObjTypePath, ObjectType,
-    RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
+    PathOp, RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
 };
 
 pub struct Sdk {
@@ -163,10 +163,6 @@ impl Sdk {
         }
     }
 
-    pub fn lookup_type(&self, obj_type_path: &ObjTypePath) -> Option<ObjectType> {
-        self.registered_types.get(obj_type_path).copied()
-    }
-
     pub fn send(&mut self, log_msg: LogMsg) {
         if !self.has_sent_begin_recording_msg {
             if let Some(recording_id) = self.recording_id {
@@ -212,6 +208,15 @@ impl Sdk {
             time_point: time_point.clone(),
             data_path: re_log_types::DataPath::new(obj_path.clone(), field_name.into()),
             data,
+        }));
+    }
+
+    // convenience
+    pub fn send_path_op(&mut self, time_point: &TimePoint, path_op: PathOp) {
+        self.send(LogMsg::PathOpMsg(re_log_types::PathOpMsg {
+            msg_id: MsgId::random(),
+            time_point: time_point.clone(),
+            path_op,
         }));
     }
 }

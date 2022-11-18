@@ -23,11 +23,11 @@ impl Drawable for TestTriangleDrawable {
 }
 
 impl TestTriangleDrawable {
-    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
+    pub fn new(ctx: &mut RenderContext) -> Self {
         ctx.renderers.get_or_create::<_, TestTriangle>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
-            device,
+            &ctx.device,
             &mut ctx.resolver,
         );
 

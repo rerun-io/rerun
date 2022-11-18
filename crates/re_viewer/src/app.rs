@@ -318,10 +318,7 @@ impl eframe::App for App {
         self.handle_dropping_files(egui_ctx);
         self.toasts.show(egui_ctx);
 
-        if let Some(render_state) = frame.wgpu_render_state() {
-            // TODO(andreas): the re_renderer should always know/hold on to queue and device.
-            render_ctx.frame_maintenance(&render_state.device);
-        }
+        render_ctx.frame_maintenance();
     }
 }
 
@@ -905,7 +902,8 @@ fn save_database_to_file(
                 .filter(|msg| {
                     match msg {
                         LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true, // timeless
-                        LogMsg::DataMsg(DataMsg { time_point, .. }) => {
+                        LogMsg::DataMsg(DataMsg { time_point, .. })
+                        | LogMsg::PathOpMsg(PathOpMsg { time_point, .. }) => {
                             time_point.is_timeless() || {
                                 let is_within_range = time_point
                                     .0

@@ -1016,6 +1016,15 @@ def set_visible(obj_path: str, visibile: bool) -> None:
     rerun_sdk.set_visible(obj_path, visibile)
 
 
+def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
+    """
+    Indicate that an object at a given path should no longer be displayed.
+
+    If `recursive` is True this will also clear all sub-paths
+    """
+    rerun_sdk.log_cleared(obj_path, recursive)
+
+
 @dataclass
 class ClassDescription:
     """
