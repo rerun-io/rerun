@@ -30,6 +30,8 @@ once_cell = "1.15.0"
 serde = { version = "1", features = ["derive", "rc"], optional = true }
 thiserror = "1.0"
 
+polars = { version = "0.25", features = ["fmt"], default-features = false }
+
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin = { version = "0.14", optional = true }

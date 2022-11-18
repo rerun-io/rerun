@@ -78,6 +78,10 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu = "0.14"
 
+arrow2 = { version = "0.14", features = ["io_ipc"] }
+polars = { version = "0.25", features = [
+  "dtype-struct",
+], default-features = false }
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

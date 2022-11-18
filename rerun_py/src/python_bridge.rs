@@ -2,10 +2,10 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, io::Cursor, path::PathBuf, sync::Arc};
+use std::{borrow::Cow, collections::BTreeMap, io::Cursor, path::PathBuf, sync::Arc};
 
 use arrow2::{
-    array::Array,
+    array::{Array, StructArray},
     chunk::Chunk,
     datatypes::{Field, Schema},
     io::ipc::write::StreamWriter,
@@ -1722,24 +1722,55 @@ fn log_arrow_msg(obj_path: &str, field_name: &str, msg: &PyAny) -> PyResult<()> 
 
     let (array, field) = array_to_rust(msg)?;
 
-    re_log::info!("Logged an arrow msg at {} {:?}", obj_path, array);
+    let array = array
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .ok_or_else(|| PyTypeError::new_err("Array should be a StructArray."))?;
 
-    let mut data = Vec::<u8>::new();
+    re_log::info!("Logged an arrow msg at {} {:?}", obj_path, array);
 
     // TODO(jleibs):
     // This stream-writer interface re-encodes and transmits the schema on every send
     // I believe We can optimize this using some combination of calls to:
     // https://docs.rs/arrow2/latest/arrow2/io/ipc/write/fn.write.html
-    let schema = Schema {
-        fields: vec![field],
-        metadata: Default::default(),
-    };
 
-    let chunk = Chunk::new(vec![array]);
+    let mut fields = Vec::from(array.fields());
+    let mut cols = Vec::from(array.values());
 
+    for (timeline, time) in time_point.0.iter() {
+        let datatype = match timeline.typ() {
+            TimeType::Sequence => arrow2::datatypes::DataType::Int64,
+            TimeType::Time => arrow2::datatypes::DataType::Timestamp(
+                arrow2::datatypes::TimeUnit::Nanosecond,
+                None,
+            ),
+        };
+        let arr = arrow2::array::PrimitiveArray::from([Some(time.as_i64())]).to(datatype);
+        fields.push(Field::new(
+            timeline.name().as_str(),
+            arr.data_type().clone(),
+            false,
+        ));
+        cols.push(arr.boxed());
+    }
+
+    let metadata = BTreeMap::from([
+        ("ARROW:extension:name".into(), "rerun.logmsg".into()),
+        ("ARROW:extension:metadata".into(), obj_path.to_string()),
+    ]);
+    let schema = Schema { fields, metadata };
+    let chunk = Chunk::new(cols);
+    let mut data = Vec::<u8>::new();
     let mut writer = StreamWriter::new(&mut data, Default::default());
-    writer.start(&schema, None).ok();
-    writer.write(&chunk, None).ok();
+    writer
+        .start(&schema, None)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+    writer
+        .write(&chunk, None)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+    writer
+        .finish()
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
 
     let data_path = DataPath::new(obj_path, FieldName::from(field_name));
 

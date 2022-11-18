@@ -18,6 +18,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+pub mod arrow_log_db;
 mod batch;
 mod instance;
 pub mod log_db;

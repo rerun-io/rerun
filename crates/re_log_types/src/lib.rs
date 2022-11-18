@@ -30,10 +30,6 @@ pub mod objects;
 pub mod path;
 mod time;
 
-use arrow2::{
-    array::Array,
-    io::ipc::read::{read_stream_metadata, StreamReader, StreamState},
-};
 pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
 pub use data::*;
@@ -285,36 +281,6 @@ pub struct ArrowMsg {
 
     /// The arrow payload.
     pub data: Vec<u8>,
-}
-
-impl ArrowMsg {
-    pub fn to_arrow_array(&self) -> Option<Box<dyn Array>> {
-        let mut cursor = std::io::Cursor::new(&self.data);
-        let metadata = match read_stream_metadata(&mut cursor) {
-            Ok(metadata) => metadata,
-            Err(err) => {
-                re_log::error!("Could not parse arrow metadata: {:?}", err);
-                return None;
-            }
-        };
-        let mut reader = StreamReader::new(cursor, metadata, None);
-
-        loop {
-            match reader.next() {
-                Some(x) => match x {
-                    Ok(StreamState::Some(chunk)) => {
-                        let some_arr = chunk.arrays().first();
-                        return some_arr.cloned();
-                    }
-                    Ok(StreamState::Waiting) => {}
-                    Err(err) => {
-                        re_log::error!("Could not parse arrow arrow message: {:?}", err);
-                    }
-                },
-                None => return None,
-            };
-        }
-    }
 }
 
 // ----------------------------------------------------------------------------

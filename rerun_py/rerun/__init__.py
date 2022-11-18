@@ -341,7 +341,7 @@ def log_rect(
             type=pa.struct([("x", pa.float32()), ("y", pa.float32()), ("w", pa.float32()), ("h", pa.float32())]),
             nullable=False,
             metadata={
-                "ARROW:extension:name": "rerun.rect",
+                # "ARROW:extension:name": "rerun.rect",
             },
         )
 
@@ -350,7 +350,7 @@ def log_rect(
             type=pa.uint32(),
             nullable=False,
             metadata={
-                "ARROW:extension:name": "rerun.rgbacolor",
+                # "ARROW:extension:name": "rerun.rgbacolor",
             },
         )
 
@@ -359,7 +359,6 @@ def log_rect(
         color_arr = pa.array([u8_array_to_rgba(colors) if color else None], type=color_field.type)
 
         arr = pa.StructArray.from_arrays([rect_arr, color_arr], fields=[rect_field, color_field])
-        print(arr)
         rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
 
 
