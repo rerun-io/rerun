@@ -50,15 +50,20 @@ impl Time {
 
         if self.is_abolute_date() {
             use chrono::TimeZone as _;
-            let datetime = chrono::Utc.timestamp(
+            let datetime = chrono::Utc.timestamp_opt(
                 nanos_since_epoch / 1_000_000_000,
                 (nanos_since_epoch % 1_000_000_000) as _,
             );
-
-            if datetime.date() == chrono::offset::Utc::today() {
-                datetime.format("%H:%M:%S%.6fZ").to_string()
-            } else {
-                datetime.format("%Y-%m-%d %H:%M:%S%.6fZ").to_string()
+            match datetime {
+                chrono::LocalResult::Single(datetime) => {
+                    if datetime.date_naive() == chrono::offset::Utc::now().date_naive() {
+                        datetime.format("%H:%M:%S%.6fZ").to_string()
+                    } else {
+                        datetime.format("%Y-%m-%d %H:%M:%S%.6fZ").to_string()
+                    }
+                }
+                chrono::LocalResult::None => "Invalid timestamp".to_owned(),
+                chrono::LocalResult::Ambiguous(_, _) => "Ambiguous timestamp".to_owned(),
             }
         } else {
             let secs = nanos_since_epoch as f64 * 1e-9;
@@ -70,11 +75,15 @@ impl Time {
     pub fn format_time(&self, format_str: &str) -> String {
         use chrono::TimeZone as _;
         let nanos_since_epoch = self.nanos_since_epoch();
-        let datetime = chrono::Utc.timestamp(
+        let datetime = chrono::Utc.timestamp_opt(
             nanos_since_epoch / 1_000_000_000,
             (nanos_since_epoch % 1_000_000_000) as _,
         );
-        datetime.format(format_str).to_string()
+        match datetime {
+            chrono::LocalResult::Single(datetime) => datetime.format(format_str).to_string(),
+            chrono::LocalResult::None => "Invalid timestamp".to_owned(),
+            chrono::LocalResult::Ambiguous(_, _) => "Ambiguous timestamp".to_owned(),
+        }
     }
 
     #[inline]
