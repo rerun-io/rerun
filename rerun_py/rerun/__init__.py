@@ -990,3 +990,17 @@ def log_annotation_context(
     ]
 
     rerun_sdk.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
+
+
+def set_visible(obj_path: str, visibile: bool) -> None:
+    """
+    set_visible has been deprecated.
+
+    The replacement is `log_cleared()`.
+    See: https://github.com/rerun-io/rerun/pull/285 for details
+    """
+    # This is a slight abose of DeprecationWarning compared to using
+    # warning.warn, but there is no function to call here anymore.
+    # this is (slightly) better than just failing on an undefined function
+    # TODO(jleibs) Remove after 11/25
+    raise DeprecationWarning("set_visible has been deprecated. please use log_cleared")
