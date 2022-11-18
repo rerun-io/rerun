@@ -130,11 +130,7 @@ impl Scene2D {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
                         let annotations = self.annotation_map.find(obj_path);
-                        let color = annotations.color(
-                            color,
-                            None, // TODO(andreas): support class ids for images
-                            DefaultColor::OpaqueWhite,
-                        );
+                        let color = annotations.color(color, None, DefaultColor::OpaqueWhite);
 
                         let paint_props = paint_properties(color, &None);
 
@@ -292,11 +288,8 @@ impl Scene2D {
                         let stroke_width = stroke_width.copied();
 
                         let annotations = self.annotation_map.find(obj_path);
-                        let color = annotations.color(
-                            color,
-                            None, // TODO(andreas): support class ids for line segments
-                            DefaultColor::ObjPath(obj_path),
-                        );
+                        // TODO(andreas): support class ids for line segments
+                        let color = annotations.color(color, None, DefaultColor::ObjPath(obj_path));
 
                         let paint_props = paint_properties(color, &None);
 
