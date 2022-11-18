@@ -1,3 +1,7 @@
+//! TUID: Time-based Unique IDentifiers.
+//!
+//! Time-ordered unique 128-bit identifiers.
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
