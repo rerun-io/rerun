@@ -10,7 +10,7 @@ use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::misc::Caches;
-use crate::ui::view_2d::{AnnotationMap, DefaultColor};
+use crate::ui::annotations::{AnnotationMap, DefaultColor};
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 

@@ -5,7 +5,7 @@ use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType, TensorId};
 
-use crate::ui::view_2d::Annotations;
+use crate::ui::Annotations;
 
 // ---
 

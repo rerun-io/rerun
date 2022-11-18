@@ -1,3 +1,6 @@
+mod annotations;
+pub use annotations::Annotations;
+
 mod auto_layout;
 
 mod viewport;

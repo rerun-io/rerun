@@ -5,6 +5,7 @@ use re_data_store::InstanceId;
 pub use re_log_types::*;
 
 use crate::misc::ViewerContext;
+use crate::ui::annotations::auto_color;
 use crate::ui::view_2d::view_class_description_map;
 
 use super::Preview;
@@ -463,10 +464,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                             ui.label(label);
                         });
                         row.col(|ui| {
-                            let color = description
-                                .info
-                                .color
-                                .unwrap_or_else(|| crate::view_2d::auto_color(id.0));
+                            let color = description.info.color.unwrap_or_else(|| auto_color(id.0));
                             let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
 
                             color_picker::show_color(ui, color, Vec2::splat(64.0));

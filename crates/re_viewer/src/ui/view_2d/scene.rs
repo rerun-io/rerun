@@ -9,13 +9,11 @@ use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{
     ui::{
-        view_2d::annotations::{Annotations, DefaultColor},
-        SceneQuery,
+        annotations::{AnnotationMap, DefaultColor},
+        Annotations, SceneQuery,
     },
     ViewerContext,
 };
-
-use super::AnnotationMap;
 
 // ---
 
