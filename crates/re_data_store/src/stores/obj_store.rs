@@ -121,7 +121,7 @@ fn test_obj_store() {
         .is_ok());
 
     assert_eq!(
-        obj_store.insert_mono("field2".into(), 0, MsgId::random(), Some(42_f32)),
+        obj_store.insert_mono("field2".into(), 0, MsgId::random(), Some(42)),
         Err(crate::Error::MixingTypes {
             existing: DataType::F32,
             expected: DataType::I32
