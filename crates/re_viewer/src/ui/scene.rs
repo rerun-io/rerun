@@ -45,7 +45,6 @@ impl Scene {
         ]
         .iter()
         .filter_map(|cat| *cat)
-        .chain(std::iter::once(ViewCategory::Plot))
         .collect()
     }
 }

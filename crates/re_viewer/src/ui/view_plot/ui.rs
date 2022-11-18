@@ -10,7 +10,6 @@ use super::ScenePlot;
 
 pub(crate) const HELP_TEXT: &str = "Pan by dragging, or scroll (+ shift = horizontal).\n\
     Box zooming: Right click to zoom in and zoom out using a selection.\n\
-    Drag with middle mouse button to roll the view.\n\
     Zoom with ctrl / ⌘ + pointer wheel, or with pinch gesture.\n\
     Reset view with double-click.\n\
     Right click to move the time cursor to the current position.";

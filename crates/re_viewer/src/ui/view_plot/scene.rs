@@ -133,7 +133,7 @@ impl ScenePlot {
     fn add_line_segments(&mut self, line_label: &str, points: Vec<PlotPoint>) {
         let nb_points = points.len();
         let mut attrs = points[0].attrs.clone();
-        let mut line: Option<PlotSeries> = Some(PlotSeries {
+        let mut line: PlotSeries = PlotSeries {
             label: line_label.to_owned(),
             color: attrs.color,
             width: attrs.radius,
@@ -143,19 +143,16 @@ impl ScenePlot {
                 PlotSeriesKind::Continuous
             },
             points: Vec::with_capacity(nb_points),
-        });
+        };
 
         for (i, p) in points.into_iter().enumerate() {
             if p.attrs == attrs {
                 // Same attributes, just add to the current line segment.
 
-                line.as_mut().unwrap().points.push((p.time, p.value));
+                line.points.push((p.time, p.value));
             } else {
                 // Attributes changed since last point, break up the current run into a
                 // line segment, and start the next one.
-
-                let taken = line.take().unwrap();
-                self.lines.push(taken);
 
                 attrs = p.attrs.clone();
                 let kind = if attrs.scattered {
@@ -163,16 +160,19 @@ impl ScenePlot {
                 } else {
                     PlotSeriesKind::Continuous
                 };
-                line = Some(PlotSeries {
-                    label: line_label.to_owned(),
-                    color: attrs.color,
-                    width: attrs.radius,
-                    kind,
-                    points: Vec::with_capacity(nb_points - i),
-                });
 
-                let prev_line = self.lines.last().unwrap();
+                let prev_line = std::mem::replace(
+                    &mut line,
+                    PlotSeries {
+                        label: line_label.to_owned(),
+                        color: attrs.color,
+                        width: attrs.radius,
+                        kind,
+                        points: Vec::with_capacity(nb_points - i),
+                    },
+                );
                 let prev_point = *prev_line.points.last().unwrap();
+                self.lines.push(prev_line);
 
                 // If the previous point was continous and the current point is continuous
                 // too, then we want the 2 segments to appear continuous even though they
@@ -180,16 +180,16 @@ impl ScenePlot {
                 let cur_continuous = matches!(kind, PlotSeriesKind::Continuous);
                 let prev_continuous = matches!(kind, PlotSeriesKind::Continuous);
                 if cur_continuous && prev_continuous {
-                    line.as_mut().unwrap().points.push(prev_point);
+                    line.points.push(prev_point);
                 }
 
                 // Add the point that triggered the split to the new segment.
-                line.as_mut().unwrap().points.push((p.time, p.value));
+                line.points.push((p.time, p.value));
             }
         }
 
-        if !line.as_ref().unwrap().points.is_empty() {
-            self.lines.push(line.take().unwrap());
+        if !line.points.is_empty() {
+            self.lines.push(line);
         }
     }
 }
