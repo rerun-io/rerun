@@ -284,7 +284,8 @@ impl ViewportBlueprint {
             dock_style.separator_width = 2.0;
             dock_style.show_close_buttons = false;
             dock_style.tab_include_scrollarea = false;
-            dock_style.expand_tabs = true;
+            // dock_style.expand_tabs = true; looks good, but decreases readability
+            dock_style.tab_text_color_unfocused = dock_style.tab_text_color_focused; // We don't treat focused tabs differently
 
             let mut tab_viewer = TabViewer {
                 ctx,

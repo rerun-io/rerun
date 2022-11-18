@@ -5,7 +5,7 @@ This example demonstrates how to integrate python's native `logging` with the Re
 
 Run:
 ```sh
-./examples/logging/main.py
+./examples/text_logging/main.py
 ```
 """
 
@@ -40,6 +40,14 @@ def log_stuff() -> None:
 
     # Log anything
     logging.info("here's some data: %s", {"some": 42, "data": True})
+
+    # Test that we can log multiple times to the same sequence timeline and still
+    # have the log messages show up in the correct chronological order in the viewer:
+    for frame_nr in range(2):
+        rerun.set_time_sequence("frame_nr", frame_nr)
+        logging.info(f"Log one thing during frame {frame_nr}")
+        logging.info(f"Log second thing during the same frame {frame_nr}")
+        logging.info(f"Log third thing during the same frame {frame_nr}")
 
     # Use child loggers to map to arbitrary object paths
     inner_logger = logging.getLogger("foo.bar.baz")

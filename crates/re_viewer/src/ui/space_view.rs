@@ -85,9 +85,7 @@ impl SpaceView {
         // Extra headroom required for the hovering controls at the top of the space view.
         let extra_headroom = {
             let frame = ctx.design_tokens.hovering_frame(ui.style());
-            frame.total_margin().sum().y
-                + ui.spacing().interact_size.y
-                + ui.spacing().item_spacing.y
+            frame.total_margin().sum().y + ui.spacing().interact_size.y
         };
 
         match self.category {
@@ -114,7 +112,8 @@ impl SpaceView {
                 self.view_state.ui_tensor(ui, &scene);
             }
             ViewCategory::Text => {
-                ui.add_space(extra_headroom);
+                let line_height = egui::TextStyle::Body.resolve(ui.style()).size;
+                ui.add_space(extra_headroom - line_height - ui.spacing().item_spacing.y); // we don't need the full headroom - the logs has the number of entries at the top
 
                 let mut scene = view_text::SceneText::default();
                 scene.load_objects(ctx, &query);
