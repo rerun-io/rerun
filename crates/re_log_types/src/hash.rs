@@ -1,5 +1,7 @@
 // ----------------------------------------------------------------------------
 
+use std::hash::BuildHasher;
+
 /// 64-bit hash.
 ///
 /// 10^-12 collision risk with   6k values.
@@ -105,7 +107,9 @@ fn double_hash(value: impl std::hash::Hash + Copy) -> [u64; 2] {
 fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
     use std::hash::Hash as _;
     use std::hash::Hasher as _;
-    let mut hasher = ahash::AHasher::default();
+
+    // Don't use ahash::AHasher::default() since it uses a random number for seeding the hasher on every application start.
+    let mut hasher = ahash::RandomState::with_seeds(42, 1337, 17, 0).build_hasher();
     seed.hash(&mut hasher);
     value.hash(&mut hasher);
     hasher.finish()
@@ -115,7 +119,9 @@ fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
 #[inline]
 fn hash(value: impl std::hash::Hash) -> u64 {
     use std::hash::Hasher as _;
-    let mut hasher = ahash::AHasher::default();
+
+    // Don't use ahash::AHasher::default() since it uses a random number for seeding the hasher on every application start.
+    let mut hasher = ahash::RandomState::with_seeds(42, 1337, 17, 0).build_hasher();
     value.hash(&mut hasher);
     hasher.finish()
 }
