@@ -5,11 +5,12 @@ use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
 use re_data_store::query::{visit_type_data_1, visit_type_data_2, visit_type_data_3};
-use re_data_store::{FieldName, InstanceIdHash, ObjPath};
+use re_data_store::{FieldName, InstanceIdHash};
 use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::misc::Caches;
+use crate::ui::view_2d::{AnnotationMap, DefaultColor};
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
@@ -138,6 +139,8 @@ pub struct Label3D {
 
 #[derive(Default)]
 pub struct Scene3D {
+    pub annotation_map: AnnotationMap,
+
     pub points: Vec<Point3D>,
     pub line_segments: Vec<LineSegments3D>,
     pub meshes: Vec<MeshSource>,
@@ -148,32 +151,14 @@ impl Scene3D {
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
-
-
-        // TODO: move/elimintate
-        let object_color = |caches: &mut Caches, color: Option<&[u8; 4]>, obj_path: &ObjPath| {
-            let [r, g, b, a] = if let Some(color) = color.copied() {
-                color
-            } else {
-                let [r, g, b] = caches.random_color(obj_path);
-                [r, g, b, 255]
-            };
-            [r, g, b, a]
-        };
-
-        self.load_points(ctx, query, object_color);
-        self.load_boxes(ctx, query, object_color);
-        self.load_segments(ctx, query, object_color);
-        self.load_arrows(ctx, query, object_color);
+        self.load_points(ctx, query);
+        self.load_boxes(ctx, query);
+        self.load_segments(ctx, query);
+        self.load_arrows(ctx, query);
         self.load_meshes(ctx, query);
     }
 
-    fn load_points(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
-    ) {
+    fn load_points(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         query
@@ -194,23 +179,25 @@ impl Scene3D {
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
+                        let color = self.annotation_map.find(obj_path).color(
+                            color,
+                            None, // TODO(andreas): support class ids for points
+                            obj_path,
+                            DefaultColor::Random,
+                        );
+
                         self.points.push(Point3D {
                             instance_id_hash,
                             pos: Vec3::from_slice(pos),
                             radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
-                            color: object_color(ctx.cache, color, obj_path),
+                            color,
                         });
                     },
                 );
             });
     }
 
-    fn load_boxes(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
-    ) {
+    fn load_boxes(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, obj_store) in
@@ -230,7 +217,12 @@ impl Scene3D {
                  label: Option<&String>| {
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                     let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                    let color = object_color(ctx.cache, color, obj_path);
+                    let color = self.annotation_map.find(obj_path).color(
+                        color,
+                        None, // TODO(andreas): support class ids for boxes
+                        obj_path,
+                        DefaultColor::Random,
+                    );
 
                     self.add_box(
                         InstanceIdHash::from_path_and_index(obj_path, instance_index),
@@ -245,12 +237,7 @@ impl Scene3D {
     }
 
     /// Both `Path3D` and `LineSegments3D`.
-    fn load_segments(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
-    ) {
+    fn load_segments(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let segments = query
@@ -283,7 +270,12 @@ impl Scene3D {
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
                         let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
-                        let color = object_color(ctx.cache, color, obj_path);
+                        let color = self.annotation_map.find(obj_path).color(
+                            color,
+                            None, // TODO(andreas): support class ids for points
+                            obj_path,
+                            DefaultColor::Random,
+                        );
 
                         let segments = points
                             .iter()
@@ -306,12 +298,7 @@ impl Scene3D {
         self.line_segments.extend(segments);
     }
 
-    fn load_arrows(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        mut object_color: impl FnMut(&mut Caches, Option<&[u8; 4]>, &ObjPath) -> [u8; 4],
-    ) {
+    fn load_arrows(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, obj_store) in
@@ -334,7 +321,12 @@ impl Scene3D {
                         InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
                     let width = width_scale.copied().unwrap_or(1.0);
-                    let color = object_color(ctx.cache, color, obj_path);
+                    let color = self.annotation_map.find(obj_path).color(
+                        color,
+                        None, // TODO(andreas): support class ids for arrows
+                        obj_path,
+                        DefaultColor::Random,
+                    );
                     self.add_arrow(
                         ctx.cache,
                         instance_id_hash,
@@ -499,6 +491,7 @@ impl Scene3D {
         crate::profile_function!();
 
         let Self {
+            annotation_map: _,
             points,
             line_segments,
             meshes,
@@ -733,6 +726,7 @@ impl Scene3D {
 
     pub fn is_empty(&self) -> bool {
         let Self {
+            annotation_map: _,
             points,
             line_segments,
             meshes,
@@ -860,6 +854,7 @@ impl Scene3D {
         };
 
         let Self {
+            annotation_map: _,
             points,
             line_segments,
             meshes,
@@ -961,6 +956,7 @@ impl Scene3D {
         let mut bbox = macaw::BoundingBox::nothing();
 
         let Self {
+            annotation_map: _,
             points,
             line_segments,
             meshes,
