@@ -55,25 +55,28 @@ macro_rules! impl_into_enum {
 // ----------------------------------------------------------------------------
 
 /// A unique id per [`LogMsg`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MsgId(pub uuid::Uuid);
+pub struct MsgId(re_tuid::Tuid);
 
 impl nohash_hasher::IsEnabled for MsgId {}
 
-// required for [`nohash_hasher`].
-#[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for MsgId {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.as_u128() as u64);
-    }
-}
-
 impl MsgId {
+    /// All zeroes.
+    pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
+
+    /// All ones.
+    pub const MAX: Self = Self(re_tuid::Tuid::MAX);
+
     #[inline]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
+        Self(re_tuid::Tuid::random())
+    }
+
+    #[inline]
+    pub fn as_u128(&self) -> u128 {
+        self.0.as_u128()
     }
 }
 
@@ -248,6 +251,7 @@ pub struct TypeMsg {
 }
 
 impl TypeMsg {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn obj_type(type_path: ObjTypePath, obj_type: ObjectType) -> Self {
         Self {
             msg_id: MsgId::random(),
@@ -279,21 +283,6 @@ pub struct DataMsg {
 
     /// The value of this.
     pub data: LoggedData,
-}
-
-#[inline]
-pub fn data_msg(
-    time_point: &TimePoint,
-    obj_path: impl Into<ObjPath>,
-    field_name: impl Into<FieldName>,
-    data: impl Into<LoggedData>,
-) -> DataMsg {
-    DataMsg {
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.into(), field_name.into()),
-        data: data.into(),
-        msg_id: MsgId::random(),
-    }
 }
 
 // ----------------------------------------------------------------------------

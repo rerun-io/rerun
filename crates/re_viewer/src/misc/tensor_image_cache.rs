@@ -50,7 +50,7 @@ impl std::hash::Hash for ImageCacheKey {
         let msg_hash = self.tensor_id.0.as_u128() as u64;
 
         let annotation_hash = if let Some(annotation_msg_id) = self.annotation_msg_id {
-            (annotation_msg_id.0.as_u128() >> 1) as u64
+            (annotation_msg_id.as_u128() >> 1) as u64
         } else {
             0
         };

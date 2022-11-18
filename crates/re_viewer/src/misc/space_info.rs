@@ -157,7 +157,7 @@ fn query_transform(
     // Is there a transform _now_?
     let latest = query_time
         .and_then(|query_time| mono_field_store.latest_at(&query_time))
-        .map(|(_, (_, transform))| transform.clone());
+        .map(|(_, _, transform)| transform.clone());
 
     // If not, return an unknown transform to indicate that there is
     // still a space-split.
@@ -186,5 +186,5 @@ fn query_view_coordinates(
 
     mono_field_store
         .latest_at(&query_time.floor().as_i64())
-        .map(|(_time, (_msg_id, system))| *system)
+        .map(|(_time, _msg_id, system)| *system)
 }
