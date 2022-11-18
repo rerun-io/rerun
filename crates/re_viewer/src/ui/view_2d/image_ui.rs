@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use re_log_types::*;
+use re_log_types::{context::ClassId, *};
 
 use crate::misc::{tensor_image_cache, ViewerContext};
 
@@ -157,7 +157,7 @@ pub fn show_zoomed_image_region(
                     ) {
                         ui.monospace(format!(
                             "Label: {}",
-                            annotations.label_from_class_id(u16_val)
+                            annotations.label(None, Some(ClassId(u16_val))).unwrap()
                         ));
                     };
                 }

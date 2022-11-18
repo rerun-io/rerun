@@ -186,8 +186,7 @@ impl Scene3D {
                         let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for points
-                            obj_path,
-                            DefaultColor::Random,
+                            DefaultColor::ObjPath(obj_path),
                         );
 
                         self.points.push(Point3D {
@@ -226,8 +225,7 @@ impl Scene3D {
                     let color = annotations.color(
                         color,
                         None, // TODO(andreas): support class ids for boxes
-                        obj_path,
-                        DefaultColor::Random,
+                        DefaultColor::ObjPath(obj_path),
                     );
                     let label = annotations.label(label, None);
 
@@ -282,8 +280,7 @@ impl Scene3D {
                         let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for points
-                            obj_path,
-                            DefaultColor::Random,
+                            DefaultColor::ObjPath(obj_path),
                         );
 
                         let segments = points
@@ -335,8 +332,7 @@ impl Scene3D {
                     let color = annotations.color(
                         color,
                         None, // TODO(andreas): support class ids for arrows
-                        obj_path,
-                        DefaultColor::Random,
+                        DefaultColor::ObjPath(obj_path),
                     );
                     let label = annotations.label(label, None);
 

@@ -1,5 +1,5 @@
 mod annotations;
-pub use annotations::Annotations;
+pub use annotations::{Annotations, DefaultColor};
 
 mod auto_layout;
 

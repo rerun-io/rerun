@@ -133,8 +133,7 @@ impl Scene2D {
                         let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for images
-                            obj_path,
-                            DefaultColor::White,
+                            DefaultColor::OpaqueWhite,
                         );
 
                         let paint_props = paint_properties(color, &None);
@@ -189,12 +188,8 @@ impl Scene2D {
                         let stroke_width = stroke_width.copied();
 
                         let annotations = self.annotation_map.find(obj_path);
-                        let color = annotations.color(
-                            color,
-                            None, // TODO(andreas): support class ids for boxes segments
-                            obj_path,
-                            DefaultColor::Random,
-                        );
+                        // TODO(andreas): Support class id for boxes.
+                        let color = annotations.color(color, None, DefaultColor::ObjPath(obj_path));
                         let label = annotations.label(label, None);
 
                         let paint_props = paint_properties(color, &stroke_width);
@@ -246,8 +241,7 @@ impl Scene2D {
                         let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for points
-                            obj_path,
-                            DefaultColor::Random,
+                            DefaultColor::ObjPath(obj_path),
                         );
 
                         let paint_props = paint_properties(color, &None);
@@ -301,8 +295,7 @@ impl Scene2D {
                         let color = annotations.color(
                             color,
                             None, // TODO(andreas): support class ids for line segments
-                            obj_path,
-                            DefaultColor::Random,
+                            DefaultColor::ObjPath(obj_path),
                         );
 
                         let paint_props = paint_properties(color, &None);

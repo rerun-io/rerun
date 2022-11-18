@@ -13,9 +13,10 @@ pub struct Annotations {
 }
 
 #[derive(Clone, Copy)]
-pub enum DefaultColor {
-    White,
-    Random,
+pub enum DefaultColor<'a> {
+    OpaqueWhite,
+    TransparentBlack,
+    ObjPath(&'a ObjPath),
 }
 
 impl Annotations {
@@ -23,37 +24,24 @@ impl Annotations {
         &self,
         color: Option<&[u8; 4]>,
         class_id: Option<ClassId>,
-        obj_path: &ObjPath,
-        default_color: DefaultColor,
+        default_color: DefaultColor<'_>,
     ) -> [u8; 4] {
         if let Some(color) = color {
             return *color;
         }
         if let Some(class_id) = class_id {
-            return self.color_from_class_id(class_id.0);
+            if let Some(class_desc) = self.context.class_map.get(&class_id) {
+                if let Some(color) = class_desc.info.color {
+                    return color;
+                }
+            }
         }
 
         match default_color {
-            DefaultColor::White => [255, 255, 255, 255],
-            DefaultColor::Random => auto_color((obj_path.hash64() % std::u16::MAX as u64) as u16),
-        }
-    }
-
-    pub fn color_from_class_id(&self, val: u16) -> [u8; 4] {
-        if let Some(class_desc) = self.context.class_map.get(&ClassId(val)) {
-            if let Some(color) = class_desc.info.color {
-                color
-            } else {
-                auto_color(val)
-            }
-        } else {
-            // TODO(jleibs) Unset labels default to transparent black
-            // This gives us better behavior for the "0" id, though we
-            // should be more explicit about this in the future.
-            if val == 0 {
-                [0, 0, 0, 0]
-            } else {
-                auto_color(val)
+            DefaultColor::TransparentBlack => [0, 0, 0, 0],
+            DefaultColor::OpaqueWhite => [255, 255, 255, 255],
+            DefaultColor::ObjPath(obj_path) => {
+                auto_color((obj_path.hash64() % std::u16::MAX as u64) as u16)
             }
         }
     }
@@ -64,22 +52,16 @@ impl Annotations {
         }
 
         if let Some(class_id) = class_id {
-            return Some(self.label_from_class_id(class_id.0));
+            if let Some(class_desc) = self.context.class_map.get(&ClassId(class_id.0)) {
+                if let Some(label) = class_desc.info.label.as_ref() {
+                    return Some(label.to_string());
+                }
+            }
+
+            return Some(format!("unknown class id {}", class_id.0));
         }
 
         None
-    }
-
-    pub fn label_from_class_id(&self, val: u16) -> String {
-        if let Some(class_desc) = self.context.class_map.get(&ClassId(val)) {
-            if let Some(label) = class_desc.info.label.as_ref() {
-                label.to_string()
-            } else {
-                (val as i32).to_string()
-            }
-        } else {
-            format!("unknown class id {val}")
-        }
     }
 }
 
