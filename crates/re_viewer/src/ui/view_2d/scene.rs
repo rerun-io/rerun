@@ -98,34 +98,12 @@ impl Scene2D {
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        self.load_annotations(ctx, query); // before images!
+        self.annotation_map.load(ctx, query);
+
         self.load_images(ctx, query);
         self.load_boxes(ctx, query);
         self.load_points(ctx, query);
         self.load_line_segments(ctx, query);
-    }
-
-    fn load_annotations(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
-
-        for (obj_path, field_store) in
-            query.iter_ancestor_meta_field(ctx.log_db, &FieldName::from("_annotation_context"))
-        {
-            if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
-            {
-                mono_field_store.query(&query.time_query, |_time, msg_id, context| {
-                    self.annotation_map
-                        .0
-                        .entry(obj_path.clone())
-                        .or_insert_with(|| {
-                            Arc::new(Annotations {
-                                msg_id: *msg_id,
-                                context: context.clone(),
-                            })
-                        });
-                });
-            }
-        }
     }
 
     fn load_images(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {

@@ -1,8 +1,10 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use lazy_static::lazy_static;
-use re_data_store::ObjPath;
+use re_data_store::{FieldName, ObjPath};
 use re_log_types::{context::ClassId, AnnotationContext, MsgId};
+
+use crate::{misc::ViewerContext, ui::scene::SceneQuery};
 
 #[derive(Clone, Debug)]
 pub struct Annotations {
@@ -63,6 +65,26 @@ impl Annotations {
 pub struct AnnotationMap(pub BTreeMap<ObjPath, Arc<Annotations>>);
 
 impl AnnotationMap {
+    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+        crate::profile_function!();
+
+        for (obj_path, field_store) in
+            query.iter_ancestor_meta_field(ctx.log_db, &FieldName::from("_annotation_context"))
+        {
+            if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
+            {
+                mono_field_store.query(&query.time_query, |_time, msg_id, context| {
+                    self.0.entry(obj_path.clone()).or_insert_with(|| {
+                        Arc::new(Annotations {
+                            msg_id: *msg_id,
+                            context: context.clone(),
+                        })
+                    });
+                });
+            }
+        }
+    }
+
     // Search through the all prefixes of this object path until we find a
     // matching annotation. If we find nothing return the default `MISSING_ANNOTATIONS`.
     pub fn find<'a>(&self, obj_path: impl Into<&'a ObjPath>) -> Arc<Annotations> {

@@ -151,6 +151,9 @@ impl Scene3D {
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
+
+        self.annotation_map.load(ctx, query);
+
         self.load_points(ctx, query);
         self.load_boxes(ctx, query);
         self.load_segments(ctx, query);
