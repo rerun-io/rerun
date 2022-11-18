@@ -126,11 +126,12 @@ impl AnnotationMap {
 
 // ---
 
+const MISSING_MSG_ID: MsgId = MsgId::ZERO;
+
 lazy_static! {
-    static ref MISSING_MSGID: MsgId = MsgId::random();
     static ref MISSING_ANNOTATIONS: Arc<Annotations> = {
         Arc::new(Annotations {
-            msg_id: *MISSING_MSGID,
+            msg_id: MISSING_MSG_ID,
             context: Default::default(),
         })
     };

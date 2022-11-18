@@ -1,6 +1,8 @@
-use crate::ViewerContext;
 use egui::{Color32, NumExt as _, RichText};
+
 use re_log_types::{LogMsg, TimePoint};
+
+use crate::ViewerContext;
 
 use super::{SceneText, TextEntry};
 
