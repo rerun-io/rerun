@@ -4,7 +4,7 @@ use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
-use re_data_store::query::{visit_type_data_2, visit_type_data_3, visit_type_data_4};
+use re_data_store::query::{visit_type_data_1, visit_type_data_2, visit_type_data_3};
 use re_data_store::{FieldName, InstanceIdHash, ObjPath};
 use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
@@ -187,22 +187,17 @@ impl Scene3D {
         query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
             .for_each(|(_obj_type, obj_path, obj_store)| {
-                visit_type_data_3(
+                visit_type_data_2(
                     obj_store,
                     &FieldName::from("pos"),
                     &query.time_query,
-                    ("_visible", "color", "radius"),
+                    ("color", "radius"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 3],
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>| {
-                        if !*visible.unwrap_or(&true) {
-                            return;
-                        }
-
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
@@ -229,23 +224,18 @@ impl Scene3D {
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Box3D])
         {
-            visit_type_data_4(
+            visit_type_data_3(
                 obj_store,
                 &FieldName::from("obb"),
                 &query.time_query,
-                ("_visible", "color", "stroke_width", "label"),
+                ("color", "stroke_width", "label"),
                 |instance_index: Option<&IndexHash>,
                  _time: i64,
                  _msg_id: &MsgId,
                  obb: &re_log_types::Box3,
-                 visible: Option<&bool>,
                  color: Option<&[u8; 4]>,
                  stroke_width: Option<&f32>,
                  label: Option<&String>| {
-                    if !*visible.unwrap_or(&true) {
-                        return;
-                    }
-
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                     let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
                     let color = object_color(ctx.cache, color, obj_path);
@@ -278,22 +268,17 @@ impl Scene3D {
             )
             .flat_map(|(obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_3(
+                visit_type_data_2(
                     obj_store,
                     &FieldName::from("points"),
                     &query.time_query,
-                    ("_visible", "color", "stroke_width"),
+                    ("color", "stroke_width"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      points: &DataVec,
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>| {
-                        if !*visible.unwrap_or(&true) {
-                            return;
-                        }
-
                         let what = match obj_type {
                             ObjectType::Path3D => "Path3D::points",
                             ObjectType::LineSegments3D => "LineSegments3D::points",
@@ -340,23 +325,18 @@ impl Scene3D {
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Arrow3D])
         {
-            visit_type_data_4(
+            visit_type_data_3(
                 obj_store,
                 &FieldName::from("arrow3d"),
                 &query.time_query,
-                ("_visible", "color", "width_scale", "label"),
+                ("color", "width_scale", "label"),
                 |instance_index: Option<&IndexHash>,
                  _time: i64,
                  _msg_id: &MsgId,
                  arrow: &re_log_types::Arrow3D,
-                 visible: Option<&bool>,
                  color: Option<&[u8; 4]>,
                  width_scale: Option<&f32>,
                  label: Option<&String>| {
-                    if !*visible.unwrap_or(&true) {
-                        return;
-                    }
-
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                     let instance_id_hash =
                         InstanceIdHash::from_path_and_index(obj_path, instance_index);
@@ -383,21 +363,16 @@ impl Scene3D {
             .iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_2(
+                visit_type_data_1(
                     obj_store,
                     &FieldName::from("mesh"),
                     &query.time_query,
-                    ("_visible", "color"),
+                    ("color",),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      mesh: &re_log_types::Mesh3D,
-                     visible: Option<&bool>,
                      _color: Option<&[u8; 4]>| {
-                        if !*visible.unwrap_or(&true) {
-                            return;
-                        }
-
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let Some(mesh) = ctx.cache.cpu_mesh.load(
                                 &obj_path.to_string(),
