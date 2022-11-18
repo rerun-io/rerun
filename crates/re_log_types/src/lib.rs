@@ -251,6 +251,7 @@ pub struct TypeMsg {
 }
 
 impl TypeMsg {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn obj_type(type_path: ObjTypePath, obj_type: ObjectType) -> Self {
         Self {
             msg_id: MsgId::random(),
@@ -282,21 +283,6 @@ pub struct DataMsg {
 
     /// The value of this.
     pub data: LoggedData,
-}
-
-#[inline]
-pub fn data_msg(
-    time_point: &TimePoint,
-    obj_path: impl Into<ObjPath>,
-    field_name: impl Into<FieldName>,
-    data: impl Into<LoggedData>,
-) -> DataMsg {
-    DataMsg {
-        time_point: time_point.clone(),
-        data_path: DataPath::new(obj_path.into(), field_name.into()),
-        data: data.into(),
-        msg_id: MsgId::random(),
-    }
 }
 
 // ----------------------------------------------------------------------------

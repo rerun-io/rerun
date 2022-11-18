@@ -1,4 +1,4 @@
-//! TUID: Time-based Unique IDentifiers.
+//! TUID: Time-based Unique Identifiers.
 //!
 //! Time-ordered unique 128-bit identifiers.
 
