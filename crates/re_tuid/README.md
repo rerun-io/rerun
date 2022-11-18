@@ -23,4 +23,4 @@ So the algorithm is this:
 On a single core of a 2022 M1 MacBook we can generate 40 million TUID/s, which is 25 ns per TUID.
 
 ## Future work
-For time-based exploits (like Meltdown/Spectre) `time_ns` should probably be rounded to nearest millisecond for sensitive systems. The last ~20 bits of `tme_ns` can be filled with more randomness to lessen the chance of collisions.
+For time-based exploits (like Meltdown/Spectre) `time_ns` should probably be rounded to nearest millisecond for sensitive systems. The last ~20 bits of `time_ns` can be filled with more randomness to lessen the chance of collisions.
