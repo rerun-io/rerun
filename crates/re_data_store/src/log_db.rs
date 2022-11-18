@@ -140,7 +140,7 @@ impl ObjDb {
 pub struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<MsgId>,
-    log_messages: IntMap<MsgId, LogMsg>,
+    log_messages: ahash::HashMap<MsgId, LogMsg>,
 
     /// Data that was logged with [`TimePoint::timeless`].
     /// We need to re-insert those in any new timelines

@@ -2,7 +2,7 @@
 //!
 //! Time-ordered unique 128-bit identifiers.
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
@@ -61,17 +61,6 @@ impl Tuid {
         ((self.time_ns as u128) << 64) | (self.inc as u128)
     }
 }
-
-#[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for Tuid {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.time_ns ^ self.inc);
-    }
-}
-
-#[cfg(feature = "nohash_hasher")]
-impl nohash_hasher::IsEnabled for IndexHash {}
 
 /// Returns a high-precision, monotonically increasing count that approximates nanoseconds since unix epoch.
 #[inline]

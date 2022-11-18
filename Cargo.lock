@@ -3178,7 +3178,6 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "getrandom",
- "nohash-hasher",
  "once_cell",
  "serde",
 ]
