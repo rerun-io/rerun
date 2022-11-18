@@ -1,4 +1,4 @@
-use re_data_store::{query::visit_type_data_1, FieldName};
+use re_data_store::{query::visit_type_data, FieldName};
 use re_log_types::{IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{misc::ViewerContext, ui::SceneQuery};
@@ -26,19 +26,15 @@ impl SceneTensor {
             .iter_object_stores(ctx.log_db, &[ObjectType::Image])
             .filter_map(|(_obj_type, _obj_path, obj_store)| {
                 let mut tensors = Vec::new();
-                visit_type_data_1(
+                visit_type_data(
                     obj_store,
                     &FieldName::from("tensor"),
                     &query.time_query,
-                    ("_visible",),
                     |_instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
-                     tensor: &re_log_types::Tensor,
-                     visible: Option<&bool>| {
-                        if *visible.unwrap_or(&true) {
-                            tensors.push(tensor.clone() /* shallow */);
-                        }
+                     tensor: &re_log_types::Tensor| {
+                        tensors.push(tensor.clone() /* shallow */);
                     },
                 );
 
