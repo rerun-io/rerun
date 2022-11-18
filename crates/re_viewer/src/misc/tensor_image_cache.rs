@@ -5,7 +5,7 @@ use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType, TensorId};
 
-use crate::ui::view_2d::{Annotations, ColorMapping};
+use crate::ui::view_2d::Annotations;
 
 // ---
 
@@ -228,7 +228,7 @@ fn tensor_to_dynamic_image(
                         bytes
                             .to_vec()
                             .iter()
-                            .flat_map(|p| annotations.map_color(*p as u16))
+                            .flat_map(|p| annotations.color_from_class_id(*p as u16))
                             .collect(),
                     )
                     .context("Bad RGBA8")
@@ -242,7 +242,7 @@ fn tensor_to_dynamic_image(
                         bytemuck::cast_slice(bytes)
                             .to_vec()
                             .iter()
-                            .flat_map(|p| annotations.map_color(*p))
+                            .flat_map(|p| annotations.color_from_class_id(*p))
                             .collect(),
                     )
                     .context("Bad RGBA8")

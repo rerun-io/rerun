@@ -149,12 +149,8 @@ impl Scene3D {
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        // hack because three-d handles colors wrong. TODO(emilk): fix three-d
-        let gamma_lut = (0..=255)
-            .map(|c| ((c as f32 / 255.0).powf(2.2) * 255.0).round() as u8)
-            .collect_vec();
-        let gamma_lut = &gamma_lut[0..256]; // saves us bounds checks later.
 
+        // TODO: move/elimintate
         let object_color = |caches: &mut Caches, color: Option<&[u8; 4]>, obj_path: &ObjPath| {
             let [r, g, b, a] = if let Some(color) = color.copied() {
                 color
@@ -162,10 +158,6 @@ impl Scene3D {
                 let [r, g, b] = caches.random_color(obj_path);
                 [r, g, b, 255]
             };
-
-            let r = gamma_lut[r as usize];
-            let g = gamma_lut[g as usize];
-            let b = gamma_lut[b as usize];
             [r, g, b, a]
         };
 

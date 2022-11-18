@@ -160,10 +160,6 @@ impl<'a> ViewerContext<'a> {
         }
         response
     }
-
-    pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
-        self.cache.random_color(obj_path)
-    }
 }
 
 // ----------------------------------------------------------------------------

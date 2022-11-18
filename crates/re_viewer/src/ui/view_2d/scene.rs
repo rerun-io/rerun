@@ -3,12 +3,15 @@ use std::sync::Arc;
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
     query::{visit_type_data_2, visit_type_data_3},
-    FieldName, InstanceIdHash, ObjPath,
+    FieldName, InstanceIdHash,
 };
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{
-    ui::{view_2d::annotations::Annotations, SceneQuery},
+    ui::{
+        view_2d::annotations::{Annotations, DefaultColor},
+        SceneQuery,
+    },
     ViewerContext,
 };
 
@@ -150,13 +153,14 @@ impl Scene2D {
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
-                        let paint_props = paint_properties(
-                            ctx,
+                        let color = self.annotation_map.find(obj_path).color(
+                            color,
+                            None, // TODO(andreas): support class ids for images
                             obj_path,
-                            color.copied(),
                             DefaultColor::White,
-                            &None,
                         );
+
+                        let paint_props = paint_properties(color, &None);
 
                         let image = Image {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -207,13 +211,14 @@ impl Scene2D {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
-                        let paint_props = paint_properties(
-                            ctx,
+                        let color = self.annotation_map.find(obj_path).color(
+                            color,
+                            None, // TODO(andreas): support class ids for boxes segments
                             obj_path,
-                            color.copied(),
                             DefaultColor::Random,
-                            &stroke_width,
                         );
+
+                        let paint_props = paint_properties(color, &stroke_width);
 
                         batch.push(Box2D {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -258,13 +263,14 @@ impl Scene2D {
                      radius: Option<&f32>| {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
-                        let paint_props = paint_properties(
-                            ctx,
+                        let color = self.annotation_map.find(obj_path).color(
+                            color,
+                            None, // TODO(andreas): support class ids for points
                             obj_path,
-                            color.copied(),
                             DefaultColor::Random,
-                            &None,
                         );
+
+                        let paint_props = paint_properties(color, &None);
 
                         batch.push(Point2D {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -311,13 +317,14 @@ impl Scene2D {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
-                        let paint_props = paint_properties(
-                            ctx,
+                        let color = self.annotation_map.find(obj_path).color(
+                            color,
+                            None, // TODO(andreas): support class ids for line segments
                             obj_path,
-                            color.copied(),
                             DefaultColor::Random,
-                            &None,
                         );
+
+                        let paint_props = paint_properties(color, &None);
 
                         batch.push(LineSegments2D {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -365,30 +372,9 @@ pub struct ObjectPaintProperties {
     pub fg_stroke: Stroke,
 }
 
-#[derive(Clone, Copy)]
-enum DefaultColor {
-    White,
-    Random,
-}
-
-fn paint_properties(
-    ctx: &mut ViewerContext<'_>,
-    obj_path: &ObjPath,
-    color: Option<[u8; 4]>,
-    default_color: DefaultColor,
-    stroke_width: &Option<f32>,
-) -> ObjectPaintProperties {
+fn paint_properties(color: [u8; 4], stroke_width: &Option<f32>) -> ObjectPaintProperties {
     let bg_color = Color32::from_black_alpha(196);
-    let fg_color = color.map_or_else(
-        || match default_color {
-            DefaultColor::White => Color32::WHITE,
-            DefaultColor::Random => {
-                let [r, g, b] = ctx.random_color(obj_path);
-                Color32::from_rgb(r, g, b)
-            }
-        },
-        to_egui_color,
-    );
+    let fg_color = to_egui_color(color);
     let stroke_width = stroke_width.unwrap_or(1.5);
     let bg_stroke = Stroke::new(stroke_width + 2.0, bg_color);
     let fg_stroke = Stroke::new(stroke_width, fg_color);

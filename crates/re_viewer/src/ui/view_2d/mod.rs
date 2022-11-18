@@ -8,7 +8,7 @@ mod class_description_ui;
 pub(crate) use self::class_description_ui::view_class_description_map;
 
 mod annotations;
-pub use self::annotations::{auto_color, AnnotationMap, Annotations, ColorMapping, LabelMapping};
+pub use self::annotations::{auto_color, AnnotationMap, Annotations, LabelMapping};
 
 mod image_ui;
 pub(crate) use self::image_ui::show_tensor;

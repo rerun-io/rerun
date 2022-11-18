@@ -10,6 +10,55 @@ pub struct Annotations {
     pub context: AnnotationContext,
 }
 
+#[derive(Clone, Copy)]
+pub enum DefaultColor {
+    White,
+    Random,
+}
+
+impl Annotations {
+    pub fn color(
+        &self,
+        color: Option<&[u8; 4]>,
+        class_id: Option<ClassId>,
+        obj_path: &ObjPath,
+        default_color: DefaultColor,
+    ) -> [u8; 4] {
+        if let Some(color) = color {
+            return *color;
+        }
+        if let Some(class_id) = class_id {
+            return self.color_from_class_id(class_id.0);
+        }
+
+        match default_color {
+            DefaultColor::White => [255, 255, 255, 255],
+            DefaultColor::Random => auto_color((obj_path.hash64() % std::u16::MAX as u64) as u16),
+        }
+    }
+
+    pub fn color_from_class_id(&self, val: u16) -> [u8; 4] {
+        if let Some(class_desc) = self.context.class_map.get(&ClassId(val)) {
+            if let Some(color) = class_desc.info.color {
+                color
+            } else {
+                auto_color(val)
+            }
+        } else {
+            // TODO(jleibs) Unset labels default to transparent black
+            // This gives us better behavior for the "0" id, though we
+            // should be more explicit about this in the future.
+            if val == 0 {
+                [0, 0, 0, 0]
+            } else {
+                auto_color(val)
+            }
+        }
+    }
+
+    // TODO: Same for labels
+}
+
 #[derive(Default, Clone, Debug)]
 pub struct AnnotationMap(pub BTreeMap<ObjPath, Arc<Annotations>>);
 
@@ -50,33 +99,6 @@ pub fn auto_color(val: u16) -> [u8; 4] {
     let h = val as f32 * golden_ratio;
     let color = egui::Color32::from(egui::color::Hsva::new(h, 0.85, 0.5, 1.0));
     color.to_array()
-}
-
-// Currently using a pair [u8;4] since it converts more easily
-// to DynamicImage
-pub trait ColorMapping {
-    fn map_color(&self, val: u16) -> [u8; 4];
-}
-
-impl ColorMapping for Annotations {
-    fn map_color(&self, val: u16) -> [u8; 4] {
-        if let Some(class_desc) = self.context.class_map.get(&ClassId(val)) {
-            if let Some(color) = class_desc.info.color {
-                color
-            } else {
-                auto_color(val)
-            }
-        } else {
-            // TODO(jleibs) Unset labels default to transparent black
-            // This gives us better behavior for the "0" id, though we
-            // should be more explicit about this in the future.
-            if val == 0 {
-                [0, 0, 0, 0]
-            } else {
-                auto_color(val)
-            }
-        }
-    }
 }
 
 // TODO(jleibs): sort out lifetime of label
