@@ -1,4 +1,4 @@
-use crate::ui::view_plot::scene::PlotLineKind;
+use crate::ui::view_plot::scene::PlotSeriesKind;
 use crate::ViewerContext;
 use egui::plot::{Legend, Line, Plot, Points, VLine};
 use egui::Color32;
@@ -84,13 +84,13 @@ pub(crate) fn view_plot(
                 let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
 
                 match line.kind {
-                    PlotLineKind::Continuous => plot_ui.line(
+                    PlotSeriesKind::Continuous => plot_ui.line(
                         Line::new(points)
                             .name(&line.label)
                             .color(color)
                             .width(line.width),
                     ),
-                    PlotLineKind::Scatter => plot_ui.points(
+                    PlotSeriesKind::Scatter => plot_ui.points(
                         Points::new(points)
                             .name(&line.label)
                             .color(color)

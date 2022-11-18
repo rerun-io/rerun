@@ -35,7 +35,7 @@ struct PlotPoint {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum PlotLineKind {
+pub enum PlotSeriesKind {
     Continuous,
     Scatter,
 }
@@ -45,7 +45,7 @@ pub struct PlotSeries {
     pub label: String,
     pub color: [u8; 4],
     pub width: f32,
-    pub kind: PlotLineKind,
+    pub kind: PlotSeriesKind,
     pub points: Vec<(i64, f64)>,
 }
 
@@ -138,9 +138,9 @@ impl ScenePlot {
             color: attrs.color,
             width: attrs.radius,
             kind: if attrs.scattered {
-                PlotLineKind::Scatter
+                PlotSeriesKind::Scatter
             } else {
-                PlotLineKind::Continuous
+                PlotSeriesKind::Continuous
             },
             points: Vec::with_capacity(nb_points),
         });
@@ -159,9 +159,9 @@ impl ScenePlot {
 
                 attrs = p.attrs.clone();
                 let kind = if attrs.scattered {
-                    PlotLineKind::Scatter
+                    PlotSeriesKind::Scatter
                 } else {
-                    PlotLineKind::Continuous
+                    PlotSeriesKind::Continuous
                 };
                 line = Some(PlotSeries {
                     label: line_label.to_owned(),
@@ -177,8 +177,8 @@ impl ScenePlot {
                 // If the previous point was continous and the current point is continuous
                 // too, then we want the 2 segments to appear continuous even though they
                 // are actually split from a data standpoint.
-                let cur_continuous = matches!(kind, PlotLineKind::Continuous);
-                let prev_continuous = matches!(kind, PlotLineKind::Continuous);
+                let cur_continuous = matches!(kind, PlotSeriesKind::Continuous);
+                let prev_continuous = matches!(kind, PlotSeriesKind::Continuous);
                 if cur_continuous && prev_continuous {
                     line.as_mut().unwrap().points.push(prev_point);
                 }
