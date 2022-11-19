@@ -90,14 +90,14 @@ impl SpaceView {
 
         match self.category {
             ViewCategory::TwoD => {
-                _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+                _ = extra_headroom; // ignored - put overlay buttons on top of the view.
 
                 let mut scene = view_2d::Scene2D::default();
                 scene.load_objects(ctx, &query);
                 self.view_state.ui_2d(ctx, ui, &self.space_path, scene);
             }
             ViewCategory::ThreeD => {
-                _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+                _ = extra_headroom; // ignored - put overlay buttons on top of the view.
 
                 let mut scene = view_3d::Scene3D::default();
                 scene.load_objects(ctx, &query);
@@ -120,7 +120,7 @@ impl SpaceView {
                 self.view_state.ui_text(ctx, ui, &scene);
             }
             ViewCategory::Plot => {
-                ui.add_space(extra_headroom);
+                _ = extra_headroom; // ignored - put overlay buttons on top of the view.
 
                 let mut scene = view_plot::ScenePlot::default();
                 scene.load_objects(ctx, &query);
