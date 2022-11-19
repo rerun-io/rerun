@@ -328,8 +328,14 @@ impl eframe::App for App {
 }
 
 /// According to the OS. This is what matters.
+#[cfg(not(target_arch = "wasm32"))]
 fn bytes_used_gross() -> Option<i64> {
     memory_stats::memory_stats().map(|usage| usage.physical_mem as i64)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn bytes_used_gross() -> Option<i64> {
+    None
 }
 
 /// What we are using internally.
