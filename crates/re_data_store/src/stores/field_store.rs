@@ -272,7 +272,8 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MonoFieldStore<Time, T> {
     }
 
     pub fn prune_everything_before(&mut self, cutoff_time: Time) {
-        self.history.retain(|&time, _| cutoff_time <= time);
+        self.history
+            .retain(|(time, _msg_id), _| cutoff_time <= *time);
     }
 }
 
@@ -303,6 +304,7 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MultiFieldStore<Time, T> {
     }
 
     pub fn prune_everything_before(&mut self, cutoff_time: Time) {
-        self.history.retain(|&time, _| cutoff_time <= time);
+        self.history
+            .retain(|(time, _msg_id), _| cutoff_time <= *time);
     }
 }
