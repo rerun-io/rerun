@@ -138,9 +138,13 @@ impl ObjDb {
         cutoff_time: TimeInt,
         keep_msg_ids: &nohash_hasher::IntSet<MsgId>,
     ) {
-        self.tree
-            .prune_everything_before(timeline, cutoff_time, keep_msg_ids);
-        self.store.prune_everything_before(timeline, cutoff_time);
+        let Self {
+            types: _,
+            tree,
+            store,
+        } = self;
+        tree.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+        store.prune_everything_before(timeline, cutoff_time);
     }
 }
 
@@ -319,23 +323,29 @@ impl LogDb {
 
     pub fn prune_memory(&mut self) {
         crate::profile_function!();
+        let Self {
+            chronological_message_ids,
+            log_messages,
+            timeless_message_ids,
+            recording_info: _,
+            time_points,
+            obj_db,
+        } = self;
 
         // remove the first half of everything.
 
-        self.chronological_message_ids =
-            self.chronological_message_ids[(self.chronological_message_ids.len() / 2)..].to_vec();
+        *chronological_message_ids =
+            chronological_message_ids[(chronological_message_ids.len() / 2)..].to_vec();
 
         let keep_msg_ids: nohash_hasher::IntSet<MsgId> =
-            self.chronological_message_ids.iter().copied().collect();
+            chronological_message_ids.iter().copied().collect();
 
-        self.log_messages
-            .retain(|msg_id, _| keep_msg_ids.contains(msg_id));
-        self.timeless_message_ids
-            .retain(|msg_id| keep_msg_ids.contains(msg_id));
+        log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
 
         // -----
 
-        for (timeline, time_points) in &mut self.time_points.0 {
+        for (timeline, time_points) in &mut time_points.0 {
             if let Some(cutoff_time) = time_points.iter().nth(time_points.len() / 2).copied() {
                 re_log::info!(
                     "Pruning {} before {}",
@@ -344,8 +354,7 @@ impl LogDb {
                 );
 
                 time_points.retain(|&time| cutoff_time <= time);
-                self.obj_db
-                    .prune_everything_before(*timeline, cutoff_time, &keep_msg_ids);
+                obj_db.prune_everything_before(*timeline, cutoff_time, &keep_msg_ids);
             }
         }
     }

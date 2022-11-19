@@ -181,16 +181,23 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
     }
 
     pub fn prune_everything_before(&mut self, cutoff_time: Time) {
+        let Self {
+            data_store,
+            mono,
+            data_type,
+            _phantom,
+        } = self;
+
         macro_rules! handle_type(
             ($enum_variant: ident, $typ: ty) => {{
-                if self.mono {
-                    if let Some(store) = self.data_store.downcast_mut::<MonoFieldStore<Time, $typ>>() {
+                if *mono {
+                    if let Some(store) = data_store.downcast_mut::<MonoFieldStore<Time, $typ>>() {
                         store.prune_everything_before(cutoff_time);
                     } else {
                         re_log::warn!("Expected mono-store");
                     }
                 } else {
-                    if let Some(store) = self.data_store.downcast_mut::<MultiFieldStore<Time, $typ>>() {
+                    if let Some(store) = data_store.downcast_mut::<MultiFieldStore<Time, $typ>>() {
                         store.prune_everything_before(cutoff_time);
                     } else {
                         re_log::warn!("Expected mono-store");
@@ -201,7 +208,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
 
         use re_log_types::data_types;
 
-        match self.data_type {
+        match *data_type {
             DataType::Bool => handle_type!(Bool, bool),
             DataType::I32 => handle_type!(I32, i32),
             DataType::F32 => handle_type!(F32, f32),
@@ -272,8 +279,8 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MonoFieldStore<Time, T> {
     }
 
     pub fn prune_everything_before(&mut self, cutoff_time: Time) {
-        self.history
-            .retain(|(time, _msg_id), _| cutoff_time <= *time);
+        let Self { history } = self;
+        history.retain(|(time, _msg_id), _| cutoff_time <= *time);
     }
 }
 
@@ -304,7 +311,7 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MultiFieldStore<Time, T> {
     }
 
     pub fn prune_everything_before(&mut self, cutoff_time: Time) {
-        self.history
-            .retain(|(time, _msg_id), _| cutoff_time <= *time);
+        let Self { history } = self;
+        history.retain(|(time, _msg_id), _| cutoff_time <= *time);
     }
 }

@@ -234,9 +234,12 @@ impl Caches {
     }
 
     pub fn prune_memory(&mut self) {
-        // image cache already self-prunes.
-        // cpu_mesh cache _shouldn't_ fill up.
-        self.object_colors.clear();
+        let Self {
+            image: _,    // already self-prunes
+            cpu_mesh: _, // TODO(emilk)
+            object_colors,
+        } = self;
+        object_colors.clear();
     }
 }
 

@@ -213,13 +213,24 @@ impl ObjectTree {
         cutoff_time: TimeInt,
         keep_msg_ids: &nohash_hasher::IntSet<MsgId>,
     ) {
-        for child in self.children.values_mut() {
+        let Self {
+            path: _,
+            children,
+            prefix_times,
+            nonrecursive_clears,
+            recursive_clears,
+            fields,
+        } = self;
+
+        for child in children.values_mut() {
             child.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
         }
-        if let Some(map) = self.prefix_times.get_mut(&timeline) {
+        if let Some(map) = prefix_times.get_mut(&timeline) {
             map.retain(|&time, _| cutoff_time <= time);
         }
-        for columns in self.fields.values_mut() {
+        nonrecursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        recursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        for columns in fields.values_mut() {
             columns.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
         }
     }
@@ -303,10 +314,12 @@ impl DataColumns {
         cutoff_time: TimeInt,
         keep_msg_ids: &nohash_hasher::IntSet<MsgId>,
     ) {
-        if let Some(map) = self.times.get_mut(&timeline) {
+        let Self { times, per_type } = self;
+
+        if let Some(map) = times.get_mut(&timeline) {
             map.retain(|&time, _| cutoff_time <= time);
         }
-        for msg_set in self.per_type.values_mut() {
+        for msg_set in per_type.values_mut() {
             msg_set.retain(|msg_id| keep_msg_ids.contains(msg_id));
         }
     }
