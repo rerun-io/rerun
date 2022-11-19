@@ -640,7 +640,7 @@ pub fn visit_type_data_6<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_value)| {
+            |time, msg_id, primary_value| {
                 if let Some(primary_value) = primary_value {
                     visit(
                         None,
@@ -668,7 +668,7 @@ pub fn visit_type_data_6<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_batch)| {
+            |time, msg_id, primary_batch| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
                     let child2 = MultiDataReader::latest_at(child2, time);
