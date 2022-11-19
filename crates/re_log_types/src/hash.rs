@@ -97,6 +97,8 @@ impl std::fmt::Debug for Hash128 {
 
 // ----------------------------------------------------------------------------
 
+pub const HASH_RANDOM_STATE: ahash::RandomState = ahash::RandomState::with_seeds(0, 1, 2, 3);
+
 #[inline]
 fn double_hash(value: impl std::hash::Hash + Copy) -> [u64; 2] {
     [hash_with_seed(value, 123), hash_with_seed(value, 456)]
@@ -109,7 +111,7 @@ fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
     use std::hash::Hasher as _;
 
     // Don't use ahash::AHasher::default() since it uses a random number for seeding the hasher on every application start.
-    let mut hasher = ahash::RandomState::with_seeds(42, 1337, 17, 0).build_hasher();
+    let mut hasher = HASH_RANDOM_STATE.build_hasher();
     seed.hash(&mut hasher);
     value.hash(&mut hasher);
     hasher.finish()
@@ -121,7 +123,7 @@ fn hash(value: impl std::hash::Hash) -> u64 {
     use std::hash::Hasher as _;
 
     // Don't use ahash::AHasher::default() since it uses a random number for seeding the hasher on every application start.
-    let mut hasher = ahash::RandomState::with_seeds(42, 1337, 17, 0).build_hasher();
+    let mut hasher = HASH_RANDOM_STATE.build_hasher();
     value.hash(&mut hasher);
     hasher.finish()
 }

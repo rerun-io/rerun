@@ -14,7 +14,7 @@ fn hash(value: impl std::hash::Hash) -> u64 {
     use std::hash::Hasher as _;
     // Don't use ahash::AHasher::default() since it uses a random number for seeding the hasher on every application start.
     let mut hasher =
-        std::hash::BuildHasher::build_hasher(&ahash::RandomState::with_seeds(42, 17, 1337, 0));
+        std::hash::BuildHasher::build_hasher(&ahash::RandomState::with_seeds(0, 1, 2, 3));
     value.hash(&mut hasher);
     hasher.finish()
 }

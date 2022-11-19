@@ -27,41 +27,36 @@ impl Annotations {
         default_color: DefaultColor<'_>,
     ) -> [u8; 4] {
         if let Some(color) = color {
-            return *color;
-        }
-        if let Some(class_id) = class_id {
-            if let Some(class_desc) = self.context.class_map.get(&class_id) {
-                if let Some(color) = class_desc.info.color {
-                    return color;
+            *color
+        } else if let Some(color) = class_id
+            .and_then(|id| self.context.class_map.get(&id))
+            .and_then(|desc| desc.info.color)
+        {
+            color
+        } else {
+            match default_color {
+                DefaultColor::TransparentBlack => [0, 0, 0, 0],
+                DefaultColor::OpaqueWhite => [255, 255, 255, 255],
+                DefaultColor::ObjPath(obj_path) => {
+                    auto_color((obj_path.hash64() % std::u16::MAX as u64) as u16)
                 }
-            }
-        }
-
-        match default_color {
-            DefaultColor::TransparentBlack => [0, 0, 0, 0],
-            DefaultColor::OpaqueWhite => [255, 255, 255, 255],
-            DefaultColor::ObjPath(obj_path) => {
-                auto_color((obj_path.hash64() % std::u16::MAX as u64) as u16)
             }
         }
     }
 
     pub fn label(&self, label: Option<&String>, class_id: Option<ClassId>) -> Option<String> {
         if let Some(label) = label {
-            return Some(label.clone());
+            Some(label.clone())
+        } else {
+            class_id
+                .and_then(|id| self.context.class_map.get(&id).map(|desc| (id, desc)))
+                .map(|(id, desc)| {
+                    desc.info
+                        .label
+                        .as_ref()
+                        .map_or_else(|| format!("unknown class id {}", id.0), ToString::to_string)
+                })
         }
-
-        if let Some(class_id) = class_id {
-            if let Some(class_desc) = self.context.class_map.get(&ClassId(class_id.0)) {
-                if let Some(label) = class_desc.info.label.as_ref() {
-                    return Some(label.to_string());
-                }
-            }
-
-            return Some(format!("unknown class id {}", class_id.0));
-        }
-
-        None
     }
 }
 
