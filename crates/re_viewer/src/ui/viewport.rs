@@ -147,6 +147,7 @@ impl ViewportBlueprint {
                 ViewCategory::ThreeD => ui.label("🔭"),
                 ViewCategory::Tensor => ui.label("🇹"),
                 ViewCategory::Text => ui.label("📃"),
+                ViewCategory::Plot => ui.label("📈"),
             };
 
             if ctx

@@ -158,6 +158,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::Bool => handle_type!(Bool, bool),
             DataType::I32 => handle_type!(I32, i32),
             DataType::F32 => handle_type!(F32, f32),
+            DataType::F64 => handle_type!(F64, f64),
             DataType::String => handle_type!(String, String),
             DataType::Color => handle_type!(Color, data_types::Color),
             DataType::Vec2 => handle_type!(Vec2, data_types::Vec2),

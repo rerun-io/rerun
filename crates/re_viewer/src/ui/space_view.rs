@@ -3,7 +3,7 @@ use re_log_types::Transform;
 
 use crate::misc::{space_info::*, ViewerContext};
 
-use super::{view_2d, view_3d, view_tensor, view_text};
+use super::{view_2d, view_3d, view_plot, view_tensor, view_text};
 
 // ----------------------------------------------------------------------------
 
@@ -25,6 +25,7 @@ pub enum ViewCategory {
     ThreeD,
     Tensor,
     Text,
+    Plot,
 }
 
 // ----------------------------------------------------------------------------
@@ -89,14 +90,14 @@ impl SpaceView {
 
         match self.category {
             ViewCategory::TwoD => {
-                _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+                _ = extra_headroom; // ignored - put overlay buttons on top of the view.
 
                 let mut scene = view_2d::Scene2D::default();
                 scene.load_objects(ctx, &query);
                 self.view_state.ui_2d(ctx, ui, &self.space_path, scene);
             }
             ViewCategory::ThreeD => {
-                _ = extra_headroom; // ignored - we just overlay on top of the 2D view.
+                _ = extra_headroom; // ignored - put overlay buttons on top of the view.
 
                 let mut scene = view_3d::Scene3D::default();
                 scene.load_objects(ctx, &query);
@@ -117,6 +118,13 @@ impl SpaceView {
                 let mut scene = view_text::SceneText::default();
                 scene.load_objects(ctx, &query);
                 self.view_state.ui_text(ctx, ui, &scene);
+            }
+            ViewCategory::Plot => {
+                _ = extra_headroom; // ignored - put overlay buttons on top of the view.
+
+                let mut scene = view_plot::ScenePlot::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_plot(ctx, ui, &scene);
             }
         };
     }
@@ -149,7 +157,8 @@ pub(crate) struct ViewState {
     pub state_2d: view_2d::View2DState,
     pub state_3d: view_3d::View3DState,
     pub state_tensor: Option<view_tensor::ViewTensorState>,
-    pub state_text_entry: view_text::ViewTextState,
+    pub state_text: view_text::ViewTextState,
+    pub state_plot: view_plot::ViewPlotState,
 }
 
 impl ViewState {
@@ -191,7 +200,7 @@ impl ViewState {
                 })
                 .response;
 
-            show_help_button_overlay(ui, response.rect, ctx, super::view_3d::HELP_TEXT);
+            show_help_button_overlay(ui, response.rect, ctx, view_3d::HELP_TEXT);
         })
         .response
     }
@@ -220,7 +229,25 @@ impl ViewState {
         ui: &mut egui::Ui,
         scene: &view_text::SceneText,
     ) -> egui::Response {
-        view_text::view_text(ctx, ui, &mut self.state_text_entry, scene)
+        view_text::view_text(ctx, ui, &mut self.state_text, scene)
+    }
+
+    fn ui_plot(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        scene: &view_plot::ScenePlot,
+    ) -> egui::Response {
+        ui.vertical(|ui| {
+            let response = ui
+                .scope(|ui| {
+                    view_plot::view_plot(ctx, ui, &mut self.state_plot, scene);
+                })
+                .response;
+
+            show_help_button_overlay(ui, response.rect, ctx, view_plot::HELP_TEXT);
+        })
+        .response
     }
 }
 

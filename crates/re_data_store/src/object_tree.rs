@@ -251,7 +251,7 @@ impl DataColumns {
             let (stem, plur) = match typ {
                 DataType::Bool => ("bool", "s"),
                 DataType::I32 => ("integer", "s"),
-                DataType::F32 => ("float", "s"),
+                DataType::F32 | DataType::F64 => ("scalar", "s"),
                 DataType::Color => ("color", "s"),
                 DataType::String => ("string", "s"),
 
