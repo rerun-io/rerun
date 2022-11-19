@@ -17,10 +17,7 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
     let web_options = eframe::WebOptions {
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
-
         wgpu_options: crate::wgpu_options(),
-
-        ..Default::default()
     };
 
     eframe::start_web(
@@ -29,12 +26,7 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
         Box::new(move |cc| {
             let design_tokens = crate::customize_eframe(cc);
             let url = get_url(&cc.integration_info);
-            let app = crate::RemoteViewerApp::new(
-                &cc.egui_ctx,
-                design_tokens,
-                cc.storage.as_deref(),
-                url,
-            );
+            let app = crate::RemoteViewerApp::new(&cc.egui_ctx, design_tokens, cc.storage, url);
             Box::new(app)
         }),
     )

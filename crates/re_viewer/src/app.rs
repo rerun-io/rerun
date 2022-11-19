@@ -437,6 +437,8 @@ impl App {
                 let mut bytes: &[u8] = &(*bytes)[..];
                 if let Some(log_db) = load_file_contents(&file.name, &mut bytes) {
                     self.show_log_db(log_db);
+
+                    #[allow(clippy::needless_return)] // false positive on wasm32
                     return;
                 }
             }
