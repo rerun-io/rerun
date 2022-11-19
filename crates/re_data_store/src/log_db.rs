@@ -323,6 +323,7 @@ impl LogDb {
 
     pub fn prune_memory(&mut self) {
         crate::profile_function!();
+
         let Self {
             chronological_message_ids,
             log_messages,
@@ -332,7 +333,7 @@ impl LogDb {
             obj_db,
         } = self;
 
-        // remove the first half of everything.
+        // Remove the first half of everything.
 
         *chronological_message_ids =
             chronological_message_ids[(chronological_message_ids.len() / 2)..].to_vec();
@@ -342,8 +343,6 @@ impl LogDb {
 
         log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
         timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
-
-        // -----
 
         for (timeline, time_points) in &mut time_points.0 {
             if let Some(cutoff_time) = time_points.iter().nth(time_points.len() / 2).copied() {

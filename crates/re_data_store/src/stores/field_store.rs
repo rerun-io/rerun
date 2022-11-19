@@ -200,7 +200,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
                     if let Some(store) = data_store.downcast_mut::<MultiFieldStore<Time, $typ>>() {
                         store.prune_everything_before(cutoff_time);
                     } else {
-                        re_log::warn!("Expected mono-store");
+                        re_log::warn!("Expected multi-store");
                     }
                 }
             }}

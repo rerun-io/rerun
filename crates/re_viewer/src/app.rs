@@ -338,7 +338,7 @@ fn bytes_used_gross() -> Option<i64> {
     None
 }
 
-/// What we are using internally.
+/// The amount of memory in use.
 ///
 /// The difference to [`bytes_used_gross`] is memory allocated by `MiMalloc`.
 /// that hasn't been returned to the OS.
