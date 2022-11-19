@@ -5,7 +5,7 @@ use egui_extras::{Size, TableBuilder};
 use re_data_store::{query::visit_type_data_2, FieldName, InstanceId};
 use re_log_types::{IndexHash, MsgId};
 
-use crate::misc::ViewerContext;
+use crate::{misc::ViewerContext, ui::annotations::auto_color};
 
 pub(crate) fn view_class_description_map(
     ctx: &mut ViewerContext<'_>,
@@ -35,7 +35,7 @@ pub(crate) fn view_class_description_map(
          label: Option<&String>,
          color: Option<&[u8; 4]>| {
             let val = u16::try_from(*id % (u16::MAX as i32)).unwrap();
-            let color = *color.unwrap_or(&super::annotations::auto_color(val));
+            let color = *color.unwrap_or(&auto_color(val));
             map.insert(
                 *id,
                 (

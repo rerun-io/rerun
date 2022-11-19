@@ -1,4 +1,7 @@
-use crate::{ui::SceneQuery, ViewerContext};
+use crate::{
+    ui::{annotations::AnnotationMap, DefaultColor, SceneQuery},
+    ViewerContext,
+};
 use re_data_store::{query::visit_type_data_5, FieldName, TimeQuery};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
@@ -52,6 +55,7 @@ pub struct PlotSeries {
 /// A plot scene, with everything needed to render it.
 #[derive(Default, Debug)]
 pub struct ScenePlot {
+    pub annotation_map: AnnotationMap,
     pub lines: Vec<PlotSeries>,
 }
 
@@ -59,6 +63,8 @@ impl ScenePlot {
     /// Loads all plot objects into the scene according to the given query.
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
+
+        self.annotation_map.load(ctx, query);
 
         self.load_scalars(ctx, query);
     }
@@ -69,11 +75,6 @@ impl ScenePlot {
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Scalar])
         {
-            let default_color = {
-                let c = ctx.cache.random_color(obj_path);
-                [c[0], c[1], c[2], 255]
-            };
-
             let mut points = Vec::new();
             visit_type_data_5(
                 obj_store,
@@ -94,12 +95,17 @@ impl ScenePlot {
                         return;
                     }
 
+                    // TODO(andreas): Support object path
+                    let annotations = self.annotation_map.find(obj_path);
+                    let color = annotations.color(color, None, DefaultColor::ObjPath(obj_path));
+                    let label = annotations.label(label, None);
+
                     points.push(PlotPoint {
                         time,
                         value: *value,
                         attrs: PlotPointAttrs {
-                            label: label.cloned(),
-                            color: color.copied().unwrap_or(default_color),
+                            label,
+                            color,
                             radius: radius.copied().unwrap_or(1.0),
                             scattered: *scattered.unwrap_or(&false),
                         },
@@ -196,7 +202,10 @@ impl ScenePlot {
 
 impl ScenePlot {
     pub fn is_empty(&self) -> bool {
-        let Self { lines } = self;
+        let Self {
+            lines,
+            annotation_map: _,
+        } = self;
 
         lines.is_empty()
     }
