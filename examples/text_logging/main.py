@@ -5,7 +5,7 @@ This example demonstrates how to integrate python's native `logging` with the Re
 
 Run:
 ```sh
-./examples/logging/main.py
+./examples/text_logging/main.py
 ```
 """
 

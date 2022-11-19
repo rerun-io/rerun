@@ -109,15 +109,15 @@ fn test_obj_store() {
     let mut obj_store = ObjStore::default();
 
     assert!(obj_store
-        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15))
+        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15_f32))
         .is_ok());
 
     assert!(obj_store
-        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15))
+        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15_f32))
         .is_ok());
 
     assert!(obj_store
-        .insert_mono("field2".into(), 0, MsgId::random(), Some(3.15))
+        .insert_mono("field2".into(), 0, MsgId::random(), Some(3.15_f32))
         .is_ok());
 
     assert_eq!(
