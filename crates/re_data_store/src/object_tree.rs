@@ -222,16 +222,28 @@ impl ObjectTree {
             fields,
         } = self;
 
-        for child in children.values_mut() {
-            child.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
-        }
         if let Some(map) = prefix_times.get_mut(&timeline) {
+            crate::profile_scope!("prefix_times");
             map.retain(|&time, _| cutoff_time <= time);
         }
-        nonrecursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
-        recursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
-        for columns in fields.values_mut() {
-            columns.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+        {
+            crate::profile_scope!("nonrecursive_clears");
+            nonrecursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        }
+        {
+            crate::profile_scope!("recursive_clears");
+            recursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        }
+
+        {
+            crate::profile_scope!("fields");
+            for columns in fields.values_mut() {
+                columns.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+            }
+        }
+
+        for child in children.values_mut() {
+            child.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
         }
     }
 }

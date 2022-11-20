@@ -138,12 +138,16 @@ impl ObjDb {
         cutoff_time: TimeInt,
         keep_msg_ids: &ahash::HashSet<MsgId>,
     ) {
+        crate::profile_function!();
         let Self {
             types: _,
             tree,
             store,
         } = self;
-        tree.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+        {
+            crate::profile_scope!("tree");
+            tree.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+        }
         store.prune_everything_before(timeline, cutoff_time);
     }
 }
@@ -338,14 +342,23 @@ impl LogDb {
         *chronological_message_ids =
             chronological_message_ids[(chronological_message_ids.len() / 2)..].to_vec();
 
-        let keep_msg_ids: ahash::HashSet<MsgId> =
-            chronological_message_ids.iter().copied().collect();
+        let keep_msg_ids: ahash::HashSet<MsgId> = {
+            crate::profile_scope!("keep_msg_ids");
+            chronological_message_ids.iter().copied().collect()
+        };
 
-        log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
-        timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+        {
+            crate::profile_scope!("log_messages");
+            log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        }
+        {
+            crate::profile_scope!("timeless_message_ids");
+            timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+        }
 
         for (timeline, time_points) in &mut time_points.0 {
             if let Some(cutoff_time) = time_points.iter().nth(time_points.len() / 2).copied() {
+                crate::profile_scope!("Prune timeline", timeline.name().as_str());
                 re_log::info!(
                     "Pruning {} before {}",
                     timeline.name(),
