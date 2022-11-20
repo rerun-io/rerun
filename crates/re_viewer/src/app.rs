@@ -45,7 +45,7 @@ pub struct App {
     /// Toast notifications, using `egui-notify`.
     toasts: Toasts,
 
-    last_memory_free: instant::Instant,
+    last_memory_prune: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 }
@@ -133,7 +133,7 @@ impl App {
             ctrl_c,
             pending_promises: Default::default(),
             toasts: Toasts::new(),
-            last_memory_free: instant::Instant::now(),
+            last_memory_prune: instant::Instant::now() - std::time::Duration::from_secs(10_000),
             memory_panel: Default::default(),
             memory_panel_open: false,
         }
@@ -349,38 +349,38 @@ impl eframe::App for App {
 
 impl App {
     fn prune_memory_if_needed(&mut self) {
+        crate::profile_function!();
+
         use crate::memory_panel::MemoryUse;
 
-        if self.last_memory_free.elapsed() < std::time::Duration::from_secs(30) {
+        if self.last_memory_prune.elapsed() < std::time::Duration::from_secs(30) {
             return;
         }
 
-        // TODO: get from env-var.
-        let too_many_gross_bytes = 12_000_000_000;
-        let too_many_net_bytes = 8_000_000_000;
-
+        let limit = crate::memory_panel::MemoryLimit::from_env_vars();
         let mem_use_before = MemoryUse::capture();
 
-        let over_gross = mem_use_before
-            .gross
-            .map_or(false, |used| used > too_many_gross_bytes);
-        let over_net = mem_use_before
-            .net
-            .map_or(false, |used| used > too_many_net_bytes);
+        if limit.is_exceeded_by(&mem_use_before) {
+            fn format_limit(limit: Option<i64>) -> String {
+                if let Some(bytes) = limit {
+                    format!("{:.2}", bytes as f32 / 1e9)
+                } else {
+                    "∞".to_owned()
+                }
+            }
 
-        if over_gross || over_net {
             if let Some(gross) = mem_use_before.gross {
                 re_log::info!(
                     "Using {:.2}/{:2} GB according to OS",
                     gross as f32 / 1e9,
-                    too_many_gross_bytes as f32 / 1e9,
+                    format_limit(limit.gross),
                 );
             }
             if let Some(net) = mem_use_before.net {
                 re_log::info!(
                     "Actually used: {:.2}/{:2} GB",
                     net as f32 / 1e9,
-                    too_many_net_bytes as f32 / 1e9,
+                    format_limit(limit.net),
                 );
             }
             re_log::info!("PRUNING!");
@@ -404,7 +404,7 @@ impl App {
                 re_log::info!("Returned {:.3} GB to the OS", gross_diff as f32 / 1e9);
             }
 
-            self.last_memory_free = instant::Instant::now();
+            self.last_memory_prune = instant::Instant::now();
         }
     }
 

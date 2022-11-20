@@ -136,7 +136,7 @@ impl ObjDb {
         &mut self,
         timeline: Timeline,
         cutoff_time: TimeInt,
-        keep_msg_ids: &nohash_hasher::IntSet<MsgId>,
+        keep_msg_ids: &ahash::HashSet<MsgId>,
     ) {
         let Self {
             types: _,
@@ -338,7 +338,7 @@ impl LogDb {
         *chronological_message_ids =
             chronological_message_ids[(chronological_message_ids.len() / 2)..].to_vec();
 
-        let keep_msg_ids: nohash_hasher::IntSet<MsgId> =
+        let keep_msg_ids: ahash::HashSet<MsgId> =
             chronological_message_ids.iter().copied().collect();
 
         log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));

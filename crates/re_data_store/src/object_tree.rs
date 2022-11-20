@@ -211,7 +211,7 @@ impl ObjectTree {
         &mut self,
         timeline: Timeline,
         cutoff_time: TimeInt,
-        keep_msg_ids: &nohash_hasher::IntSet<MsgId>,
+        keep_msg_ids: &ahash::HashSet<MsgId>,
     ) {
         let Self {
             path: _,
@@ -312,7 +312,7 @@ impl DataColumns {
         &mut self,
         timeline: Timeline,
         cutoff_time: TimeInt,
-        keep_msg_ids: &nohash_hasher::IntSet<MsgId>,
+        keep_msg_ids: &ahash::HashSet<MsgId>,
     ) {
         let Self { times, per_type } = self;
 
