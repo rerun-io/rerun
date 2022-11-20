@@ -327,72 +327,64 @@ impl eframe::App for App {
     }
 }
 
-/// According to the OS. This is what matters.
-#[cfg(not(target_arch = "wasm32"))]
-fn bytes_used_gross() -> Option<i64> {
-    memory_stats::memory_stats().map(|usage| usage.physical_mem as i64)
-}
-
-#[cfg(target_arch = "wasm32")]
-fn bytes_used_gross() -> Option<i64> {
-    None
-}
-
-/// The amount of memory in use.
-///
-/// The difference to [`bytes_used_gross`] is memory allocated by `MiMalloc`.
-/// that hasn't been returned to the OS.
-fn bytes_used_net() -> i64 {
-    crate::mem_tracker::global_allocs_and_bytes().1 as _
-}
-
 impl App {
     fn prune_memory_if_needed(&mut self) {
+        use crate::memory_panel::MemoryUse;
+
         if self.last_memory_free.elapsed() < std::time::Duration::from_secs(30) {
             return;
         }
 
-        if let Some(bytes_used_gross_before) = bytes_used_gross() {
-            let bytes_used_net_before = bytes_used_net();
+        // TODO: get from env-var.
+        let too_many_gross_bytes = 12_000_000_000;
+        let too_many_net_bytes = 8_000_000_000;
 
-            let too_many_gross_bytes = 12_000_000_000;
-            let too_many_net_bytes = 8_000_000_000;
+        let mem_use_before = MemoryUse::capture();
 
-            if bytes_used_gross_before > too_many_gross_bytes
-                || bytes_used_net_before > too_many_net_bytes
-            {
+        let over_gross = mem_use_before
+            .gross
+            .map_or(false, |used| used > too_many_gross_bytes);
+        let over_net = mem_use_before
+            .net
+            .map_or(false, |used| used > too_many_net_bytes);
+
+        if over_gross || over_net {
+            if let Some(gross) = mem_use_before.gross {
                 re_log::info!(
-                    "Using {:.2}/{:2} GB according to OS. Actually used: {:.2}/{:2} GB. PRUNING!",
-                    bytes_used_gross_before as f32 / 1e9,
+                    "Using {:.2}/{:2} GB according to OS",
+                    gross as f32 / 1e9,
                     too_many_gross_bytes as f32 / 1e9,
-                    bytes_used_net_before as f32 / 1e9,
+                );
+            }
+            if let Some(net) = mem_use_before.net {
+                re_log::info!(
+                    "Actually used: {:.2}/{:2} GB",
+                    net as f32 / 1e9,
                     too_many_net_bytes as f32 / 1e9,
                 );
+            }
+            re_log::info!("PRUNING!");
 
+            {
+                crate::profile_scope!("pruning");
                 for log_db in self.log_dbs.values_mut() {
                     log_db.prune_memory();
                 }
-
                 self.state.cache.prune_memory();
-
-                if let Some(bytes_used_gross_after) = bytes_used_gross() {
-                    let net_diff = bytes_used_net_before - bytes_used_net();
-                    let gross_diff = bytes_used_gross_before - bytes_used_gross_after;
-                    re_log::info!(
-                        "Freed up {:.3} GB of memory (returning {:.3} GB to the OS)",
-                        net_diff as f32 / 1e9,
-                        gross_diff as f32 / 1e9,
-                    );
-
-                    re_log::info!(
-                        "Now using {:.2} GB according to OS (actually used: {:.2} GB)",
-                        bytes_used_gross_after as f32 / 1e9,
-                        bytes_used_net() as f32 / 1e9,
-                    );
-                }
-
-                self.last_memory_free = std::time::Instant::now();
             }
+
+            let mem_use_after = MemoryUse::capture();
+
+            let freed_memory = mem_use_before - mem_use_after;
+
+            if let Some(net_diff) = freed_memory.net {
+                re_log::info!("Freed up {:.3} GB", net_diff as f32 / 1e9);
+            }
+            if let Some(gross_diff) = freed_memory.gross {
+                re_log::info!("Returned {:.3} GB to the OS", gross_diff as f32 / 1e9);
+            }
+
+            self.last_memory_free = std::time::Instant::now();
         }
     }
 
@@ -932,15 +924,16 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 fn debug_menu(ui: &mut egui::Ui) {
     ui.style_mut().wrap = Some(false);
 
-    if let Some(bytes_used_gross) = bytes_used_gross() {
-        ui.label(format!(
-            "{:.2} GB allocated from OS",
-            bytes_used_gross as f32 / 1e9
-        ));
-        ui.label(format!(
-            "{:.2} GB actually used",
-            bytes_used_net() as f32 / 1e9
-        ));
+    let mem_use = crate::memory_panel::MemoryUse::capture();
+
+    if mem_use.gross.is_some() || mem_use.net.is_some() {
+        if let Some(gross) = mem_use.gross {
+            ui.label(format!("{:.2} GB allocated from OS", gross as f32 / 1e9));
+        }
+        if let Some(net) = mem_use.net {
+            ui.label(format!("{:.2} GB actually used", net as f32 / 1e9));
+        }
+
         ui.label(format!(
             "{:.2} MB used by the string interner",
             re_string_interner::bytes_used() as f32 / 1e6
