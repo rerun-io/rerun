@@ -45,7 +45,7 @@ pub struct App {
     /// Toast notifications, using `egui-notify`.
     toasts: Toasts,
 
-    last_memory_prune: instant::Instant,
+    latest_memory_prune: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 }
@@ -133,7 +133,7 @@ impl App {
             ctrl_c,
             pending_promises: Default::default(),
             toasts: Toasts::new(),
-            last_memory_prune: instant::Instant::now() - std::time::Duration::from_secs(10_000),
+            latest_memory_prune: instant::Instant::now() - std::time::Duration::from_secs(10_000),
             memory_panel: Default::default(),
             memory_panel_open: false,
         }
@@ -304,7 +304,7 @@ impl eframe::App for App {
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
         top_panel(egui_ctx, frame, self);
 
-        egui::TopBottomPanel::top("memory_panel")
+        egui::TopBottomPanel::bottom("memory_panel")
             .default_height(300.0)
             .resizable(true)
             .show_animated(egui_ctx, self.memory_panel_open, |ui| {
@@ -353,7 +353,8 @@ impl App {
 
         use crate::memory_panel::MemoryUse;
 
-        if self.last_memory_prune.elapsed() < std::time::Duration::from_secs(30) {
+        if self.latest_memory_prune.elapsed() < instant::Duration::from_secs(30) {
+            // Pruning introduces stutter, and we don't want to stutter too often.
             return;
         }
 
@@ -383,7 +384,6 @@ impl App {
                     format_limit(limit.net),
                 );
             }
-            re_log::info!("PRUNING!");
 
             {
                 crate::profile_scope!("pruning");
@@ -404,7 +404,7 @@ impl App {
                 re_log::info!("Returned {:.3} GB to the OS", gross_diff as f32 / 1e9);
             }
 
-            self.last_memory_prune = instant::Instant::now();
+            self.latest_memory_prune = instant::Instant::now();
         }
     }
 

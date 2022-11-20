@@ -65,6 +65,8 @@ impl MemoryLimit {
 
         Self {
             gross: gross_limit,
+
+            // Start freeing a bit before we reach OS limit:
             net: gross_limit.map(|g| g / 4 * 3),
         }
     }
@@ -129,7 +131,6 @@ fn bytes_used_net() -> Option<i64> {
 /// Returns monotonically increasing time in seconds.
 #[inline]
 fn now_sec() -> f64 {
-    // This can maybe be optimized
     use instant::Instant;
     use once_cell::sync::Lazy;
 
@@ -139,8 +140,8 @@ fn now_sec() -> f64 {
 
 // ----------------------------------------------------------------------------
 
-/// Tracks memory use over time,.
-pub struct MemoryHistory {
+/// Tracks memory use over time.
+struct MemoryHistory {
     pub gross: egui::util::History<i64>,
     pub net: egui::util::History<i64>,
 }
@@ -148,9 +149,10 @@ pub struct MemoryHistory {
 impl Default for MemoryHistory {
     fn default() -> Self {
         let max_elems = 128 * 1024;
+        let max_seconds = f32::INFINITY;
         Self {
-            gross: egui::util::History::new(0..max_elems, f32::INFINITY),
-            net: egui::util::History::new(0..max_elems, f32::INFINITY),
+            gross: egui::util::History::new(0..max_elems, max_seconds),
+            net: egui::util::History::new(0..max_elems, max_seconds),
         }
     }
 }
@@ -218,8 +220,6 @@ impl MemoryPanel {
 
                 // TODO(emilk): show usage by different parts of the system
             }
-
-            ui.separator();
         }
 
         let limit = MemoryLimit::from_env_vars();
@@ -240,6 +240,15 @@ impl MemoryPanel {
     fn plot(&self, ui: &mut egui::Ui) {
         use itertools::Itertools as _;
 
+        fn to_line(history: &egui::util::History<i64>) -> egui::plot::Line {
+            egui::plot::Line::new(
+                history
+                    .iter()
+                    .map(|(time, bytes)| [time, bytes as f64 / 1e9])
+                    .collect_vec(),
+            )
+        }
+
         egui::plot::Plot::new("mem_history_plot")
             .include_y(0.0)
             .label_formatter(|name, value| format!("{}: {:.2} GB", name, value.y))
@@ -248,26 +257,8 @@ impl MemoryPanel {
             .show_x(false)
             .legend(egui::plot::Legend::default().position(egui::plot::Corner::LeftTop))
             .show(ui, |plot_ui| {
-                plot_ui.line(
-                    egui::plot::Line::new(
-                        self.history
-                            .gross
-                            .iter()
-                            .map(|(time, bytes)| [time, bytes as f64 / 1e9])
-                            .collect_vec(),
-                    )
-                    .name("gross (GB)"),
-                );
-                plot_ui.line(
-                    egui::plot::Line::new(
-                        self.history
-                            .net
-                            .iter()
-                            .map(|(time, bytes)| [time, bytes as f64 / 1e9])
-                            .collect_vec(),
-                    )
-                    .name("net (GB)"),
-                );
+                plot_ui.line(to_line(&self.history.gross).name("gross (GB)"));
+                plot_ui.line(to_line(&self.history.net).name("net (GB)"));
             });
     }
 }
