@@ -237,9 +237,7 @@ impl Caches {
         let Self {
             image: _,    // already self-prunes
             cpu_mesh: _, // TODO(emilk)
-            object_colors,
         } = self;
-        object_colors.clear();
     }
 }
 
