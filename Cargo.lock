@@ -3221,6 +3221,7 @@ dependencies = [
  "mint",
  "ndarray",
  "nohash-hasher",
+ "once_cell",
  "poll-promise",
  "puffin",
  "puffin_http",

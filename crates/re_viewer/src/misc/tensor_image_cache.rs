@@ -108,7 +108,7 @@ impl ImageCache {
         if self.memory_used > max_memory_use {
             let before = self.memory_used;
             self.flush();
-            re_log::info!(
+            re_log::debug!(
                 "Flushed image cache. Before: {:.2} GB. After: {:.2} GB",
                 before as f64 / 1e9,
                 self.memory_used as f64 / 1e9,

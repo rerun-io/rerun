@@ -46,6 +46,8 @@ pub struct App {
     toasts: Toasts,
 
     last_memory_free: std::time::Instant,
+    memory_panel: crate::memory_panel::MemoryPanel,
+    memory_panel_open: bool,
 }
 
 impl App {
@@ -131,7 +133,9 @@ impl App {
             ctrl_c,
             pending_promises: Default::default(),
             toasts: Toasts::new(),
-            last_memory_free: std::time::Instant::now(),
+            last_memory_free: instant::Instant::now(),
+            memory_panel: Default::default(),
+            memory_panel_open: false,
         }
     }
 
@@ -209,6 +213,13 @@ impl App {
             self.state.profiler.start();
         }
 
+        if egui_ctx
+            .input_mut()
+            .consume_shortcut(&kb_shortcuts::TOGGLE_MEMORY_PANEL)
+        {
+            self.memory_panel_open ^= true;
+        }
+
         if !frame.is_web() {
             egui::gui_zoom::zoom_with_keyboard_shortcuts(
                 egui_ctx,
@@ -224,6 +235,8 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.memory_panel.update(); // do first, before doing too many allocations
+
         #[cfg(not(target_arch = "wasm32"))]
         if self.ctrl_c.load(std::sync::atomic::Ordering::Relaxed) {
             frame.close();
@@ -290,6 +303,13 @@ impl eframe::App for App {
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
         top_panel(egui_ctx, frame, self);
+
+        egui::TopBottomPanel::top("memory_panel")
+            .default_height(300.0)
+            .resizable(true)
+            .show_animated(egui_ctx, self.memory_panel_open, |ui| {
+                self.memory_panel.ui(ui);
+            });
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
@@ -384,7 +404,7 @@ impl App {
                 re_log::info!("Returned {:.3} GB to the OS", gross_diff as f32 / 1e9);
             }
 
-            self.last_memory_free = std::time::Instant::now();
+            self.last_memory_free = instant::Instant::now();
         }
     }
 
@@ -884,6 +904,16 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     {
         app.state.profiler.start();
     }
+
+    if ui
+        .add(
+            egui::Button::new("Toggle Memory Panel")
+                .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::TOGGLE_MEMORY_PANEL)),
+        )
+        .clicked()
+    {
+        app.memory_panel_open ^= true;
+    }
 }
 
 // ---
@@ -923,24 +953,6 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 #[cfg(debug_assertions)]
 fn debug_menu(ui: &mut egui::Ui) {
     ui.style_mut().wrap = Some(false);
-
-    let mem_use = crate::memory_panel::MemoryUse::capture();
-
-    if mem_use.gross.is_some() || mem_use.net.is_some() {
-        if let Some(gross) = mem_use.gross {
-            ui.label(format!("{:.2} GB allocated from OS", gross as f32 / 1e9));
-        }
-        if let Some(net) = mem_use.net {
-            ui.label(format!("{:.2} GB actually used", net as f32 / 1e9));
-        }
-
-        ui.label(format!(
-            "{:.2} MB used by the string interner",
-            re_string_interner::bytes_used() as f32 / 1e6
-        ));
-
-        ui.separator();
-    }
 
     #[allow(clippy::manual_assert)]
     if ui.button("panic!").clicked() {
