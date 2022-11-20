@@ -48,6 +48,7 @@ fn bytes_used_gross() -> Option<i64> {
 
 #[cfg(target_arch = "wasm32")]
 fn bytes_used_gross() -> Option<i64> {
+    // blocked on https://github.com/Arc-blroth/memory-stats/issues/1 and https://github.com/rustwasm/wasm-bindgen/issues/3159
     None
 }
 
@@ -144,8 +145,11 @@ impl MemoryPanel {
                     gross as f32 / 1e9
                 ));
             }
+
             if let Some(net) = mem_use.net {
                 ui.label(format!("Net: {:.2} GB (actually used)", net as f32 / 1e9));
+            } else if cfg!(debug_assertions) {
+                ui.label("Memory tracking allocator not installed.");
             }
 
             if false {

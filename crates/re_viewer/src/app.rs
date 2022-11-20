@@ -45,7 +45,7 @@ pub struct App {
     /// Toast notifications, using `egui-notify`.
     toasts: Toasts,
 
-    last_memory_free: std::time::Instant,
+    last_memory_free: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 }
