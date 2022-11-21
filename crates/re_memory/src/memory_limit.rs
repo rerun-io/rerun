@@ -53,6 +53,7 @@ impl MemoryLimit {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn parse_bytes(limit: &str) -> Option<i64> {
     if let Some(kb) = limit.strip_suffix("kB") {
         Some(kb.parse::<i64>().ok()? * 1_000)
