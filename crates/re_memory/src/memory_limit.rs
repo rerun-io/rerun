@@ -11,7 +11,7 @@ pub struct MemoryLimit {
 }
 
 impl MemoryLimit {
-    /// Read from `RERUN_MEMORY_LIMIT`.
+    /// Read from the given environment variable.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_env_var(env_var: &str) -> Self {
         fn parse_limit(limit: &str) -> Option<i64> {
