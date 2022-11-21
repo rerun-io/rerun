@@ -44,6 +44,10 @@ pub struct App {
 
     /// Toast notifications, using `egui-notify`.
     toasts: Toasts,
+
+    latest_memory_prune: instant::Instant,
+    memory_panel: crate::memory_panel::MemoryPanel,
+    memory_panel_open: bool,
 }
 
 impl App {
@@ -129,6 +133,9 @@ impl App {
             ctrl_c,
             pending_promises: Default::default(),
             toasts: Toasts::new(),
+            latest_memory_prune: instant::Instant::now() - std::time::Duration::from_secs(10_000),
+            memory_panel: Default::default(),
+            memory_panel_open: false,
         }
     }
 
@@ -206,6 +213,13 @@ impl App {
             self.state.profiler.start();
         }
 
+        if egui_ctx
+            .input_mut()
+            .consume_shortcut(&kb_shortcuts::TOGGLE_MEMORY_PANEL)
+        {
+            self.memory_panel_open ^= true;
+        }
+
         if !frame.is_web() {
             egui::gui_zoom::zoom_with_keyboard_shortcuts(
                 egui_ctx,
@@ -221,6 +235,8 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.memory_panel.update(); // do first, before doing too many allocations
+
         #[cfg(not(target_arch = "wasm32"))]
         if self.ctrl_c.load(std::sync::atomic::Ordering::Relaxed) {
             frame.close();
@@ -228,6 +244,8 @@ impl eframe::App for App {
         }
 
         self.check_keyboard_shortcuts(egui_ctx, frame);
+
+        self.prune_memory_if_needed();
 
         self.state.cache.new_frame();
 
@@ -286,6 +304,13 @@ impl eframe::App for App {
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
         top_panel(egui_ctx, frame, self);
 
+        egui::TopBottomPanel::bottom("memory_panel")
+            .default_height(300.0)
+            .resizable(true)
+            .show_animated(egui_ctx, self.memory_panel_open, |ui| {
+                self.memory_panel.ui(ui);
+            });
+
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
         self.state
@@ -323,6 +348,66 @@ impl eframe::App for App {
 }
 
 impl App {
+    fn prune_memory_if_needed(&mut self) {
+        crate::profile_function!();
+
+        use crate::memory_panel::MemoryUse;
+
+        if self.latest_memory_prune.elapsed() < instant::Duration::from_secs(30) {
+            // Pruning introduces stutter, and we don't want to stutter too often.
+            return;
+        }
+
+        let limit = crate::memory_panel::MemoryLimit::from_env_vars();
+        let mem_use_before = MemoryUse::capture();
+
+        if limit.is_exceeded_by(&mem_use_before) {
+            fn format_limit(limit: Option<i64>) -> String {
+                if let Some(bytes) = limit {
+                    format!("{:.2}", bytes as f32 / 1e9)
+                } else {
+                    "∞".to_owned()
+                }
+            }
+
+            if let Some(gross) = mem_use_before.gross {
+                re_log::info!(
+                    "Using {:.2}/{:2} GB according to OS",
+                    gross as f32 / 1e9,
+                    format_limit(limit.gross),
+                );
+            }
+            if let Some(net) = mem_use_before.net {
+                re_log::info!(
+                    "Actually used: {:.2}/{:2} GB",
+                    net as f32 / 1e9,
+                    format_limit(limit.net),
+                );
+            }
+
+            {
+                crate::profile_scope!("pruning");
+                for log_db in self.log_dbs.values_mut() {
+                    log_db.prune_memory();
+                }
+                self.state.cache.prune_memory();
+            }
+
+            let mem_use_after = MemoryUse::capture();
+
+            let freed_memory = mem_use_before - mem_use_after;
+
+            if let Some(net_diff) = freed_memory.net {
+                re_log::info!("Freed up {:.3} GB", net_diff as f32 / 1e9);
+            }
+            if let Some(gross_diff) = freed_memory.gross {
+                re_log::info!("Returned {:.3} GB to the OS", gross_diff as f32 / 1e9);
+            }
+
+            self.latest_memory_prune = instant::Instant::now();
+        }
+    }
+
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, egui_ctx: &egui::Context) {
         let selected_rec_id = self.state.selected_rec_id;
@@ -364,6 +449,8 @@ impl App {
                 let mut bytes: &[u8] = &(*bytes)[..];
                 if let Some(log_db) = load_file_contents(&file.name, &mut bytes) {
                     self.show_log_db(log_db);
+
+                    #[allow(clippy::needless_return)] // false positive on wasm32
                     return;
                 }
             }
@@ -817,6 +904,16 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     {
         app.state.profiler.start();
     }
+
+    if ui
+        .add(
+            egui::Button::new("Toggle Memory Panel")
+                .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::TOGGLE_MEMORY_PANEL)),
+        )
+        .clicked()
+    {
+        app.memory_panel_open ^= true;
+    }
 }
 
 // ---
@@ -855,6 +952,8 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 
 #[cfg(debug_assertions)]
 fn debug_menu(ui: &mut egui::Ui) {
+    ui.style_mut().wrap = Some(false);
+
     #[allow(clippy::manual_assert)]
     if ui.button("panic!").clicked() {
         panic!("Intentional panic");
@@ -864,7 +963,7 @@ fn debug_menu(ui: &mut egui::Ui) {
         struct PanicOnDrop {}
         impl Drop for PanicOnDrop {
             fn drop(&mut self) {
-                panic!("second intentional panic in Drop::drop");
+                panic!("Second intentional panic in Drop::drop");
             }
         }
 

@@ -232,6 +232,13 @@ impl Caches {
         let max_image_cache_use = 1_000_000_000;
         self.image.new_frame(max_image_cache_use);
     }
+
+    pub fn prune_memory(&mut self) {
+        let Self {
+            image: _,    // already self-prunes
+            cpu_mesh: _, // TODO(emilk)
+        } = self;
+    }
 }
 
 // ----------------------------------------------------------------------------

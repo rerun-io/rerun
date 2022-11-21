@@ -120,7 +120,7 @@ impl ImageCache {
 
     fn flush(&mut self) {
         crate::profile_function!();
-        // Very agressively flush everything not used in this frame
+        // Very aggressively flush everything not used in this frame
         self.images.retain(|_, ci| {
             let retain = ci.last_use_generation == self.generation;
             if !retain {

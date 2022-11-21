@@ -10,6 +10,7 @@
 mod app;
 mod design_tokens;
 pub mod math;
+pub mod mem_tracker;
 mod misc;
 mod remote_viewer_app;
 mod ui;

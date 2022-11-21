@@ -206,6 +206,46 @@ impl ObjectTree {
 
         subtree_recursive(self, &path.to_components())
     }
+
+    pub fn prune_everything_before(
+        &mut self,
+        timeline: Timeline,
+        cutoff_time: TimeInt,
+        keep_msg_ids: &ahash::HashSet<MsgId>,
+    ) {
+        let Self {
+            path: _,
+            children,
+            prefix_times,
+            nonrecursive_clears,
+            recursive_clears,
+            fields,
+        } = self;
+
+        if let Some(map) = prefix_times.get_mut(&timeline) {
+            crate::profile_scope!("prefix_times");
+            map.retain(|&time, _| cutoff_time <= time);
+        }
+        {
+            crate::profile_scope!("nonrecursive_clears");
+            nonrecursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        }
+        {
+            crate::profile_scope!("recursive_clears");
+            recursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        }
+
+        {
+            crate::profile_scope!("fields");
+            for columns in fields.values_mut() {
+                columns.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+            }
+        }
+
+        for child in children.values_mut() {
+            child.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -278,6 +318,22 @@ impl DataColumns {
         }
 
         summaries.join(", ")
+    }
+
+    pub fn prune_everything_before(
+        &mut self,
+        timeline: Timeline,
+        cutoff_time: TimeInt,
+        keep_msg_ids: &ahash::HashSet<MsgId>,
+    ) {
+        let Self { times, per_type } = self;
+
+        if let Some(map) = times.get_mut(&timeline) {
+            map.retain(|&time, _| cutoff_time <= time);
+        }
+        for msg_set in per_type.values_mut() {
+            msg_set.retain(|msg_id| keep_msg_ids.contains(msg_id));
+        }
     }
 }
 
