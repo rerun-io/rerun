@@ -2,6 +2,9 @@
 pub struct MemoryUse {
     /// Bytes allocated by the application according to operating system.
     ///
+    /// Resident Set Size (RSS) on Linux, Android, MaxOS, iOS.
+    /// Working Set on Windows.
+    ///
     /// `None` if unknown.
     pub gross: Option<i64>,
 
@@ -44,6 +47,9 @@ impl std::ops::Sub for MemoryUse {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MemoryLimit {
     /// Limit in bytes compared to what is reported by OS.
+    ///
+    /// Resident Set Size (RSS) on Linux, Android, MaxOS, iOS.
+    /// Working Set on Windows.
     pub gross: Option<i64>,
 
     /// Limit in bytes based compared to what is reported by [`crate::mem_tracker::TrackingAllocator`].
@@ -100,6 +106,9 @@ impl MemoryLimit {
 // ----------------------------------------------------------------------------
 
 /// According to the OS. This is what matters.
+///
+/// Resident Set Size (RSS) on Linux, Android, MaxOS, iOS.
+/// Working Set on Windows.
 #[cfg(not(target_arch = "wasm32"))]
 fn bytes_used_gross() -> Option<i64> {
     memory_stats::memory_stats().map(|usage| usage.physical_mem as i64)
