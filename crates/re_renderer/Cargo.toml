@@ -67,7 +67,7 @@ log = "0.4"
 pollster = "0.2"
 rand = "0.8"
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = {version = "0.3" , features = ["env-filter"]}
 winit = "0.27"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
@@ -93,6 +93,8 @@ web-sys = { version = "0.3.60", features = [
 ## Build
 
 [build-dependencies]
+anyhow = "1.0"
+clean-path = "0.2"
 glob = "0.3"
 pathdiff = "0.2"
 unindent = "0.1"
