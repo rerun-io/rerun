@@ -235,9 +235,10 @@ impl Caches {
 
     pub fn prune_memory(&mut self) {
         let Self {
-            image: _,    // already self-prunes
+            image,
             cpu_mesh: _, // TODO(emilk)
         } = self;
+        image.purge_memory();
     }
 }
 
