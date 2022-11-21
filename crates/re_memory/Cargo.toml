@@ -8,6 +8,9 @@ publish = false
 
 
 [dependencies]
+egui = { version = "0.19", default-features = false }      # Used for `egui::util::History`. TODO(emilk): move to emath
+instant = { version = "0.1", features = ["wasm-bindgen"] }
+once_cell = "1.16"
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

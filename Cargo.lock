@@ -3070,7 +3070,10 @@ dependencies = [
 name = "re_memory"
 version = "0.1.0"
 dependencies = [
+ "egui",
+ "instant",
  "memory-stats",
+ "once_cell",
 ]
 
 [[package]]
@@ -3227,7 +3230,6 @@ dependencies = [
  "mint",
  "ndarray",
  "nohash-hasher",
- "once_cell",
  "poll-promise",
  "puffin",
  "puffin_http",
