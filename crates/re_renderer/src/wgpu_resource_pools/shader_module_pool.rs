@@ -11,10 +11,6 @@ use super::{resource::*, static_resource_pool::StaticResourcePool};
 
 slotmap::new_key_type! { pub struct GpuShaderModuleHandle; }
 
-pub struct GpuShaderModule {
-    pub shader_module: wgpu::ShaderModule,
-}
-
 #[derive(Clone, Eq, Debug)]
 pub struct ShaderModuleDesc {
     /// Debug label of the shader.
@@ -65,7 +61,7 @@ impl ShaderModuleDesc {
 
 #[derive(Default)]
 pub struct GpuShaderModulePool {
-    pool: StaticResourcePool<GpuShaderModuleHandle, ShaderModuleDesc, GpuShaderModule>,
+    pool: StaticResourcePool<GpuShaderModuleHandle, ShaderModuleDesc, wgpu::ShaderModule>,
 }
 
 impl GpuShaderModulePool {
@@ -75,10 +71,8 @@ impl GpuShaderModulePool {
         resolver: &mut FileResolver<Fs>,
         desc: &ShaderModuleDesc,
     ) -> GpuShaderModuleHandle {
-        self.pool.get_or_create(desc, |desc| {
-            let shader_module = desc.create_shader_module(device, resolver);
-            GpuShaderModule { shader_module }
-        })
+        self.pool
+            .get_or_create(desc, |desc| desc.create_shader_module(device, resolver))
     }
 
     pub fn frame_maintenance<Fs: FileSystem>(
@@ -105,16 +99,14 @@ impl GpuShaderModulePool {
             }
 
             paths.iter().any(|p| updated_paths.contains(*p)).then(|| {
-                let shader_module = GpuShaderModule {
-                    shader_module: desc.create_shader_module(device, resolver),
-                };
+                let shader_module = desc.create_shader_module(device, resolver);
                 re_log::debug!(?desc.source, label = desc.label.get(), "recompiled shader module");
                 shader_module
             })
         });
     }
 
-    pub fn get(&self, handle: GpuShaderModuleHandle) -> Result<&GpuShaderModule, PoolError> {
+    pub fn get(&self, handle: GpuShaderModuleHandle) -> Result<&wgpu::ShaderModule, PoolError> {
         self.pool.get_resource(handle)
     }
 

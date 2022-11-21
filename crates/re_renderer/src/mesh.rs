@@ -162,11 +162,10 @@ impl GpuMesh {
                 },
             );
             let mut staging_buffer = queue.write_buffer_with(
-                &pools
+                pools
                     .buffers
                     .get_resource(&vertex_buffer_combined)
-                    .map_err(ResourceManagerError::ResourcePoolError)?
-                    .buffer,
+                    .map_err(ResourceManagerError::ResourcePoolError)?,
                 0,
                 vertex_buffer_combined_size.try_into().unwrap(),
             );
@@ -189,11 +188,10 @@ impl GpuMesh {
                 },
             );
             let mut staging_buffer = queue.write_buffer_with(
-                &pools
+                pools
                     .buffers
                     .get_resource(&index_buffer)
-                    .map_err(ResourceManagerError::ResourcePoolError)?
-                    .buffer,
+                    .map_err(ResourceManagerError::ResourcePoolError)?,
                 0,
                 index_buffer_size.try_into().unwrap(),
             );

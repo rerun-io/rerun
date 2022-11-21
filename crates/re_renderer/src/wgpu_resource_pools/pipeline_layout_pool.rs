@@ -35,7 +35,7 @@ impl GpuPipelineLayoutPool {
                 bind_group_layouts: &desc
                     .entries
                     .iter()
-                    .map(|handle| &bind_group_layout_pool.get_resource(*handle).unwrap().layout)
+                    .map(|handle| bind_group_layout_pool.get_resource(*handle).unwrap())
                     .collect::<Vec<_>>(),
                 push_constant_ranges: &[], // Sadly not widely supported
             });

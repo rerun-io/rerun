@@ -34,10 +34,6 @@ impl std::ops::Deref for GpuBindGroupHandleStrong {
     }
 }
 
-pub(crate) struct GpuBindGroup {
-    pub(crate) bind_group: wgpu::BindGroup,
-}
-
 // TODO(andreas): Can we force the user to provide strong handles here without too much effort?
 //                Ideally it would be only a reference to a strong handle in order to avoid bumping ref counts all the time.
 //                This way we can also remove the dubious get_strong_handle methods from buffer/texture pool and allows us to hide any non-ref counted handles!
@@ -91,7 +87,7 @@ pub(crate) struct GpuBindGroupPool {
     //
     // On the flipside if someone requests the exact same bind group again as before,
     // they'll get a new one which is unnecessary. But this is *very* unlikely to ever happen.
-    pool: DynamicResourcePool<GpuBindGroupHandle, BindGroupDesc, GpuBindGroup>,
+    pool: DynamicResourcePool<GpuBindGroupHandle, BindGroupDesc, wgpu::BindGroup>,
 }
 
 impl GpuBindGroupPool {
@@ -108,8 +104,7 @@ impl GpuBindGroupPool {
         samplers: &GpuSamplerPool,
     ) -> GpuBindGroupHandleStrong {
         let handle = self.pool.alloc(desc, |desc| {
-            // TODO(andreas): error handling
-            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: desc.label.get(),
                 entries: &desc
                     .entries
@@ -128,19 +123,18 @@ impl GpuBindGroupPool {
                                 offset,
                                 size,
                             } => wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                                buffer: &buffers.get_resource_weak(*handle).unwrap().buffer,
+                                buffer: buffers.get_resource_weak(*handle).unwrap(),
                                 offset: *offset,
                                 size: *size,
                             }),
                             BindGroupEntry::Sampler(handle) => wgpu::BindingResource::Sampler(
-                                &samplers.get_resource(*handle).unwrap().sampler,
+                                samplers.get_resource(*handle).unwrap(),
                             ),
                         },
                     })
                     .collect::<Vec<_>>(),
-                layout: &bind_group_layout.get_resource(desc.layout).unwrap().layout,
-            });
-            GpuBindGroup { bind_group }
+                layout: bind_group_layout.get_resource(desc.layout).unwrap(),
+            })
         });
 
         // Retrieve strong handles to buffers and textures.
@@ -191,7 +185,7 @@ impl GpuBindGroupPool {
     pub fn get_resource(
         &self,
         handle: &GpuBindGroupHandleStrong,
-    ) -> Result<&GpuBindGroup, PoolError> {
+    ) -> Result<&wgpu::BindGroup, PoolError> {
         self.pool.get_resource(*handle.handle)
     }
 }

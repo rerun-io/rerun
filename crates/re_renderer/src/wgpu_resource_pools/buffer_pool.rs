@@ -10,10 +10,6 @@ slotmap::new_key_type! { pub struct GpuBufferHandle; }
 /// Once all strong handles are dropped, the bind group will be marked for reclamation in the following frame.
 pub type GpuBufferHandleStrong = std::sync::Arc<GpuBufferHandle>;
 
-pub struct GpuBuffer {
-    pub buffer: wgpu::Buffer,
-}
-
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct BufferDesc {
     /// Debug label of a buffer. This will show up in graphics debuggers for easy identification.
@@ -29,7 +25,7 @@ pub struct BufferDesc {
 
 #[derive(Default)]
 pub struct GpuBufferPool {
-    pool: DynamicResourcePool<GpuBufferHandle, BufferDesc, GpuBuffer>,
+    pool: DynamicResourcePool<GpuBufferHandle, BufferDesc, wgpu::Buffer>,
 }
 
 impl GpuBufferPool {
@@ -40,13 +36,12 @@ impl GpuBufferPool {
     /// either manually or using a higher level allocator.
     pub fn alloc(&mut self, device: &wgpu::Device, desc: &BufferDesc) -> GpuBufferHandleStrong {
         self.pool.alloc(desc, |desc| {
-            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
                 size: desc.size,
                 usage: desc.usage,
                 mapped_at_creation: false,
-            });
-            GpuBuffer { buffer }
+            })
         })
     }
 
@@ -56,7 +51,7 @@ impl GpuBufferPool {
     }
 
     /// Takes strong buffer handle to ensure the user is still holding on to the buffer.
-    pub fn get_resource(&self, handle: &GpuBufferHandleStrong) -> Result<&GpuBuffer, PoolError> {
+    pub fn get_resource(&self, handle: &GpuBufferHandleStrong) -> Result<&wgpu::Buffer, PoolError> {
         self.pool.get_resource(**handle)
     }
 
@@ -64,7 +59,7 @@ impl GpuBufferPool {
     pub(super) fn get_resource_weak(
         &self,
         handle: GpuBufferHandle,
-    ) -> Result<&GpuBuffer, PoolError> {
+    ) -> Result<&wgpu::Buffer, PoolError> {
         self.pool.get_resource(handle)
     }
 

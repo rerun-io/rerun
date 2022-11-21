@@ -7,10 +7,6 @@ use super::{pipeline_layout_pool::*, resource::*, shader_module_pool::*, static_
 
 slotmap::new_key_type! { pub struct GpuRenderPipelineHandle; }
 
-pub struct GpuRenderPipeline {
-    pub(crate) pipeline: wgpu::RenderPipeline,
-}
-
 /// A copy of [`wgpu::VertexBufferLayout`] with a [`smallvec`] for the attributes.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct VertexBufferLayout {
@@ -91,12 +87,12 @@ impl RenderPipelineDesc {
                 label: self.label.get(),
                 layout: Some(&pipeline_layout.layout),
                 vertex: wgpu::VertexState {
-                    module: &vertex_shader_module.shader_module,
+                    module: vertex_shader_module,
                     entry_point: &self.vertex_entrypoint,
                     buffers: &buffers,
                 },
                 fragment: wgpu::FragmentState {
-                    module: &fragment_shader_module.shader_module,
+                    module: fragment_shader_module,
                     entry_point: &self.fragment_entrypoint,
                     targets: &self.render_targets,
                 }
@@ -112,7 +108,7 @@ impl RenderPipelineDesc {
 
 #[derive(Default)]
 pub struct GpuRenderPipelinePool {
-    pool: StaticResourcePool<GpuRenderPipelineHandle, RenderPipelineDesc, GpuRenderPipeline>,
+    pool: StaticResourcePool<GpuRenderPipelineHandle, RenderPipelineDesc, wgpu::RenderPipeline>,
 }
 
 impl GpuRenderPipelinePool {
@@ -124,12 +120,9 @@ impl GpuRenderPipelinePool {
         shader_module_pool: &GpuShaderModulePool,
     ) -> GpuRenderPipelineHandle {
         self.pool.get_or_create(desc, |desc| {
-            GpuRenderPipeline {
-                pipeline: desc
-                    // TODO(cmc): certainly not unwrapping here
-                    .create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
-                    .unwrap(),
-            }
+            // TODO(cmc): certainly not unwrapping here
+            desc.create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
+                .unwrap()
         })
     }
 
@@ -165,7 +158,7 @@ impl GpuRenderPipelinePool {
                         label = desc.label.get(),
                         "successfully recompiled render pipeline"
                     );
-                    Some(GpuRenderPipeline { pipeline: sm })
+                    Some(sm)
                 }
                 Err(err) => {
                     re_log::error!(
@@ -181,7 +174,7 @@ impl GpuRenderPipelinePool {
     pub fn get_resource(
         &self,
         handle: GpuRenderPipelineHandle,
-    ) -> Result<&GpuRenderPipeline, PoolError> {
+    ) -> Result<&wgpu::RenderPipeline, PoolError> {
         self.pool.get_resource(handle)
     }
 }

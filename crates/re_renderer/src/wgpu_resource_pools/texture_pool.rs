@@ -10,10 +10,10 @@ slotmap::new_key_type! { pub struct GpuTextureHandle; }
 /// Once all strong handles are dropped, the texture will be marked for reclamation in the following frame.
 pub type GpuTextureHandleStrong = std::sync::Arc<GpuTextureHandle>;
 
-pub(crate) struct GpuTexture {
-    pub(crate) texture: wgpu::Texture,
-    pub(crate) default_view: wgpu::TextureView,
-    // TODO(andreas) what about custom views
+pub struct GpuTexture {
+    pub texture: wgpu::Texture,
+    pub default_view: wgpu::TextureView,
+    // TODO(andreas) What about custom views? Should probably have a separate resource manager for it!
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]

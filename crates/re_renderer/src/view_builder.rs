@@ -192,11 +192,10 @@ impl ViewBuilder {
             tan_half_fov.y * 2.0 / config.resolution_in_pixel[1] as f32;
 
         ctx.queue.write_buffer(
-            &ctx.resource_pools
+            ctx.resource_pools
                 .buffers
                 .get_resource(&frame_uniform_buffer)
-                .unwrap()
-                .buffer,
+                .unwrap(),
             0,
             bytemuck::bytes_of(&FrameUniformBuffer {
                 view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
@@ -311,11 +310,10 @@ impl ViewBuilder {
 
             pass.set_bind_group(
                 0,
-                &ctx.resource_pools
+                ctx.resource_pools
                     .bind_groups
                     .get_resource(&setup.bind_group_0)
-                    .context("get global bind group")?
-                    .bind_group,
+                    .context("get global bind group")?,
                 &[],
             );
 
@@ -354,11 +352,10 @@ impl ViewBuilder {
 
         pass.set_bind_group(
             0,
-            &ctx.resource_pools
+            ctx.resource_pools
                 .bind_groups
                 .get_resource(&setup.bind_group_0)
-                .context("get global bind group")?
-                .bind_group,
+                .context("get global bind group")?,
             &[],
         );
 
