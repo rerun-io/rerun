@@ -69,6 +69,11 @@ impl MemoryPanel {
                 format_count(tracking_stats.untracked_allocs),
                 format_bytes(tracking_stats.track_size_threshold as _),
             ));
+            ui.label(format!(
+                "{} in {} allocs used for the book-keeping of the allocation tracker",
+                format_bytes(tracking_stats.tracker_bytes as _),
+                format_count(tracking_stats.tracker_allocs),
+            ));
 
             egui::CollapsingHeader::new("Top memory consumers")
                 .default_open(true)

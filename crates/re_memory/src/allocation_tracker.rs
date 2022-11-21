@@ -159,6 +159,7 @@ impl AllocationTracker {
                 .collect();
             vec.sort_by_key(|tracked| -(tracked.extant_bytes as i64));
             vec.truncate(n);
+            vec.shrink_to_fit();
             vec
         } else {
             // Fast

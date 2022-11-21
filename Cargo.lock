@@ -3118,6 +3118,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "re_log",
+ "smallvec",
 ]
 
 [[package]]
