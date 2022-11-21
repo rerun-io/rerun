@@ -325,6 +325,7 @@ impl LogDb {
         self.log_messages.get(msg_id)
     }
 
+    /// Free up some RAM by forgetting the older parts of all timelines.
     pub fn prune_memory(&mut self) {
         crate::profile_function!();
 
