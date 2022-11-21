@@ -62,19 +62,19 @@ pub fn is_tracking_callstacks() -> bool {
 
 // ----------------------------------------------------------------------------
 
-thread_local! {
-    /// Used to prevent re-entrancy when tracking allocations.
-    ///
-    /// Tracking an allocation (taking its backtrace etc) can itself create allocations.
-    /// We don't want to track those allocations, or we will have infinite recursion.
-    static NUM_THREAD_REENTRANCY: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
-}
-
 /// Statistics about extant allocations.
 ///
 /// Activated by [`GlobalStats::track_callstacks`].
 static ALLOCATION_TRACKER: once_cell::sync::Lazy<parking_lot::Mutex<AllocationTracker>> =
     once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(AllocationTracker::default()));
+
+thread_local! {
+    /// Used to prevent re-entrancy when tracking allocations.
+    ///
+    /// Tracking an allocation (taking its backtrace etc) can itself create allocations.
+    /// We don't want to track those allocations, or we will have infinite recursion.
+    static IS_TRHEAD_IN_ALLOCATION_TRACKER: std::cell::Cell<bool> = std::cell::Cell::new(false);
+}
 
 const MAX_CALLSTACKS: usize = 128;
 
@@ -110,9 +110,9 @@ pub struct TrackingStatistics {
 /// Gather statistics from the live tracking, if enabled.
 pub fn tracking_stats(max_callstacks: usize) -> Option<TrackingStatistics> {
     GLOBAL_STATS.track_callstacks.load(Relaxed).then(|| {
-        NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
+        IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
             // prevent double-lock of ALLOCATION_TRACKER:
-            *num_thread_reentrancy.borrow_mut() += 1;
+            is_thread_in_allocation_tracker.set(true);
 
             let untracked_allocs = GLOBAL_STATS.untracked_allocs.load(Relaxed);
             let untracked_bytes = GLOBAL_STATS.untracked_bytes.load(Relaxed);
@@ -134,7 +134,7 @@ pub fn tracking_stats(max_callstacks: usize) -> Option<TrackingStatistics> {
                 "We shouldn't leak any allocations"
             );
 
-            *num_thread_reentrancy.borrow_mut() -= 1;
+            is_thread_in_allocation_tracker.set(false);
 
             TrackingStatistics {
                 tracked_allocs,
@@ -189,25 +189,24 @@ unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
 
         if GLOBAL_STATS.track_callstacks.load(Relaxed) {
             if layout.size() < TRACK_MINIMUM {
+                // Too small to track.
                 GLOBAL_STATS.untracked_allocs.fetch_add(1, Relaxed);
                 GLOBAL_STATS
                     .untracked_bytes
                     .fetch_add(layout.size(), Relaxed);
             } else {
-                // TODO: track how much memory falls below TRACK_MINIMUM
-                // TODO: keep track of how much memory is used by the allocation tracker
-                NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
-                    if *num_thread_reentrancy.borrow() > 0 {
+                // Big enough to track - but make sure we don't create a deadlock by trying to
+                // track the allocations made by the allocation tracker:
+                IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
+                    if !is_thread_in_allocation_tracker.get() {
+                        is_thread_in_allocation_tracker.set(true);
+                        ALLOCATION_TRACKER.lock().on_alloc(ptr as usize, &layout);
+                        is_thread_in_allocation_tracker.set(false);
+                    } else {
+                        // This is the ALLOCATION_TRACKER allocating memory.
                         GLOBAL_STATS.tracker_allocs.fetch_add(1, Relaxed);
                         GLOBAL_STATS.tracker_bytes.fetch_add(layout.size(), Relaxed);
-                        return; // prevent dead-lock
-                    } else {
-                        *num_thread_reentrancy.borrow_mut() += 1;
                     }
-
-                    ALLOCATION_TRACKER.lock().on_alloc(ptr as usize, &layout);
-
-                    *num_thread_reentrancy.borrow_mut() -= 1;
                 });
             }
         }
@@ -225,23 +224,24 @@ unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
 
         if GLOBAL_STATS.track_callstacks.load(Relaxed) {
             if layout.size() < TRACK_MINIMUM {
+                // Too small to track.
                 GLOBAL_STATS.untracked_allocs.fetch_sub(1, Relaxed);
                 GLOBAL_STATS
                     .untracked_bytes
                     .fetch_sub(layout.size(), Relaxed);
             } else {
-                NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
-                    if *num_thread_reentrancy.borrow() > 0 {
+                // Big enough to track - but make sure we don't create a deadlock by trying to
+                // track the allocations made by the allocation tracker:
+                IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
+                    if !is_thread_in_allocation_tracker.get() {
+                        is_thread_in_allocation_tracker.set(true);
+                        ALLOCATION_TRACKER.lock().on_dealloc(ptr as usize, &layout);
+                        is_thread_in_allocation_tracker.set(false);
+                    } else {
+                        // This is the ALLOCATION_TRACKER freeing memory.
                         GLOBAL_STATS.tracker_allocs.fetch_sub(1, Relaxed);
                         GLOBAL_STATS.tracker_bytes.fetch_sub(layout.size(), Relaxed);
-                        return; // prevent dead-lock
-                    } else {
-                        *num_thread_reentrancy.borrow_mut() += 1;
                     }
-
-                    ALLOCATION_TRACKER.lock().on_dealloc(ptr as usize, &layout);
-
-                    *num_thread_reentrancy.borrow_mut() -= 1;
                 });
             }
         }
