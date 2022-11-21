@@ -3,6 +3,8 @@ use re_memory::{
     MemoryHistory, MemoryLimit, MemoryUse,
 };
 
+use super::format_usize;
+
 // ----------------------------------------------------------------------------
 
 #[derive(Default)]
@@ -90,18 +92,18 @@ impl MemoryPanel {
         ui.label(format!(
             "{} tracked in {} allocs",
             format_bytes(tracking_stats.tracked_bytes as _),
-            format_count(tracking_stats.tracked_allocs),
+            format_usize(tracking_stats.tracked_allocs),
         ));
         ui.label(format!(
             "{} untracked in {} allocs (all smaller than {})",
             format_bytes(tracking_stats.untracked_bytes as _),
-            format_count(tracking_stats.untracked_allocs),
+            format_usize(tracking_stats.untracked_allocs),
             format_bytes(tracking_stats.track_size_threshold as _),
         ));
         ui.label(format!(
             "{} in {} allocs used for the book-keeping of the allocation tracker",
             format_bytes(tracking_stats.tracker_bytes as _),
-            format_count(tracking_stats.tracker_allocs),
+            format_usize(tracking_stats.tracker_allocs),
         ));
 
         egui::CollapsingHeader::new("Top memory consumers")
@@ -116,7 +118,7 @@ impl MemoryPanel {
                                 .button(format!(
                                     "{} in {} allocs (≈{} / alloc) - {}",
                                     format_bytes(callstack.extant_bytes as _),
-                                    format_count(callstack.extant_allocs),
+                                    format_usize(callstack.extant_allocs),
                                     format_bytes(
                                         callstack.extant_bytes as f64
                                             / callstack.extant_allocs as f64
@@ -186,38 +188,6 @@ impl MemoryPanel {
                 plot_ui.line(to_line(&self.history.net).name("Net use").width(1.5));
             });
     }
-}
-
-/// Using thousands separators readability.
-fn format_count(number: usize) -> String {
-    let number = number.to_string();
-    let mut chars = number.chars().rev().peekable();
-
-    let mut result = vec![];
-    while chars.peek().is_some() {
-        if !result.is_empty() {
-            // thousands-deliminator:
-            let thin_space = '\u{2009}'; // https://en.wikipedia.org/wiki/Thin_space
-            result.push(thin_space);
-        }
-        for _ in 0..3 {
-            if let Some(c) = chars.next() {
-                result.push(c);
-            }
-        }
-    }
-
-    result.reverse();
-    result.into_iter().collect()
-}
-
-#[test]
-fn test_format_large_number() {
-    assert_eq!(format_count(42), "42");
-    assert_eq!(format_count(999), "999");
-    assert_eq!(format_count(1_000), "1 000");
-    assert_eq!(format_count(123_456), "123 456");
-    assert_eq!(format_count(1_234_567), "1 234 567");
 }
 
 fn summarize_callstack(callstack: &str) -> String {
