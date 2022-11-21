@@ -546,6 +546,7 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
 
         return np.require(colors_array, np.uint8)
 
+
 def _normalize_class_id(class_ids: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint16]:
     """Normalize flexible class id arrays."""
     if class_ids is None:
@@ -556,6 +557,7 @@ def _normalize_class_id(class_ids: Optional[npt.ArrayLike] = None) -> npt.NDArra
             class_ids_array = class_ids_array.astype(np.uint16)
 
         return np.require(class_ids_array, np.uint16)
+
 
 # -----------------------------------------------------------------------------
 
