@@ -165,13 +165,10 @@ impl StringInterner {
     }
 
     pub fn bytes_used(&self) -> usize {
-        let mut sum = 0;
-        for (k, v) in &self.map {
-            sum += std::mem::size_of_val(k);
-            sum += std::mem::size_of_val(v);
-            sum += v.len();
-        }
-        sum
+        self.map
+            .iter()
+            .map(|(k, v)| std::mem::size_of_val(k) + std::mem::size_of_val(v) + v.len())
+            .sum()
     }
 }
 
