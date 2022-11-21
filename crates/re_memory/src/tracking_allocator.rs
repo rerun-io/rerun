@@ -192,32 +192,17 @@ unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
         // We just do book-keeping and then let another allocator do all the actual work.
         let ptr = unsafe { self.allocator.alloc(layout) };
 
-        GLOBAL_STATS.live_allocs.fetch_add(1, Relaxed);
-        GLOBAL_STATS.live_bytes.fetch_add(layout.size(), Relaxed);
+        note_alloc(ptr, layout.size());
 
-        if GLOBAL_STATS.track_callstacks.load(Relaxed) {
-            if layout.size() < TRACK_MINIMUM {
-                // Too small to track.
-                GLOBAL_STATS.untracked_allocs.fetch_add(1, Relaxed);
-                GLOBAL_STATS
-                    .untracked_bytes
-                    .fetch_add(layout.size(), Relaxed);
-            } else {
-                // Big enough to track - but make sure we don't create a deadlock by trying to
-                // track the allocations made by the allocation tracker:
-                IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
-                    if !is_thread_in_allocation_tracker.get() {
-                        is_thread_in_allocation_tracker.set(true);
-                        ALLOCATION_TRACKER.lock().on_alloc(ptr as usize, &layout);
-                        is_thread_in_allocation_tracker.set(false);
-                    } else {
-                        // This is the ALLOCATION_TRACKER allocating memory.
-                        GLOBAL_STATS.tracker_allocs.fetch_add(1, Relaxed);
-                        GLOBAL_STATS.tracker_bytes.fetch_add(layout.size(), Relaxed);
-                    }
-                });
-            }
-        }
+        ptr
+    }
+
+    unsafe fn alloc_zeroed(&self, layout: std::alloc::Layout) -> *mut u8 {
+        // SAFETY:
+        // We just do book-keeping and then let another allocator do all the actual work.
+        let ptr = unsafe { self.allocator.alloc_zeroed(layout) };
+
+        note_alloc(ptr, layout.size());
 
         ptr
     }
@@ -227,31 +212,79 @@ unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
         // We just do book-keeping and then let another allocator do all the actual work.
         unsafe { self.allocator.dealloc(ptr, layout) };
 
-        GLOBAL_STATS.live_allocs.fetch_sub(1, Relaxed);
-        GLOBAL_STATS.live_bytes.fetch_sub(layout.size(), Relaxed);
+        note_dealloc(ptr, layout.size());
+    }
 
-        if GLOBAL_STATS.track_callstacks.load(Relaxed) {
-            if layout.size() < TRACK_MINIMUM {
-                // Too small to track.
-                GLOBAL_STATS.untracked_allocs.fetch_sub(1, Relaxed);
-                GLOBAL_STATS
-                    .untracked_bytes
-                    .fetch_sub(layout.size(), Relaxed);
-            } else {
-                // Big enough to track - but make sure we don't create a deadlock by trying to
-                // track the allocations made by the allocation tracker:
-                IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
-                    if !is_thread_in_allocation_tracker.get() {
-                        is_thread_in_allocation_tracker.set(true);
-                        ALLOCATION_TRACKER.lock().on_dealloc(ptr as usize, &layout);
-                        is_thread_in_allocation_tracker.set(false);
-                    } else {
-                        // This is the ALLOCATION_TRACKER freeing memory.
-                        GLOBAL_STATS.tracker_allocs.fetch_sub(1, Relaxed);
-                        GLOBAL_STATS.tracker_bytes.fetch_sub(layout.size(), Relaxed);
-                    }
-                });
-            }
+    unsafe fn realloc(
+        &self,
+        old_ptr: *mut u8,
+        layout: std::alloc::Layout,
+        new_size: usize,
+    ) -> *mut u8 {
+        note_dealloc(old_ptr, layout.size());
+
+        // SAFETY:
+        // We just do book-keeping and then let another allocator do all the actual work.
+        let new_ptr = unsafe { self.allocator.realloc(old_ptr, layout, new_size) };
+
+        note_alloc(new_ptr, new_size);
+
+        new_ptr
+    }
+}
+
+#[inline]
+fn note_alloc(ptr: *mut u8, size: usize) {
+    GLOBAL_STATS.live_allocs.fetch_add(1, Relaxed);
+    GLOBAL_STATS.live_bytes.fetch_add(size, Relaxed);
+
+    if GLOBAL_STATS.track_callstacks.load(Relaxed) {
+        if size < TRACK_MINIMUM {
+            // Too small to track.
+            GLOBAL_STATS.untracked_allocs.fetch_add(1, Relaxed);
+            GLOBAL_STATS.untracked_bytes.fetch_add(size, Relaxed);
+        } else {
+            // Big enough to track - but make sure we don't create a deadlock by trying to
+            // track the allocations made by the allocation tracker:
+            IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
+                if !is_thread_in_allocation_tracker.get() {
+                    is_thread_in_allocation_tracker.set(true);
+                    ALLOCATION_TRACKER.lock().on_alloc(ptr as usize, size);
+                    is_thread_in_allocation_tracker.set(false);
+                } else {
+                    // This is the ALLOCATION_TRACKER allocating memory.
+                    GLOBAL_STATS.tracker_allocs.fetch_add(1, Relaxed);
+                    GLOBAL_STATS.tracker_bytes.fetch_add(size, Relaxed);
+                }
+            });
+        }
+    }
+}
+
+#[inline]
+fn note_dealloc(ptr: *mut u8, size: usize) {
+    GLOBAL_STATS.live_allocs.fetch_sub(1, Relaxed);
+    GLOBAL_STATS.live_bytes.fetch_sub(size, Relaxed);
+
+    if GLOBAL_STATS.track_callstacks.load(Relaxed) {
+        if size < TRACK_MINIMUM {
+            // Too small to track.
+            GLOBAL_STATS.untracked_allocs.fetch_sub(1, Relaxed);
+            GLOBAL_STATS.untracked_bytes.fetch_sub(size, Relaxed);
+        } else {
+            // Big enough to track - but make sure we don't create a deadlock by trying to
+            // track the allocations made by the allocation tracker:
+            IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
+                if !is_thread_in_allocation_tracker.get() {
+                    is_thread_in_allocation_tracker.set(true);
+                    ALLOCATION_TRACKER.lock().on_dealloc(ptr as usize, size);
+                    is_thread_in_allocation_tracker.set(false);
+                } else {
+                    // This is the ALLOCATION_TRACKER freeing memory.
+                    GLOBAL_STATS.tracker_allocs.fetch_sub(1, Relaxed);
+                    GLOBAL_STATS.tracker_bytes.fetch_sub(size, Relaxed);
+                }
+            });
         }
     }
 }

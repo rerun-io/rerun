@@ -92,7 +92,7 @@ pub struct AllocationTracker {
 }
 
 impl AllocationTracker {
-    pub fn on_alloc(&mut self, ptr: usize, layout: &std::alloc::Layout) {
+    pub fn on_alloc(&mut self, ptr: usize, size: usize) {
         let unresolved_backtrace = Backtrace::new_unresolved();
         let hash = hash_backtrace(&unresolved_backtrace);
 
@@ -112,19 +112,19 @@ impl AllocationTracker {
                     extant_bytes: 0,
                 });
             stats.extant_allocs += 1;
-            stats.extant_bytes += layout.size();
+            stats.extant_bytes += size;
         }
 
         self.live_allocs.insert(ptr, hash);
     }
 
-    pub fn on_dealloc(&mut self, ptr: usize, layout: &std::alloc::Layout) {
+    pub fn on_dealloc(&mut self, ptr: usize, size: usize) {
         if let Some(hash) = self.live_allocs.remove(&ptr) {
             if let std::collections::hash_map::Entry::Occupied(mut entry) =
                 self.callstacks.entry(hash)
             {
                 let stats = entry.get_mut();
-                stats.extant_bytes -= layout.size();
+                stats.extant_bytes -= size;
                 stats.extant_allocs -= 1;
 
                 // Free up some memory:
