@@ -38,7 +38,7 @@ struct GlobalStats {
 static GLOBAL_STATS: GlobalStats = GlobalStats {
     live_allocs: AtomicUsize::new(0),
     live_bytes: AtomicUsize::new(0),
-    track_callstacks: AtomicBool::new(true), // TODO: check an env-var during startup!
+    track_callstacks: AtomicBool::new(false),
     untracked_allocs: AtomicUsize::new(0),
     untracked_bytes: AtomicUsize::new(0),
     tracker_allocs: AtomicUsize::new(0),
@@ -56,8 +56,14 @@ pub fn global_allocs_and_bytes() -> (usize, usize) {
     )
 }
 
+/// Are we doing (rather expensive) tracking of the callstacks of large allocations?
 pub fn is_tracking_callstacks() -> bool {
     GLOBAL_STATS.track_callstacks.load(Relaxed)
+}
+
+/// Should we do (rather expensive) tracking of the callstacks of large allocations?
+pub fn set_tracking_callstacks(track: bool) {
+    GLOBAL_STATS.track_callstacks.store(track, Relaxed);
 }
 
 // ----------------------------------------------------------------------------
@@ -108,6 +114,8 @@ pub struct TrackingStatistics {
 }
 
 /// Gather statistics from the live tracking, if enabled.
+///
+/// Enable this with [`set_tracking_callstacks`], preferably the first thing you do in `main`.
 pub fn tracking_stats(max_callstacks: usize) -> Option<TrackingStatistics> {
     GLOBAL_STATS.track_callstacks.load(Relaxed).then(|| {
         IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {

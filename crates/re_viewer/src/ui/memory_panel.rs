@@ -104,6 +104,8 @@ impl MemoryPanel {
                             }
                         });
                 });
+        } else {
+            ui.label("You can turn on detailed memory tracking with RERUN_TRACK_ALLOCATIONS=1");
         }
 
         if !self.history.is_empty() {
