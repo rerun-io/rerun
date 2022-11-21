@@ -3,7 +3,7 @@
 
 Example usage:
 * Run all demos: `examples/api_demo/main.py`
-* Run specific demo: `examples/api_demo/main.py --demo set_visible`
+* Run specific demo: `examples/api_demo/main.py --demo rects`
 """
 
 import argparse
@@ -69,20 +69,6 @@ def run_segmentation() -> None:
     )
 
 
-def run_set_visible() -> None:
-    rerun.set_time_seconds("sim_time", 1)
-    rerun.log_rect("vis_demo/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
-    rerun.log_rect("vis_demo/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
-    rerun.set_time_seconds("sim_time", 2)
-    rerun.set_visible("vis_demo/rect/0", False)
-    rerun.set_time_seconds("sim_time", 3)
-    rerun.set_visible("vis_demo/rect/1", False)
-    rerun.set_time_seconds("sim_time", 4)
-    rerun.set_visible("vis_demo/rect/0", True)
-    rerun.set_time_seconds("sim_time", 5)
-    rerun.set_visible("vis_demo/rect/1", True)
-
-
 def run_rects() -> None:
     import random
 
@@ -135,7 +121,6 @@ def main() -> None:
     demos = {
         "misc": run_misc,
         "segmentation": run_segmentation,
-        "set_visible": run_set_visible,
         "rects": run_rects,
         "text": run_text_logs,
         "log_cleared": run_log_cleared,

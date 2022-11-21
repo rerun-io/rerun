@@ -1,3 +1,6 @@
+mod annotations;
+pub use annotations::{Annotations, DefaultColor};
+
 mod auto_layout;
 
 mod viewport;
@@ -17,6 +20,7 @@ pub(crate) mod time_panel;
 
 pub(crate) mod view_2d;
 pub(crate) mod view_3d;
+mod view_plot;
 mod view_tensor;
 mod view_text;
 

@@ -103,6 +103,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_text_entry, m)?)?;
+    m.add_function(wrap_pyfunction!(log_scalar, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_rect, m)?)?;
     m.add_function(wrap_pyfunction!(log_rects, m)?)?;
@@ -128,7 +129,6 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
-    m.add_function(wrap_pyfunction!(set_visible, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_class::<TensorDataMeaning>()?;
 
@@ -586,6 +586,77 @@ fn log_text_entry(
         (&obj_path, "body"),
         LoggedData::Single(Data::String(text.to_owned())),
     );
+
+    Ok(())
+}
+
+// ----------------------------------------------------------------------------
+
+/// Log a scalar.
+//
+// TODO(cmc): Note that this will unnecessarily duplicate data in the very likely case that
+// the caller logs a bunch of points all with the same attribute(s).
+// E.g. if the caller logs 1000 points with `color=[255,0,0]`, then we will in fact store that
+// information a 1000 times for no good reason.
+//
+// In the future, I'm hopeful that Arrow will allow us to automagically identify and eliminate
+// that kind of deduplication at the lowest layer.
+// If not, there is still the option of deduplicating either on the SDK-side (but then
+// multiprocess can become problematic) or immediately upon entry on the server-side.
+#[pyfunction]
+fn log_scalar(
+    obj_path: &str,
+    scalar: f64,
+    label: Option<String>,
+    color: Option<Vec<u8>>,
+    radius: Option<f32>,
+    scattered: Option<bool>,
+) -> PyResult<()> {
+    let mut sdk = Sdk::global();
+
+    let obj_path = parse_obj_path(obj_path)?;
+    sdk.register_type(obj_path.obj_type_path(), ObjectType::Scalar);
+
+    let time_point = time(false);
+
+    sdk.send_data(
+        &time_point,
+        (&obj_path, "scalar"),
+        LoggedData::Single(Data::F64(scalar)),
+    );
+
+    if let Some(label) = label {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "label"),
+            LoggedData::Single(Data::String(label)),
+        );
+    }
+
+    if let Some(color) = color {
+        let color = convert_color(color)?;
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "color"),
+            LoggedData::Single(Data::Color(color)),
+        );
+    }
+
+    if let Some(radius) = radius {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "radius"),
+            LoggedData::Single(Data::F32(radius)),
+        );
+    }
+
+    if let Some(scattered) = scattered {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "scattered"),
+            LoggedData::Single(Data::Bool(scattered)),
+        );
+    }
 
     Ok(())
 }
@@ -1531,24 +1602,6 @@ fn log_image_file(
             meaning: re_log_types::TensorDataMeaning::Unknown,
             data,
         })),
-    );
-
-    Ok(())
-}
-
-/// Clear the visibility flag of an object
-#[pyfunction]
-fn set_visible(obj_path: &str, visibile: bool) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
-
-    let mut sdk = Sdk::global();
-
-    let time_point = time(false);
-
-    sdk.send_data(
-        &time_point,
-        (&obj_path, "_visible"),
-        LoggedData::Single(Data::Bool(visibile)),
     );
 
     Ok(())

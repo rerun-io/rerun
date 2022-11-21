@@ -2,17 +2,18 @@ use std::sync::Arc;
 
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
-    query::{visit_type_data_3, visit_type_data_4},
-    FieldName, InstanceIdHash, ObjPath,
+    query::{visit_type_data_2, visit_type_data_3},
+    FieldName, InstanceIdHash,
 };
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{
-    ui::{view_2d::annotations::Annotations, SceneQuery},
+    ui::{
+        annotations::{AnnotationMap, DefaultColor},
+        Annotations, SceneQuery,
+    },
     ViewerContext,
 };
-
-use super::AnnotationMap;
 
 // ---
 
@@ -95,34 +96,12 @@ impl Scene2D {
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        self.load_annotations(ctx, query); // before images!
+        self.annotation_map.load(ctx, query);
+
         self.load_images(ctx, query);
         self.load_boxes(ctx, query);
         self.load_points(ctx, query);
         self.load_line_segments(ctx, query);
-    }
-
-    fn load_annotations(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
-
-        for (obj_path, field_store) in
-            query.iter_ancestor_meta_field(ctx.log_db, &FieldName::from("_annotation_context"))
-        {
-            if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
-            {
-                mono_field_store.query(&query.time_query, |_time, msg_id, context| {
-                    self.annotation_map
-                        .0
-                        .entry(obj_path.clone())
-                        .or_insert_with(|| {
-                            Arc::new(Annotations {
-                                msg_id: *msg_id,
-                                context: context.clone(),
-                            })
-                        });
-                });
-            }
-        }
     }
 
     fn load_images(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
@@ -132,33 +111,28 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::Image])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_3(
+                visit_type_data_2(
                     obj_store,
                     &FieldName::from("tensor"),
                     &query.time_query,
-                    ("_visible", "color", "meter"),
+                    ("color", "meter"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      tensor: &re_log_types::Tensor,
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      meter: Option<&f32>| {
-                        let visible = *visible.unwrap_or(&true);
                         let two_or_three_dims = 2 <= tensor.shape.len() && tensor.shape.len() <= 3;
-                        if !visible || !two_or_three_dims {
+                        if !two_or_three_dims {
                             return;
                         }
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
-                        let paint_props = paint_properties(
-                            ctx,
-                            obj_path,
-                            color.copied(),
-                            DefaultColor::White,
-                            &None,
-                        );
+                        let annotations = self.annotation_map.find(obj_path);
+                        let color = annotations.color(color, None, DefaultColor::OpaqueWhite);
+
+                        let paint_props = paint_properties(color, &None);
 
                         let image = Image {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -167,7 +141,7 @@ impl Scene2D {
                             ),
                             tensor: tensor.clone(), // shallow
                             meter: meter.copied(),
-                            annotations: Some(self.annotation_map.find(obj_path)),
+                            annotations: Some(annotations),
                             paint_props,
                             is_hovered: false, // Will be filled in later
                         };
@@ -194,34 +168,27 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_4(
+                visit_type_data_3(
                     obj_store,
                     &FieldName::from("bbox"),
                     &query.time_query,
-                    ("_visible", "color", "stroke_width", "label"),
+                    ("color", "stroke_width", "label"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      bbox: &re_log_types::BBox2D,
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>,
                      label: Option<&String>| {
-                        let visible = *visible.unwrap_or(&true);
-                        if !visible {
-                            return;
-                        }
-
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
-                        let paint_props = paint_properties(
-                            ctx,
-                            obj_path,
-                            color.copied(),
-                            DefaultColor::Random,
-                            &stroke_width,
-                        );
+                        let annotations = self.annotation_map.find(obj_path);
+                        // TODO(andreas): Support class id for boxes.
+                        let color = annotations.color(color, None, DefaultColor::ObjPath(obj_path));
+                        let label = annotations.label(label, None);
+
+                        let paint_props = paint_properties(color, &stroke_width);
 
                         batch.push(Box2D {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -230,7 +197,7 @@ impl Scene2D {
                             ),
                             bbox: bbox.clone(),
                             stroke_width,
-                            label: label.map(ToOwned::to_owned),
+                            label,
                             paint_props,
                         });
                     },
@@ -253,32 +220,27 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_3(
+                visit_type_data_2(
                     obj_store,
                     &FieldName::from("pos"),
                     &query.time_query,
-                    ("_visible", "color", "radius"),
+                    ("color", "radius"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 2],
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>| {
-                        let visible = *visible.unwrap_or(&true);
-                        if !visible {
-                            return;
-                        }
-
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
-                        let paint_props = paint_properties(
-                            ctx,
-                            obj_path,
-                            color.copied(),
-                            DefaultColor::Random,
-                            &None,
+                        let annotations = self.annotation_map.find(obj_path);
+                        let color = annotations.color(
+                            color,
+                            None, // TODO(andreas): support class ids for points
+                            DefaultColor::ObjPath(obj_path),
                         );
+
+                        let paint_props = paint_properties(color, &None);
 
                         batch.push(Point2D {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -308,36 +270,28 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_3(
+                visit_type_data_2(
                     obj_store,
                     &FieldName::from("points"),
                     &query.time_query,
-                    ("_visible", "color", "stroke_width"),
+                    ("color", "stroke_width"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      points: &DataVec,
-                     visible: Option<&bool>,
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>| {
-                        let visible = *visible.unwrap_or(&true);
-                        if !visible {
-                            return;
-                        }
-
                         let Some(points) = points.as_vec_of_vec2("LineSegments2D::points")
                                 else { return };
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
-                        let paint_props = paint_properties(
-                            ctx,
-                            obj_path,
-                            color.copied(),
-                            DefaultColor::Random,
-                            &None,
-                        );
+                        let annotations = self.annotation_map.find(obj_path);
+                        // TODO(andreas): support class ids for line segments
+                        let color = annotations.color(color, None, DefaultColor::ObjPath(obj_path));
+
+                        let paint_props = paint_properties(color, &None);
 
                         batch.push(LineSegments2D {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -385,30 +339,9 @@ pub struct ObjectPaintProperties {
     pub fg_stroke: Stroke,
 }
 
-#[derive(Clone, Copy)]
-enum DefaultColor {
-    White,
-    Random,
-}
-
-fn paint_properties(
-    ctx: &mut ViewerContext<'_>,
-    obj_path: &ObjPath,
-    color: Option<[u8; 4]>,
-    default_color: DefaultColor,
-    stroke_width: &Option<f32>,
-) -> ObjectPaintProperties {
+fn paint_properties(color: [u8; 4], stroke_width: &Option<f32>) -> ObjectPaintProperties {
     let bg_color = Color32::from_black_alpha(196);
-    let fg_color = color.map_or_else(
-        || match default_color {
-            DefaultColor::White => Color32::WHITE,
-            DefaultColor::Random => {
-                let [r, g, b] = ctx.random_color(obj_path);
-                Color32::from_rgb(r, g, b)
-            }
-        },
-        to_egui_color,
-    );
+    let fg_color = to_egui_color(color);
     let stroke_width = stroke_width.unwrap_or(1.5);
     let bg_stroke = Stroke::new(stroke_width + 2.0, bg_color);
     let fg_stroke = Stroke::new(stroke_width, fg_color);

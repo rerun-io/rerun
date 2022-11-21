@@ -4,11 +4,15 @@ use re_log_types::{DataTrait, FieldName, IndexHash, MsgId};
 
 use crate::*;
 
-fn latest_at<'data, Time: Copy + Ord, T>(
-    data_over_time: &'data BTreeMap<Time, T>,
+fn latest_at<'data, Time: 'static + Copy + Ord, T: 'static>(
+    data_over_time: &'data BTreeMap<(Time, MsgId), T>,
     query_time: &'_ Time,
-) -> Option<(&'data Time, &'data T)> {
-    data_over_time.range(..=query_time).rev().next()
+) -> Option<(&'data Time, &'data MsgId, &'data T)> {
+    data_over_time
+        .range(..=(*query_time, MsgId::MAX))
+        .rev()
+        .next()
+        .map(|((time, msg_id), val)| (time, msg_id, val))
 }
 
 struct OnePastEnd<'d, Time, T, I>
@@ -69,21 +73,23 @@ fn test_values_in_range() {
 }
 
 pub(crate) fn query<'data, Time: 'static + Copy + Ord, T: 'static>(
-    data_over_time: &'data BTreeMap<Time, T>,
-    time_query: &TimeQuery<Time>,
-    mut visit: impl FnMut(&Time, &'data T),
+    data_over_time: &'data BTreeMap<(Time, MsgId), T>,
+    time_query: &'_ TimeQuery<Time>,
+    mut visit: impl FnMut(&Time, &'data MsgId, &'data T),
 ) {
     match time_query {
         TimeQuery::LatestAt(query_time) => {
-            if let Some((_data_time, data)) = latest_at(data_over_time, query_time) {
+            if let Some((_data_time, msg_id, data)) = latest_at(data_over_time, query_time) {
                 // we use `query_time` here instead of `data_time`
                 // because we want to also query for the latest color, not the latest color at the time of the position.
-                visit(query_time, data);
+                visit(query_time, msg_id, data);
             }
         }
         TimeQuery::Range(query_range) => {
-            for (data_time, data) in values_in_range(data_over_time, query_range) {
-                visit(data_time, data);
+            let query_range =
+                (*query_range.start(), MsgId::ZERO)..=(*query_range.end(), MsgId::MAX);
+            for ((data_time, msg_id), data) in values_in_range(data_over_time, &query_range) {
+                visit(data_time, msg_id, data);
             }
         }
     }
@@ -104,7 +110,7 @@ impl<'store, Time: 'static + Copy + Ord, T: DataTrait> MonoDataReader<'store, Ti
 
     pub fn latest_at(&self, query_time: &Time) -> Option<&'store T> {
         latest_at(&self.history?.history, query_time)
-            .and_then(|(_time, (_msg_id, value))| value.as_ref())
+            .and_then(|(_time, _msg_id, value)| value.as_ref())
     }
 }
 
@@ -132,7 +138,7 @@ impl<'store, T: DataTrait> MultiDataReader<'store, T> {
         history: &'store MultiFieldStore<Time, T>,
         query_time: &Time,
     ) -> Self {
-        if let Some((_, (_, batch))) = latest_at(&history.history, query_time) {
+        if let Some((_, _, batch)) = latest_at(&history.history, query_time) {
             match batch {
                 BatchOrSplat::Splat(splat) => Self::Splat(splat),
                 BatchOrSplat::Batch(batch) => Self::Batch(batch),
@@ -182,7 +188,7 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_value)| {
+            |time, msg_id, primary_value| {
                 if let Some(primary_value) = primary_value {
                     visit(None, *time, msg_id, primary_value);
                 }
@@ -193,7 +199,7 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_batch)| {
+            |time, msg_id, primary_batch| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     for (instance_index, _best_lookup, primary_value) in primary_batch.iter() {
                         visit(Some(instance_index), *time, msg_id, primary_value);
@@ -222,7 +228,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_value)| {
+            |time, msg_id, primary_value| {
                 if let Some(primary_value) = primary_value {
                     visit(None, *time, msg_id, primary_value, child1.latest_at(time));
                 }
@@ -234,7 +240,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_batch)| {
+            |time, msg_id, primary_batch| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
                     for (instance_index, best_lookup, primary_value) in primary_batch.iter() {
@@ -278,7 +284,7 @@ pub fn visit_type_data_2<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_value)| {
+            |time, msg_id, primary_value| {
                 if let Some(primary_value) = primary_value {
                     visit(
                         None,
@@ -298,7 +304,7 @@ pub fn visit_type_data_2<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_batch)| {
+            |time, msg_id, primary_batch| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
                     let child2 = MultiDataReader::latest_at(child2, time);
@@ -355,7 +361,7 @@ pub fn visit_type_data_3<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_value)| {
+            |time, msg_id, primary_value| {
                 if let Some(primary_value) = primary_value {
                     visit(
                         None,
@@ -377,7 +383,7 @@ pub fn visit_type_data_3<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_batch)| {
+            |time, msg_id, primary_batch| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
                     let child2 = MultiDataReader::latest_at(child2, time);
@@ -440,7 +446,7 @@ pub fn visit_type_data_4<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_value)| {
+            |time, msg_id, primary_value| {
                 if let Some(primary_value) = primary_value {
                     visit(
                         None,
@@ -464,7 +470,7 @@ pub fn visit_type_data_4<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_batch)| {
+            |time, msg_id, primary_batch| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
                     let child2 = MultiDataReader::latest_at(child2, time);
@@ -533,7 +539,7 @@ pub fn visit_type_data_5<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_value)| {
+            |time, msg_id, primary_value| {
                 if let Some(primary_value) = primary_value {
                     visit(
                         None,
@@ -559,7 +565,7 @@ pub fn visit_type_data_5<
         query(
             &primary.history,
             time_query,
-            |time, (msg_id, primary_batch)| {
+            |time, msg_id, primary_batch| {
                 if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
                     let child1 = MultiDataReader::latest_at(child1, time);
                     let child2 = MultiDataReader::latest_at(child2, time);
@@ -577,6 +583,111 @@ pub fn visit_type_data_5<
                             child3.get(&best_lookup),
                             child4.get(&best_lookup),
                             child5.get(&best_lookup),
+                        );
+                    }
+                }
+            },
+        );
+    }
+
+    Some(())
+}
+
+pub fn visit_type_data_6<
+    's,
+    Time: 'static + Copy + Ord,
+    T: DataTrait,
+    S1: DataTrait,
+    S2: DataTrait,
+    S3: DataTrait,
+    S4: DataTrait,
+    S5: DataTrait,
+    S6: DataTrait,
+>(
+    obj_store: &'s ObjStore<Time>,
+    field_name: &FieldName,
+    time_query: &TimeQuery<Time>,
+    (child1, child2, child3, child4, child5, child6): (&str, &str, &str, &str, &str, &str),
+    mut visit: impl FnMut(
+        Option<&'s IndexHash>,
+        Time,
+        &'s MsgId,
+        &'s T,
+        Option<&'s S1>,
+        Option<&'s S2>,
+        Option<&'s S3>,
+        Option<&'s S4>,
+        Option<&'s S5>,
+        Option<&'s S6>,
+    ),
+) -> Option<()> {
+    crate::profile_function!();
+    let child1 = FieldName::from(child1);
+    let child2 = FieldName::from(child2);
+    let child3 = FieldName::from(child3);
+    let child4 = FieldName::from(child4);
+    let child5 = FieldName::from(child5);
+    let child6 = FieldName::from(child6);
+
+    if obj_store.mono() {
+        let primary = obj_store.get_mono::<T>(field_name)?;
+        let child1 = MonoDataReader::<Time, S1>::new(obj_store, &child1);
+        let child2 = MonoDataReader::<Time, S2>::new(obj_store, &child2);
+        let child3 = MonoDataReader::<Time, S3>::new(obj_store, &child3);
+        let child4 = MonoDataReader::<Time, S4>::new(obj_store, &child4);
+        let child5 = MonoDataReader::<Time, S5>::new(obj_store, &child5);
+        let child6 = MonoDataReader::<Time, S6>::new(obj_store, &child6);
+        query(
+            &primary.history,
+            time_query,
+            |time, msg_id, primary_value| {
+                if let Some(primary_value) = primary_value {
+                    visit(
+                        None,
+                        *time,
+                        msg_id,
+                        primary_value,
+                        child1.latest_at(time),
+                        child2.latest_at(time),
+                        child3.latest_at(time),
+                        child4.latest_at(time),
+                        child5.latest_at(time),
+                        child6.latest_at(time),
+                    );
+                }
+            },
+        );
+    } else {
+        let primary = obj_store.get_multi::<T>(field_name)?;
+        let child1 = obj_store.get_multi::<S1>(&child1);
+        let child2 = obj_store.get_multi::<S2>(&child2);
+        let child3 = obj_store.get_multi::<S3>(&child3);
+        let child4 = obj_store.get_multi::<S4>(&child4);
+        let child5 = obj_store.get_multi::<S5>(&child5);
+        let child6 = obj_store.get_multi::<S6>(&child6);
+        query(
+            &primary.history,
+            time_query,
+            |time, msg_id, primary_batch| {
+                if let Some(primary_batch) = get_primary_batch(field_name, primary_batch) {
+                    let child1 = MultiDataReader::latest_at(child1, time);
+                    let child2 = MultiDataReader::latest_at(child2, time);
+                    let child3 = MultiDataReader::latest_at(child3, time);
+                    let child4 = MultiDataReader::latest_at(child4, time);
+                    let child5 = MultiDataReader::latest_at(child5, time);
+                    let child6 = MultiDataReader::latest_at(child6, time);
+                    for (instance_index, best_lookup, primary_value) in primary_batch.iter() {
+                        visit(
+                            Some(instance_index),
+                            *time,
+                            msg_id,
+                            primary_value,
+                            child1.get(&best_lookup),
+                            child2.get(&best_lookup),
+                            child3.get(&best_lookup),
+                            child4.get(&best_lookup),
+                            child5.get(&best_lookup),
+                            child6.get(&best_lookup),
                         );
                     }
                 }

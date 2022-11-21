@@ -3,9 +3,11 @@ use std::sync::Arc;
 use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
-use re_log_types::{MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType, TensorId};
+use re_log_types::{
+    context::ClassId, MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType, TensorId,
+};
 
-use crate::ui::view_2d::{Annotations, ColorMapping};
+use crate::ui::{Annotations, DefaultColor};
 
 // ---
 
@@ -50,7 +52,7 @@ impl std::hash::Hash for ImageCacheKey {
         let msg_hash = self.tensor_id.0.as_u128() as u64;
 
         let annotation_hash = if let Some(annotation_msg_id) = self.annotation_msg_id {
-            (annotation_msg_id.0.as_u128() >> 1) as u64
+            (annotation_msg_id.as_u128() >> 1) as u64
         } else {
             0
         };
@@ -228,7 +230,13 @@ fn tensor_to_dynamic_image(
                         bytes
                             .to_vec()
                             .iter()
-                            .flat_map(|p| annotations.map_color(*p as u16))
+                            .flat_map(|p| {
+                                annotations.color(
+                                    None,
+                                    Some(ClassId(*p as u16)),
+                                    DefaultColor::TransparentBlack,
+                                )
+                            })
                             .collect(),
                     )
                     .context("Bad RGBA8")
@@ -242,7 +250,13 @@ fn tensor_to_dynamic_image(
                         bytemuck::cast_slice(bytes)
                             .to_vec()
                             .iter()
-                            .flat_map(|p| annotations.map_color(*p))
+                            .flat_map(|p| {
+                                annotations.color(
+                                    None,
+                                    Some(ClassId(*p)),
+                                    DefaultColor::TransparentBlack,
+                                )
+                            })
                             .collect(),
                     )
                     .context("Bad RGBA8")

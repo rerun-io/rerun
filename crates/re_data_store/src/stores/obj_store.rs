@@ -71,7 +71,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
             .or_insert_with(|| FieldStore::new_mono::<T>())
             .get_mono_mut::<T>()?;
 
-        mono.history.insert(time, (msg_id, value));
+        mono.history.insert((time, msg_id), value);
         Ok(())
     }
 
@@ -94,7 +94,7 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
             .or_insert_with(|| FieldStore::new_multi::<T>())
             .get_multi_mut::<T>()?;
 
-        multi.history.insert(time, (msg_id, batch));
+        multi.history.insert((time, msg_id), batch);
 
         Ok(())
     }
@@ -109,15 +109,15 @@ fn test_obj_store() {
     let mut obj_store = ObjStore::default();
 
     assert!(obj_store
-        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15))
+        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15_f32))
         .is_ok());
 
     assert!(obj_store
-        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15))
+        .insert_mono("field1".into(), 0, MsgId::random(), Some(3.15_f32))
         .is_ok());
 
     assert!(obj_store
-        .insert_mono("field2".into(), 0, MsgId::random(), Some(3.15))
+        .insert_mono("field2".into(), 0, MsgId::random(), Some(3.15_f32))
         .is_ok());
 
     assert_eq!(
