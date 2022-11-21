@@ -140,6 +140,9 @@ impl RenderContext {
         }
     }
 
+    /// Call this at the beginning of a new frame.
+    ///
+    /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
     pub fn frame_maintenance(&mut self) {
         self.frame_index += 1;
 
