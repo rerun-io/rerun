@@ -1,5 +1,8 @@
+use std::collections::BTreeMap;
+
 use egui::{Color32, NumExt as _, RichText};
 
+use re_data_store::{ObjPath, Timeline};
 use re_log_types::{LogMsg, TimePoint};
 
 use crate::ViewerContext;
@@ -16,6 +19,121 @@ pub struct ViewTextState {
     /// We need this because we want the user to be able to manually scroll the
     /// text entry window however they please when the time cursor isn't moving.
     latest_time: i64,
+
+    filters: ViewTextFilters,
+}
+
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+pub struct ViewTextFilters {
+    // column pickers
+    // --------------
+    //
+    // - timelines (log_time, frame_nr...)
+    // - path
+    // - level
+    // - body
+    //
+    // custom pickers
+    // --------------
+    //
+    // - timepoints => range
+    // - path => all / one in particular / contains?
+    // - level => lesser than / greater than / equals (multi choice)
+    // - body => contains
+    //
+    // other
+    // -----
+    //
+    // - reset button
+    show_timelines: BTreeMap<Timeline, bool>,
+    show_obj_paths: BTreeMap<ObjPath, bool>,
+    show_log_levels: BTreeMap<String, bool>,
+}
+
+impl ViewTextFilters {
+    fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {
+        crate::profile_function!();
+
+        for timeline in ctx.log_db.time_points.0.keys() {
+            self.show_timelines.entry(timeline.clone()).or_default();
+        }
+
+        for obj_path in text_entries.iter().map(|te| &te.obj_path) {
+            self.show_obj_paths.entry(obj_path.clone()).or_default();
+        }
+
+        for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
+            self.show_log_levels.entry(level.clone()).or_default();
+        }
+    }
+
+    pub(crate) fn show(&mut self, ui: &mut egui::Ui) {
+        crate::profile_function!();
+
+        if ui.button("Reset all filters").clicked() {
+            let Self {
+                show_timelines,
+                show_obj_paths,
+                show_log_levels,
+            } = self;
+            for v in show_timelines.values_mut() {
+                *v = false;
+            }
+            for v in show_obj_paths.values_mut() {
+                *v = false;
+            }
+            for v in show_log_levels.values_mut() {
+                *v = false;
+            }
+        }
+
+        ui.add_space(2.0);
+
+        ui.horizontal(|ui| {
+            ui.label("Timeline filters");
+            if ui.button("Reset").clicked() {
+                for v in self.show_timelines.values_mut() {
+                    *v = false;
+                }
+            }
+        });
+        for (timeline, visible) in &mut self.show_timelines {
+            ui.checkbox(visible, format!("Show '{}'", timeline.name()));
+        }
+
+        ui.add_space(2.0);
+
+        ui.horizontal(|ui| {
+            ui.label("Object filters");
+            if ui.button("Reset").clicked() {
+                for v in self.show_obj_paths.values_mut() {
+                    *v = false;
+                }
+            }
+        });
+        for (obj_path, visible) in &mut self.show_obj_paths {
+            ui.checkbox(visible, format!("Show '{obj_path}'"));
+        }
+
+        ui.add_space(2.0);
+
+        ui.horizontal(|ui| {
+            ui.label("Log filters");
+            if ui.button("Reset").clicked() {
+                self.show_log_levels.clear();
+                for v in self.show_log_levels.values_mut() {
+                    *v = false;
+                }
+            }
+        });
+        for (log_level, visible) in &mut self.show_log_levels {
+            ui.checkbox(visible, format!("Show '{log_level}'"));
+        }
+    }
+}
+
+pub(crate) fn view_filters(ui: &mut egui::Ui, state: &mut ViewTextState) -> egui::Response {
+    ui.vertical(|ui| state.filters.show(ui)).response
 }
 
 pub(crate) fn view_text(
@@ -25,6 +143,9 @@ pub(crate) fn view_text(
     scene: &SceneText,
 ) -> egui::Response {
     crate::profile_function!();
+
+    // Update filters if necessary.
+    state.filters.update(ctx, &scene.text_entries);
 
     let time = ctx
         .rec_cfg
@@ -121,6 +242,7 @@ fn show_table(
 
     let mut current_time_y = None;
 
+    // TODO(cmc): these column sizes have to be derived from the actual contents.
     builder
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(

@@ -1,9 +1,11 @@
 use re_data_store::log_db::LogDb;
 use re_log_types::LogMsg;
 
-use crate::{data_ui::*, ui::Blueprint, Preview, Selection, ViewerContext};
-
-use super::SpaceView;
+use crate::{
+    data_ui::*,
+    ui::{view_3d, view_text, Blueprint, SpaceView},
+    Preview, Selection, ViewerContext,
+};
 
 /// The "Selection View" side-bar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -209,7 +211,7 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
     match space_view.category {
         ViewCategory::ThreeD => {
             ui.label("3D view.");
-            super::view_3d::show_settings_ui(ctx, ui, &mut space_view.view_state.state_3d);
+            view_3d::show_settings_ui(ctx, ui, &mut space_view.view_state.state_3d);
         }
         ViewCategory::Tensor => {
             if let Some(state_tensor) = &mut space_view.view_state.state_tensor {
@@ -217,6 +219,11 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
                 state_tensor.ui(ui);
             }
         }
-        ViewCategory::TwoD | ViewCategory::Text | ViewCategory::Plot => {}
+        ViewCategory::Text => {
+            ui.label("Text view.");
+            ui.add_space(4.0);
+            view_text::view_filters(ui, &mut space_view.view_state.state_text);
+        }
+        ViewCategory::TwoD | ViewCategory::Plot => {}
     }
 }

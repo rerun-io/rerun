@@ -73,10 +73,8 @@ impl SceneText {
         self.text_entries.extend(text_entries);
 
         // We want to show the log messages in order.
-        // The most important order is the the `time` for whatever
-        // timeline we are on.
-        // For a tie-breaker, we use MsgId as that is
-        // ordered by a high-resolution wall-time.
+        // The most important order is the the `time` for whatever timeline we are on.
+        // For a tie-breaker, we use MsgId as that is ordered by a high-resolution wall-time.
         crate::profile_scope!("sort");
         self.text_entries
             .sort_by_key(|entry| (entry.time, entry.msg_id));
