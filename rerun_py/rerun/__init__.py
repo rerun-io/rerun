@@ -29,6 +29,7 @@ Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
 
 ClassIdDtype = Union[np.uint8, np.uint16]
 ClassIds = npt.NDArray[ClassIdDtype]
+OptionalClassIds = Optional[Union[int, ClassIds]]
 
 
 class MeshFormat(Enum):
@@ -497,7 +498,7 @@ def log_points(
     *,
     colors: Optional[Colors] = None,
     labels: Optional[Sequence[str]] = None,
-    class_ids: Optional[ClassIds] = None,
+    class_ids: OptionalClassIds = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -508,7 +509,8 @@ def log_points(
     * `positions`: Nx2 or Nx3 array
     * `color`: Optional colors of the points.
     * `labels`: Optional per-point text to show with the points
-    * `class_id`: Optional class ids for the points. The class id provides colors and labels if not specified explicitly.
+    * `class_id`: Optional class ids for the points.
+      The class id provides colors and labels if not specified explicitly.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -525,7 +527,7 @@ def log_points(
     else:
         positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
-    class_ids = _normalize_class_id(class_ids)
+    class_ids = _normalize_class_ids(class_ids)
     if labels is None:
         labels = []
 
@@ -547,13 +549,13 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
         return np.require(colors_array, np.uint8)
 
 
-def _normalize_class_id(class_ids: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint16]:
+def _normalize_class_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]:
     """Normalize flexible class id arrays."""
     if class_ids is None:
         return np.array((), dtype=np.uint16)
     else:
         class_ids_array = np.array(class_ids)
-        if class_ids_array.dtype is np.uint8:
+        if class_ids_array.dtype == np.uint8:
             class_ids_array = class_ids_array.astype(np.uint16)
 
         return np.require(class_ids_array, np.uint16)
