@@ -106,6 +106,7 @@ jobs:
           toolchain: 1.65.0
           target: wasm32-unknown-unknown
           override: true
+          components: clippy
 
       - run: sudo apt-get update && sudo apt-get install libgtk-3-dev
 
@@ -117,6 +118,17 @@ jobs:
         with:
           command: check
           args: --all-features --lib --target wasm32-unknown-unknown -p re_viewer
+
+      - name: Install cargo-cranky
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-cranky
+
+      - name: Cranky wasm32
+        uses: actions-rs/cargo@v1
+        with:
+          command: cranky
+          args: -p re_viewer --target wasm32-unknown-unknown --all-features --  -D warnings
 
       - name: Check renderer_stadalone wasm32
         uses: actions-rs/cargo@v1
