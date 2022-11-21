@@ -8,3 +8,7 @@ publish = false
 
 
 [dependencies]
+
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+memory-stats = "1.0"

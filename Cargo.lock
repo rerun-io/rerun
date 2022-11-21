@@ -3069,6 +3069,9 @@ dependencies = [
 [[package]]
 name = "re_memory"
 version = "0.1.0"
+dependencies = [
+ "memory-stats",
+]
 
 [[package]]
 name = "re_renderer"
@@ -3221,7 +3224,6 @@ dependencies = [
  "itertools",
  "lazy_static",
  "macaw",
- "memory-stats",
  "mint",
  "ndarray",
  "nohash-hasher",

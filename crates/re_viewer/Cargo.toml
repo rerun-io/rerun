@@ -87,7 +87,6 @@ arboard = { version = "3.2", default-features = false, features = [
   "image-data",
 ] }
 ctrlc = { version = "3.0", features = ["termination"] }
-memory-stats = "1.0"
 puffin = { version = "0.14", optional = true }
 puffin_http = { version = "0.11", optional = true }
 
