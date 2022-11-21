@@ -28,10 +28,13 @@ impl Annotations {
     ) -> [u8; 4] {
         if let Some(color) = color {
             *color
-        } else if let Some(color) = class_id
-            .and_then(|id| self.context.class_map.get(&id))
-            .and_then(|desc| desc.info.color)
-        {
+        } else if let Some(color) = class_id.and_then(|id| {
+            self.context
+                .class_map
+                .get(&id)
+                // If have a valid id, use it for color even if the context doesn't have one.
+                .map(|desc| desc.info.color.unwrap_or_else(|| auto_color(id.0)))
+        }) {
             color
         } else {
             match default_color {
