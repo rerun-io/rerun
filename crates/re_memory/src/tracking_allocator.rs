@@ -19,6 +19,12 @@ struct GlobalStats {
     /// Do detailed statistics of allocations?
     /// This is expensive, but sometimes useful!
     pub track_callstacks: AtomicBool,
+
+    /// Number of live allocations not tracked by [`AllocationTracker`].
+    pub untracked_allocs: AtomicUsize,
+
+    /// Number of live bytes not tracked by [`AllocationTracker`].
+    pub untracked_bytes: AtomicUsize,
 }
 
 // ----------------------------------------------------------------------------
@@ -27,6 +33,8 @@ static GLOBAL_STATS: GlobalStats = GlobalStats {
     live_allocs: AtomicUsize::new(0),
     live_bytes: AtomicUsize::new(0),
     track_callstacks: AtomicBool::new(true), // TODO: check an env-var during startup!
+    untracked_allocs: AtomicUsize::new(0),
+    untracked_bytes: AtomicUsize::new(0),
 };
 
 /// Total number of live allocations,
@@ -60,36 +68,56 @@ thread_local! {
 static ALLOCATION_TRACKER: once_cell::sync::Lazy<parking_lot::Mutex<AllocationTracker>> =
     once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(AllocationTracker::default()));
 
-/// Number of tracked bytes
-pub fn tracked_bytes() -> usize {
-    NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
-        // prevent double-lock of ALLOCATION_TRACKER:
-        *num_thread_reentrancy.borrow_mut() += 1;
+pub struct TrackingStatistics {
+    /// How many live allocations are we tracking?
+    pub tracked_allocs: usize,
 
-        let tracked_bytes = ALLOCATION_TRACKER.lock().tracked_bytes();
+    /// How many live bytes are we tracking?
+    pub tracked_bytes: usize,
 
-        *num_thread_reentrancy.borrow_mut() -= 1;
+    /// How many live allocations are we NOT tracking (because they are too small)?
+    pub untracked_allocs: usize,
 
-        tracked_bytes
-    })
+    /// How many live bytes are we NOT tracking (because they are too small)?
+    pub untracked_bytes: usize,
+
+    /// Allocations smaller than these are left untracked.
+    pub track_size_threshold: usize,
+
+    /// The most popular callstacks.
+    pub top_callstacks: Vec<CallstackStatistics>,
 }
 
-pub fn top_callstacks(n: usize) -> Vec<CallstackStatistics> {
-    NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
-        // prevent double-lock of ALLOCATION_TRACKER:
-        *num_thread_reentrancy.borrow_mut() += 1;
+/// Gather statistics from the live tracking, if enabled.
+pub fn tracking_stats(max_callstacks: usize) -> Option<TrackingStatistics> {
+    GLOBAL_STATS.track_callstacks.load(Relaxed).then(|| {
+        NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
+            // prevent double-lock of ALLOCATION_TRACKER:
+            *num_thread_reentrancy.borrow_mut() += 1;
 
-        let top_callstacks = ALLOCATION_TRACKER
-            .lock()
-            .top_callstacks(n)
-            .iter()
-            .cloned()
-            .cloned()
-            .collect();
+            let untracked_allocs = GLOBAL_STATS.untracked_allocs.load(Relaxed);
+            let untracked_bytes = GLOBAL_STATS.untracked_bytes.load(Relaxed);
 
-        *num_thread_reentrancy.borrow_mut() -= 1;
+            let allocation_tracker = ALLOCATION_TRACKER.lock();
+            let (tracked_allocs, tracked_bytes) = allocation_tracker.tracked_allocs_and_bytes();
+            let top_callstacks = allocation_tracker
+                .top_callstacks(max_callstacks)
+                .iter()
+                .cloned()
+                .cloned()
+                .collect();
 
-        top_callstacks
+            *num_thread_reentrancy.borrow_mut() -= 1;
+
+            TrackingStatistics {
+                tracked_allocs,
+                tracked_bytes,
+                untracked_allocs,
+                untracked_bytes,
+                track_size_threshold: TRACK_MINIMUM,
+                top_callstacks,
+            }
+        })
     })
 }
 
@@ -130,20 +158,27 @@ unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
         GLOBAL_STATS.live_allocs.fetch_add(1, Relaxed);
         GLOBAL_STATS.live_bytes.fetch_add(layout.size(), Relaxed);
 
-        if layout.size() >= TRACK_MINIMUM && GLOBAL_STATS.track_callstacks.load(Relaxed) {
-            // TODO: track how much memory falls below TRACK_MINIMUM
-            // TODO: keep track of how much memory is used by the allocation tracker
-            NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
-                if *num_thread_reentrancy.borrow() > 0 {
-                    return; // prevent dead-lock
-                } else {
-                    *num_thread_reentrancy.borrow_mut() += 1;
-                }
+        if GLOBAL_STATS.track_callstacks.load(Relaxed) {
+            if layout.size() < TRACK_MINIMUM {
+                GLOBAL_STATS.untracked_allocs.fetch_add(1, Relaxed);
+                GLOBAL_STATS
+                    .untracked_bytes
+                    .fetch_add(layout.size(), Relaxed);
+            } else {
+                // TODO: track how much memory falls below TRACK_MINIMUM
+                // TODO: keep track of how much memory is used by the allocation tracker
+                NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
+                    if *num_thread_reentrancy.borrow() > 0 {
+                        return; // prevent dead-lock
+                    } else {
+                        *num_thread_reentrancy.borrow_mut() += 1;
+                    }
 
-                ALLOCATION_TRACKER.lock().on_alloc(ptr as usize, &layout);
+                    ALLOCATION_TRACKER.lock().on_alloc(ptr as usize, &layout);
 
-                *num_thread_reentrancy.borrow_mut() -= 1;
-            });
+                    *num_thread_reentrancy.borrow_mut() -= 1;
+                });
+            }
         }
 
         ptr
@@ -157,18 +192,25 @@ unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
         GLOBAL_STATS.live_allocs.fetch_sub(1, Relaxed);
         GLOBAL_STATS.live_bytes.fetch_sub(layout.size(), Relaxed);
 
-        if layout.size() >= TRACK_MINIMUM && GLOBAL_STATS.track_callstacks.load(Relaxed) {
-            NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
-                if *num_thread_reentrancy.borrow() > 0 {
-                    return; // prevent dead-lock
-                } else {
-                    *num_thread_reentrancy.borrow_mut() += 1;
-                }
+        if GLOBAL_STATS.track_callstacks.load(Relaxed) {
+            if layout.size() < TRACK_MINIMUM {
+                GLOBAL_STATS.untracked_allocs.fetch_sub(1, Relaxed);
+                GLOBAL_STATS
+                    .untracked_bytes
+                    .fetch_sub(layout.size(), Relaxed);
+            } else {
+                NUM_THREAD_REENTRANCY.with(|num_thread_reentrancy| {
+                    if *num_thread_reentrancy.borrow() > 0 {
+                        return; // prevent dead-lock
+                    } else {
+                        *num_thread_reentrancy.borrow_mut() += 1;
+                    }
 
-                ALLOCATION_TRACKER.lock().on_dealloc(ptr as usize, &layout);
+                    ALLOCATION_TRACKER.lock().on_dealloc(ptr as usize, &layout);
 
-                *num_thread_reentrancy.borrow_mut() -= 1;
-            });
+                    *num_thread_reentrancy.borrow_mut() -= 1;
+                });
+            }
         }
     }
 }

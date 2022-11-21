@@ -70,7 +70,7 @@ pub struct CallstackStatistics {
     pub readable_backtrace: Arc<ReadableBacktrace>,
 
     /// Number of live allocations at this callstack.
-    pub extant_count: usize,
+    pub extant_allocs: usize,
 
     /// The number of live bytes currently allocated at this callstack.
     pub extant_bytes: usize,
@@ -108,10 +108,10 @@ impl AllocationTracker {
                 .entry(readable_backtrace.hash)
                 .or_insert_with(|| CallstackStatistics {
                     readable_backtrace: readable_backtrace.clone(),
-                    extant_count: 0,
+                    extant_allocs: 0,
                     extant_bytes: 0,
                 });
-            stats.extant_count += 1;
+            stats.extant_allocs += 1;
             stats.extant_bytes += layout.size();
         }
 
@@ -125,7 +125,7 @@ impl AllocationTracker {
             {
                 let stats = entry.get_mut();
                 stats.extant_bytes -= layout.size();
-                stats.extant_count -= 1;
+                stats.extant_allocs -= 1;
 
                 if false {
                     // We can free up memory here, but that will cost us performance.
@@ -138,15 +138,25 @@ impl AllocationTracker {
     }
 
     /// Number of bytes in the live allocations we are tracking.
-    pub fn tracked_bytes(&self) -> usize {
-        self.callstacks.values().map(|c| c.extant_bytes).sum()
+    pub fn tracked_allocs_and_bytes(&self) -> (usize, usize) {
+        let mut num_allocs = 0;
+        let mut num_bytes = 0;
+        for c in self.callstacks.values() {
+            num_allocs += c.extant_allocs;
+            num_bytes += c.extant_bytes;
+        }
+        (num_allocs, num_bytes)
     }
 
     /// Return the `n` callstacks that currently is using the most memory.
     pub fn top_callstacks(&self, n: usize) -> Vec<&CallstackStatistics> {
         if true {
             // Simple and fast enough
-            let mut vec: Vec<_> = self.callstacks.values().collect();
+            let mut vec: Vec<_> = self
+                .callstacks
+                .values()
+                .filter(|c| c.extant_allocs > 0)
+                .collect();
             vec.sort_by_key(|tracked| -(tracked.extant_bytes as i64));
             vec.truncate(n);
             vec
@@ -174,15 +184,17 @@ impl AllocationTracker {
                 std::collections::BinaryHeap::<SmallestSize<'_>>::with_capacity(n);
 
             for candidate in self.callstacks.values() {
-                if let Some(SmallestSize(top)) = binary_heap.peek() {
-                    if candidate.extant_bytes > top.extant_bytes {
-                        if binary_heap.len() > n {
-                            binary_heap.pop();
+                if candidate.extant_allocs > 0 {
+                    if let Some(SmallestSize(top)) = binary_heap.peek() {
+                        if candidate.extant_bytes > top.extant_bytes {
+                            if binary_heap.len() > n {
+                                binary_heap.pop();
+                            }
+                            binary_heap.push(SmallestSize(candidate));
                         }
+                    } else {
                         binary_heap.push(SmallestSize(candidate));
                     }
-                } else {
-                    binary_heap.push(SmallestSize(candidate));
                 }
             }
 

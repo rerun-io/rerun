@@ -15,6 +15,8 @@ impl MemoryPanel {
     }
 
     pub fn ui(&self, ui: &mut egui::Ui) {
+        crate::profile_function!();
+
         // We show realtime stats, so keep showing the latest!
         ui.ctx().request_repaint();
 
@@ -53,10 +55,19 @@ impl MemoryPanel {
             }
         }
 
-        if re_memory::tracking_allocator::is_tracking_callstacks() {
+        let max_callstacks = 100;
+        if let Some(tracking_stats) = re_memory::tracking_allocator::tracking_stats(max_callstacks)
+        {
             ui.label(format!(
-                "{} tracked",
-                format_bytes(re_memory::tracking_allocator::tracked_bytes() as _)
+                "{} tracked in {} allocs",
+                format_bytes(tracking_stats.tracked_bytes as _),
+                format_count(tracking_stats.tracked_allocs),
+            ));
+            ui.label(format!(
+                "{} untracked in {} allocs (all smaller than {})",
+                format_bytes(tracking_stats.untracked_bytes as _),
+                format_count(tracking_stats.untracked_allocs),
+                format_bytes(tracking_stats.track_size_threshold as _),
             ));
 
             egui::CollapsingHeader::new("Top memory consumers")
@@ -65,21 +76,15 @@ impl MemoryPanel {
                     egui::ScrollArea::vertical()
                         .max_height(300.0)
                         .show(ui, |ui| {
-                            let n = 256;
-                            let top_callstacks = {
-                                crate::profile_scope!("top_callstacks");
-                                re_memory::tracking_allocator::top_callstacks(n)
-                            };
-
-                            for callstack in top_callstacks {
+                            for callstack in tracking_stats.top_callstacks {
                                 if ui
                                     .button(format!(
-                                        "{} in {} allocations (≈{} per alloc) - {}",
+                                        "{} in {} allocs (≈{} / alloc) - {}",
                                         format_bytes(callstack.extant_bytes as _),
-                                        format_count(callstack.extant_count),
+                                        format_count(callstack.extant_allocs),
                                         format_bytes(
                                             callstack.extant_bytes as f64
-                                                / callstack.extant_count as f64
+                                                / callstack.extant_allocs as f64
                                         ),
                                         summarize_callstack(
                                             &callstack.readable_backtrace.to_string()
