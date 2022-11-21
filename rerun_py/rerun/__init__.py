@@ -497,7 +497,7 @@ def log_points(
     *,
     colors: Optional[Colors] = None,
     labels: Optional[Sequence[str]] = None,
-    class_ids: Optional[Sequence[int]] = None,
+    class_ids: Optional[ClassIds] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -518,12 +518,16 @@ def log_points(
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
     * float32/float64: all color components should be in 0-1 linear space.
+
     """
     if positions is None:
         positions = np.require([], dtype="float32")
     else:
         positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
+    class_ids = _normalize_class_id(class_ids)
+    if labels is None:
+        labels = []
 
     rerun_sdk.log_points(obj_path, positions, colors, labels, class_ids, timeless)
 
@@ -542,6 +546,16 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
 
         return np.require(colors_array, np.uint8)
 
+def _normalize_class_id(class_ids: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint16]:
+    """Normalize flexible class id arrays."""
+    if class_ids is None:
+        return np.array((), dtype=np.uint16)
+    else:
+        class_ids_array = np.array(class_ids)
+        if class_ids_array.dtype is np.uint8:
+            class_ids_array = class_ids_array.astype(np.uint16)
+
+        return np.require(class_ids_array, np.uint16)
 
 # -----------------------------------------------------------------------------
 
@@ -934,6 +948,8 @@ def log_segmentation_image(
         if depth != 1:
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
+    if not isinstance(image, np.ndarray):
+        image = np.array(image)
     if image.dtype == "uint8":
         rerun_sdk.log_tensor_u8(obj_path, image, None, None, rerun_sdk.TensorDataMeaning.ClassId, timeless)
     elif image.dtype == "uint16":

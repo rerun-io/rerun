@@ -798,7 +798,7 @@ fn log_labels(
 fn log_class_ids(
     sdk: &mut Sdk,
     obj_path: &ObjPath,
-    class_ids: &numpy::PyReadonlyArrayDyn<'_, i32>,
+    class_ids: &numpy::PyReadonlyArrayDyn<'_, u16>,
     indices: &BatchIndex,
     time_point: &TimePoint,
     num_objects: usize,
@@ -809,7 +809,7 @@ fn log_class_ids(
             sdk.send_data(
                 time_point,
                 (obj_path, "class_id"),
-                LoggedData::BatchSplat(Data::I32(class_ids.to_vec().unwrap()[0])),
+                LoggedData::BatchSplat(Data::I32(class_ids.to_vec().unwrap()[0] as i32)),
             );
             Ok(())
         }
@@ -819,7 +819,8 @@ fn log_class_ids(
                 (obj_path, "class_id"),
                 LoggedData::Batch {
                     indices: indices.clone(),
-                    data: DataVec::I32(class_ids.to_vec().unwrap()),
+                    // TODO(andreas): We don't have a u16 data type, do late conversion here. This will likely go away with new data model.
+                    data: DataVec::I32(class_ids.cast(false).unwrap().to_vec().unwrap()),
                 },
             );
             Ok(())
@@ -980,7 +981,7 @@ fn log_points(
     positions: numpy::PyReadonlyArrayDyn<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
-    class_ids: numpy::PyReadonlyArrayDyn<'_, i32>,
+    class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
     timeless: bool,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `positions.empty()`, beacause logging

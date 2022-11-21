@@ -6,6 +6,7 @@ use itertools::Itertools as _;
 
 use re_data_store::query::{visit_type_data_1, visit_type_data_2, visit_type_data_3};
 use re_data_store::{FieldName, InstanceIdHash};
+use re_log_types::context::ClassId;
 use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
@@ -167,17 +168,18 @@ impl Scene3D {
         query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
             .for_each(|(_obj_type, obj_path, obj_store)| {
-                visit_type_data_2(
+                visit_type_data_3(
                     obj_store,
                     &FieldName::from("pos"),
                     &query.time_query,
-                    ("color", "radius"),
+                    ("color", "radius", "class_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 3],
                      color: Option<&[u8; 4]>,
-                     radius: Option<&f32>| {
+                     radius: Option<&f32>,
+                     class_id: Option<&i32>| {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
@@ -185,7 +187,7 @@ impl Scene3D {
                         let annotations = self.annotation_map.find(obj_path);
                         let color = annotations.color(
                             color,
-                            None, // TODO(andreas): support class ids for points
+                            class_id.map(|i| ClassId(*i as _)),
                             DefaultColor::ObjPath(obj_path),
                         );
 
