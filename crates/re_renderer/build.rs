@@ -81,11 +81,12 @@ impl std::str::FromStr for ImportClause {
 }
 
 fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
-    let dir_path = file_path.as_ref().parent().unwrap();
-    let res: Result<(), _> = std::fs::read_to_string(file_path.as_ref())
+    let file_path = file_path.as_ref();
+    let dir_path = file_path.parent().unwrap();
+    std::fs::read_to_string(file_path)
         .unwrap()
         .lines()
-        .map(|line| {
+        .try_for_each(|line| {
             if !line.trim().starts_with(ImportClause::PREFIX) {
                 return Ok(());
             }
@@ -102,9 +103,7 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
 
             Ok::<_, anyhow::Error>(())
         })
-        .collect();
-
-    res.unwrap();
+        .unwrap();
 }
 
 // ---
@@ -177,6 +176,15 @@ fn main() {
         let targets_wasm = std::env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "wasm";
 
         // Make sure we're not referencing anything outside of the workspace!
+        //
+        // TODO(cmc): At the moment we only look for breaches of hermiticity at the import level
+        // and completely ignore top-level, e.g. `#import </tmp/shader.wgsl>` will be fail as
+        // expected in release builds, while `include_file!("/tmp/shader.wgsl")` won't!
+        //
+        // The only way to make hermeticity checks work for top-level files would be to read all
+        // Rust files and parse all `include_file!` statements in those, so that we actually
+        // know what those external top-level files are to begin with.
+        // Not worth it... for now.
         if is_release || targets_wasm {
             check_hermeticity(&root_path, entry.path()); // will fail if not hermetic
         }

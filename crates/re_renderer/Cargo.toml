@@ -67,7 +67,7 @@ log = "0.4"
 pollster = "0.2"
 rand = "0.8"
 tracing = "0.1"
-tracing-subscriber = {version = "0.3" , features = ["env-filter"]}
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 winit = "0.27"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 

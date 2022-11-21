@@ -79,7 +79,7 @@ mod file_server_impl {
     static FILE_SERVER: RwLock<Option<FileServer>> = RwLock::new(None);
 
     /// A file server capable of watching filesystem events in the background and
-    /// (soon) resolve #import clauses in files.
+    /// resolve #import clauses in files.
     pub struct FileServer {
         watcher: RecommendedWatcher,
         events_rx: Receiver<Event>,
