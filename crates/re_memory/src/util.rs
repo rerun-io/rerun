@@ -1,10 +1,11 @@
 /// Pretty format bytes, e.g.
 ///
 /// ```
-/// assert_eq!(format_bytes(123), "123 B");
-/// assert_eq!(format_bytes(12_345), "12 kB");
-/// assert_eq!(format_bytes(1_234_567), "1.2 MB");
-/// assert_eq!(format_bytes(123_456_789), "123 GB");
+/// # use re_memory::util::format_bytes;
+/// assert_eq!(format_bytes(123 as _), "123 B");
+/// assert_eq!(format_bytes(12_345 as _), "12 kB");
+/// assert_eq!(format_bytes(1_234_567 as _), "1.2 MB");
+/// assert_eq!(format_bytes(123_456_789 as _), "123 MB");
 /// ```
 pub fn format_bytes(number_of_bytes: f64) -> String {
     if number_of_bytes < 0.0 {

@@ -97,10 +97,10 @@ pub struct TrackingStatistics {
     /// How many live bytes are we NOT tracking (because they are too small)?
     pub untracked_bytes: usize,
 
-    /// Number of live allocations done by [`AllocationTracker`] for internal book-keeping.
+    /// Number of live allocations used for internal book-keeping.
     pub tracker_allocs: usize,
 
-    /// Number of live bytes in [`AllocationTracker`] for internal book-keeping.
+    /// Number of live bytes used in internal book-keeping.
     pub tracker_bytes: usize,
 
     /// Allocations smaller than these are left untracked.
