@@ -65,7 +65,7 @@ fn bytes_used_gross() -> Option<i64> {
 ///
 /// `None` if [`crate::TrackingAllocator`] is not used.
 fn bytes_used_net() -> Option<i64> {
-    let num_bytes = crate::global_allocs_and_bytes().1;
+    let num_bytes = crate::tracking_allocator::global_allocs_and_bytes().1;
     if num_bytes == 0 {
         None
     } else {

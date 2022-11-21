@@ -8,9 +8,15 @@ publish = false
 
 
 [dependencies]
+re_log = { path = "../re_log" }
+
+ahash = "0.8"
+backtrace = { version = "0.3" }
 emath = "0.19"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
+nohash-hasher = "0.2"
 once_cell = "1.16"
+parking_lot = "0.12"
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

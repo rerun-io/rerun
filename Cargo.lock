@@ -19,6 +19,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "363b9b88fad3af3be80bc8f762c9a3f9dfe906fd0327b8e92f1c12e5ae1b8bbb"
 
 [[package]]
+name = "addr2line"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9ecd88a8c8378ca913a680cd98f0f13ac67383d35993f86c90a70e3f137816b"
+dependencies = [
+ "gimli",
+]
+
+[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -209,6 +218,21 @@ name = "az"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b7e4c2464d97fe331d41de9d5db0def0a96f4d823b8b32a2efd503578988973"
+
+[[package]]
+name = "backtrace"
+version = "0.3.66"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab84319d616cfb654d03394f38ab7e6f0919e181b1b57e1fd15e7fb4077d9a7"
+dependencies = [
+ "addr2line",
+ "cc",
+ "cfg-if",
+ "libc",
+ "miniz_oxide",
+ "object",
+ "rustc-demangle",
+]
 
 [[package]]
 name = "base64"
@@ -1021,7 +1045,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf#1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf"
+source = "git+https://github.com/emilk/egui?rev=8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567#8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1046,7 +1070,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf#1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf"
+source = "git+https://github.com/emilk/egui?rev=8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567#8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567"
 dependencies = [
  "ahash 0.8.1",
  "epaint",
@@ -1068,7 +1092,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf#1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf"
+source = "git+https://github.com/emilk/egui?rev=8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567#8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1083,7 +1107,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf#1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf"
+source = "git+https://github.com/emilk/egui?rev=8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567#8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567"
 dependencies = [
  "arboard",
  "egui",
@@ -1108,7 +1132,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf#1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf"
+source = "git+https://github.com/emilk/egui?rev=8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567#8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567"
 dependencies = [
  "egui",
  "tracing",
@@ -1117,7 +1141,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf#1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf"
+source = "git+https://github.com/emilk/egui?rev=8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567#8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1139,7 +1163,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf#1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf"
+source = "git+https://github.com/emilk/egui?rev=8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567#8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1148,7 +1172,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf#1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf"
+source = "git+https://github.com/emilk/egui?rev=8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567#8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.1",
@@ -1507,6 +1531,12 @@ dependencies = [
  "wasi 0.11.0+wasi-snapshot-preview1",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "gimli"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22030e2c5a68ec659fde1e949a745124b48e6fa8b045b7ed5bd1fe4ccc5c4e5d"
 
 [[package]]
 name = "gio-sys"
@@ -2588,6 +2618,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3070,10 +3109,15 @@ dependencies = [
 name = "re_memory"
 version = "0.1.0"
 dependencies = [
+ "ahash 0.8.1",
+ "backtrace",
  "emath",
  "instant",
  "memory-stats",
+ "nohash-hasher",
  "once_cell",
+ "parking_lot",
+ "re_log",
 ]
 
 [[package]]
