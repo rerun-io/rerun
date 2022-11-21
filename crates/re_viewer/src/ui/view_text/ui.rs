@@ -23,8 +23,12 @@ pub struct ViewTextState {
     pub filters: ViewTextFilters,
 }
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct ViewTextFilters {
+    // TODO:
+    // - dealing with emptiness
+    // - heuristics
+    //
     // TODO:
     //
     // column pickers
@@ -209,7 +213,7 @@ pub(crate) fn view_text(
 
         egui::ScrollArea::horizontal().show(ui, |ui| {
             crate::profile_scope!("render table");
-            show_table(ctx, ui, &scene.text_entries, scroll_to_row);
+            show_table(ctx, ui, state, &scene.text_entries, scroll_to_row);
         })
     })
     .response
@@ -240,6 +244,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
 fn show_table(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
+    state: &ViewTextState,
     text_entries: &[TextEntry],
     scroll_to_row: Option<usize>,
 ) {
@@ -276,31 +281,53 @@ fn show_table(
 
     let mut current_time_y = None;
 
+    let timelines = state
+        .filters
+        .show_timelines
+        .iter()
+        .filter_map(|(timeline, visible)| visible.then_some(timeline))
+        .collect::<Vec<_>>();
+
     // TODO(cmc): these column sizes have to be derived from the actual contents.
-    builder
+    let mut builder = builder
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(
             Size::initial(140.0).at_least(50.0), // timelines
-            ctx.log_db.time_points.0.len(),
-        ) // time(s)
-        .column(Size::initial(120.0).at_least(50.0)) // path
-        .column(Size::initial(50.0).at_least(50.0)) // level
-        .column(Size::remainder().at_least(200.0)) // body
+            timelines.len(),
+        ); // time(s)
+
+    if state.filters.show_obj_path {
+        builder = builder.column(Size::initial(120.0).at_least(50.0)); // path
+    }
+    if state.filters.show_log_level {
+        builder = builder.column(Size::initial(50.0).at_least(50.0)); // level
+    }
+    if state.filters.show_body {
+        builder = builder.column(Size::remainder().at_least(200.0)); // body
+    }
+
+    builder
         .header(HEADER_HEIGHT, |mut header| {
-            for timeline in ctx.log_db.time_points.0.keys() {
+            for timeline in &timelines {
                 header.col(|ui| {
                     ctx.timeline_button(ui, timeline);
                 });
             }
-            header.col(|ui| {
-                ui.strong("Path");
-            });
-            header.col(|ui| {
-                ui.strong("Level");
-            });
-            header.col(|ui| {
-                ui.strong("Body");
-            });
+            if state.filters.show_obj_path {
+                header.col(|ui| {
+                    ui.strong("Path");
+                });
+            }
+            if state.filters.show_log_level {
+                header.col(|ui| {
+                    ui.strong("Level");
+                });
+            }
+            if state.filters.show_body {
+                header.col(|ui| {
+                    ui.strong("Body");
+                });
+            }
         })
         .body(|body| {
             body.rows(ROW_HEIGHT, text_entries.len(), |index, mut row| {
@@ -322,12 +349,12 @@ fn show_table(
                 };
 
                 // time(s)
-                for timeline in ctx.log_db.time_points.0.keys() {
+                for timeline in &timelines {
                     row.col(|ui| {
                         if let Some(value) = time_point.0.get(timeline).copied() {
                             if let Some(current_time) = current_time {
                                 if current_time_y.is_none()
-                                    && timeline == &current_timeline
+                                    && *timeline == &current_timeline
                                     && value >= current_time
                                 {
                                     current_time_y = Some(ui.max_rect().top());
@@ -340,28 +367,34 @@ fn show_table(
                 }
 
                 // path
-                row.col(|ui| {
-                    ctx.obj_path_button(ui, &text_entry.obj_path);
-                });
+                if state.filters.show_obj_path {
+                    row.col(|ui| {
+                        ctx.obj_path_button(ui, &text_entry.obj_path);
+                    });
+                }
 
                 // level
-                row.col(|ui| {
-                    if let Some(lvl) = &text_entry.level {
-                        ui.label(level_to_rich_text(ui, lvl));
-                    } else {
-                        ui.label("-");
-                    }
-                });
+                if state.filters.show_log_level {
+                    row.col(|ui| {
+                        if let Some(lvl) = &text_entry.level {
+                            ui.label(level_to_rich_text(ui, lvl));
+                        } else {
+                            ui.label("-");
+                        }
+                    });
+                }
 
                 // body
-                row.col(|ui| {
-                    if let Some(c) = text_entry.color {
-                        let color = Color32::from_rgba_unmultiplied(c[0], c[1], c[2], c[3]);
-                        ui.colored_label(color, &text_entry.body);
-                    } else {
-                        ui.label(&text_entry.body);
-                    }
-                });
+                if state.filters.show_body {
+                    row.col(|ui| {
+                        if let Some(c) = text_entry.color {
+                            let color = Color32::from_rgba_unmultiplied(c[0], c[1], c[2], c[3]);
+                            ui.colored_label(color, &text_entry.body);
+                        } else {
+                            ui.label(&text_entry.body);
+                        }
+                    });
+                }
             });
         });
 

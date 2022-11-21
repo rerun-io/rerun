@@ -104,7 +104,7 @@ impl SceneText {
                                     .copied()
                                     .unwrap_or(true)
                             })
-                            .is_some()
+                            .unwrap_or(true)
                     })
                     .collect()
             });
