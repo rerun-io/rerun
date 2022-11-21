@@ -49,10 +49,10 @@ impl Annotations {
             Some(label.clone())
         } else {
             class_id.and_then(|id| {
-                self.context.class_map.get(&id).map_or_else(
-                    || Some(format!("unknown class id {}", id.0)),
-                    |desc| desc.info.label.as_ref().map(ToString::to_string),
-                )
+                self.context
+                    .class_map
+                    .get(&id)
+                    .and_then(|desc| desc.info.label.as_ref().map(ToString::to_string))
             })
         }
     }
