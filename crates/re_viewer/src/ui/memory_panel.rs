@@ -221,13 +221,12 @@ impl MemoryPanel {
                 ui.label("Memory tracking allocator not installed.");
             }
 
+            // TODO(emilk): show usage by different parts of the system. `if false` until then
             if false {
                 ui.label(format!(
                     "{:.2} MB used by the string interner",
-                    re_string_interner::bytes_used() as f32 / 1e6
+                    re_string_interner::bytes_used() as f32 / 1e6 // usually zero MB
                 ));
-
-                // TODO(emilk): show usage by different parts of the system
             }
         }
 
