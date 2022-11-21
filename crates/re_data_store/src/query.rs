@@ -174,6 +174,43 @@ fn get_primary_batch<'a, T>(
 
 // ----------------------------------------------------------------------------
 
+pub fn calculate_num_objects<'s, Time: 'static + Copy + Ord, T: DataTrait>(
+    obj_store: &'s ObjStore<Time>,
+    primary_field_name: &FieldName,
+    time_query: &TimeQuery<Time>,
+) -> usize {
+    crate::profile_function!();
+
+    let mut len = 0;
+    if obj_store.mono() {
+        let Some(primary) = obj_store.get_mono::<T>(primary_field_name) else {
+            return 0;
+        };
+        query(
+            &primary.history,
+            time_query,
+            |_time, _msg_id, _primary_value| {
+                len += 1;
+            },
+        );
+    } else {
+        let Some(primary) = obj_store.get_multi::<T>(primary_field_name) else {
+            return 0;
+        };
+        query(
+            &primary.history,
+            time_query,
+            |_time, _msg_id, primary_batch| {
+                if let Some(primary_batch) = get_primary_batch(primary_field_name, primary_batch) {
+                    len += primary_batch.len();
+                }
+            },
+        );
+    }
+
+    len
+}
+
 /// Query all objects of the same type path (but different index paths).
 pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
     obj_store: &'s ObjStore<Time>,

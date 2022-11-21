@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
-    query::{visit_type_data_2, visit_type_data_3, visit_type_data_4},
+    query::{calculate_num_objects, visit_type_data_2, visit_type_data_3, visit_type_data_4},
     FieldName, InstanceIdHash,
 };
 use re_log_types::{context::ClassId, DataVec, IndexHash, MsgId, ObjectType, Tensor};
@@ -221,7 +221,15 @@ impl Scene2D {
         let points = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
-                let mut batch = Vec::new();
+                let batch_size = calculate_num_objects::<_, [f32; 2]>(
+                    obj_store,
+                    &FieldName::from("pos"),
+                    &query.time_query,
+                );
+                // TODO(andreas): Make user configurable with this as the default.
+                let show_labels = batch_size < 10;
+                let mut batch = Vec::with_capacity(batch_size);
+
                 visit_type_data_4(
                     obj_store,
                     &FieldName::from("pos"),
@@ -244,8 +252,11 @@ impl Scene2D {
                             class_id.clone(),
                             DefaultColor::ObjPath(obj_path),
                         );
-                        let label = annotations.label(label, class_id);
-                        // TODO: Decide to skip label if too many.,
+                        let label = if show_labels {
+                            annotations.label(label, class_id)
+                        } else {
+                            None
+                        };
 
                         let paint_props = paint_properties(color, &None);
 

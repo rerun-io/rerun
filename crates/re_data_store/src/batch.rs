@@ -47,6 +47,19 @@ pub enum Batch<T> {
     IndexedBatch(IntMap<IndexHash, T>),
 }
 
+impl<T> Batch<T> {
+    pub fn len(&self) -> usize {
+        match self {
+            Batch::SequentialBatch(vec, _) => vec.len(),
+            Batch::IndexedBatch(map) => map.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
 impl<T: Clone> Batch<T> {
     #[inline(never)]
     pub fn new_indexed(

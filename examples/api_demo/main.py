@@ -50,13 +50,20 @@ def run_segmentation() -> None:
 
     # Log a bunch of classified 2D points
     rerun.log_point("seg_demo/single_point", np.array([64, 64]), class_id=13)
+    rerun.log_point("seg_demo/single_point_labeled", np.array([90, 50]), class_id=13, label="labeled point")
     rerun.log_points("seg_demo/several_points0", np.array([[20, 50], [100, 70], [60, 30]]), class_ids=42)
     rerun.log_points("seg_demo/several_points1", np.array([[40, 50], [120, 70], [80, 30]]),
                       class_ids=np.array([13, 42, 99], dtype=np.uint8))
+    rerun.log_points("seg_demo/many points", np.array([[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)]),
+                      class_ids=np.array([42], dtype=np.uint8))
+
+    rerun.log_text_entry("logs", "seg_demo shows no rects, default colored points, a single point has a label")
 
     # Log an initial segmentation map with arbitrary colors
     rerun.set_time_seconds("sim_time", 2)
     rerun.log_annotation_context("seg_demo", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
+    rerun.log_text_entry("logs", "seg_demo shows default colored rects, default colored points, "
+                                    "all points except the bottom right clusters have labels")
 
     # Log an updated segmentation map with specific colors
     rerun.set_time_seconds("sim_time", 3)
@@ -65,6 +72,7 @@ def run_segmentation() -> None:
         [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))],
         timeless=False,
     )
+    rerun.log_text_entry("logs", "seg_demo shows points/rects with user specified colors")
 
     # Log with a mixture of set and unset colors / labels
     rerun.set_time_seconds("sim_time", 4)
@@ -73,6 +81,7 @@ def run_segmentation() -> None:
         [ClassDescription(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), ClassDescription(99, label="label3")],
         timeless=False,
     )
+    rerun.log_text_entry("logs", "seg_demo label1 disappears and everything with label3 is now default colored again")
 
 
 def run_rects() -> None:
