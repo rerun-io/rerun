@@ -13,7 +13,7 @@ pub struct MemoryUse {
     /// This will be smaller than [`Self::gross`] because our memory allocator may not
     /// return all the memory we free to the OS.
     ///
-    /// `None` if [`re_memory::TrackingAllocator`] is not used.
+    /// `None` if [`crate::TrackingAllocator`] is not used.
     pub net: Option<i64>,
 }
 

@@ -6,7 +6,7 @@ pub struct MemoryLimit {
     /// Working Set on Windows.
     pub gross: Option<i64>,
 
-    /// Limit in bytes based compared to what is reported by [`re_memory::TrackingAllocator`].
+    /// Limit in bytes based compared to what is reported by [`crate::TrackingAllocator`].
     pub net: Option<i64>,
 }
 
