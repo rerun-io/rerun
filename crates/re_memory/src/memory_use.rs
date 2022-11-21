@@ -63,7 +63,7 @@ fn bytes_used_gross() -> Option<i64> {
 /// The difference to [`bytes_used_gross`] is memory allocated by `MiMalloc`.
 /// that hasn't been returned to the OS.
 ///
-/// `None` if [`re_memory::TrackingAllocator`] is not used.
+/// `None` if [`crate::TrackingAllocator`] is not used.
 fn bytes_used_net() -> Option<i64> {
     let num_bytes = crate::global_allocs_and_bytes().1;
     if num_bytes == 0 {
