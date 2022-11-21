@@ -6,7 +6,7 @@ use crate::{
     context::*,
     global_bindings::FrameUniformBuffer,
     renderer::{compositor::*, Drawable, Renderer},
-    resource_pools::{
+    wgpu_resource_pools::{
         bind_group_pool::GpuBindGroupHandleStrong, buffer_pool::BufferDesc, texture_pool::*,
     },
     DebugLabel,

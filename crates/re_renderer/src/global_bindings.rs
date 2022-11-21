@@ -1,12 +1,12 @@
 use crate::{
-    resource_pools::{
+    wgpu_buffer_types,
+    wgpu_resource_pools::{
         bind_group_layout_pool::*,
         bind_group_pool::*,
         buffer_pool::GpuBufferHandleStrong,
         sampler_pool::{GpuSamplerHandle, SamplerDesc},
         WgpuResourcePools,
     },
-    wgpu_buffer_types,
 };
 
 use bytemuck::{Pod, Zeroable};

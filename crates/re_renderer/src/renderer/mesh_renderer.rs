@@ -10,14 +10,14 @@ use crate::{
     include_file,
     mesh::{mesh_vertices, GpuMesh},
     resource_managers::{MeshHandle, MeshManager},
-    resource_pools::{
+    view_builder::ViewBuilder,
+    wgpu_resource_pools::{
         bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
         buffer_pool::{BufferDesc, GpuBufferHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
         render_pipeline_pool::{GpuRenderPipelineHandle, RenderPipelineDesc, VertexBufferLayout},
         shader_module_pool::ShaderModuleDesc,
     },
-    view_builder::ViewBuilder,
 };
 
 use super::*;

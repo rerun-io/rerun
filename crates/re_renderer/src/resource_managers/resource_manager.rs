@@ -1,6 +1,6 @@
 use slotmap::{Key, SecondaryMap, SlotMap};
 
-use crate::resource_pools::PoolError;
+use crate::wgpu_resource_pools::PoolError;
 
 /// Handle to a resource that is stored in a resource manager.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

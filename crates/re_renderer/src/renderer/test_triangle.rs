@@ -3,10 +3,10 @@ use smallvec::smallvec;
 use crate::{
     context::SharedRendererData,
     include_file,
-    resource_pools::{
+    view_builder::ViewBuilder,
+    wgpu_resource_pools::{
         pipeline_layout_pool::*, render_pipeline_pool::*, shader_module_pool::*, WgpuResourcePools,
     },
-    view_builder::ViewBuilder,
 };
 
 use super::*;

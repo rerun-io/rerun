@@ -1,7 +1,7 @@
 use crate::{
     context::SharedRendererData,
     include_file,
-    resource_pools::{
+    wgpu_resource_pools::{
         bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
         render_pipeline_pool::*, shader_module_pool::*, texture_pool::GpuTextureHandleStrong,
         WgpuResourcePools,

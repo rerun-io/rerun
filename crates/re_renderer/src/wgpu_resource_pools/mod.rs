@@ -1,4 +1,4 @@
-//! Resource pools are concerned with handling low level gpu resources efficiently.
+//! Wgpu resource pools are concerned with handling low level gpu resources efficiently.
 //!
 //! They facilitate easy creation and avoidance of unnecessary gpu allocations.
 //!

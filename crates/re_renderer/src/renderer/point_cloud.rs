@@ -22,7 +22,8 @@ use smallvec::smallvec;
 use crate::{
     include_file,
     renderer::utils::next_multiple_of,
-    resource_pools::{
+    view_builder::ViewBuilder,
+    wgpu_resource_pools::{
         bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
         bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
         pipeline_layout_pool::PipelineLayoutDesc,
@@ -30,7 +31,6 @@ use crate::{
         shader_module_pool::ShaderModuleDesc,
         texture_pool::TextureDesc,
     },
-    view_builder::ViewBuilder,
 };
 
 use super::*;

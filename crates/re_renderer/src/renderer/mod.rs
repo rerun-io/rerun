@@ -20,7 +20,7 @@ mod utils;
 
 use crate::{
     context::{RenderContext, SharedRendererData},
-    resource_pools::WgpuResourcePools,
+    wgpu_resource_pools::WgpuResourcePools,
     FileResolver, FileSystem,
 };
 
