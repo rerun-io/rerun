@@ -24,6 +24,8 @@ mod view_plot;
 mod view_tensor;
 mod view_text;
 
+pub(crate) mod memory_panel;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Preview {
     Small,

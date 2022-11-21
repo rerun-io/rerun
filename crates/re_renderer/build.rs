@@ -96,7 +96,7 @@ fn main() {
             "
             {{
                 let virtpath = ::std::path::Path::new({virtpath:?});
-                fs.create_file(&virtpath, include_str!({relpath:?}).into()).unwrap();
+                fs.create_file(virtpath, include_str!({relpath:?}).into()).unwrap();
             }}
             ",
         );

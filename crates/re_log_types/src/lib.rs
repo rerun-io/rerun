@@ -59,8 +59,6 @@ macro_rules! impl_into_enum {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct MsgId(re_tuid::Tuid);
 
-impl nohash_hasher::IsEnabled for MsgId {}
-
 impl MsgId {
     /// All zeroes.
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);

@@ -1,5 +1,7 @@
+use re_viewer::mem_tracker::TrackingAllocator;
+
 #[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+static GLOBAL: TrackingAllocator<mimalloc::MiMalloc> = TrackingAllocator::new(mimalloc::MiMalloc);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
