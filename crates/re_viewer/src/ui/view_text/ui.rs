@@ -25,6 +25,8 @@ pub struct ViewTextState {
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct ViewTextFilters {
+    // TODO:
+    //
     // column pickers
     // --------------
     //
@@ -45,9 +47,19 @@ pub struct ViewTextFilters {
     // -----
     //
     // - reset button
+    //
+    // NOTE:
+    // - Filters vs Selectors are in fact very different thing!
+
+    // Column selectors
     show_timelines: BTreeMap<Timeline, bool>,
-    show_obj_paths: BTreeMap<ObjPath, bool>,
-    show_log_levels: BTreeMap<String, bool>,
+    show_obj_path: bool,
+    show_log_level: bool,
+    show_body: bool,
+
+    // Column filters
+    filter_obj_paths: BTreeMap<ObjPath, bool>,
+    filter_log_levels: BTreeMap<String, bool>,
 }
 
 impl ViewTextFilters {
@@ -59,74 +71,96 @@ impl ViewTextFilters {
         }
 
         for obj_path in text_entries.iter().map(|te| &te.obj_path) {
-            self.show_obj_paths.entry(obj_path.clone()).or_default();
+            self.filter_obj_paths.entry(obj_path.clone()).or_default();
         }
 
         for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
-            self.show_log_levels.entry(level.clone()).or_default();
+            self.filter_log_levels.entry(level.clone()).or_default();
         }
     }
 
     pub(crate) fn show(&mut self, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        if ui.button("Reset all filters").clicked() {
-            let Self {
-                show_timelines,
-                show_obj_paths,
-                show_log_levels,
-            } = self;
-            for v in show_timelines.values_mut() {
-                *v = false;
+        ui.horizontal(|ui| {
+            ui.strong("Column selections");
+            if ui.button("Reset").clicked() {
+                let Self {
+                    show_timelines,
+                    show_obj_path,
+                    show_log_level,
+                    show_body,
+                    filter_obj_paths: _,
+                    filter_log_levels: _,
+                } = self;
+
+                for v in show_timelines.values_mut() {
+                    *v = false;
+                }
+                *show_obj_path = false;
+                *show_log_level = false;
+                *show_body = false;
             }
-            for v in show_obj_paths.values_mut() {
-                *v = false;
-            }
-            for v in show_log_levels.values_mut() {
-                *v = false;
-            }
-        }
+        });
 
         ui.add_space(2.0);
 
-        ui.horizontal(|ui| {
-            ui.label("Timeline filters");
-            if ui.button("Reset").clicked() {
-                for v in self.show_timelines.values_mut() {
-                    *v = false;
-                }
-            }
-        });
         for (timeline, visible) in &mut self.show_timelines {
-            ui.checkbox(visible, format!("Show '{}'", timeline.name()));
+            ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
+        }
+        ui.checkbox(&mut self.show_obj_path, "Object path");
+        ui.checkbox(&mut self.show_log_level, "Log level");
+        ui.checkbox(&mut self.show_body, "Body");
+
+        ui.add_space(4.0);
+
+        ui.horizontal(|ui| {
+            ui.strong("Column filters");
+            if ui.button("Reset").clicked() {
+                let Self {
+                    show_timelines: _,
+                    show_obj_path: _,
+                    show_log_level: _,
+                    show_body: _,
+                    filter_obj_paths,
+                    filter_log_levels,
+                } = self;
+
+                for v in filter_obj_paths.values_mut() {
+                    *v = false;
+                }
+                for v in filter_log_levels.values_mut() {
+                    *v = false;
+                }
+            }
+        });
+
+        ui.add_space(2.0);
+
+        ui.horizontal(|ui| {
+            ui.label("Object paths");
+            if ui.button("Reset").clicked() {
+                for v in self.filter_obj_paths.values_mut() {
+                    *v = false;
+                }
+            }
+        });
+        for (obj_path, visible) in &mut self.filter_obj_paths {
+            ui.checkbox(visible, format!("'{obj_path}'"));
         }
 
         ui.add_space(2.0);
 
         ui.horizontal(|ui| {
-            ui.label("Object filters");
+            ui.label("Log levels");
             if ui.button("Reset").clicked() {
-                for v in self.show_obj_paths.values_mut() {
+                self.filter_log_levels.clear();
+                for v in self.filter_log_levels.values_mut() {
                     *v = false;
                 }
             }
         });
-        for (obj_path, visible) in &mut self.show_obj_paths {
-            ui.checkbox(visible, format!("Show '{obj_path}'"));
-        }
-
-        ui.add_space(2.0);
-
-        ui.horizontal(|ui| {
-            ui.label("Log filters");
-            if ui.button("Reset").clicked() {
-                self.show_log_levels.clear();
-                for v in self.show_log_levels.values_mut() {
-                    *v = false;
-                }
-            }
-        });
-        for (log_level, visible) in &mut self.show_log_levels {
+        for (log_level, visible) in &mut self.filter_log_levels {
             ui.checkbox(visible, level_to_rich_text(ui, log_level));
         }
     }
