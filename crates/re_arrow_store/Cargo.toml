@@ -1,0 +1,18 @@
+[package]
+name = "re_arrow_store"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+re_log = { path = "../re_log" }
+re_log_types = { path = "../re_log_types" }
+thiserror = "1.0"
+
+polars = { version = "0.25", features = [
+  "fmt",
+  "dtype-time",
+  "dtype-struct",
+], default-features = false }

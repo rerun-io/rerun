@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
-use re_data_store::{arrow_log_db, log_db::LogDb};
+use re_data_store::log_db::LogDb;
 use re_log_types::*;
 
 use crate::{
@@ -32,7 +32,7 @@ pub struct App {
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
 
-    arrow_db: arrow_log_db::ArrowLogDb,
+    arrow_db: re_arrow_store::LogDb,
 
     /// What is serialized
     state: AppState,
@@ -126,7 +126,7 @@ impl App {
             design_tokens,
             rx,
             log_dbs,
-            arrow_db: arrow_log_db::ArrowLogDb::new(),
+            arrow_db: re_arrow_store::LogDb::new(),
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
@@ -246,7 +246,7 @@ impl eframe::App for App {
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
                 if let LogMsg::ArrowMsg(msg) = msg {
-                    self.arrow_db.add_msg(msg);
+                    self.arrow_db.consume_msg(msg);
                 } else {
                     log_db.add(msg);
                     if start.elapsed() > instant::Duration::from_millis(10) {

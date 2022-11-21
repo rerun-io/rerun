@@ -1,6 +1,13 @@
 import pyarrow as pa
 
-RectType = pa.struct([("x", pa.float32()), ("y", pa.float32()), ("w", pa.float32()), ("h", pa.float32())])
+RectType = pa.struct(
+    [
+        pa.field("x", pa.float32(), nullable=False),
+        pa.field("y", pa.float32(), nullable=False),
+        pa.field("w", pa.float32(), nullable=False),
+        pa.field("h", pa.float32(), nullable=False),
+    ]
+)
 RectField = pa.field(
     name="rect",
     type=pa.list_(RectType),
@@ -17,5 +24,14 @@ ColorField = pa.field(
     nullable=False,
     metadata={
         # "ARROW:extension:name": "rerun.rgbacolor",
+    },
+)
+
+ClearedField = pa.field(
+    name="cleared",
+    type=pa.bool_(),
+    nullable=True,
+    metadata={
+        # "ARROW:extension:name": "rerun.cleared",
     },
 )

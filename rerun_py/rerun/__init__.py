@@ -337,10 +337,9 @@ def log_rect(
         # TODO(jleibs): type registry?
         # TODO(jleibs): proper handling of rect_format
 
-        rect_arr = pa.array([tuple(rect) if rect else None], type=components.RectField.type)
+        rect_arr = pa.array([[tuple(rect) if rect else []]], type=components.RectField.type)
         colors = _normalize_colors(color)
-        color_arr = pa.array([u8_array_to_rgba(colors) if color else None], type=components.ColorField.type)
-
+        color_arr = pa.array([[u8_array_to_rgba(colors) if color else None]], type=components.ColorField.type)
         arr = pa.StructArray.from_arrays([rect_arr, color_arr], fields=[components.RectField, components.ColorField])
         rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
 
@@ -389,7 +388,6 @@ def log_rects(
         rect_arr = pa.array([[tuple(rect) for rect in rects]], type=components.RectField.type)
         color_arr = pa.array([[u8_array_to_rgba(color) for color in colors]], type=components.ColorField.type)
         arr = pa.StructArray.from_arrays([rect_arr, color_arr], fields=[components.RectField, components.ColorField])
-        print(arr)
         rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
 
 
@@ -958,6 +956,14 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
     If `recursive` is True this will also clear all sub-paths
     """
     rerun_sdk.log_cleared(obj_path, recursive)
+
+    if EXP_ARROW:
+        # TODO(jleibs): type registry?
+        # TODO(jleibs): proper handling of rect_format
+
+        cleared_arr = pa.array([True], type=components.ClearedField.type)
+        arr = pa.StructArray.from_arrays([cleared_arr], fields=[components.ClearedField])
+        rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
 
 
 @dataclass

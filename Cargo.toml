@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/*", "rerun_py", "run_wasm"]
+
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

@@ -1734,25 +1734,25 @@ fn log_arrow_msg(obj_path: &str, field_name: &str, msg: &PyAny) -> PyResult<()> 
     // I believe We can optimize this using some combination of calls to:
     // https://docs.rs/arrow2/latest/arrow2/io/ipc/write/fn.write.html
 
-    let mut fields = Vec::from(array.fields());
-    let mut cols = Vec::from(array.values());
+    let (mut fields, mut cols): (Vec<_>, Vec<_>) = time_point
+        .0
+        .iter()
+        .map(|(timeline, time)| {
+            let datatype = match timeline.typ() {
+                TimeType::Sequence => arrow2::datatypes::DataType::Int64,
+                TimeType::Time => arrow2::datatypes::DataType::Timestamp(
+                    arrow2::datatypes::TimeUnit::Nanosecond,
+                    None,
+                ),
+            };
+            let arr = arrow2::array::PrimitiveArray::from([Some(time.as_i64())]).to(datatype);
+            let field = Field::new(timeline.name().as_str(), arr.data_type().clone(), false);
+            (field, arr.boxed())
+        })
+        .unzip();
 
-    for (timeline, time) in time_point.0.iter() {
-        let datatype = match timeline.typ() {
-            TimeType::Sequence => arrow2::datatypes::DataType::Int64,
-            TimeType::Time => arrow2::datatypes::DataType::Timestamp(
-                arrow2::datatypes::TimeUnit::Nanosecond,
-                None,
-            ),
-        };
-        let arr = arrow2::array::PrimitiveArray::from([Some(time.as_i64())]).to(datatype);
-        fields.push(Field::new(
-            timeline.name().as_str(),
-            arr.data_type().clone(),
-            false,
-        ));
-        cols.push(arr.boxed());
-    }
+    fields.extend_from_slice(array.fields());
+    cols.extend_from_slice(array.values());
 
     let metadata = BTreeMap::from([
         ("ARROW:extension:name".into(), "rerun.logmsg".into()),
