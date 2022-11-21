@@ -8,7 +8,7 @@ publish = false
 
 
 [dependencies]
-egui = { version = "0.19", default-features = false }      # Used for `egui::util::History`. TODO(emilk): move to emath
+emath = "0.19"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 once_cell = "1.16"
 

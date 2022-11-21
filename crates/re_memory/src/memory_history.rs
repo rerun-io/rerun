@@ -1,4 +1,4 @@
-use egui::util::History;
+use emath::History;
 
 /// Returns monotonically increasing time in seconds.
 #[inline]
