@@ -24,11 +24,12 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-17 - secondary clicks on plots
-eframe = { git = "https://github.com/emilk/egui", rev = "dfc1f2c4703d54b7a7c9fd40e636f434569942b2" }
-egui = { git = "https://github.com/emilk/egui", rev = "dfc1f2c4703d54b7a7c9fd40e636f434569942b2" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "dfc1f2c4703d54b7a7c9fd40e636f434569942b2" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "dfc1f2c4703d54b7a7c9fd40e636f434569942b2" }
+# 2022-11-21 - move `egui::util::History` to `emath::History`.
+eframe = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
+egui = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
+emath = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
 
 # eframe = { path = "../egui/crates/eframe" }
 # egui = { path = "../egui/crates/egui" }

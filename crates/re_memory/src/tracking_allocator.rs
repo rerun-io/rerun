@@ -23,8 +23,12 @@ impl GlobalStats {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 /// Total number of live allocations,
-/// and the number of live bytes allocated.
+/// and the number of live bytes allocated as tracked by [`TrackingAllocator`].
+///
+/// Returns (0,0) if [`TrackingAllocator`] is not used.
 pub fn global_allocs_and_bytes() -> (usize, usize) {
     (
         GLOBAL_STATS.live_allocs.load(Relaxed),
@@ -34,6 +38,15 @@ pub fn global_allocs_and_bytes() -> (usize, usize) {
 
 // ----------------------------------------------------------------------------
 
+/// Install this as the global allocator to get memory usage tracking.
+///
+/// Usage:
+/// ```
+/// use re_memory::TrackingAllocator;
+///
+/// #[global_allocator]
+/// static GLOBAL: TrackingAllocator<std::alloc::System> = TrackingAllocator::new(std::alloc::System);
+/// ```
 #[derive(Default)]
 pub struct TrackingAllocator<InnerAllocator> {
     allocator: InnerAllocator,

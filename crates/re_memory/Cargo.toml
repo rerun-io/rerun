@@ -1,0 +1,17 @@
+[package]
+name = "re_memory"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+
+[dependencies]
+emath = "0.19"
+instant = { version = "0.1", features = ["wasm-bindgen"] }
+once_cell = "1.16"
+
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+memory-stats = "1.0"

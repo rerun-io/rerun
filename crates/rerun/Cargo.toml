@@ -24,6 +24,7 @@ web = ["re_ws_comms/server", "dep:re_web_server", "dep:webbrowser"]
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
+re_memory = { path = "../re_memory" }
 re_viewer = { path = "../re_viewer", features = [
   "puffin",
 ], default-features = false }

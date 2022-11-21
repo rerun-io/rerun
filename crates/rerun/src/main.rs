@@ -1,4 +1,4 @@
-use re_viewer::mem_tracker::TrackingAllocator;
+use re_memory::TrackingAllocator;
 
 #[global_allocator]
 static GLOBAL: TrackingAllocator<mimalloc::MiMalloc> = TrackingAllocator::new(mimalloc::MiMalloc);

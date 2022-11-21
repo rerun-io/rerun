@@ -351,14 +351,14 @@ impl App {
     fn prune_memory_if_needed(&mut self) {
         crate::profile_function!();
 
-        use crate::memory_panel::MemoryUse;
+        use re_memory::MemoryUse;
 
         if self.latest_memory_prune.elapsed() < instant::Duration::from_secs(30) {
             // Pruning introduces stutter, and we don't want to stutter too often.
             return;
         }
 
-        let limit = crate::memory_panel::MemoryLimit::from_env_vars();
+        let limit = re_memory::MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
         let mem_use_before = MemoryUse::capture();
 
         if limit.is_exceeded_by(&mem_use_before) {
