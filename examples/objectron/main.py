@@ -9,6 +9,7 @@ import argparse
 import math
 import os
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, List
@@ -49,7 +50,7 @@ class SampleARFrame:
     image_path: Path
 
 
-def read_ar_frames(dirpath: Path, nb_frames: int, forever: bool = False) -> Iterator[SampleARFrame]:
+def read_ar_frames(dirpath: Path, nb_frames: int) -> Iterator[SampleARFrame]:
     """
     Loads up to `nb_frames` consecutive ARFrames from the given path on disk.
 
@@ -62,30 +63,27 @@ def read_ar_frames(dirpath: Path, nb_frames: int, forever: bool = False) -> Iter
     time_offset = 0
     frame_offset = 0
 
-    run = True
-    while run:
-        frame_idx = 0
-        data = Path(path).read_bytes()
-        while len(data) > 0 and frame_idx < nb_frames:
-            next_len = int.from_bytes(data[:4], byteorder="little", signed=False)
-            data = data[4:]
+    frame_idx = 0
+    data = Path(path).read_bytes()
+    while len(data) > 0 and frame_idx < nb_frames:
+        next_len = int.from_bytes(data[:4], byteorder="little", signed=False)
+        data = data[4:]
 
-            frame = ARFrame().parse(data[:next_len])
-            img_path = Path(os.path.join(dirpath, f"video/{frame_idx}.jpg"))
-            yield SampleARFrame(
-                index=frame_idx + frame_offset,
-                timestamp=frame.timestamp + time_offset,
-                dirpath=dirpath,
-                frame=frame,
-                image_path=img_path,
-            )
+        frame = ARFrame().parse(data[:next_len])
+        img_path = Path(os.path.join(dirpath, f"video/{frame_idx}.jpg"))
+        yield SampleARFrame(
+            index=frame_idx + frame_offset,
+            timestamp=frame.timestamp + time_offset,
+            dirpath=dirpath,
+            frame=frame,
+            image_path=img_path,
+        )
 
-            data = data[next_len:]
-            frame_idx += 1
+        data = data[next_len:]
+        frame_idx += 1
 
-        run = forever
-        time_offset += frame.timestamp
-        frame_offset += frame_idx
+    time_offset += frame.timestamp
+    frame_offset += frame_idx
 
 
 def read_annotations(dirpath: Path) -> Sequence:
@@ -104,23 +102,36 @@ def read_annotations(dirpath: Path) -> Sequence:
     return seq
 
 
-def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
+def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence, run_forever: bool) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
+    print("Logging AR frames…")
     rerun.log_view_coordinates("world", up="+Y", timeless=True)
 
-    frame_times = []
-    for sample in samples:
-        rerun.set_time_sequence("frame", sample.index)
-        rerun.set_time_seconds("time", sample.timestamp)
-        frame_times.append(sample.timestamp)
+    frame_offset = 0
+    time_offset = 0.0
 
-        rerun.log_image_file("world/camera/video", sample.image_path, img_format=ImageFormat.JPEG)
-        log_camera(sample.frame.camera)
-        log_point_cloud(sample.frame.raw_feature_points)
+    while True:
+        frame_times = []
+        for sample in samples:
+            rerun.set_time_sequence("frame", frame_offset + sample.index)
+            rerun.set_time_seconds("time", time_offset + sample.timestamp)
+            frame_times.append(sample.timestamp)
 
-    log_annotated_bboxes(seq.objects)
-    log_frame_annotations(frame_times, seq.frame_annotations)
+            rerun.log_image_file("world/camera/video", sample.image_path, img_format=ImageFormat.JPEG)
+            log_camera(sample.frame.camera)
+            log_point_cloud(sample.frame.raw_feature_points)
+
+        log_annotated_bboxes(seq.objects)
+        log_frame_annotations(frame_times, seq.frame_annotations, frame_offset=frame_offset, time_offset=time_offset)
+
+        if run_forever:
+            time.sleep(10.0)  # give rerun a chance to keep up
+            frame_offset += len(frame_times) + 10
+            time_offset += frame_times[len(frame_times) - 1] + 0.33
+            print(f"…and again (frame_offset: {frame_offset}, time_offset: {time_offset})")
+        else:
+            break
 
 
 def log_camera(cam: ARCamera) -> None:
@@ -185,7 +196,9 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
         )
 
 
-def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]) -> None:
+def log_frame_annotations(
+    frame_times: List[float], frame_annotations: List[FrameAnnotation], frame_offset: int, time_offset: float
+) -> None:
     """Maps annotations to their associated `ARFrame` then logs them using the Rerun SDK."""
 
     for frame_ann in frame_annotations:
@@ -193,9 +206,8 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
         if frame_idx >= len(frame_times):
             continue
 
-        time = frame_times[frame_idx]
-        rerun.set_time_sequence("frame", frame_idx)
-        rerun.set_time_seconds("time", time)
+        rerun.set_time_sequence("frame", frame_offset + frame_idx)
+        rerun.set_time_seconds("time", time_offset + frame_times[frame_idx])
 
         for obj_ann in frame_ann.annotations:
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
@@ -286,9 +298,9 @@ def main() -> None:
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 
-    samples = read_ar_frames(dir, args.frames, args.run_forever)
+    samples = read_ar_frames(dir, args.frames)
     seq = read_annotations(dir)
-    log_ar_frames(samples, seq)
+    log_ar_frames(samples, seq, args.run_forever)
 
     if args.save is not None:
         rerun.save(args.save)
