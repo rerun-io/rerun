@@ -8,6 +8,7 @@ Example usage:
 
 import argparse
 import logging
+import math
 import os
 from pathlib import Path
 from time import sleep
@@ -92,6 +93,17 @@ def run_segmentation() -> None:
     rerun.log_text_entry("seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
 
 
+def run_points_3d() -> None:
+    rerun.set_time_seconds("sim_time", 1)
+    rerun.log_point("3d_points/single_point_unlabeled", np.array([10.0, 0.0, 0.0]))
+    rerun.log_point("3d_points/single_point_labeled", np.array([0.0, 0.0, 0.0]), label="labeled point")
+    rerun.log_points("3d_points/spiral_small",
+        np.array([[math.sin(i*0.2) * 5, math.cos(i*0.2) * 5 + 10.0, i * 4.0 - 5.0] for i in range(9)]),
+        labels=[str(i) for i in range(9)])
+    rerun.log_points("3d_points/spiral_big",
+        np.array([[math.sin(i*0.2) * 5, math.cos(i*0.2) * 5 - 10.0, i * 0.4 - 5.0] for i in range(100)]),
+        labels=[str(i) for i in range(100)])
+
 def run_rects() -> None:
     import random
 
@@ -147,6 +159,7 @@ def main() -> None:
         "rects": run_rects,
         "text": run_text_logs,
         "log_cleared": run_log_cleared,
+        "3d_points": run_points_3d,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

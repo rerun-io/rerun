@@ -4,7 +4,10 @@ use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
-use re_data_store::query::{visit_type_data_1, visit_type_data_2, visit_type_data_3};
+use re_data_store::query::{
+    calculate_num_objects, visit_type_data_1, visit_type_data_2, visit_type_data_3,
+    visit_type_data_4,
+};
 use re_data_store::{FieldName, InstanceIdHash};
 use re_log_types::context::ClassId;
 use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
@@ -168,28 +171,46 @@ impl Scene3D {
         query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
             .for_each(|(_obj_type, obj_path, obj_store)| {
-                visit_type_data_3(
+                let batch_size = calculate_num_objects::<_, [f32; 3]>(
                     obj_store,
                     &FieldName::from("pos"),
                     &query.time_query,
-                    ("color", "radius", "class_id"),
+                );
+                // TODO(andreas): Make user configurable with this as the default.
+                let show_labels = batch_size < 10;
+
+                visit_type_data_4(
+                    obj_store,
+                    &FieldName::from("pos"),
+                    &query.time_query,
+                    ("color", "radius", "class_id", "label"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 3],
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>,
-                     class_id: Option<&i32>| {
+                     class_id: Option<&i32>,
+                     label: Option<&String>| {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
                         let annotations = self.annotation_map.find(obj_path);
+                        let class_id = class_id.map(|i| ClassId(*i as _));
                         let color = annotations.color(
                             color,
-                            class_id.map(|i| ClassId(*i as _)),
+                            class_id.clone(),
                             DefaultColor::ObjPath(obj_path),
                         );
+                        if show_labels {
+                            if let Some(label) = annotations.label(label, class_id) {
+                                self.labels.push(Label3D {
+                                    text: label,
+                                    origin: Vec3::from_slice(pos),
+                                });
+                            }
+                        }
 
                         self.points.push(Point3D {
                             instance_id_hash,
