@@ -1,10 +1,8 @@
 use crate::{
     wgpu_buffer_types,
     wgpu_resource_pools::{
-        bind_group_layout_pool::*,
-        bind_group_pool::*,
-        buffer_pool::GpuBufferHandleStrong,
-        sampler_pool::{GpuSamplerHandle, SamplerDesc},
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
+        GpuBindGroupLayoutHandle, GpuBufferHandleStrong, GpuSamplerHandle, SamplerDesc,
         WgpuResourcePools,
     },
 };

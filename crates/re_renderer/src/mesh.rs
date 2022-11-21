@@ -7,8 +7,7 @@ use crate::{
     renderer::MeshRenderer,
     resource_managers::{ResourceManagerError, Texture2DHandle, TextureManager2D},
     wgpu_resource_pools::{
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
-        buffer_pool::{BufferDesc, GpuBufferHandleStrong},
+        BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroupHandleStrong, GpuBufferHandleStrong,
         WgpuResourcePools,
     },
 };
@@ -18,7 +17,7 @@ use crate::{
 /// Mesh vertices consist of two vertex buffers right now.
 /// One for positions ([`glam::Vec3`]) and one for the rest, called [`mesh_vertices::MeshVertexData`] here
 pub mod mesh_vertices {
-    use crate::wgpu_resource_pools::render_pipeline_pool::VertexBufferLayout;
+    use crate::wgpu_resource_pools::VertexBufferLayout;
     use smallvec::smallvec;
 
     /// Mesh vertex as used in gpu residing vertex buffers.

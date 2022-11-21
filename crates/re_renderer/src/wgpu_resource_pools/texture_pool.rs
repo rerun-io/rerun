@@ -57,7 +57,7 @@ impl TextureDesc {
 }
 
 #[derive(Default)]
-pub(crate) struct GpuTexturePool {
+pub struct GpuTexturePool {
     pool: DynamicResourcePool<GpuTextureHandle, TextureDesc, GpuTexture>,
 }
 

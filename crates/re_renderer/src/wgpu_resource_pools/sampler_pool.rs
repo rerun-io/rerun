@@ -3,10 +3,10 @@ use std::{hash::Hash, num::NonZeroU8};
 use super::{resource::*, static_resource_pool::*};
 use crate::debug_label::DebugLabel;
 
-slotmap::new_key_type! { pub(crate) struct GpuSamplerHandle; }
+slotmap::new_key_type! { pub struct GpuSamplerHandle; }
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
-pub(crate) struct SamplerDesc {
+pub struct SamplerDesc {
     /// Debug label of the sampler. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
 
@@ -39,7 +39,7 @@ pub(crate) struct SamplerDesc {
 }
 
 #[derive(Default)]
-pub(crate) struct GpuSamplerPool {
+pub struct GpuSamplerPool {
     pool: StaticResourcePool<GpuSamplerHandle, SamplerDesc, wgpu::Sampler>,
 }
 

@@ -1,10 +1,7 @@
 use std::num::NonZeroU32;
 
 use crate::{
-    wgpu_resource_pools::{
-        texture_pool::{GpuTextureHandleStrong, TextureDesc},
-        WgpuResourcePools,
-    },
+    wgpu_resource_pools::{GpuTextureHandleStrong, TextureDesc, WgpuResourcePools},
     DebugLabel,
 };
 

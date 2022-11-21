@@ -2,9 +2,9 @@ use crate::{
     context::SharedRendererData,
     include_file,
     wgpu_resource_pools::{
-        bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, shader_module_pool::*, texture_pool::GpuTextureHandleStrong,
-        WgpuResourcePools,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
+        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, GpuTextureHandleStrong,
+        PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc, WgpuResourcePools,
     },
 };
 
@@ -19,7 +19,7 @@ pub struct Compositor {
 
 #[derive(Clone)]
 pub struct CompositorDrawable {
-    /// [`GpuBindGroup`] pointing at the current image source and
+    /// [`GpuBindGroupHandleStrong`] pointing at the current image source and
     /// a uniform buffer for describing a tonemapper/compositor configuration.
     bind_group: GpuBindGroupHandleStrong,
 }

@@ -5,7 +5,7 @@ use crate::{
     include_file,
     view_builder::ViewBuilder,
     wgpu_resource_pools::{
-        pipeline_layout_pool::*, render_pipeline_pool::*, shader_module_pool::*, WgpuResourcePools,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
     },
 };
 

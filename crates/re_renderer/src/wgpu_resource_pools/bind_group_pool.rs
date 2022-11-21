@@ -40,7 +40,7 @@ impl std::ops::Deref for GpuBindGroupHandleStrong {
 //                Seems though this requires us to have duplicate versions of BindGroupDesc/Entry structs
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub(crate) enum BindGroupEntry {
+pub enum BindGroupEntry {
     DefaultTextureView(GpuTextureHandle), // TODO(andreas) what about non-default views?
     Buffer {
         handle: GpuBufferHandle,
@@ -59,7 +59,7 @@ pub(crate) enum BindGroupEntry {
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub(crate) struct BindGroupDesc {
+pub struct BindGroupDesc {
     /// Debug label of the bind group. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
     pub entries: SmallVec<[BindGroupEntry; 4]>,
@@ -81,7 +81,7 @@ pub(crate) struct BindGroupDesc {
 /// The question whether a bind groups happen to be re-usable becomes again a simple question of matching
 /// bind group descs which itself does not contain any strong references either.
 #[derive(Default)]
-pub(crate) struct GpuBindGroupPool {
+pub struct GpuBindGroupPool {
     // Use a DynamicResourcePool because it gives out reference counted handles
     // which makes interacting with buffer/textures easier.
     //

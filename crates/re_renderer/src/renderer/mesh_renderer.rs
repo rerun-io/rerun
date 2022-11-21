@@ -12,11 +12,9 @@ use crate::{
     resource_managers::{MeshHandle, MeshManager},
     view_builder::ViewBuilder,
     wgpu_resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
-        buffer_pool::{BufferDesc, GpuBufferHandleStrong},
-        pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::{GpuRenderPipelineHandle, RenderPipelineDesc, VertexBufferLayout},
-        shader_module_pool::ShaderModuleDesc,
+        BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBufferHandleStrong,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
+        VertexBufferLayout,
     },
 };
 

@@ -106,12 +106,9 @@ use crate::{
     renderer::utils::next_multiple_of,
     view_builder::ViewBuilder,
     wgpu_resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
-        pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::*,
-        shader_module_pool::ShaderModuleDesc,
-        texture_pool::TextureDesc,
+        BindGroupDesc, BindGroupLayoutDesc, GpuBindGroupHandleStrong, GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
+        TextureDesc, BindGroupEntry,
     },
 };
 

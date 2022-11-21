@@ -6,27 +6,45 @@
 //! This is in contrast to the [`crate::resource_managers`] which are concerned with
 //! higher level resources that arise from processing user provided data.
 
-pub(crate) mod bind_group_layout_pool;
-pub(crate) mod bind_group_pool;
-pub(crate) mod buffer_pool;
-pub(crate) mod pipeline_layout_pool;
-pub(crate) mod render_pipeline_pool;
-pub(crate) mod sampler_pool;
-pub(crate) mod shader_module_pool;
-pub(crate) mod texture_pool;
+mod bind_group_layout_pool;
+pub use bind_group_layout_pool::{
+    BindGroupLayoutDesc, GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool,
+};
+
+mod bind_group_pool;
+pub use bind_group_pool::{
+    BindGroupDesc, BindGroupEntry, GpuBindGroupHandle, GpuBindGroupHandleStrong, GpuBindGroupPool,
+};
+
+mod buffer_pool;
+pub use buffer_pool::{BufferDesc, GpuBufferHandle, GpuBufferHandleStrong, GpuBufferPool};
+
+mod pipeline_layout_pool;
+pub use pipeline_layout_pool::{
+    GpuPipelineLayoutHandle, GpuPipelineLayoutPool, PipelineLayoutDesc,
+};
+
+mod render_pipeline_pool;
+pub use render_pipeline_pool::{
+    GpuRenderPipelineHandle, GpuRenderPipelinePool, RenderPipelineDesc, VertexBufferLayout,
+};
+
+mod sampler_pool;
+pub use sampler_pool::{GpuSamplerHandle, GpuSamplerPool, SamplerDesc};
+
+mod shader_module_pool;
+pub use shader_module_pool::{GpuShaderModuleHandle, GpuShaderModulePool, ShaderModuleDesc};
+
+mod texture_pool;
+pub use texture_pool::{
+    GpuTexture, GpuTextureHandle, GpuTextureHandleStrong, GpuTexturePool, TextureDesc,
+};
+
+mod resource;
+pub use resource::PoolError;
 
 mod dynamic_resource_pool;
 mod static_resource_pool;
-
-mod resource;
-pub(crate) use resource::PoolError;
-
-use self::{
-    bind_group_layout_pool::GpuBindGroupLayoutPool, bind_group_pool::GpuBindGroupPool,
-    buffer_pool::GpuBufferPool, pipeline_layout_pool::GpuPipelineLayoutPool,
-    render_pipeline_pool::GpuRenderPipelinePool, sampler_pool::GpuSamplerPool,
-    shader_module_pool::GpuShaderModulePool, texture_pool::GpuTexturePool,
-};
 
 /// Collection of all wgpu resource pools.
 ///
