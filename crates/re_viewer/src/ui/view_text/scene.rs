@@ -3,6 +3,8 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 
 use crate::{ui::SceneQuery, ViewerContext};
 
+use super::ViewTextState;
+
 // ---
 
 /// A single text entry.
@@ -26,19 +28,40 @@ pub struct SceneText {
 
 impl SceneText {
     /// Loads all text objects into the scene according to the given query.
-    pub(crate) fn load_objects(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub(crate) fn load_objects(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        state: &ViewTextState,
+    ) {
         crate::profile_function!();
 
-        self.load_text_entries(ctx, query);
+        self.load_text_entries(ctx, query, state);
     }
 
-    fn load_text_entries(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_text_entries(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        state: &ViewTextState,
+    ) {
         crate::profile_function!();
 
         let text_entries = query
             .iter_object_stores(ctx.log_db, &[ObjectType::TextEntry])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
+
+                let is_obj_path_visible = state
+                    .filters
+                    .filter_obj_paths
+                    .get(&obj_path)
+                    .copied()
+                    .unwrap_or(true);
+                if !is_obj_path_visible {
+                    return batch;
+                }
+
                 // TODO(cmc): We're cloning full strings here, which is very much a bad idea.
                 // We need to change the internal storage so that we store ref-counted strings
                 // rather than plain strings.
@@ -67,7 +90,23 @@ impl SceneText {
                         });
                     },
                 );
+
                 batch
+                    .into_iter()
+                    .filter(|te| {
+                        te.level
+                            .as_ref()
+                            .map(|lvl| {
+                                state
+                                    .filters
+                                    .filter_log_levels
+                                    .get(lvl)
+                                    .copied()
+                                    .unwrap_or(true)
+                            })
+                            .is_some()
+                    })
+                    .collect()
             });
 
         self.text_entries.extend(text_entries);

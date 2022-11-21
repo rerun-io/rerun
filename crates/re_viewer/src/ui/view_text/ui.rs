@@ -20,7 +20,7 @@ pub struct ViewTextState {
     /// text entry window however they please when the time cursor isn't moving.
     latest_time: i64,
 
-    filters: ViewTextFilters,
+    pub filters: ViewTextFilters,
 }
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
@@ -52,14 +52,14 @@ pub struct ViewTextFilters {
     // - Filters vs Selectors are in fact very different thing!
 
     // Column selectors
-    show_timelines: BTreeMap<Timeline, bool>,
-    show_obj_path: bool,
-    show_log_level: bool,
-    show_body: bool,
+    pub show_timelines: BTreeMap<Timeline, bool>,
+    pub show_obj_path: bool,
+    pub show_log_level: bool,
+    pub show_body: bool,
 
     // Column filters
-    filter_obj_paths: BTreeMap<ObjPath, bool>,
-    filter_log_levels: BTreeMap<String, bool>,
+    pub filter_obj_paths: BTreeMap<ObjPath, bool>,
+    pub filter_log_levels: BTreeMap<String, bool>,
 }
 
 impl ViewTextFilters {
