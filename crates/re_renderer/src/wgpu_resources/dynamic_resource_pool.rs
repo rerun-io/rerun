@@ -142,7 +142,7 @@ mod tests {
     use slotmap::Key;
 
     use super::DynamicResourcePool;
-    use crate::wgpu_resource_pools::resource::PoolError;
+    use crate::wgpu_resources::resource::PoolError;
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
 

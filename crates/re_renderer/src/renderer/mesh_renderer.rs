@@ -11,7 +11,7 @@ use crate::{
     mesh::{mesh_vertices, GpuMesh},
     resource_managers::{MeshHandle, MeshManager},
     view_builder::ViewBuilder,
-    wgpu_resource_pools::{
+    wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBufferHandleStrong,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
         VertexBufferLayout,

@@ -105,10 +105,10 @@ use crate::{
     include_file,
     renderer::utils::next_multiple_of,
     view_builder::ViewBuilder,
-    wgpu_resource_pools::{
-        BindGroupDesc, BindGroupLayoutDesc, GpuBindGroupHandleStrong, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
-        TextureDesc, BindGroupEntry,
+    wgpu_resources::{
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
+        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
+        ShaderModuleDesc, TextureDesc,
     },
 };
 

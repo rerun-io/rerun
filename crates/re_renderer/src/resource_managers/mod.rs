@@ -4,7 +4,7 @@
 //! They facilitate lazy gpu upload and resource usage.
 //!
 //!
-//! This is in contrast to the `crate::wgpu_resource_pools` which are exclusively concerned with
+//! This is in contrast to the pools in `crate::wgpu_resources` which are exclusively concerned with
 //! low level gpu resources and their efficient allocation.
 
 mod mesh_manager;

@@ -20,7 +20,7 @@ mod global_bindings;
 pub mod mesh;
 
 mod wgpu_buffer_types;
-mod wgpu_resource_pools;
+mod wgpu_resources;
 
 mod file_system;
 pub use self::file_system::{get_filesystem, FileSystem};

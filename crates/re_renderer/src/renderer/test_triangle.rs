@@ -4,7 +4,7 @@ use crate::{
     context::SharedRendererData,
     include_file,
     view_builder::ViewBuilder,
-    wgpu_resource_pools::{
+    wgpu_resources::{
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
     },
 };
