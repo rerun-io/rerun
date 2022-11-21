@@ -19,7 +19,7 @@ pub struct MemoryHistory {
 
 impl Default for MemoryHistory {
     fn default() -> Self {
-        let max_elems = 128 * 1024;
+        let max_elems = 32 * 1024;
         let max_seconds = f32::INFINITY;
         Self {
             gross: History::new(0..max_elems, max_seconds),

@@ -29,6 +29,21 @@ impl MemoryPanel {
         // We show realtime stats, so keep showing the latest!
         ui.ctx().request_repaint();
 
+        egui::SidePanel::left("not_the_plot")
+            .resizable(false)
+            .min_width(250.0)
+            .default_width(300.0)
+            .show_inside(ui, |ui| {
+                Self::left_side(ui);
+            });
+
+        egui::CentralPanel::default().show_inside(ui, |ui| {
+            ui.label("🗠 Memory use over time");
+            self.plot(ui);
+        });
+    }
+
+    fn left_side(ui: &mut egui::Ui) {
         let limit = MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
         if let Some(gross_limit) = limit.gross {
             ui.label(format!(
@@ -37,6 +52,7 @@ impl MemoryPanel {
             ));
         } else {
             ui.label("You can use the environment variable RERUN_MEMORY_LIMIT to set an upper limit of memory use. For instance: 'RERUN_MEMORY_LIMIT=16GB'.");
+            ui.separator();
         }
 
         let mem_use = MemoryUse::capture();
@@ -54,32 +70,17 @@ impl MemoryPanel {
             } else if cfg!(debug_assertions) {
                 ui.label("Memory tracking allocator not installed.");
             }
-
-            // TODO(emilk): show usage by different parts of the system. `if false` until then
-            if false {
-                ui.label(format!(
-                    "{} used by the string interner",
-                    format_bytes(re_string_interner::bytes_used() as _) // usually zero MB
-                ));
-            }
         }
 
         let max_callstacks = 100;
         if let Some(tracking_stats) = re_memory::tracking_allocator::tracking_stats(max_callstacks)
         {
+            ui.style_mut().wrap = Some(false);
             Self::tracking_stats(ui, tracking_stats);
         } else {
-            ui.label("You can turn on detailed memory tracking with RERUN_TRACK_ALLOCATIONS=1");
+            ui.separator();
+            ui.label("Set RERUN_TRACK_ALLOCATIONS=1 to turn on detailed allocation tracking.");
         }
-
-        if !self.history.is_empty() {
-            egui::CollapsingHeader::new("Memory over time")
-                .default_open(true)
-                .show(ui, |ui| {
-                    self.plot(ui);
-                });
-        }
-        // plot fills the available height, so must come last
     }
 
     fn tracking_stats(
@@ -109,6 +110,7 @@ impl MemoryPanel {
                 egui::ScrollArea::vertical()
                     .max_height(300.0)
                     .show(ui, |ui| {
+                        ui.set_min_width(750.0);
                         for callstack in tracking_stats.top_callstacks {
                             if ui
                                 .button(format!(
@@ -132,6 +134,8 @@ impl MemoryPanel {
     }
 
     fn plot(&self, ui: &mut egui::Ui) {
+        crate::profile_function!();
+
         use itertools::Itertools as _;
 
         fn to_line(history: &egui::util::History<i64>) -> egui::plot::Line {
@@ -144,15 +148,31 @@ impl MemoryPanel {
         }
 
         egui::plot::Plot::new("mem_history_plot")
-            .include_y(0.0)
+            .min_size(egui::Vec2::splat(200.0))
             .label_formatter(|name, value| format!("{}: {}", name, format_bytes(value.y)))
             .x_axis_formatter(|time, _| format!("{} s", time))
             .y_axis_formatter(|bytes, _| format_bytes(bytes))
             .show_x(false)
             .legend(egui::plot::Legend::default().position(egui::plot::Corner::LeftTop))
+            .include_y(0.0)
+            // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
-                plot_ui.line(to_line(&self.history.gross).name("gross"));
-                plot_ui.line(to_line(&self.history.net).name("net"));
+                let limit = MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
+                if let Some(gross_limit) = limit.gross {
+                    plot_ui.hline(
+                        egui::plot::HLine::new(gross_limit as f64)
+                            .name("Gross limit")
+                            .width(1.0),
+                    );
+                }
+                if let Some(net_limit) = limit.net {
+                    plot_ui.hline(
+                        egui::plot::HLine::new(net_limit as f64)
+                            .name("Net limit")
+                            .width(1.0),
+                    );
+                }
+
                 for &time in &self.memory_purge_times {
                     plot_ui.vline(
                         egui::plot::VLine::new(time)
@@ -161,6 +181,9 @@ impl MemoryPanel {
                             .width(2.0),
                     );
                 }
+
+                plot_ui.line(to_line(&self.history.gross).name("Gross use").width(1.5));
+                plot_ui.line(to_line(&self.history.net).name("Net use").width(1.5));
             });
     }
 }
