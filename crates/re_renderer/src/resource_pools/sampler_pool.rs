@@ -9,8 +9,6 @@ pub(crate) struct GpuSampler {
     pub(crate) sampler: wgpu::Sampler,
 }
 
-impl Resource for GpuSampler {}
-
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub(crate) struct SamplerDesc {
     /// Debug label of the sampler. This will show up in graphics debuggers for easy identification.
@@ -75,5 +73,9 @@ impl GpuSamplerPool {
 
     pub fn get_resource(&self, handle: GpuSamplerHandle) -> Result<&GpuSampler, PoolError> {
         self.pool.get_resource(handle)
+    }
+
+    pub fn frame_maintenance(&mut self, frame_index: u64) {
+        self.pool.current_frame_index = frame_index;
     }
 }

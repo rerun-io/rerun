@@ -8,8 +8,6 @@ pub struct GpuBindGroupLayout {
     pub layout: wgpu::BindGroupLayout,
 }
 
-impl Resource for GpuBindGroupLayout {}
-
 #[derive(Clone, Hash, PartialEq, Eq, Default)]
 pub struct BindGroupLayoutDesc {
     /// Debug label of the bind group layout. This will show up in graphics debuggers for easy identification.
@@ -43,5 +41,9 @@ impl GpuBindGroupLayoutPool {
         handle: GpuBindGroupLayoutHandle,
     ) -> Result<&GpuBindGroupLayout, PoolError> {
         self.pool.get_resource(handle)
+    }
+
+    pub fn frame_maintenance(&mut self, frame_index: u64) {
+        self.pool.current_frame_index = frame_index;
     }
 }

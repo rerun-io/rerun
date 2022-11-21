@@ -1,4 +1,4 @@
-use std::{hash::Hash, sync::atomic::AtomicU64};
+use std::hash::Hash;
 
 use crate::debug_label::DebugLabel;
 
@@ -11,16 +11,9 @@ slotmap::new_key_type! { pub struct GpuTextureHandle; }
 pub type GpuTextureHandleStrong = std::sync::Arc<GpuTextureHandle>;
 
 pub(crate) struct GpuTexture {
-    last_frame_used: AtomicU64,
     pub(crate) texture: wgpu::Texture,
     pub(crate) default_view: wgpu::TextureView,
     // TODO(andreas) what about custom views
-}
-
-impl UsageTrackedResource for GpuTexture {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
-    }
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -76,7 +69,6 @@ impl GpuTexturePool {
             let texture = device.create_texture(&desc.to_wgpu_desc());
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             GpuTexture {
-                last_frame_used: AtomicU64::new(0),
                 texture,
                 default_view: view,
             }

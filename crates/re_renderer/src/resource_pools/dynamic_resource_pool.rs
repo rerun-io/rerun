@@ -49,7 +49,6 @@ impl<Handle, Desc, Res> DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
     Desc: Clone + Eq + Hash + Debug,
-    Res: Resource,
 {
     pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
         // First check if we can reclaim a resource we have around from a previous frame.
@@ -75,10 +74,7 @@ where
     pub fn get_resource(&self, handle: Handle) -> Result<&Res, PoolError> {
         self.resources
             .get(handle)
-            .map(|(_, resource)| {
-                resource.on_handle_resolve(self.current_frame_index);
-                resource
-            })
+            .map(|(_, resource)| resource)
             .ok_or_else(|| {
                 if handle.is_null() {
                     PoolError::NullHandle
@@ -146,7 +142,7 @@ mod tests {
     use slotmap::Key;
 
     use super::DynamicResourcePool;
-    use crate::resource_pools::resource::{PoolError, Resource};
+    use crate::resource_pools::resource::PoolError;
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
 
@@ -162,10 +158,6 @@ mod tests {
         fn drop(&mut self) {
             RESOURCE_DROP_COUNTER.fetch_add(1, Ordering::Relaxed);
         }
-    }
-
-    impl Resource for ConcreteResource {
-        fn on_handle_resolve(&self, _current_frame_index: u64) {}
     }
 
     type Pool = DynamicResourcePool<ConcreteHandle, ConcreteResourceDesc, ConcreteResource>;

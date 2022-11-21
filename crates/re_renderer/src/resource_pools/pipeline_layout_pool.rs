@@ -8,8 +8,6 @@ pub struct GpuPipelineLayout {
     pub layout: wgpu::PipelineLayout,
 }
 
-impl Resource for GpuPipelineLayout {}
-
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct PipelineLayoutDesc {
     /// Debug label of the pipeline layout. This will show up in graphics debuggers for easy identification.
@@ -50,5 +48,9 @@ impl GpuPipelineLayoutPool {
         handle: GpuPipelineLayoutHandle,
     ) -> Result<&GpuPipelineLayout, PoolError> {
         self.pool.get_resource(handle)
+    }
+
+    pub fn frame_maintenance(&mut self, frame_index: u64) {
+        self.pool.current_frame_index = frame_index;
     }
 }

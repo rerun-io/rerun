@@ -1,5 +1,4 @@
-use std::sync::atomic::Ordering;
-use std::{hash::Hash, path::PathBuf, sync::atomic::AtomicU64};
+use std::{hash::Hash, path::PathBuf};
 
 use ahash::HashSet;
 use anyhow::Context as _;
@@ -13,8 +12,6 @@ use super::{resource::*, static_resource_pool::StaticResourcePool};
 slotmap::new_key_type! { pub struct GpuShaderModuleHandle; }
 
 pub struct GpuShaderModule {
-    last_frame_used: AtomicU64,
-    pub last_frame_modified: AtomicU64, // TODO(cmc): need associated slotmaps
     pub shader_module: wgpu::ShaderModule,
 }
 
@@ -64,12 +61,6 @@ impl ShaderModuleDesc {
     }
 }
 
-impl UsageTrackedResource for GpuShaderModule {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
-    }
-}
-
 // ---
 
 #[derive(Default)]
@@ -86,11 +77,7 @@ impl GpuShaderModulePool {
     ) -> GpuShaderModuleHandle {
         self.pool.get_or_create(desc, |desc| {
             let shader_module = desc.create_shader_module(device, resolver);
-            GpuShaderModule {
-                last_frame_used: AtomicU64::new(0),
-                last_frame_modified: AtomicU64::new(0),
-                shader_module,
-            }
+            GpuShaderModule { shader_module }
         })
     }
 
@@ -101,59 +88,40 @@ impl GpuShaderModulePool {
         frame_index: u64,
         updated_paths: &HashSet<PathBuf>,
     ) {
-        // All shader descriptors that refer to paths modified since last frame.
-        let descs = self
-            .pool
-            .resource_descs()
-            .filter_map(|desc| {
-                // Not only do we care about filesystem events that touch upon the source
-                // path of the current shader, we also care about events that affect any of
-                // our direct and indirect dependencies (#import)!
-                (!updated_paths.is_empty()).then(|| {
-                    let mut paths = vec![desc.source.as_path()];
-                    if let Ok(imports) = resolver.resolve_imports(&desc.source) {
-                        paths.extend(imports);
-                    }
+        self.pool.current_frame_index = frame_index;
 
-                    paths
-                        .iter()
-                        .any(|p| updated_paths.contains(*p))
-                        .then_some((&desc.source, desc))
-                })
-            })
-            .flatten()
-            // TODO(cmc): clearly none of this is nice, but I don't want try and figure
-            // out better APIs until #import has landed, as that will probably point out
-            // a whole bunch of shortcomings in our APIs too.
-            .map(|(path, desc)| (path.clone(), desc.clone()))
-            .collect::<Vec<_>>();
-
-        // Recompile shader modules for outdated descriptors.
-        for (path, desc) in descs {
-            // TODO(cmc): obviously terrible, we'll see as things evolve.
-            let handle = self.pool.get_or_create(&desc, |_| {
-                unreachable!("the pool itself handed us that descriptor")
-            });
-            let res = self
-                .pool
-                .get_resource_mut(handle)
-                .expect("the pool itself handed us that handle");
-
-            re_log::debug!(?path, label = desc.label.get(), "recompiled shader module");
-
-            res.shader_module = desc.create_shader_module(device, resolver);
-            res.last_frame_modified
-                // NOTE: we add an extra frame here because render pipeline maintenance
-                // has already run for the current frame.
-                .store(frame_index + 1, Ordering::Release);
+        if updated_paths.is_empty() {
+            return;
         }
+
+        // Recompile all shader that refer to paths modified since last frame.
+        self.pool.recreate_resources(|desc| {
+            // Not only do we care about filesystem events that touch upon the source
+            // path of the current shader, we also care about events that affect any of
+            // our direct and indirect dependencies (#import)!
+            let mut paths = vec![desc.source.as_path()];
+            if let Ok(imports) = resolver.resolve_imports(&desc.source) {
+                paths.extend(imports);
+            }
+
+            paths.iter().any(|p| updated_paths.contains(*p)).then(|| {
+                let shader_module = GpuShaderModule {
+                    shader_module: desc.create_shader_module(device, resolver),
+                };
+                re_log::debug!(?desc.source, label = desc.label.get(), "recompiled shader module");
+                shader_module
+            })
+        });
     }
 
     pub fn get(&self, handle: GpuShaderModuleHandle) -> Result<&GpuShaderModule, PoolError> {
         self.pool.get_resource(handle)
     }
 
-    pub(super) fn register_resource_usage(&mut self, handle: GpuShaderModuleHandle) {
-        let _ = self.get(handle);
+    pub fn get_statistics(
+        &self,
+        handle: GpuShaderModuleHandle,
+    ) -> Result<&ResourceStatistics, PoolError> {
+        self.pool.get_statistics(handle)
     }
 }

@@ -1,17 +1,22 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, hash::Hash, sync::atomic::Ordering};
 
 use slotmap::{Key, SlotMap};
 
 use super::resource::*;
+
+struct StoredResource<Res> {
+    resource: Res,
+    statistics: ResourceStatistics,
+}
 
 /// Generic resource pool for all resources that are fully described upon creation, i.e. never have any variable content.
 ///
 /// This implies, a resource is uniquely defined by its description.
 /// We call these resources "static" because they never change their content over their lifetime.
 pub(super) struct StaticResourcePool<Handle: Key, Desc, Res> {
-    resources: SlotMap<Handle, Res>,
+    resources: SlotMap<Handle, StoredResource<Res>>,
     lookup: HashMap<Desc, Handle>,
-    current_frame_index: u64,
+    pub current_frame_index: u64,
 }
 
 /// We cannot #derive(Default) as that would require Handle/Desc/Res to implement Default too.
@@ -29,8 +34,17 @@ impl<Handle, Desc, Res> StaticResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
     Desc: Clone + Eq + Hash,
-    Res: Resource,
 {
+    fn to_pool_error<T>(get_result: Option<T>, handle: Handle) -> Result<T, PoolError> {
+        get_result.ok_or_else(|| {
+            if handle.is_null() {
+                PoolError::NullHandle
+            } else {
+                PoolError::ResourceNotAvailable
+            }
+        })
+    }
+
     pub fn get_or_create<F: FnOnce(&Desc) -> Res>(
         &mut self,
         desc: &Desc,
@@ -38,46 +52,46 @@ where
     ) -> Handle {
         *self.lookup.entry(desc.clone()).or_insert_with(|| {
             let resource = creation_func(desc);
-            self.resources.insert(resource)
+            self.resources.insert(StoredResource {
+                resource,
+                statistics: ResourceStatistics {
+                    frame_created: self.current_frame_index,
+                    last_frame_used: self.current_frame_index.into(),
+                },
+            })
         })
     }
 
+    pub fn recreate_resources<F: FnMut(&Desc) -> Option<Res>>(&mut self, mut recreation_func: F) {
+        for (desc, handle) in &self.lookup {
+            if let Some(new_resource) = recreation_func(desc) {
+                let resource = self.resources.get_mut(*handle).unwrap();
+                resource.statistics.frame_created = self.current_frame_index;
+                resource.resource = new_resource;
+            }
+        }
+    }
+
     pub fn get_resource(&self, handle: Handle) -> Result<&Res, PoolError> {
-        self.resources
-            .get(handle)
-            .map(|resource| {
-                resource.on_handle_resolve(self.current_frame_index);
+        Self::to_pool_error(
+            self.resources.get(handle).map(|resource| {
                 resource
-            })
-            .ok_or_else(|| {
-                if handle.is_null() {
-                    PoolError::NullHandle
-                } else {
-                    PoolError::ResourceNotAvailable
-                }
-            })
+                    .statistics
+                    .last_frame_used
+                    .store(self.current_frame_index, Ordering::Relaxed);
+                &resource.resource
+            }),
+            handle,
+        )
     }
 
-    // TODO(cmc): Necessary for now, although not great. We'll see if we can/need-to find
-    // a better way to handle this once all 3 shader-related PRs have landed.
-    pub fn get_resource_mut(&mut self, handle: Handle) -> Result<&mut Res, PoolError> {
-        self.resources
-            .get_mut(handle)
-            .map(|resource| {
-                resource.on_handle_resolve(self.current_frame_index);
-                resource
-            })
-            .ok_or_else(|| {
-                if handle.is_null() {
-                    PoolError::NullHandle
-                } else {
-                    PoolError::ResourceNotAvailable
-                }
-            })
-    }
-
-    pub fn resource_descs(&self) -> impl Iterator<Item = &Desc> {
-        self.lookup.keys()
+    pub fn get_statistics(&self, handle: Handle) -> Result<&ResourceStatistics, PoolError> {
+        Self::to_pool_error(
+            self.resources
+                .get(handle)
+                .map(|resource| &resource.statistics),
+            handle,
+        )
     }
 }
 
@@ -88,7 +102,7 @@ mod tests {
     use slotmap::Key;
 
     use super::StaticResourcePool;
-    use crate::resource_pools::resource::{PoolError, Resource};
+    use crate::resource_pools::resource::PoolError;
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
 
@@ -97,10 +111,6 @@ mod tests {
 
     #[derive(PartialEq, Eq, Debug)]
     pub struct ConcreteResource(u32);
-
-    impl Resource for ConcreteResource {
-        fn on_handle_resolve(&self, _current_frame_index: u64) {}
-    }
 
     type Pool = StaticResourcePool<ConcreteHandle, ConcreteResourceDesc, ConcreteResource>;
 

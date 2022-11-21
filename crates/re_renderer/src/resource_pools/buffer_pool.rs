@@ -1,4 +1,4 @@
-use std::{hash::Hash, sync::atomic::AtomicU64};
+use std::hash::Hash;
 
 use crate::debug_label::DebugLabel;
 
@@ -11,14 +11,7 @@ slotmap::new_key_type! { pub struct GpuBufferHandle; }
 pub type GpuBufferHandleStrong = std::sync::Arc<GpuBufferHandle>;
 
 pub struct GpuBuffer {
-    last_frame_used: AtomicU64,
     pub buffer: wgpu::Buffer,
-}
-
-impl UsageTrackedResource for GpuBuffer {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
-    }
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -53,10 +46,7 @@ impl GpuBufferPool {
                 usage: desc.usage,
                 mapped_at_creation: false,
             });
-            GpuBuffer {
-                last_frame_used: AtomicU64::new(0),
-                buffer,
-            }
+            GpuBuffer { buffer }
         })
     }
 

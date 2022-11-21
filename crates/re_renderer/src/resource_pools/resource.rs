@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PoolError {
@@ -7,23 +7,17 @@ pub enum PoolError {
 
     #[error("The passed resource handle was null")]
     NullHandle,
+
+    #[error("The passed descriptor doesn't refer to a known resource")]
+    UnknownDescriptor,
 }
 
-/// A resource that can be owned & lifetime tracked by a resource pool.
-pub(crate) trait Resource {
-    /// Called every time a resource handle was resolved to its [`Resource`] object.
-    fn on_handle_resolve(&self, _current_frame_index: u64) {}
-}
+pub struct ResourceStatistics {
+    /// Frame index in which this resource was (re)created.
+    pub frame_created: u64,
 
-// TODO(andreas): Make all resources usage tracked
-/// A resource that keeps track of the last frame it was used.
-pub(crate) trait UsageTrackedResource {
-    fn last_frame_used(&self) -> &AtomicU64;
-}
-
-impl<T: UsageTrackedResource> Resource for T {
-    fn on_handle_resolve(&self, current_frame_index: u64) {
-        self.last_frame_used()
-            .fetch_max(current_frame_index, Ordering::Release);
-    }
+    /// Frame index in which a handle to this resource was last resolved.
+    ///
+    /// Note that implicit usage via other resources is *not* tracked.
+    pub last_frame_used: AtomicU64,
 }

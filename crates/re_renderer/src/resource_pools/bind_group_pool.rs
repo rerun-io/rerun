@@ -1,4 +1,4 @@
-use std::sync::{atomic::AtomicU64, Arc};
+use std::sync::Arc;
 
 use smallvec::SmallVec;
 
@@ -35,15 +35,7 @@ impl std::ops::Deref for GpuBindGroupHandleStrong {
 }
 
 pub(crate) struct GpuBindGroup {
-    last_frame_used: AtomicU64,
     pub(crate) bind_group: wgpu::BindGroup,
-}
-
-// [`BindGroup`] is relatively lightweight, but since buffers and textures are recreated a lot, we might pile them up, so let's keep track!
-impl UsageTrackedResource for GpuBindGroup {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
-    }
 }
 
 // TODO(andreas): Can we force the user to provide strong handles here without too much effort?
@@ -148,10 +140,7 @@ impl GpuBindGroupPool {
                     .collect::<Vec<_>>(),
                 layout: &bind_group_layout.get_resource(desc.layout).unwrap().layout,
             });
-            GpuBindGroup {
-                bind_group,
-                last_frame_used: AtomicU64::new(0),
-            }
+            GpuBindGroup { bind_group }
         });
 
         // Retrieve strong handles to buffers and textures.
