@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use egui::{Color32, NumExt as _, RichText};
+use egui::{Checkbox, Color32, NumExt as _, RichText};
 
 use re_data_store::{ObjPath, Timeline};
 use re_log_types::{LogMsg, TimePoint};
@@ -127,7 +127,7 @@ impl ViewTextFilters {
             }
         });
         for (log_level, visible) in &mut self.show_log_levels {
-            ui.checkbox(visible, format!("Show '{log_level}'"));
+            ui.checkbox(visible, level_to_rich_text(ui, log_level));
         }
     }
 }
