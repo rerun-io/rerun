@@ -2,7 +2,7 @@
 pub struct MemoryUse {
     /// Bytes allocated by the application according to operating system.
     ///
-    /// Resident Set Size (RSS) on Linux, Android, MaxOS, iOS.
+    /// Resident Set Size (RSS) on Linux, Android, Mac, iOS.
     /// Working Set on Windows.
     ///
     /// `None` if unknown.
@@ -48,7 +48,7 @@ impl std::ops::Sub for MemoryUse {
 pub struct MemoryLimit {
     /// Limit in bytes compared to what is reported by OS.
     ///
-    /// Resident Set Size (RSS) on Linux, Android, MaxOS, iOS.
+    /// Resident Set Size (RSS) on Linux, Android, Mac, iOS.
     /// Working Set on Windows.
     pub gross: Option<i64>,
 
@@ -107,7 +107,7 @@ impl MemoryLimit {
 
 /// According to the OS. This is what matters.
 ///
-/// Resident Set Size (RSS) on Linux, Android, MaxOS, iOS.
+/// Resident Set Size (RSS) on Linux, Android, Mac, iOS.
 /// Working Set on Windows.
 #[cfg(not(target_arch = "wasm32"))]
 fn bytes_used_gross() -> Option<i64> {
