@@ -14,12 +14,9 @@ impl MemoryLimit {
     /// Read from the given environment variable.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_env_var(env_var: &str) -> Self {
-        fn parse_limit(limit: &str) -> Option<i64> {
-            Some(limit.strip_suffix("GB")?.parse::<i64>().ok()? * 1_000_000_000)
-        }
-
         let gross_limit = std::env::var(env_var).ok().map(|limit| {
-            parse_limit(&limit).unwrap_or_else(|| panic!("{env_var}: expected e.g. '16GB'"))
+            parse_bytes(&limit)
+                .unwrap_or_else(|| panic!("{env_var}: expected e.g. '16GB', got {limit:?}"))
         });
 
         Self {
@@ -54,4 +51,23 @@ impl MemoryLimit {
 
         false
     }
+}
+
+fn parse_bytes(limit: &str) -> Option<i64> {
+    if let Some(kb) = limit.strip_suffix("kB") {
+        Some(kb.parse::<i64>().ok()? * 1_000)
+    } else if let Some(mb) = limit.strip_suffix("MB") {
+        Some(mb.parse::<i64>().ok()? * 1_000_000)
+    } else if let Some(gb) = limit.strip_suffix("GB") {
+        Some(gb.parse::<i64>().ok()? * 1_000_000_000)
+    } else if let Some(tb) = limit.strip_suffix("TB") {
+        Some(tb.parse::<i64>().ok()? * 1_000_000_000_000)
+    } else {
+        None
+    }
+}
+
+#[test]
+fn test_parse_bytes() {
+    assert_eq!(parse_bytes("10MB"), Some(10_000_000));
 }

@@ -2,7 +2,7 @@
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed};
 
-use crate::{allocation_tracker::CallstackStatistics, AllocationTracker};
+use crate::allocation_tracker::{AllocationTracker, CallstackStatistics};
 
 /// Only track allocations of at least this size.
 const TRACK_MINIMUM: usize = 128;

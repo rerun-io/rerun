@@ -351,7 +351,7 @@ impl App {
     fn prune_memory_if_needed(&mut self) {
         crate::profile_function!();
 
-        use re_memory::MemoryUse;
+        use re_memory::{util::format_bytes, MemoryUse};
 
         if self.latest_memory_prune.elapsed() < instant::Duration::from_secs(30) {
             // Pruning introduces stutter, and we don't want to stutter too often.
@@ -364,7 +364,7 @@ impl App {
         if limit.is_exceeded_by(&mem_use_before) {
             fn format_limit(limit: Option<i64>) -> String {
                 if let Some(bytes) = limit {
-                    format!("{:.2}", bytes as f32 / 1e9)
+                    format_bytes(bytes as _)
                 } else {
                     "∞".to_owned()
                 }
@@ -372,15 +372,15 @@ impl App {
 
             if let Some(gross) = mem_use_before.gross {
                 re_log::info!(
-                    "Using {:.2}/{:2} GB according to OS",
-                    gross as f32 / 1e9,
+                    "Using {}/{} according to OS",
+                    format_bytes(gross as _),
                     format_limit(limit.gross),
                 );
             }
             if let Some(net) = mem_use_before.net {
                 re_log::info!(
-                    "Actually used: {:.2}/{:2} GB",
-                    net as f32 / 1e9,
+                    "Actually used: {}/{}",
+                    format_bytes(net as _),
                     format_limit(limit.net),
                 );
             }
@@ -398,13 +398,15 @@ impl App {
             let freed_memory = mem_use_before - mem_use_after;
 
             if let Some(net_diff) = freed_memory.net {
-                re_log::info!("Freed up {:.3} GB", net_diff as f32 / 1e9);
+                re_log::info!("Freed up {}", format_bytes(net_diff as _));
             }
             if let Some(gross_diff) = freed_memory.gross {
-                re_log::info!("Returned {:.3} GB to the OS", gross_diff as f32 / 1e9);
+                re_log::info!("Returned {} to the OS", format_bytes(gross_diff as _));
             }
 
             self.latest_memory_prune = instant::Instant::now();
+
+            self.memory_panel.note_memory_purge();
         }
     }
 

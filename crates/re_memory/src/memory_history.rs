@@ -1,15 +1,5 @@
 use emath::History;
 
-/// Returns monotonically increasing time in seconds.
-#[inline]
-fn now_sec() -> f64 {
-    use instant::Instant;
-    use once_cell::sync::Lazy;
-
-    static START_INSTANT: Lazy<Instant> = Lazy::new(Instant::now);
-    START_INSTANT.elapsed().as_nanos() as f64 / 1e9
-}
-
 // ----------------------------------------------------------------------------
 
 /// Tracks memory use over time.
@@ -48,7 +38,7 @@ impl MemoryHistory {
     pub fn capture(&mut self) {
         let mem_use = crate::MemoryUse::capture();
         if mem_use.gross.is_some() || mem_use.net.is_some() {
-            let now = now_sec();
+            let now = crate::util::sec_since_start();
             if let Some(gross) = mem_use.gross {
                 self.gross.add(now, gross);
             }

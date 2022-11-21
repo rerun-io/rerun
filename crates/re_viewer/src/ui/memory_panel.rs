@@ -1,10 +1,14 @@
-use re_memory::{MemoryHistory, MemoryLimit, MemoryUse};
+use re_memory::{
+    util::{format_bytes, sec_since_start},
+    MemoryHistory, MemoryLimit, MemoryUse,
+};
 
 // ----------------------------------------------------------------------------
 
 #[derive(Default)]
 pub struct MemoryPanel {
     history: MemoryHistory,
+    memory_purge_times: Vec<f64>,
 }
 
 impl MemoryPanel {
@@ -12,6 +16,11 @@ impl MemoryPanel {
     pub fn update(&mut self) {
         crate::profile_function!();
         self.history.capture();
+    }
+
+    /// Note that we purged memory at this time, to show in stats.
+    pub fn note_memory_purge(&mut self) {
+        self.memory_purge_times.push(sec_since_start());
     }
 
     pub fn ui(&self, ui: &mut egui::Ui) {
@@ -58,52 +67,7 @@ impl MemoryPanel {
         let max_callstacks = 100;
         if let Some(tracking_stats) = re_memory::tracking_allocator::tracking_stats(max_callstacks)
         {
-            ui.label(format!(
-                "{} tracked in {} allocs",
-                format_bytes(tracking_stats.tracked_bytes as _),
-                format_count(tracking_stats.tracked_allocs),
-            ));
-            ui.label(format!(
-                "{} untracked in {} allocs (all smaller than {})",
-                format_bytes(tracking_stats.untracked_bytes as _),
-                format_count(tracking_stats.untracked_allocs),
-                format_bytes(tracking_stats.track_size_threshold as _),
-            ));
-            ui.label(format!(
-                "{} in {} allocs used for the book-keeping of the allocation tracker",
-                format_bytes(tracking_stats.tracker_bytes as _),
-                format_count(tracking_stats.tracker_allocs),
-            ));
-
-            egui::CollapsingHeader::new("Top memory consumers")
-                .default_open(true)
-                .show(ui, |ui| {
-                    egui::ScrollArea::vertical()
-                        .max_height(300.0)
-                        .show(ui, |ui| {
-                            for callstack in tracking_stats.top_callstacks {
-                                if ui
-                                    .button(format!(
-                                        "{} in {} allocs (≈{} / alloc) - {}",
-                                        format_bytes(callstack.extant_bytes as _),
-                                        format_count(callstack.extant_allocs),
-                                        format_bytes(
-                                            callstack.extant_bytes as f64
-                                                / callstack.extant_allocs as f64
-                                        ),
-                                        summarize_callstack(
-                                            &callstack.readable_backtrace.to_string()
-                                        )
-                                    ))
-                                    .on_hover_text("Click to copy callstack to clipboard")
-                                    .clicked()
-                                {
-                                    ui.output().copied_text =
-                                        callstack.readable_backtrace.to_string();
-                                }
-                            }
-                        });
-                });
+            Self::tracking_stats(ui, tracking_stats);
         } else {
             ui.label("You can turn on detailed memory tracking with RERUN_TRACK_ALLOCATIONS=1");
         }
@@ -116,6 +80,55 @@ impl MemoryPanel {
                 });
         }
         // plot fills the available height, so must come last
+    }
+
+    fn tracking_stats(
+        ui: &mut egui::Ui,
+        tracking_stats: re_memory::tracking_allocator::TrackingStatistics,
+    ) {
+        ui.label(format!(
+            "{} tracked in {} allocs",
+            format_bytes(tracking_stats.tracked_bytes as _),
+            format_count(tracking_stats.tracked_allocs),
+        ));
+        ui.label(format!(
+            "{} untracked in {} allocs (all smaller than {})",
+            format_bytes(tracking_stats.untracked_bytes as _),
+            format_count(tracking_stats.untracked_allocs),
+            format_bytes(tracking_stats.track_size_threshold as _),
+        ));
+        ui.label(format!(
+            "{} in {} allocs used for the book-keeping of the allocation tracker",
+            format_bytes(tracking_stats.tracker_bytes as _),
+            format_count(tracking_stats.tracker_allocs),
+        ));
+
+        egui::CollapsingHeader::new("Top memory consumers")
+            .default_open(true)
+            .show(ui, |ui| {
+                egui::ScrollArea::vertical()
+                    .max_height(300.0)
+                    .show(ui, |ui| {
+                        for callstack in tracking_stats.top_callstacks {
+                            if ui
+                                .button(format!(
+                                    "{} in {} allocs (≈{} / alloc) - {}",
+                                    format_bytes(callstack.extant_bytes as _),
+                                    format_count(callstack.extant_allocs),
+                                    format_bytes(
+                                        callstack.extant_bytes as f64
+                                            / callstack.extant_allocs as f64
+                                    ),
+                                    summarize_callstack(&callstack.readable_backtrace.to_string())
+                                ))
+                                .on_hover_text("Click to copy callstack to clipboard")
+                                .clicked()
+                            {
+                                ui.output().copied_text = callstack.readable_backtrace.to_string();
+                            }
+                        }
+                    });
+            });
     }
 
     fn plot(&self, ui: &mut egui::Ui) {
@@ -140,26 +153,15 @@ impl MemoryPanel {
             .show(ui, |plot_ui| {
                 plot_ui.line(to_line(&self.history.gross).name("gross"));
                 plot_ui.line(to_line(&self.history.net).name("net"));
+                for &time in &self.memory_purge_times {
+                    plot_ui.vline(
+                        egui::plot::VLine::new(time)
+                            .name("RAM purge")
+                            .color(egui::Color32::from_rgb(252, 161, 3))
+                            .width(2.0),
+                    );
+                }
             });
-    }
-}
-
-fn format_bytes(number_of_bytes: f64) -> String {
-    if number_of_bytes < 0.0 {
-        return format!("-{}", format_bytes(-number_of_bytes));
-    }
-
-    if number_of_bytes < 1000.0 {
-        format!("{:.0} B", number_of_bytes)
-    } else if number_of_bytes < 1_000_000.0 {
-        let decimals = (number_of_bytes < 10_000.0) as usize;
-        format!("{:.*} kB", decimals, number_of_bytes / 1_000.0)
-    } else if number_of_bytes < 1_000_000_000.0 {
-        let decimals = (number_of_bytes < 10_000_000.0) as usize;
-        format!("{:.*} MB", decimals, number_of_bytes / 1_000_000.0)
-    } else {
-        let decimals = (number_of_bytes < 10_000_000_000.0) as usize;
-        format!("{:.*} GB", decimals, number_of_bytes / 1_000_000_000.0)
     }
 }
 

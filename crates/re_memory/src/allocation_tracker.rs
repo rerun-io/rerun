@@ -127,11 +127,9 @@ impl AllocationTracker {
                 stats.extant_bytes -= layout.size();
                 stats.extant_allocs -= 1;
 
-                if false {
-                    // We can free up memory here, but that will cost us performance.
-                    if stats.extant_bytes == 0 {
-                        entry.remove();
-                    }
+                // Free up some memory:
+                if stats.extant_bytes == 0 {
+                    entry.remove();
                 }
             }
         }
