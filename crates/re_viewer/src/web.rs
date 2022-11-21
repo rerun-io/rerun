@@ -1,6 +1,6 @@
 use eframe::wasm_bindgen::{self, prelude::*};
 
-use crate::mem_tracker::TrackingAllocator;
+use re_memory::TrackingAllocator;
 
 #[global_allocator]
 static GLOBAL: TrackingAllocator<std::alloc::System> = TrackingAllocator::new(std::alloc::System);

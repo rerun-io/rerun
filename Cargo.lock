@@ -3067,6 +3067,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_memory"
+version = "0.1.0"
+
+[[package]]
 name = "re_renderer"
 version = "0.1.0"
 dependencies = [
@@ -3230,6 +3234,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_log_types",
+ "re_memory",
  "re_renderer",
  "re_string_interner",
  "re_tensor_ops",
@@ -3354,6 +3359,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_log_types",
+ "re_memory",
  "re_sdk_comms",
  "re_viewer",
  "re_web_server",

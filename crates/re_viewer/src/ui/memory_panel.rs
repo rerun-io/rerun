@@ -13,7 +13,7 @@ pub struct MemoryUse {
     /// This will be smaller than [`Self::gross`] because our memory allocator may not
     /// return all the memory we free to the OS.
     ///
-    /// `None` if [`crate::mem_tracker::TrackingAllocator`] is not used.
+    /// `None` if [`re_memory::TrackingAllocator`] is not used.
     pub net: Option<i64>,
 }
 
@@ -52,7 +52,7 @@ pub struct MemoryLimit {
     /// Working Set on Windows.
     pub gross: Option<i64>,
 
-    /// Limit in bytes based compared to what is reported by [`crate::mem_tracker::TrackingAllocator`].
+    /// Limit in bytes based compared to what is reported by [`re_memory::TrackingAllocator`].
     pub net: Option<i64>,
 }
 
@@ -125,9 +125,9 @@ fn bytes_used_gross() -> Option<i64> {
 /// The difference to [`bytes_used_gross`] is memory allocated by `MiMalloc`.
 /// that hasn't been returned to the OS.
 ///
-/// `None` if [`crate::mem_tracker::TrackingAllocator`] is not used.
+/// `None` if [`re_memory::TrackingAllocator`] is not used.
 fn bytes_used_net() -> Option<i64> {
-    let num_bytes = crate::mem_tracker::global_allocs_and_bytes().1;
+    let num_bytes = re_memory::global_allocs_and_bytes().1;
     if num_bytes == 0 {
         None
     } else {
