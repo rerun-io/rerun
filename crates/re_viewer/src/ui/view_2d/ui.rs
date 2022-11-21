@@ -305,7 +305,9 @@ fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
     paint_props.fg_stroke.color = Color32::WHITE;
 }
 
-fn add_label_rect(
+/// Adds an object label to the ui.
+/// Returns rect covered by it (to be used for hover detection)
+fn add_label(
     ui: &mut egui::Ui,
     label: &String,
     paint_props: &ObjectPaintProperties,
@@ -518,7 +520,7 @@ fn view_2d_scrollable(
 
         if let Some(label) = label {
             // Place the text centered below the rect
-            let rect = add_label_rect(
+            let rect = add_label(
                 parent_ui,
                 label,
                 paint_props,
@@ -582,7 +584,7 @@ fn view_2d_scrollable(
         ));
 
         if let Some(label) = label {
-            let rect = add_label_rect(
+            let rect = add_label(
                 parent_ui,
                 label,
                 paint_props,
