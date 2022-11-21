@@ -80,7 +80,7 @@ def set_recording_id(value: str) -> None:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    rerun_sdk.set_recording_id(str)
+    rerun_sdk.set_recording_id(value)
 
 
 def init(application_id: str) -> None:
