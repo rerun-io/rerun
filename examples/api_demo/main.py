@@ -48,6 +48,12 @@ def run_segmentation() -> None:
     segmentation_img[20:50, 90:110] = 99
     rerun.log_segmentation_image("seg_demo/img", segmentation_img)
 
+    # Log a bunch of classified 2D points
+    rerun.log_point("seg_demo/single_point", np.array([64, 64]), class_id=13)
+    rerun.log_points("seg_demo/several_points0", np.array([[20, 50], [100, 70], [60, 30]]), class_ids=42)
+    rerun.log_points("seg_demo/several_points1", np.array([[40, 50], [120, 70], [80, 30]]),
+                      class_ids=np.array([13, 42, 99], dtype=np.uint8))
+
     # Log an initial segmentation map with arbitrary colors
     rerun.set_time_seconds("sim_time", 2)
     rerun.log_annotation_context("seg_demo", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)

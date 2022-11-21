@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
-    query::{visit_type_data_2, visit_type_data_3},
+    query::{visit_type_data_2, visit_type_data_3, visit_type_data_4},
     FieldName, InstanceIdHash,
 };
 use re_log_types::{context::ClassId, DataVec, IndexHash, MsgId, ObjectType, Tensor};
@@ -61,6 +61,8 @@ pub struct Point2D {
     pub pos: Pos2,
     pub radius: Option<f32>,
     pub paint_props: ObjectPaintProperties,
+
+    pub label: Option<String>,
 }
 
 /// A 2D scene, with everything needed to render it.
@@ -220,26 +222,30 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_3(
+                visit_type_data_4(
                     obj_store,
                     &FieldName::from("pos"),
                     &query.time_query,
-                    ("color", "radius", "class_id"),
+                    ("color", "radius", "label", "class_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 2],
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>,
+                     label: Option<&String>,
                      class_id: Option<&i32>| {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
                         let annotations = self.annotation_map.find(obj_path);
+                        let class_id = class_id.map(|i| ClassId(*i as _));
                         let color = annotations.color(
                             color,
-                            class_id.map(|i| ClassId(*i as _)),
+                            class_id.clone(),
                             DefaultColor::ObjPath(obj_path),
                         );
+                        let label = annotations.label(label, class_id);
+                        // TODO: Decide to skip label if too many.,
 
                         let paint_props = paint_properties(color, &None);
 
@@ -251,6 +257,7 @@ impl Scene2D {
                             pos: Pos2::new(pos[0], pos[1]),
                             radius: radius.copied(),
                             paint_props,
+                            label,
                         });
                     },
                 );
