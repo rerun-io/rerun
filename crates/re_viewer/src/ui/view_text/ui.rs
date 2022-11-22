@@ -20,22 +20,24 @@ pub struct ViewTextState {
     latest_time: i64,
 
     /// Used to reset all column sizes to their default.
-    // TODO: should provide this as a method on `Table` at some point, instead of clearing
-    // private state...
+    // TODO(cmc): should provide this as a method on `Table` at some point, instead of
+    // clearing private state...
     resize_id: Option<egui::Id>,
     pub filters: ViewTextFilters,
 }
 
+// TODO(cmc): implement "body contains <value>" filter.
 #[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct ViewTextFilters {
-    // Column selectors
-    pub show_timelines: BTreeMap<Timeline, bool>,
-    pub show_obj_path: bool,
-    pub show_log_level: bool,
+    // Column filters: which columns should be visible?
+    // Timelines are special: each one has a dedicated column.
+    pub col_timelines: BTreeMap<Timeline, bool>,
+    pub col_obj_path: bool,
+    pub col_log_level: bool,
 
-    // Column filters
-    pub filter_obj_paths: BTreeMap<ObjPath, bool>,
-    pub filter_log_levels: BTreeMap<String, bool>,
+    // Row filters: which rows should be visible?
+    pub row_obj_paths: BTreeMap<ObjPath, bool>,
+    pub row_log_levels: BTreeMap<String, bool>,
 }
 
 impl ViewTextFilters {
@@ -43,17 +45,15 @@ impl ViewTextFilters {
         crate::profile_function!();
 
         for timeline in ctx.log_db.time_points.0.keys() {
-            self.show_timelines.entry(*timeline).or_insert(true);
+            self.col_timelines.entry(*timeline).or_insert(true);
         }
 
         for obj_path in text_entries.iter().map(|te| &te.obj_path) {
-            self.filter_obj_paths
-                .entry(obj_path.clone())
-                .or_insert(true);
+            self.row_obj_paths.entry(obj_path.clone()).or_insert(true);
         }
 
         for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
-            self.filter_log_levels.entry(level.clone()).or_insert(true);
+            self.row_log_levels.entry(level.clone()).or_insert(true);
         }
     }
 
@@ -71,18 +71,18 @@ impl ViewTextFilters {
         }
 
         let Self {
-            show_timelines,
-            show_obj_path,
-            show_log_level,
-            filter_obj_paths,
-            filter_log_levels,
+            col_timelines,
+            col_obj_path,
+            col_log_level,
+            row_obj_paths,
+            row_log_levels,
         } = self;
 
-        let has_obj_path_filters = filter_obj_paths.values().filter(|v| **v).count() > 0;
-        let has_log_lvl_filters = filter_log_levels.values().filter(|v| **v).count() > 0;
+        let has_obj_path_filters = row_obj_paths.values().filter(|v| **v).count() > 0;
+        let has_log_lvl_filters = row_log_levels.values().filter(|v| **v).count() > 0;
         let has_any_filters = has_obj_path_filters | has_log_lvl_filters;
-        let has_timeline_selections = show_timelines.values().filter(|v| **v).count() > 0;
-        let has_any_selections = has_timeline_selections | *show_obj_path | *show_log_level;
+        let has_timeline_selections = col_timelines.values().filter(|v| **v).count() > 0;
+        let has_any_selections = has_timeline_selections | *col_obj_path | *col_log_level;
         let clear_or_select = ["Select all", "Clear all"];
 
         ui.horizontal(|ui| {
@@ -91,21 +91,21 @@ impl ViewTextFilters {
                 .button(clear_or_select[has_any_selections as usize])
                 .clicked()
             {
-                for v in show_timelines.values_mut() {
+                for v in col_timelines.values_mut() {
                     *v = !has_any_selections;
                 }
-                *show_obj_path = !has_any_selections;
-                *show_log_level = !has_any_selections;
+                *col_obj_path = !has_any_selections;
+                *col_log_level = !has_any_selections;
             }
         });
 
         ui.add_space(2.0);
 
-        for (timeline, visible) in &mut self.show_timelines {
+        for (timeline, visible) in &mut self.col_timelines {
             ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
         }
-        ui.checkbox(&mut self.show_obj_path, "Object path");
-        ui.checkbox(&mut self.show_log_level, "Log level");
+        ui.checkbox(&mut self.col_obj_path, "Object path");
+        ui.checkbox(&mut self.col_log_level, "Log level");
 
         ui.add_space(4.0);
 
@@ -115,10 +115,10 @@ impl ViewTextFilters {
                 .button(clear_or_select[has_any_filters as usize])
                 .clicked()
             {
-                for v in filter_obj_paths.values_mut() {
+                for v in row_obj_paths.values_mut() {
                     *v = !has_any_filters;
                 }
-                for v in filter_log_levels.values_mut() {
+                for v in row_log_levels.values_mut() {
                     *v = !has_any_filters;
                 }
             }
@@ -132,12 +132,12 @@ impl ViewTextFilters {
                 .button(clear_or_select[has_obj_path_filters as usize])
                 .clicked()
             {
-                for v in filter_obj_paths.values_mut() {
+                for v in row_obj_paths.values_mut() {
                     *v = !has_obj_path_filters;
                 }
             }
         });
-        for (obj_path, visible) in filter_obj_paths {
+        for (obj_path, visible) in row_obj_paths {
             ui.horizontal(|ui| {
                 ui.checkbox(visible, "");
                 if ui.selectable_label(false, &obj_path.to_string()).clicked() {
@@ -154,12 +154,12 @@ impl ViewTextFilters {
                 .button(clear_or_select[has_log_lvl_filters as usize])
                 .clicked()
             {
-                for v in filter_log_levels.values_mut() {
+                for v in row_log_levels.values_mut() {
                     *v = !has_log_lvl_filters;
                 }
             }
         });
-        for (log_level, visible) in filter_log_levels {
+        for (log_level, visible) in row_log_levels {
             ui.checkbox(visible, level_to_rich_text(ui, log_level));
         }
     }
@@ -244,9 +244,6 @@ fn show_table(
     text_entries: &[TextEntry],
     scroll_to_row: Option<usize>,
 ) {
-    // TODO: auto-resize columns
-    // TODO: "body contains" filter
-
     const OBJ_PATH_HEADER: &str = "ObjPath";
     const LOG_LEVEL_HEADER: &str = "Level";
     const BODY_HEADER: &str = "Body";
@@ -270,7 +267,7 @@ fn show_table(
 
     let timelines = state
         .filters
-        .show_timelines
+        .col_timelines
         .iter()
         .filter_map(|(timeline, visible)| visible.then_some(timeline))
         .map(|timeline| (timeline, renderer_width(ui, timeline.name().to_string())))
@@ -286,7 +283,7 @@ fn show_table(
     let obj_path_header_size = renderer_width(ui, OBJ_PATH_HEADER.to_owned());
     let obj_path_size = state
         .filters
-        .filter_obj_paths
+        .row_obj_paths
         .keys() // all of them, visible or not!
         .map(|obj_path| renderer_width(ui, obj_path.to_string()))
         .chain(std::iter::once(obj_path_header_size))
@@ -297,7 +294,7 @@ fn show_table(
     let log_level_header_size = renderer_width(ui, LOG_LEVEL_HEADER.to_owned());
     let log_level_size = state
         .filters
-        .filter_log_levels
+        .row_log_levels
         .keys() // all of them, visible or not!
         .map(|log_level| renderer_width(ui, log_level.to_string()))
         .chain(std::iter::once(log_level_header_size))
@@ -353,11 +350,11 @@ fn show_table(
             builder = builder.column(Size::initial(*size));
         }
         // object path
-        if state.filters.show_obj_path {
+        if state.filters.col_obj_path {
             builder = builder.column(Size::initial(obj_path_size));
         }
         // log level
-        if state.filters.show_log_level {
+        if state.filters.col_log_level {
             builder = builder.column(Size::initial(log_level_size));
         }
         // body
@@ -370,12 +367,12 @@ fn show_table(
                     ctx.timeline_button(ui, timeline);
                 });
             }
-            if state.filters.show_obj_path {
+            if state.filters.col_obj_path {
                 header.col(|ui| {
                     ui.strong(OBJ_PATH_HEADER);
                 });
             }
-            if state.filters.show_log_level {
+            if state.filters.col_log_level {
                 header.col(|ui| {
                     ui.strong(LOG_LEVEL_HEADER);
                 });
@@ -422,14 +419,14 @@ fn show_table(
                 }
 
                 // path
-                if state.filters.show_obj_path {
+                if state.filters.col_obj_path {
                     row.col(|ui| {
                         ctx.obj_path_button(ui, &text_entry.obj_path);
                     });
                 }
 
                 // level
-                if state.filters.show_log_level {
+                if state.filters.col_log_level {
                     row.col(|ui| {
                         if let Some(lvl) = &text_entry.level {
                             ui.label(level_to_rich_text(ui, lvl));

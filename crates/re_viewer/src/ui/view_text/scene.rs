@@ -52,9 +52,11 @@ impl SceneText {
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
 
+                // Early filtering: if we're not showing it the view, there isn't much point
+                // in querying it to begin with... at least for now.
                 let is_obj_path_visible = state
                     .filters
-                    .filter_obj_paths
+                    .row_obj_paths
                     .get(obj_path)
                     .copied()
                     .unwrap_or(true);
@@ -93,11 +95,12 @@ impl SceneText {
 
                 batch
                     .into_iter()
+                    // Early filtering once more, see above.
                     .filter(|te| {
                         te.level.as_ref().map_or(true, |lvl| {
                             state
                                 .filters
-                                .filter_log_levels
+                                .row_log_levels
                                 .get(lvl)
                                 .copied()
                                 .unwrap_or(true)
