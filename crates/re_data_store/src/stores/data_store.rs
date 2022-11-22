@@ -158,7 +158,7 @@ impl DataStore {
         }
     }
 
-    pub fn prune_everything_before(&mut self, timeline: Timeline, cutoff_time: TimeInt) {
+    pub fn purge_everything_before(&mut self, timeline: Timeline, cutoff_time: TimeInt) {
         crate::profile_function!();
         let Self {
             store_from_timeline,
@@ -166,7 +166,7 @@ impl DataStore {
             index_from_hash: _,
         } = self;
         if let Some((_, timeline_store)) = store_from_timeline.get_mut(&timeline) {
-            timeline_store.prune_everything_before(cutoff_time.as_i64());
+            timeline_store.purge_everything_before(cutoff_time.as_i64());
         }
     }
 }

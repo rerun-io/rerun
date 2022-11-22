@@ -45,7 +45,7 @@ pub struct App {
     /// Toast notifications, using `egui-notify`.
     toasts: Toasts,
 
-    latest_memory_prune: instant::Instant,
+    latest_memory_purge: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 }
@@ -133,7 +133,7 @@ impl App {
             ctrl_c,
             pending_promises: Default::default(),
             toasts: Toasts::new(),
-            latest_memory_prune: instant::Instant::now() - std::time::Duration::from_secs(10_000),
+            latest_memory_purge: instant::Instant::now() - std::time::Duration::from_secs(10_000),
             memory_panel: Default::default(),
             memory_panel_open: false,
         }
@@ -245,7 +245,7 @@ impl eframe::App for App {
 
         self.check_keyboard_shortcuts(egui_ctx, frame);
 
-        self.prune_memory_if_needed();
+        self.purge_memory_if_needed();
 
         self.state.cache.new_frame();
 
@@ -354,7 +354,7 @@ impl App {
         }
     }
 
-    fn prune_memory_if_needed(&mut self) {
+    fn purge_memory_if_needed(&mut self) {
         crate::profile_function!();
 
         fn format_limit(limit: Option<i64>) -> String {
@@ -367,7 +367,7 @@ impl App {
 
         use re_memory::{util::format_bytes, MemoryUse};
 
-        if self.latest_memory_prune.elapsed() < instant::Duration::from_secs(10) {
+        if self.latest_memory_purge.elapsed() < instant::Duration::from_secs(10) {
             // Pruning introduces stutter, and we don't want to stutter too often.
             return;
         }
@@ -396,9 +396,9 @@ impl App {
                     100.0 * fraction_to_free
                 );
                 for log_db in self.log_dbs.values_mut() {
-                    log_db.prune_memory(fraction_to_free);
+                    log_db.purge_memory(fraction_to_free);
                 }
-                self.state.cache.prune_memory();
+                self.state.cache.purge_memory();
             }
 
             let mem_use_after = MemoryUse::capture();
@@ -409,7 +409,7 @@ impl App {
                 re_log::info!("Freed up {}", format_bytes(net_diff as _));
             }
 
-            self.latest_memory_prune = instant::Instant::now();
+            self.latest_memory_purge = instant::Instant::now();
 
             self.memory_panel.note_memory_purge();
         }

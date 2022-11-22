@@ -233,7 +233,7 @@ impl Caches {
         self.image.new_frame(max_image_cache_use);
     }
 
-    pub fn prune_memory(&mut self) {
+    pub fn purge_memory(&mut self) {
         let Self {
             image,
             cpu_mesh: _, // TODO(emilk)
