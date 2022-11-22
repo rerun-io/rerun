@@ -26,9 +26,12 @@ fn hash_backtrace(backtrace: &Backtrace) -> BacktraceHash {
 // ----------------------------------------------------------------------------
 
 /// Formatted [`Backtrace`].
+///
+/// Clones without allocating.
+#[derive(Clone)]
 pub struct ReadableBacktrace {
     /// Human-readable backtrace.
-    readable: String,
+    readable: Arc<str>,
 }
 
 impl std::fmt::Display for ReadableBacktrace {
@@ -45,7 +48,7 @@ impl ReadableBacktrace {
     }
 }
 
-fn format_backtrace(backtrace: &Backtrace) -> String {
+fn format_backtrace(backtrace: &Backtrace) -> Arc<str> {
     let stack = format!("{:?}", backtrace);
     let mut stack = stack.as_str();
     let start_pattern = "<re_memory::tracking_allocator::TrackingAllocator<InnerAllocator> as core::alloc::global::GlobalAlloc>::alloc\n";
@@ -58,7 +61,7 @@ fn format_backtrace(backtrace: &Backtrace) -> String {
         stack = &stack[..end_offset];
     }
 
-    stack.to_owned()
+    stack.into()
 }
 
 // ----------------------------------------------------------------------------
@@ -67,7 +70,7 @@ fn format_backtrace(backtrace: &Backtrace) -> String {
 #[derive(Clone)]
 pub struct CallstackStatistics {
     /// For when we print this statistic.
-    pub readable_backtrace: Arc<ReadableBacktrace>,
+    pub readable_backtrace: ReadableBacktrace,
 
     /// Live allocations at this callstack.
     pub extant: CountAndSize,
@@ -79,7 +82,7 @@ pub struct CallstackStatistics {
 #[derive(Default)]
 pub struct AllocationTracker {
     /// De-duplicated readable backtraces.
-    readable_backtraces: nohash_hasher::IntMap<BacktraceHash, Arc<ReadableBacktrace>>,
+    readable_backtraces: nohash_hasher::IntMap<BacktraceHash, ReadableBacktrace>,
 
     /// Current live allocations. Key = pointer address.
     live_allocs: ahash::HashMap<usize, BacktraceHash>,
@@ -95,7 +98,7 @@ impl AllocationTracker {
 
         self.readable_backtraces
             .entry(hash)
-            .or_insert_with(|| Arc::new(ReadableBacktrace::new(unresolved_backtrace)));
+            .or_insert_with(|| ReadableBacktrace::new(unresolved_backtrace));
 
         {
             let mut stats = self.callstack_stats.entry(hash).or_default();
