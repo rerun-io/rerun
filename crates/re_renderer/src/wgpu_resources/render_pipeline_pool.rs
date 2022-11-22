@@ -148,6 +148,10 @@ impl GpuRenderPipelinePool {
                     .unwrap_or(0);
                 u64::max(vertex_created, fragment_created)
             };
+            // The frame counter just got bumped by one. So any shader that has `frame_created`,
+            // equal the current frame now, must have been recompiled since the user didn't have a
+            // chance yet to add new shaders for this frame!
+            // (note that this assumes that shader `frame_maintenance` happens before pipeline `frame_maintenance`)
             if frame_created < frame_index {
                 return None;
             }

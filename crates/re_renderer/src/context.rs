@@ -180,9 +180,6 @@ impl RenderContext {
 
             // Shader module maintenance must come before render pipelines because render pipeline
             // recompilation picks up all shaders that have been recompiled this frame.
-            //
-            // Note that the frame index has moved forward at the beginning of this method,
-            // meaning that we'll only pick up shaders that are re-created by frame_maintenance!
             shader_modules.frame_maintenance(
                 &self.device,
                 &mut self.resolver,
