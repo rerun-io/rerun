@@ -2,6 +2,8 @@ use std::{hash::Hash, sync::Arc};
 
 use backtrace::Backtrace;
 
+use crate::CountAndSize;
+
 // ----------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -69,11 +71,8 @@ pub struct CallstackStatistics {
     /// For when we print this statistic.
     pub readable_backtrace: Arc<ReadableBacktrace>,
 
-    /// Number of live allocations at this callstack.
-    pub extant_allocs: usize,
-
-    /// The number of live bytes currently allocated at this callstack.
-    pub extant_bytes: usize,
+    /// Live allocations at this callstack.
+    pub extant: CountAndSize,
 }
 
 // ----------------------------------------------------------------------------
@@ -108,11 +107,10 @@ impl AllocationTracker {
                 .entry(readable_backtrace.hash)
                 .or_insert_with(|| CallstackStatistics {
                     readable_backtrace: readable_backtrace.clone(),
-                    extant_allocs: 0,
-                    extant_bytes: 0,
+                    extant: CountAndSize::ZERO,
                 });
-            stats.extant_allocs += 1;
-            stats.extant_bytes += size;
+            stats.extant.count += 1;
+            stats.extant.size += size;
         }
 
         self.live_allocs.insert(ptr, hash);
@@ -124,11 +122,11 @@ impl AllocationTracker {
                 self.callstacks.entry(hash)
             {
                 let stats = entry.get_mut();
-                stats.extant_bytes -= size;
-                stats.extant_allocs -= 1;
+                stats.extant.size -= size;
+                stats.extant.count -= 1;
 
                 // Free up some memory:
-                if stats.extant_bytes == 0 {
+                if stats.extant.size == 0 {
                     entry.remove();
                 }
             }
@@ -136,14 +134,13 @@ impl AllocationTracker {
     }
 
     /// Number of bytes in the live allocations we are tracking.
-    pub fn tracked_allocs_and_bytes(&self) -> (usize, usize) {
-        let mut num_allocs = 0;
-        let mut num_bytes = 0;
+    pub fn tracked_allocs_and_bytes(&self) -> CountAndSize {
+        let mut count_and_size = CountAndSize::ZERO;
         for c in self.callstacks.values() {
-            num_allocs += c.extant_allocs;
-            num_bytes += c.extant_bytes;
+            count_and_size.count += c.extant.count;
+            count_and_size.size += c.extant.size;
         }
-        (num_allocs, num_bytes)
+        count_and_size
     }
 
     /// Return the `n` callstacks that currently is using the most memory.
@@ -153,9 +150,9 @@ impl AllocationTracker {
             let mut vec: Vec<_> = self
                 .callstacks
                 .values()
-                .filter(|c| c.extant_allocs > 0)
+                .filter(|c| c.extant.count > 0)
                 .collect();
-            vec.sort_by_key(|tracked| -(tracked.extant_bytes as i64));
+            vec.sort_by_key(|tracked| -(tracked.extant.size as i64));
             vec.truncate(n);
             vec.shrink_to_fit();
             vec
@@ -164,7 +161,7 @@ impl AllocationTracker {
             struct SmallestSize<'a>(&'a CallstackStatistics);
             impl<'a> PartialEq for SmallestSize<'a> {
                 fn eq(&self, other: &Self) -> bool {
-                    self.0.extant_bytes == other.0.extant_bytes
+                    self.0.extant.size == other.0.extant.size
                 }
             }
             impl<'a> Eq for SmallestSize<'a> {}
@@ -175,7 +172,7 @@ impl AllocationTracker {
             }
             impl<'a> Ord for SmallestSize<'a> {
                 fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                    self.0.extant_bytes.cmp(&other.0.extant_bytes).reverse()
+                    self.0.extant.size.cmp(&other.0.extant.size).reverse()
                 }
             }
 
@@ -183,9 +180,9 @@ impl AllocationTracker {
                 std::collections::BinaryHeap::<SmallestSize<'_>>::with_capacity(n);
 
             for candidate in self.callstacks.values() {
-                if candidate.extant_allocs > 0 {
+                if candidate.extant.count > 0 {
                     if let Some(SmallestSize(top)) = binary_heap.peek() {
-                        if candidate.extant_bytes > top.extant_bytes {
+                        if candidate.extant.size > top.extant.size {
                             if binary_heap.len() > n {
                                 binary_heap.pop();
                             }
@@ -201,7 +198,7 @@ impl AllocationTracker {
                 .drain()
                 .map(|SmallestSize(tracked)| tracked)
                 .collect();
-            vec.sort_by_key(|tracked| tracked.extant_bytes);
+            vec.sort_by_key(|tracked| tracked.extant.size);
             vec.reverse();
             vec
         }

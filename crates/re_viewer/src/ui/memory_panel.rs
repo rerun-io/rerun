@@ -91,19 +91,19 @@ impl MemoryPanel {
     ) {
         ui.label(format!(
             "{} tracked in {} allocs",
-            format_bytes(tracking_stats.tracked_bytes as _),
-            format_usize(tracking_stats.tracked_allocs),
+            format_bytes(tracking_stats.tracked.size as _),
+            format_usize(tracking_stats.tracked.count),
         ));
         ui.label(format!(
             "{} untracked in {} allocs (all smaller than {})",
-            format_bytes(tracking_stats.untracked_bytes as _),
-            format_usize(tracking_stats.untracked_allocs),
+            format_bytes(tracking_stats.untracked.size as _),
+            format_usize(tracking_stats.untracked.count),
             format_bytes(tracking_stats.track_size_threshold as _),
         ));
         ui.label(format!(
             "{} in {} allocs used for the book-keeping of the allocation tracker",
-            format_bytes(tracking_stats.tracker_bytes as _),
-            format_usize(tracking_stats.tracker_allocs),
+            format_bytes(tracking_stats.tracker_bookkeeping.size as _),
+            format_usize(tracking_stats.tracker_bookkeeping.count),
         ));
 
         egui::CollapsingHeader::new("Top memory consumers")
@@ -117,11 +117,11 @@ impl MemoryPanel {
                             if ui
                                 .button(format!(
                                     "{} in {} allocs (≈{} / alloc) - {}",
-                                    format_bytes(callstack.extant_bytes as _),
-                                    format_usize(callstack.extant_allocs),
+                                    format_bytes(callstack.extant.size as _),
+                                    format_usize(callstack.extant.count),
                                     format_bytes(
-                                        callstack.extant_bytes as f64
-                                            / callstack.extant_allocs as f64
+                                        callstack.extant.size as f64
+                                            / callstack.extant.count as f64
                                     ),
                                     summarize_callstack(&callstack.readable_backtrace.to_string())
                                 ))
