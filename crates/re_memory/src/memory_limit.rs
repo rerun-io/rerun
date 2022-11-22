@@ -1,10 +1,11 @@
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MemoryLimit {
-    /// Limit in bytes based compared to what is reported by [`crate::TrackingAllocator`].
+    /// Limit in bytes.
     ///
+    /// This is primarily compared to what is reported by [`crate::TrackingAllocator`] ('net').
     /// We limit based on this instead of `gross` (RSS) because `net` is what we have immediate
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
-    pub net: Option<i64>,
+    pub limit: Option<i64>,
 }
 
 impl MemoryLimit {
@@ -16,7 +17,7 @@ impl MemoryLimit {
                 .unwrap_or_else(|| panic!("{env_var}: expected e.g. '16GB', got {limit:?}"))
         });
 
-        Self { net: limit }
+        Self { limit }
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -27,9 +28,16 @@ impl MemoryLimit {
 
     /// Returns how large fraction of memory we should free to go down to the exact limit.
     pub fn is_exceeded_by(&self, mem_use: &crate::MemoryUse) -> Option<f32> {
-        if let (Some(net_limit), Some(net_use)) = (self.net, mem_use.net) {
-            if net_limit < net_use {
-                return Some((net_use - net_limit) as f32 / net_use as f32);
+        let limit = self.limit?;
+
+        if let Some(net_use) = mem_use.net {
+            if limit < net_use {
+                return Some((net_use - limit) as f32 / net_use as f32);
+            }
+        } else if let Some(gross_use) = mem_use.gross {
+            re_log::warn_once!("Using gross memory use (RSS) for memory limiting, because a memory tracker was not available.");
+            if limit < gross_use {
+                return Some((gross_use - limit) as f32 / gross_use as f32);
             }
         }
 
