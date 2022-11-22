@@ -27,8 +27,6 @@ fn hash_backtrace(backtrace: &Backtrace) -> BacktraceHash {
 
 /// Formatted [`Backtrace`].
 pub struct ReadableBacktrace {
-    hash: BacktraceHash,
-
     /// Human-readable backtrace.
     readable: String,
 }
@@ -40,10 +38,10 @@ impl std::fmt::Display for ReadableBacktrace {
 }
 
 impl ReadableBacktrace {
-    fn new(hash: BacktraceHash, mut backtrace: Backtrace) -> Self {
+    fn new(mut backtrace: Backtrace) -> Self {
         backtrace.resolve();
         let readable = format_backtrace(&backtrace);
-        Self { hash, readable }
+        Self { readable }
     }
 }
 
@@ -87,7 +85,7 @@ pub struct AllocationTracker {
     live_allocs: ahash::HashMap<usize, BacktraceHash>,
 
     /// How much memory is allocated by each callstack?
-    callstacks: nohash_hasher::IntMap<BacktraceHash, CallstackStatistics>,
+    callstack_stats: nohash_hasher::IntMap<BacktraceHash, CountAndSize>,
 }
 
 impl AllocationTracker {
@@ -95,22 +93,14 @@ impl AllocationTracker {
         let unresolved_backtrace = Backtrace::new_unresolved();
         let hash = hash_backtrace(&unresolved_backtrace);
 
-        let readable_backtrace = self
-            .readable_backtraces
+        self.readable_backtraces
             .entry(hash)
-            .or_insert_with(|| Arc::new(ReadableBacktrace::new(hash, unresolved_backtrace)))
-            .clone();
+            .or_insert_with(|| Arc::new(ReadableBacktrace::new(unresolved_backtrace)));
 
         {
-            let mut stats = self
-                .callstacks
-                .entry(readable_backtrace.hash)
-                .or_insert_with(|| CallstackStatistics {
-                    readable_backtrace: readable_backtrace.clone(),
-                    extant: CountAndSize::ZERO,
-                });
-            stats.extant.count += 1;
-            stats.extant.size += size;
+            let mut stats = self.callstack_stats.entry(hash).or_default();
+            stats.count += 1;
+            stats.size += size;
         }
 
         self.live_allocs.insert(ptr, hash);
@@ -119,14 +109,14 @@ impl AllocationTracker {
     pub fn on_dealloc(&mut self, ptr: usize, size: usize) {
         if let Some(hash) = self.live_allocs.remove(&ptr) {
             if let std::collections::hash_map::Entry::Occupied(mut entry) =
-                self.callstacks.entry(hash)
+                self.callstack_stats.entry(hash)
             {
                 let stats = entry.get_mut();
-                stats.extant.size -= size;
-                stats.extant.count -= 1;
+                stats.size -= size;
+                stats.count -= 1;
 
                 // Free up some memory:
-                if stats.extant.size == 0 {
+                if stats.size == 0 {
                     entry.remove();
                 }
             }
@@ -136,71 +126,29 @@ impl AllocationTracker {
     /// Number of bytes in the live allocations we are tracking.
     pub fn tracked_allocs_and_bytes(&self) -> CountAndSize {
         let mut count_and_size = CountAndSize::ZERO;
-        for c in self.callstacks.values() {
-            count_and_size.count += c.extant.count;
-            count_and_size.size += c.extant.size;
+        for c in self.callstack_stats.values() {
+            count_and_size.count += c.count;
+            count_and_size.size += c.size;
         }
         count_and_size
     }
 
     /// Return the `n` callstacks that currently is using the most memory.
-    pub fn top_callstacks(&self, n: usize) -> Vec<&CallstackStatistics> {
-        if true {
-            // Simple and fast enough
-            let mut vec: Vec<_> = self
-                .callstacks
-                .values()
-                .filter(|c| c.extant.count > 0)
-                .collect();
-            vec.sort_by_key(|tracked| -(tracked.extant.size as i64));
-            vec.truncate(n);
-            vec.shrink_to_fit();
-            vec
-        } else {
-            // Fast
-            struct SmallestSize<'a>(&'a CallstackStatistics);
-            impl<'a> PartialEq for SmallestSize<'a> {
-                fn eq(&self, other: &Self) -> bool {
-                    self.0.extant.size == other.0.extant.size
-                }
-            }
-            impl<'a> Eq for SmallestSize<'a> {}
-            impl<'a> PartialOrd for SmallestSize<'a> {
-                fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-                    Some(self.cmp(other))
-                }
-            }
-            impl<'a> Ord for SmallestSize<'a> {
-                fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                    self.0.extant.size.cmp(&other.0.extant.size).reverse()
-                }
-            }
-
-            let mut binary_heap =
-                std::collections::BinaryHeap::<SmallestSize<'_>>::with_capacity(n);
-
-            for candidate in self.callstacks.values() {
-                if candidate.extant.count > 0 {
-                    if let Some(SmallestSize(top)) = binary_heap.peek() {
-                        if candidate.extant.size > top.extant.size {
-                            if binary_heap.len() > n {
-                                binary_heap.pop();
-                            }
-                            binary_heap.push(SmallestSize(candidate));
-                        }
-                    } else {
-                        binary_heap.push(SmallestSize(candidate));
-                    }
-                }
-            }
-
-            let mut vec: Vec<_> = binary_heap
-                .drain()
-                .map(|SmallestSize(tracked)| tracked)
-                .collect();
-            vec.sort_by_key(|tracked| tracked.extant.size);
-            vec.reverse();
-            vec
-        }
+    pub fn top_callstacks(&self, n: usize) -> Vec<CallstackStatistics> {
+        let mut vec: Vec<_> = self
+            .callstack_stats
+            .iter()
+            .filter(|(_hash, c)| c.count > 0)
+            .filter_map(|(hash, c)| {
+                Some(CallstackStatistics {
+                    readable_backtrace: self.readable_backtraces.get(hash)?.clone(),
+                    extant: *c,
+                })
+            })
+            .collect();
+        vec.sort_by_key(|stats| -(stats.extant.size as i64));
+        vec.truncate(n);
+        vec.shrink_to_fit();
+        vec
     }
 }

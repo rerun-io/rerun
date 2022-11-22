@@ -133,9 +133,7 @@ pub fn tracking_stats(max_callstacks: usize) -> Option<TrackingStatistics> {
             let top_callstacks: smallvec::SmallVec<[CallstackStatistics; MAX_CALLSTACKS]> =
                 allocation_tracker
                     .top_callstacks(max_callstacks.min(MAX_CALLSTACKS))
-                    .iter()
-                    .cloned()
-                    .cloned()
+                    .into_iter()
                     .collect();
 
             assert!(
