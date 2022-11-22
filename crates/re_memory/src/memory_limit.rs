@@ -22,10 +22,7 @@ impl MemoryLimit {
     #[cfg(target_arch = "wasm32")]
     pub fn from_env_var(_env_var: &str) -> Self {
         // TODO(emilk): some way to have memory limits on web.
-        Self {
-            gross: None,
-            net: None,
-        }
+        Self { net: None }
     }
 
     pub fn is_exceeded_by(&self, mem_use: &crate::MemoryUse) -> bool {
