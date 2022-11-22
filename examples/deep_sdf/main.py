@@ -121,18 +121,17 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:
     # rerun.log_view_coordinates("world", up="+Y", timeless=True # TODO(cmc): depends on the mesh really
     rerun.log_annotation_context("world/sdf", [(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))], timeless=False)
-
-    inside = points[sdf <= 0]
-    rerun.log_text_entry(
-        "world/sdf/inside/logs", f"{len(inside)} points inside ({len(points)} total)", level=LogLevel.TRACE
-    )
-    rerun.log_points("world/sdf/inside", points[sdf <= 0], class_ids=np.array([0], dtype=np.uint8))
+    rerun.log_points("world/sdf/points", points, class_ids=np.array(sdf > 0, dtype=np.uint8))
 
     outside = points[sdf > 0]
     rerun.log_text_entry(
+        "world/sdf/inside/logs",
+        f"{len(points) - len(outside)} points inside ({len(points)} total)",
+        level=LogLevel.TRACE,
+    )
+    rerun.log_text_entry(
         "world/sdf/outside/logs", f"{len(outside)} points outside ({len(points)} total)", level=LogLevel.TRACE
     )
-    rerun.log_points("world/sdf/outside", points[sdf > 0], class_ids=np.array([1], dtype=np.uint8))
 
 
 def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
