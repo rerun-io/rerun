@@ -69,7 +69,7 @@ pub struct BindGroupDesc {
 /// Resource pool for bind groups.
 ///
 /// Requirements regarding ownership & resource lifetime:
-/// * owned [`GpuBindGroup`] should keep buffer/texture alive
+/// * owned [`wgpu::BindGroup`] should keep buffer/texture alive
 ///   (user should not need to hold strong buffer/texture handles manually)
 /// * [`GpuBindGroupPool`] should *try* to re-use previously created bind groups if they happen to match
 /// * musn't prevent buffer/texture re-use on next frame
