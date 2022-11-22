@@ -82,5 +82,10 @@ cargo install --path ./crates/rerun/
 ```
 You should now be able to run `rerun --help` in any terminal.
 
+## Bounded memory use
+You can set `RERUN_MEMORY_LIMIT=16GB` to tell the Rerun Viewer to purge older log data when memory use goes above that limit. This is useful for using Rerun in _continuous_ mode, i.e. where you keep logging new data to Rerun forever.
+
+It is still possible to log data faster than the Rerun Viewer can process it, in those cases you may still run out of memory (since the Rerun communication does not yet implement back-pressure).
+
 # Development
 Take a look at [`CONTRIBUTING.md`](CONTRIBUTING.md).
