@@ -1,20 +1,26 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
-/// An 16-bit ID representating a type of semantic class.
+use nohash_hasher::IntMap;
+
+/// An 16-bit ID representing a type of semantic class.
 ///
 /// Used to look up a [`ClassDescription`] within the [`AnnotationContext`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ClassId(pub u16);
 
-/// An 16-bit ID representating a type of semantic keypoint within a class.
+impl nohash_hasher::IsEnabled for ClassId {}
+
+/// An 16-bit ID representing a type of semantic keypoint within a class.
 ///
 /// `KeypointId`s are only meaningful within the context of a [`ClassDescription`].
 ///
 /// Used to look up an [`AnnotationInfo`] for a Keypoint within the [`AnnotationContext`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeypointId(pub u16);
+
+impl nohash_hasher::IsEnabled for KeypointId {}
 
 /// A semantic skeleton edge between two keypoints.
 ///
@@ -56,8 +62,8 @@ pub struct AnnotationInfo {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ClassDescription {
     pub info: AnnotationInfo,
-    pub keypoint_map: BTreeMap<KeypointId, AnnotationInfo>,
-    pub skeleton_edges: BTreeMap<KeypointSkeletonEdge, AnnotationInfo>,
+    pub keypoint_map: IntMap<KeypointId, AnnotationInfo>,
+    pub skeleton_edges: IntMap<KeypointId, KeypointId>,
 }
 
 /// The `AnnotationContext` provides aditional information on how to display
@@ -71,5 +77,5 @@ pub struct ClassDescription {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AnnotationContext {
-    pub class_map: BTreeMap<ClassId, ClassDescription>,
+    pub class_map: IntMap<ClassId, ClassDescription>,
 }

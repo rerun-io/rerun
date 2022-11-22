@@ -31,6 +31,10 @@ ClassIdDtype = Union[np.uint8, np.uint16]
 ClassIds = npt.NDArray[ClassIdDtype]
 OptionalClassIds = Optional[Union[int, ClassIds]]
 
+KeyPointIdDtype = Union[np.uint8, np.uint16]
+KeyPointIds = npt.NDArray[KeyPointIdDtype]
+OptionalKeyPointIds = Optional[Union[int, KeyPointIds]]
+
 
 class MeshFormat(Enum):
     # Needs some way of logging materials too, or adding some default material to the
@@ -459,7 +463,7 @@ def log_rects(
         rects = []
     rects = np.require(rects, dtype="float32")
     colors = _normalize_colors(colors)
-    class_ids = _normalize_class_ids(class_ids)
+    class_ids = _normalize_ids(class_ids)
     if labels is None:
         labels = []
 
@@ -473,6 +477,7 @@ def log_point(
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
+    keypoint_id: Optional[int] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -484,7 +489,9 @@ def log_point(
     * `color`: Optional color of the point
     * `label`: Optional text to show with the point
     * `class_id`: Optional class id for the point.
-       The class id provides color and label if not specified explicitly.
+        The class id provides color and label if not specified explicitly.
+    * `keypoint_id`: Optional key point id for the point, identifying it within a class.
+        Only valid if a class_id was specified.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -495,9 +502,12 @@ def log_point(
     space.
     * float32/float64: all color components should be in 0-1 linear space.
     """
+    if keypoint_id is not None and class_id is None:
+        raise TypeError("Use of key point ids is only valid when also using class ids!")
     if position is not None:
         position = np.require(position, dtype="float32")
-    rerun_sdk.log_point(obj_path, position, color, label, class_id, timeless)
+
+    rerun_sdk.log_point(obj_path, position, color, label, class_id, keypoint_id, timeless)
 
 
 def log_points(
@@ -507,6 +517,7 @@ def log_points(
     colors: Optional[Colors] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
+    keypoint_ids: OptionalKeyPointIds = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -519,6 +530,8 @@ def log_points(
     * `labels`: Optional per-point text to show with the points
     * `class_ids`: Optional class ids for the points.
       The class id provides colors and labels if not specified explicitly.
+    * `keypoint_ids`: Optional key point ids for the points, identifying them within a class.
+        Only valid if class_ids were specified.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -530,16 +543,19 @@ def log_points(
     * float32/float64: all color components should be in 0-1 linear space.
 
     """
+    if keypoint_ids is not None and class_ids is None:
+        raise TypeError("Use of key point ids is only valid when also using class ids!")
     if positions is None:
         positions = np.require([], dtype="float32")
     else:
         positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
-    class_ids = _normalize_class_ids(class_ids)
+    class_ids = _normalize_ids(class_ids)
+    keypoint_ids = _normalize_ids(keypoint_ids)
     if labels is None:
         labels = []
 
-    rerun_sdk.log_points(obj_path, positions, colors, labels, class_ids, timeless)
+    rerun_sdk.log_points(obj_path, positions, colors, labels, class_ids, keypoint_ids, timeless)
 
 
 def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:
@@ -557,7 +573,7 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
         return np.require(colors_array, np.uint8)
 
 
-def _normalize_class_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]:
+def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]:
     """Normalize flexible class id arrays."""
     if class_ids is None:
         return np.array((), dtype=np.uint16)
@@ -1062,11 +1078,12 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
 
 @dataclass
-class ClassDescription:
+class AnnotationInfo:
     """
-    Metadata about a class type identified by an id.
+    Annotation info annotating a class id or key-point id.
 
-    Color and label will be used to annotate objects which reference the id.
+    Color and label will be used to annotate objects/keypoints which reference the id.
+    The id refers either to a class or key-point id
     """
 
     id: int
@@ -1074,14 +1091,39 @@ class ClassDescription:
     color: Optional[Color] = None
 
 
-ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Color], ClassDescription]
+AnnotationInfoLike = Union[Tuple[int, str], Tuple[int, str, Color], AnnotationInfo]
+
+
+def coerce_annotation_info(arg: AnnotationInfoLike) -> AnnotationInfo:
+    if type(arg) is AnnotationInfo:
+        return arg
+    else:
+        return AnnotationInfo(*arg)  # type: ignore[misc]
+
+
+@dataclass
+class ClassDescription:
+    """
+    Metadata about a class type identified by an id.
+
+    Typically a class description contains only a annotation info.
+    However, within a class there might be several keypoints, each with its own annotation info.
+    Keypoints in turn may be connected to each other by skeleton edges.
+    """
+
+    info: AnnotationInfo = None
+    keypoint_annotations: Optional[Sequence[AnnotationInfo]] = None
+    keypoint_skeleton_edges: Optional[Sequence[Tuple[int, int]]] = None
+
+
+ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
 
 
 def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
     if type(arg) is ClassDescription:
         return arg
     else:
-        return ClassDescription(*arg)  # type: ignore[misc]
+        return ClassDescription(info=coerce_annotation_info(arg))  # type: ignore[misc]
 
 
 def log_annotation_context(
@@ -1119,8 +1161,17 @@ def log_annotation_context(
     typed_class_descriptions = (coerce_class_description(d) for d in class_descriptions)
 
     # Convert back to fixed tuple for easy pyo3 conversion
+    # This is pretty messy but will likely go away / be refactored with pending data-model changes.
+    def info_to_tuple(info: AnnotationInfo) -> Tuple[int, str, Sequence[int]]:
+        return (info.id, info.label, _normalize_colors(info.color).tolist() or None)
+
     tuple_class_descriptions = [
-        (d.id, d.label, _normalize_colors(d.color).tolist() or None) for d in typed_class_descriptions
+        (
+            info_to_tuple(d.info),
+            tuple(info_to_tuple(a) for a in d.keypoint_annotations) if d.keypoint_annotations is not None else [],
+            d.keypoint_skeleton_edges or [],
+        )
+        for d in typed_class_descriptions
     ]
 
     rerun_sdk.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
