@@ -1,11 +1,12 @@
-"""TODO"""
+#!/usr/bin/env python3
+"""Use the MediaPipe Pose solution to detect and track a human pose in video."""
 import argparse
 import logging
 import os
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Final, Generator, Iterator, List, Optional, Sequence
+from typing import Any, Final, Iterator, List, Optional, Tuple
 
 import cv2 as cv
 import mediapipe as mp
@@ -18,6 +19,65 @@ import rerun as rr
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/pose_movement"
+
+
+def track_pose(video_path: str) -> None:
+    mp_pose = mp.solutions.pose
+
+    pose_points_desc = [rr.ClassDescription(id=l.value, label=l.name) for l in mp_pose.PoseLandmark]
+    pose_points_ids = np.array([desc.id for desc in pose_points_desc])
+    rr.log_annotation_context("video/pose", pose_points_desc)
+
+    with closing(VideoSource(video_path)) as video_source:
+        with mp_pose.Pose() as pose:
+            for bgr_frame in video_source.stream_bgr():
+
+                rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
+                rr.set_time_seconds("time", bgr_frame.time)
+                rr.set_time_sequence("frame_idx", bgr_frame.idx)
+                rr.log_image("video/rgb", rgb)
+
+                results = pose.process(rgb)
+                h, w, _ = rgb.shape
+                landmark_positions_2d = read_landmark_positions_2d(results, w, h)
+                rr.log_points("video/pose/points", landmark_positions_2d, class_ids=pose_points_ids)
+                log_skeleton("video/pose/skeleton", landmark_positions_2d, mp_pose.POSE_CONNECTIONS)
+
+                landmark_positions_3d = read_landmark_positions_3d(results)
+                rr.log_points("world/pose/points", landmark_positions_3d, class_ids=pose_points_ids)
+                log_skeleton("world/pose/skeleton", landmark_positions_3d, mp_pose.POSE_CONNECTIONS)
+
+
+def log_skeleton(
+    path: str, landmark_positions: Optional[npt.NDArray[np.float32]], edges: List[Tuple[int, int]]
+) -> None:
+    if landmark_positions is None:
+        rr.log_cleared(path)
+    else:
+        skeleton_segments = np.array([landmark_positions[edge_idx, :] for edge in edges for edge_idx in edge])
+        rr.log_line_segments(path, skeleton_segments)
+
+
+def read_landmark_positions_2d(
+    results: Any,
+    image_width: int,
+    image_hight: int,
+) -> Optional[npt.NDArray[np.float32]]:
+    if results.pose_landmarks is None:
+        return None
+    else:
+        normalized_landmarks = [results.pose_landmarks.landmark[l] for l in mp.solutions.pose.PoseLandmark]
+        return np.array([(image_width * l.x, image_hight * l.y) for l in normalized_landmarks])
+
+
+def read_landmark_positions_3d(
+    results: Any,
+) -> Optional[npt.NDArray[np.float32]]:
+    if results.pose_landmarks is None:
+        return None
+    else:
+        landmarks = [results.pose_world_landmarks.landmark[l] for l in mp.solutions.pose.PoseLandmark]
+        return np.array([(l.x, l.y, l.z) for l in landmarks])
 
 
 @dataclass
@@ -49,26 +109,6 @@ class VideoSource:
             yield VideoFrame(data=bgr, time=time_ms * 1e-3, idx=idx)
 
 
-def track_pose(video_path: str) -> None:
-    mp_pose = mp.solutions.pose
-
-    pose_points_desc = [rr.ClassDescription(id=l.value, label=l.value) for l in mp_pose.PoseLandmark]
-    rr.log_annotation_context("/video/pose", pose_points_desc)
-
-    with closing(VideoSource(video_path)) as video_source:
-        with mp_pose.Pose() as pose:
-            for bgr_frame in video_source.stream_bgr():
-
-                rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
-                rr.set_time_seconds("time", bgr_frame.time)
-                rr.set_time_sequence("frame_idx", bgr_frame.idx)
-                rr.log_image("video/rgb", rgb)
-
-                results = pose.process(rgb)
-
-                print("bla")
-
-
 def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
     video_file_name = f"{video_name}.mp4"
     destination_path = dataset_dir / video_file_name
@@ -88,17 +128,6 @@ def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
     return str(destination_path)
 
 
-def setup_logging() -> None:
-    logger = logging.getLogger()
-    rerun_handler = rr.LoggingHandler("logs")
-    rerun_handler.setLevel(-1)
-    logger.addHandler(rerun_handler)
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(1)
-    logger.addHandler(stream_handler)
-    logger.setLevel(-1)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Uses the MediaPipe Pose solution to track a human pose in video.")
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
@@ -116,7 +145,6 @@ def main() -> None:
     parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
 
     args = parser.parse_args()
-    setup_logging()
 
     video_path = args.video_path  # type: str
     if not video_path:
