@@ -25,14 +25,15 @@ impl MemoryLimit {
         Self { net: None }
     }
 
-    pub fn is_exceeded_by(&self, mem_use: &crate::MemoryUse) -> bool {
+    /// Returns how large fraction of memory we should free to go down to the exact limit.
+    pub fn is_exceeded_by(&self, mem_use: &crate::MemoryUse) -> Option<f32> {
         if let (Some(net_limit), Some(net_use)) = (self.net, mem_use.net) {
             if net_limit < net_use {
-                return true;
+                return Some((net_use - net_limit) as f32 / net_use as f32);
             }
         }
 
-        false
+        None
     }
 }
 

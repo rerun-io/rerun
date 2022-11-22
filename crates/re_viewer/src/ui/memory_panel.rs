@@ -164,7 +164,7 @@ impl MemoryPanel {
                     plot_ui.hline(
                         egui::plot::HLine::new(net_limit as f64)
                             .name("Net limit")
-                            .width(1.0),
+                            .width(2.0),
                     );
                 }
 

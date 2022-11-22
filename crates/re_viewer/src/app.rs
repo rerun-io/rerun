@@ -357,9 +357,17 @@ impl App {
     fn prune_memory_if_needed(&mut self) {
         crate::profile_function!();
 
+        fn format_limit(limit: Option<i64>) -> String {
+            if let Some(bytes) = limit {
+                format_bytes(bytes as _)
+            } else {
+                "∞".to_owned()
+            }
+        }
+
         use re_memory::{util::format_bytes, MemoryUse};
 
-        if self.latest_memory_prune.elapsed() < instant::Duration::from_secs(30) {
+        if self.latest_memory_prune.elapsed() < instant::Duration::from_secs(10) {
             // Pruning introduces stutter, and we don't want to stutter too often.
             return;
         }
@@ -367,20 +375,14 @@ impl App {
         let limit = re_memory::MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
         let mem_use_before = MemoryUse::capture();
 
-        if limit.is_exceeded_by(&mem_use_before) {
-            fn format_limit(limit: Option<i64>) -> String {
-                if let Some(bytes) = limit {
-                    format_bytes(bytes as _)
-                } else {
-                    "∞".to_owned()
-                }
-            }
+        if let Some(minimum_fraction_to_free) = limit.is_exceeded_by(&mem_use_before) {
+            let fraction_to_free = (minimum_fraction_to_free + 0.2).clamp(0.25, 1.0);
 
             if let Some(gross) = mem_use_before.gross {
-                re_log::info!("Using {} according to OS", format_bytes(gross as _),);
+                re_log::debug!("Using {} according to OS", format_bytes(gross as _),);
             }
             if let Some(net) = mem_use_before.net {
-                re_log::info!(
+                re_log::debug!(
                     "Actually used: {}/{}",
                     format_bytes(net as _),
                     format_limit(limit.net),
@@ -389,8 +391,12 @@ impl App {
 
             {
                 crate::profile_scope!("pruning");
+                re_log::info!(
+                    "Attempting to purge {:.1}% of used RAM…",
+                    100.0 * fraction_to_free
+                );
                 for log_db in self.log_dbs.values_mut() {
-                    log_db.prune_memory();
+                    log_db.prune_memory(fraction_to_free);
                 }
                 self.state.cache.prune_memory();
             }
