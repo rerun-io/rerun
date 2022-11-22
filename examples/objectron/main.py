@@ -9,6 +9,7 @@ import argparse
 import math
 import os
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, List
@@ -49,7 +50,7 @@ class SampleARFrame:
     image_path: Path
 
 
-def read_ar_frames(dirpath: Path, nb_frames: int, forever: bool = False) -> Iterator[SampleARFrame]:
+def read_ar_frames(dirpath: Path, nb_frames: int, run_forever: bool, per_frame_sleep: float) -> Iterator[SampleARFrame]:
     """
     Loads up to `nb_frames` consecutive ARFrames from the given path on disk.
 
@@ -62,8 +63,7 @@ def read_ar_frames(dirpath: Path, nb_frames: int, forever: bool = False) -> Iter
     time_offset = 0
     frame_offset = 0
 
-    run = True
-    while run:
+    while True:
         frame_idx = 0
         data = Path(path).read_bytes()
         while len(data) > 0 and frame_idx < nb_frames:
@@ -83,9 +83,14 @@ def read_ar_frames(dirpath: Path, nb_frames: int, forever: bool = False) -> Iter
             data = data[next_len:]
             frame_idx += 1
 
-        run = forever
-        time_offset += frame.timestamp
-        frame_offset += frame_idx
+            if run_forever:
+                time.sleep(per_frame_sleep)
+
+        if run_forever:
+            time_offset += frame.timestamp
+            frame_offset += frame_idx
+        else:
+            break
 
 
 def read_annotations(dirpath: Path) -> Sequence:
@@ -258,6 +263,7 @@ def main() -> None:
         "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
     )
     parser.add_argument("--run-forever", action="store_true", help="Run forever, continually logging data.")
+    parser.add_argument("--per-frame-sleep", type=float, default=0.1, help="Sleep this much for each frame read, if --run-forever")
     parser.add_argument(
         "--recording",
         type=str,
@@ -286,7 +292,7 @@ def main() -> None:
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 
-    samples = read_ar_frames(dir, args.frames, args.run_forever)
+    samples = read_ar_frames(dir, args.frames, args.run_forever, args.per_frame_sleep)
     seq = read_annotations(dir)
     log_ar_frames(samples, seq)
 
