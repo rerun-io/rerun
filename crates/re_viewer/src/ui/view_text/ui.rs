@@ -118,7 +118,7 @@ impl ViewTextFilters {
 
         ui.horizontal(|ui| {
             ui.strong("Column filters");
-            if ui.button("Reset").clicked() {
+            if ui.button("Clear all").clicked() {
                 let Self {
                     show_timelines: _,
                     show_obj_path: _,
@@ -140,7 +140,7 @@ impl ViewTextFilters {
 
         ui.horizontal(|ui| {
             ui.label("Object paths");
-            if ui.button("Reset").clicked() {
+            if ui.button("Clear all").clicked() {
                 for v in self.filter_obj_paths.values_mut() {
                     *v = false;
                 }
@@ -159,7 +159,7 @@ impl ViewTextFilters {
 
         ui.horizontal(|ui| {
             ui.label("Log levels");
-            if ui.button("Reset").clicked() {
+            if ui.button("Clear all").clicked() {
                 self.filter_log_levels.clear();
                 for v in self.filter_log_levels.values_mut() {
                     *v = false;
@@ -329,6 +329,9 @@ fn show_table(
     let max_content_height = ui.available_height() - HEADER_HEIGHT;
     let item_spacing = ui.spacing().item_spacing;
 
+    let resize_id = ui.id().with("__table_resize");
+    ui.memory().data.remove::<Vec<f32>>(resize_id);
+
     let mut builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
         .resizable(true)
@@ -457,6 +460,7 @@ fn show_table(
             });
         });
 
+    // TODO(cmc): this appears on top of the headers :/
     if let Some(current_time_y) = current_time_y {
         // Show that the current time is here:
         ui.painter().hline(
