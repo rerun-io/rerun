@@ -1190,23 +1190,7 @@ fn time_marker_ui(
             } else {
                 ui.visuals().widgets.inactive.fg_stroke
             };
-            let stroke = egui::Stroke {
-                width: 1.5 * stroke.width,
-                ..stroke
-            };
-
-            let w = 10.0;
-            let triangle = vec![
-                pos2(x - 0.5 * w, timeline_rect.top()), // left top
-                pos2(x + 0.5 * w, timeline_rect.top()), // right top
-                pos2(x, timeline_rect.top() + w),       // bottom
-            ];
-            time_area_painter.add(egui::Shape::convex_polygon(
-                triangle,
-                stroke.color,
-                egui::Stroke::none(),
-            ));
-            time_area_painter.vline(x, (timeline_rect.top() + w)..=bottom_y, stroke);
+            paint_time_cursor(time_area_painter, x, timeline_rect.top()..=bottom_y, stroke);
         }
     }
 
@@ -1233,6 +1217,34 @@ fn time_marker_ui(
             }
         }
     }
+}
+
+pub fn paint_time_cursor(
+    painter: &egui::Painter,
+    x: f32,
+    y: RangeInclusive<f32>,
+    stroke: egui::Stroke,
+) {
+    let y_min = *y.start();
+    let y_max = *y.end();
+
+    let stroke = egui::Stroke {
+        width: 1.5 * stroke.width,
+        color: stroke.color,
+    };
+
+    let w = 10.0;
+    let triangle = vec![
+        pos2(x - 0.5 * w, y_min), // left top
+        pos2(x + 0.5 * w, y_min), // right top
+        pos2(x, y_min + w),       // bottom
+    ];
+    painter.add(egui::Shape::convex_polygon(
+        triangle,
+        stroke.color,
+        egui::Stroke::none(),
+    ));
+    painter.vline(x, (y_min + w)..=y_max, stroke);
 }
 
 // ----------------------------------------------------------------------------

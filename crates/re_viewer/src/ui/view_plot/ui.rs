@@ -1,6 +1,6 @@
 use crate::ui::view_plot::scene::PlotSeriesKind;
 use crate::ViewerContext;
-use egui::plot::{Legend, Line, Plot, Points, VLine};
+use egui::plot::{Legend, Line, Plot, Points};
 use egui::Color32;
 use re_data_store::TimeQuery;
 
@@ -25,30 +25,42 @@ pub(crate) fn view_plot(
 ) -> egui::Response {
     crate::profile_function!();
 
-    let time_query = ctx.rec_cfg.time_ctrl.time_query().unwrap();
-    let time_type = ctx.rec_cfg.time_ctrl.time_type();
+    let time_ctrl = &ctx.rec_cfg.time_ctrl;
+    let time_query = time_ctrl.time_query().unwrap();
+    let time_type = time_ctrl.time_type();
+    let timeline = time_ctrl.timeline();
 
-    let x_axis = ctx.rec_cfg.time_ctrl.timeline().name().to_string();
-    // Compute the minimum time/X value for the entire plot, so that we can offset everything and
-    // avoid nasty precision issues.
-    let x_min = scene
+    let timeline_name = timeline.name().to_string();
+
+    // Compute the minimum time/X value for the entire plot…
+    let min_time = scene
         .lines
         .iter()
         .flat_map(|line| line.points.iter().map(|p| p.0))
         .min()
         .unwrap_or(0);
 
-    Plot::new("plot")
+    // …then use that as an offset to avoid nasty precision issues with
+    // large times (nanos since epoch does not fit into a f64).
+    let time_offset = min_time;
+
+    // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
+    let plot_id_src = ("plot", &timeline_name);
+
+    let egui::InnerResponse {
+        inner: time_x,
+        response,
+    } = Plot::new(plot_id_src)
         .legend(Legend {
             position: egui::plot::Corner::RightBottom,
             ..Default::default()
         })
-        .x_axis_formatter(move |time, _| time_type.format((time as i64 + x_min).into()))
+        .x_axis_formatter(move |time, _| time_type.format((time as i64 + time_offset).into()))
         .label_formatter(move |name, value| {
             let name = if name.is_empty() { "y" } else { name };
             format!(
-                "{x_axis}: {}\n{name}: {:.5}",
-                time_type.format((value.x as i64 + x_min).into()),
+                "{timeline_name}: {}\n{name}: {:.5}",
+                time_type.format((value.x as i64 + time_offset).into()),
                 value.y
             )
         })
@@ -57,26 +69,16 @@ pub(crate) fn view_plot(
                 let timeline = ctx.rec_cfg.time_ctrl.timeline();
                 ctx.rec_cfg.time_ctrl.set_timeline_and_time(
                     *timeline,
-                    plot_ui.pointer_coordinate().unwrap().x as i64 - x_min,
+                    plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
                 );
                 ctx.rec_cfg.time_ctrl.pause();
             }
-
-            plot_ui.vline(
-                VLine::new(
-                    (match time_query {
-                        TimeQuery::LatestAt(t) => t,
-                        TimeQuery::Range(r) => *r.start(),
-                    } - x_min) as f64,
-                )
-                .color(Color32::WHITE),
-            );
 
             for line in &scene.lines {
                 let points = line
                     .points
                     .iter()
-                    .map(|p| [(p.0 - x_min) as _, p.1])
+                    .map(|p| [(p.0 - time_offset) as _, p.1])
                     .collect::<Vec<_>>();
 
                 let c = line.color;
@@ -97,6 +99,18 @@ pub(crate) fn view_plot(
                     ),
                 }
             }
-        })
-        .response
+
+            let time_x = (match time_query {
+                TimeQuery::LatestAt(t) => t,
+                TimeQuery::Range(r) => *r.start(),
+            } - time_offset) as f64;
+
+            plot_ui.screen_from_plot([time_x, 0.0].into()).x
+        });
+
+    // TODO(emilk): allow interacting with the timeline (may require `egui::Plot` to return the `plot_from_screen` transform)
+    let stroke = ui.visuals().widgets.inactive.fg_stroke;
+    crate::ui::time_panel::paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
+
+    response
 }
