@@ -29,14 +29,18 @@ pub(crate) fn view_plot(
     let time_type = ctx.rec_cfg.time_ctrl.time_type();
 
     let x_axis = ctx.rec_cfg.time_ctrl.timeline().name().to_string();
-    // Compute the minimum time/X value for the entire plot, so that we can offset everything and
-    // avoid nasty precision issues.
-    let x_min = scene
+
+    // Compute the minimum time/X value for the entire plot…
+    let min_time = scene
         .lines
         .iter()
         .flat_map(|line| line.points.iter().map(|p| p.0))
         .min()
         .unwrap_or(0);
+
+    // …then use that as an offset to avoid nasty precision issues with
+    // large times (nanos since epoch does not fit into a f64).
+    let time_offset = min_time;
 
     let egui::InnerResponse {
         inner: time_x,
@@ -46,12 +50,12 @@ pub(crate) fn view_plot(
             position: egui::plot::Corner::RightBottom,
             ..Default::default()
         })
-        .x_axis_formatter(move |time, _| time_type.format((time as i64 + x_min).into()))
+        .x_axis_formatter(move |time, _| time_type.format((time as i64 + time_offset).into()))
         .label_formatter(move |name, value| {
             let name = if name.is_empty() { "y" } else { name };
             format!(
                 "{x_axis}: {}\n{name}: {:.5}",
-                time_type.format((value.x as i64 + x_min).into()),
+                time_type.format((value.x as i64 + time_offset).into()),
                 value.y
             )
         })
@@ -60,7 +64,7 @@ pub(crate) fn view_plot(
                 let timeline = ctx.rec_cfg.time_ctrl.timeline();
                 ctx.rec_cfg.time_ctrl.set_timeline_and_time(
                     *timeline,
-                    plot_ui.pointer_coordinate().unwrap().x as i64 - x_min,
+                    plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
                 );
                 ctx.rec_cfg.time_ctrl.pause();
             }
@@ -69,7 +73,7 @@ pub(crate) fn view_plot(
                 let points = line
                     .points
                     .iter()
-                    .map(|p| [(p.0 - x_min) as _, p.1])
+                    .map(|p| [(p.0 - time_offset) as _, p.1])
                     .collect::<Vec<_>>();
 
                 let c = line.color;
@@ -94,7 +98,7 @@ pub(crate) fn view_plot(
             let time_x = (match time_query {
                 TimeQuery::LatestAt(t) => t,
                 TimeQuery::Range(r) => *r.start(),
-            } - x_min) as f64;
+            } - time_offset) as f64;
 
             plot_ui.screen_from_plot([time_x, 0.0].into()).x
         });
