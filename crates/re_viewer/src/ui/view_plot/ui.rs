@@ -103,14 +103,9 @@ pub(crate) fn view_plot(
             plot_ui.screen_from_plot([time_x, 0.0].into()).x
         });
 
-    {
-        // We paint the time explicitly (not using plot::VLine) so that
-        // A) the time vline isn't part of the calculation when computing automatic bounds for the plot
-        // B) we can round to nearest pixel to reduce aliasing when time moves
-        let x = ui.painter().round_to_pixel(time_x);
-        let y = response.rect.y_range();
-        ui.painter().vline(x, y, (1.0, Color32::WHITE));
-    }
+    // TODO(emilk): allow interacting with the timeline (may require `egui::Plot` to return the `plot_from_screen` transform)
+    let stroke = ui.visuals().widgets.inactive.fg_stroke;
+    crate::ui::time_panel::paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
 
     response
 }
