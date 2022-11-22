@@ -914,7 +914,7 @@ fn log_point(
     position: Option<numpy::PyReadonlyArray1<'_, f32>>,
     color: Option<Vec<u8>>,
     label: Option<String>,
-    class_id: Option<i32>,
+    class_id: Option<u16>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -962,7 +962,7 @@ fn log_point(
         sdk.send_data(
             &time_point,
             (&obj_path, "class_id"),
-            LoggedData::Single(Data::I32(class_id)),
+            LoggedData::Single(Data::I32(class_id as _)),
         );
     }
 
@@ -1327,7 +1327,7 @@ fn log_obb(
     color: Option<Vec<u8>>,
     stroke_width: Option<f32>,
     label: Option<String>,
-    class_id: Option<i32>,
+    class_id: Option<u16>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -1383,7 +1383,7 @@ fn log_obb(
         sdk.send_data(
             &time_point,
             (&obj_path, "class_id"),
-            LoggedData::Single(Data::I32(class_id)),
+            LoggedData::Single(Data::I32(class_id as _)),
         );
     }
 

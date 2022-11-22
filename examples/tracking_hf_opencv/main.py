@@ -317,7 +317,7 @@ def track_objects(video_path: str) -> None:
     cap = cv.VideoCapture(video_path)
     frame_idx = 0
 
-    label_strs = [cat["name"] for cat in coco_categories]
+    label_strs = [cat["name"] or str(cat["id"]) for cat in coco_categories]
     trackers = []  # type: List[Tracker]
     while cap.isOpened():
         ret, bgr = cap.read()
