@@ -78,6 +78,15 @@ pub fn set_tracking_callstacks(track: bool) {
     GLOBAL_STATS.track_callstacks.store(track, Relaxed);
 }
 
+/// Turn on callstack tracking (rather expensive) if a given env-var is set.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn turn_on_tracking_if_env_var(env_var: &str) {
+    if std::env::var(env_var).is_ok() {
+        set_tracking_callstacks(true);
+        re_log::info!("{env_var} found - turning on tracking of all large allocations");
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Statistics about extant allocations.
