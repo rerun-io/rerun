@@ -249,57 +249,9 @@ impl eframe::App for App {
 
         self.state.cache.new_frame();
 
-        if let Some(rx) = &mut self.rx {
-            crate::profile_scope!("receive_messages");
-            let start = instant::Instant::now();
-            while let Ok(msg) = rx.try_recv() {
-                if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    re_log::info!("Beginning a new recording: {:?}", msg.info);
-                    self.state.selected_rec_id = msg.info.recording_id;
-                }
+        self.receive_messages(egui_ctx);
 
-                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
-
-                log_db.add(msg);
-                if start.elapsed() > instant::Duration::from_millis(10) {
-                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                    break; // don't block the main thread for too long
-                }
-            }
-        }
-
-        {
-            // Cleanup:
-            self.log_dbs.retain(|_, log_db| !log_db.is_empty());
-
-            if !self.log_dbs.contains_key(&self.state.selected_rec_id) {
-                self.state.selected_rec_id =
-                    self.log_dbs.keys().next().cloned().unwrap_or_default();
-            }
-
-            // Make sure we don't persist old stuff we don't need:
-            self.state
-                .recording_configs
-                .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
-
-            if self.state.blueprints.len() > 100 {
-                re_log::debug!("Pruning blueprints…");
-
-                let used_app_ids: std::collections::HashSet<ApplicationId> = self
-                    .log_dbs
-                    .values()
-                    .filter_map(|log_db| {
-                        log_db
-                            .recording_info()
-                            .map(|recording_info| recording_info.application_id.clone())
-                    })
-                    .collect();
-
-                self.state
-                    .blueprints
-                    .retain(|application_id, _| used_app_ids.contains(application_id));
-            }
-        }
+        self.cleanup();
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
         top_panel(egui_ctx, frame, self);
@@ -348,6 +300,60 @@ impl eframe::App for App {
 }
 
 impl App {
+    fn receive_messages(&mut self, egui_ctx: &egui::Context) {
+        if let Some(rx) = &mut self.rx {
+            crate::profile_function!();
+            let start = instant::Instant::now();
+
+            while let Ok(msg) = rx.try_recv() {
+                if let LogMsg::BeginRecordingMsg(msg) = &msg {
+                    re_log::info!("Beginning a new recording: {:?}", msg.info);
+                    self.state.selected_rec_id = msg.info.recording_id;
+                }
+
+                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+
+                log_db.add(msg);
+                if start.elapsed() > instant::Duration::from_millis(10) {
+                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                    break; // don't block the main thread for too long
+                }
+            }
+        }
+    }
+
+    fn cleanup(&mut self) {
+        crate::profile_function!();
+
+        self.log_dbs.retain(|_, log_db| !log_db.is_empty());
+
+        if !self.log_dbs.contains_key(&self.state.selected_rec_id) {
+            self.state.selected_rec_id = self.log_dbs.keys().next().cloned().unwrap_or_default();
+        }
+
+        self.state
+            .recording_configs
+            .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
+
+        if self.state.blueprints.len() > 100 {
+            re_log::debug!("Pruning blueprints…");
+
+            let used_app_ids: std::collections::HashSet<ApplicationId> = self
+                .log_dbs
+                .values()
+                .filter_map(|log_db| {
+                    log_db
+                        .recording_info()
+                        .map(|recording_info| recording_info.application_id.clone())
+                })
+                .collect();
+
+            self.state
+                .blueprints
+                .retain(|application_id, _| used_app_ids.contains(application_id));
+        }
+    }
+
     fn prune_memory_if_needed(&mut self) {
         crate::profile_function!();
 
