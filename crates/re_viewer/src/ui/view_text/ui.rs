@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
-use egui::{Checkbox, Color32, Label, NumExt as _, Rect, RichText, TextStyle};
-
+use egui::{Color32, NumExt as _, RichText, TextStyle};
 use re_data_store::{ObjPath, Timeline};
 use re_log_types::{LogMsg, TimePoint};
 
@@ -21,40 +19,15 @@ pub struct ViewTextState {
     /// text entry window however they please when the time cursor isn't moving.
     latest_time: i64,
 
+    /// Used to reset all column sizes to their default.
+    // TODO: should provide this as a method on `Table` at some point, instead of clearing
+    // private state...
+    resize_id: Option<egui::Id>,
     pub filters: ViewTextFilters,
 }
 
 #[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct ViewTextFilters {
-    // TODO:
-    // - heuristics
-    //
-    // TODO:
-    //
-    // column pickers
-    // --------------
-    //
-    // - timelines (log_time, frame_nr...)
-    // - path
-    // - level
-    // - body
-    //
-    // custom pickers
-    // --------------
-    //
-    // - timepoints => range
-    // - path => all / one in particular / contains?
-    // - level => lesser than / greater than / equals (multi choice)
-    // - body => contains
-    //
-    // other
-    // -----
-    //
-    // - reset button
-    //
-    // NOTE:
-    // - Filters vs Selectors are in fact very different thing!
-
     // Column selectors
     pub show_timelines: BTreeMap<Timeline, bool>,
     pub show_obj_path: bool,
@@ -70,7 +43,7 @@ impl ViewTextFilters {
         crate::profile_function!();
 
         for timeline in ctx.log_db.time_points.0.keys() {
-            self.show_timelines.entry(timeline.clone()).or_insert(true);
+            self.show_timelines.entry(*timeline).or_insert(true);
         }
 
         for obj_path in text_entries.iter().map(|te| &te.obj_path) {
@@ -84,25 +57,45 @@ impl ViewTextFilters {
         }
     }
 
-    pub(crate) fn show(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn show(&mut self, ui: &mut egui::Ui, resize_id: Option<egui::Id>) {
         crate::profile_function!();
+
+        if ui
+            .button("Autoresize")
+            .on_hover_text("Automatically resize all columns to their optimal widths")
+            .clicked()
+        {
+            if let Some(resize_id) = resize_id {
+                ui.memory().data.remove::<Vec<f32>>(resize_id);
+            }
+        }
+
+        let Self {
+            show_timelines,
+            show_obj_path,
+            show_log_level,
+            filter_obj_paths,
+            filter_log_levels,
+        } = self;
+
+        let has_obj_path_filters = filter_obj_paths.values().filter(|v| **v).count() > 0;
+        let has_log_lvl_filters = filter_log_levels.values().filter(|v| **v).count() > 0;
+        let has_any_filters = has_obj_path_filters | has_log_lvl_filters;
+        let has_timeline_selections = show_timelines.values().filter(|v| **v).count() > 0;
+        let has_any_selections = has_timeline_selections | *show_obj_path | *show_log_level;
+        let clear_or_select = ["Select all", "Clear all"];
 
         ui.horizontal(|ui| {
             ui.strong("Column selections");
-            if ui.button("Reset").clicked() {
-                let Self {
-                    show_timelines,
-                    show_obj_path,
-                    show_log_level,
-                    filter_obj_paths: _,
-                    filter_log_levels: _,
-                } = self;
-
+            if ui
+                .button(clear_or_select[has_any_selections as usize])
+                .clicked()
+            {
                 for v in show_timelines.values_mut() {
-                    *v = false;
+                    *v = !has_any_selections;
                 }
-                *show_obj_path = false;
-                *show_log_level = false;
+                *show_obj_path = !has_any_selections;
+                *show_log_level = !has_any_selections;
             }
         });
 
@@ -118,20 +111,15 @@ impl ViewTextFilters {
 
         ui.horizontal(|ui| {
             ui.strong("Column filters");
-            if ui.button("Clear all").clicked() {
-                let Self {
-                    show_timelines: _,
-                    show_obj_path: _,
-                    show_log_level: _,
-                    filter_obj_paths,
-                    filter_log_levels,
-                } = self;
-
+            if ui
+                .button(clear_or_select[has_any_filters as usize])
+                .clicked()
+            {
                 for v in filter_obj_paths.values_mut() {
-                    *v = false;
+                    *v = !has_any_filters;
                 }
                 for v in filter_log_levels.values_mut() {
-                    *v = false;
+                    *v = !has_any_filters;
                 }
             }
         });
@@ -140,13 +128,16 @@ impl ViewTextFilters {
 
         ui.horizontal(|ui| {
             ui.label("Object paths");
-            if ui.button("Clear all").clicked() {
-                for v in self.filter_obj_paths.values_mut() {
-                    *v = false;
+            if ui
+                .button(clear_or_select[has_obj_path_filters as usize])
+                .clicked()
+            {
+                for v in filter_obj_paths.values_mut() {
+                    *v = !has_obj_path_filters;
                 }
             }
         });
-        for (obj_path, visible) in &mut self.filter_obj_paths {
+        for (obj_path, visible) in filter_obj_paths {
             ui.horizontal(|ui| {
                 ui.checkbox(visible, "");
                 if ui.selectable_label(false, &obj_path.to_string()).clicked() {
@@ -159,21 +150,24 @@ impl ViewTextFilters {
 
         ui.horizontal(|ui| {
             ui.label("Log levels");
-            if ui.button("Clear all").clicked() {
-                self.filter_log_levels.clear();
-                for v in self.filter_log_levels.values_mut() {
-                    *v = false;
+            if ui
+                .button(clear_or_select[has_log_lvl_filters as usize])
+                .clicked()
+            {
+                for v in filter_log_levels.values_mut() {
+                    *v = !has_log_lvl_filters;
                 }
             }
         });
-        for (log_level, visible) in &mut self.filter_log_levels {
+        for (log_level, visible) in filter_log_levels {
             ui.checkbox(visible, level_to_rich_text(ui, log_level));
         }
     }
 }
 
 pub(crate) fn view_filters(ui: &mut egui::Ui, state: &mut ViewTextState) -> egui::Response {
-    ui.vertical(|ui| state.filters.show(ui)).response
+    ui.vertical(|ui| state.filters.show(ui, state.resize_id))
+        .response
 }
 
 pub(crate) fn view_text(
@@ -246,11 +240,12 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
 fn show_table(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &ViewTextState,
+    state: &mut ViewTextState,
     text_entries: &[TextEntry],
     scroll_to_row: Option<usize>,
 ) {
     // TODO: auto-resize columns
+    // TODO: "body contains" filter
 
     const OBJ_PATH_HEADER: &str = "ObjPath";
     const LOG_LEVEL_HEADER: &str = "Level";
@@ -261,7 +256,9 @@ fn show_table(
     let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
     let current_time = ctx.rec_cfg.time_ctrl.time().map(|tr| tr.floor());
 
-    // Note: got to do all those size calculations _before_ the ui gets borrowed by the builder.
+    state.resize_id = ui.id().with("__table_resize").into();
+
+    // Step 1: compute optimal sizes for all columns.
 
     let renderer_width = |ui: &egui::Ui, text: String| {
         let font_id = TextStyle::Body.resolve(ui.style());
@@ -280,47 +277,44 @@ fn show_table(
         .map(|(timeline, width)| {
             let inner_width = text_entries
                 .first()
-                .and_then(|te| {
-                    get_time_point(ctx, te)
-                        .map(|tp| tp.0.get(timeline).copied())
-                        .flatten()
-                })
-                .map(|v| renderer_width(ui, timeline.typ().format(v)))
-                .unwrap_or(f32::MIN);
+                .and_then(|te| get_time_point(ctx, te).and_then(|tp| tp.0.get(timeline).copied()))
+                .map_or(f32::MIN, |v| renderer_width(ui, timeline.typ().format(v)));
             (timeline, f32::max(width, inner_width) * EXTRA_SPACE_FACTOR)
         })
         .collect::<Vec<_>>();
 
-    let obj_path_header_size = renderer_width(ui, OBJ_PATH_HEADER.to_string());
+    let obj_path_header_size = renderer_width(ui, OBJ_PATH_HEADER.to_owned());
     let obj_path_size = state
         .filters
         .filter_obj_paths
         .keys() // all of them, visible or not!
         .map(|obj_path| renderer_width(ui, obj_path.to_string()))
         .chain(std::iter::once(obj_path_header_size))
-        .max_by(|a, b| a.total_cmp(&b))
+        .max_by(|a, b| a.total_cmp(b))
         .unwrap_or(50.0)
         * EXTRA_SPACE_FACTOR;
 
-    let log_level_header_size = renderer_width(ui, LOG_LEVEL_HEADER.to_string());
+    let log_level_header_size = renderer_width(ui, LOG_LEVEL_HEADER.to_owned());
     let log_level_size = state
         .filters
         .filter_log_levels
         .keys() // all of them, visible or not!
         .map(|log_level| renderer_width(ui, log_level.to_string()))
         .chain(std::iter::once(log_level_header_size))
-        .max_by(|a, b| a.total_cmp(&b))
+        .max_by(|a, b| a.total_cmp(b))
         .unwrap_or(50.0)
         * EXTRA_SPACE_FACTOR;
 
-    let body_header_size = renderer_width(ui, BODY_HEADER.to_string());
+    let body_header_size = renderer_width(ui, BODY_HEADER.to_owned());
     let body_size = text_entries
         .iter() // all of them, visible or not!
         .map(|te| renderer_width(ui, te.body.clone())) // TODO: clone :/
         .chain(std::iter::once(body_header_size))
-        .max_by(|a, b| a.total_cmp(&b))
+        .max_by(|a, b| a.total_cmp(b))
         .unwrap_or(50.0)
         * EXTRA_SPACE_FACTOR;
+
+    // Step 2: render all these columns now that we know their size.
 
     use egui_extras::Size;
     const ROW_HEIGHT: f32 = 18.0;
@@ -328,9 +322,6 @@ fn show_table(
 
     let max_content_height = ui.available_height() - HEADER_HEIGHT;
     let item_spacing = ui.spacing().item_spacing;
-
-    let resize_id = ui.id().with("__table_resize");
-    ui.memory().data.remove::<Vec<f32>>(resize_id);
 
     let mut builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
@@ -386,11 +377,11 @@ fn show_table(
             }
             if state.filters.show_log_level {
                 header.col(|ui| {
-                    ui.strong("Level");
+                    ui.strong(LOG_LEVEL_HEADER);
                 });
             }
             header.col(|ui| {
-                ui.strong("Body");
+                ui.strong(BODY_HEADER);
             });
         })
         .body(|body| {
@@ -460,7 +451,7 @@ fn show_table(
             });
         });
 
-    // TODO(cmc): this appears on top of the headers :/
+    // TODO(cmc): this draws on top of the headers :(
     if let Some(current_time_y) = current_time_y {
         // Show that the current time is here:
         ui.painter().hline(

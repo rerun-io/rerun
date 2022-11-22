@@ -55,7 +55,7 @@ impl SceneText {
                 let is_obj_path_visible = state
                     .filters
                     .filter_obj_paths
-                    .get(&obj_path)
+                    .get(obj_path)
                     .copied()
                     .unwrap_or(true);
                 if !is_obj_path_visible {
@@ -94,17 +94,14 @@ impl SceneText {
                 batch
                     .into_iter()
                     .filter(|te| {
-                        te.level
-                            .as_ref()
-                            .map(|lvl| {
-                                state
-                                    .filters
-                                    .filter_log_levels
-                                    .get(lvl)
-                                    .copied()
-                                    .unwrap_or(true)
-                            })
-                            .unwrap_or(true)
+                        te.level.as_ref().map_or(true, |lvl| {
+                            state
+                                .filters
+                                .filter_log_levels
+                                .get(lvl)
+                                .copied()
+                                .unwrap_or(true)
+                        })
                     })
                     .collect()
             });
