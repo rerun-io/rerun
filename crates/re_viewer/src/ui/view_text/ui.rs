@@ -26,150 +26,6 @@ pub struct ViewTextState {
     pub filters: ViewTextFilters,
 }
 
-// TODO(cmc): implement "body contains <value>" filter.
-#[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
-pub struct ViewTextFilters {
-    // Column filters: which columns should be visible?
-    // Timelines are special: each one has a dedicated column.
-    pub col_timelines: BTreeMap<Timeline, bool>,
-    pub col_obj_path: bool,
-    pub col_log_level: bool,
-
-    // Row filters: which rows should be visible?
-    pub row_obj_paths: BTreeMap<ObjPath, bool>,
-    pub row_log_levels: BTreeMap<String, bool>,
-}
-
-impl ViewTextFilters {
-    fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {
-        crate::profile_function!();
-
-        for timeline in ctx.log_db.time_points.0.keys() {
-            self.col_timelines.entry(*timeline).or_insert(true);
-        }
-
-        for obj_path in text_entries.iter().map(|te| &te.obj_path) {
-            self.row_obj_paths.entry(obj_path.clone()).or_insert(true);
-        }
-
-        for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
-            self.row_log_levels.entry(level.clone()).or_insert(true);
-        }
-    }
-
-    pub(crate) fn show(&mut self, ui: &mut egui::Ui, resize_id: Option<egui::Id>) {
-        crate::profile_function!();
-
-        if ui
-            .button("Autoresize")
-            .on_hover_text("Automatically resize all columns to their optimal widths")
-            .clicked()
-        {
-            if let Some(resize_id) = resize_id {
-                ui.memory().data.remove::<Vec<f32>>(resize_id);
-            }
-        }
-
-        let Self {
-            col_timelines,
-            col_obj_path,
-            col_log_level,
-            row_obj_paths,
-            row_log_levels,
-        } = self;
-
-        let has_obj_path_filters = row_obj_paths.values().filter(|v| **v).count() > 0;
-        let has_log_lvl_filters = row_log_levels.values().filter(|v| **v).count() > 0;
-        let has_any_filters = has_obj_path_filters | has_log_lvl_filters;
-        let has_timeline_selections = col_timelines.values().filter(|v| **v).count() > 0;
-        let has_any_selections = has_timeline_selections | *col_obj_path | *col_log_level;
-        let clear_or_select = ["Select all", "Clear all"];
-
-        ui.horizontal(|ui| {
-            ui.strong("Column selections");
-            if ui
-                .button(clear_or_select[has_any_selections as usize])
-                .clicked()
-            {
-                for v in col_timelines.values_mut() {
-                    *v = !has_any_selections;
-                }
-                *col_obj_path = !has_any_selections;
-                *col_log_level = !has_any_selections;
-            }
-        });
-
-        ui.add_space(2.0);
-
-        for (timeline, visible) in &mut self.col_timelines {
-            ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
-        }
-        ui.checkbox(&mut self.col_obj_path, "Object path");
-        ui.checkbox(&mut self.col_log_level, "Log level");
-
-        ui.add_space(4.0);
-
-        ui.horizontal(|ui| {
-            ui.strong("Column filters");
-            if ui
-                .button(clear_or_select[has_any_filters as usize])
-                .clicked()
-            {
-                for v in row_obj_paths.values_mut() {
-                    *v = !has_any_filters;
-                }
-                for v in row_log_levels.values_mut() {
-                    *v = !has_any_filters;
-                }
-            }
-        });
-
-        ui.add_space(2.0);
-
-        ui.horizontal(|ui| {
-            ui.label("Object paths");
-            if ui
-                .button(clear_or_select[has_obj_path_filters as usize])
-                .clicked()
-            {
-                for v in row_obj_paths.values_mut() {
-                    *v = !has_obj_path_filters;
-                }
-            }
-        });
-        for (obj_path, visible) in row_obj_paths {
-            ui.horizontal(|ui| {
-                ui.checkbox(visible, "");
-                if ui.selectable_label(false, &obj_path.to_string()).clicked() {
-                    *visible = !*visible;
-                }
-            });
-        }
-
-        ui.add_space(2.0);
-
-        ui.horizontal(|ui| {
-            ui.label("Log levels");
-            if ui
-                .button(clear_or_select[has_log_lvl_filters as usize])
-                .clicked()
-            {
-                for v in row_log_levels.values_mut() {
-                    *v = !has_log_lvl_filters;
-                }
-            }
-        });
-        for (log_level, visible) in row_log_levels {
-            ui.checkbox(visible, level_to_rich_text(ui, log_level));
-        }
-    }
-}
-
-pub(crate) fn view_filters(ui: &mut egui::Ui, state: &mut ViewTextState) -> egui::Response {
-    ui.vertical(|ui| state.filters.show(ui, state.resize_id))
-        .response
-}
-
 pub(crate) fn view_text(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -213,6 +69,166 @@ pub(crate) fn view_text(
         })
     })
     .response
+}
+
+// ---
+
+// TODO(cmc): implement "body contains <value>" filter.
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub struct ViewTextFilters {
+    // Column filters: which columns should be visible?
+    // Timelines are special: each one has a dedicated column.
+    pub col_timelines: BTreeMap<Timeline, bool>,
+    pub col_obj_path: bool,
+    pub col_log_level: bool,
+
+    // Row filters: which rows should be visible?
+    pub row_obj_paths: BTreeMap<ObjPath, bool>,
+    pub row_log_levels: BTreeMap<String, bool>,
+}
+
+pub(crate) fn view_filters(ui: &mut egui::Ui, state: &mut ViewTextState) -> egui::Response {
+    ui.vertical(|ui| state.filters.show(ui, state.resize_id))
+        .response
+}
+
+impl Default for ViewTextFilters {
+    fn default() -> Self {
+        Self {
+            col_obj_path: true,
+            col_log_level: true,
+            col_timelines: Default::default(),
+            row_obj_paths: Default::default(),
+            row_log_levels: Default::default(),
+        }
+    }
+}
+
+impl ViewTextFilters {
+    fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {
+        crate::profile_function!();
+
+        for timeline in ctx.log_db.time_points.0.keys() {
+            self.col_timelines.entry(*timeline).or_insert(true);
+        }
+
+        for obj_path in text_entries.iter().map(|te| &te.obj_path) {
+            self.row_obj_paths.entry(obj_path.clone()).or_insert(true);
+        }
+
+        for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
+            self.row_log_levels.entry(level.clone()).or_insert(true);
+        }
+    }
+
+    pub(crate) fn show(&mut self, ui: &mut egui::Ui, resize_id: Option<egui::Id>) {
+        crate::profile_function!();
+
+        if ui
+            .button("Autoresize")
+            .on_hover_text("Automatically resize all columns to their optimal widths")
+            .clicked()
+        {
+            if let Some(resize_id) = resize_id {
+                ui.memory().data.remove::<Vec<f32>>(resize_id);
+            }
+        }
+
+        let Self {
+            col_timelines,
+            col_obj_path,
+            col_log_level,
+            row_obj_paths,
+            row_log_levels,
+        } = self;
+
+        let has_obj_path_row_filters = row_obj_paths.values().filter(|v| **v).count() > 0;
+        let has_log_lvl_row_filters = row_log_levels.values().filter(|v| **v).count() > 0;
+        let has_any_row_filters = has_obj_path_row_filters | has_log_lvl_row_filters;
+
+        let has_timeline_col_filters = col_timelines.values().filter(|v| **v).count() > 0;
+        let has_any_col_filters = has_timeline_col_filters | *col_obj_path | *col_log_level;
+
+        let clear_or_select = ["Select all", "Clear all"];
+
+        ui.horizontal(|ui| {
+            ui.strong("Column filters");
+            if ui
+                .button(clear_or_select[has_any_col_filters as usize])
+                .clicked()
+            {
+                for v in col_timelines.values_mut() {
+                    *v = !has_any_col_filters;
+                }
+                *col_obj_path = !has_any_col_filters;
+                *col_log_level = !has_any_col_filters;
+            }
+        });
+
+        ui.add_space(2.0);
+
+        for (timeline, visible) in &mut self.col_timelines {
+            ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
+        }
+        ui.checkbox(&mut self.col_obj_path, "Object path");
+        ui.checkbox(&mut self.col_log_level, "Log level");
+
+        ui.add_space(4.0);
+
+        ui.horizontal(|ui| {
+            ui.strong("Row filters");
+            if ui
+                .button(clear_or_select[has_any_row_filters as usize])
+                .clicked()
+            {
+                for v in row_obj_paths.values_mut() {
+                    *v = !has_any_row_filters;
+                }
+                for v in row_log_levels.values_mut() {
+                    *v = !has_any_row_filters;
+                }
+            }
+        });
+
+        ui.add_space(2.0);
+
+        ui.horizontal(|ui| {
+            ui.label("Object paths");
+            if ui
+                .button(clear_or_select[has_obj_path_row_filters as usize])
+                .clicked()
+            {
+                for v in row_obj_paths.values_mut() {
+                    *v = !has_obj_path_row_filters;
+                }
+            }
+        });
+        for (obj_path, visible) in row_obj_paths {
+            ui.horizontal(|ui| {
+                ui.checkbox(visible, "");
+                if ui.selectable_label(false, &obj_path.to_string()).clicked() {
+                    *visible = !*visible;
+                }
+            });
+        }
+
+        ui.add_space(2.0);
+
+        ui.horizontal(|ui| {
+            ui.label("Log levels");
+            if ui
+                .button(clear_or_select[has_log_lvl_row_filters as usize])
+                .clicked()
+            {
+                for v in row_log_levels.values_mut() {
+                    *v = !has_log_lvl_row_filters;
+                }
+            }
+        });
+        for (log_level, visible) in row_log_levels {
+            ui.checkbox(visible, level_to_rich_text(ui, log_level));
+        }
+    }
 }
 
 // ---
@@ -305,7 +321,7 @@ fn show_table(
     let body_header_size = renderer_width(ui, BODY_HEADER.to_owned());
     let body_size = text_entries
         .iter() // all of them, visible or not!
-        .map(|te| renderer_width(ui, te.body.clone())) // TODO: clone :/
+        .map(|te| renderer_width(ui, te.body.clone())) // TODO(cmc): clone :/
         .chain(std::iter::once(body_header_size))
         .max_by(|a, b| a.total_cmp(b))
         .unwrap_or(50.0)
