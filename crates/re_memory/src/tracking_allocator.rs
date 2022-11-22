@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// Only track allocations of at least this size.
-const TRACK_MINIMUM: usize = 128;
+const TRACK_MINIMUM: usize = 128; // TODO(emilk): make this setable by users
 
 // ----------------------------------------------------------------------------
 

@@ -23,7 +23,7 @@ impl MemoryLimit {
     #[cfg(target_arch = "wasm32")]
     pub fn from_env_var(_env_var: &str) -> Self {
         // TODO(emilk): some way to have memory limits on web.
-        Self { net: None }
+        Self { limit: None }
     }
 
     /// Returns how large fraction of memory we should free to go down to the exact limit.
