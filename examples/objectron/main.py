@@ -263,7 +263,9 @@ def main() -> None:
         "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
     )
     parser.add_argument("--run-forever", action="store_true", help="Run forever, continually logging data.")
-    parser.add_argument("--per-frame-sleep", type=float, default=0.1, help="Sleep this much for each frame read, if --run-forever")
+    parser.add_argument(
+        "--per-frame-sleep", type=float, default=0.1, help="Sleep this much for each frame read, if --run-forever"
+    )
     parser.add_argument(
         "--recording",
         type=str,
