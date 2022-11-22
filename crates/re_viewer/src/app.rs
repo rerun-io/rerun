@@ -402,9 +402,6 @@ impl App {
             if let Some(net_diff) = freed_memory.net {
                 re_log::info!("Freed up {}", format_bytes(net_diff as _));
             }
-            if let Some(gross_diff) = freed_memory.gross {
-                re_log::info!("Returned {} to the OS", format_bytes(gross_diff as _));
-            }
 
             self.latest_memory_prune = instant::Instant::now();
 
