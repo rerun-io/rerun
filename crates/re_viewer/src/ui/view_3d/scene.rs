@@ -5,8 +5,7 @@ use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
 use re_data_store::query::{
-    calculate_num_objects, visit_type_data_1, visit_type_data_2, visit_type_data_3,
-    visit_type_data_4,
+    visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4,
 };
 use re_data_store::{FieldName, InstanceIdHash};
 use re_log_types::context::ClassId;
@@ -171,13 +170,9 @@ impl Scene3D {
         query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
             .for_each(|(_obj_type, obj_path, obj_store)| {
-                let batch_size = calculate_num_objects::<_, [f32; 3]>(
-                    obj_store,
-                    &FieldName::from("pos"),
-                    &query.time_query,
-                );
-                // TODO(andreas): Make user configurable with this as the default.
-                let show_labels = batch_size < 10;
+                let mut batch_size = 0;
+                let mut show_labels = true;
+                let mut label_batch = Vec::new();
 
                 visit_type_data_4(
                     obj_store,
@@ -192,6 +187,8 @@ impl Scene3D {
                      radius: Option<&f32>,
                      class_id: Option<&i32>,
                      label: Option<&String>| {
+                        batch_size += 1;
+
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
@@ -203,9 +200,11 @@ impl Scene3D {
                             class_id.clone(),
                             DefaultColor::ObjPath(obj_path),
                         );
+
+                        show_labels = batch_size < 10;
                         if show_labels {
                             if let Some(label) = annotations.label(label, class_id) {
-                                self.labels.push(Label3D {
+                                label_batch.push(Label3D {
                                     text: label,
                                     origin: Vec3::from_slice(pos),
                                 });
@@ -220,6 +219,10 @@ impl Scene3D {
                         });
                     },
                 );
+
+                if show_labels {
+                    self.labels.extend(label_batch);
+                }
             });
     }
 
