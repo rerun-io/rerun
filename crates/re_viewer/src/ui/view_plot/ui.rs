@@ -25,10 +25,12 @@ pub(crate) fn view_plot(
 ) -> egui::Response {
     crate::profile_function!();
 
-    let time_query = ctx.rec_cfg.time_ctrl.time_query().unwrap();
-    let time_type = ctx.rec_cfg.time_ctrl.time_type();
+    let time_ctrl = &ctx.rec_cfg.time_ctrl;
+    let time_query = time_ctrl.time_query().unwrap();
+    let time_type = time_ctrl.time_type();
+    let timeline = time_ctrl.timeline();
 
-    let x_axis = ctx.rec_cfg.time_ctrl.timeline().name().to_string();
+    let timeline_name = timeline.name().to_string();
 
     // Compute the minimum time/X value for the entire plot…
     let min_time = scene
@@ -42,10 +44,13 @@ pub(crate) fn view_plot(
     // large times (nanos since epoch does not fit into a f64).
     let time_offset = min_time;
 
+    // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
+    let plot_id_src = ("plot", &timeline_name);
+
     let egui::InnerResponse {
         inner: time_x,
         response,
-    } = Plot::new("plot")
+    } = Plot::new(plot_id_src)
         .legend(Legend {
             position: egui::plot::Corner::RightBottom,
             ..Default::default()
@@ -54,7 +59,7 @@ pub(crate) fn view_plot(
         .label_formatter(move |name, value| {
             let name = if name.is_empty() { "y" } else { name };
             format!(
-                "{x_axis}: {}\n{name}: {:.5}",
+                "{timeline_name}: {}\n{name}: {:.5}",
                 time_type.format((value.x as i64 + time_offset).into()),
                 value.y
             )
