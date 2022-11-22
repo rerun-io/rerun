@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
-    query::{visit_type_data_2, visit_type_data_3, visit_type_data_4},
+    query::{visit_type_data_2, visit_type_data_4},
     FieldName, InstanceIdHash,
 };
 use re_log_types::{context::ClassId, DataVec, IndexHash, MsgId, ObjectType, Tensor};
@@ -170,25 +170,30 @@ impl Scene2D {
             .iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
             .flat_map(|(_obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
-                visit_type_data_3(
+                visit_type_data_4(
                     obj_store,
                     &FieldName::from("bbox"),
                     &query.time_query,
-                    ("color", "stroke_width", "label"),
+                    ("color", "stroke_width", "label", "class_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      bbox: &re_log_types::BBox2D,
                      color: Option<&[u8; 4]>,
                      stroke_width: Option<&f32>,
-                     label: Option<&String>| {
+                     label: Option<&String>,
+                     class_id: Option<&i32>| {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
                         let annotations = self.annotation_map.find(obj_path);
-                        // TODO(andreas): Support class id for boxes.
-                        let color = annotations.color(color, None, DefaultColor::ObjPath(obj_path));
-                        let label = annotations.label(label, None);
+                        let class_id = class_id.map(|i| ClassId(*i as _));
+                        let color = annotations.color(
+                            color,
+                            class_id.clone(),
+                            DefaultColor::ObjPath(obj_path),
+                        );
+                        let label = annotations.label(label, class_id);
 
                         let paint_props = paint_properties(color, &stroke_width);
 

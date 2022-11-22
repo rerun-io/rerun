@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-11-22: Support for labels and class ids on rects and obb: [#326](https://github.com/rerun-io/rerun/pull/326).
 * 2022-11-21: Support for labels and class ids on points: [#321](https://github.com/rerun-io/rerun/pull/321).
 * 2022-11-17: Remove the `set_visible` API: [#298](https://github.com/rerun-io/rerun/pull/298).
 * 2022-11-17: Objects can be cleared more generically using `rerun.log_cleared`: [#285](https://github.com/rerun-io/rerun/pull/285).
