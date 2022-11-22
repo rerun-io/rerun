@@ -105,19 +105,29 @@ impl Default for ViewTextFilters {
 }
 
 impl ViewTextFilters {
+    // Checks whether new values are available for any of the filters, and updates everything
+    // accordingly.
     fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {
         crate::profile_function!();
 
+        let Self {
+            col_timelines,
+            col_obj_path: _,
+            col_log_level: _,
+            row_obj_paths,
+            row_log_levels,
+        } = self;
+
         for timeline in ctx.log_db.time_points.0.keys() {
-            self.col_timelines.entry(*timeline).or_insert(true);
+            col_timelines.entry(*timeline).or_insert(true);
         }
 
         for obj_path in text_entries.iter().map(|te| &te.obj_path) {
-            self.row_obj_paths.entry(obj_path.clone()).or_insert(true);
+            row_obj_paths.entry(obj_path.clone()).or_insert(true);
         }
 
         for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
-            self.row_log_levels.entry(level.clone()).or_insert(true);
+            row_log_levels.entry(level.clone()).or_insert(true);
         }
     }
 
