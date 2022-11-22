@@ -10,14 +10,12 @@ use crate::{
     include_file,
     mesh::{mesh_vertices, GpuMesh},
     resource_managers::{MeshHandle, MeshManager},
-    resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
-        buffer_pool::{BufferDesc, GpuBufferHandleStrong},
-        pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::{GpuRenderPipelineHandle, RenderPipelineDesc, VertexBufferLayout},
-        shader_module_pool::ShaderModuleDesc,
-    },
     view_builder::ViewBuilder,
+    wgpu_resources::{
+        BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBufferHandleStrong,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
+        VertexBufferLayout,
+    },
 };
 
 use super::*;
@@ -136,11 +134,10 @@ impl MeshDrawable {
         let mut mesh_runs = Vec::new();
         {
             let mut instance_buffer_staging = ctx.queue.write_buffer_with(
-                &ctx.resource_pools
+                ctx.resource_pools
                     .buffers
                     .get_resource(&instance_buffer)
-                    .unwrap()
-                    .buffer,
+                    .unwrap(),
                 0,
                 instance_buffer_size.try_into().unwrap(),
             );
@@ -287,10 +284,10 @@ impl Renderer for MeshRenderer {
         };
 
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
-        pass.set_pipeline(&pipeline.pipeline);
+        pass.set_pipeline(pipeline);
 
         let instance_buffer = pools.buffers.get_resource(instance_buffer)?;
-        pass.set_vertex_buffer(0, instance_buffer.buffer.slice(..));
+        pass.set_vertex_buffer(0, instance_buffer.slice(..));
         let mut instance_start_index = 0;
 
         for mesh_batch in &draw_data.batches {
@@ -301,20 +298,14 @@ impl Renderer for MeshRenderer {
 
             pass.set_vertex_buffer(
                 1,
-                vertex_buffer_combined
-                    .buffer
-                    .slice(mesh_batch.mesh.vertex_buffer_positions_range.clone()),
+                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_positions_range.clone()),
             );
             pass.set_vertex_buffer(
                 2,
-                vertex_buffer_combined
-                    .buffer
-                    .slice(mesh_batch.mesh.vertex_buffer_data_range.clone()),
+                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_data_range.clone()),
             );
             pass.set_index_buffer(
-                index_buffer
-                    .buffer
-                    .slice(mesh_batch.mesh.index_buffer_range.clone()),
+                index_buffer.slice(mesh_batch.mesh.index_buffer_range.clone()),
                 wgpu::IndexFormat::Uint32,
             );
 
@@ -324,7 +315,7 @@ impl Renderer for MeshRenderer {
                 debug_assert!(mesh_batch.count > 0);
 
                 let bind_group = pools.bind_groups.get_resource(&material.bind_group)?;
-                pass.set_bind_group(1, &bind_group.bind_group, &[]);
+                pass.set_bind_group(1, bind_group, &[]);
 
                 pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
             }

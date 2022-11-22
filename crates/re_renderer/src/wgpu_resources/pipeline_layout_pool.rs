@@ -8,8 +8,6 @@ pub struct GpuPipelineLayout {
     pub layout: wgpu::PipelineLayout,
 }
 
-impl Resource for GpuPipelineLayout {}
-
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct PipelineLayoutDesc {
     /// Debug label of the pipeline layout. This will show up in graphics debuggers for easy identification.
@@ -37,7 +35,7 @@ impl GpuPipelineLayoutPool {
                 bind_group_layouts: &desc
                     .entries
                     .iter()
-                    .map(|handle| &bind_group_layout_pool.get_resource(*handle).unwrap().layout)
+                    .map(|handle| bind_group_layout_pool.get_resource(*handle).unwrap())
                     .collect::<Vec<_>>(),
                 push_constant_ranges: &[], // Sadly not widely supported
             });
@@ -50,5 +48,9 @@ impl GpuPipelineLayoutPool {
         handle: GpuPipelineLayoutHandle,
     ) -> Result<&GpuPipelineLayout, PoolError> {
         self.pool.get_resource(handle)
+    }
+
+    pub fn frame_maintenance(&mut self, frame_index: u64) {
+        self.pool.current_frame_index = frame_index;
     }
 }

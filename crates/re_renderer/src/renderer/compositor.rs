@@ -1,10 +1,10 @@
 use crate::{
     context::SharedRendererData,
     include_file,
-    resource_pools::{
-        bind_group_layout_pool::*, bind_group_pool::*, pipeline_layout_pool::*,
-        render_pipeline_pool::*, shader_module_pool::*, texture_pool::GpuTextureHandleStrong,
-        WgpuResourcePools,
+    wgpu_resources::{
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
+        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, GpuTextureHandleStrong,
+        PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc, WgpuResourcePools,
     },
 };
 
@@ -19,7 +19,7 @@ pub struct Compositor {
 
 #[derive(Clone)]
 pub struct CompositorDrawable {
-    /// [`GpuBindGroup`] pointing at the current image source and
+    /// [`GpuBindGroupHandleStrong`] pointing at the current image source and
     /// a uniform buffer for describing a tonemapper/compositor configuration.
     bind_group: GpuBindGroupHandleStrong,
 }
@@ -135,8 +135,8 @@ impl Renderer for Compositor {
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;
 
-        pass.set_pipeline(&pipeline.pipeline);
-        pass.set_bind_group(1, &bind_group.bind_group, &[]);
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(1, bind_group, &[]);
         pass.draw(0..3, 0..1);
 
         Ok(())

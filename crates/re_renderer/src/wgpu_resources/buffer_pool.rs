@@ -1,4 +1,4 @@
-use std::{hash::Hash, sync::atomic::AtomicU64};
+use std::hash::Hash;
 
 use crate::debug_label::DebugLabel;
 
@@ -9,17 +9,6 @@ slotmap::new_key_type! { pub struct GpuBufferHandle; }
 /// A reference counter baked bind group handle.
 /// Once all strong handles are dropped, the bind group will be marked for reclamation in the following frame.
 pub type GpuBufferHandleStrong = std::sync::Arc<GpuBufferHandle>;
-
-pub struct GpuBuffer {
-    last_frame_used: AtomicU64,
-    pub buffer: wgpu::Buffer,
-}
-
-impl UsageTrackedResource for GpuBuffer {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
-    }
-}
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct BufferDesc {
@@ -36,7 +25,7 @@ pub struct BufferDesc {
 
 #[derive(Default)]
 pub struct GpuBufferPool {
-    pool: DynamicResourcePool<GpuBufferHandle, BufferDesc, GpuBuffer>,
+    pool: DynamicResourcePool<GpuBufferHandle, BufferDesc, wgpu::Buffer>,
 }
 
 impl GpuBufferPool {
@@ -47,16 +36,12 @@ impl GpuBufferPool {
     /// either manually or using a higher level allocator.
     pub fn alloc(&mut self, device: &wgpu::Device, desc: &BufferDesc) -> GpuBufferHandleStrong {
         self.pool.alloc(desc, |desc| {
-            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
                 size: desc.size,
                 usage: desc.usage,
                 mapped_at_creation: false,
-            });
-            GpuBuffer {
-                last_frame_used: AtomicU64::new(0),
-                buffer,
-            }
+            })
         })
     }
 
@@ -66,7 +51,7 @@ impl GpuBufferPool {
     }
 
     /// Takes strong buffer handle to ensure the user is still holding on to the buffer.
-    pub fn get_resource(&self, handle: &GpuBufferHandleStrong) -> Result<&GpuBuffer, PoolError> {
+    pub fn get_resource(&self, handle: &GpuBufferHandleStrong) -> Result<&wgpu::Buffer, PoolError> {
         self.pool.get_resource(**handle)
     }
 
@@ -74,7 +59,7 @@ impl GpuBufferPool {
     pub(super) fn get_resource_weak(
         &self,
         handle: GpuBufferHandle,
-    ) -> Result<&GpuBuffer, PoolError> {
+    ) -> Result<&wgpu::Buffer, PoolError> {
         self.pool.get_resource(handle)
     }
 

@@ -104,15 +104,12 @@ use smallvec::smallvec;
 use crate::{
     include_file,
     renderer::utils::next_multiple_of,
-    resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
-        pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::*,
-        shader_module_pool::ShaderModuleDesc,
-        texture_pool::TextureDesc,
-    },
     view_builder::ViewBuilder,
+    wgpu_resources::{
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
+        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
+        ShaderModuleDesc, TextureDesc,
+    },
 };
 
 use super::*;
@@ -516,8 +513,8 @@ impl Renderer for LineRenderer {
         let bind_group = pools.bind_groups.get_resource(bind_group)?;
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 
-        pass.set_pipeline(&pipeline.pipeline);
-        pass.set_bind_group(1, &bind_group.bind_group, &[]);
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(1, bind_group, &[]);
         pass.draw(0..draw_data.num_quads * 6, 0..1);
 
         Ok(())

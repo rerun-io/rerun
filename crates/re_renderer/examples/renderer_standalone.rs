@@ -395,6 +395,8 @@ impl Application {
                     self.window.request_redraw();
                 }
                 Event::RedrawRequested(_) => {
+                    self.re_ctx.frame_maintenance();
+
                     // native debug build
                     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
                     let frame = match self.surface.get_current_texture() {
@@ -431,8 +433,6 @@ impl Application {
 
                     self.queue.submit(cmd_buffers);
                     frame.present();
-
-                    self.re_ctx.frame_maintenance();
 
                     // Note that this measures time spent on CPU, not GPU
                     // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
