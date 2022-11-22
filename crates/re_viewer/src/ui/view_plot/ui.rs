@@ -1,6 +1,6 @@
 use crate::ui::view_plot::scene::PlotSeriesKind;
 use crate::ViewerContext;
-use egui::plot::{Legend, Line, Plot, Points, VLine};
+use egui::plot::{Legend, Line, Plot, Points};
 use egui::Color32;
 use re_data_store::TimeQuery;
 
@@ -38,7 +38,10 @@ pub(crate) fn view_plot(
         .min()
         .unwrap_or(0);
 
-    Plot::new("plot")
+    let egui::InnerResponse {
+        inner: time_x,
+        response,
+    } = Plot::new("plot")
         .legend(Legend {
             position: egui::plot::Corner::RightBottom,
             ..Default::default()
@@ -61,16 +64,6 @@ pub(crate) fn view_plot(
                 );
                 ctx.rec_cfg.time_ctrl.pause();
             }
-
-            plot_ui.vline(
-                VLine::new(
-                    (match time_query {
-                        TimeQuery::LatestAt(t) => t,
-                        TimeQuery::Range(r) => *r.start(),
-                    } - x_min) as f64,
-                )
-                .color(Color32::WHITE),
-            );
 
             for line in &scene.lines {
                 let points = line
@@ -97,6 +90,23 @@ pub(crate) fn view_plot(
                     ),
                 }
             }
-        })
-        .response
+
+            let time_x = (match time_query {
+                TimeQuery::LatestAt(t) => t,
+                TimeQuery::Range(r) => *r.start(),
+            } - x_min) as f64;
+
+            plot_ui.screen_from_plot([time_x, 0.0].into()).x
+        });
+
+    {
+        // We paint the time explicitly (not using plot::VLine) so that
+        // A) the time vline isn't part of the calculation when computing automatic bounds for the plot
+        // B) we can round to nearest pixel to reduce aliasing when time moves
+        let x = ui.painter().round_to_pixel(time_x);
+        let y = response.rect.y_range();
+        ui.painter().vline(x, y, (1.0, Color32::WHITE));
+    }
+
+    response
 }
