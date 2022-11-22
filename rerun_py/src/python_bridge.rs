@@ -714,6 +714,7 @@ fn log_rect(
     rect: Option<[f32; 4]>,
     color: Option<Vec<u8>>,
     label: Option<String>,
+    class_id: Option<i32>,
     timeless: bool,
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
@@ -748,6 +749,14 @@ fn log_rect(
             &time_point,
             (&obj_path, "label"),
             LoggedData::Single(Data::String(label)),
+        );
+    }
+
+    if let Some(class_id) = class_id {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "class_id"),
+            LoggedData::Single(Data::I32(class_id)),
         );
     }
 
@@ -838,6 +847,7 @@ fn log_rects(
     rects: numpy::PyReadonlyArrayDyn<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
+    class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
     timeless: bool,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `rects.empty()`, beacause logging
@@ -874,6 +884,7 @@ fn log_rects(
     }
 
     log_labels(&mut sdk, &obj_path, labels, &indices, &time_point, n)?;
+    log_class_ids(&mut sdk, &obj_path, &class_ids, &indices, &time_point, n)?;
 
     let rects = vec_from_np_array(&rects)
         .chunks_exact(4)
@@ -1316,6 +1327,7 @@ fn log_obb(
     color: Option<Vec<u8>>,
     stroke_width: Option<f32>,
     label: Option<String>,
+    class_id: Option<i32>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -1364,6 +1376,14 @@ fn log_obb(
             &time_point,
             (&obj_path, "label"),
             LoggedData::Single(Data::String(label)),
+        );
+    }
+
+    if let Some(class_id) = class_id {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "class_id"),
+            LoggedData::Single(Data::I32(class_id)),
         );
     }
 

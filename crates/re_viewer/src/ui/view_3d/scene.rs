@@ -178,15 +178,16 @@ impl Scene3D {
                     obj_store,
                     &FieldName::from("pos"),
                     &query.time_query,
-                    ("color", "radius", "class_id", "label"),
+                    ("color", "radius", "label", "class_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 3],
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>,
-                     class_id: Option<&i32>,
-                     label: Option<&String>| {
+
+                     label: Option<&String>,
+                     class_id: Option<&i32>| {
                         batch_size += 1;
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
@@ -232,28 +233,27 @@ impl Scene3D {
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Box3D])
         {
-            visit_type_data_3(
+            visit_type_data_4(
                 obj_store,
                 &FieldName::from("obb"),
                 &query.time_query,
-                ("color", "stroke_width", "label"),
+                ("color", "stroke_width", "label", "class_id"),
                 |instance_index: Option<&IndexHash>,
                  _time: i64,
                  _msg_id: &MsgId,
                  obb: &re_log_types::Box3,
                  color: Option<&[u8; 4]>,
                  stroke_width: Option<&f32>,
-                 label: Option<&String>| {
+                 label: Option<&String>,
+                 class_id: Option<&i32>| {
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                     let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
                     let annotations = self.annotation_map.find(obj_path);
-                    let color = annotations.color(
-                        color,
-                        None, // TODO(andreas): support class ids for boxes
-                        DefaultColor::ObjPath(obj_path),
-                    );
-                    let label = annotations.label(label, None);
+                    let class_id = class_id.map(|i| ClassId(*i as _));
+                    let color =
+                        annotations.color(color, class_id.clone(), DefaultColor::ObjPath(obj_path));
+                    let label = annotations.label(label, class_id);
 
                     self.add_box(
                         InstanceIdHash::from_path_and_index(obj_path, instance_index),

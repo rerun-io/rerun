@@ -405,6 +405,7 @@ def log_rect(
     rect_format: RectFormat = RectFormat.XYWH,
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
+    class_id: Optional[int] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -413,10 +414,12 @@ def log_rect(
     * `rect`: the recangle in [x, y, w, h], or some format you pick with the
     `rect_format` argument.
     * `rect_format`: how to interpret the `rect` argument
-    * `label`: Optional text to show inside the rectangle.
     * `color`: Optional RGB or RGBA triplet in 0-255 sRGB.
+    * `label`: Optional text to show inside the rectangle.
+    * `class_id`: Optional class id for the rectangle.
+       The class id provides color and label if not specified explicitly.
     """
-    rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless)
+    rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
 
 
 def log_rects(
@@ -426,6 +429,7 @@ def log_rects(
     rect_format: RectFormat = RectFormat.XYWH,
     colors: Optional[Colors] = None,
     labels: Optional[Sequence[str]] = None,
+    class_ids: OptionalClassIds = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -437,6 +441,8 @@ def log_rects(
     argument.
     * `rect_format`: how to interpret the `rect` argument
     * `labels`: Optional per-rectangle text to show inside the rectangle.
+    * `class_ids`: Optional class ids for the rectangles.
+      The class id provides colors and labels if not specified explicitly.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -453,10 +459,11 @@ def log_rects(
         rects = []
     rects = np.require(rects, dtype="float32")
     colors = _normalize_colors(colors)
+    class_ids = _normalize_class_ids(class_ids)
     if labels is None:
         labels = []
 
-    rerun_sdk.log_rects(obj_path, rect_format.value, rects, colors, labels, timeless)
+    rerun_sdk.log_rects(obj_path, rect_format.value, rects, colors, labels, class_ids, timeless)
 
 
 def log_point(
@@ -476,7 +483,8 @@ def log_point(
     * `position`: 2x1 or 3x1 array
     * `color`: Optional color of the point
     * `label`: Optional text to show with the point
-    * `class_id`: Optional class id for the point. The class id provides color and label if not specified explicitly.
+    * `class_id`: Optional class id for the point.
+       The class id provides color and label if not specified explicitly.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -509,7 +517,7 @@ def log_points(
     * `positions`: Nx2 or Nx3 array
     * `color`: Optional colors of the points.
     * `labels`: Optional per-point text to show with the points
-    * `class_id`: Optional class ids for the points.
+    * `class_ids`: Optional class ids for the points.
       The class id provides colors and labels if not specified explicitly.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
@@ -846,6 +854,7 @@ def log_obb(
     color: Optional[Sequence[int]] = None,
     stroke_width: Optional[float] = None,
     label: Optional[str] = None,
+    class_id: Optional[int] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -854,9 +863,11 @@ def log_obb(
     `half_size`: Array with [x, y, z] half dimensions of the OBB.
     `position`: Array with [x, y, z] position of the OBB in world space.
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
-    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
-    `stroke_width`: width of the OBB edges.
-    `label` is an optional text label placed at `position`.
+    `color`: Optional RGB or RGBA triplet in 0-255 sRGB.
+    `stroke_width`: Optional width of the OBB edges.
+    `label` Optional text label placed at `position`.
+    `class_id`: Optional class id for the OBB.
+                 The class id provides colors and labels if not specified explicitly.
     """
     rerun_sdk.log_obb(
         obj_path,
@@ -867,6 +878,7 @@ def log_obb(
         stroke_width=stroke_width,
         label=label,
         timeless=timeless,
+        class_id=class_id,
     )
 
 
