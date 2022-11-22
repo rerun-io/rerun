@@ -47,13 +47,13 @@ impl MemoryPanel {
 
     fn left_side(ui: &mut egui::Ui) {
         let limit = MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
-        if let Some(gross_limit) = limit.gross {
+        if let Some(net_limit) = limit.net {
             ui.label(format!(
-                "Gross limit: {} (set by RERUN_MEMORY_LIMIT)",
-                format_bytes(gross_limit as _)
+                "net limit: {} (set by RERUN_MEMORY_LIMIT)",
+                format_bytes(net_limit as _)
             ));
         } else {
-            ui.label("You can use the environment variable RERUN_MEMORY_LIMIT to set an upper limit of memory use. For instance: 'RERUN_MEMORY_LIMIT=16GB'.");
+            ui.label("You can set an upper limit of RAM use with e.g. RERUN_MEMORY_LIMIT=16GB.");
             ui.separator();
         }
 
@@ -160,13 +160,6 @@ impl MemoryPanel {
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
                 let limit = MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
-                if let Some(gross_limit) = limit.gross {
-                    plot_ui.hline(
-                        egui::plot::HLine::new(gross_limit as f64)
-                            .name("Gross limit")
-                            .width(1.0),
-                    );
-                }
                 if let Some(net_limit) = limit.net {
                     plot_ui.hline(
                         egui::plot::HLine::new(net_limit as f64)

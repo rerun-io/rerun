@@ -371,11 +371,7 @@ impl App {
             }
 
             if let Some(gross) = mem_use_before.gross {
-                re_log::info!(
-                    "Using {}/{} according to OS",
-                    format_bytes(gross as _),
-                    format_limit(limit.gross),
-                );
+                re_log::info!("Using {} according to OS", format_bytes(gross as _),);
             }
             if let Some(net) = mem_use_before.net {
                 re_log::info!(
