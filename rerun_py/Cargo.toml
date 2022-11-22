@@ -35,6 +35,7 @@ web = ["rerun/web", "dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 re_error = { path = "../crates/re_error" }
 re_log = { path = "../crates/re_log" }
 re_log_types = { path = "../crates/re_log_types" }
+re_memory = { path = "../crates/re_memory" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
 re_tensor_ops = { path = "../crates/re_tensor_ops" }
 re_viewer = { path = "../crates/re_viewer", optional = true }
@@ -49,6 +50,7 @@ image = { version = "0.24", default-features = false, features = [
 ] }
 itertools = "0.10"
 macaw = "0.17"
+mimalloc = "0.1.29"
 nohash-hasher = "0.2"
 numpy = "0.17"
 once_cell = "1.12"

@@ -7,5 +7,10 @@
 #![doc = document_features::document_features!()]
 //!
 
+use re_memory::TrackingAllocator;
+
+#[global_allocator]
+static GLOBAL: TrackingAllocator<mimalloc::MiMalloc> = TrackingAllocator::new(mimalloc::MiMalloc);
+
 mod python_bridge;
 pub(crate) mod sdk;
