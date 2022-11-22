@@ -29,6 +29,7 @@ Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
 
 ClassIdDtype = Union[np.uint8, np.uint16]
 ClassIds = npt.NDArray[ClassIdDtype]
+OptionalClassIds = Optional[Union[int, ClassIds]]
 
 
 class MeshFormat(Enum):
@@ -412,8 +413,8 @@ def log_rect(
     * `rect`: the recangle in [x, y, w, h], or some format you pick with the
     `rect_format` argument.
     * `rect_format`: how to interpret the `rect` argument
-    * `label` is an optional text to show inside the rectangle.
-    * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    * `label`: Optional text to show inside the rectangle.
+    * `color`: Optional RGB or RGBA triplet in 0-255 sRGB.
     """
     rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless)
 
@@ -435,7 +436,7 @@ def log_rects(
     * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format`
     argument.
     * `rect_format`: how to interpret the `rect` argument
-    * `labels` is an optional per-rectangle text to show inside the rectangle.
+    * `labels`: Optional per-rectangle text to show inside the rectangle.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -463,6 +464,8 @@ def log_point(
     position: Optional[npt.NDArray[np.float32]],
     *,
     color: Optional[Sequence[int]] = None,
+    label: Optional[str] = None,
+    class_id: Optional[int] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -470,20 +473,23 @@ def log_point(
 
     Logging again to the same `obj_path` will replace the previous point.
 
-    `position`: 2x1 or 3x1 array
+    * `position`: 2x1 or 3x1 array
+    * `color`: Optional color of the point
+    * `label`: Optional text to show with the point
+    * `class_id`: Optional class id for the point. The class id provides color and label if not specified explicitly.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
     or one color per point in a Nx3 or Nx4 numpy array.
 
-    Supported `dtype`s for `colors`:
+    Supported `dtype`s for `color`:
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
     * float32/float64: all color components should be in 0-1 linear space.
     """
     if position is not None:
         position = np.require(position, dtype="float32")
-    rerun_sdk.log_point(obj_path, position, color, timeless)
+    rerun_sdk.log_point(obj_path, position, color, label, class_id, timeless)
 
 
 def log_points(
@@ -491,6 +497,8 @@ def log_points(
     positions: Optional[npt.NDArray[np.float32]],
     *,
     colors: Optional[Colors] = None,
+    labels: Optional[Sequence[str]] = None,
+    class_ids: OptionalClassIds = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -498,7 +506,11 @@ def log_points(
 
     Logging again to the same `obj_path` will replace all the previous points.
 
-    `positions`: Nx2 or Nx3 array
+    * `positions`: Nx2 or Nx3 array
+    * `color`: Optional colors of the points.
+    * `labels`: Optional per-point text to show with the points
+    * `class_id`: Optional class ids for the points.
+      The class id provides colors and labels if not specified explicitly.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -508,14 +520,18 @@ def log_points(
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
     * float32/float64: all color components should be in 0-1 linear space.
+
     """
     if positions is None:
         positions = np.require([], dtype="float32")
     else:
         positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
+    class_ids = _normalize_class_ids(class_ids)
+    if labels is None:
+        labels = []
 
-    rerun_sdk.log_points(obj_path, positions, colors, timeless)
+    rerun_sdk.log_points(obj_path, positions, colors, labels, class_ids, timeless)
 
 
 def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:
@@ -531,6 +547,18 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
             return linear_to_gamma_u8_pixel(linear=colors_array)
 
         return np.require(colors_array, np.uint8)
+
+
+def _normalize_class_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]:
+    """Normalize flexible class id arrays."""
+    if class_ids is None:
+        return np.array((), dtype=np.uint16)
+    else:
+        class_ids_array = np.array(class_ids)
+        if class_ids_array.dtype == np.uint8:
+            class_ids_array = class_ids_array.astype(np.uint16)
+
+        return np.require(class_ids_array, np.uint16)
 
 
 # -----------------------------------------------------------------------------
@@ -913,7 +941,6 @@ def log_segmentation_image(
     Supported `dtype`s:
     * uint8: components should be 0-255 class ids
     * uint16: components should be 0-65535 class ids
-    * class_descriptions: obj_path for a class_descriptions object logged with `log_class_descriptions`
 
     """
     # Catch some errors early:
@@ -925,6 +952,8 @@ def log_segmentation_image(
         if depth != 1:
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
+    if not isinstance(image, np.ndarray):
+        image = np.array(image)
     if image.dtype == "uint8":
         rerun_sdk.log_tensor_u8(obj_path, image, None, None, rerun_sdk.TensorDataMeaning.ClassId, timeless)
     elif image.dtype == "uint16":
