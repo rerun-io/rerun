@@ -63,12 +63,10 @@ impl MemoryPanel {
 
         let mem_use = MemoryUse::capture();
 
-        if mem_use.gross.is_some() || mem_use.net.is_some() {
-            if let Some(gross) = mem_use.gross {
-                ui.label(format!(
-                    "Gross: {} (allocated from OS)",
-                    format_bytes(gross as _)
-                ));
+        if mem_use.resident.is_some() || mem_use.net.is_some() {
+            if let Some(resident) = mem_use.resident {
+                ui.label(format!("Resident: {}", format_bytes(resident as _)))
+                    .on_hover_text("Resident Set Size (or Working Set on Windows). Memory in RAM and not in swap.");
             }
 
             if let Some(net) = mem_use.net {
@@ -183,7 +181,7 @@ impl MemoryPanel {
                     );
                 }
 
-                plot_ui.line(to_line(&self.history.gross).name("Gross use").width(1.5));
+                plot_ui.line(to_line(&self.history.resident).name("Resident").width(1.5));
                 plot_ui.line(to_line(&self.history.net).name("Net use").width(1.5));
             });
     }

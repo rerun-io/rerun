@@ -6,11 +6,11 @@ pub struct MemoryUse {
     /// Working Set on Windows.
     ///
     /// `None` if unknown.
-    pub gross: Option<i64>,
+    pub resident: Option<i64>,
 
     /// Bytes used by the application according to our own memory allocator's accounting.
     ///
-    /// This will be smaller than [`Self::gross`] because our memory allocator may not
+    /// This will be smaller than [`Self::resident`] because our memory allocator may not
     /// return all the memory we free to the OS.
     ///
     /// `None` if [`crate::TrackingAllocator`] is not used.
@@ -20,7 +20,7 @@ pub struct MemoryUse {
 impl MemoryUse {
     pub fn capture() -> Self {
         Self {
-            gross: bytes_used_gross(),
+            resident: bytes_resident(),
             net: bytes_used_net(),
         }
     }
@@ -35,7 +35,7 @@ impl std::ops::Sub for MemoryUse {
         }
 
         MemoryUse {
-            gross: sub(self.gross, rhs.gross),
+            resident: sub(self.resident, rhs.resident),
             net: sub(self.net, rhs.net),
         }
     }
@@ -48,19 +48,19 @@ impl std::ops::Sub for MemoryUse {
 /// Resident Set Size (RSS) on Linux, Android, Mac, iOS.
 /// Working Set on Windows.
 #[cfg(not(target_arch = "wasm32"))]
-fn bytes_used_gross() -> Option<i64> {
+fn bytes_resident() -> Option<i64> {
     memory_stats::memory_stats().map(|usage| usage.physical_mem as i64)
 }
 
 #[cfg(target_arch = "wasm32")]
-fn bytes_used_gross() -> Option<i64> {
+fn bytes_resident() -> Option<i64> {
     // blocked on https://github.com/Arc-blroth/memory-stats/issues/1 and https://github.com/rustwasm/wasm-bindgen/issues/3159
     None
 }
 
 /// The amount of memory in use.
 ///
-/// The difference to [`bytes_used_gross`] is memory allocated by `MiMalloc`.
+/// The difference to [`bytes_resident`] is memory allocated by `MiMalloc`.
 /// that hasn't been returned to the OS.
 ///
 /// `None` if [`crate::TrackingAllocator`] is not used.

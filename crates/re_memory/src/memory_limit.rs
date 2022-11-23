@@ -3,7 +3,7 @@ pub struct MemoryLimit {
     /// Limit in bytes.
     ///
     /// This is primarily compared to what is reported by [`crate::TrackingAllocator`] ('net').
-    /// We limit based on this instead of `gross` (RSS) because `net` is what we have immediate
+    /// We limit based on this instead of `resident` (RSS) because `net` is what we have immediate
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
     pub limit: Option<i64>,
 }
@@ -34,10 +34,10 @@ impl MemoryLimit {
             if limit < net_use {
                 return Some((net_use - limit) as f32 / net_use as f32);
             }
-        } else if let Some(gross_use) = mem_use.gross {
-            re_log::warn_once!("Using gross memory use (RSS) for memory limiting, because a memory tracker was not available.");
-            if limit < gross_use {
-                return Some((gross_use - limit) as f32 / gross_use as f32);
+        } else if let Some(resident_use) = mem_use.resident {
+            re_log::warn_once!("Using resident memory use (RSS) for memory limiting, because a memory tracker was not available.");
+            if limit < resident_use {
+                return Some((resident_use - limit) as f32 / resident_use as f32);
             }
         }
 

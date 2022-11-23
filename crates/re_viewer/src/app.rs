@@ -378,8 +378,8 @@ impl App {
             let fraction_to_free = (minimum_fraction_to_free + 0.2).clamp(0.25, 1.0);
 
             re_log::debug!("RAM limit: {}", format_limit(limit.limit));
-            if let Some(gross) = mem_use_before.gross {
-                re_log::debug!("Using {} according to OS", format_bytes(gross as _),);
+            if let Some(resident) = mem_use_before.resident {
+                re_log::debug!("Using {} according to OS", format_bytes(resident as _),);
             }
             if let Some(net) = mem_use_before.net {
                 re_log::debug!("Actually used: {}", format_bytes(net as _));
