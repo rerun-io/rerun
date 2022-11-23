@@ -139,13 +139,13 @@ pub struct TrackingStatistics {
     /// Allocations smaller than these are left untracked.
     pub track_size_threshold: usize,
 
-    /// All live allocations that we are NOT tracking (because they were below [`track_size_threshold`]).
+    /// All live allocations that we are NOT tracking (because they were below [`Self::track_size_threshold`]).
     pub untracked: CountAndSize,
 
-    /// All live allocations sampled by the stochastic medium [`AllocationTracker`].
+    /// All live allocations sampled of medium size, stochastically sampled.
     pub stochastically_tracked: CountAndSize,
 
-    /// All live allocations tracked by the large [`AllocationTracker`].
+    /// All live largish allocations, fully tracked.
     pub fully_tracked: CountAndSize,
 
     /// All live allocations used for internal book-keeping.
