@@ -42,12 +42,15 @@ impl MemoryPanel {
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            ui.label("🗠 Memory use over time");
+            ui.label("🗠 Rerun Viewer memory use over time");
             self.plot(ui);
         });
     }
 
     fn left_side(ui: &mut egui::Ui) {
+        ui.strong("Rerun Viewer memory usage");
+        ui.separator();
+
         let limit = MemoryLimit::from_env_var(RERUN_MEMORY_LIMIT);
         if let Some(limit) = limit.limit {
             ui.label(format!(
