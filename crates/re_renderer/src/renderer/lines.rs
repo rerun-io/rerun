@@ -193,6 +193,22 @@ pub struct LineStrip {
     //pub stippling: f32,
 }
 
+impl LineStrip {
+    /// Creates line strips from a single line segment.
+    pub fn line_segment(
+        segment: (glam::Vec3, glam::Vec3),
+        radius: f32,
+        color: [u8; 4],
+    ) -> LineStrip {
+        LineStrip {
+            points: smallvec![segment.0, segment.1],
+            radius,
+            color,
+            flags: Default::default(),
+        }
+    }
+}
+
 impl LineDrawable {
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///

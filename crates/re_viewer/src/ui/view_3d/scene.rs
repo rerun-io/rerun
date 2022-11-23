@@ -307,6 +307,7 @@ impl Scene3D {
                             DefaultColor::ObjPath(obj_path),
                         );
 
+                        // TODO(andreas): re_renderer should support our Size type directly!
                         match obj_type {
                             ObjectType::Path3D => {
                                 batch.push(LineStrip {
@@ -316,26 +317,20 @@ impl Scene3D {
                                             .iter()
                                             .map(|v| Vec3::from_slice(v))
                                             .collect(),
-                                        radius: radius.0, // todo: re_renderer should support our Size type directly!
+                                        radius: radius.0,
                                         color,
                                         flags: Default::default(),
                                     },
                                 });
                             }
                             ObjectType::LineSegments3D => {
-                                batch.extend(points.chunks_exact(2).map(|points| {
-                                    LineStrip {
-                                        instance_id_hash,
-                                        line_strip: re_renderer::renderer::LineStrip {
-                                            points: points
-                                                .iter()
-                                                .map(|p| glam::Vec3::from_slice(p))
-                                                .collect(),
-                                            radius: radius.0, // todo: re_renderer should support our Size type directly!
-                                            color,
-                                            flags: Default::default(),
-                                        },
-                                    }
+                                batch.extend(points.chunks_exact(2).map(|points| LineStrip {
+                                    instance_id_hash,
+                                    line_strip: re_renderer::renderer::LineStrip::line_segment(
+                                        (points[0].into(), points[0].into()),
+                                        radius.0,
+                                        color,
+                                    ),
                                 }));
                             }
                             _ => (),
@@ -513,12 +508,11 @@ impl Scene3D {
 
                     self.line_strips.push(LineStrip {
                         instance_id_hash: instance_id,
-                        line_strip: re_renderer::renderer::LineStrip {
-                            points: smallvec![cam_origin, axis_end],
+                        line_strip: re_renderer::renderer::LineStrip::line_segment(
+                            (cam_origin, axis_end),
                             radius,
                             color,
-                            flags: Default::default(),
-                        },
+                        ),
                     });
                 }
             }
@@ -592,38 +586,38 @@ impl Scene3D {
 
         {
             crate::profile_scope!("lines");
-            for line_segment in line_strips {
-                if Size(line_segment.line_strip.radius).is_auto() {
-                    line_segment.line_strip.radius = default_line_radius.0;
+            for line_strip in line_strips {
+                if Size(line_strip.line_strip.radius).is_auto() {
+                    line_strip.line_strip.radius = default_line_radius.0;
                 }
-                if let Some(size_in_points) = Size(line_segment.line_strip.radius).ui() {
+                if let Some(size_in_points) = Size(line_strip.line_strip.radius).ui() {
                     // TODO(andreas): Ui size doesn't work properly for line strips with more than two points right now.
                     // Resolving this in the shader would be quite easy (since we can reason with projected coordinates there)
                     // but if we move it there, cpu sided hovering logic won't work as is!
                     let dist_to_eye = if true {
                         // This works much better when one line segment is very close to the camera
                         let mut closest = f32::INFINITY;
-                        for p in &line_segment.line_strip.points {
+                        for p in &line_strip.line_strip.points {
                             closest = closest.min(eye_camera_plane.distance(*p));
                         }
                         closest
                     } else {
                         let mut centroid = glam::DVec3::ZERO;
-                        for p in &line_segment.line_strip.points {
+                        for p in &line_strip.line_strip.points {
                             centroid += p.as_dvec3();
                         }
-                        let centroid = centroid.as_vec3()
-                            / (2.0 * line_segment.line_strip.points.len() as f32);
+                        let centroid =
+                            centroid.as_vec3() / (2.0 * line_strip.line_strip.points.len() as f32);
                         eye_camera_plane.distance(centroid)
                     }
                     .at_least(0.0);
 
-                    line_segment.line_strip.radius =
+                    line_strip.line_strip.radius =
                         dist_to_eye * size_in_points * point_size_at_one_meter;
                 }
-                if line_segment.instance_id_hash == hovered_instance_id_hash {
-                    line_segment.line_strip.radius *= hover_size_boost;
-                    line_segment.line_strip.color = HOVER_COLOR;
+                if line_strip.instance_id_hash == hovered_instance_id_hash {
+                    line_strip.line_strip.radius *= hover_size_boost;
+                    line_strip.line_strip.color = HOVER_COLOR;
                 }
             }
         }
@@ -678,14 +672,13 @@ impl Scene3D {
                 (corners[3], corners[0]), // `d` distance plane sides
             ]
             .into_iter()
-            .map(|(a, b)| LineStrip {
+            .map(|segment| LineStrip {
                 instance_id_hash: instance_id,
-                line_strip: re_renderer::renderer::LineStrip {
-                    points: smallvec![a, b],
-                    radius: line_radius.0, // TODO(andreas): re_renderer should be able to handle our size type directly
+                line_strip: re_renderer::renderer::LineStrip::line_segment(
+                    segment,
+                    line_radius.0, // TODO(andreas): re_renderer should be able to handle our size type directly
                     color,
-                    flags: Default::default(),
-                },
+                ),
             }),
         );
 
@@ -780,14 +773,13 @@ impl Scene3D {
                 (corners[0b011], corners[0b111]),
             ]
             .into_iter()
-            .map(|(a, b)| LineStrip {
+            .map(|segment| LineStrip {
                 instance_id_hash: instance_id,
-                line_strip: re_renderer::renderer::LineStrip {
-                    points: smallvec![a, b],
-                    radius: line_radius.0,
+                line_strip: re_renderer::renderer::LineStrip::line_segment(
+                    segment,
+                    line_radius.0,
                     color,
-                    flags: Default::default(),
-                },
+                ),
             }),
         );
     }
@@ -796,12 +788,12 @@ impl Scene3D {
         let Self {
             annotation_map: _,
             points,
-            line_strips: line_segments,
+            line_strips,
             meshes,
             labels,
         } = self;
 
-        points.is_empty() && line_segments.is_empty() && meshes.is_empty() && labels.is_empty()
+        points.is_empty() && line_strips.is_empty() && meshes.is_empty() && labels.is_empty()
     }
 
     pub fn line_strips(&self, show_origin_axis: bool) -> Vec<re_renderer::renderer::LineStrip> {
