@@ -7,7 +7,7 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
-    resource_pools::WgpuResourcePools,
+    wgpu_resources::WgpuResourcePools,
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
 
@@ -140,7 +140,12 @@ impl RenderContext {
         }
     }
 
+    /// Call this at the beginning of a new frame.
+    ///
+    /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
     pub fn frame_maintenance(&mut self) {
+        self.frame_index += 1;
+
         // Tick the error tracker so that it knows when to reset!
         // Note that we're ticking on frame_maintenance rather than raw frames, which
         // makes a world of difference when we're in a poisoned state.
@@ -163,7 +168,7 @@ impl RenderContext {
 
         {
             let WgpuResourcePools {
-                bind_group_layouts: _,
+                bind_group_layouts,
                 bind_groups,
                 pipeline_layouts,
                 render_pipelines,
@@ -173,20 +178,19 @@ impl RenderContext {
                 buffers,
             } = &mut self.resource_pools; // not all pools require maintenance
 
-            // Render pipeline maintenance must come before shader module maintenance since
-            // it registers them.
-            render_pipelines.frame_maintenance(
-                &self.device,
-                self.frame_index,
-                shader_modules,
-                pipeline_layouts,
-            );
-
+            // Shader module maintenance must come before render pipelines because render pipeline
+            // recompilation picks up all shaders that have been recompiled this frame.
             shader_modules.frame_maintenance(
                 &self.device,
                 &mut self.resolver,
                 self.frame_index,
                 &modified_paths,
+            );
+            render_pipelines.frame_maintenance(
+                &self.device,
+                self.frame_index,
+                shader_modules,
+                pipeline_layouts,
             );
 
             // Bind group maintenance must come before texture/buffer maintenance since it
@@ -195,8 +199,10 @@ impl RenderContext {
 
             textures.frame_maintenance(self.frame_index);
             buffers.frame_maintenance(self.frame_index);
-        }
 
-        self.frame_index += 1;
+            pipeline_layouts.frame_maintenance(self.frame_index);
+            bind_group_layouts.frame_maintenance(self.frame_index);
+            samplers.frame_maintenance(self.frame_index);
+        }
     }
 }

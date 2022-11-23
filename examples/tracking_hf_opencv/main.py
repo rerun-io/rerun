@@ -38,11 +38,7 @@ from transformers.models.detr.feature_extraction_detr import masks_to_boxes, rgb
 class Detection:
     """Information about a detected object."""
 
-    # TODO(Niko): Remove label_id from here once log_rect(s) supports class_descriptions
-    label_id: int
-    label_str: str
-    label_color: List[int]
-
+    class_id: int
     bbox_xywh: List[float]
     image_width: int
     image_height: int
@@ -64,7 +60,7 @@ class Detection:
             self.bbox_xywh[2] * width_scale,
             self.bbox_xywh[3] * height_scale,
         ]
-        return Detection(self.label_id, self.label_str, self.label_color, target_bbox, target_width, target_height)
+        return Detection(self.class_id, target_bbox, target_width, target_height)
 
 
 class Detector:
@@ -75,9 +71,7 @@ class Detector:
         self.feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50-panoptic")
         self.model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
 
-        self.lable_from_id = {cat["id"]: cat["name"] for cat in coco_categories}  # type: Dict[int, str]
         self.is_thing_from_id = {cat["id"]: bool(cat["isthing"]) for cat in coco_categories}  # type: Dict[int, bool]
-        self.color_from_id = {cat["id"]: cat["color"] for cat in coco_categories}  # type: Dict[int, List[int]]
 
     def detect_objects_to_track(self, rgb: npt.NDArray[np.uint8], frame_idx: int) -> List[Detection]:
         logging.info("Looking for things to track on frame %d", frame_idx)
@@ -105,23 +99,19 @@ class Detector:
         rerun.log_segmentation_image("image/scaled/segmentation", mask)
 
         boxes = detections["boxes"].detach().cpu().numpy()
-        labels = detections["labels"].detach().cpu().numpy()
-        str_labels = [self.lable_from_id[l] for l in labels]
-        colors = [self.color_from_id[l] for l in labels]
-        things = [self.is_thing_from_id[l] for l in labels]
+        class_ids = detections["labels"].detach().cpu().numpy()
+        things = [self.is_thing_from_id[l] for l in class_ids]
 
-        self.log_detections(boxes, str_labels, colors, things)
+        self.log_detections(boxes, class_ids, things)
 
         objects_to_track = []  # type: List[Detection]
-        for idx, (label_id, label_str, label_color, is_thing) in enumerate(zip(labels, str_labels, colors, things)):
+        for idx, (class_id, is_thing) in enumerate(zip(class_ids, things)):
             if is_thing:
                 x_min, y_min, x_max, y_max = boxes[idx, :]
                 bbox_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]
                 objects_to_track.append(
                     Detection(
-                        label_id=label_id,
-                        label_str=label_str,
-                        label_color=label_color,
+                        class_id=class_id,
                         bbox_xywh=bbox_xywh,
                         image_width=scaled_width,
                         image_height=scaled_height,
@@ -130,32 +120,26 @@ class Detector:
 
         return objects_to_track
 
-    def log_detections(
-        self, boxes: npt.NDArray[np.float32], str_labels: List[str], colors: List[List[int]], things: List[bool]
-    ) -> None:
+    def log_detections(self, boxes: npt.NDArray[np.float32], class_ids: List[int], things: List[bool]) -> None:
         things_np = np.array(things)
-        colors_np = np.array(colors)
+        class_ids_np = np.array(class_ids, dtype=np.uint16)
 
         thing_boxes = boxes[things_np, :]
-        thing_labels = [label for label, is_thing in zip(str_labels, things) if is_thing]
-        thing_colors = colors_np[things_np, :]
+        thing_class_ids = class_ids_np[things_np]
         rerun.log_rects(
             "image/scaled/detections/things",
             thing_boxes,
             rect_format=rerun.RectFormat.XYXY,
-            labels=thing_labels,
-            colors=thing_colors,
+            class_ids=thing_class_ids,
         )
 
         background_boxes = boxes[~things_np, :]
-        background_labels = [label for label, is_thing in zip(str_labels, things) if not is_thing]
-        background_colors = colors_np[~things_np, :]
+        background_class_ids = class_ids[~things_np]
         rerun.log_rects(
             "image/scaled/detections/background",
             background_boxes,
             rect_format=rerun.RectFormat.XYXY,
-            labels=background_labels,
-            colors=background_colors,
+            class_ids=background_class_ids,
         )
 
 
@@ -182,9 +166,6 @@ class Tracker:
     def create_new_tracker(cls, detection: Detection, bgr: npt.NDArray[np.uint8]) -> "Tracker":
         new_tracker = cls(cls.next_tracking_id, detection, bgr)
         cls.next_tracking_id += 1
-        logging.info(
-            "Tracking newly detected %s with tracking id #%d", new_tracker.tracked.label_str, new_tracker.tracking_id
-        )
         return new_tracker
 
     def update(self, bgr: npt.NDArray[np.uint8]) -> None:
@@ -208,8 +189,7 @@ class Tracker:
                 f"image/tracked/{self.tracking_id}",
                 self.tracked.bbox_xywh,
                 rect_format=rerun.RectFormat.XYWH,
-                label=self.tracked.label_str,
-                color=self.tracked.label_color,
+                class_id=self.tracked.class_id,
             )
         else:
             rerun.log_rect(f"image/tracked/{self.tracking_id}", None)
@@ -240,7 +220,7 @@ class Tracker:
 
     def match_score(self, other: Detection) -> float:
         """Returns bbox IoU if classes match, otherwise 0"""
-        if self.tracked.label_id != other.label_id:
+        if self.tracked.class_id != other.class_id:
             return 0.0
         if not self.is_tracking:
             return 0.0
@@ -280,7 +260,10 @@ def clip_bbox_to_image(bbox_xywh: List[float], image_width: int, image_height: i
 
 
 def update_trackers_with_detections(
-    trackers: List[Tracker], detections: Sequence[Detection], bgr: npt.NDArray[np.uint8]
+    trackers: List[Tracker],
+    detections: Sequence[Detection],
+    label_strs: Sequence[str],
+    bgr: npt.NDArray[np.uint8],
 ) -> List[Tracker]:
     """Tries to match detections to existing trackers and updates the trackers if they match.
     Any detections that don't match existing trackers will generate new trackers.
@@ -302,6 +285,11 @@ def update_trackers_with_detections(
             updated_trackers.append(best_tracker)
         else:
             updated_trackers.append(Tracker.create_new_tracker(detection, bgr))
+            logging.info(
+                "Tracking newly detected %s with tracking id #%d",
+                label_strs[detection.class_id],
+                Tracker.next_tracking_id,
+            )
 
     logging.debug("Updating %d trackers without matching detections", len(non_updated_trackers))
     for tracker in non_updated_trackers:
@@ -329,6 +317,7 @@ def track_objects(video_path: str) -> None:
     cap = cv.VideoCapture(video_path)
     frame_idx = 0
 
+    label_strs = [cat["name"] or str(cat["id"]) for cat in coco_categories]
     trackers = []  # type: List[Tracker]
     while cap.isOpened():
         ret, bgr = cap.read()
@@ -343,7 +332,7 @@ def track_objects(video_path: str) -> None:
 
         if not trackers or frame_idx % 40 == 0:
             detections = detector.detect_objects_to_track(rgb=rgb, frame_idx=frame_idx)
-            trackers = update_trackers_with_detections(trackers, detections, bgr)
+            trackers = update_trackers_with_detections(trackers, detections, label_strs, bgr)
 
         else:
             logging.debug("Running tracking update step for frame %d", frame_idx)

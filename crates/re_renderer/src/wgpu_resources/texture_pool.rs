@@ -1,4 +1,4 @@
-use std::{hash::Hash, sync::atomic::AtomicU64};
+use std::hash::Hash;
 
 use crate::debug_label::DebugLabel;
 
@@ -10,17 +10,10 @@ slotmap::new_key_type! { pub struct GpuTextureHandle; }
 /// Once all strong handles are dropped, the texture will be marked for reclamation in the following frame.
 pub type GpuTextureHandleStrong = std::sync::Arc<GpuTextureHandle>;
 
-pub(crate) struct GpuTexture {
-    last_frame_used: AtomicU64,
-    pub(crate) texture: wgpu::Texture,
-    pub(crate) default_view: wgpu::TextureView,
-    // TODO(andreas) what about custom views
-}
-
-impl UsageTrackedResource for GpuTexture {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
-    }
+pub struct GpuTexture {
+    pub texture: wgpu::Texture,
+    pub default_view: wgpu::TextureView,
+    // TODO(andreas) What about custom views? Should probably have a separate resource manager for it!
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -64,7 +57,7 @@ impl TextureDesc {
 }
 
 #[derive(Default)]
-pub(crate) struct GpuTexturePool {
+pub struct GpuTexturePool {
     pool: DynamicResourcePool<GpuTextureHandle, TextureDesc, GpuTexture>,
 }
 
@@ -76,7 +69,6 @@ impl GpuTexturePool {
             let texture = device.create_texture(&desc.to_wgpu_desc());
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             GpuTexture {
-                last_frame_used: AtomicU64::new(0),
                 texture,
                 default_view: view,
             }

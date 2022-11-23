@@ -280,6 +280,7 @@ impl eframe::App for App {
             .paint_callback_resources
             .get_mut::<re_renderer::RenderContext>()
             .unwrap();
+        render_ctx.frame_maintenance();
 
         if log_db.is_empty() && self.rx.is_some() {
             egui::CentralPanel::default().show(egui_ctx, |ui| {
@@ -294,8 +295,6 @@ impl eframe::App for App {
 
         self.handle_dropping_files(egui_ctx);
         self.toasts.show(egui_ctx);
-
-        render_ctx.frame_maintenance();
     }
 }
 

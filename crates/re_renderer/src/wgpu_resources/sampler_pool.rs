@@ -3,16 +3,10 @@ use std::{hash::Hash, num::NonZeroU8};
 use super::{resource::*, static_resource_pool::*};
 use crate::debug_label::DebugLabel;
 
-slotmap::new_key_type! { pub(crate) struct GpuSamplerHandle; }
-
-pub(crate) struct GpuSampler {
-    pub(crate) sampler: wgpu::Sampler,
-}
-
-impl Resource for GpuSampler {}
+slotmap::new_key_type! { pub struct GpuSamplerHandle; }
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
-pub(crate) struct SamplerDesc {
+pub struct SamplerDesc {
     /// Debug label of the sampler. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
 
@@ -45,15 +39,14 @@ pub(crate) struct SamplerDesc {
 }
 
 #[derive(Default)]
-pub(crate) struct GpuSamplerPool {
-    pool: StaticResourcePool<GpuSamplerHandle, SamplerDesc, GpuSampler>,
+pub struct GpuSamplerPool {
+    pool: StaticResourcePool<GpuSamplerHandle, SamplerDesc, wgpu::Sampler>,
 }
 
 impl GpuSamplerPool {
     pub fn get_or_create(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> GpuSamplerHandle {
         self.pool.get_or_create(desc, |desc| {
-            // TODO(andreas): error handling
-            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            device.create_sampler(&wgpu::SamplerDescriptor {
                 label: desc.label.get(),
                 address_mode_u: desc.address_mode_u,
                 address_mode_v: desc.address_mode_v,
@@ -68,12 +61,15 @@ impl GpuSamplerPool {
                 // Unsupported
                 compare: None,
                 border_color: None,
-            });
-            GpuSampler { sampler }
+            })
         })
     }
 
-    pub fn get_resource(&self, handle: GpuSamplerHandle) -> Result<&GpuSampler, PoolError> {
+    pub fn get_resource(&self, handle: GpuSamplerHandle) -> Result<&wgpu::Sampler, PoolError> {
         self.pool.get_resource(handle)
+    }
+
+    pub fn frame_maintenance(&mut self, frame_index: u64) {
+        self.pool.current_frame_index = frame_index;
     }
 }

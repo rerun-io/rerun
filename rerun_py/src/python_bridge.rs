@@ -716,6 +716,7 @@ fn log_rect(
     rect: Option<[f32; 4]>,
     color: Option<Vec<u8>>,
     label: Option<String>,
+    class_id: Option<i32>,
     timeless: bool,
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
@@ -753,6 +754,14 @@ fn log_rect(
         );
     }
 
+    if let Some(class_id) = class_id {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "class_id"),
+            LoggedData::Single(Data::I32(class_id)),
+        );
+    }
+
     sdk.send_data(
         &time_point,
         (&obj_path, "bbox"),
@@ -762,6 +771,77 @@ fn log_rect(
     Ok(())
 }
 
+fn log_labels(
+    sdk: &mut Sdk,
+    obj_path: &ObjPath,
+    labels: Vec<String>,
+    indices: &BatchIndex,
+    time_point: &TimePoint,
+    num_objects: usize,
+) -> PyResult<()> {
+    match labels.len() {
+        0 => Ok(()),
+        1 => {
+            sdk.send_data(
+                time_point,
+                (obj_path, "label"),
+                LoggedData::BatchSplat(Data::String(labels[0].clone())),
+            );
+            Ok(())
+        }
+        num_labels if num_labels == num_objects => {
+            sdk.send_data(
+                time_point,
+                (obj_path, "label"),
+                LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::String(labels),
+                },
+            );
+            Ok(())
+        }
+        num_labels => Err(PyTypeError::new_err(format!(
+            "Got {num_labels} labels for {num_objects} objects"
+        ))),
+    }
+}
+
+fn log_class_ids(
+    sdk: &mut Sdk,
+    obj_path: &ObjPath,
+    class_ids: &numpy::PyReadonlyArrayDyn<'_, u16>,
+    indices: &BatchIndex,
+    time_point: &TimePoint,
+    num_objects: usize,
+) -> PyResult<()> {
+    match class_ids.len() {
+        0 => Ok(()),
+        1 => {
+            sdk.send_data(
+                time_point,
+                (obj_path, "class_id"),
+                LoggedData::BatchSplat(Data::I32(class_ids.to_vec().unwrap()[0] as i32)),
+            );
+            Ok(())
+        }
+        num_class_ids if num_class_ids == num_objects => {
+            sdk.send_data(
+                time_point,
+                (obj_path, "class_id"),
+                LoggedData::Batch {
+                    indices: indices.clone(),
+                    // TODO(andreas): We don't have a u16 data type, do late conversion here. This will likely go away with new data model.
+                    data: DataVec::I32(class_ids.cast(false).unwrap().to_vec().unwrap()),
+                },
+            );
+            Ok(())
+        }
+        num_class_ids => Err(PyTypeError::new_err(format!(
+            "Got {num_class_ids} class_id for {num_objects} objects"
+        ))),
+    }
+}
+
 #[pyfunction]
 fn log_rects(
     obj_path: &str,
@@ -769,6 +849,7 @@ fn log_rects(
     rects: numpy::PyReadonlyArrayDyn<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
+    class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
     timeless: bool,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `rects.empty()`, beacause logging
@@ -804,31 +885,8 @@ fn log_rects(
         sdk.send_data(&time_point, (&obj_path, "color"), color_data);
     }
 
-    match labels.len() {
-        0 => {}
-        1 => {
-            sdk.send_data(
-                &time_point,
-                (&obj_path, "label"),
-                LoggedData::BatchSplat(Data::String(labels[0].clone())),
-            );
-        }
-        num_labels if num_labels == n => {
-            sdk.send_data(
-                &time_point,
-                (&obj_path, "label"),
-                LoggedData::Batch {
-                    indices: indices.clone(),
-                    data: DataVec::String(labels),
-                },
-            );
-        }
-        num_labels => {
-            return Err(PyTypeError::new_err(format!(
-                "Got {num_labels} labels for {n} rects"
-            )));
-        }
-    }
+    log_labels(&mut sdk, &obj_path, labels, &indices, &time_point, n)?;
+    log_class_ids(&mut sdk, &obj_path, &class_ids, &indices, &time_point, n)?;
 
     let rects = vec_from_np_array(&rects)
         .chunks_exact(4)
@@ -857,6 +915,8 @@ fn log_point(
     obj_path: &str,
     position: Option<numpy::PyReadonlyArray1<'_, f32>>,
     color: Option<Vec<u8>>,
+    label: Option<String>,
+    class_id: Option<u16>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -892,6 +952,22 @@ fn log_point(
         );
     }
 
+    if let Some(label) = label {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "label"),
+            LoggedData::Single(Data::String(label)),
+        );
+    }
+
+    if let Some(class_id) = class_id {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "class_id"),
+            LoggedData::Single(Data::I32(class_id as _)),
+        );
+    }
+
     let position = vec_from_np_array(&position);
     let pos_data = match obj_type {
         ObjectType::Point2D => Data::Vec2([position[0], position[1]]),
@@ -917,6 +993,8 @@ fn log_points(
     obj_path: &str,
     positions: numpy::PyReadonlyArrayDyn<'_, f32>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
+    labels: Vec<String>,
+    class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
     timeless: bool,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `positions.empty()`, beacause logging
@@ -953,6 +1031,9 @@ fn log_points(
         let color_data = color_batch(&indices, colors)?;
         sdk.send_data(&time_point, (&obj_path, "color"), color_data);
     }
+
+    log_labels(&mut sdk, &obj_path, labels, &indices, &time_point, n)?;
+    log_class_ids(&mut sdk, &obj_path, &class_ids, &indices, &time_point, n)?;
 
     let pos_data = match obj_type {
         ObjectType::Point2D => DataVec::Vec2(pod_collect_to_vec(&vec_from_np_array(&positions))),
@@ -1248,6 +1329,7 @@ fn log_obb(
     color: Option<Vec<u8>>,
     stroke_width: Option<f32>,
     label: Option<String>,
+    class_id: Option<u16>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -1296,6 +1378,14 @@ fn log_obb(
             &time_point,
             (&obj_path, "label"),
             LoggedData::Single(Data::String(label)),
+        );
+    }
+
+    if let Some(class_id) = class_id {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "class_id"),
+            LoggedData::Single(Data::I32(class_id as _)),
         );
     }
 

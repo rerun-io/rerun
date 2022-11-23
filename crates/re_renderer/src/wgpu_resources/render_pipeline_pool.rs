@@ -1,5 +1,3 @@
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use anyhow::Context;
 use smallvec::SmallVec;
 
@@ -8,17 +6,6 @@ use crate::debug_label::DebugLabel;
 use super::{pipeline_layout_pool::*, resource::*, shader_module_pool::*, static_resource_pool::*};
 
 slotmap::new_key_type! { pub struct GpuRenderPipelineHandle; }
-
-pub struct GpuRenderPipeline {
-    last_frame_used: AtomicU64,
-    pub(crate) pipeline: wgpu::RenderPipeline,
-}
-
-impl UsageTrackedResource for GpuRenderPipeline {
-    fn last_frame_used(&self) -> &AtomicU64 {
-        &self.last_frame_used
-    }
-}
 
 /// A copy of [`wgpu::VertexBufferLayout`] with a [`smallvec`] for the attributes.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -100,12 +87,12 @@ impl RenderPipelineDesc {
                 label: self.label.get(),
                 layout: Some(&pipeline_layout.layout),
                 vertex: wgpu::VertexState {
-                    module: &vertex_shader_module.shader_module,
+                    module: vertex_shader_module,
                     entry_point: &self.vertex_entrypoint,
                     buffers: &buffers,
                 },
                 fragment: wgpu::FragmentState {
-                    module: &fragment_shader_module.shader_module,
+                    module: fragment_shader_module,
                     entry_point: &self.fragment_entrypoint,
                     targets: &self.render_targets,
                 }
@@ -121,7 +108,7 @@ impl RenderPipelineDesc {
 
 #[derive(Default)]
 pub struct GpuRenderPipelinePool {
-    pool: StaticResourcePool<GpuRenderPipelineHandle, RenderPipelineDesc, GpuRenderPipeline>,
+    pool: StaticResourcePool<GpuRenderPipelineHandle, RenderPipelineDesc, wgpu::RenderPipeline>,
 }
 
 impl GpuRenderPipelinePool {
@@ -133,13 +120,9 @@ impl GpuRenderPipelinePool {
         shader_module_pool: &GpuShaderModulePool,
     ) -> GpuRenderPipelineHandle {
         self.pool.get_or_create(desc, |desc| {
-            GpuRenderPipeline {
-                last_frame_used: AtomicU64::new(0),
-                pipeline: desc
-                    // TODO(cmc): certainly not unwrapping here
-                    .create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
-                    .unwrap(),
-            }
+            // TODO(cmc): certainly not unwrapping here
+            desc.create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
+                .unwrap()
         })
     }
 
@@ -150,72 +133,52 @@ impl GpuRenderPipelinePool {
         shader_modules: &mut GpuShaderModulePool,
         pipeline_layouts: &mut GpuPipelineLayoutPool,
     ) {
-        // Make sure the shader modules we rely on don't get GC'd!
-        for desc in self.pool.resource_descs() {
-            shader_modules.register_resource_usage(desc.vertex_handle);
-            shader_modules.register_resource_usage(desc.fragment_handle);
-        }
+        self.pool.current_frame_index = frame_index;
 
-        // All render pipeline descriptors that refer to shader modules that have been
-        // recompiled since last frame.
-        let descs = self
-            .pool
-            .resource_descs()
-            .filter_map(|desc| {
-                let last_frame_modified = {
-                    let vertex_last_modified = shader_modules
-                        .get(desc.vertex_handle)
-                        .map(|sm| sm.last_frame_modified.load(Ordering::Acquire))
-                        .unwrap_or(0);
-                    let fragment_last_modified = shader_modules
-                        .get(desc.fragment_handle)
-                        .map(|sm| sm.last_frame_modified.load(Ordering::Acquire))
-                        .unwrap_or(0);
-                    u64::max(vertex_last_modified, fragment_last_modified)
-                };
+        // Recompile render pipelines referencing shader modules that have been recompiled this frame.
+        self.pool.recreate_resources(|desc| {
+            let frame_created = {
+                let vertex_created = shader_modules
+                    .get_statistics(desc.vertex_handle)
+                    .map(|sm| sm.frame_created)
+                    .unwrap_or(0);
+                let fragment_created = shader_modules
+                    .get_statistics(desc.fragment_handle)
+                    .map(|sm| sm.frame_created)
+                    .unwrap_or(0);
+                u64::max(vertex_created, fragment_created)
+            };
+            // The frame counter just got bumped by one. So any shader that has `frame_created`,
+            // equal the current frame now, must have been recompiled since the user didn't have a
+            // chance yet to add new shaders for this frame!
+            // (note that this assumes that shader `frame_maintenance` happens before pipeline `frame_maintenance`)
+            if frame_created < frame_index {
+                return None;
+            }
 
-                // TODO(cmc): Again, not nice, we'll see how things evolve.
-                (last_frame_modified >= frame_index).then(|| desc.clone())
-            })
-            .collect::<Vec<_>>();
-
-        // Recompile render pipelines referencing recompiled shader modules.
-        for desc in descs {
-            // TODO(cmc): obviously terrible, we'll see as things evolve.
-            let handle = self.pool.get_or_create(&desc, |_| {
-                unreachable!("the pool itself handed us that descriptor")
-            });
-            let res = self
-                .pool
-                .get_resource_mut(handle)
-                .expect("the pool itself handed us that handle");
-
-            let render_pipeline =
-                match desc.create_render_pipeline(device, pipeline_layouts, shader_modules) {
-                    Ok(sm) => sm,
-                    Err(err) => {
-                        re_log::error!(
-                            err = re_error::format(err),
-                            "couldn't recompile render pipeline"
-                        );
-                        continue;
-                    }
-                };
-
-            re_log::debug!(
-                label = desc.label.get(),
-                "successfully recompiled render pipeline"
-            );
-
-            res.pipeline = render_pipeline;
-            // NOTE: could technically have a `last_frame_modified` like shader modules do.
-        }
+            match desc.create_render_pipeline(device, pipeline_layouts, shader_modules) {
+                Ok(sm) => {
+                    re_log::debug!(
+                        label = desc.label.get(),
+                        "successfully recompiled render pipeline"
+                    );
+                    Some(sm)
+                }
+                Err(err) => {
+                    re_log::error!(
+                        err = re_error::format(err),
+                        "couldn't recompile render pipeline"
+                    );
+                    None
+                }
+            }
+        });
     }
 
     pub fn get_resource(
         &self,
         handle: GpuRenderPipelineHandle,
-    ) -> Result<&GpuRenderPipeline, PoolError> {
+    ) -> Result<&wgpu::RenderPipeline, PoolError> {
         self.pool.get_resource(handle)
     }
 }

@@ -6,9 +6,8 @@ use crate::{
     debug_label::DebugLabel,
     renderer::MeshRenderer,
     resource_managers::{ResourceManagerError, Texture2DHandle, TextureManager2D},
-    resource_pools::{
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
-        buffer_pool::{BufferDesc, GpuBufferHandleStrong},
+    wgpu_resources::{
+        BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroupHandleStrong, GpuBufferHandleStrong,
         WgpuResourcePools,
     },
 };
@@ -18,7 +17,7 @@ use crate::{
 /// Mesh vertices consist of two vertex buffers right now.
 /// One for positions ([`glam::Vec3`]) and one for the rest, called [`mesh_vertices::MeshVertexData`] here
 pub mod mesh_vertices {
-    use crate::resource_pools::render_pipeline_pool::VertexBufferLayout;
+    use crate::wgpu_resources::VertexBufferLayout;
     use smallvec::smallvec;
 
     /// Mesh vertex as used in gpu residing vertex buffers.
@@ -162,11 +161,10 @@ impl GpuMesh {
                 },
             );
             let mut staging_buffer = queue.write_buffer_with(
-                &pools
+                pools
                     .buffers
                     .get_resource(&vertex_buffer_combined)
-                    .map_err(ResourceManagerError::ResourcePoolError)?
-                    .buffer,
+                    .map_err(ResourceManagerError::ResourcePoolError)?,
                 0,
                 vertex_buffer_combined_size.try_into().unwrap(),
             );
@@ -189,11 +187,10 @@ impl GpuMesh {
                 },
             );
             let mut staging_buffer = queue.write_buffer_with(
-                &pools
+                pools
                     .buffers
                     .get_resource(&index_buffer)
-                    .map_err(ResourceManagerError::ResourcePoolError)?
-                    .buffer,
+                    .map_err(ResourceManagerError::ResourcePoolError)?,
                 0,
                 index_buffer_size.try_into().unwrap(),
             );

@@ -99,20 +99,17 @@ use std::num::NonZeroU32;
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 
 use crate::{
     include_file,
     renderer::utils::next_multiple_of,
-    resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
-        pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::*,
-        shader_module_pool::ShaderModuleDesc,
-        texture_pool::TextureDesc,
-    },
     view_builder::ViewBuilder,
+    wgpu_resources::{
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
+        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
+        ShaderModuleDesc, TextureDesc,
+    },
 };
 
 use super::*;
@@ -180,7 +177,7 @@ impl LineStripFlags {
 #[derive(Clone)]
 pub struct LineStrip {
     /// Connected points. Must be at least 2.
-    pub points: Vec<glam::Vec3>,
+    pub points: SmallVec<[glam::Vec3; 2]>,
 
     /// Radius of the line strip in world space
     /// TODO(andreas) Should be able to specify if this is in pixels, or both by providing a minimum in pixels.
@@ -194,6 +191,22 @@ pub struct LineStrip {
     // Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
     // TODO(andreas): unsupported right now.
     //pub stippling: f32,
+}
+
+impl LineStrip {
+    /// Creates line strips from a single line segment.
+    pub fn line_segment(
+        segment: (glam::Vec3, glam::Vec3),
+        radius: f32,
+        color: [u8; 4],
+    ) -> LineStrip {
+        LineStrip {
+            points: smallvec![segment.0, segment.1],
+            radius,
+            color,
+            flags: Default::default(),
+        }
+    }
 }
 
 impl LineDrawable {
@@ -516,8 +529,8 @@ impl Renderer for LineRenderer {
         let bind_group = pools.bind_groups.get_resource(bind_group)?;
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 
-        pass.set_pipeline(&pipeline.pipeline);
-        pass.set_bind_group(1, &bind_group.bind_group, &[]);
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(1, bind_group, &[]);
         pass.draw(0..draw_data.num_quads * 6, 0..1);
 
         Ok(())

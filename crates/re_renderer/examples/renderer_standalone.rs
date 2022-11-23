@@ -18,6 +18,8 @@ use instant::Instant;
 use itertools::Itertools;
 use macaw::IsoTransform;
 use rand::Rng;
+use smallvec::smallvec;
+
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
     renderer::{
@@ -237,14 +239,14 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         &[
             // Complex orange line.
             LineStrip {
-                points: lorenz_points,
+                points: lorenz_points.into(),
                 radius: 0.05,
                 color: [255, 191, 0, 255],
                 flags: LineStripFlags::empty(),
             },
             // Green Zig-Zag
             LineStrip {
-                points: vec![
+                points: smallvec![
                     glam::vec3(0.0, -1.0, 0.0),
                     glam::vec3(1.0, 0.0, 0.0),
                     glam::vec3(2.0, -1.0, 0.0),
@@ -395,6 +397,8 @@ impl Application {
                     self.window.request_redraw();
                 }
                 Event::RedrawRequested(_) => {
+                    self.re_ctx.frame_maintenance();
+
                     // native debug build
                     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
                     let frame = match self.surface.get_current_texture() {
@@ -431,8 +435,6 @@ impl Application {
 
                     self.queue.submit(cmd_buffers);
                     frame.present();
-
-                    self.re_ctx.frame_maintenance();
 
                     // Note that this measures time spent on CPU, not GPU
                     // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,

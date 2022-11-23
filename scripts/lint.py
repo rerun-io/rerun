@@ -24,6 +24,9 @@ def lint_line(line: str) -> Optional[str]:
     if "HACK" in line:
         return "we prefer TODO over HACK"
 
+    if "todo:" in line:
+        return "write 'TODO:' in upper-case"
+
     if "todo!()" in line:
         return 'todo!() should be written as todo!("$details")'
 
