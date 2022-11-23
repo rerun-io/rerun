@@ -24,4 +24,18 @@ pub struct CountAndSize {
 
 impl CountAndSize {
     pub const ZERO: Self = Self { count: 0, size: 0 };
+
+    /// Add an allocation.
+    #[inline]
+    pub fn add(&mut self, size: usize) {
+        self.count += 1;
+        self.size += size;
+    }
+
+    /// Remove an allocation.
+    #[inline]
+    pub fn sub(&mut self, size: usize) {
+        self.count -= 1;
+        self.size -= size;
+    }
 }

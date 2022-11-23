@@ -101,9 +101,7 @@ impl AllocationTracker {
             .or_insert_with(|| ReadableBacktrace::new(unresolved_backtrace));
 
         {
-            let mut stats = self.callstack_stats.entry(hash).or_default();
-            stats.count += 1;
-            stats.size += size;
+            self.callstack_stats.entry(hash).or_default().add(size);
         }
 
         self.live_allocs.insert(ptr, hash);
@@ -115,8 +113,7 @@ impl AllocationTracker {
                 self.callstack_stats.entry(hash)
             {
                 let stats = entry.get_mut();
-                stats.size -= size;
-                stats.count -= 1;
+                stats.sub(size);
 
                 // Free up some memory:
                 if stats.size == 0 {
