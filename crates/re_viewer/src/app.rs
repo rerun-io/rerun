@@ -371,7 +371,7 @@ impl App {
             return;
         }
 
-        let limit = re_memory::MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
+        let limit = re_memory::MemoryLimit::from_env_var(crate::env_vars::RERUN_MEMORY_LIMIT);
         let mem_use_before = MemoryUse::capture();
 
         if let Some(minimum_fraction_to_free) = limit.is_exceeded_by(&mem_use_before) {

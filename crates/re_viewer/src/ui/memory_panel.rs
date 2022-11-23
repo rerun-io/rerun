@@ -3,6 +3,8 @@ use re_memory::{
     MemoryHistory, MemoryLimit, MemoryUse,
 };
 
+use crate::env_vars::{RERUN_MEMORY_LIMIT, RERUN_TRACK_ALLOCATIONS};
+
 use super::format_usize;
 
 // ----------------------------------------------------------------------------
@@ -46,11 +48,16 @@ impl MemoryPanel {
     }
 
     fn left_side(ui: &mut egui::Ui) {
-        let limit = MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
+        let limit = MemoryLimit::from_env_var(RERUN_MEMORY_LIMIT);
         if let Some(limit) = limit.limit {
-            ui.label(format!("RERUN_MEMORY_LIMIT: {}", format_bytes(limit as _)));
+            ui.label(format!(
+                "{RERUN_MEMORY_LIMIT}: {}",
+                format_bytes(limit as _)
+            ));
         } else {
-            ui.label("You can set an upper limit of RAM use with e.g. RERUN_MEMORY_LIMIT=16GB.");
+            ui.label(format!(
+                "You can set an upper limit of RAM use with e.g. {RERUN_MEMORY_LIMIT}=16GB."
+            ));
             ui.separator();
         }
 
@@ -78,7 +85,9 @@ impl MemoryPanel {
             Self::tracking_stats(ui, tracking_stats);
         } else {
             ui.separator();
-            ui.label("Set RERUN_TRACK_ALLOCATIONS=1 to turn on detailed allocation tracking.");
+            ui.label(format!(
+                "Set {RERUN_TRACK_ALLOCATIONS}=1 to turn on detailed allocation tracking."
+            ));
         }
     }
 
@@ -156,7 +165,7 @@ impl MemoryPanel {
             .include_y(0.0)
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
-                let limit = MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
+                let limit = MemoryLimit::from_env_var(RERUN_MEMORY_LIMIT);
                 if let Some(net_limit) = limit.limit {
                     plot_ui.hline(
                         egui::plot::HLine::new(net_limit as f64)

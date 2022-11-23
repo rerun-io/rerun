@@ -46,7 +46,9 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    re_memory::tracking_allocator::turn_on_tracking_if_env_var("RERUN_TRACK_ALLOCATIONS");
+    re_memory::tracking_allocator::turn_on_tracking_if_env_var(
+        re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
+    );
 
     use clap::Parser as _;
     let args = Args::parse_from(args);
