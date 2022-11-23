@@ -16,10 +16,18 @@ use re_log_types::LogMsg;
 /// Features:
 ///
 /// * Read `.rrd` (rerun recording files).
+///
 /// * Connect to a Rerun Server over web-sockets.
+///
 /// * Host a Rerun Server that Rerun SDK:s can connect to.
+///
+/// Environment variables:
+///
+/// * `RERUN_MEMORY_LIMIT`: set an upper limit on how much memory the Rerun Viewer should use. Example `RERUN_MEMORY_LIMIT=16GB`
+///
+/// * `RERUN_TRACK_ALLOCATIONS`: track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
 #[derive(Debug, clap::Parser)]
-#[clap(author, version, about, long_about = None)]
+#[clap(author, version, about)]
 struct Args {
     /// Either a path to a `.rrd` file to load, or a websocket url to a Rerun Server from which to read data
     ///
