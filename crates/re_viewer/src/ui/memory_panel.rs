@@ -63,14 +63,15 @@ impl MemoryPanel {
 
         let mem_use = MemoryUse::capture();
 
-        if mem_use.resident.is_some() || mem_use.net.is_some() {
+        if mem_use.resident.is_some() || mem_use.counted.is_some() {
             if let Some(resident) = mem_use.resident {
                 ui.label(format!("Resident: {}", format_bytes(resident as _)))
                     .on_hover_text("Resident Set Size (or Working Set on Windows). Memory in RAM and not in swap.");
             }
 
-            if let Some(net) = mem_use.net {
-                ui.label(format!("Net: {} (actually used)", format_bytes(net as _)));
+            if let Some(counted) = mem_use.counted {
+                ui.label(format!("Counted: {}", format_bytes(counted as _)))
+                    .on_hover_text("Live bytes, counted by our own allocator.");
             } else if cfg!(debug_assertions) {
                 ui.label("Memory-tracking allocator not installed.");
             }
@@ -165,10 +166,10 @@ impl MemoryPanel {
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
                 let limit = MemoryLimit::from_env_var(RERUN_MEMORY_LIMIT);
-                if let Some(net_limit) = limit.limit {
+                if let Some(counted_limit) = limit.limit {
                     plot_ui.hline(
-                        egui::plot::HLine::new(net_limit as f64)
-                            .name("Net limit")
+                        egui::plot::HLine::new(counted_limit as f64)
+                            .name("Limit (counted)")
                             .width(2.0),
                     );
                 }
@@ -183,7 +184,7 @@ impl MemoryPanel {
                 }
 
                 plot_ui.line(to_line(&self.history.resident).name("Resident").width(1.5));
-                plot_ui.line(to_line(&self.history.net).name("Net use").width(1.5));
+                plot_ui.line(to_line(&self.history.counted).name("Counted").width(1.5));
             });
     }
 }

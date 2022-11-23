@@ -379,10 +379,10 @@ impl App {
 
             re_log::debug!("RAM limit: {}", format_limit(limit.limit));
             if let Some(resident) = mem_use_before.resident {
-                re_log::debug!("Using {} according to OS", format_bytes(resident as _),);
+                re_log::debug!("Resident: {}", format_bytes(resident as _),);
             }
-            if let Some(net) = mem_use_before.net {
-                re_log::debug!("Actually used: {}", format_bytes(net as _));
+            if let Some(counted) = mem_use_before.counted {
+                re_log::debug!("Counted: {}", format_bytes(counted as _));
             }
 
             {
@@ -401,8 +401,8 @@ impl App {
 
             let freed_memory = mem_use_before - mem_use_after;
 
-            if let Some(net_diff) = freed_memory.net {
-                re_log::info!("Freed up {}", format_bytes(net_diff as _));
+            if let Some(counted_diff) = freed_memory.counted {
+                re_log::info!("Freed up {}", format_bytes(counted_diff as _));
             }
 
             self.latest_memory_purge = instant::Instant::now();

@@ -10,18 +10,18 @@ pub struct MemoryUse {
 
     /// Bytes used by the application according to our own memory allocator's accounting.
     ///
-    /// This will be smaller than [`Self::resident`] because our memory allocator may not
+    /// This can be smaller than [`Self::resident`] because our memory allocator may not
     /// return all the memory we free to the OS.
     ///
     /// `None` if [`crate::AccountingAllocator`] is not used.
-    pub net: Option<i64>,
+    pub counted: Option<i64>,
 }
 
 impl MemoryUse {
     pub fn capture() -> Self {
         Self {
             resident: bytes_resident(),
-            net: bytes_used_net(),
+            counted: counted(),
         }
     }
 }
@@ -36,7 +36,7 @@ impl std::ops::Sub for MemoryUse {
 
         MemoryUse {
             resident: sub(self.resident, rhs.resident),
-            net: sub(self.net, rhs.net),
+            counted: sub(self.counted, rhs.counted),
         }
     }
 }
@@ -64,7 +64,7 @@ fn bytes_resident() -> Option<i64> {
 /// that hasn't been returned to the OS.
 ///
 /// `None` if [`crate::AccountingAllocator`] is not used.
-fn bytes_used_net() -> Option<i64> {
+fn counted() -> Option<i64> {
     let num_bytes = crate::accounting_allocator::global_allocs().size;
     if num_bytes == 0 {
         None

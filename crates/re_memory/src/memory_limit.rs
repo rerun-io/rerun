@@ -2,8 +2,8 @@
 pub struct MemoryLimit {
     /// Limit in bytes.
     ///
-    /// This is primarily compared to what is reported by [`crate::AccountingAllocator`] ('net').
-    /// We limit based on this instead of `resident` (RSS) because `net` is what we have immediate
+    /// This is primarily compared to what is reported by [`crate::AccountingAllocator`] ('counted').
+    /// We limit based on this instead of `resident` (RSS) because `counted` is what we have immediate
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
     pub limit: Option<i64>,
 }
@@ -30,9 +30,9 @@ impl MemoryLimit {
     pub fn is_exceeded_by(&self, mem_use: &crate::MemoryUse) -> Option<f32> {
         let limit = self.limit?;
 
-        if let Some(net_use) = mem_use.net {
-            if limit < net_use {
-                return Some((net_use - limit) as f32 / net_use as f32);
+        if let Some(counted_use) = mem_use.counted {
+            if limit < counted_use {
+                return Some((counted_use - limit) as f32 / counted_use as f32);
             }
         } else if let Some(resident_use) = mem_use.resident {
             re_log::warn_once!("Using resident memory use (RSS) for memory limiting, because a memory tracker was not available.");
