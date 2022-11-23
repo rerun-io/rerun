@@ -259,6 +259,8 @@ fn note_alloc(ptr: *mut u8, size: usize) {
             // Too small to track.
             GLOBAL_STATS.untracked.add(size);
         } else {
+            // TODO(emilk): stochastically sample medium-sized allocations (e.g. < 16 kB) based on pointer hash.
+
             // Big enough to track - but make sure we don't create a deadlock by trying to
             // track the allocations made by the allocation tracker:
             IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
