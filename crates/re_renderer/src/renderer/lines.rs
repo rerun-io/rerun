@@ -99,7 +99,7 @@ use std::num::NonZeroU32;
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 
 use crate::{
     include_file,
@@ -177,7 +177,7 @@ impl LineStripFlags {
 #[derive(Clone)]
 pub struct LineStrip {
     /// Connected points. Must be at least 2.
-    pub points: Vec<glam::Vec3>,
+    pub points: SmallVec<[glam::Vec3; 2]>,
 
     /// Radius of the line strip in world space
     /// TODO(andreas) Should be able to specify if this is in pixels, or both by providing a minimum in pixels.

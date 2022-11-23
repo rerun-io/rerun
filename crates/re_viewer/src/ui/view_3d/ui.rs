@@ -1,6 +1,8 @@
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
+use smallvec::smallvec;
+
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
@@ -14,7 +16,7 @@ use crate::{
     ViewerContext,
 };
 
-use super::{Eye, LineSegments3D, OrbitEye, Point3D, Scene3D, Size, SpaceCamera};
+use super::{Eye, LineStrip, OrbitEye, Point3D, Scene3D, Size, SpaceCamera};
 
 // ---
 
@@ -577,12 +579,14 @@ fn show_projections_from_2d_space(
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
                     let radius = Size::new_ui(1.5);
-                    scene.line_segments.push(LineSegments3D {
+                    scene.line_strips.push(LineStrip {
                         instance_id_hash: InstanceIdHash::NONE,
-                        segments: vec![(origin, end)],
-                        radius,
-                        color: [255; 4],
-                        flags: Default::default(),
+                        line_strip: re_renderer::renderer::LineStrip {
+                            points: smallvec![origin, end],
+                            radius: radius.0,
+                            color: [255; 4],
+                            flags: Default::default(),
+                        },
                     });
 
                     if let Some(pos) = hit_pos {
