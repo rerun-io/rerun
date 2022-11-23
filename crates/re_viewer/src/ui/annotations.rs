@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use lazy_static::lazy_static;
 use re_data_store::{FieldName, ObjPath};
-use re_log_types::{context::ClassId, AnnotationContext, Data, MsgId};
+use re_log_types::{context::ClassId, AnnotationContext, Data, DataPath, MsgId};
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
 
@@ -85,10 +85,10 @@ impl AnnotationMap {
         }
     }
 
-    pub(crate) fn load_associated(
+    pub(crate) fn find_associated(
         ctx: &mut ViewerContext<'_>,
         obj_path: &ObjPath,
-    ) -> Option<Annotations> {
+    ) -> Option<(DataPath, Annotations)> {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let store = ctx.log_db.obj_db.store.get(timeline)?;
         let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
@@ -108,10 +108,13 @@ impl AnnotationMap {
                         let data = data_vec.last().unwrap();
                         if field_name.as_str() == "_annotation_context" {
                             if let Data::AnnotationContext(context) = data {
-                                return Some(Annotations {
-                                    msg_id: meta.last().unwrap().1,
-                                    context,
-                                });
+                                return Some((
+                                    DataPath::new(path.clone(), *field_name),
+                                    Annotations {
+                                        msg_id: meta.last().unwrap().1,
+                                        context,
+                                    },
+                                ));
                             }
                         }
                         None

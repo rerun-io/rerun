@@ -8,7 +8,7 @@ use crate::misc::ViewerContext;
 use crate::ui::annotations::auto_color;
 use crate::ui::view_2d::view_class_description_map;
 
-use super::{annotations::AnnotationMap, Annotations, Preview};
+use super::{annotations::AnnotationMap, Preview};
 
 pub(crate) fn view_object(
     ctx: &mut ViewerContext<'_>,
@@ -55,6 +55,8 @@ pub(crate) fn view_instance_generic(
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
 
+    let mut class_id = None;
+
     egui::Grid::new("object_instance")
         .striped(true)
         .num_columns(2)
@@ -72,16 +74,12 @@ pub(crate) fn view_instance_generic(
                     Ok((_, data_vec)) => {
                         if data_vec.len() == 1 {
                             let data = data_vec.last().unwrap();
-                            let annotations =
-                                AnnotationMap::load_associated(ctx, &instance_id.obj_path);
-                            crate::data_ui::ui_data(
-                                ctx,
-                                ui,
-                                &data,
-                                Some(field_name),
-                                annotations,
-                                preview,
-                            );
+                            if field_name.as_str() == "class_id" {
+                                if let Data::I32(id) = data {
+                                    class_id = Some(context::ClassId(id as _));
+                                }
+                            }
+                            crate::data_ui::ui_data(ctx, ui, &data, preview);
                         } else {
                             ui_data_vec(ui, &data_vec);
                         }
@@ -98,6 +96,44 @@ pub(crate) fn view_instance_generic(
                 ui.end_row();
             }
         });
+
+    // If we have a class id, show some information about the resolved style!
+    if let Some(class_id) = class_id {
+        ui.separator();
+
+        if let Some((data_path, annotations)) =
+            AnnotationMap::find_associated(ctx, &instance_id.obj_path)
+        {
+            ctx.data_path_button_to(ui, "Associated Annotation Context", &data_path);
+            egui::Grid::new("class_description")
+                .striped(true)
+                .num_columns(2)
+                .show(ui, |ui| {
+                    if let Some(class_description) = annotations.context.class_map.get(&class_id) {
+                        if let Some(label) = &class_description.info.label {
+                            ui.label("label");
+                            ui.label(label.as_ref());
+                            ui.end_row();
+                        }
+                        if let Some(color) = &class_description.info.color {
+                            ui.label("color");
+                            ui_color_field(ui, color);
+                            ui.end_row();
+                        }
+                    } else {
+                        ui.label(
+                            egui::RichText::new(format!("unknown class_id {}", class_id.0))
+                                .italics(),
+                        );
+                    }
+                });
+        } else {
+            ui.label(
+                egui::RichText::new("class_id specified, but no annotation context found")
+                    .italics(),
+            );
+        }
+    }
 
     Some(())
 }
@@ -140,7 +176,7 @@ pub(crate) fn show_detailed_data(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui,
     if let Data::Tensor(tensor) = data {
         crate::ui::view_2d::show_tensor(ctx, ui, tensor);
     } else {
-        crate::data_ui::ui_data(ctx, ui, data, None, None, Preview::Medium);
+        crate::data_ui::ui_data(ctx, ui, data, Preview::Medium);
     }
 }
 
@@ -324,11 +360,11 @@ pub(crate) fn ui_logged_data(
     match data {
         LoggedData::Null(data_type) => ui.label(format!("null: {:?}", data_type)),
         LoggedData::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
-        LoggedData::Single(data) => ui_data(ctx, ui, data, None, None, preview),
+        LoggedData::Single(data) => ui_data(ctx, ui, data, preview),
         LoggedData::BatchSplat(data) => {
             ui.horizontal(|ui| {
                 ui.label("Batch Splat:");
-                ui_data(ctx, ui, data, None, None, preview)
+                ui_data(ctx, ui, data, preview)
             })
             .response
         }
@@ -339,58 +375,14 @@ pub(crate) fn ui_data(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     data: &Data,
-    field_name: Option<&str>,
-    annotations: Option<Annotations>,
     preview: Preview,
 ) -> egui::Response {
     match data {
         Data::Bool(value) => ui.label(value.to_string()),
-        Data::I32(value) => {
-            // TODO(andreas): Workaround for not having a type for class ids. Likely to go away with new data model (?)
-            if let Some("class_id") = field_name {
-                ui.vertical(|ui| {
-                    ui.label(value.to_string());
-                    if let Some(class_description) = annotations.as_ref().and_then(|annotations| {
-                        annotations
-                            .context
-                            .class_map
-                            .get(&context::ClassId(*value as _))
-                    }) {
-                        ui.horizontal(|ui| {
-                            ui.label("label:");
-                            if let Some(label) = &class_description.info.label {
-                                ui.label(label.as_ref());
-                            } else {
-                                ui.label(egui::RichText::new("none").italics());
-                            }
-                        })
-                        .response
-                    } else if annotations.is_none() {
-                        ui.label(egui::RichText::new("no annotation context found").italics())
-                    } else {
-                        ui.label(
-                            egui::RichText::new("annotation context does not have this class_id")
-                                .italics(),
-                        )
-                    }
-                })
-                .response
-            } else {
-                ui.label(value.to_string())
-            }
-        }
+        Data::I32(value) => ui.label(value.to_string()),
         Data::F32(value) => ui.label(value.to_string()),
         Data::F64(value) => ui.label(value.to_string()),
-        Data::Color([r, g, b, a]) => {
-            let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
-            let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
-            ui.painter().rect_stroke(
-                response.rect,
-                1.0,
-                ui.visuals().widgets.noninteractive.fg_stroke,
-            );
-            response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a))
-        }
+        Data::Color(value) => ui_color_field(ui, value),
         Data::String(string) => ui.label(format!("{string:?}")),
 
         Data::Vec2([x, y]) => ui.label(format!("[{x:.1}, {y:.1}]")),
@@ -448,6 +440,18 @@ pub(crate) fn ui_data(
 
         Data::DataVec(data_vec) => ui_data_vec(ui, data_vec),
     }
+}
+
+fn ui_color_field(ui: &mut egui::Ui, value: &[u8; 4]) -> egui::Response {
+    let [r, g, b, a] = value;
+    let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
+    let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
+    ui.painter().rect_stroke(
+        response.rect,
+        1.0,
+        ui.visuals().widgets.noninteractive.fg_stroke,
+    );
+    response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a))
 }
 
 pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Response {
