@@ -105,16 +105,17 @@ impl AnnotationMap {
             let annotation_context = store.iter().find_map(|(field_name, field_store)| {
                 match field_store.query_field_to_datavec(&time_query, None) {
                     Ok((meta, data_vec)) => {
-                        let data = data_vec.last().unwrap();
-                        if field_name.as_str() == "_annotation_context" {
-                            if let Data::AnnotationContext(context) = data {
-                                return Some((
-                                    DataPath::new(path.clone(), *field_name),
-                                    Annotations {
-                                        msg_id: meta.last().unwrap().1,
-                                        context,
-                                    },
-                                ));
+                        if let Some(data) = data_vec.last() {
+                            if field_name.as_str() == "_annotation_context" {
+                                if let Data::AnnotationContext(context) = data {
+                                    return Some((
+                                        DataPath::new(path.clone(), *field_name),
+                                        Annotations {
+                                            msg_id: meta.last().unwrap().1,
+                                            context,
+                                        },
+                                    ));
+                                }
                             }
                         }
                         None
