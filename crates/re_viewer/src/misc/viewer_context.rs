@@ -262,7 +262,7 @@ impl Default for Options {
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub(crate) enum Selection {
+pub enum Selection {
     None,
     MsgId(MsgId),
     ObjTypePath(ObjTypePath),

@@ -19,3 +19,7 @@ pub const TOGGLE_MEMORY_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHI
 pub const TOGGLE_BLUEPRINT_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::B);
 pub const TOGGLE_SELECTION_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::S);
 pub const TOGGLE_TIME_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::T);
+
+// TODO: I expect some resistance here :D
+pub const SELECTION_PREVIOUS: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::O);
+pub const SELECTION_NEXT: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::I);

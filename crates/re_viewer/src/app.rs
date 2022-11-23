@@ -12,7 +12,7 @@ use re_log_types::*;
 
 use crate::{
     design_tokens::DesignTokens,
-    misc::{Caches, Options, RecordingConfig, ViewerContext},
+    misc::{Caches, Options, PathBrowser, RecordingConfig, ViewerContext},
     ui::kb_shortcuts,
 };
 
@@ -520,6 +520,8 @@ struct AppState {
     cache: Caches,
 
     selected_rec_id: RecordingId,
+    // TODO: guess we get persistent goto for free then
+    path_browser: PathBrowser,
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
@@ -563,6 +565,7 @@ impl AppState {
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
             static_image_cache: _,
+            path_browser: _,
         } = self;
 
         let rec_cfg = recording_configs.entry(*selected_rec_id).or_default();
@@ -659,6 +662,13 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
         egui_ctx.style().spacing.interact_size.y
     };
 
+    let rec_cfg = app
+        .state
+        .recording_configs
+        .entry(app.state.selected_rec_id)
+        .or_default();
+    app.state.path_browser.select(&rec_cfg.selection);
+
     egui::TopBottomPanel::top("top_bar")
         .frame(panel_frame)
         .exact_height(bar_height)
@@ -703,6 +713,18 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                         PanelSelection::EventLog,
                         "Event Log",
                     );
+                }
+
+                ui.separator();
+
+                if let Some(selection) = app.state.path_browser.show(egui_ctx, ui) {
+                    // TODO: eeeeeeeeeeeeh
+                    let rec_cfg = app
+                        .state
+                        .recording_configs
+                        .entry(app.state.selected_rec_id)
+                        .or_default();
+                    rec_cfg.selection = selection;
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

@@ -1,5 +1,5 @@
 use crate::{
-    path::{IndexPath, ObjPathComp, ObjTypePath, TypePathComp},
+    path::{IndexPath, ObjPathComp, ObjTypePath, ObjTypePathComp},
     Index,
 };
 
@@ -8,7 +8,7 @@ use crate::{
 /// Wrapped by [`crate::ObjPath`] together with a hash.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub(crate) struct ObjPathImpl {
+pub struct ObjPathImpl {
     /// `camera / * / points / *`
     obj_type_path: ObjTypePath,
 
@@ -86,7 +86,7 @@ impl ObjPathImpl {
         let mut obj_type_path = self.obj_type_path.as_slice().to_vec();
         let mut index_path = self.index_path.as_slice().to_vec();
 
-        if matches!(obj_type_path.pop()?, TypePathComp::Index) {
+        if matches!(obj_type_path.pop()?, ObjTypePathComp::Index) {
             index_path.pop();
         }
 
@@ -109,10 +109,10 @@ where
         for comp in path {
             match comp {
                 ObjPathComp::Name(name) => {
-                    obj_type_path.push(TypePathComp::Name(*name));
+                    obj_type_path.push(ObjTypePathComp::Name(*name));
                 }
                 ObjPathComp::Index(index) => {
-                    obj_type_path.push(TypePathComp::Index);
+                    obj_type_path.push(ObjTypePathComp::Index);
                     index_path.push(index.clone());
                 }
             }
@@ -191,8 +191,8 @@ impl<'a> Iterator for Iter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.obj_type_path.next()? {
-            TypePathComp::Name(name) => Some(ObjPathCompRef::Name(name)),
-            TypePathComp::Index => Some(ObjPathCompRef::Index(self.index_path.next()?)),
+            ObjTypePathComp::Name(name) => Some(ObjPathCompRef::Name(name)),
+            ObjTypePathComp::Index => Some(ObjPathCompRef::Index(self.index_path.next()?)),
         }
     }
 }
