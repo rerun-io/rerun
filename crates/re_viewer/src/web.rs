@@ -1,9 +1,10 @@
 use eframe::wasm_bindgen::{self, prelude::*};
 
-use re_memory::TrackingAllocator;
+use re_memory::AccountingAllocator;
 
 #[global_allocator]
-static GLOBAL: TrackingAllocator<std::alloc::System> = TrackingAllocator::new(std::alloc::System);
+static GLOBAL: AccountingAllocator<std::alloc::System> =
+    AccountingAllocator::new(std::alloc::System);
 
 /// This is the entry-point for all the web-assembly.
 /// This is called once from the HTML.

@@ -77,7 +77,7 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[cfg(feature = "re_viewer")]
-    re_memory::tracking_allocator::turn_on_tracking_if_env_var(
+    re_memory::accounting_allocator::turn_on_tracking_if_env_var(
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 

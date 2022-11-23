@@ -13,7 +13,7 @@ pub struct MemoryUse {
     /// This will be smaller than [`Self::resident`] because our memory allocator may not
     /// return all the memory we free to the OS.
     ///
-    /// `None` if [`crate::TrackingAllocator`] is not used.
+    /// `None` if [`crate::AccountingAllocator`] is not used.
     pub net: Option<i64>,
 }
 
@@ -63,9 +63,9 @@ fn bytes_resident() -> Option<i64> {
 /// The difference to [`bytes_resident`] is memory allocated by `MiMalloc`.
 /// that hasn't been returned to the OS.
 ///
-/// `None` if [`crate::TrackingAllocator`] is not used.
+/// `None` if [`crate::AccountingAllocator`] is not used.
 fn bytes_used_net() -> Option<i64> {
-    let num_bytes = crate::tracking_allocator::global_allocs().size;
+    let num_bytes = crate::accounting_allocator::global_allocs().size;
     if num_bytes == 0 {
         None
     } else {

@@ -73,9 +73,9 @@ static GLOBAL_STATS: GlobalStats = GlobalStats {
 };
 
 /// Total number of live allocations,
-/// and the number of live bytes allocated as tracked by [`TrackingAllocator`].
+/// and the number of live bytes allocated as tracked by [`AccountingAllocator`].
 ///
-/// Returns (0,0) if [`TrackingAllocator`] is not used.
+/// Returns (0,0) if [`AccountingAllocator`] is not used.
 pub fn global_allocs() -> CountAndSize {
     GLOBAL_STATS.live.load()
 }
@@ -181,17 +181,17 @@ pub fn tracking_stats(max_callstacks: usize) -> Option<TrackingStatistics> {
 ///
 /// Usage:
 /// ```
-/// use re_memory::TrackingAllocator;
+/// use re_memory::AccountingAllocator;
 ///
 /// #[global_allocator]
-/// static GLOBAL: TrackingAllocator<std::alloc::System> = TrackingAllocator::new(std::alloc::System);
+/// static GLOBAL: AccountingAllocator<std::alloc::System> = AccountingAllocator::new(std::alloc::System);
 /// ```
 #[derive(Default)]
-pub struct TrackingAllocator<InnerAllocator> {
+pub struct AccountingAllocator<InnerAllocator> {
     allocator: InnerAllocator,
 }
 
-impl<InnerAllocator> TrackingAllocator<InnerAllocator> {
+impl<InnerAllocator> AccountingAllocator<InnerAllocator> {
     pub const fn new(allocator: InnerAllocator) -> Self {
         Self { allocator }
     }
@@ -201,7 +201,7 @@ impl<InnerAllocator> TrackingAllocator<InnerAllocator> {
 // SAFETY:
 // We just do book-keeping and then let another allocator do all the actual work.
 unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
-    for TrackingAllocator<InnerAllocator>
+    for AccountingAllocator<InnerAllocator>
 {
     #[allow(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {

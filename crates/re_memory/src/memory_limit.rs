@@ -2,7 +2,7 @@
 pub struct MemoryLimit {
     /// Limit in bytes.
     ///
-    /// This is primarily compared to what is reported by [`crate::TrackingAllocator`] ('net').
+    /// This is primarily compared to what is reported by [`crate::AccountingAllocator`] ('net').
     /// We limit based on this instead of `resident` (RSS) because `net` is what we have immediate
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
     pub limit: Option<i64>,

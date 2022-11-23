@@ -72,12 +72,13 @@ impl MemoryPanel {
             if let Some(net) = mem_use.net {
                 ui.label(format!("Net: {} (actually used)", format_bytes(net as _)));
             } else if cfg!(debug_assertions) {
-                ui.label("Memory tracking allocator not installed.");
+                ui.label("Memory-tracking allocator not installed.");
             }
         }
 
         let max_callstacks = 100;
-        if let Some(tracking_stats) = re_memory::tracking_allocator::tracking_stats(max_callstacks)
+        if let Some(tracking_stats) =
+            re_memory::accounting_allocator::tracking_stats(max_callstacks)
         {
             ui.style_mut().wrap = Some(false);
             Self::tracking_stats(ui, tracking_stats);
@@ -91,7 +92,7 @@ impl MemoryPanel {
 
     fn tracking_stats(
         ui: &mut egui::Ui,
-        tracking_stats: re_memory::tracking_allocator::TrackingStatistics,
+        tracking_stats: re_memory::accounting_allocator::TrackingStatistics,
     ) {
         ui.label(format!(
             "{} tracked in {} allocs",

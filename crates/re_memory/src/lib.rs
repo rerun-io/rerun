@@ -1,15 +1,15 @@
 //! Crate for tracking memory use.
 
+pub mod accounting_allocator;
 mod allocation_tracker;
 mod memory_history;
 mod memory_limit;
 mod memory_use;
-pub mod tracking_allocator;
 pub mod util;
 
 pub use {
-    memory_history::MemoryHistory, memory_limit::MemoryLimit, memory_use::MemoryUse,
-    tracking_allocator::TrackingAllocator,
+    accounting_allocator::AccountingAllocator, memory_history::MemoryHistory,
+    memory_limit::MemoryLimit, memory_use::MemoryUse,
 };
 
 /// Number of allocation and their total size.
