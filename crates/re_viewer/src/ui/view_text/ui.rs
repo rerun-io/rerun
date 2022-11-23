@@ -8,7 +8,7 @@ use crate::ViewerContext;
 
 use super::{SceneText, TextEntry};
 
-// ---
+// --- Main view ---
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -71,9 +71,10 @@ pub(crate) fn view_text(
     .response
 }
 
-// ---
+// --- Filters ---
 
 // TODO(cmc): implement "body contains <value>" filter.
+// TODO(cmc): beyond filters, it'd be nice to be able to swap columns at some point.
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewTextFilters {
     // Column filters: which columns should be visible?
@@ -131,6 +132,7 @@ impl ViewTextFilters {
         }
     }
 
+    // Display the filter configuration UI (lotta checkboxes!).
     pub(crate) fn show(&mut self, ui: &mut egui::Ui, resize_id: Option<egui::Id>) {
         crate::profile_function!();
 
@@ -274,23 +276,31 @@ fn show_table(
     const LOG_LEVEL_HEADER: &str = "Level";
     const BODY_HEADER: &str = "Body";
 
-    const EXTRA_SPACE_FACTOR: f32 = 1.20;
+    /// How much more space do we want per-column beyond their optimal size?
+    const EXTRA_SPACE_FACTOR: f32 = 1.20; // 20%
 
     let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
     let current_time = ctx.rec_cfg.time_ctrl.time().map(|tr| tr.floor());
 
+    // This is where the `Table` widget stores the current size of all columns (when
+    // `resizable` == true): we'll need when auto-resizing things.
     state.resize_id = ui.id().with("__table_resize").into();
 
     // Step 1: compute optimal sizes for all columns.
 
-    let renderer_width = |ui: &egui::Ui, text: String| {
-        let font_id = TextStyle::Body.resolve(ui.style());
+    let font_id = Box::new(TextStyle::Body.resolve(ui.style()));
+    let renderer_width = move |ui: &egui::Ui, text: String| {
         ui.fonts()
-            .layout_delayed_color(text, font_id, f32::MAX)
+            .layout_delayed_color(text, (*font_id).clone(), f32::MAX)
             .size()
             .x
     };
 
+    // Timelines: each timeline has a dedicated column, thus each timeline has an optimal size.
+    // The optimal size for a single timeline is the maximum between the name of the timeline
+    // itself, and the contents of its first row (technically we should be checking every
+    // single row, though this covers 99% of use cases, and the EXTRA_SPACE_FACTOR covers the
+    // remaining %).
     let timelines = state
         .filters
         .col_timelines
@@ -306,6 +316,7 @@ fn show_table(
         })
         .collect::<Vec<_>>();
 
+    // Object paths: the optimal size is the maximum size between all rendered object paths.
     let obj_path_header_size = renderer_width(ui, OBJ_PATH_HEADER.to_owned());
     let obj_path_size = state
         .filters
@@ -317,6 +328,7 @@ fn show_table(
         .unwrap_or(50.0)
         * EXTRA_SPACE_FACTOR;
 
+    // Log levels: the optimal size is the maximum size between all rendered log levels.
     let log_level_header_size = renderer_width(ui, LOG_LEVEL_HEADER.to_owned());
     let log_level_size = state
         .filters
@@ -328,6 +340,11 @@ fn show_table(
         .unwrap_or(50.0)
         * EXTRA_SPACE_FACTOR;
 
+    // TODO(cmc): this one is quite a bit more compute heavy than its fellows above in that
+    // it has to check _all_ text entries individually.
+    // Might be worth investigating how to cache and/or optimize this at some point: there
+    // should be some very efficient ways to do this by abusing the fact that MsgIds are fully
+    // ordered now.
     let body_header_size = renderer_width(ui, BODY_HEADER.to_owned());
     let body_size = text_entries
         .iter() // all of them, visible or not!
