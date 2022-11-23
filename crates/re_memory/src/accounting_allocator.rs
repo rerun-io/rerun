@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed};
 
 use crate::{
-    allocation_tracker::{AllocationTracker, CallstackStatistics},
+    allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash},
     CountAndSize,
 };
 
@@ -266,7 +266,7 @@ fn note_alloc(ptr: *mut u8, size: usize) {
             IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
                 if !is_thread_in_allocation_tracker.get() {
                     is_thread_in_allocation_tracker.set(true);
-                    ALLOCATION_TRACKER.lock().on_alloc(ptr as usize, size);
+                    ALLOCATION_TRACKER.lock().on_alloc(PtrHash::new(ptr), size);
                     is_thread_in_allocation_tracker.set(false);
                 } else {
                     // This is the ALLOCATION_TRACKER allocating memory.
@@ -291,7 +291,9 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
             IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
                 if !is_thread_in_allocation_tracker.get() {
                     is_thread_in_allocation_tracker.set(true);
-                    ALLOCATION_TRACKER.lock().on_dealloc(ptr as usize, size);
+                    ALLOCATION_TRACKER
+                        .lock()
+                        .on_dealloc(PtrHash::new(ptr), size);
                     is_thread_in_allocation_tracker.set(false);
                 } else {
                     // This is the ALLOCATION_TRACKER freeing memory.

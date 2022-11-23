@@ -6,6 +6,22 @@ use crate::CountAndSize;
 
 // ----------------------------------------------------------------------------
 
+/// A hash of a pointer address.
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+pub struct PtrHash(u64);
+
+impl nohash_hasher::IsEnabled for PtrHash {}
+
+impl PtrHash {
+    #[inline]
+    pub fn new(ptr: *mut u8) -> Self {
+        let hash = ahash::RandomState::with_seeds(1, 2, 3, 4).hash_one(ptr);
+        Self(hash)
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 struct BacktraceHash(u64);
 
@@ -84,15 +100,15 @@ pub struct AllocationTracker {
     /// De-duplicated readable backtraces.
     readable_backtraces: nohash_hasher::IntMap<BacktraceHash, ReadableBacktrace>,
 
-    /// Current live allocations. Key = pointer address.
-    live_allocs: ahash::HashMap<usize, BacktraceHash>,
+    /// Current live allocations.
+    live_allocs: ahash::HashMap<PtrHash, BacktraceHash>,
 
     /// How much memory is allocated by each callstack?
     callstack_stats: nohash_hasher::IntMap<BacktraceHash, CountAndSize>,
 }
 
 impl AllocationTracker {
-    pub fn on_alloc(&mut self, ptr: usize, size: usize) {
+    pub fn on_alloc(&mut self, ptr: PtrHash, size: usize) {
         let unresolved_backtrace = Backtrace::new_unresolved();
         let hash = hash_backtrace(&unresolved_backtrace);
 
@@ -107,7 +123,7 @@ impl AllocationTracker {
         self.live_allocs.insert(ptr, hash);
     }
 
-    pub fn on_dealloc(&mut self, ptr: usize, size: usize) {
+    pub fn on_dealloc(&mut self, ptr: PtrHash, size: usize) {
         if let Some(hash) = self.live_allocs.remove(&ptr) {
             if let std::collections::hash_map::Entry::Occupied(mut entry) =
                 self.callstack_stats.entry(hash)
